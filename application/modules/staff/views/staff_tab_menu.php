@@ -5,7 +5,30 @@ $session = $this->session->userdata('user');
 $permissions = $session->permissions;
 $staff_id = $this->session->userdata('user')->staff_id;
 ?>
-<div class="container-fluid">
+<style>
+    /* Tab styling matching workplan tabs */
+    .nav-tabs .nav-link {
+        border: none;
+        color: #6c757d;
+        font-weight: 500;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .nav-tabs .nav-link:hover {
+        border: none;
+        color: rgba(52, 143, 65, 1);
+        background-color: rgba(52, 143, 65, 0.1);
+    }
+
+    .nav-tabs .nav-link.active {
+        color: rgba(52, 143, 65, 1);
+        background-color: rgba(52, 143, 65, 0.1);
+        border: none;
+        border-bottom: 3px solid rgba(52, 143, 65, 1);
+    }
+</style>
+<div class="container">
     <ul class="nav nav-tabs mb-3" id="staffTabMenu" role="tablist">
         <?php if (in_array('72', $permissions)) : ?>
             <?php if (in_array('71', $permissions)) : ?>

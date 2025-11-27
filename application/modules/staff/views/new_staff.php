@@ -2,27 +2,62 @@
     .dt-buttons .btn-group .dataTables_paginate .paging_simple_numbers .dataTables_info{
         display: none !important;
    }
+    .contract-form-section {
+        background: #fff;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+    .contract-form-section h5 {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .contract-form-section h5 i {
+        color: #6c757d;
+        margin-right: 0.5rem;
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    .form-group label {
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
 </style>
 <?php $this->load->view('staff_tab_menu'); ?>
-<div class="card">
+<div class="container-fluid mt-3">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom">
+            <h4 class="mb-0"><i class="fa fa-user-plus me-2"></i>Add New Staff Member</h4>
+        </div>
       <div class="card-body">
-        <br />
-
-                    <div class="row">
-
-                        <div class="col-md-6">
                             <?php echo validation_errors(); ?>
                             <?php echo form_open('staff/new_submit'); ?>
 
-                            <h4>Personal Information</h4>
+            <!-- Row 1: Personal Information and Contact Information side by side -->
+            <div class="row">
+                <div class="col-lg-6">
+                    <!-- Personal Information Section -->
+                    <div class="contract-form-section">
+                        <h5><i class="fa fa-user"></i>Personal Information</h5>
 
                             <div class="form-group">
-                                <label for="SAPNO">SAP Number:</label>
+                            <label for="SAPNO">SAP Number</label>
                                 <input type="text" class="form-control" name="SAPNO" id="SAPNO">
                             </div>
 
                             <div class="form-group">
-                                <label for="gender">Title:</label>
+                            <label for="title">Title</label>
                                 <select class="form-control validate-required" name="title" id="title">
                                     <option value="">Select Title</option>
                                     <option value="Dr">Dr</option>
@@ -31,37 +66,34 @@
                                     <option value="Mr">Mr</option>
                                     <option value="Mrs">Mrs</option>
                                     <option value="Ms">Ms</option>
-
                                 </select>
                             </div>
 
                             <div class="form-group">
-                                <label for="fname">First Name: <?php echo asterik();?></label>
+                            <label for="fname" class="required-field">First Name</label>
                                 <input type="text" class="form-control validate-required" name="fname" id="fname">
                                 <div class="invalid-feedback">First Name is Required</div>
                             </div>
 
                             <div class="form-group">
-                                <label for="lname">Last Name / Surname: <?php echo asterik();?></label>
+                            <label for="lname" class="required-field">Last Name / Surname</label>
                                 <input type="text" class="form-control validate-required" name="lname" id="lname">
                                 <div class="invalid-feedback">Surname is Required</div>
                             </div>
 
                             <div class="form-group">
-                                <label for="oname">Other Name:</label>
+                            <label for="oname">Other Name</label>
                                 <input type="text" class="form-control" name="oname" id="oname">
                             </div>
 
                             <div class="form-group">
-                                <label for="date_of_birth">Date of Birth: <?php echo asterik();?></label>
-                                <input type="text" class="form-control datepicker validate-required" name="date_of_birth"
-                                    id="date_of_birth" autocomplete="off">
+                            <label for="date_of_birth" class="required-field">Date of Birth</label>
+                            <input type="text" class="form-control datepicker validate-required" name="date_of_birth" id="date_of_birth" autocomplete="off">
                                     <div class="invalid-feedback">Must be above 18 years of Age.</div>
-                                
                             </div>
 
                             <div class="form-group">
-                                <label for="gender">Gender:<?php echo asterik();?></label>
+                            <label for="gender" class="required-field">Gender</label>
                                 <select class="form-control validate-required" name="gender" id="gender">
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
@@ -70,210 +102,179 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="nationality_id">Nationality: <?php echo asterik();?></label>
+                            <label for="nationality_id" class="required-field">Nationality</label>
                                 <select class="form-control select2 validate-required" name="nationality_id" id="nationality_id">
+                                <option value="">Select Nationality</option>
                                     <?php $lists = Modules::run('lists/nationality');
-                                    foreach ($lists as $list) :
-                                    ?>
+                                foreach ($lists as $list) : ?>
                                     <option value="<?php echo $list->nationality_id; ?>">
-                                        <?php echo $list->nationality; ?></option>
+                                        <?php echo $list->nationality; ?>
+                                    </option>
                                     <?php endforeach; ?>
-                                    <!-- Add more options as needed -->
                                 </select>
                             </div>
 
                             <div class="form-group">
-                                <label for="initiation_date">Initiation Date: <?php echo asterik();?></label>
-                                <input type="text" class="form-control datepicker validate-required" name="initiation_date"
-                                    id="initiation_date"  autocomplete="off">
+                            <label for="initiation_date" class="required-field">Initiation Date</label>
+                            <input type="text" class="form-control datepicker validate-required" name="initiation_date" id="initiation_date" autocomplete="off">
+                        </div>
                             </div>
                         </div>
 
-                        <div class="col-md-6">
-                            <h4>Contact Information </h4>
-
+                <div class="col-lg-6">
+                    <!-- Contact Information Section -->
+                    <div class="contract-form-section">
+                        <h5><i class="fa fa-phone"></i>Contact Information</h5>
 
                             <div class="form-group">
-                                <label for="tel_1">Telephone 1: <?php echo asterik();?></label>
+                            <label for="tel_1" class="required-field">Telephone 1</label>
                                 <input type="text" class="form-control validate-required" name="tel_1" id="tel_1">
-                                
                             </div>
 
                             <div class="form-group">
-                                <label for="tel_2">Telephone 2:</label>
+                            <label for="tel_2">Telephone 2</label>
                                 <input type="text" class="form-control" name="tel_2" id="tel_2">
                             </div>
 
                             <div class="form-group">
-                                <label for="whatsapp">WhatsApp:</label>
+                            <label for="whatsapp">WhatsApp</label>
                                 <input type="text" class="form-control" name="whatsapp" id="whatsapp">
                             </div>
 
                             <div class="form-group">
-                                <label for="work_email">Work Email: <?php echo asterik();?></label>
+                            <label for="work_email" class="required-field">Work Email</label>
                                 <input type="email" class="form-control validate-required" name="work_email" id="work_email">
-                                <div class="invalid-feedback">Work Email  is Required</div>
+                            <div class="invalid-feedback">Work Email is Required</div>
                             </div>
-                            <br>
+
                             <div class="form-group">
-                                <label for="private_email">Personal/Private Email:</label>
+                            <label for="private_email">Personal/Private Email</label>
                                 <input type="email" class="form-control" name="private_email" id="private_email">
                             </div>
 
                             <div class="form-group">
-                                <label for="physical_location">Physical Location:</label>
-                                <textarea class="form-control" name="physical_location" id="physical_location" rows="2"
-                                    ></textarea>
-                            </div>
+                            <label for="physical_location">Physical Location</label>
+                            <textarea class="form-control" name="physical_location" id="physical_location" rows="2"></textarea>
                         </div>
                     </div>
+                </div>
+            </div>
 
-
-
-        
-             
-
+            <!-- Row 2: Contract Information (full width) -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <!-- Contract Information Section -->
+                    <div class="contract-form-section">
+                        <h5><i class="fa fa-info-circle"></i>Contract Information</h5>
                     <div class="row">
                         <div class="col-md-6">
-                            <h4>Contract Information</h4>
-
                             <div class="form-group">
-                                <label for="job_id">Job: <?php echo asterik();?></label>
+                                    <label for="job_id" class="required-field">Job</label>
                                 <select class="form-control select2 validate-required" name="job_id" id="job_id">
                                     <option value="">Select Job</option>
                                     <?php $jobs = Modules::run('lists/jobs');
-                                    foreach ($jobs as $job) :
-                                    ?>
-
+                                        foreach ($jobs as $job) : ?>
                                     <option value="<?php echo $job->job_id; ?>"><?php echo $job->job_name; ?></option>
                                     <?php endforeach; ?>
-                                    <div class="invalid-feedback">Job Institution is Required</div>
                                 </select>
+                                    <div class="invalid-feedback">Job is Required</div>
                             </div>
 
                             <div class="form-group">
-                                <label for="job_acting_id">Job Acting:</label>
+                                    <label for="job_acting_id">Job Acting</label>
                                 <select class="form-control select2" name="job_acting_id" id="job_acting_id">
-                                    <option value="20">Select Job Acting</option>
+                                        <option value="">Select Job Acting</option>
                                     <?php $jobsacting = Modules::run('lists/jobsacting');
-                                    foreach ($jobsacting as $joba) :
-                                    ?>
-
-                                    <option value="<?php echo $joba->job_acting_id; ?>"><?php echo $joba->job_acting; ?>
-                                    </option>
+                                        foreach ($jobsacting as $joba) : ?>
+                                            <option value="<?php echo $joba->job_acting_id; ?>"><?php echo $joba->job_acting; ?></option>
                                     <?php endforeach; ?>
-                                    <!-- Add more options as needed -->
                                 </select>
                             </div>
 
                             <div class="form-group">
-                                <label for="grade_id">Grade: <?php echo asterik();?></label>
+                                    <label for="grade_id" class="required-field">Grade</label>
                                 <select class="form-control select2 validate-required" name="grade_id" id="grade_id">
                                     <option value="">Select Grade</option>
                                     <?php $lists = Modules::run('lists/grades');
-                                    foreach ($lists as $list) :
-                                    ?>
-
+                                        foreach ($lists as $list) : ?>
                                     <option value="<?php echo $list->grade_id; ?>"><?php echo $list->grade; ?></option>
                                     <?php endforeach; ?>
-                                    <!-- Add more options as needed -->
+                                    </select>
                                     <div class="invalid-feedback">Salary Grade is Required</div>
-                                     
-                                </select>
+                                </div>
                             </div>
 
+                            <div class="col-md-6">
                             <div class="form-group">
-                                <label for="contracting_institution_id">Contracting Institution: <?php echo asterik();?></label>
-                                <select class="form-control select2 validate-required" name="contracting_institution_id"
-                                    id="contracting_institution_id">
+                                    <label for="contracting_institution_id" class="required-field">Contracting Institution</label>
+                                    <select class="form-control select2 validate-required" name="contracting_institution_id" id="contracting_institution_id">
                                     <option value="">Select Contracting Institution</option>
                                     <?php $lists = Modules::run('lists/contractors');
-                                    foreach ($lists as $list) :
-                                    ?>
+                                        foreach ($lists as $list) : ?>
                                     <option value="<?php echo $list->contracting_institution_id; ?>">
-                                        <?php echo $list->contracting_institution; ?></option>
+                                                <?php echo $list->contracting_institution; ?>
+                                            </option>
                                     <?php endforeach; ?>
+                                    </select>
                                     <div class="invalid-feedback">Contracting Institution is Required</div>
-                                </select>
                             </div>
 
                             <div class="form-group">
-                                <label for="funder_id">Funder: <?php echo asterik();?></label>
+                                    <label for="funder_id" class="required-field">Funder</label>
                                 <select class="form-control select2 validate-required" name="funder_id" id="funder_id">
                                     <option value="">Select Funder</option>
                                     <?php $lists = Modules::run('lists/funder');
-                                    foreach ($lists as $list) :
-                                    ?>
-                                    <option value="<?php echo $list->funder_id; ?>"><?php echo $list->funder; ?>
-                                    </option>
+                                        foreach ($lists as $list) : ?>
+                                            <option value="<?php echo $list->funder_id; ?>"><?php echo $list->funder; ?></option>
                                     <?php endforeach; ?>
+                                    </select>
                                     <div class="invalid-feedback">Funder is Required</div>
-                                </select>
                             </div>
 
                             <div class="form-group">
-                                <label for="first_supervisor">First Supervisor: <?php echo asterik();?></label>
-                                <select class="form-control select2 validate-required" name="first_supervisor" id="first_supervisor">
-                                    <option value="">Select First Supervisor</option>
-                                    <?php $lists = Modules::run('lists/supervisor');
-                                    foreach ($lists as $list) :
-                                    ?>
-                                    <option value="<?php echo $list->staff_id; ?>">
-                                        <?php echo $list->lname . ' ' . $list->fname; ?></option>
-                                    <?php endforeach; ?>
-                                    <!-- Add more options as needed -->
-                                </select>
-                                <div class="invalid-feedback">First Supervisor is Required</div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="second_supervisor">Second Supervisor:</label>
-                                <select class="form-control select2" name="second_supervisor" id="second_supervisor"
-                                    >
-                                    <option value="">Select Second Supervisor</option>
-                                    <?php $lists = Modules::run('lists/supervisor');
-                                    foreach ($lists as $list) :
-                                    ?>
-                                    <option value="<?php echo $list->staff_id; ?>">
-                                        <?php echo $list->lname . ' ' . $list->fname; ?></option>
-                                    <?php endforeach; ?>
-                                    <!-- Add more options as needed -->
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="contract_type_id">Contract Type: <?php echo asterik();?></label>
-                                <select class="form-control select2 validate-required" name="contract_type_id" id="contract_type_id"
-                                    >
+                                    <label for="contract_type_id" class="required-field">Contract Type</label>
+                                    <select class="form-control select2 validate-required" name="contract_type_id" id="contract_type_id">
+                                        <option value="">Select Contract Type</option>
                                     <?php $lists = Modules::run('lists/contracttype');
-                                    foreach ($lists as $list) :
-                                    ?>
+                                        foreach ($lists as $list) : ?>
                                     <option value="<?php echo $list->contract_type_id; ?>">
-                                        <?php echo $list->contract_type; ?></option>
+                                                <?php echo $list->contract_type; ?>
+                                            </option>
                                     <?php endforeach; ?>
-                                    <!-- Add more options as needed -->
                                 </select>
                                 <div class="invalid-feedback">Contract Type is Required</div>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6" style="margin-top:35px;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 3: Location & Assignment and Supervisors side by side -->
+            <div class="row">
+                <div class="col-lg-6">
+                    <!-- Location & Assignment Section -->
+                    <div class="contract-form-section">
+                        <h5><i class="fa fa-map-marker-alt"></i>Location & Assignment</h5>
+
                             <div class="form-group">
-                                <label for="duty_station_id">Duty Station: <?php echo asterik();?></label>
-                                <select class="form-control select2 validate-required" name="duty_station_id" id="duty_station_id"
-                                    >
+                            <label for="duty_station_id" class="required-field">Duty Station</label>
+                            <select class="form-control select2 validate-required" name="duty_station_id" id="duty_station_id">
+                                <option value="">Select Duty Station</option>
                                     <?php $lists = Modules::run('lists/stations');
-                                    foreach ($lists as $list) :
-                                    ?>
+                                foreach ($lists as $list) : ?>
                                     <option value="<?php echo $list->duty_station_id; ?>">
-                                        <?php echo $list->duty_station_name; ?></option>
+                                        <?php echo $list->duty_station_name; ?>
+                                    </option>
                                     <?php endforeach; ?>
-                                    <!-- Add more options as needed -->
                                 </select>
                                 <div class="invalid-feedback">Duty Station is Required</div>
                             </div>
+
                             <div class="form-group">
-                                <label for="division_id">Division: <?php echo asterik();?></label>
+                            <label for="division_id" class="required-field">Division</label>
                                 <select class="form-control select2 validate-required" name="division_id" id="division_id">
+                                <option value="">Select Division</option>
                                     <?php 
                                         $divisions = Modules::run('lists/divisions');
                                         foreach ($divisions as $division): 
@@ -287,92 +288,183 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="unit_id">Unit:</label>
+                            <label for="unit_id">Unit</label>
                                 <select class="form-control select2" name="unit_id" id="unit_id">
                                     <option value="">Select a Unit</option>
-                            
                                 </select>
                             </div>
 
-
-                            <div class="form-group">
-                                <label for="start_date">Start Date:<?php echo asterik();?></label>
-                                <input type="text" class="form-control datepicker validate-required" name="start_date" id="start_date"
-                                     autocomplete="off">
-                                     <div class="invalid-feedback">Start Date is Required</div>
-                            </div>
-                            
-
-                            <div class="form-group">
-                                <label for="end_date">End Date: <?php echo asterik();?></label>
-                                <input type="text" class="form-control datepicker validate-required" name="end_date" id="end_date"
-                                     autocomplete="off">
-                                     <div class="invalid-feedback">Must be greater than start date</div>
-                            </div>
-                            
-
-                            <div class="form-group">
-                                <label for="status_id">Contract Status:</label>
-                                <select class="form-control validate-required" name="status_id" id="status_id">
-                                    <option value="1" selected>Active</option>
-
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="file_name">File Name/Number:</label>
-                                <input type="hidden" class="form-control" name="file_name" id="file_name">
-                                <div class="invalid-feedback">File Number/Name is Required</div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="comments">Comments:</label>
-                                <textarea class="form-control" name="comments" id="comments" rows="3"></textarea>
-                            </div>
-
-
-
-                            <div class="form-group" style="float:right;">
-                                <br>
-                                <label for="submit"></label>
-                                <input type="submit" class="btn btn-dark" name="submit" value="Submit">
-                                <input type="reset" class="btn btn-danger" name="submit" value="Reset">
-                            </div>
-                            <?php echo form_close(); ?>
+                        <div class="form-group">
+                            <label for="other_associated_divisions">Other Associated Divisions</label>
+                            <select class="form-control select2" name="other_associated_divisions[]" id="other_associated_divisions" multiple>
+                                <option value="">Select Associated Divisions</option>
+                                <?php $lists = Modules::run('lists/divisions');
+                                foreach ($lists as $list) : ?>
+                                    <option value="<?php echo $list->division_id; ?>"><?php echo $list->division_name; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="text-muted d-block mt-1"><i class="fa fa-info-circle"></i> You can select multiple divisions. Leave empty if none.</small>
                         </div>
                     </div>
+                </div>
 
+                <div class="col-lg-6">
+                    <!-- Supervisors Section -->
+                    <div class="contract-form-section">
+                        <h5><i class="fa fa-users"></i>Supervisors</h5>
 
+                        <div class="form-group">
+                            <label for="first_supervisor" class="required-field">First Supervisor</label>
+                            <select class="form-control select2 validate-required" name="first_supervisor" id="first_supervisor">
+                                <option value="">Select First Supervisor</option>
+                                <?php $lists = Modules::run('lists/supervisor');
+                                foreach ($lists as $list) : ?>
+                                    <option value="<?php echo $list->staff_id; ?>">
+                                        <?php echo $list->lname . ' ' . $list->fname; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="invalid-feedback">First Supervisor is Required</div>
+                        </div>
+
+                            <div class="form-group">
+                            <label for="second_supervisor">Second Supervisor</label>
+                            <select class="form-control select2" name="second_supervisor" id="second_supervisor">
+                                <option value="">Select Second Supervisor</option>
+                                <?php $lists = Modules::run('lists/supervisor');
+                                foreach ($lists as $list) : ?>
+                                    <option value="<?php echo $list->staff_id; ?>">
+                                        <?php echo $list->lname . ' ' . $list->fname; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 4: Contract Dates & Status (full width) -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <!-- Contract Dates & Status Section -->
+                    <div class="contract-form-section">
+                        <h5><i class="fa fa-calendar-alt"></i>Contract Dates & Status</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="start_date" class="required-field">Start Date</label>
+                                    <input type="text" class="form-control datepicker validate-required" name="start_date" id="start_date" autocomplete="off">
+                                     <div class="invalid-feedback">Start Date is Required</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                            <div class="form-group">
+                                    <label for="end_date" class="required-field">End Date</label>
+                                    <input type="text" class="form-control datepicker validate-required" name="end_date" id="end_date" autocomplete="off">
+                                     <div class="invalid-feedback">Must be greater than start date</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                            <div class="form-group">
+                                    <label for="status_id">Contract Status</label>
+                                <select class="form-control validate-required" name="status_id" id="status_id">
+                                    <option value="1" selected>Active</option>
+                                </select>
+                            </div>
+                            </div>
+                            </div>
+
+                            <div class="form-group">
+                            <label for="comments">Comments</label>
+                                <textarea class="form-control" name="comments" id="comments" rows="3"></textarea>
+                        </div>
+                    </div>
                 </div>
     </div>
       
-     
+            <!-- Submit Buttons -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="form-group text-end">
+                        <button type="submit" class="btn btn-dark px-5 me-2" name="submit">
+                            <i class="fa fa-save me-2"></i>Submit
+                        </button>
+                        <button type="reset" class="btn btn-danger px-5" name="reset">
+                            <i class="fa fa-undo me-2"></i>Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <?php echo form_close(); ?>
+        </div>
+    </div>
+</div>
 
     <script>
   $(document).ready(function () {
-    $('#division_id, #unit_id').select2();
+    // Initialize Select2 for all select fields
+    $('.select2').select2({
+        theme: 'bootstrap4',
+        width: '100%'
+    });
 
+    // Initialize Select2 for multiple select (other_associated_divisions)
+    $('#other_associated_divisions').select2({
+        theme: 'bootstrap4',
+        width: '100%',
+        placeholder: 'Select Associated Divisions',
+        allowClear: true
+    });
+
+    // When a Division is selected, fetch the corresponding Units
     $('#division_id').on('change', function () {
       var divisionId = $(this).val();
+        
       $.ajax({
         url: '<?= base_url("lists/get_units_by_division"); ?>/' + divisionId,
         type: 'GET',
         dataType: 'json',
         success: function (units) {
-          var $unitSelect = $('#unit_id').empty();
-          if (units.length > 0) {
+                var $unitSelect = $('#unit_id');
+                $unitSelect.empty(); // Clear existing options
+                
+                if (units && units.length > 0) {
+                    $unitSelect.append('<option value="">Select a Unit</option>');
             $.each(units, function (index, unit) {
-              $unitSelect.append(new Option(unit.unit_name, unit.unit_id));
+                        $unitSelect.append(
+                            $('<option>', {
+                                value: unit.unit_id,
+                                text: unit.unit_name
+                            })
+                        );
             });
           } else {
-            $unitSelect.append(new Option('No units available', ''));
+                    $unitSelect.append('<option value="">No units available</option>');
           }
+                // Refresh Select2
           $unitSelect.trigger('change');
+            },
+            error: function (xhr, status, error) {
+                console.error("Error fetching units: " + error);
+                $('#unit_id').empty().append('<option value="">Error loading units</option>');
         }
       });
     });
 
+    // Optionally, trigger change to load units for the initially selected division
+    if ($('#division_id').val()) {
     $('#division_id').trigger('change');
+    }
+
+    // Initialize datepicker
+    $('.datepicker').datepicker({
+        format: 'yyyy-mm-dd',
+        autoclose: true,
+        todayHighlight: true
+    });
 
     // Blur validation
     $(".form-control").on("blur", function () {
@@ -401,9 +493,8 @@
       var csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
       $.ajax({
         url: '<?= base_url("staff/check_work_email"); ?>',
-
         method: 'POST',
-        data: { [csrfName]: csrfHash,work_email: work_email },
+            data: { [csrfName]: csrfHash, work_email: work_email },
         dataType: 'json',
         success: function (response) {
           if (response.exists) {
@@ -489,7 +580,7 @@
         pauseDelayOnHover: true,
         continueDelayOnInactiveTab: false,
         position: 'top right',
-        icon: 'bx bx-check-circle',
+            icon: msgtype === 'success' ? 'bx bx-check-circle' : 'bx bx-error-circle',
         msg: message
       });
     }

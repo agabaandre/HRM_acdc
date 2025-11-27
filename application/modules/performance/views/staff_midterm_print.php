@@ -5,10 +5,22 @@
 
 <head>
   <style>
+    * { box-sizing: border-box; }
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      color: #0f172a; 
+    }
+    
     body {
-      font-family: serif;
-      font-size: 12px;
-      margin: 10px;
+      font-size: 14px;
+      font-family: "freesans", arial, sans-serif;
+      background: #FFFFFF;
+      margin: 40px;
+      line-height: 1.8 !important;
+      letter-spacing: 0.02em;
+      word-spacing: 0.08em;
+      margin-bottom: 1.2em;
     }
 
     .header img {
@@ -16,23 +28,35 @@
     }
 
     .section-title {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: bold;
-      margin-top: 20px;
-      border-bottom: 1px solid #ccc;
+      margin-top: 25px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+      color: #100f0f;
+      letter-spacing: 0.3px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
+      background: #fff;
     }
 
     td,
     th {
-      border: 1px solid #ccc;
-      padding: 3px;
+      border: 1px solid #e2e8f0;
+      padding: 10px;
       text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background-color: #f9fafb;
+      font-weight: 600;
+      color: #0f172a;
     }
 
     .no-border td {
@@ -43,8 +67,9 @@
       display: block;
       font-weight: normal !important;
       font-style: italic !important;
-      font-size: 10px;
-      color: #555;
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
     }
 
     .page-break {
@@ -53,24 +78,36 @@
 
     small {
       font-weight: normal !important;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    b, strong {
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .muted {
+      color: #64748b;
+      font-size: 12px;
     }
   </style>
 </head>
 
 <body>
-  <div style="width: 100%; text-align: center; padding-bottom: 5px;">
-    <div style="width: 100%; padding-bottom: 5px;">
-      <div style="width: 100%; padding: 10px 0;">
+  <div style="width: 100%; text-align: center; padding-bottom: 15px; margin-bottom: 20px;">
+    <div style="width: 100%; padding-bottom: 10px;">
+      <div style="width: 100%; padding: 15px 0;">
         <div style="display:flex; justify-content: space-between; align-items: center;">
           <div style="width: 60%; text-align: left; float:left;">
             <img src="<?= base_url('assets/images/AU_CDC_Logo-800.png') ?>" alt="Africa CDC Logo" style="height: 80px;">
           </div>
           <div style="text-align: right; width: 35%; float:right; margin-top:10px;">
-            <span style="font-size: 14px; color: #911C39;">Safeguarding Africa's Health</span>
+            <span style="font-size: 14px; color: #911C39; font-weight: 500; letter-spacing: 0.3px;">Safeguarding Africa's Health</span>
           </div>
         </div>
-        <div style="text-align: center; margin-top: 5px;">
-          <h3 style="margin: 0; font-weight: bold;">MIDTERM REVIEW</h3>
+        <div style="text-align: center; margin-top: 12px;">
+          <h3 style="margin: 0; font-weight: bold; font-size: 18px; color: #100f0f; letter-spacing: 0.5px;">MIDTERM REVIEW</h3>
         </div>
       </div>
     </div>
@@ -79,8 +116,8 @@
   <!-- Staff Details -->
   <table class="form-table table-bordered">
     <thead>
-      <tr style="background-color: #f2f2f2;">
-        <th colspan="4" style="text-align: left; font-weight: bold;">A. Staff Details</th>
+      <tr style="background-color: #f9fafb;">
+        <th colspan="4" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">A. Staff Details</th>
       </tr>
     </thead>
     <tr>
@@ -111,10 +148,10 @@
 
   <!-- Midterm Objectives -->
   <table class="objective-table">
-    <tr style="background-color: #f2f2f2;">
-      <td colspan="7">
-        <div style="text-align: left; font-weight: bold;">B. Midterm Objectives Review</div>
-        <p><i>Review of objectives and progress at midterm.</i></p>
+    <tr style="background-color: #f9fafb;">
+      <td colspan="7" style="padding: 12px;">
+        <div style="text-align: left; font-weight: 600; color: #0f172a; margin-bottom: 6px;">B. Midterm Objectives Review</div>
+        <p style="margin: 0; font-style: italic; color: #64748b; font-size: 12px;">Review of objectives and progress at midterm.</p>
       </td>
     </tr>
     <thead>
@@ -149,6 +186,33 @@
     </tbody>
   </table>
 
+  <!-- Appraiser's Comments (Midterm) -->
+  <table class="form-table table-bordered" style="margin-bottom: 15px;">
+    <thead>
+      <tr style="background-color: #f9fafb;">
+        <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">C. Appraiser's Comments</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="width: 30%; font-weight: bold; vertical-align: top;">
+          1. What has been achieved in relation to the Performance Objectives?
+        </td>
+        <td style="width: 70%;">
+          <?= nl2br(htmlspecialchars(trim($ppa->midterm_achievements ?? ''))) ?>
+        </td>
+      </tr>
+      <tr>
+        <td style="width: 30%; font-weight: bold; vertical-align: top;">
+          2. Specify non-achievements in relation to Performance Objectives
+        </td>
+        <td style="width: 70%;">
+          <?= nl2br(htmlspecialchars(trim($ppa->midterm_non_achievements ?? ''))) ?>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
   <!-- Competencies (Midterm) -->
   <?php
   // Fetch and group competencies by section/category
@@ -177,8 +241,8 @@
 
   <table width="100%" border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
     <thead>
-      <tr style="background-color: #f2f2f2;">
-        <th colspan="3" style="text-align: left; font-weight: bold;">C. Competencies (Midterm)</th>
+      <tr style="background-color: #f9fafb;">
+        <th colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">D. Competencies (Midterm)</th>
       </tr>
     </thead>
     <tbody>
@@ -215,33 +279,50 @@
     </tbody>
   </table>
 
-  <!-- Midterm Comments, Achievements, Training Review -->
+  <!-- Personal Development Plan – Progress Review -->
   <table>
     <thead>
-      <tr style="background-color: #f2f2f2;">
-        <th colspan="2" style="text-align: left; font-weight: bold;">D. Midterm Review Comments & Training</th>
+      <tr style="background-color: #f9fafb;">
+        <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">E. Personal Development Plan – Progress Review</th>
       </tr>
     </thead>
+    <tbody>
     <tr>
-      <td><b>Staff Comments</b></td>
-      <td><?= $ppa->midterm_comments ?? '' ?></td>
+        <td style="width: 30%; font-weight: bold; vertical-align: top;">
+          1. Comments on progress made against employee's Personal Development Plan (PDP).
+        </td>
+        <td style="width: 70%;">
+          <?= nl2br(htmlspecialchars($ppa->midterm_training_review ?? '')) ?>
+        </td>
     </tr>
     <tr>
-      <td><b>Achievements</b></td>
-      <td><?= $ppa->midterm_achievements ?? '' ?></td>
+        <td style="width: 30%; font-weight: bold; vertical-align: top;">
+          2. Is additional training recommended for this staff member?
+        </td>
+        <td style="width: 70%;">
+          <?php
+          $mid_skills = [];
+          if (!empty($ppa->midterm_recommended_skills)) {
+            $decoded = is_string($ppa->midterm_recommended_skills)
+                ? json_decode($ppa->midterm_recommended_skills, true)
+                : (is_array($ppa->midterm_recommended_skills) ? $ppa->midterm_recommended_skills : []);
+            $mid_skills = is_array($decoded) ? $decoded : [];
+          }
+          $isMidtermRecommended = !empty($mid_skills) || ($ppa->midterm_training_recommended ?? '') === 'Yes';
+          ?>
+          [<?= $isMidtermRecommended ? 'X' : ' ' ?>] Yes &nbsp;&nbsp; [<?= !$isMidtermRecommended ? 'X' : ' ' ?>] No
+        </td>
     </tr>
+      <?php if ($isMidtermRecommended): ?>
     <tr>
-      <td><b>Non-Achievements</b></td>
-      <td><?= $ppa->midterm_non_achievements ?? '' ?></td>
-    </tr>
-    <tr>
-      <td><b>Training Review</b></td>
-      <td><?= $ppa->midterm_training_review ?? '' ?></td>
-    </tr>
-    <tr>
-      <td><b>Recommended Skills</b></td>
-      <td>
+        <td style="width: 30%; font-weight: bold; vertical-align: top;">
+          3. If yes, in what subject/ skill area(s) is the training recommended for this staff member?
+        </td>
+        <td style="width: 70%;">
         <?php
+          if (!empty($ppa->midterm_recommended_skills_text)) {
+            echo nl2br(htmlspecialchars($ppa->midterm_recommended_skills_text));
+          } else {
         $skills_map = [];
         foreach ($skills as $skill) {
           $skills_map[$skill->id] = $skill->skill;
@@ -251,19 +332,59 @@
           $selected = is_string($ppa->midterm_recommended_skills) ? json_decode($ppa->midterm_recommended_skills, true) : (array)$ppa->midterm_recommended_skills;
         }
         $skills_list = array_map(fn($id) => $skills_map[$id] ?? '', $selected);
-        echo implode(', ', $skills_list);
+            echo !empty($skills_list) ? implode(', ', $skills_list) : '';
+          }
         ?>
       </td>
     </tr>
+      <tr>
+        <td style="width: 30%; font-weight: bold; vertical-align: top;">
+          4. How will the recommended training(s) contribute to the staff member's development and the department's work?
+        </td>
+        <td style="width: 70%;">
+          <?= nl2br(htmlspecialchars($ppa->midterm_training_contributions ?? '')) ?>
+        </td>
+      </tr>
+      <tr>
+        <td style="width: 30%; font-weight: bold; vertical-align: top;">
+          5. Selection of courses in line with training needs.
+        </td>
+        <td style="width: 70%;">
+          <div style="margin-bottom: 15px;">
+            <strong>5.1</strong> With reference to the current AUC Learning and Development (L&D) Catalogue, please list the recommended course(s) for this staff member:
+            <div style="margin-left: 20px; margin-top: 5px;">
+              <div style="margin-bottom: 5px;">
+                <strong>5.1.1</strong><br>
+                <?= nl2br(htmlspecialchars($ppa->midterm_recommended_trainings_1 ?? '')) ?>
+              </div>
+              <div style="margin-bottom: 5px;">
+                <strong>5.1.2</strong><br>
+                <?= nl2br(htmlspecialchars($ppa->midterm_recommended_trainings_2 ?? '')) ?>
+              </div>
+              <?php if (!empty($ppa->midterm_recommended_trainings)): ?>
+              <div style="margin-top: 10px;">
+                <?= nl2br(htmlspecialchars($ppa->midterm_recommended_trainings)) ?>
+              </div>
+              <?php endif; ?>
+            </div>
+          </div>
+          <div>
+            <strong>5.2</strong> Where applicable, please provide details of highly recommendable course(s) for this staff member that are not listed in the AUC L&D Catalogue.<br>
+            <?= nl2br(htmlspecialchars($ppa->midterm_recommended_trainings_details ?? '')) ?>
+          </div>
+        </td>
+      </tr>
+      <?php endif; ?>
+    </tbody>
   </table>
 
   <div style="margin-top: 20px;">
     <div class="page-break"></div>
-<table width="100%" border="1" cellspacing="0" cellpadding="10" style="border-collapse: collapse; font-size: 10pt;">
+<table width="100%" border="1" cellspacing="0" cellpadding="10" style="border-collapse: collapse;">
   <thead>
-    <tr style="background-color: #f2f2f2;">
-      <th colspan="2" style="text-align: left; font-weight: bold;">
-        E. Staff and Supervisor Sign Off
+    <tr style="background-color: #f9fafb;">
+      <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
+        F. Staff and Supervisor Sign Off
       </th>
     </tr>
   </thead>
@@ -369,7 +490,7 @@
   <?php if ($this->uri->segment(7) == 1) { ?>
     <!-- Approval Trail -->
     <div class="page-break"></div>
-    <div class="section-title">F. Approval Trail</div>
+    <div class="section-title">G. Approval Trail</div>
     <table>
       <thead>
         <tr>

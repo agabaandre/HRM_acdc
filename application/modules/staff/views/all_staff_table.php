@@ -1,0 +1,56 @@
+<?php
+$i = 1;
+$offset = ($page * $per_page);
+if ($offset != "") {
+    $i = $offset + 1;
+}
+
+if (empty($staffs)) : ?>
+    <tr>
+        <td colspan="18" class="text-center">No data available</td>
+    </tr>
+<?php else :
+foreach ($staffs as $data) :
+    $cont = Modules::run('staff/latest_staff_contract', $data->staff_id);
+    if (!$cont) {
+        $cont = (object)['duty_station_name' => '', 'division_name' => '', 'job_acting' => '', 'first_supervisor' => '', 'second_supervisor' => '', 'funder' => ''];
+    }
+?>
+    <tr>
+        <td><?= $i++ ?></td>
+        <td><?= $data->SAPNO ?></td>
+        <td><?= $data->title ?></td>
+        <td>
+            <?php 
+            $surname = $data->lname;
+            $other_name = $data->fname;
+            $image_path = base_url() . 'uploads/staff/' . @$data->photo;
+            echo generate_user_avatar($surname, $other_name, $image_path, $data->photo);
+            ?>
+        </td>
+        <td><a href="#" class="view-staff-profile" data-staff-id="<?php echo $data->staff_id; ?>" data-bs-toggle="modal" data-bs-target="#employeeProfileModal"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+        <td><?= $data->gender ?></td>
+        <td><?php 
+            if (!empty($data->date_of_birth)) {
+                echo calculate_age($data->date_of_birth);
+            } else {
+                echo 'N/A';
+            }
+        ?></td>
+        <td><?= $data->nationality; ?></td>
+        <td><?= @$cont->duty_station_name; ?></td>
+        <td><?= @$cont->division_name; ?></td>
+        <td><?= @character_limiter($data->job_name, 30); ?></td>
+        <td><?= @character_limiter($cont->job_acting, 30); ?></td>
+        <td><?= @staff_name($cont->first_supervisor); ?></td>
+        <td><?= @staff_name($cont->second_supervisor); ?></td>
+        <td><?= @$cont->funder; ?></td>
+        <td><?= $data->work_email; ?></td>
+        <td><?= @$data->tel_1 ?> <?php if (!empty($data->tel_2)) {
+                                        echo '  ' . $data->tel_2;
+                                    } ?></td>
+        <td><?= $data->whatsapp ?></td>
+    </tr>
+<?php endforeach; 
+endif; ?>
+

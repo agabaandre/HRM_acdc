@@ -1,0 +1,565 @@
+<style>
+	@media print {
+		.hidden {
+			display: none;
+		}
+
+		@page {
+			margin-top: 0;
+			margin-bottom: 0;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 100%;
+			/* html, body{
+                height: 100%;
+                width: 100%;
+            } */
+		}
+
+		/* body{
+            padding-top: 72px;
+            padding-bottom: 72px;
+        } */
+	}
+	
+	/* Hide original export buttons in filters for contract_status pages */
+	#originalExportButtons {
+		display: none !important;
+	}
+</style>
+<?php $this->load->view('staff_tab_menu'); ?>
+
+<div class="card">
+	
+		<?php 
+     $status = $this->uri->segment(3);
+    echo form_open_multipart(base_url('staff/contract_status/'.$status), array('id' => 'staff_form', 'class' => 'staff', 'method' => 'get')); ?>
+	
+    <?php $this->load->view('staff_filters'); ?>
+
+	<?= form_close() ?>
+	
+	<div class="row mb-3 align-items-center">
+		<div class="col-md-6">
+			<div id="paginationLinksTop" class="d-flex align-items-center"></div>
+		</div>
+		<div class="col-md-6 text-end">
+			<div id="exportButtonsTop" class="d-flex gap-2 justify-content-end">
+				<!-- Export buttons will be moved here from staff_filters -->
+			</div>
+		</div>
+	</div>
+
+	<div class="table-responsive" style="margin-left: 4px; margin-right: 4px;">
+		<table class="table table-striped table-bordered">
+			<thead>
+				<tr>
+					<th>#</th>
+					<th>SAPNO</th>
+					<th>Title</th>
+					<th>Passport Photo</th>
+					<th>Name</th>
+					<th>Gender</th>
+					<th>Nationality</th>
+					<th>Duty Station</th>
+					<th>Division</th>
+					<th>Job</th>
+          <th>Contract Status</th>
+					<th>Acting Job</th>
+					<th>First Supervisor</th>
+					<th>Second Supervisor</th>
+					<th>Funder</th>
+					<th>Email</th>
+					<th>Telephone</th>
+					<th>WhatsApp</th>
+				</tr>
+			</thead>
+			<tbody id="staffTableBody">
+				<tr>
+					<td colspan="18" class="text-center">
+						<div class="spinner-border text-primary" role="status">
+							<span class="visually-hidden">Loading...</span>
+						</div>
+						<p class="mt-2">Loading staff data...</p>
+					</td>
+				</tr>
+			</tbody>
+
+
+
+
+		</table>
+		<div id="paginationInfo" class="mt-3 text-end">
+			<div id="paginationLinks" class="mt-2"></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Bootstrap Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalLabel">Employee Passport Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" style="width:150px; height:auto; border-radius:10px;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Single Employee Profile Modal -->
+<div class="modal fade" id="employeeProfileModal" tabindex="-1" aria-labelledby="employeeProfileModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-lg">
+		<div class="modal-content">
+			<div class="modal-header text-white" style="background-color: #119a48;">
+				<div class="d-flex align-items-center w-100">
+					<div class="flex-grow-1">
+						<h5 class="modal-title mb-0" id="employeeProfileModalLabel">
+							<i class="fa fa-user me-2"></i>Employee Profile
+						</h5>
+					</div>
+					<div class="d-flex gap-2">
+						<a href="#" id="editProfileBtn" class="btn btn-light btn-sm" data-bs-toggle="modal" onclick="event.preventDefault(); var profileModal = bootstrap.Modal.getInstance(document.getElementById('employeeProfileModal')); if(profileModal) profileModal.hide();">
+							<i class="fa fa-edit me-1"></i>Edit
+						</a>
+						<a href="#" id="printProfileBtn" class="btn btn-light btn-sm" target="_blank">
+							<i class="fa fa-print me-1"></i>Print
+						</a>
+						<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+				</div>
+			</div>
+			<div class="modal-body p-4" id="employeeProfileContent">
+				<div class="text-center py-5">
+					<div class="spinner-border" role="status" style="color: #119a48;">
+						<span class="visually-hidden">Loading...</span>
+					</div>
+					<p class="mt-3 text-muted">Loading employee profile...</p>
+				</div>
+			</div>
+			<div class="modal-footer bg-light">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+					<i class="fa fa-times me-1"></i>Close
+				</button>
+            </div>
+		</div>
+	</div>
+</div>
+
+<!-- Single Employee Edit Modal -->
+<div class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-lg">
+		<div class="modal-content">
+			<div class="modal-header text-white" style="background-color: #119a48;">
+				<h5 class="modal-title mb-0" id="editEmployeeModalLabel">
+					<i class="fa fa-edit me-2"></i>Edit Employee Profile
+				</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body p-4" id="editEmployeeContent">
+				<div class="text-center py-5">
+					<div class="spinner-border" role="status" style="color: #119a48;">
+						<span class="visually-hidden">Loading...</span>
+					</div>
+					<p class="mt-3 text-muted">Loading edit form...</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- JavaScript -->
+<script>
+function openImageModal(imageSrc) {
+    document.getElementById("modalImage").src = imageSrc;
+    var myModal = new bootstrap.Modal(document.getElementById("imageModal"), {});
+    myModal.show();
+}
+
+// Employee Profile Modal Handler
+$(document).ready(function() {
+	var currentStaffId = null;
+
+	// Handle profile link clicks
+	$(document).on('click', '.view-staff-profile', function(e) {
+		e.preventDefault();
+		var staffId = $(this).data('staff-id');
+		currentStaffId = staffId;
+		
+		// Get modal element
+		var modalElement = document.getElementById('employeeProfileModal');
+		
+		// Get or create modal instance
+		var modal = bootstrap.Modal.getInstance(modalElement);
+		if (!modal) {
+			modal = new bootstrap.Modal(modalElement);
+		}
+		
+		// Show modal
+		modal.show();
+		
+		// Load staff data
+		loadStaffProfile(staffId);
+	});
+	
+	// Handle modal close events to reset content (only bind once)
+	$('#employeeProfileModal').on('hidden.bs.modal', function() {
+		$('#employeeProfileContent').html(`
+			<div class="text-center py-5">
+				<div class="spinner-border" role="status" style="color: #119a48;">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+				<p class="mt-3 text-muted">Loading employee profile...</p>
+			</div>
+		`);
+	});
+
+	function loadStaffProfile(staffId) {
+		// Show loading state
+		$('#employeeProfileContent').html(`
+			<div class="text-center py-5">
+				<div class="spinner-border" role="status" style="color: #119a48;">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+				<p class="mt-3 text-muted">Loading employee profile...</p>
+			</div>
+		`);
+
+		// Fetch staff data
+		$.ajax({
+			url: '<?php echo base_url(); ?>staff/get_staff_profile_ajax/' + encodeURIComponent(staffId),
+			method: 'GET',
+			dataType: 'json',
+			contentType: 'application/json; charset=utf-8',
+			success: function(response) {
+				if (response.success) {
+					populateModal(response);
+				} else {
+					$('#employeeProfileContent').html(`
+						<div class="alert alert-danger">
+							<i class="fa fa-exclamation-triangle me-2"></i>${response.message || 'Failed to load staff profile'}
+						</div>
+					`);
+				}
+			},
+			error: function(xhr, status, error) {
+				console.error('AJAX Error:', status, error);
+				console.error('Response:', xhr.responseText);
+				$('#employeeProfileContent').html(`
+					<div class="alert alert-danger">
+						<i class="fa fa-exclamation-triangle me-2"></i>Error loading staff profile. Please try again.
+						<br><small>Error: ${error}</small>
+					</div>
+				`);
+			}
+		});
+	}
+
+	function populateModal(data) {
+		var staff = data.staff;
+		var contract = data.contract;
+		
+		// Update edit and print buttons
+		$('#editProfileBtn').attr('data-staff-id', staff.staff_id).off('click').on('click', function(e) {
+			e.preventDefault();
+			var profileModal = bootstrap.Modal.getInstance(document.getElementById('employeeProfileModal'));
+			if(profileModal) profileModal.hide();
+			loadEditForm(staff.staff_id);
+		});
+		$('#printProfileBtn').attr('href', '<?php echo base_url(); ?>staff/profile/' + staff.staff_id);
+
+		var html = `
+			<!-- Header Section with Photo and Name -->
+			<div class="row mb-4 pb-3 border-bottom">
+				<div class="col-md-3 text-center">
+					<div class="mb-3">
+						${staff.photo_html || '<div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 100px; height: 100px;"><i class="fa fa-user fa-3x text-white"></i></div>'}
+					</div>
+				</div>
+				<div class="col-md-9">
+					<h3 class="mb-2" style="color: #119a48;">
+						${staff.title ? staff.title + ' ' : ''}${staff.lname} ${staff.fname} ${staff.oname || ''}
+					</h3>
+					${staff.SAPNO ? `<p class="text-muted mb-1"><i class="fa fa-id-card me-2"></i><strong>SAP Number:</strong> ${staff.SAPNO}</p>` : ''}
+					${staff.work_email ? `<p class="text-muted mb-1"><i class="fa fa-envelope me-2"></i><a href="mailto:${staff.work_email}" class="text-decoration-none">${staff.work_email}</a></p>` : ''}
+				</div>
+			</div>
+
+			<!-- Information Sections -->
+			<div class="row g-4">
+				<!-- Personal Information -->
+				<div class="col-md-6">
+					<div class="card h-100 border-0 shadow-sm">
+						<div class="card-header bg-light">
+							<h5 class="mb-0"><i class="fa fa-user me-2" style="color: #119a48;"></i>Personal Information</h5>
+						</div>
+						<div class="card-body">
+							<div class="row g-3">
+								${staff.gender ? `<div class="col-12"><strong class="text-muted d-block mb-1">Gender</strong><span>${staff.gender}</span></div>` : ''}
+								${staff.date_of_birth ? `<div class="col-12"><strong class="text-muted d-block mb-1">Date of Birth</strong><span>${staff.date_of_birth}</span></div>` : ''}
+								${staff.nationality ? `<div class="col-12"><strong class="text-muted d-block mb-1">Nationality</strong><span><i class="fa fa-globe me-1"></i>${staff.nationality}</span></div>` : ''}
+								${staff.initiation_date ? `<div class="col-12"><strong class="text-muted d-block mb-1">Initiation Date</strong><span>${staff.initiation_date}</span></div>` : ''}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Contact Information -->
+				<div class="col-md-6">
+					<div class="card h-100 border-0 shadow-sm">
+						<div class="card-header bg-light">
+							<h5 class="mb-0"><i class="fa fa-address-book me-2" style="color: #119a48;"></i>Contact Information</h5>
+						</div>
+						<div class="card-body">
+							<div class="row g-3">
+								${staff.work_email ? `<div class="col-12"><strong class="text-muted d-block mb-1">Work Email</strong><span><a href="mailto:${staff.work_email}" class="text-decoration-none">${staff.work_email}</a></span></div>` : ''}
+								${staff.tel_1 || staff.tel_2 ? `<div class="col-12"><strong class="text-muted d-block mb-1">Telephone</strong><span><i class="fa fa-phone me-1"></i>${staff.tel_1 || ''}${staff.tel_1 && staff.tel_2 ? ' <span class="text-muted">/</span> ' : ''}${staff.tel_2 || ''}</span></div>` : ''}
+								${staff.whatsapp ? `<div class="col-12"><strong class="text-muted d-block mb-1">WhatsApp</strong><span><i class="fab fa-whatsapp me-1 text-success"></i>${staff.whatsapp}</span></div>` : ''}
+								${staff.physical_location ? `<div class="col-12"><strong class="text-muted d-block mb-1">Physical Location</strong><span><i class="fa fa-map-marker-alt me-1"></i>${staff.physical_location}</span></div>` : ''}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Contract Information -->
+				<div class="col-12">
+					<div class="card border-0 shadow-sm">
+						<div class="card-header bg-light d-flex justify-content-between align-items-center">
+							<h5 class="mb-0"><i class="fa fa-file-contract me-2" style="color: #119a48;"></i>Current Contract Information</h5>
+							<a href="<?php echo base_url(); ?>staff/staff_contracts/${staff.staff_id}" target="_blank" class="btn btn-sm" style="background-color: #119a48; color: white; border-color: #119a48;">
+								<i class="fa fa-external-link-alt me-1"></i>Manage Contracts
+							</a>
+						</div>
+						<div class="card-body">
+							${contract ? `
+								<div class="row g-3">
+									${contract.duty_station_name ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Duty Station</strong><span>${contract.duty_station_name}</span></div>` : ''}
+									${contract.division_name ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Division</strong><span>${contract.division_name}</span></div>` : ''}
+									${contract.job_name ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Job Title</strong><span>${contract.job_name}</span></div>` : ''}
+									${contract.job_acting && contract.job_acting != 'N/A' ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Acting Job</strong><span>${contract.job_acting}</span></div>` : ''}
+									${contract.first_supervisor ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">First Supervisor</strong><span>${contract.first_supervisor}</span></div>` : ''}
+									${contract.second_supervisor ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Second Supervisor</strong><span>${contract.second_supervisor}</span></div>` : ''}
+									${contract.funder ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Funder</strong><span>${contract.funder}</span></div>` : ''}
+									${contract.contracting_institution ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Contracting Organisation</strong><span>${contract.contracting_institution}</span></div>` : ''}
+									${contract.grade ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Grade</strong><span>${contract.grade}</span></div>` : ''}
+									${contract.contract_type ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Contract Type</strong><span>${contract.contract_type}</span></div>` : ''}
+									${contract.status ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Contract Status</strong><span class="badge bg-${contract.status == 'Active' ? 'success' : (contract.status == 'Expired' ? 'danger' : 'warning')}">${contract.status}</span></div>` : ''}
+									${contract.start_date ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Start Date</strong><span>${contract.start_date}</span></div>` : ''}
+									${contract.end_date ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">End Date</strong><span>${contract.end_date}</span></div>` : ''}
+									${contract.comments ? `<div class="col-12"><strong class="text-muted d-block mb-1">Comments</strong><span>${contract.comments}</span></div>` : ''}
+								</div>
+							` : '<p class="text-muted">No contract information available.</p>'}
+						</div>
+					</div>
+				</div>
+			</div>
+		`;
+
+		$('#employeeProfileContent').html(html);
+	}
+
+	// Contract Status AJAX Data Loading
+	var currentStatus = <?= $status ?>;
+	var currentPage = 0;
+	var currentFilters = {};
+
+	// Move export buttons to top right on page load and hide originals
+	$(document).ready(function() {
+		var exportButtons = $('#originalExportButtons').clone();
+		if (exportButtons.length) {
+			$('#exportButtonsTop').html(exportButtons.html());
+			// Hide the original export buttons in staff_filters
+			$('#originalExportButtons').hide();
+		}
+	});
+
+	// Load data on page load
+	loadContractStatusData();
+	updateExportLinks(); // Initialize export links
+
+	// Handle filter form submission
+	$('#staff_form').on('submit', function(e) {
+		e.preventDefault();
+		currentPage = 0;
+		// Get all form data
+		currentFilters = $(this).serializeArray().reduce(function(obj, item) {
+			if (item.value) {
+				if (obj[item.name]) {
+					// If key already exists, convert to array
+					if (!Array.isArray(obj[item.name])) {
+						obj[item.name] = [obj[item.name]];
+					}
+					obj[item.name].push(item.value);
+				} else {
+					obj[item.name] = item.value;
+				}
+			}
+			return obj;
+		}, {});
+		updateExportLinks(); // Update export links with new filters
+		loadContractStatusData();
+	});
+
+	// Update export links in staff_filters when filters change
+	function updateExportLinks() {
+		var filters = Object.assign({}, currentFilters);
+		var queryString = $.param(filters);
+		var baseUrl = '<?php echo base_url(); ?>staff/contract_status/' + currentStatus;
+		
+		// Update export links - check for PDF first (before CSV, since /0/1 contains /1)
+		$('.export-buttons a[href*="contract_status"], #exportButtonsTop a[href*="contract_status"]').each(function() {
+			var href = $(this).attr('href');
+			if (href.includes('/0/1')) {
+				// PDF export
+				$(this).attr('href', baseUrl + '/0/1' + (queryString ? '?' + queryString : ''));
+			} else if (href.includes('/1') && !href.includes('/0/1')) {
+				// CSV export (but not PDF)
+				$(this).attr('href', baseUrl + '/1' + (queryString ? '?' + queryString : ''));
+			}
+		});
+	}
+
+	// Pagination handler
+	$(document).on('click', '.pagination a', function(e) {
+		e.preventDefault();
+		var href = $(this).attr('href');
+		if (href) {
+			var match = href.match(/\/contract_status\/\d+\/(\d+)/);
+			if (match) {
+				currentPage = parseInt(match[1]);
+				loadContractStatusData();
+			}
+		}
+	});
+
+	function loadContractStatusData() {
+		$('#staffTableBody').html(`
+			<tr>
+				<td colspan="18" class="text-center">
+					<div class="spinner-border text-primary" role="status">
+						<span class="visually-hidden">Loading...</span>
+					</div>
+					<p class="mt-2">Loading staff data...</p>
+				</td>
+			</tr>
+		`);
+
+		var postData = Object.assign({}, currentFilters);
+		postData.page = currentPage;
+		postData['<?php echo $this->security->get_csrf_token_name(); ?>'] = '<?php echo $this->security->get_csrf_hash(); ?>';
+
+		$.ajax({
+			url: '<?php echo base_url(); ?>staff/get_contract_status_data_ajax/' + currentStatus,
+			method: 'POST',
+			data: postData,
+			dataType: 'json',
+			success: function(response) {
+				if (response.html) {
+					$('#staffTableBody').html(response.html);
+					
+					// Update CSRF token
+					if (response.csrf_hash) {
+						$('input[name="<?php echo $this->security->get_csrf_token_name(); ?>"]').val(response.csrf_hash);
+					}
+
+					// Generate pagination (both top and bottom) with total staff count
+					generatePagination(response.total, response.page, response.per_page, response.records);
+				} else {
+					$('#staffTableBody').html('<tr><td colspan="18" class="text-center">No data available</td></tr>');
+				}
+			},
+			error: function(xhr, status, error) {
+				console.error('AJAX Error:', status, error);
+				console.error('Response Text:', xhr.responseText);
+				console.error('Status Code:', xhr.status);
+				
+				var errorMessage = 'Error loading data. Please try again.';
+				if (xhr.responseText) {
+					// Try to extract error message from HTML response
+					var match = xhr.responseText.match(/<title>(.*?)<\/title>/i);
+					if (match) {
+						errorMessage = match[1];
+					}
+				}
+				
+				$('#staffTableBody').html(`
+					<tr>
+						<td colspan="18" class="text-center text-danger">
+							${errorMessage}<br>
+							<small>Status: ${xhr.status}</small>
+						</td>
+					</tr>
+				`);
+			}
+		});
+	}
+
+	function generatePagination(total, page, perPage, records) {
+		var totalPages = Math.ceil(total / perPage);
+		var paginationHtml = '<nav><ul class="pagination pagination-sm mb-0">';
+		
+		// Previous button
+		if (page > 0) {
+			paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${page - 1}">Previous</a></li>`;
+		} else {
+			paginationHtml += '<li class="page-item disabled"><span class="page-link">Previous</span></li>';
+		}
+
+		// Page numbers
+		var startPage = Math.max(0, page - 2);
+		var endPage = Math.min(totalPages - 1, page + 2);
+
+		if (startPage > 0) {
+			paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="0">1</a></li>`;
+			if (startPage > 1) {
+				paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+			}
+		}
+
+		for (var i = startPage; i <= endPage; i++) {
+			if (i == page) {
+				paginationHtml += `<li class="page-item active"><span class="page-link">${i + 1}</span></li>`;
+			} else {
+				paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i + 1}</a></li>`;
+			}
+		}
+
+		if (endPage < totalPages - 1) {
+			if (endPage < totalPages - 2) {
+				paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+			}
+			paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${totalPages - 1}">${totalPages}</a></li>`;
+		}
+
+		// Next button
+		if (page < totalPages - 1) {
+			paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${page + 1}">Next</a></li>`;
+		} else {
+			paginationHtml += '<li class="page-item disabled"><span class="page-link">Next</span></li>';
+		}
+
+		paginationHtml += '</ul></nav>';
+		
+		// Add total staff count after pagination (only for top)
+		var recordsText = '<span class="text-muted ms-3"><strong>' + (records || 0) + ' Total Staff</strong></span>';
+		var topHtml = paginationHtml + recordsText;
+		
+		// Update top pagination with total staff count, bottom without
+		$('#paginationLinksTop').html(topHtml);
+		$('#paginationLinks').html(paginationHtml);
+	}
+
+	// Handle pagination clicks
+	$(document).on('click', '.pagination a[data-page]', function(e) {
+		e.preventDefault();
+		currentPage = parseInt($(this).data('page'));
+		loadContractStatusData();
+		$('html, body').animate({ scrollTop: 0 }, 'fast');
+	});
+});
+</script>

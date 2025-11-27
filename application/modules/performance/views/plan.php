@@ -304,7 +304,9 @@ input[type="number"] {
 <?php 
   //dd($showApprovalBtns); 
   $status = ((intval(@$ppa_settings->allow_supervisor_return) === 1) && (in_array('83', $permissions)));
-  if (($showApprovalBtns ==='show')||(in_array('83', $permissions))){ ?>
+  if (($showApprovalBtns ==='show')||(in_array('83', $permissions))){ 
+    // Check if $ppa exists and is not false
+    if (!empty($ppa) && is_object($ppa) && isset($ppa->entry_id)) { ?>
   <?php echo form_open('performance/approve_ppa/' . $ppa->entry_id, [
       'method' => 'post',
       'id'     => 'approvalForm_' . $ppa->entry_id
@@ -321,7 +323,7 @@ input[type="number"] {
     <div class="text-center">
       <?php 
       //make sure its in draft and the supervisor is allowed
-      if(((int)@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)){?>
+      if(!empty($ppa) && is_object($ppa) && ((int)@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)){?>
       <button type="submit" class="btn btn-success px-5 me-2" onclick="document.getElementById('approval_action').value = 'approve';">
         Approve
       </button>
@@ -330,7 +332,7 @@ input[type="number"] {
 
     
 
-    if ((@$status)) { ?>
+    if ((@$status) && !empty($ppa) && is_object($ppa) && isset($ppa->entry_id)) { ?>
   <button type="button" class="btn btn-danger px-5" data-bs-toggle="modal" data-bs-target="#confirmReturnModal_<?= $ppa->entry_id ?>">
   Return
 </button>
@@ -338,8 +340,9 @@ input[type="number"] {
       <?php } ?>
     </div>
   </form>
-
+<?php } // End check for $ppa existence ?>
 <!-- Return Confirmation Modal -->
+<?php if (!empty($ppa) && is_object($ppa) && isset($ppa->entry_id)): ?>
 <div class="modal fade" id="confirmReturnModal_<?= $ppa->entry_id ?>" tabindex="-1" aria-labelledby="confirmReturnModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg rounded-3">
@@ -372,6 +375,7 @@ input[type="number"] {
     </div>
   </div>
 </div>
+<?php endif; // End check for $ppa existence in modal ?>
 
 
 <?php } ?>

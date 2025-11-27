@@ -1205,6 +1205,24 @@ if (!function_exists('days_to_midterm_deadline')) {
     }
 }
 
+if (!function_exists('days_to_endterm_deadline')) {
+    function days_to_endterm_deadline()
+    {
+        $CI = &get_instance();
+        $deadline_row = $CI->db->select('end_term_deadline')->get('ppa_configs')->row();
+
+        if (!$deadline_row || empty($deadline_row->end_term_deadline)) {
+            return null; // or return a default value if preferred
+        }
+
+        $deadline = new DateTime($deadline_row->end_term_deadline);
+        $today = new DateTime();
+
+        // Returns signed difference in days: positive if future, negative if past
+        return (int) $today->diff($deadline)->format('%r%a');
+    }
+}
+
 function is_unit_lead($staff_id){
     $CI =& get_instance();
         $query = $CI->db
@@ -1220,6 +1238,79 @@ function is_unit_lead($staff_id){
     }
  //dd($query);
 
+}
+
+if (!function_exists('calculate_endterm_overall_rating')) {
+    /**
+     * Calculate overall endterm rating based on objectives
+     * Formula: Sum of (Appraiser's Rating * Weight) / 5
+     * 
+     * @param array|object $objectives Endterm objectives with appraiser_rating and weight
+     * @return array Contains 'score', 'category', 'label', 'annotation'
+     */
+    function calculate_endterm_overall_rating($objectives) {
+        if (empty($objectives)) {
+            return [
+                'score' => 0,
+                'category' => 'not_rated',
+                'label' => 'Not Rated – New in Position',
+                'annotation' => 'Not Rated – New in Position'
+            ];
+        }
+
+        // Ensure objectives is an array
+        if (is_string($objectives)) {
+            $objectives = json_decode($objectives, true);
+        } elseif (is_object($objectives)) {
+            $objectives = json_decode(json_encode($objectives), true);
+        }
+
+        if (!is_array($objectives)) {
+            $objectives = [];
+        }
+
+        $total_score = 0;
+
+        foreach ($objectives as $obj) {
+            $rating = isset($obj['appraiser_rating']) ? (float)$obj['appraiser_rating'] : 0;
+            $weight = isset($obj['weight']) ? (float)$obj['weight'] : 0;
+
+            if ($rating > 0 && $weight > 0) {
+                // Multiply Appraiser's Rating * Weight
+                $total_score += ($rating * $weight);
+            }
+        }
+
+        // Calculate overall score: divide the overall total by 5
+        $overall_score = $total_score > 0 ? ($total_score / 5) : 0;
+        $overall_score = round($overall_score, 2);
+
+        // Categorize the score
+        if ($overall_score >= 80) {
+            $category = 'outstanding';
+            $label = 'Outstanding Performance';
+            $annotation = 'Outstanding Performance - Overall performance is superior and significantly exceeds expectations';
+        } elseif ($overall_score >= 51) {
+            $category = 'satisfactory';
+            $label = 'Satisfactory Performance';
+            $annotation = 'Satisfactory Performance - Overall performance is consistent with expectations';
+        } elseif ($overall_score > 0) {
+            $category = 'poor';
+            $label = 'Poor Performance';
+            $annotation = 'Poor Performance - Overall Performance fails to meet the expectations';
+        } else {
+            $category = 'not_rated';
+            $label = 'Not Rated – New in Position';
+            $annotation = 'Not Rated – New in Position';
+        }
+
+        return [
+            'score' => $overall_score,
+            'category' => $category,
+            'label' => $label,
+            'annotation' => $annotation
+        ];
+    }
 }
 
 }

@@ -132,18 +132,18 @@
 <div class="row mt-0 mb-2 p-1">
     <div class="col-md-12 d-flex justify-content-between align-items-center">
 
-        <!-- Pagination and Total Records (left side) -->
-        <div class="d-flex align-items-center flex-wrap gap-2 p-1">
+        <!-- Pagination and Total Records (left side) - Hidden for AJAX pages -->
+        <div class="d-flex align-items-center flex-wrap gap-2 p-1" style="display: none !important;">
             <div class="pagination-links">
-                <?= $links ?>
+                <?= isset($links) ? $links : '' ?>
             </div>
             <div class="record-count text-muted small">
-                <?= $records . " Records" ?>
+                <?= (isset($records) ? $records : 0) . " Records" ?>
             </div>
         </div>
 
         <!-- Export buttons (right side) -->
-        <div class="export-buttons d-flex gap-2 p-1">
+        <div class="export-buttons d-flex gap-2 p-1" id="originalExportButtons">
             <?php
           
             // Get all current GET parameters

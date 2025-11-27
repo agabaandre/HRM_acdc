@@ -67,6 +67,25 @@ class Lists extends MX_Controller
 	public function nationality()
 	{
 		$data = $this->lists_mdl->nationality();
+		
+		// If this is an AJAX request, return JSON
+		if ($this->input->is_ajax_request() || $this->input->get('format') == 'json') {
+			// Convert Eloquent models to arrays
+			$nationalities = [];
+			foreach ($data as $nat) {
+				$nationalities[] = [
+					'nationality_id' => $nat->nationality_id,
+					'nationality' => $nat->nationality ?? '',
+					'nationality_name' => $nat->nationality_name ?? '',
+					'status' => $nat->status ?? ''
+				];
+			}
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode($nationalities, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+			return;
+		}
+		
 		return $data;
 	}
 	public function stations()

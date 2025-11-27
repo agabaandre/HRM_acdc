@@ -22,6 +22,11 @@
             padding-bottom: 72px;
         } */
 	}
+	
+	/* Hide original export buttons in filters for contract_status pages */
+	#originalExportButtons {
+		display: none !important;
+	}
 </style>
 <?php $this->load->view('staff_tab_menu'); ?>
 
@@ -35,7 +40,18 @@
 
 	<?= form_close() ?>
 	
-	<div class=" table-responsive">
+	<div class="row mb-3 align-items-center">
+		<div class="col-md-6">
+			<div id="paginationLinksTop" class="d-flex align-items-center"></div>
+		</div>
+		<div class="col-md-6 text-end">
+			<div id="exportButtonsTop" class="d-flex gap-2 justify-content-end">
+				<!-- Export buttons will be moved here from staff_filters -->
+			</div>
+		</div>
+	</div>
+
+	<div class="table-responsive" style="margin-left: 4px; margin-right: 4px;">
 		<table class="table table-striped table-bordered">
 			<thead>
 				<tr>
@@ -59,349 +75,24 @@
 					<th>WhatsApp</th>
 				</tr>
 			</thead>
-			<tbody>
-
-
-			<?php
-				$i = 1;
-				$offset = $this->uri->segment(4);
-				if ($offset != "") {
-					$i = $offset + 1;
-				}
-
-				foreach ($staffs as $data) :
-
-			   $cont = Modules::run('staff/latest_staff_contract', $data->staff_id);
-			  // dd($cont);
-
-				?>
-
-					<tr>
-
-						<td><?= $i++ ?></td>
-						<td><?= $data->SAPNO ?></td>
-						<td><?= $data->title ?></td>
-						<td>
-							<?php 
-							$surname=$data->lname;
-							$other_name=$data->fname;
-							$image_path=base_url().'uploads/staff/'.@$data->photo;
-							echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path,$data->photo);
-							
-							?>
-							
-						</td>
-						<td><a href="#" data-bs-toggle="modal" data-bs-target="#add_profile<?php echo $data->staff_id; ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
-						<td><?= $data->gender ?></td>
-						<td><?= $data->nationality; ?></td>
-						<td><?= $cont->duty_station_name; ?></td>
-						<td><?= $cont->division_name; ?></td>
-						<td><?= @character_limiter($data->job_name, 30); ?></td>
-            <td><?= @character_limiter($data->status); ?></td>
-					
-						
-						<td><?= @character_limiter($cont->job_acting, 30); ?></td>
-						<td><?= @staff_name($cont->first_supervisor); ?></td>
-						<td><?= @staff_name($cont->second_supervisor); ?></td>
-						<td><?= $cont->funder; ?></td>
-					
-						<td><?= $data->work_email; ?></td>
-						<td><?= @$data->tel_1 ?> <?php if (!empty($data->tel_2)) {
-														echo '  ' . $data->tel_2;
-													} ?></td>
-						<td><?= $data->whatsapp ?>
-					
+			<tbody id="staffTableBody">
+				<tr>
+					<td colspan="18" class="text-center">
+						<div class="spinner-border text-primary" role="status">
+							<span class="visually-hidden">Loading...</span>
+						</div>
+						<p class="mt-2">Loading staff data...</p>
 					</td>
-					
+				</tr>
+			</tbody>
 
 
-						<div class="modal fade" id="add_profile<?php echo $data->staff_id; ?>" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
-							<div class="modal-dialog modal-dialog-centered modal-lg">
-								<div class="modal-content">
-									<div class="modal-header">
-										<h5 class="modal-title" id="add_item_label">Employee Profile: <?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></h5>
-										<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-
-									</div>
-									<div class="toolbar hidden-print">
-										<div class="text-end" style="margin-right:10px;">
-											<a href="#" data-bs-toggle="modal" class="btn   btn-dark btn-sm btn-bordered btn-print" data-bs-target="#edit_profile<?php echo $data->staff_id; ?>">Edit</a>
-											<a href="<?php echo base_url("staff/profile/".$data->staff_id)?>" class="btn   btn-dark btn-sm btn-bordered btn-print" onclick="">Print</a>
-										</div>
-										<hr>
-									</div>
-									<div class="modal-body" id="worker_profile">
-										<div class="col-md-12 d-flex justify-content-center">
-											<div>
-												<img src="<?php echo base_url() ?>/assets/images/AU_CDC_Logo-800.png" width="150">
-											</div>
-										
-										</div>
-										<div class="col-md-12 d-flex justify-content-center">
-												<?=@$staff_photo?>
-												<br>
-												<h4>Name:  <?= $data->title.' '; ?><?=$data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></h4>
-										</div>
-										<div class="row justify-content-center">
-											<!-- <div class="col-md-4" style="width:180px;">
-											
-											</div> -->
-
-											<div class="row">
-											 
-												
-												<div class="col-md-6">
-												<h4>Personal Information</h4>
-												<ul>
-													<li><strong>SAPNO:</strong> <?= $data->SAPNO ?></li>
-								
-													<li><strong>Gender:</strong> <?= $data->gender ?></li>
-													<li><strong>Date of Birth:</strong> <?= $data->date_of_birth ?></li>
-													<li><strong>Nationality:</strong> <?=$data->nationality ?></li>
-													<li><strong>Initiation Date:</strong> <?= $data->initiation_date; ?></li>
-												</ul>
-												</div>
-												<div class="col-md-6">
-												<h4>Contact Information</h4>
-												<ul>
-													<li><strong>Email:</strong> <?= @$data->work_email ?></li>
-													<li><strong>Telephone:</strong> <?= @$data->tel_1 ?> <?php if (!empty($data->tel_2)) {
-																												echo '  ' . $data->tel_2;
-																											} ?></li>
-													<li><strong>WhatsApp:</strong> <?= @$data->whatsapp ?></li>
-													<li><strong>Physical Location:</strong> <?= @$data->physical_location ?></li>
-												</ul>
-												</div>
-												<div class="col-md-8">
-												<h4>Contract Information</h4>
-			
-											<a href="<?php echo base_url(); ?>staff/staff_contracts/<?php echo $data->staff_id; ?>" 
-												class="btn btn-primary no-print" target="_blank">
-													Manage Contracts <i class="fa fa-eye"></i>
-												</a>
-
-												<ul>
-													
-													<li><strong>Duty Station:</strong> <?= $cont->duty_station_name ?></li>
-													<li><strong>Division:</strong> <?= $cont->division_name ?></li>
-													<li><strong>Job:</strong> <?= @character_limiter($cont->job_name, 30) ?></li>
-													<?php if(!empty($cont->job_acting)||$cont->job_acting!='N/A'){ ?>
-													<li><strong>Acting Job:</strong> <?= @character_limiter($cont->job_acting, 30) ?></li>
-													<?php } ?>
-													<li><strong>First Supervisor:</strong><?= @staff_name($cont->first_supervisor); ?></li>
-													<li><strong>Second Supervisor:</strong> <?= @staff_name($cont->second_supervisor); ?></li>
-											
-													<li><strong>Funder:</strong> <?= $cont->funder ?></li>
-													<li><strong>Contracting Organisation:</strong> <?= $cont->contracting_institution ?></li>
-													<li><strong>Grade:</strong> <?= $cont->grade ?></li>
-													<li><strong>Contract Type:</strong> <?= $cont->contract_type ?></li>
-													<li><strong>Contract Status:</strong> <?= $cont->status ?></li>
-													<li><strong>Contract Start Date:</strong> <?= $cont->start_date ?></li>
-													<li><strong>Contract End Date:</strong> <?= $cont->end_date ?></li>
-													<li><strong>Contract Comments:</strong> <?= $cont->comments ?></li>
-												</ul>
-												</div>
-												<?php ?>
-
-											</div>
-										</div>
-									</div>
-									<div class="modal-footer">
-										<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-									</div>
-								</div>
-							</div>
-						</div>
 
 
-						<!-- edit model -->
-						<!-- edit employee data model -->
-						<div class="modal fade" id="edit_profile<?php echo $data->staff_id; ?>" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
-							<div class="modal-dialog modal-dialog-centered modal-lg">
-								<div class="modal-content">
-									<div class="modal-header">
-										<h5 class="modal-title" id="add_item_label">Edit Employee Profile: <?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></h5>
-										<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-									</div>
-
-									<div class="modal-body">
-
-										<?php echo validation_errors(); ?>
-										<?php echo form_open('staff/update_staff'); ?>
-										<div class="row">
-
-											<div class="col-md-6">
-
-
-												<h4>Personal Information</h4>
-
-												<div class="form-group">
-													<label for="SAPNO">SAP Number:<?=asterik()?></label>
-													<input type="text" class="form-control" value="<?= $data->SAPNO ?>" name="SAPNO" id="SAPNO">
-												</div>
-
-												<div class="form-group">
-													<label for="gender">Title:<?=asterik()?></label>
-													<select class="form-control" name="title" id="title" required>
-														<?php if (!empty($data->title)) { ?>
-															<option value="<?php echo $data->title ?>"><?php echo $data->title ?></option>
-														<?php } ?>
-														<option value="">Select Title</option>
-														<option value="Dr">Dr</option>
-														<option value="Prof">Prof</option>
-														<option value="Rev">Rev</option>
-														<option value="Mr">Mr</option>
-														<option value="Mrs">Mrs</option>
-
-													</select>
-												</div>
-
-												<div class="form-group">
-													<label for="fname">First Name:<?=asterik()?></label>
-													<input type="text" class="form-control" value="<?php echo $data->fname;   ?>" name="fname" id="fname" required>
-												</div>
-												<input type="hidden" name="staff_id" value="<?php echo $data->staff_id; ?>">
-
-												<div class="form-group">
-													<label for="lname">Last Name:<?=asterik()?></label>
-													<input type="text" class="form-control" name="lname" value="<?php echo $data->lname;   ?>" id="lname" required>
-												</div>
-
-												<div class="form-group">
-													<label for="oname">Other Name:</label>
-													<input type="text" class="form-control" value="<?php echo $data->oname;   ?>" name="oname" id="oname">
-												</div>
-
-												<div class="form-group">
-													<label for="date_of_birth">Date of Birth:<?=asterik()?></label>
-													<input type="text" class="form-control datepicker" value="<?php echo $data->date_of_birth; ?>" name="date_of_birth" id="date_of_birth" required>
-												</div>
-
-												<div class="form-group">
-													<label for="gender">Gender:<?=asterik()?></label>
-													<select class="form-control" name="gender" id="gender" required>
-														<?php if (!empty($data->gender)) {
-															echo $data->gender;
-														} ?>
-														<option value="Male">Male</option>
-														<option value="Female">Female</option>
-														<option value="Other">Other</option>
-													</select>
-												</div>
-
-												<div class="form-group">
-													<label for="nationality_id">Nationality:<?=asterik()?></label>
-													<select class="form-control select2" name="nationality_id" id="nationality_id" required>
-														<?php $lists = Modules::run('lists/nationality');
-														foreach ($lists as $list) :
-														?>
-															<option value="<?php echo $list->nationality_id; ?>" <?php if ($list->nationality_id == $data->nationality_id) {
-																														echo "selected";
-																													} ?>><?php echo $list->status; ?><?php echo $list->nationality; ?></option>
-														<?php endforeach; ?>
-														<!-- Add more options as needed -->
-													</select>
-												</div>
-
-												<div class="form-group">
-													<label for="initiation_date">Initiation Date: <?=asterik()?></label>
-													<input type="text" class="form-control datepicker" value="<?php echo $data->initiation_date; ?>" name="initiation_date" id="initiation_date" required>
-												</div>
-											</div>
-
-											<div class="col-md-6">
-												<h4>Contact Information</h4>
-
-
-												<div class="form-group">
-													<label for="tel_1">Telephone 1: <?=asterik()?></label>
-													<input type="text" class="form-control" value="<?php echo $data->tel_1; ?>" name="tel_1" id="tel_1" required>
-												</div>
-
-												<div class="form-group">
-													<label for="tel_2">Telephone 2:</label>
-													<input type="text" class="form-control" value="<?php echo $data->tel_2; ?>" name="tel_2" id="tel_2">
-												</div>
-
-												<div class="form-group">
-													<label for="whatsapp">WhatsApp:</label>
-													<input type="text" class="form-control" name="whatsapp" value="<?php echo $data->whatsapp; ?>" id="whatsapp">
-												</div>
-
-												<div class="form-group">
-													<label for="work_email">Work Email:<?=asterik()?></label>
-													<input type="email" class="form-control" name="work_email" value="<?php echo $data->work_email; ?>" id="work_email" required>
-												</div>
-												<br>
-												<div class="form-group">
-													<label for="private_email">Private Email:</label>
-													<input type="email" class="form-control" name="private_email" value="<?php echo $data->private_email; ?>" id="private_email">
-												</div>
-
-												<div class="form-group">
-													<label for="physical_location">Physical Location</label>
-													<textarea class="form-control" name="physical_location" id="physical_location" rows="2" ><?php echo $data->physical_location; ?></textarea>
-												</div>
-											</div>
-										</div>
-
-										<div class="form-group" style="float:right;">
-											<br>
-											<label for="submit"></label>
-											<input type="submit" class="btn btn-dark" value="Save">
-										</div>
-
-										<?php echo form_close(); ?>
-									</div>
-								</div>
-							</div>
-
-						</div>
-	</div>
-
+		</table>
+		<div id="paginationInfo" class="mt-3 text-end">
+			<div id="paginationLinks" class="mt-2"></div>
 </div>
-
-<!-- edit employee data model -->
-
-
-
-
-<!-- edit model -->
-
-
-<script>
-	// Print button functionality
-	function printPage() {
-		// Hide the print button before printing
-		document.querySelector(".btn-print").style.display = "none";
-
-		// Print only the worker's profile
-		var printContents = document.getElementById("worker_profile").innerHTML;
-		var originalContents = document.body.innerHTML;
-
-		document.body.innerHTML = printContents;
-		window.print();
-
-		// Restore the original contents after printing
-		document.body.innerHTML = originalContents;
-
-		// Dismiss the modal after printing
-		document.getElementById("add_profile").addEventListener("afterprint", function() {
-			var modal = new bootstrap.Modal(document.getElementById("add_profile"));
-			modal.hide();
-		});
-	}
-</script>
-
-
-
-
-</tr>
-<?php endforeach; ?>
-</tbody>
-</table>
-<?php echo $records ." Total Staff";?>
-<?php echo $links ?>
 </div>
 </div>
 </div>
@@ -421,6 +112,65 @@
     </div>
 </div>
 
+<!-- Single Employee Profile Modal -->
+<div class="modal fade" id="employeeProfileModal" tabindex="-1" aria-labelledby="employeeProfileModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-lg">
+		<div class="modal-content">
+			<div class="modal-header text-white" style="background-color: #119a48;">
+				<div class="d-flex align-items-center w-100">
+					<div class="flex-grow-1">
+						<h5 class="modal-title mb-0" id="employeeProfileModalLabel">
+							<i class="fa fa-user me-2"></i>Employee Profile
+						</h5>
+					</div>
+					<div class="d-flex gap-2">
+						<a href="#" id="editProfileBtn" class="btn btn-light btn-sm">
+							<i class="fa fa-edit me-1"></i>Edit
+						</a>
+						<a href="#" id="printProfileBtn" class="btn btn-light btn-sm" target="_blank">
+							<i class="fa fa-print me-1"></i>Print
+						</a>
+						<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+				</div>
+			</div>
+			<div class="modal-body p-4" id="employeeProfileContent">
+				<div class="text-center py-5">
+					<div class="spinner-border" role="status" style="color: #119a48;">
+						<span class="visually-hidden">Loading...</span>
+					</div>
+					<p class="mt-3 text-muted">Loading employee profile...</p>
+				</div>
+			</div>
+			<div class="modal-footer bg-light">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+					<i class="fa fa-times me-1"></i>Close
+				</button>
+            </div>
+        </div>
+	</div>
+</div>
+
+<!-- Edit Biodata Modal -->
+<div class="modal fade" id="editBiodataModal" tabindex="-1" aria-labelledby="editBiodataModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editBiodataModalLabel">Edit Employee Biodata</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body" id="editBiodataContent">
+				<div class="text-center py-5">
+					<div class="spinner-border" role="status" style="color: #119a48;">
+						<span class="visually-hidden">Loading...</span>
+					</div>
+					<p class="mt-3 text-muted">Loading form...</p>
+				</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- JavaScript -->
 <script>
 function openImageModal(imageSrc) {
@@ -428,4 +178,676 @@ function openImageModal(imageSrc) {
     var myModal = new bootstrap.Modal(document.getElementById("imageModal"), {});
     myModal.show();
 }
+
+// Employee Profile Modal Handler
+$(document).ready(function() {
+	var currentStaffId = null;
+
+	// Handle profile link clicks
+	$(document).on('click', '.view-staff-profile', function(e) {
+		e.preventDefault();
+		var staffId = $(this).data('staff-id');
+		currentStaffId = staffId;
+		
+		// Get modal element
+		var modalElement = document.getElementById('employeeProfileModal');
+		
+		// Get or create modal instance
+		var modal = bootstrap.Modal.getInstance(modalElement);
+		if (!modal) {
+			modal = new bootstrap.Modal(modalElement);
+		}
+		
+		// Show modal
+		modal.show();
+		
+		// Load staff data
+		loadStaffProfile(staffId);
+	});
+	
+	// Handle Edit button click
+	$(document).on('click', '#editProfileBtn', function(e) {
+		e.preventDefault();
+		var profileModal = bootstrap.Modal.getInstance(document.getElementById('employeeProfileModal'));
+		if (profileModal) {
+			profileModal.hide();
+		}
+		if (currentStaffId) {
+			loadEditBiodataModal(currentStaffId);
+		}
+	});
+	
+	// Handle modal close events to reset content (only bind once)
+	$('#employeeProfileModal').on('hidden.bs.modal', function() {
+		$('#employeeProfileContent').html(`
+			<div class="text-center py-5">
+				<div class="spinner-border" role="status" style="color: #119a48;">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+				<p class="mt-3 text-muted">Loading employee profile...</p>
+			</div>
+		`);
+	});
+
+	function loadStaffProfile(staffId) {
+		// Show loading state
+		$('#employeeProfileContent').html(`
+			<div class="text-center py-5">
+				<div class="spinner-border" role="status" style="color: #119a48;">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+				<p class="mt-3 text-muted">Loading employee profile...</p>
+			</div>
+		`);
+
+		// Fetch staff data
+		$.ajax({
+			url: '<?php echo base_url(); ?>staff/get_staff_profile_ajax/' + encodeURIComponent(staffId),
+			method: 'GET',
+			dataType: 'json',
+			contentType: 'application/json; charset=utf-8',
+			success: function(response) {
+				if (response.success) {
+					populateModal(response);
+				} else {
+					$('#employeeProfileContent').html(`
+						<div class="alert alert-danger">
+							<i class="fa fa-exclamation-triangle me-2"></i>${response.message || 'Failed to load staff profile'}
+						</div>
+					`);
+				}
+			},
+			error: function(xhr, status, error) {
+				console.error('AJAX Error:', status, error);
+				console.error('Response:', xhr.responseText);
+				$('#employeeProfileContent').html(`
+					<div class="alert alert-danger">
+						<i class="fa fa-exclamation-triangle me-2"></i>Error loading staff profile. Please try again.
+						<br><small>Error: ${error}</small>
+					</div>
+				`);
+			}
+		});
+	}
+
+	function populateModal(data) {
+		var staff = data.staff;
+		var contract = data.contract;
+		
+		// Update edit and print buttons
+		$('#editProfileBtn').attr('data-staff-id', staff.staff_id);
+		$('#printProfileBtn').attr('href', '<?php echo base_url(); ?>staff/profile/' + staff.staff_id);
+
+		var html = `
+			<!-- Header Section with Photo and Name -->
+			<div class="row mb-4 pb-3 border-bottom">
+				<div class="col-md-3 text-center">
+					<div class="mb-3">
+						${staff.photo_html || '<div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 100px; height: 100px;"><i class="fa fa-user fa-3x text-white"></i></div>'}
+					</div>
+				</div>
+				<div class="col-md-9">
+					<h3 class="mb-2" style="color: #119a48;">
+						${staff.title ? staff.title + ' ' : ''}${staff.lname} ${staff.fname} ${staff.oname || ''}
+					</h3>
+					${staff.SAPNO ? `<p class="text-muted mb-1"><i class="fa fa-id-card me-2"></i><strong>SAP Number:</strong> ${staff.SAPNO}</p>` : ''}
+					${staff.work_email ? `<p class="text-muted mb-1"><i class="fa fa-envelope me-2"></i><a href="mailto:${staff.work_email}" class="text-decoration-none">${staff.work_email}</a></p>` : ''}
+				</div>
+			</div>
+
+			<!-- Information Sections -->
+			<div class="row g-4">
+				<!-- Personal Information -->
+				<div class="col-md-6">
+					<div class="card h-100 border-0 shadow-sm">
+						<div class="card-header bg-light">
+							<h5 class="mb-0"><i class="fa fa-user me-2" style="color: #119a48;"></i>Personal Information</h5>
+						</div>
+						<div class="card-body">
+							<div class="row g-3">
+								${staff.gender ? `<div class="col-12"><strong class="text-muted d-block mb-1">Gender</strong><span>${staff.gender}</span></div>` : ''}
+								${staff.date_of_birth ? `<div class="col-12"><strong class="text-muted d-block mb-1">Date of Birth</strong><span>${staff.date_of_birth}</span></div>` : ''}
+								${staff.nationality ? `<div class="col-12"><strong class="text-muted d-block mb-1">Nationality</strong><span><i class="fa fa-globe me-1"></i>${staff.nationality}</span></div>` : ''}
+								${staff.initiation_date ? `<div class="col-12"><strong class="text-muted d-block mb-1">Initiation Date</strong><span>${staff.initiation_date}</span></div>` : ''}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Contact Information -->
+				<div class="col-md-6">
+					<div class="card h-100 border-0 shadow-sm">
+						<div class="card-header bg-light">
+							<h5 class="mb-0"><i class="fa fa-address-book me-2" style="color: #119a48;"></i>Contact Information</h5>
+						</div>
+						<div class="card-body">
+							<div class="row g-3">
+								${staff.work_email ? `<div class="col-12"><strong class="text-muted d-block mb-1">Work Email</strong><span><a href="mailto:${staff.work_email}" class="text-decoration-none">${staff.work_email}</a></span></div>` : ''}
+								${staff.tel_1 || staff.tel_2 ? `<div class="col-12"><strong class="text-muted d-block mb-1">Telephone</strong><span><i class="fa fa-phone me-1"></i>${staff.tel_1 || ''}${staff.tel_1 && staff.tel_2 ? ' <span class="text-muted">/</span> ' : ''}${staff.tel_2 || ''}</span></div>` : ''}
+								${staff.whatsapp ? `<div class="col-12"><strong class="text-muted d-block mb-1">WhatsApp</strong><span><i class="fab fa-whatsapp me-1 text-success"></i>${staff.whatsapp}</span></div>` : ''}
+								${staff.physical_location ? `<div class="col-12"><strong class="text-muted d-block mb-1">Physical Location</strong><span><i class="fa fa-map-marker-alt me-1"></i>${staff.physical_location}</span></div>` : ''}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Contract Information -->
+				<div class="col-12">
+					<div class="card border-0 shadow-sm">
+						<div class="card-header bg-light d-flex justify-content-between align-items-center">
+							<h5 class="mb-0"><i class="fa fa-file-contract me-2" style="color: #119a48;"></i>Current Contract Information</h5>
+							<a href="<?php echo base_url(); ?>staff/staff_contracts/${staff.staff_id}" target="_blank" class="btn btn-sm" style="background-color: #119a48; color: white; border-color: #119a48;">
+								<i class="fa fa-external-link-alt me-1"></i>Manage Contracts
+							</a>
+						</div>
+						<div class="card-body">
+							${contract ? `
+								<div class="row g-3">
+									${contract.duty_station_name ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Duty Station</strong><span>${contract.duty_station_name}</span></div>` : ''}
+									${contract.division_name ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Division</strong><span>${contract.division_name}</span></div>` : ''}
+									${contract.job_name ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Job Title</strong><span>${contract.job_name}</span></div>` : ''}
+									${contract.job_acting && contract.job_acting != 'N/A' ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Acting Job</strong><span>${contract.job_acting}</span></div>` : ''}
+									${contract.first_supervisor ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">First Supervisor</strong><span>${contract.first_supervisor}</span></div>` : ''}
+									${contract.second_supervisor ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Second Supervisor</strong><span>${contract.second_supervisor}</span></div>` : ''}
+									${contract.funder ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Funder</strong><span>${contract.funder}</span></div>` : ''}
+									${contract.contracting_institution ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Contracting Organisation</strong><span>${contract.contracting_institution}</span></div>` : ''}
+									${contract.grade ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Grade</strong><span>${contract.grade}</span></div>` : ''}
+									${contract.contract_type ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Contract Type</strong><span>${contract.contract_type}</span></div>` : ''}
+									${contract.status ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Contract Status</strong><span class="badge bg-${contract.status == 'Active' ? 'success' : (contract.status == 'Expired' ? 'danger' : 'warning')}">${contract.status}</span></div>` : ''}
+									${contract.start_date ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Start Date</strong><span>${contract.start_date}</span></div>` : ''}
+									${contract.end_date ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">End Date</strong><span>${contract.end_date}</span></div>` : ''}
+									${contract.comments ? `<div class="col-12"><strong class="text-muted d-block mb-1">Comments</strong><span>${contract.comments}</span></div>` : ''}
+								</div>
+							` : '<p class="text-muted">No contract information available.</p>'}
+						</div>
+					</div>
+				</div>
+			</div>
+		`;
+
+		$('#employeeProfileContent').html(html);
+	}
+
+	// Load Edit Biodata Modal
+	function loadEditBiodataModal(staffId) {
+		if (!staffId) {
+			console.error('No staff ID provided');
+			return;
+		}
+
+		// Show loading state
+		$('#editBiodataContent').html(`
+			<div class="text-center py-5">
+				<div class="spinner-border" role="status" style="color: #119a48;">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+				<p class="mt-3 text-muted">Loading form...</p>
+			</div>
+		`);
+
+		// Fetch staff data for edit form
+		$.ajax({
+			url: '<?php echo base_url(); ?>staff/get_staff_profile_ajax/' + encodeURIComponent(staffId),
+			method: 'GET',
+			dataType: 'json',
+			contentType: 'application/json; charset=utf-8',
+			success: function(response) {
+				if (response.success && response.staff) {
+					populateEditBiodataModal(response.staff);
+					// Show the modal
+					var editModal = new bootstrap.Modal(document.getElementById('editBiodataModal'));
+					editModal.show();
+				} else {
+					$('#editBiodataContent').html(`
+						<div class="alert alert-danger">
+							<i class="fa fa-exclamation-triangle me-2"></i>${response.message || 'Failed to load staff data'}
+						</div>
+					`);
+				}
+			},
+			error: function(xhr, status, error) {
+				console.error('AJAX Error:', status, error);
+				$('#editBiodataContent').html(`
+					<div class="alert alert-danger">
+						<i class="fa fa-exclamation-triangle me-2"></i>Error loading form. Please try again.
+					</div>
+				`);
+			}
+		});
+	}
+
+	// Populate Edit Biodata Modal
+	function populateEditBiodataModal(staff) {
+		// Fetch nationality options via AJAX
+		var nationalityOptions = '<option value="">Select Nationality</option>';
+		
+		// Use a synchronous AJAX call to get nationalities
+		$.ajax({
+			url: '<?php echo base_url(); ?>lists/nationality?format=json',
+			method: 'GET',
+			dataType: 'json',
+			async: false,
+			success: function(nationalities) {
+				if (nationalities && nationalities.length) {
+					nationalities.forEach(function(nat) {
+						// Convert both to strings for comparison to avoid type mismatch
+						var staffNatId = String(staff.nationality_id || '');
+						var natId = String(nat.nationality_id || '');
+						var selected = (staffNatId && natId && staffNatId === natId) ? 'selected' : '';
+						var displayText = nat.nationality || nat.nationality_name || nat.status || '';
+						nationalityOptions += `<option value="${nat.nationality_id}" ${selected}>${displayText}</option>`;
+					});
+				}
+			},
+			error: function(xhr, status, error) {
+				console.error('Error loading nationalities:', error);
+			}
+		});
+
+		var html = `
+			<?php echo form_open('staff/update_staff', array('id' => 'editBiodataForm', 'class' => 'edit-biodata-form')); ?>
+			<div class="row">
+				<div class="col-md-6">
+					<h4>Personal Information</h4>
+
+					<div class="form-group mb-3">
+						<label for="edit_SAPNO">SAP Number:<?=asterik()?></label>
+						<input type="text" class="form-control" value="${staff.SAPNO || ''}" name="SAPNO" id="edit_SAPNO">
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_title">Title:<?=asterik()?></label>
+						<select class="form-control select2" name="title" id="edit_title" required>
+							${staff.title ? `<option value="${staff.title}">${staff.title}</option>` : ''}
+							<option value="">Select Title</option>
+							<option value="Dr">Dr</option>
+							<option value="Prof">Prof</option>
+							<option value="Rev">Rev</option>
+							<option value="Mr">Mr</option>
+							<option value="Mrs">Mrs</option>
+							<option value="Ms">Ms</option>
+						</select>
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_fname">First Name:<?=asterik()?></label>
+						<input type="text" class="form-control" value="${staff.fname || ''}" name="fname" id="edit_fname" required>
+					</div>
+					<input type="hidden" name="staff_id" value="${staff.staff_id}">
+
+					<div class="form-group mb-3">
+						<label for="edit_lname">Last Name:<?=asterik()?></label>
+						<input type="text" class="form-control" name="lname" value="${staff.lname || ''}" id="edit_lname" required>
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_oname">Other Name:</label>
+						<input type="text" class="form-control" value="${staff.oname || ''}" name="oname" id="edit_oname">
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_date_of_birth">Date of Birth:<?=asterik()?></label>
+						<input type="text" class="form-control datepicker" value="${staff.date_of_birth || ''}" name="date_of_birth" id="edit_date_of_birth" required>
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_gender">Gender:<?=asterik()?></label>
+						<select class="form-control select2" name="gender" id="edit_gender" required>
+							<option value="">Select Gender</option>
+							<option value="Male" ${(staff.gender == 'Male') ? 'selected' : ''}>Male</option>
+							<option value="Female" ${(staff.gender == 'Female') ? 'selected' : ''}>Female</option>
+							<option value="Other" ${(staff.gender == 'Other') ? 'selected' : ''}>Other</option>
+						</select>
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_nationality_id">Nationality:<?=asterik()?></label>
+						<select class="form-control select2" name="nationality_id" id="edit_nationality_id" required>
+							${nationalityOptions}
+						</select>
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_initiation_date">Initiation Date: <?=asterik()?></label>
+						<input type="text" class="form-control datepicker" value="${staff.initiation_date || ''}" name="initiation_date" id="edit_initiation_date" required>
+					</div>
+				</div>
+
+				<div class="col-md-6">
+					<h4>Contact Information</h4>
+
+					<div class="form-group mb-3">
+						<label for="edit_tel_1">Telephone 1: <?=asterik()?></label>
+						<input type="text" class="form-control" value="${staff.tel_1 || ''}" name="tel_1" id="edit_tel_1" required>
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_tel_2">Telephone 2:</label>
+						<input type="text" class="form-control" value="${staff.tel_2 || ''}" name="tel_2" id="edit_tel_2">
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_whatsapp">WhatsApp:</label>
+						<input type="text" class="form-control" name="whatsapp" value="${staff.whatsapp || ''}" id="edit_whatsapp">
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_work_email">Work Email:<?=asterik()?></label>
+						<input type="email" class="form-control" name="work_email" value="${staff.work_email || ''}" id="edit_work_email" required>
+					</div>
+					<br>
+					<div class="form-group mb-3">
+						<label for="edit_private_email">Private Email:</label>
+						<input type="email" class="form-control" name="private_email" value="${staff.private_email || ''}" id="edit_private_email">
+					</div>
+
+					<div class="form-group mb-3">
+						<label for="edit_physical_location">Physical Location:</label>
+						<textarea class="form-control" name="physical_location" id="edit_physical_location" rows="2">${staff.physical_location || ''}</textarea>
+					</div>
+				</div>
+			</div>
+
+			<div class="form-group text-end mt-3">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="submit" class="btn btn-dark">Save Changes</button>
+			</div>
+			<?php echo form_close(); ?>
+		`;
+
+		$('#editBiodataContent').html(html);
+		$('#editBiodataModalLabel').text('Edit Employee Biodata: ' + (staff.title || '') + ' ' + (staff.fname || '') + ' ' + (staff.lname || '') + ' ' + (staff.oname || ''));
+
+		// Initialize Select2 and datepicker after modal is shown
+		$('#editBiodataModal').off('shown.bs.modal').on('shown.bs.modal', function() {
+			var $modal = $(this);
+			
+			// Initialize Select2
+			$modal.find('.select2').each(function() {
+				var $select = $(this);
+				if (!$select.hasClass('select2-hidden-accessible')) {
+					$select.select2({
+						theme: 'bootstrap4',
+						width: '100%',
+						dropdownParent: $modal
+					});
+				}
+			});
+			
+			// Initialize datepicker
+			if (typeof $().datepicker === 'function') {
+				$modal.find('.datepicker').each(function() {
+					var $datepicker = $(this);
+					if (!$datepicker.data('datepicker')) {
+						$datepicker.datepicker({
+							format: 'yyyy-mm-dd',
+							autoclose: true,
+							todayHighlight: true
+						});
+					}
+				});
+			}
+		});
+	}
+
+	// Handle edit biodata form submission
+	$(document).on('submit', '#editBiodataForm', function(e) {
+		e.preventDefault();
+		var form = $(this);
+		var formData = form.serialize();
+
+		$.ajax({
+			url: form.attr('action'),
+			method: 'POST',
+			data: formData + '&ajax=1',
+			dataType: 'json',
+			success: function(response) {
+				if (response.success || response.q) {
+					// Show success message
+					if (typeof Lobibox !== 'undefined') {
+						Lobibox.notify('success', {
+							msg: response.msg || 'Staff updated successfully.',
+							position: 'top right'
+						});
+					} else {
+						alert(response.msg || 'Staff updated successfully.');
+					}
+					
+					// Close modal
+					var editModal = bootstrap.Modal.getInstance(document.getElementById('editBiodataModal'));
+					if (editModal) {
+						editModal.hide();
+					}
+					
+					// Reload staff profile if it's open
+					if (currentStaffId) {
+						loadStaffProfile(currentStaffId);
+					}
+					
+					// Reload table data
+					loadContractStatusData();
+				} else {
+					if (typeof Lobibox !== 'undefined') {
+						Lobibox.notify('error', {
+							msg: response.msg || 'Failed to update staff.',
+							position: 'top right'
+						});
+					} else {
+						alert(response.msg || 'Failed to update staff.');
+					}
+				}
+			},
+			error: function(xhr, status, error) {
+				console.error('Update error:', error);
+				if (typeof Lobibox !== 'undefined') {
+					Lobibox.notify('error', {
+						msg: 'Error updating staff. Please try again.',
+						position: 'top right'
+					});
+				} else {
+					alert('Error updating staff. Please try again.');
+				}
+			}
+		});
+	});
+
+	// Contract Status AJAX Data Loading
+	var currentStatus = <?= $status ?>;
+	var currentPage = 0;
+	var currentFilters = {};
+
+	// Move export buttons to top right on page load and hide originals
+	$(document).ready(function() {
+		var exportButtons = $('#originalExportButtons').clone();
+		if (exportButtons.length) {
+			$('#exportButtonsTop').html(exportButtons.html());
+			// Hide the original export buttons in staff_filters
+			$('#originalExportButtons').hide();
+		}
+	});
+
+	// Load data on page load
+	loadContractStatusData();
+	updateExportLinks(); // Initialize export links
+
+	// Handle filter form submission
+	$('#staff_form').on('submit', function(e) {
+		e.preventDefault();
+		currentPage = 0;
+		// Get all form data
+		currentFilters = $(this).serializeArray().reduce(function(obj, item) {
+			if (item.value) {
+				if (obj[item.name]) {
+					// If key already exists, convert to array
+					if (!Array.isArray(obj[item.name])) {
+						obj[item.name] = [obj[item.name]];
+					}
+					obj[item.name].push(item.value);
+				} else {
+					obj[item.name] = item.value;
+				}
+			}
+			return obj;
+		}, {});
+		updateExportLinks(); // Update export links with new filters
+		loadContractStatusData();
+	});
+
+	// Update export links in staff_filters when filters change
+	function updateExportLinks() {
+		var filters = Object.assign({}, currentFilters);
+		var queryString = $.param(filters);
+		var baseUrl = '<?php echo base_url(); ?>staff/contract_status/' + currentStatus;
+		
+		// Update export links - check for PDF first (before CSV, since /0/1 contains /1)
+		$('.export-buttons a[href*="contract_status"], #exportButtonsTop a[href*="contract_status"]').each(function() {
+			var href = $(this).attr('href');
+			if (href.includes('/0/1')) {
+				// PDF export
+				$(this).attr('href', baseUrl + '/0/1' + (queryString ? '?' + queryString : ''));
+			} else if (href.includes('/1') && !href.includes('/0/1')) {
+				// CSV export (but not PDF)
+				$(this).attr('href', baseUrl + '/1' + (queryString ? '?' + queryString : ''));
+			}
+		});
+	}
+
+	// Pagination handler
+	$(document).on('click', '.pagination a', function(e) {
+		e.preventDefault();
+		var href = $(this).attr('href');
+		if (href) {
+			var match = href.match(/\/contract_status\/\d+\/(\d+)/);
+			if (match) {
+				currentPage = parseInt(match[1]);
+				loadContractStatusData();
+			}
+		}
+	});
+
+	function loadContractStatusData() {
+		$('#staffTableBody').html(`
+			<tr>
+				<td colspan="18" class="text-center">
+					<div class="spinner-border text-primary" role="status">
+						<span class="visually-hidden">Loading...</span>
+					</div>
+					<p class="mt-2">Loading staff data...</p>
+				</td>
+			</tr>
+		`);
+
+		var postData = Object.assign({}, currentFilters);
+		postData.page = currentPage;
+		postData['<?php echo $this->security->get_csrf_token_name(); ?>'] = '<?php echo $this->security->get_csrf_hash(); ?>';
+
+		$.ajax({
+			url: '<?php echo base_url(); ?>staff/get_contract_status_data_ajax/' + currentStatus,
+			method: 'POST',
+			data: postData,
+			dataType: 'json',
+			success: function(response) {
+				if (response.html) {
+					$('#staffTableBody').html(response.html);
+					
+					// Update CSRF token
+					if (response.csrf_hash) {
+						$('input[name="<?php echo $this->security->get_csrf_token_name(); ?>"]').val(response.csrf_hash);
+					}
+
+					// Generate pagination (both top and bottom) with total staff count
+					generatePagination(response.total, response.page, response.per_page, response.records);
+				} else {
+					$('#staffTableBody').html('<tr><td colspan="18" class="text-center">No data available</td></tr>');
+				}
+			},
+			error: function(xhr, status, error) {
+				console.error('AJAX Error:', status, error);
+				console.error('Response Text:', xhr.responseText);
+				console.error('Status Code:', xhr.status);
+				
+				var errorMessage = 'Error loading data. Please try again.';
+				if (xhr.responseText) {
+					// Try to extract error message from HTML response
+					var match = xhr.responseText.match(/<title>(.*?)<\/title>/i);
+					if (match) {
+						errorMessage = match[1];
+					}
+				}
+				
+				$('#staffTableBody').html(`
+					<tr>
+						<td colspan="18" class="text-center text-danger">
+							${errorMessage}<br>
+							<small>Status: ${xhr.status}</small>
+						</td>
+					</tr>
+				`);
+			}
+		});
+	}
+
+	function generatePagination(total, page, perPage, records) {
+		var totalPages = Math.ceil(total / perPage);
+		var paginationHtml = '<nav><ul class="pagination pagination-sm mb-0">';
+		
+		// Previous button
+		if (page > 0) {
+			paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${page - 1}">Previous</a></li>`;
+		} else {
+			paginationHtml += '<li class="page-item disabled"><span class="page-link">Previous</span></li>';
+		}
+
+		// Page numbers
+		var startPage = Math.max(0, page - 2);
+		var endPage = Math.min(totalPages - 1, page + 2);
+
+		if (startPage > 0) {
+			paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="0">1</a></li>`;
+			if (startPage > 1) {
+				paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+			}
+		}
+
+		for (var i = startPage; i <= endPage; i++) {
+			if (i == page) {
+				paginationHtml += `<li class="page-item active"><span class="page-link">${i + 1}</span></li>`;
+			} else {
+				paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i + 1}</a></li>`;
+			}
+		}
+
+		if (endPage < totalPages - 1) {
+			if (endPage < totalPages - 2) {
+				paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+			}
+			paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${totalPages - 1}">${totalPages}</a></li>`;
+		}
+
+		// Next button
+		if (page < totalPages - 1) {
+			paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${page + 1}">Next</a></li>`;
+		} else {
+			paginationHtml += '<li class="page-item disabled"><span class="page-link">Next</span></li>';
+		}
+
+		paginationHtml += '</ul></nav>';
+		
+		// Add total staff count after pagination (only for top)
+		var recordsText = '<span class="text-muted ms-3"><strong>' + (records || 0) + ' Total Staff</strong></span>';
+		var topHtml = paginationHtml + recordsText;
+		
+		// Update top pagination with total staff count, bottom without
+		$('#paginationLinksTop').html(topHtml);
+		$('#paginationLinks').html(paginationHtml);
+	}
+
+	// Handle pagination clicks
+	$(document).on('click', '.pagination a[data-page]', function(e) {
+		e.preventDefault();
+		currentPage = parseInt($(this).data('page'));
+		loadContractStatusData();
+		$('html, body').animate({ scrollTop: 0 }, 'fast');
+	});
+});
 </script>
