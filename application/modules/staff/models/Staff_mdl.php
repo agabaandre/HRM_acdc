@@ -270,11 +270,24 @@ class Staff_mdl extends CI_Model
 	
 		return ($csv == 1) ? $query->result_array() : $query->result();
 	}
-	// Get staff contracts
-	public function get_staff_contracts($id)
+	// Get staff contracts with pagination support
+	public function get_staff_contracts($id, $limit = FALSE, $start = FALSE, $for_export = FALSE)
 	{
-		$this->db->select('*');
-		$this->db->from('staff_contracts');  // Select from staff_contracts
+		$this->db->select('
+			staff_contracts.*,
+			jobs.job_name,
+			jobs_acting.job_acting,
+			grades.grade,
+			contracting_institutions.contracting_institution,
+			funders.funder,
+			contract_types.contract_type,
+			duty_stations.duty_station_name,
+			divisions.division_name,
+			status.status,
+			staff.lname, staff.fname, staff.SAPNO, staff.nationality_id,
+			nationalities.nationality
+		');
+		$this->db->from('staff_contracts');
 	
 		// Specify the table alias in WHERE clause
 		$this->db->where('staff_contracts.staff_id', $id);
@@ -289,13 +302,60 @@ class Staff_mdl extends CI_Model
 		$this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id', 'left');
 		$this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id', 'left');
 		$this->db->join('status', 'status.status_id = staff_contracts.status_id', 'left');
-		$this->db->join('staff', 'staff.staff_id = staff_contracts.staff_id', 'left');  // Avoid ambiguity
+		$this->db->join('staff', 'staff.staff_id = staff_contracts.staff_id', 'left');
 		$this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id', 'left');
 	
 		$this->db->order_by('staff_contracts.start_date', 'DESC');
 	
-		$query = $this->db->get(); // Removed redundant 'staff_contracts' argument
+		// Apply pagination if not exporting
+		if ($limit && !$for_export) {
+			$this->db->limit($limit, $start);
+		}
+	
+		$query = $this->db->get();
+		
+		if ($for_export) {
+			// Return as array for CSV export
+			$results = $query->result_array();
+			// Format for export
+			foreach ($results as &$row) {
+				// Handle other_associated_divisions
+				if (!empty($row['other_associated_divisions'])) {
+					$divisions = json_decode($row['other_associated_divisions'], true);
+					if (is_array($divisions)) {
+						// Get division names
+						$division_names = [];
+						foreach ($divisions as $div_id) {
+							$this->db->select('division_name');
+							$this->db->from('divisions');
+							$this->db->where('division_id', $div_id);
+							$div = $this->db->get()->row();
+							if ($div) {
+								$division_names[] = $div->division_name;
+							}
+						}
+						$row['other_associated_divisions'] = implode(', ', $division_names);
+					} else {
+						$row['other_associated_divisions'] = '';
+					}
+				} else {
+					$row['other_associated_divisions'] = '';
+				}
+				// Add supervisor names
+				$row['first_supervisor_name'] = staff_name($row['first_supervisor']);
+				$row['second_supervisor_name'] = staff_name($row['second_supervisor']);
+			}
+			return $results;
+		}
+		
 		return $query->result();
+	}
+	
+	// Get count of staff contracts
+	public function get_staff_contracts_count($id)
+	{
+		$this->db->where('staff_id', $id);
+		return $this->db->count_all_results('staff_contracts');
 	}
 	
 
@@ -327,6 +387,17 @@ class Staff_mdl extends CI_Model
 	// New Contract
 	public function add_new_contract($data)
 	{
+		// Handle other_associated_divisions - convert array to JSON
+		$other_divisions = $this->input->post('other_associated_divisions');
+		$other_divisions_json = null;
+		if (!empty($other_divisions) && is_array($other_divisions)) {
+			// Filter out empty values
+			$other_divisions = array_filter($other_divisions);
+			if (!empty($other_divisions)) {
+				$other_divisions_json = json_encode(array_values($other_divisions));
+			}
+		}
+		
 		$data = array(
 			'staff_id' => $this->input->post('staff_id'),
 			'job_id' => $this->input->post('job_id'),
@@ -339,6 +410,7 @@ class Staff_mdl extends CI_Model
 			'contract_type_id' => $this->input->post('contract_type_id'),
 			'duty_station_id' => $this->input->post('duty_station_id'),
 			'division_id' => $this->input->post('division_id'),
+			'other_associated_divisions' => $other_divisions_json,
 			'unit_id' => $this->input->post('unit_id'),
 			'start_date' => $this->input->post('start_date'),
 			'end_date' => $this->input->post('end_date'),
@@ -654,7 +726,7 @@ public function getBirthdays($days)
 		return $this->db->insert_id();
 	}
 
-	public function add_contract_information($staff_id, $job_id, $job_acting_id, $grade_id, $contracting_institution_id, $funder_id, $first_supervisor, $second_supervisor, $contract_type_id, $duty_station_id, $division_id, $start_date, $end_date, $status_id, $file_name, $comments)
+	public function add_contract_information($staff_id, $job_id, $job_acting_id, $grade_id, $contracting_institution_id, $funder_id, $first_supervisor, $second_supervisor, $contract_type_id, $duty_station_id, $division_id, $unit_id, $other_associated_divisions, $start_date, $end_date, $status_id, $file_name, $comments)
 	{
 		$data = array(
 			'staff_id' => $staff_id,
@@ -668,6 +740,8 @@ public function getBirthdays($days)
 			'contract_type_id' => $contract_type_id,
 			'duty_station_id' => $duty_station_id,
 			'division_id' => $division_id,
+			'unit_id' => $unit_id,
+			'other_associated_divisions' => $other_associated_divisions,
 			'start_date' => $start_date,
 			'end_date' => $end_date,
 			'status_id' => $status_id,

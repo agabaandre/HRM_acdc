@@ -37,6 +37,16 @@ class Performance_mdl extends CI_Model
         return FALSE;
     }
     
+    public function isendterm_available($entry_id)
+    {
+        if (!empty($entry_id)) {
+            $this->db->where('endterm_created_at IS NOT NULL', null, false);
+            $this->db->where('entry_id', $entry_id);
+            return ($this->db->get('ppa_entries')->num_rows() > 0);
+        }
+        return FALSE;
+    }
+    
     
     
 
@@ -65,6 +75,7 @@ public function get_approval_trail($entry_id)
 
 public function get_pending_ppa($staff_id)
 {
+    $staff_id_escaped = (int)$staff_id;
     $sql = "
         SELECT 
             p.*, 
@@ -90,52 +101,104 @@ public function get_pending_ppa($staff_id)
             CASE 
                 WHEN p.draft_status = 1 THEN 'Pending (Draft)'
                 WHEN p.supervisor2_id IS NULL AND
-                    (
+                    COALESCE((
                         SELECT a1.action 
                         FROM ppa_approval_trail a1 
                         WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id 
                         ORDER BY a1.id DESC LIMIT 1
-                    ) = 'Approved'
+                    ), '') = 'Approved'
+                    -- AND there's no 'Returned' action after the approval
+                    AND NOT EXISTS (
+                        SELECT 1 
+                        FROM ppa_approval_trail a_returned 
+                        WHERE a_returned.entry_id = p.entry_id 
+                        AND a_returned.action = 'Returned'
+                        AND a_returned.id > (
+                            SELECT MAX(a_approved.id) 
+                            FROM ppa_approval_trail a_approved 
+                            WHERE a_approved.entry_id = p.entry_id 
+                            AND a_approved.staff_id = p.supervisor_id 
+                            AND a_approved.action = 'Approved'
+                        )
+                    )
                 THEN 'Approved'
 
                 WHEN p.supervisor2_id IS NOT NULL AND
-                    (
+                    COALESCE((
                         SELECT a1.action 
                         FROM ppa_approval_trail a1 
                         WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id 
                         ORDER BY a1.id DESC LIMIT 1
-                    ) = 'Approved' AND
-                    (
+                    ), '') = 'Approved' AND
+                    COALESCE((
                         SELECT a2.action 
                         FROM ppa_approval_trail a2 
                         WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id 
                         ORDER BY a2.id DESC LIMIT 1
-                    ) = 'Approved'
+                    ), '') = 'Approved'
+                    -- AND there's no 'Returned' action after either approval
+                    AND NOT EXISTS (
+                        SELECT 1 
+                        FROM ppa_approval_trail a_returned 
+                        WHERE a_returned.entry_id = p.entry_id 
+                        AND a_returned.action = 'Returned'
+                        AND (
+                            a_returned.id > (
+                                SELECT MAX(a_approved.id) 
+                                FROM ppa_approval_trail a_approved 
+                                WHERE a_approved.entry_id = p.entry_id 
+                                AND a_approved.staff_id = p.supervisor_id 
+                                AND a_approved.action = 'Approved'
+                            )
+                            OR
+                            a_returned.id > (
+                                SELECT MAX(a_approved.id) 
+                                FROM ppa_approval_trail a_approved 
+                                WHERE a_approved.entry_id = p.entry_id 
+                                AND a_approved.staff_id = p.supervisor2_id 
+                                AND a_approved.action = 'Approved'
+                            )
+                        )
+                    )
                 THEN 'Approved'
 
-                WHEN (
+                WHEN p.draft_status = 1 AND COALESCE((
                     SELECT a2.action 
                     FROM ppa_approval_trail a2 
                     WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id 
                     ORDER BY a2.id DESC LIMIT 1
-                ) = 'Returned'
+                ), '') = 'Returned'
                 THEN 'Returned'
 
-                WHEN (
+                WHEN p.draft_status = 1 AND COALESCE((
                     SELECT a1.action 
                     FROM ppa_approval_trail a1 
                     WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id 
                     ORDER BY a1.id DESC LIMIT 1
-                ) = 'Returned'
+                ), '') = 'Returned'
                 THEN 'Returned'
 
                 WHEN p.supervisor2_id IS NOT NULL AND
-                    (
+                    COALESCE((
                         SELECT a1.action 
                         FROM ppa_approval_trail a1 
                         WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id 
                         ORDER BY a1.id DESC LIMIT 1
-                    ) = 'Approved'
+                    ), '') = 'Approved'
+                    -- AND there's no 'Returned' action after the approval
+                    AND NOT EXISTS (
+                        SELECT 1 
+                        FROM ppa_approval_trail a_returned 
+                        WHERE a_returned.entry_id = p.entry_id 
+                        AND a_returned.action = 'Returned'
+                        AND a_returned.id > (
+                            SELECT MAX(a_approved.id) 
+                            FROM ppa_approval_trail a_approved 
+                            WHERE a_approved.entry_id = p.entry_id 
+                            AND a_approved.staff_id = p.supervisor_id 
+                            AND a_approved.action = 'Approved'
+                        )
+                    )
                 THEN 'Pending Second Supervisor'
 
                 ELSE 'Pending First Supervisor'
@@ -145,54 +208,72 @@ public function get_pending_ppa($staff_id)
         JOIN staff s ON s.staff_id = p.staff_id
         WHERE p.draft_status = 0
         AND (
-            -- First supervisor
-            (
-                p.supervisor_id = ? AND (
-                    (
+            -- First supervisor: must be submitted (draft_status = 0)
+            -- Show if entry is submitted and not yet approved by first supervisor
+            -- This includes entries that were returned (by anyone) and then resubmitted
+            (p.supervisor_id = {$staff_id_escaped} AND 
+             (p.staff_sign_off = 1 OR p.staff_sign_off IS NULL) AND
+             (
+               -- Check if most recent action by first supervisor is NOT 'Approved'
+               -- This handles: NULL (never approved), 'Returned' (first supervisor returned it)
+               COALESCE((
                         SELECT a1.action
                         FROM ppa_approval_trail a1
                         WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
                         ORDER BY a1.id DESC LIMIT 1
-                    ) IS NULL OR
-                    (
-                        SELECT a1.action
-                        FROM ppa_approval_trail a1
-                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
-                        ORDER BY a1.id DESC LIMIT 1
-                    ) != 'Approved'
+               ), '') != 'Approved'
+               OR
+               -- OR if entry was returned by ANYONE (first or second supervisor, HR officer, etc.) and then resubmitted
+               -- Check if there's a 'Returned' action (by anyone) followed by a 'Submitted' or 'Updated' action
+               EXISTS (
+                   SELECT 1 
+                   FROM ppa_approval_trail a_returned 
+                   WHERE a_returned.entry_id = p.entry_id 
+                   AND a_returned.action = 'Returned'
+                   AND EXISTS (
+                       SELECT 1 
+                       FROM ppa_approval_trail a_resubmitted 
+                       WHERE a_resubmitted.entry_id = p.entry_id 
+                       AND a_resubmitted.action IN ('Submitted', 'Updated')
+                       AND a_resubmitted.id > a_returned.id
                 )
             )
+             ))
             OR
-            -- Second supervisor (after first has approved)
-            (
-                p.supervisor2_id = ? AND (
-                    (
+            -- Second supervisor: can see if first approved (even if still draft)
+            (p.supervisor2_id = {$staff_id_escaped} AND
+             p.supervisor2_id IS NOT NULL AND
+             COALESCE((
                         SELECT a1.action
                         FROM ppa_approval_trail a1
                         WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
                         ORDER BY a1.id DESC LIMIT 1
-                    ) = 'Approved'
-                    AND (
-                        (
+             ), '') = 'Approved'
+             -- AND there's no 'Returned' action after the approval
+             AND NOT EXISTS (
+                 SELECT 1 
+                 FROM ppa_approval_trail a_returned 
+                 WHERE a_returned.entry_id = p.entry_id 
+                 AND a_returned.action = 'Returned'
+                 AND a_returned.id > (
+                     SELECT MAX(a_approved.id) 
+                     FROM ppa_approval_trail a_approved 
+                     WHERE a_approved.entry_id = p.entry_id 
+                     AND a_approved.staff_id = p.supervisor_id 
+                     AND a_approved.action = 'Approved'
+                 )
+             )
+             AND COALESCE((
                             SELECT a2.action
                             FROM ppa_approval_trail a2
                             WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
                             ORDER BY a2.id DESC LIMIT 1
-                        ) IS NULL OR
-                        (
-                            SELECT a2.action
-                            FROM ppa_approval_trail a2
-                            WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
-                            ORDER BY a2.id DESC LIMIT 1
-                        ) != 'Approved'
-                    )
-                )
-            )
+             ), '') != 'Approved')
         )
         ORDER BY p.created_at DESC
     ";
 
-    return $this->db->query($sql, [$staff_id, $staff_id])->result_array();
+    return $this->db->query($sql)->result_array();
 }
 
 
@@ -653,12 +734,17 @@ public function get_dashboard_data()
     $this->db->where("pe.performance_period", $period);
     $pdp_staff = array_column($this->db->get()->result(), 'staff_id');
 
-    // Periods list
-    $this->db->distinct()->select("pe.performance_period,pe.created_at")->from("ppa_entries pe");
+    // Periods list - only get distinct periods from actual PPA entries
+    $this->db->distinct();
+    $this->db->select("pe.performance_period");
+    $this->db->from("ppa_entries pe");
+    $this->db->where("pe.draft_status !=", 1); // Only non-draft PPAs
     if ($is_restricted) $this->db->where("pe.staff_id", $staff_id);
-    $this->db->order_by("pe.created_at", "DESC");
-    $periods = array_column($this->db->get()->result(), 'performance_period');
-    $current_period = $periods[0] ?? $period;
+    $this->db->order_by("pe.performance_period", "DESC");
+    $periods_result = $this->db->get()->result();
+    $periods = array_column($periods_result, 'performance_period');
+    $periods = array_unique($periods); // Ensure distinct values
+    $current_period = !empty($periods) ? $periods[0] : $period;
 
     // Age groups
     $age_groups = [
@@ -966,6 +1052,336 @@ public function ppa_exists($entry_id){
 
 // --- MIDTERM PENDING APPROVALS BASED ON MIDTERM SUPERVISORS ---
 
+/**
+ * Get the last action by a supervisor for an endterm entry
+ */
+private function _get_endterm_last_action($entry_id, $staff_id)
+{
+    if (empty($entry_id) || empty($staff_id)) {
+        return '';
+    }
+    
+    // Use raw query to handle collation
+    $sql = "SELECT action 
+            FROM ppa_approval_trail_end_term 
+            WHERE entry_id COLLATE utf8mb4_general_ci = ? 
+            AND staff_id = ? 
+            ORDER BY id DESC 
+            LIMIT 1";
+    $result = $this->db->query($sql, [$entry_id, $staff_id])->row();
+    
+    return $result ? $result->action : '';
+}
+
+/**
+ * Get the most recent action overall for an endterm entry
+ */
+private function _get_endterm_most_recent_action($entry_id)
+{
+    if (empty($entry_id)) {
+        return '';
+    }
+    
+    // Use raw query to handle collation
+    $sql = "SELECT action 
+            FROM ppa_approval_trail_end_term 
+            WHERE entry_id COLLATE utf8mb4_general_ci = ? 
+            ORDER BY id DESC 
+            LIMIT 1";
+    $result = $this->db->query($sql, [$entry_id])->row();
+    
+    return $result ? $result->action : '';
+}
+
+/**
+ * Check if there's a return after a supervisor's approval
+ */
+private function _has_return_after_approval($entry_id, $supervisor_id)
+{
+    if (empty($entry_id) || empty($supervisor_id)) {
+        return false;
+    }
+    
+    // Get the ID of the supervisor's last approval using raw query
+    $sql = "SELECT MAX(id) as id 
+            FROM ppa_approval_trail_end_term 
+            WHERE entry_id COLLATE utf8mb4_general_ci = ? 
+            AND staff_id = ? 
+            AND action = 'Approved'";
+    $approval_result = $this->db->query($sql, [$entry_id, $supervisor_id])->row();
+    
+    if (!$approval_result || !$approval_result->id) {
+        return false; // No approval found
+    }
+    
+    $approval_id = $approval_result->id;
+    
+    // Check if there's a return after this approval
+    $sql = "SELECT 1 
+            FROM ppa_approval_trail_end_term 
+            WHERE entry_id COLLATE utf8mb4_general_ci = ? 
+            AND action = 'Returned' 
+            AND id > ? 
+            LIMIT 1";
+    $result = $this->db->query($sql, [$entry_id, $approval_id]);
+    
+    return $result->num_rows() > 0;
+}
+
+/**
+ * Check if there's a return after staff consent
+ */
+private function _has_return_after_consent($entry_id)
+{
+    if (empty($entry_id)) {
+        return false;
+    }
+    
+    // Get the ID of the "Employee Consent" action
+    $sql = "SELECT MAX(id) as id 
+            FROM ppa_approval_trail_end_term 
+            WHERE entry_id COLLATE utf8mb4_general_ci = ? 
+            AND action = 'Employee Consent'";
+    $consent_result = $this->db->query($sql, [$entry_id])->row();
+    
+    if ($consent_result && $consent_result->id) {
+        // Found "Employee Consent" action, check for returns after it
+        $consent_id = $consent_result->id;
+        $sql = "SELECT 1 
+                FROM ppa_approval_trail_end_term 
+                WHERE entry_id COLLATE utf8mb4_general_ci = ? 
+                AND action = 'Returned' 
+                AND id > ? 
+                LIMIT 1";
+        $result = $this->db->query($sql, [$entry_id, $consent_id]);
+        return $result->num_rows() > 0;
+    }
+    
+    // No "Employee Consent" action found, check using consent timestamp
+    // Get the consent timestamp from ppa_entries
+    $this->db->select('endterm_staff_consent_at');
+    $this->db->from('ppa_entries');
+    $this->db->where('entry_id', $entry_id);
+    $entry = $this->db->get()->row();
+    
+    if (!$entry || empty($entry->endterm_staff_consent_at)) {
+        // No consent timestamp, so can't have a return after it
+        return false;
+    }
+    
+    // Check if there's a return after the consent timestamp
+    $sql = "SELECT 1 
+            FROM ppa_approval_trail_end_term 
+            WHERE entry_id COLLATE utf8mb4_general_ci = ? 
+            AND action = 'Returned' 
+            AND created_at > ? 
+            LIMIT 1";
+    $result = $this->db->query($sql, [$entry_id, $entry->endterm_staff_consent_at]);
+    
+    // Return true if there IS a return after consent (bad), false if there isn't (good)
+    return $result->num_rows() > 0;
+}
+
+/**
+ * Check if first supervisor can see the endterm for approval
+ */
+private function _can_first_supervisor_see_endterm($entry_id, $staff_id)
+{
+    if (empty($entry_id) || empty($staff_id)) {
+        return false;
+    }
+    
+    // Get entry details
+    $this->db->select('endterm_supervisor_1, endterm_draft_status, endterm_sign_off');
+    $this->db->from('ppa_entries');
+    $this->db->where('entry_id', $entry_id);
+    $entry = $this->db->get()->row();
+    
+    if (!$entry || $entry->endterm_supervisor_1 != $staff_id) {
+        return false;
+    }
+    
+    // Must be submitted (draft_status = 0)
+    if ($entry->endterm_draft_status != 0) {
+        return false;
+    }
+    
+    // Check sign_off condition (must be 1 or NULL)
+    if ($entry->endterm_sign_off != 1 && $entry->endterm_sign_off !== null) {
+        return false;
+    }
+    
+    // Check if most recent action by first supervisor is NOT 'Approved'
+    $last_action = $this->_get_endterm_last_action($entry_id, $staff_id);
+    $not_approved = ($last_action != 'Approved');
+    
+    // OR if entry was returned by anyone and then resubmitted
+    $was_returned_and_resubmitted = $this->_was_returned_and_resubmitted($entry_id);
+    
+    return $not_approved || $was_returned_and_resubmitted;
+}
+
+/**
+ * Check if entry was returned and then resubmitted
+ */
+private function _was_returned_and_resubmitted($entry_id)
+{
+    if (empty($entry_id)) {
+        return false;
+    }
+    
+    // Check if there's a 'Returned' action followed by 'Submitted' or 'Updated'
+    $sql = "SELECT id 
+            FROM ppa_approval_trail_end_term 
+            WHERE entry_id COLLATE utf8mb4_general_ci = ? 
+            AND action = 'Returned'";
+    $returns = $this->db->query($sql, [$entry_id])->result();
+    
+    foreach ($returns as $return) {
+        // Check if there's a Submitted or Updated action after this return
+        $sql = "SELECT 1 
+                FROM ppa_approval_trail_end_term 
+                WHERE entry_id COLLATE utf8mb4_general_ci = ? 
+                AND action IN ('Submitted', 'Updated') 
+                AND id > ? 
+                LIMIT 1";
+        $result = $this->db->query($sql, [$entry_id, $return->id]);
+        
+        if ($result->num_rows() > 0) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Check if second supervisor can see the endterm for approval
+ */
+private function _can_second_supervisor_see_endterm($entry_id, $staff_id)
+{
+    if (empty($entry_id) || empty($staff_id)) {
+        log_message('debug', "Endterm visibility check failed: empty entry_id or staff_id. entry_id={$entry_id}, staff_id={$staff_id}");
+        return false;
+    }
+    
+    // Get entry details
+    $this->db->select('endterm_supervisor_1, endterm_supervisor_2, endterm_staff_consent_at');
+    $this->db->from('ppa_entries');
+    $this->db->where('entry_id', $entry_id);
+    $entry = $this->db->get()->row();
+    
+    if (!$entry) {
+        log_message('debug', "Endterm visibility check failed: entry not found. entry_id={$entry_id}");
+        return false;
+    }
+    
+    // Verify this is the second supervisor (with type casting for safety)
+    $supervisor2_id = (int)$entry->endterm_supervisor_2;
+    $staff_id_int = (int)$staff_id;
+    
+    if (empty($entry->endterm_supervisor_2) || $supervisor2_id != $staff_id_int) {
+        log_message('debug', "Endterm visibility: supervisor mismatch. supervisor2={$supervisor2_id}, staff_id={$staff_id_int}, entry_id={$entry_id}");
+        return false;
+    }
+    
+    // First supervisor must have approved
+    if (empty($entry->endterm_supervisor_1)) {
+        log_message('debug', "Endterm visibility: no first supervisor. entry_id={$entry_id}");
+        return false;
+    }
+    
+    $first_supervisor_action = $this->_get_endterm_last_action($entry_id, $entry->endterm_supervisor_1);
+    log_message('debug', "Endterm visibility: first supervisor action={$first_supervisor_action}, entry_id={$entry_id}");
+    if ($first_supervisor_action != 'Approved') {
+        log_message('debug', "Endterm visibility: first supervisor not approved. entry_id={$entry_id}");
+        return false;
+    }
+    
+    // No return after first supervisor's approval
+    $has_return_after_approval = $this->_has_return_after_approval($entry_id, $entry->endterm_supervisor_1);
+    if ($has_return_after_approval) {
+        log_message('debug', "Endterm visibility: return after first supervisor approval. entry_id={$entry_id}");
+        return false;
+    }
+    
+    // Staff must have consented
+    if (empty($entry->endterm_staff_consent_at)) {
+        log_message('debug', "Endterm visibility: staff not consented. entry_id={$entry_id}");
+        return false;
+    }
+    
+    // No return after staff consent
+    $has_return_after_consent = $this->_has_return_after_consent($entry_id);
+    log_message('debug', "Endterm visibility: has_return_after_consent=" . ($has_return_after_consent ? 'true' : 'false') . ", entry_id={$entry_id}");
+    if ($has_return_after_consent) {
+        log_message('debug', "Endterm visibility: return after staff consent. entry_id={$entry_id}");
+        return false;
+    }
+    
+    // Second supervisor hasn't approved yet, OR their approval was invalidated by a return
+    $second_supervisor_action = $this->_get_endterm_last_action($entry_id, $staff_id);
+    log_message('debug', "Endterm visibility: second supervisor action={$second_supervisor_action}, entry_id={$entry_id}");
+    
+    if ($second_supervisor_action == 'Approved') {
+        // Check if there's a return after the second supervisor's approval
+        // If there is, their approval is invalidated and they should see it again
+        $has_return_after_second_approval = $this->_has_return_after_approval($entry_id, $staff_id);
+        log_message('debug', "Endterm visibility: second supervisor approved, checking for return after. has_return={$has_return_after_second_approval}, entry_id={$entry_id}");
+        
+        if (!$has_return_after_second_approval) {
+            // No return after approval, so they've already approved and it's still valid
+            log_message('debug', "Endterm visibility: second supervisor already approved (no return after). entry_id={$entry_id}");
+            return false;
+        }
+        // If there's a return after their approval, continue (they can see it again)
+        log_message('debug', "Endterm visibility: second supervisor approved but was returned, allowing visibility. entry_id={$entry_id}");
+    }
+    
+    log_message('debug', "Endterm visibility: PASSED - second supervisor can see. entry_id={$entry_id}, staff_id={$staff_id}");
+    return true;
+}
+
+/**
+ * Calculate overall status for an endterm entry
+ */
+private function _calculate_endterm_status($entry, $supervisor1_action, $supervisor2_action)
+{
+    // Check if returned
+    if ($entry->endterm_draft_status == 1) {
+        if ($supervisor2_action == 'Returned' || $supervisor1_action == 'Returned') {
+            return 'Returned';
+        }
+    }
+    
+    // Single supervisor scenario
+    if (empty($entry->endterm_supervisor_2)) {
+        if ($supervisor1_action == 'Approved' && 
+            !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1)) {
+            return 'Approved';
+        }
+        return 'Pending First Supervisor';
+    }
+    
+    // Two supervisor scenario
+    if ($supervisor1_action == 'Approved' && $supervisor2_action == 'Approved') {
+        // Check if there's a return after either approval
+        if (!$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1) &&
+            !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_2)) {
+            return 'Approved';
+        }
+    }
+    
+    // Check if pending second supervisor
+    if ($supervisor1_action == 'Approved' && 
+        !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1) &&
+        !empty($entry->endterm_staff_consent_at)) {
+        return 'Pending Second Supervisor';
+    }
+    
+    return 'Pending First Supervisor';
+}
+
 public function get_all_pending_approvals($staff_id)
 {
     // Get pending PPA approvals
@@ -975,21 +1391,253 @@ public function get_all_pending_approvals($staff_id)
     }
 
     // Get pending Midterm approvals based on midterm supervisors
+    // Exclude entries that have already been approved
+    $staff_id_escaped = (int)$staff_id;
     $sql = "SELECT 
                 p.*, 
                 CONCAT(s.fname, ' ', s.lname) AS staff_name,
-                'midterm' as approval_type
+                'midterm' as approval_type,
+                p.midterm_supervisor_1 as supervisor_id,
+                p.midterm_supervisor_2 as supervisor2_id,
+                -- Midterm Supervisor 1 last action
+                (
+                    SELECT a1.action 
+                    FROM ppa_approval_trail_midterm a1
+                    WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                    AND a1.staff_id = p.midterm_supervisor_1
+                    ORDER BY a1.id DESC LIMIT 1
+                ) AS supervisor1_action,
+                -- Midterm Supervisor 2 last action
+                (
+                    SELECT a2.action 
+                    FROM ppa_approval_trail_midterm a2
+                    WHERE a2.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                    AND a2.staff_id = p.midterm_supervisor_2
+                    ORDER BY a2.id DESC LIMIT 1
+                ) AS supervisor2_action,
+                -- Compute overall status
+                CASE 
+                    WHEN p.midterm_supervisor_2 IS NULL AND
+                        COALESCE((
+                            SELECT a1.action 
+                            FROM ppa_approval_trail_midterm a1 
+                            WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                            AND a1.staff_id = p.midterm_supervisor_1 
+                            ORDER BY a1.id DESC LIMIT 1
+                        ), '') = 'Approved'
+                        -- AND there's no 'Returned' action after the approval
+                        AND NOT EXISTS (
+                            SELECT 1 
+                            FROM ppa_approval_trail_midterm a_returned 
+                            WHERE a_returned.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                            AND a_returned.action = 'Returned'
+                            AND a_returned.id > (
+                                SELECT MAX(a_approved.id) 
+                                FROM ppa_approval_trail_midterm a_approved 
+                                WHERE a_approved.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                                AND a_approved.staff_id = p.midterm_supervisor_1 
+                                AND a_approved.action = 'Approved'
+                            )
+                        )
+                    THEN 'Approved'
+                    WHEN p.midterm_supervisor_2 IS NOT NULL AND
+                        COALESCE((
+                            SELECT a1.action 
+                            FROM ppa_approval_trail_midterm a1 
+                            WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                            AND a1.staff_id = p.midterm_supervisor_1 
+                            ORDER BY a1.id DESC LIMIT 1
+                        ), '') = 'Approved' AND
+                        COALESCE((
+                            SELECT a2.action 
+                            FROM ppa_approval_trail_midterm a2 
+                            WHERE a2.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                            AND a2.staff_id = p.midterm_supervisor_2 
+                            ORDER BY a2.id DESC LIMIT 1
+                        ), '') = 'Approved'
+                        -- AND there's no 'Returned' action after either approval
+                        AND NOT EXISTS (
+                            SELECT 1 
+                            FROM ppa_approval_trail_midterm a_returned 
+                            WHERE a_returned.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                            AND a_returned.action = 'Returned'
+                            AND (
+                                a_returned.id > (
+                                    SELECT MAX(a_approved.id) 
+                                    FROM ppa_approval_trail_midterm a_approved 
+                                    WHERE a_approved.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                                    AND a_approved.staff_id = p.midterm_supervisor_1 
+                                    AND a_approved.action = 'Approved'
+                                )
+                                OR
+                                a_returned.id > (
+                                    SELECT MAX(a_approved.id) 
+                                    FROM ppa_approval_trail_midterm a_approved 
+                                    WHERE a_approved.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                                    AND a_approved.staff_id = p.midterm_supervisor_2 
+                                    AND a_approved.action = 'Approved'
+                                )
+                            )
+                        )
+                    THEN 'Approved'
+                    WHEN p.midterm_draft_status = 1 AND COALESCE((
+                        SELECT a2.action 
+                        FROM ppa_approval_trail_midterm a2 
+                        WHERE a2.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                        AND a2.staff_id = p.midterm_supervisor_2 
+                        ORDER BY a2.id DESC LIMIT 1
+                    ), '') = 'Returned'
+                    THEN 'Returned'
+                    WHEN p.midterm_draft_status = 1 AND COALESCE((
+                        SELECT a1.action 
+                        FROM ppa_approval_trail_midterm a1 
+                        WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                        AND a1.staff_id = p.midterm_supervisor_1 
+                        ORDER BY a1.id DESC LIMIT 1
+                    ), '') = 'Returned'
+                    THEN 'Returned'
+                    WHEN p.midterm_supervisor_2 IS NOT NULL AND
+                        COALESCE((
+                            SELECT a1.action 
+                            FROM ppa_approval_trail_midterm a1 
+                            WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                            AND a1.staff_id = p.midterm_supervisor_1 
+                            ORDER BY a1.id DESC LIMIT 1
+                        ), '') = 'Approved'
+                        -- AND there's no 'Returned' action after the approval
+                        AND NOT EXISTS (
+                            SELECT 1 
+                            FROM ppa_approval_trail_midterm a_returned 
+                            WHERE a_returned.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                            AND a_returned.action = 'Returned'
+                            AND a_returned.id > (
+                                SELECT MAX(a_approved.id) 
+                                FROM ppa_approval_trail_midterm a_approved 
+                                WHERE a_approved.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                                AND a_approved.staff_id = p.midterm_supervisor_1 
+                                AND a_approved.action = 'Approved'
+                            )
+                        )
+                    THEN 'Pending Second Supervisor'
+                    ELSE 'Pending First Supervisor'
+                END AS overall_status
             FROM ppa_entries p
             JOIN staff s ON s.staff_id = p.staff_id
             WHERE
-              (p.midterm_supervisor_1 = ? OR p.midterm_supervisor_2 = ?)
-              AND p.midterm_draft_status = 0
-              AND (p.midterm_sign_off = 1 OR p.midterm_sign_off IS NULL)
-            ORDER BY p.created_at DESC";
-    $pending_midterms = $this->db->query($sql, [$staff_id, $staff_id])->result_array();
+              p.midterm_created_at IS NOT NULL
+              AND (
+                -- First supervisor: must be submitted (draft_status = 0)
+                -- Show if entry is submitted and not yet approved by first supervisor
+                -- This includes entries that were returned (by anyone) and then resubmitted
+                (p.midterm_supervisor_1 = {$staff_id_escaped} AND 
+                 p.midterm_draft_status = 0 AND
+                 (p.midterm_sign_off = 1 OR p.midterm_sign_off IS NULL) AND
+                 (
+                   -- Check if most recent action by first supervisor is NOT 'Approved'
+                   -- This handles: NULL (never approved), 'Returned' (first supervisor returned it)
+                   COALESCE((
+                       SELECT a1.action 
+                       FROM ppa_approval_trail_midterm a1 
+                       WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                       AND a1.staff_id = p.midterm_supervisor_1 
+                       ORDER BY a1.id DESC LIMIT 1
+                   ), '') != 'Approved'
+                   OR
+                   -- OR if entry was returned by ANYONE (first or second supervisor, HR officer, etc.) and then resubmitted
+                   -- Check if there's a 'Returned' action (by anyone) followed by a 'Submitted' or 'Updated' action
+                   EXISTS (
+                       SELECT 1 
+                       FROM ppa_approval_trail_midterm a_returned 
+                       WHERE a_returned.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                       AND a_returned.action = 'Returned'
+                       AND EXISTS (
+                           SELECT 1 
+                           FROM ppa_approval_trail_midterm a_resubmitted 
+                           WHERE a_resubmitted.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                           AND a_resubmitted.action IN ('Submitted', 'Updated')
+                           AND a_resubmitted.id > a_returned.id
+                       )
+                   )
+                 ))
+                OR
+                -- Second supervisor: can see if first approved (even if still draft)
+                (p.midterm_supervisor_2 = {$staff_id_escaped} AND
+                 p.midterm_supervisor_2 IS NOT NULL AND
+                 COALESCE((
+                     SELECT a1.action 
+                     FROM ppa_approval_trail_midterm a1 
+                     WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                     AND a1.staff_id = p.midterm_supervisor_1 
+                     ORDER BY a1.id DESC LIMIT 1
+                 ), '') = 'Approved' AND
+                 COALESCE((
+                     SELECT a2.action 
+                     FROM ppa_approval_trail_midterm a2 
+                     WHERE a2.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+                     AND a2.staff_id = p.midterm_supervisor_2 
+                     ORDER BY a2.id DESC LIMIT 1
+                 ), '') != 'Approved')
+              )
+            ORDER BY p.midterm_created_at DESC";
+    $pending_midterms = $this->db->query($sql)->result_array();
+
+    // Get pending Endterm approvals using helper functions
+    $this->db->select('p.*, CONCAT(s.fname, " ", s.lname) AS staff_name, "endterm" as approval_type, 
+                       p.endterm_supervisor_1 as supervisor_id, p.endterm_supervisor_2 as supervisor2_id');
+    $this->db->from('ppa_entries p');
+    $this->db->join('staff s', 's.staff_id = p.staff_id');
+    $this->db->where('p.endterm_created_at IS NOT NULL', null, false);
+    
+    // Get all endterm entries first
+    $all_endterms = $this->db->get()->result();
+    
+    $pending_endterms = [];
+    foreach ($all_endterms as $entry) {
+        $can_see = false;
+        $status = 'Pending First Supervisor';
+        
+        // Check if first supervisor can see it
+        if (!empty($entry->endterm_supervisor_1) && (int)$entry->endterm_supervisor_1 == (int)$staff_id && 
+            $this->_can_first_supervisor_see_endterm($entry->entry_id, $staff_id)) {
+            $can_see = true;
+        }
+        
+        // Check if second supervisor can see it
+        if (!empty($entry->endterm_supervisor_2) && (int)$entry->endterm_supervisor_2 == (int)$staff_id) {
+            $can_second_see = $this->_can_second_supervisor_see_endterm($entry->entry_id, $staff_id);
+            log_message('debug', "Second supervisor check: entry_id={$entry->entry_id}, staff_id={$staff_id}, supervisor2={$entry->endterm_supervisor_2}, can_see=" . ($can_second_see ? 'true' : 'false'));
+            if ($can_second_see) {
+                $can_see = true;
+                $status = 'Pending Second Supervisor';
+            }
+        }
+        
+        if ($can_see) {
+            // Get supervisor actions for status calculation
+            $supervisor1_action = $this->_get_endterm_last_action($entry->entry_id, $entry->endterm_supervisor_1);
+            $supervisor2_action = $entry->endterm_supervisor_2 ? 
+                $this->_get_endterm_last_action($entry->entry_id, $entry->endterm_supervisor_2) : '';
+            
+            // Calculate overall status
+            $status = $this->_calculate_endterm_status($entry, $supervisor1_action, $supervisor2_action);
+            
+            // Convert to array and add fields
+            $entry_array = (array)$entry;
+            $entry_array['supervisor1_action'] = $supervisor1_action;
+            $entry_array['supervisor2_action'] = $supervisor2_action;
+            $entry_array['overall_status'] = $status;
+            
+            $pending_endterms[] = $entry_array;
+        }
+    }
+    
+    // Sort by created_at descending
+    usort($pending_endterms, function($a, $b) {
+        return strtotime($b['endterm_created_at']) - strtotime($a['endterm_created_at']);
+    });
 
     // Merge and return
-    return array_merge($pending_ppas, $pending_midterms);
+    return array_merge($pending_ppas, $pending_midterms, $pending_endterms);
 }
 
 public function get_pending_midterm($staff_id)

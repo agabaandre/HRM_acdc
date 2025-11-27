@@ -333,7 +333,7 @@
   <!-- Enhanced Filters -->
   <div class="card filter-card">
     <div class="card-header">
-      <h5 class="mb-0 text-white">
+      <h5 class="mb-0 text-dark">
         <i class="fa fa-filter me-2"></i>Filter Approvers
       </h5>
     </div>

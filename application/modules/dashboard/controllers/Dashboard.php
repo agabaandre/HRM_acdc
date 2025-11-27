@@ -17,24 +17,84 @@ class Dashboard extends MX_Controller
 	{
 		$data['module'] = $this->dashmodule;
 		$data['title'] = "Main Dashboard";
-		$data['staff'] = $this->dash_mdl->all_staff();
-		$data['staff_renewal'] = $this->dash_mdl->staff_renewal();
-		$data['two_months'] = $this->dash_mdl->due_contracts();
-		$data['expired'] = $this->dash_mdl->expired_contracts();
-		$data['member_states'] = $this->dash_mdl->nationalities();
-		$data['data_points'] = $this->dash_mdl->staff_by_gender();
-		$data['staff_by_member_state'] = $this->dash_mdl->staff_by_member_state();
-		$data['staff_by_contract'] = $this->dash_mdl->staff_by_contract();
-		$data['staff_by_division'] = $this->dash_mdl->staff_by_division();
-		$data['today'] = $this->staff_mdl->getBirthdays(0);
-		//dd($data['today']);
-		$data['tomorrow'] = $this->staff_mdl->getBirthdays(1);
-		$data['week'] = $this->staff_mdl->getBirthdays(7);
-		$data['month'] = $this->staff_mdl->getBirthdays(30);
 		$data['uptitle'] = "Main Dashboard";
-		//dd($this->dash_mdl->get_all());
+		
+		// Load filter options
+		$data['divisions'] = cache_list('divisions', function () {
+			return $this->db->order_by('division_name')->get('divisions')->result();
+		}, 120);
+		$data['duty_stations'] = cache_list('duty_stations', function () {
+			return $this->db->order_by('duty_station_name')->get('duty_stations')->result();
+		}, 120);
+		$data['funders'] = cache_list('funders', function () {
+			return $this->db->order_by('funder')->get('funders')->result();
+		}, 120);
+		$data['jobs'] = cache_list('jobs', function () {
+			return $this->db->order_by('job_name')->get('jobs')->result();
+		}, 120);
+
+		// Pass permissions to view for dashboard tabs
+		$user = $this->session->userdata('user');
+		$data['permissions'] = isset($user->permissions) ? $user->permissions : [];
 
 		render('home', $data);
+	}
+	
+	public function fetch_dashboard_data()
+	{
+		$division_id = $this->input->get('division_id');
+		$duty_station_id = $this->input->get('duty_station_id');
+		$funder_id = $this->input->get('funder_id');
+		$job_id = $this->input->get('job_id');
+		
+		$data = $this->dash_mdl->get_dashboard_data($division_id, $duty_station_id, $funder_id, $job_id);
+		
+		header('Content-Type: application/json');
+		echo json_encode($data);
+	}
+	
+	public function get_birthday_events()
+	{
+		// Clear any existing output
+		if (ob_get_level()) {
+			ob_end_clean();
+		}
+		ob_start();
+
+		try {
+			$division_id = $this->input->get('division_id');
+			$duty_station_id = $this->input->get('duty_station_id');
+			$funder_id = $this->input->get('funder_id');
+			$job_id = $this->input->get('job_id');
+			$start = $this->input->get('start');
+			$end = $this->input->get('end');
+			
+			// Convert empty strings to null
+			$division_id = (!empty($division_id)) ? $division_id : null;
+			$duty_station_id = (!empty($duty_station_id)) ? $duty_station_id : null;
+			$funder_id = (!empty($funder_id)) ? $funder_id : null;
+			$job_id = (!empty($job_id)) ? $job_id : null;
+			$start = (!empty($start)) ? $start : null;
+			$end = (!empty($end)) ? $end : null;
+			
+			$events = $this->dash_mdl->get_birthday_events($division_id, $duty_station_id, $funder_id, $job_id, $start, $end);
+			
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode($events, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+		} catch (Exception $e) {
+			log_message('error', 'Error in get_birthday_events: ' . $e->getMessage());
+			log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+			$this->output
+				->set_status_header(500)
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode(['error' => 'Failed to load birthday events', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+		} finally {
+			// Ensure output buffer is cleaned even if an error occurs
+			while (ob_get_level()) {
+				ob_end_clean();
+			}
+		}
 	}
 	public function fetch_messages_ajax() {
 		$staff_id = $this->session->userdata('user')->staff_id;

@@ -4,23 +4,97 @@
 <html>
 <head>
   <style>
-    body { font-family: serif; font-size: 12px; margin: 10px; }
-    .header img { width: 150px; }
-    .section-title { font-size: 14px; font-weight: bold; margin-top: 20px; border-bottom: 1px solid #ccc; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    td, th { border: 1px solid #ccc; padding: 3px; text-align: left; }
-    .no-border td { border: none; }
-    .objective-table th small { display: block; font-weight: normal !important; font-style: italic !important; font-size: 10px; color: #555; }
-    .page-break { page-break-before: always; }
-    small{
+    * { box-sizing: border-box; }
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      color: #0f172a; 
+    }
+    
+    body {
+      font-size: 14px;
+      font-family: "freesans", arial, sans-serif;
+      background: #FFFFFF;
+      margin: 40px;
+      line-height: 1.8 !important;
+      letter-spacing: 0.02em;
+      word-spacing: 0.08em;
+      margin-bottom: 1.2em;
+    }
+
+    .header img {
+      width: 150px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-top: 25px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+      color: #100f0f;
+      letter-spacing: 0.3px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background: #fff;
+    }
+
+    td, th {
+      border: 1px solid #e2e8f0;
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background-color: #f9fafb;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .no-border td {
+      border: none;
+    }
+
+    .objective-table th small {
+      display: block;
       font-weight: normal !important;
+      font-style: italic !important;
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    small {
+      font-weight: normal !important;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    b, strong {
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .muted {
+      color: #64748b;
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
-<div style="width: 100%; text-align: center; padding-bottom: 5px;">
-<div style="width: 100%; padding-bottom: 5px;">
-<div style="width: 100%; padding: 10px 0;">
+<div style="width: 100%; text-align: center; padding-bottom: 15px; margin-bottom: 20px;">
+<div style="width: 100%; padding-bottom: 10px;">
+<div style="width: 100%; padding: 15px 0;">
   <!-- Top Row: Logo and Tagline -->
   <div style="display:flex; justify-content: space-between; align-items: center;">
 
@@ -31,14 +105,14 @@
 
     <!-- Right: Tagline -->
     <div style="text-align: right; width: 35%; float:right; margin-top:10px;">
-      <span style="font-size: 14px; color: #911C39;">Safeguarding Africa’s Health</span>
+      <span style="font-size: 14px; color: #911C39; font-weight: 500; letter-spacing: 0.3px;">Safeguarding Africa's Health</span>
     </div>
 
   </div>
 
   <!-- Centered Title -->
-  <div style="text-align: center; margin-top: 5px;">
-    <h3 style="margin: 0; font-weight: bold;">PERFORMANCE PLANNING AGREEMENT</h3>
+  <div style="text-align: center; margin-top: 12px;">
+    <h3 style="margin: 0; font-weight: bold; font-size: 18px; color: #100f0f; letter-spacing: 0.5px;">PERFORMANCE PLANNING AGREEMENT</h3>
   </div>
 </div>
 
@@ -51,8 +125,8 @@
   
   <table class="form-table table-bordered">
   <thead>
-    <tr style="background-color: #f2f2f2;">
-      <th colspan="4" style="text-align: left; font-weight: bold;">
+    <tr style="background-color: #f9fafb;">
+      <th colspan="4" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
 	  A. Staff Details
       </th>
     </tr>
@@ -89,10 +163,10 @@
   </tr>
 </table>
   <table class="objective-table">
-  <tr style="background-color: #f2f2f2;">
-      <td colspan="5">
-	  <div style="text-align: left; font-weight: bold;"> B. Performance Objectives</div>
-       <p><i>Individual objectives should be derived from the Departmental Work Plan. There must be a cascading correlation between the two.</i></p>
+  <tr style="background-color: #f9fafb;">
+      <td colspan="5" style="padding: 12px;">
+	  <div style="text-align: left; font-weight: 600; color: #0f172a; margin-bottom: 6px;"> B. Performance Objectives</div>
+       <p style="margin: 0; font-style: italic; color: #64748b; font-size: 12px;">Individual objectives should be derived from the Departmental Work Plan. There must be a cascading correlation between the two.</p>
 
       </td>
     </tr>
@@ -123,8 +197,8 @@
 
   <table width="100%" border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
   <thead>
-    <tr style="background-color: #f2f2f2;">
-      <th colspan="3" style="text-align: left; font-weight: bold;">
+      <tr style="background-color: #f9fafb;">
+      <th colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
         C. Competencies
       </th>
     </tr>
@@ -137,7 +211,7 @@
       </td>
     </tr>
     <tr>
-      <td colspan="3" style="text-align: left; font-weight: bold;">
+      <td colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 8px;">
         AU Values
       </td>
     </tr>
@@ -147,7 +221,7 @@
         Efficiency and Professionalism – Information and Knowledge Sharing
       </td>
     </tr>
-    <tr style="background-color: #f2f2f2; font-weight: bold; text-align: center;">
+    <tr style="background-color: #f9fafb; font-weight: 600; text-align: center; color: #0f172a;">
       <td>Core</td>
       <td>Functional</td>
       <td>Leadership</td>
@@ -180,8 +254,8 @@
   
   <table>
   <thead>
-    <tr style="background-color: #f2f2f2;">
-      <th colspan="3" style="text-align: left; font-weight: bold;">
+      <tr style="background-color: #f9fafb;">
+      <th colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
       D. Personal Development Plan
       </th>
     </tr>
@@ -219,17 +293,17 @@
   </table>
   <?php endif; ?>
   <div style="margin-top: 20px;">
-  <table width="100%" border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse; font-size: 10pt;">
+  <table width="100%" border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse;">
    <thead>
-    <tr style="background-color: #f2f2f2;">
-      <th colspan="3" style="text-align: left; font-weight: bold;">
+      <tr style="background-color: #f9fafb;">
+      <th colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
 	    E. Staff and Supervisor Sign Off
       </th>
     </tr>
   </thead>
-    <tr style="background-color: #f2f2f2; font-weight: bold;">
-      <td width="50%" style="text-align: center;">Staff</td>
-      <td width="50%" style="text-align: center;">Supervisor</td>
+    <tr style="background-color: #f9fafb; font-weight: 600;">
+      <td width="50%" style="text-align: center; color: #0f172a;">Staff</td>
+      <td width="50%" style="text-align: center; color: #0f172a;">Supervisor</td>
     </tr>
     <tr>
       <td>
@@ -275,7 +349,7 @@
 
     <!-- Optional Second Supervisor -->
     <?php if (!empty($ppa->supervisor2_id)): ?>
-      <tr style="background-color: #f2f2f2; font-weight: bold;">
+      <tr style="background-color: #f9fafb; font-weight: 600; color: #0f172a;">
         <td colspan="2" style="text-align: center;">Second Supervisor
     
 

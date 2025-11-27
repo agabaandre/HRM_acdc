@@ -738,12 +738,19 @@ public function get_midterm_dashboard_data()
     $this->db->where("pe.midterm_draft_status !=", 1);
     $ppa_with_midterm = array_column($this->db->get()->result(), 'staff_id');
     
-    // Periods list (midterm)
-    $this->db->distinct()->select("pe.performance_period,pe.created_at")->from("ppa_entries pe");
+    // Periods list (midterm) - only get distinct periods from actual midterm entries
+    $this->db->distinct();
+    $this->db->select("pe.performance_period");
+    $this->db->from("ppa_entries pe");
+    $this->db->where("pe.midterm_draft_status !=", 1); // Only non-draft midterms
+    $this->db->where("pe.draft_status !=", 1); // Only non-draft PPAs
+    $this->db->where("pe.midterm_updated_at IS NOT NULL", null, false); // Only periods with actual midterm data
     if ($is_restricted) $this->db->where("pe.staff_id", $staff_id);
-    $this->db->order_by("pe.created_at", "DESC");
-    $periods = array_column($this->db->get()->result(), 'performance_period');
-    $current_period = $periods[0] ?? $period;
+    $this->db->order_by("pe.performance_period", "DESC");
+    $periods_result = $this->db->get()->result();
+    $periods = array_column($periods_result, 'performance_period');
+    $periods = array_unique($periods); // Ensure distinct values
+    $current_period = !empty($periods) ? $periods[0] : $period;
 
     // Age groups for midterm
     $age_groups = [

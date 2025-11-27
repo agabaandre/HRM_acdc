@@ -60,31 +60,57 @@
 
 <script>
   const base_url = "<?= base_url(); ?>";
-  Highcharts.setOptions({ credits: { enabled: false } });
+  Highcharts.setOptions({ 
+    credits: { enabled: false },
+    title: { text: '' }
+  });
 </script>
 
-<div class="container-fluid py-0 px-4" id="dashboardContent">
+<div class="container-fluid py-4 px-4" id="dashboardContent">
+  <!-- Dashboard Navigation Tabs -->
+  <?php $this->load->view('performance/partials/dashboard_tabs'); ?>
+  
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="mb-1" style="color: #911C39; font-weight: 600;">
+            <i class="fa fa-chart-line me-2"></i>Midterm Performance Dashboard
+          </h2>
+          <p class="text-muted mb-0">Comprehensive analytics and insights for midterm performance reviews</p>
+        </div>
+        <button class="btn btn-outline-primary" onclick="window.print()">
+          <i class="fa fa-print me-2"></i> Print Report
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Filters -->
   <div class="row mb-4" id="dashboardFilters">
-    <div class="col-md-4">
-      <label class="form-label fw-bold text-secondary">Division</label>
-      <select id="divisionFilter" class="form-select border-success select2">
+    <div class="col-md-5">
+      <label class="form-label fw-bold" style="color: #495057;">
+        <i class="fa fa-building me-1"></i>Division
+      </label>
+      <select id="divisionFilter" class="form-select select2" style="border-color: #119A48;">
         <option value="">All Divisions</option>
         <?php foreach ($divisions as $div): ?>
           <option value="<?= $div->division_id ?>"><?= $div->division_name ?></option>
         <?php endforeach; ?>
       </select>
     </div>
-    <div class="col-md-4">
-      <label class="form-label fw-bold text-secondary">Performance Period</label>
-      <select id="periodFilter" class="form-select border-success select2">
-        <option value="">All Periods</option>
+    <div class="col-md-5">
+      <label class="form-label fw-bold" style="color: #495057;">
+        <i class="fa fa-calendar-alt me-1"></i>Performance Period
+      </label>
+      <select id="periodFilter" class="form-select select2" style="border-color: #119A48;">
+        <option value="">Loading periods...</option>
       </select>
     </div>
-    <div class="col-md-4 d-flex align-items-end">
-      <button class="btn btn-outline-success w-100" onclick="window.print()">
-        <i class="fa fa-print"></i> Print Report
+    <div class="col-md-2 d-flex align-items-end">
+      <button class="btn w-100" style="background-color: #119A48; color: white;" onclick="loadMidtermDashboard()">
+        <i class="fa fa-sync-alt me-1"></i>Refresh
       </button>
     </div>
   </div>
@@ -94,13 +120,76 @@
 
   <!-- Charts Section -->
   <div class="row g-4">
-    <div class="col-lg-6"><div id="approvalBreakdownChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="contractTypeChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="trainingCategoriesChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="avgApprovalChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-12"><div id="divisionWiseChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-12"><div id="trainingSkillsChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-12"><div id="submissionTrendChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6">
+      <div class="card shadow-sm rounded border-0 h-100">
+        <div class="card-body p-4">
+          <h5 class="card-title mb-4" style="color: #119A48; font-weight: 600;">
+            <i class="fa fa-check-circle me-2"></i>Approval Status Breakdown
+          </h5>
+          <div id="approvalBreakdownChart" style="min-height: 300px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card shadow-sm rounded border-0 h-100">
+        <div class="card-body p-4">
+          <h5 class="card-title mb-4" style="color: #7A7A7A; font-weight: 600;">
+            <i class="fa fa-file-contract me-2"></i>Midterm Completion by Contract Type
+          </h5>
+          <div id="contractTypeChart" style="min-height: 300px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card shadow-sm rounded border-0 h-100">
+        <div class="card-body p-4">
+          <h5 class="card-title mb-4" style="color: #001011; font-weight: 600;">
+            <i class="fa fa-clock me-2"></i>Average Approval Time
+          </h5>
+          <div id="avgApprovalChart" style="min-height: 300px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card shadow-sm rounded border-0 h-100">
+        <div class="card-body p-4">
+          <h5 class="card-title mb-4" style="color: #001011; font-weight: 600;">
+            <i class="fa fa-list-alt me-2"></i>Training Categories from Midterm PPA
+          </h5>
+          <div id="trainingCategoriesChart" style="min-height: 300px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-12">
+      <div class="card shadow-sm rounded border-0">
+        <div class="card-body p-4">
+          <h5 class="card-title mb-4" style="color: #911C39; font-weight: 600;">
+            <i class="fa fa-building me-2"></i>Midterm Submissions by Division
+          </h5>
+          <div id="divisionWiseChart" style="min-height: 400px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-12">
+      <div class="card shadow-sm rounded border-0">
+        <div class="card-body p-4">
+          <h5 class="card-title mb-4" style="color: #911C39; font-weight: 600;">
+            <i class="fa fa-graduation-cap me-2"></i>Top 10 Training Skills Requested (Midterm)
+          </h5>
+          <div id="trainingSkillsChart" style="min-height: 400px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-12">
+      <div class="card shadow-sm rounded border-0">
+        <div class="card-body p-4">
+          <h5 class="card-title mb-4" style="color: #385CAD; font-weight: 600;">
+            <i class="fa fa-chart-line me-2"></i>Midterm Submission Trend Over Time
+          </h5>
+          <div id="submissionTrendChart" style="min-height: 350px;"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -119,10 +208,22 @@
       period: period
     }, function (data) {
 
-      if ($('#periodFilter option').length <= 1 && data.periods) {
+      // Populate period filter with distinct periods
+      if (data.periods && data.periods.length > 0) {
+        $('#periodFilter').html('<option value="">All Periods</option>');
         data.periods.forEach(period => {
-          $('#periodFilter').append(`<option value="${period}" ${period === data.current_period ? 'selected' : ''}>${period}</option>`);
+          const periodDisplay = period.replace(/-/g, ' ');
+          const isSelected = period === data.current_period ? 'selected' : '';
+          $('#periodFilter').append(`<option value="${period}" ${isSelected}>${periodDisplay}</option>`);
         });
+        // Re-initialize select2 to update display
+        $('#periodFilter').select2({
+          theme: 'bootstrap4',
+          width: '100%',
+          dropdownParent: $('#periodFilter').parent()
+        });
+      } else {
+        $('#periodFilter').html('<option value="">No periods available</option>');
       }
 
       const cards = [
@@ -135,46 +236,82 @@
       $('#summaryCards').html(cards.map(card => `
         <div class="col mb-3">
           <a href="javascript:void(0)" class="view-staff-link text-decoration-none" data-type="${card.type}">
-            <div class="card shadow-sm rounded-2 border-0 text-white" style="background-color:${card.color}">
-              <div class="card-body d-flex align-items-center justify-content-between">
+            <div class="card shadow-sm rounded-3 border-0 text-white h-100" style="background: linear-gradient(135deg, ${card.color} 0%, ${card.color}dd 100%); transition: transform 0.2s;">
+              <div class="card-body d-flex align-items-center justify-content-between p-4">
                 <div>
-                  <p class="mb-0 text-white fw-bold">${card.label}</p>
-                  <h4 class="fw-bold text-white">${card.value}</h4>
+                  <p class="mb-2 text-white-50 fw-semibold small text-uppercase">${card.label}</p>
+                  <h2 class="fw-bold text-white mb-0">${card.value || 0}</h2>
                 </div>
-                <div class="fs-1"><i class="fa ${card.icon}"></i></div>
+                <div class="fs-1 opacity-75"><i class="fa ${card.icon}"></i></div>
               </div>
             </div>
           </a>
         </div>
       `).join(''));
+      
+      // Add hover effect
+      $('.view-staff-link').hover(
+        function() { $(this).find('.card').css('transform', 'translateY(-5px)'); },
+        function() { $(this).find('.card').css('transform', 'translateY(0)'); }
+      );
 
+      // Approval Status Breakdown Chart
       Highcharts.chart('approvalBreakdownChart', {
-        chart: { type: 'pie' },
-        title: { text: 'Midterm Approval Status Breakdown', style: { color: '#119A48' } },
+        chart: { type: 'pie', height: 300 },
+        title: { text: '' },
         colors: ['#119A48', '#fbb924'],
+        plotOptions: {
+          pie: {
+            allowPointSelect: true,
+            cursor: 'pointer',
+            dataLabels: {
+              enabled: true,
+              format: '<b>{point.name}</b>: {point.y} ({point.percentage:.1f}%)'
+            }
+          }
+        },
         series: [{
           name: 'Status',
           data: [
-            { name: 'Approved', y: parseInt(data.approved) },
-            { name: 'Pending', y: parseInt(data.submitted) }
+            { name: 'Approved', y: parseInt(data.approved || 0) },
+            { name: 'Pending', y: parseInt(data.submitted || 0) }
           ]
         }]
       });
 
+      // Contract Type Chart
       Highcharts.chart('contractTypeChart', {
-        chart: { type: 'bar' },
-        title: { text: 'Midterm PPA Completion by Contract Type', style: { color: '#7A7A7A' } },
-        xAxis: { categories: data.by_contract.map(c => c.name) },
-        yAxis: { title: { text: 'Midterm Reviews Submitted' } },
+        chart: { type: 'bar', height: 300 },
+        title: { text: '' },
+        xAxis: {
+          categories: (data.by_contract || []).map(c => c.name),
+          title: { text: null }
+        },
+        yAxis: {
+          title: { text: 'Midterm Reviews Submitted' },
+          allowDecimals: false
+        },
         colors: ['#911C39'],
-        series: [{ name: 'Midterm Reviews', data: data.by_contract.map(c => parseInt(c.y)) }]
+        plotOptions: {
+          bar: {
+            dataLabels: {
+              enabled: true,
+              format: '{y}'
+            }
+          }
+        },
+        series: [{
+          name: 'Midterm Reviews',
+          data: (data.by_contract || []).map(c => parseInt(c.y || 0))
+        }]
       });
 
+      // Average Approval Time Chart
       Highcharts.chart('avgApprovalChart', {
-        chart: { type: 'solidgauge' },
-        title: { text: 'Avg Midterm Approval Time (Days)', style: { color: '#001011' } },
+        chart: { type: 'solidgauge', height: 300 },
+        title: { text: '' },
         pane: {
-          center: ['50%', '85%'],
+          center: ['50%', '75%'],
           size: '140%',
           startAngle: -90,
           endAngle: 90,
@@ -196,54 +333,120 @@
         },
         series: [{
           name: 'Days',
-          data: [parseFloat(data.avg_approval_days)],
+          data: [parseFloat(data.avg_approval_days || 0)],
           dataLabels: {
-            format: '<div style="text-align:center"><span style="font-size:1.5em;color:#5F5F5F">{y}</span><br/><span style="font-size:12px;color:silver">days</span></div>'
+            format: '<div style="text-align:center"><span style="font-size:2em;color:#5F5F5F;font-weight:bold">{y}</span><br/><span style="font-size:14px;color:silver">days</span></div>',
+            borderWidth: 0,
+            y: 20
           }
         }]
       });
 
-      Highcharts.chart('divisionWiseChart', {
-        chart: { type: 'column' },
-        title: { text: 'Midterm Submissions by Division', style: { color: '#911C39' } },
-        xAxis: { categories: data.by_division.map(d => d.name) },
-        yAxis: { title: { text: 'Midterm Submissions' } },
-        colors: ['#119A48'],
-        series: [{ name: 'Midterm Submissions', data: data.by_division.map(d => parseInt(d.y)) }]
-      });
-
+      // Training Categories Chart
       Highcharts.chart('trainingCategoriesChart', {
-        chart: { type: 'bar' },
-        title: { text: 'Training Categories from Midterm PPA', style: { color: '#001011' } },
-        xAxis: { categories: data.training_categories.map(c => c.name) },
-        yAxis: { title: { text: 'Requests' } },
-        colors: ['#C3A366'],
-        series: [{ name: 'Requests', data: data.training_categories.map(c => parseInt(c.y)) }]
-      });
-
-      Highcharts.chart('trainingSkillsChart', {
-        chart: { type: 'bar' },
-        title: { text: 'Top 10 Training Skills Requested (Midterm)', style: { color: '#911C39' } },
+        chart: { type: 'bar', height: 300 },
+        title: { text: '' },
         xAxis: {
-          categories: data.training_skills.map(s => s.name),
-          labels: { rotation: -45 }
+          categories: (data.training_categories || []).map(c => c.name),
+          title: { text: null }
         },
-        yAxis: { title: { text: 'Mentions' } },
-        colors: ['#fbb924'],
-        series: [{ name: 'Skills', data: data.training_skills.map(s => parseInt(s.y)) }]
+        yAxis: {
+          title: { text: 'Requests' },
+          allowDecimals: false
+        },
+        colors: ['#C3A366'],
+        plotOptions: {
+          bar: {
+            dataLabels: {
+              enabled: true,
+              format: '{y}'
+            }
+          }
+        },
+        series: [{
+          name: 'Requests',
+          data: (data.training_categories || []).map(c => parseInt(c.y || 0))
+        }]
       });
 
-      Highcharts.chart('submissionTrendChart', {
-        chart: { type: 'area' },
-        title: { text: 'Midterm Submission Trend Over Time', style: { color: '#385CAD' } },
+      // Division Wise Chart
+      Highcharts.chart('divisionWiseChart', {
+        chart: { type: 'column', height: 400 },
+        title: { text: '' },
         xAxis: {
-          categories: data.trend.map(item => item.date),
+          categories: (data.by_division || []).map(d => d.name),
+          title: { text: null }
+        },
+        yAxis: {
+          title: { text: 'Midterm Submissions' },
+          allowDecimals: false
+        },
+        colors: ['#119A48'],
+        plotOptions: {
+          column: {
+            dataLabels: {
+              enabled: true,
+              format: '{y}'
+            }
+          }
+        },
+        series: [{
+          name: 'Midterm Submissions',
+          data: (data.by_division || []).map(d => parseInt(d.y || 0))
+        }]
+      });
+
+      // Training Skills Chart
+      Highcharts.chart('trainingSkillsChart', {
+        chart: { type: 'bar', height: 400 },
+        title: { text: '' },
+        xAxis: {
+          categories: (data.training_skills || []).map(s => s.name),
+          labels: { rotation: -45, style: { fontSize: '12px' } }
+        },
+        yAxis: {
+          title: { text: 'Mentions' },
+          allowDecimals: false
+        },
+        colors: ['#fbb924'],
+        plotOptions: {
+          bar: {
+            dataLabels: {
+              enabled: true,
+              format: '{y}'
+            }
+          }
+        },
+        series: [{
+          name: 'Skills',
+          data: (data.training_skills || []).map(s => parseInt(s.y || 0))
+        }]
+      });
+
+      // Submission Trend Chart
+      Highcharts.chart('submissionTrendChart', {
+        chart: { type: 'area', height: 350 },
+        title: { text: '' },
+        xAxis: {
+          categories: (data.trend || []).map(item => item.date),
           tickmarkPlacement: 'on',
           title: { text: 'Date' }
         },
-        yAxis: { title: { text: 'Midterm Submissions' } },
+        yAxis: {
+          title: { text: 'Midterm Submissions' },
+          allowDecimals: false
+        },
         colors: ['#119A48'],
-        series: [{ name: 'Midterm Submissions', data: data.trend.map(item => parseInt(item.count)) }]
+        plotOptions: {
+          area: {
+            fillOpacity: 0.5,
+            marker: { enabled: false }
+          }
+        },
+        series: [{
+          name: 'Midterm Submissions',
+          data: (data.trend || []).map(item => parseInt(item.count || 0))
+        }]
       });
 
     }).fail(() => alert("Failed to load dashboard data. Please try again."));

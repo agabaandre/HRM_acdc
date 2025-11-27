@@ -15,7 +15,7 @@
             <?php if (in_array('76', $permissions)) : ?>
                 <li class="nav-item">
                     <a href="<?= base_url('dashboard') ?>" class="nav-link <?= activelink('dashboard', $this->uri->segment(1)) ?>">
-                        <div class=""><i class="bx bx-category"></i></div>
+                        <div class=""><i class="bx bx-home"></i></div>
                         <div class="menu-title">Dashboard</div>
                     </a>
                 </li>
@@ -50,7 +50,7 @@
 
             <!-- Attendance -->
             <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('83', $permissions)) : ?>
-                <li class="nav-item dropdown">
+                <!-- <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('attendance', $this->uri->segment(1)) ?>" href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-clock"></i></div>
                         <div class="menu-title">Attendance</div>
@@ -61,14 +61,14 @@
                         <li><a class="dropdown-item" href="<?= base_url('attendance/status') ?>"><i class="bx bx-right-arrow-alt"></i>Time Logs</a></li>
                         <li><a class="dropdown-item" href="<?= base_url('attendance/time_sheet') ?>"><i class="bx bx-right-arrow-alt"></i>Time Sheet</a></li>
                     </ul>
-                </li>
+                </li> -->
             <?php endif; ?>
 
             <!-- Leave -->
             <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('37', $permissions)) : ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('leave', $this->uri->segment(1)) ?>" href="#" data-bs-toggle="dropdown">
-                        <div class="parent-icon"><i class="fa fa-plane-departure"></i></div>
+                        <div class="parent-icon"><i class="bx bx-calendar-check"></i></div>
                         <div class="menu-title">Leave Application</div>
                     </a>
                     <ul class="dropdown-menu">
@@ -84,10 +84,28 @@
 
             <!-- Performance -->
             <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('74', $permissions)) : ?>
+                <?php
+                // Calculate pending approvals count for badge
+                $nav_pendingcount = 0;
+                try {
+                    if (!isset($this->per_mdl)) {
+                        $this->load->model('performance_mdl', 'per_mdl');
+                    }
+                    if (isset($this->per_mdl) && method_exists($this->per_mdl, 'get_all_pending_approvals')) {
+                        $nav_pending = $this->per_mdl->get_all_pending_approvals($this->session->userdata('user')->staff_id);
+                        $nav_pendingcount = is_array($nav_pending) ? count($nav_pending) : 0;
+                    } elseif (isset($this->per_mdl) && method_exists($this->per_mdl, 'get_pending_ppa')) {
+                        $nav_pending = $this->per_mdl->get_pending_ppa($this->session->userdata('user')->staff_id);
+                        $nav_pendingcount = is_array($nav_pending) ? count($nav_pending) : 0;
+                    }
+                } catch (Exception $e) {
+                    $nav_pendingcount = 0;
+                }
+                ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('performance', $this->uri->segment(1)) ?>" href="<?php echo base_url() ?>/performance/ppa_dashboard" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-line-chart"></i></div>
-                        <div class="menu-title">Performance</div>
+                        <div class="menu-title">Performance<?php if ($nav_pendingcount > 0): ?><span class="badge bg-danger ms-2"><?= $nav_pendingcount ?></span><?php endif; ?></div>
                     </a>
                     <ul class="dropdown-menu">
                         <?php if (in_array('38', $permissions) && !$ppa_exists) : ?>
@@ -116,15 +134,33 @@
                             <li><a class="dropdown-item" href="<?= base_url("performance/midterm/recent_midterm/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current Midterm</a></li>
                      <?php endif; ?>
                         
+                        <?php
+                           // Show End Term menu link if today is within the end_term period
+                           if (
+                               isset($ppa_settings->end_term_start, $ppa_settings->end_term_deadline) &&
+                               $today >= $ppa_settings->end_term_start &&
+                               $today <= $ppa_settings->end_term_deadline && $ppa_exists && $ppaIsapproved && !isset($endterm_exists) && !$this->per_mdl->isendterm_available($ppa_entryid)
+                           ): ?>
+                              <li>
+                                  <a class="dropdown-item" href="<?= base_url("performance/endterm/endterm_review/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>">
+                                      <i class="fa fa-plus"></i> Create Endterm
+                                  </a>
+                              </li>
+                           <?php endif; ?>
+                        
+                        <?php 
+                        $endterm_exists = $this->per_mdl->isendterm_available($ppa_entryid);
+                        if (in_array('38', $permissions) && $endterm_exists) : ?>
+                            <li><a class="dropdown-item" href="<?= base_url("performance/endterm/recent_endterm/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current Endterm</a></li>
+                     <?php endif; ?>
+                        
                         <?php if (in_array('82', $permissions)) : ?>
-                            <li><a class="dropdown-item" href="<?= base_url('performance/ppa_dashboard') ?>"><i class="bx bx-right-arrow-alt"></i>PPA Dashboard</a></li>
-                            <li><a class="dropdown-item" href="<?= base_url('performance/midterm/ppa_dashboard') ?>"><i class="bx bx-right-arrow-alt"></i>Midterm Dashboard</a></li>
                             <li><a class="dropdown-item" href="<?= base_url('performance/all_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>All PPAs Status</a></li>
                         <?php endif; ?>
 
                  
                         <li><a class="dropdown-item" href="<?= base_url('performance/my_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>My PPAs</a></li>
-                        <li><a class="dropdown-item" href="<?= base_url('performance/pending_approval') ?>"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge bg-danger ms-1"><?= @$pendingcount;//count($this->per_mdl->get_pending_ppa($this->session->userdata('user')->staff_id)) ?></span></a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('performance/pending_approval') ?>"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge bg-danger ms-1"><?= isset($pendingcount) ? $pendingcount : $nav_pendingcount ?></span></a></li>
                         <li><a class="dropdown-item" href="<?= base_url('performance/approved_by_me') ?>"><i class="bx bx-right-arrow-alt"></i>All Approved PPAs</a></li>
 
 
@@ -136,7 +172,7 @@
             <?php if (in_array('78', $permissions)) : ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('weektasks', $this->uri->segment(1)) ?>" href="#" data-bs-toggle="dropdown">
-                        <div class="parent-icon"><i class="fa fa-bar-chart"></i></div>
+                        <div class="parent-icon"><i class="bx bx-task"></i></div>
                         <div class="menu-title">Weekly Task Planner</div>
                     </a>
                     <ul class="dropdown-menu">

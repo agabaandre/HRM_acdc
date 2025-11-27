@@ -191,5 +191,316 @@ class Dashboard_mdl extends CI_Model
     return $this->db->get('staff')->result_array();
 }
 
+    public function get_dashboard_data($division_id = null, $duty_station_id = null, $funder_id = null, $job_id = null)
+    {
+        // Get latest contract for each staff
+        $subquery = $this->db->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
+        // Build base query for active staff - match staff table logic exactly
+        $this->db->select('s.staff_id');
+        $this->db->from('staff s');
+        $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->where_in('sc.status_id', [1, 2]); // Active & Due (same as staff table)
+        
+        // Apply filters
+        if ($division_id) {
+            $this->db->where('sc.division_id', $division_id);
+        }
+        if ($duty_station_id) {
+            $this->db->where('sc.duty_station_id', $duty_station_id);
+        }
+        if ($funder_id) {
+            $this->db->where('sc.funder_id', $funder_id);
+        }
+        if ($job_id) {
+            $this->db->where('sc.job_id', $job_id);
+        }
+        
+        $staff_ids = array_column($this->db->get()->result(), 'staff_id');
+        if (empty($staff_ids)) {
+            return [
+                'staff' => 0,
+                'two_months' => 0,
+                'staff_renewal' => 0,
+                'expired' => 0,
+                'data_points' => [],
+                'staff_by_contract' => ['contract_type' => [], 'value' => []],
+                'staff_by_division' => ['division' => [], 'value' => []],
+                'staff_by_member_state' => ['member_states' => [], 'value' => []],
+                'staff_by_funder' => ['funder' => [], 'value' => []]
+            ];
+        }
+
+        // Total active staff
+        $staff = count($staff_ids);
+
+        // Contracts due - use status_id = 2 directly (same as contract_status page)
+        $this->db->select('sc.staff_id');
+        $this->db->from('staff_contracts sc');
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->where_in('sc.staff_id', $staff_ids);
+        $this->db->where('sc.status_id', 2); // Due contracts (status_id = 2)
+        if ($division_id) $this->db->where('sc.division_id', $division_id);
+        if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
+        if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
+        if ($job_id) $this->db->where('sc.job_id', $job_id);
+        $two_months = $this->db->count_all_results();
+
+        // Staff under renewal
+        $this->db->select('sc.staff_id');
+        $this->db->from('staff_contracts sc');
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->where_in('sc.staff_id', $staff_ids);
+        $this->db->where('sc.status_id', 7);
+        if ($division_id) $this->db->where('sc.division_id', $division_id);
+        if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
+        if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
+        if ($job_id) $this->db->where('sc.job_id', $job_id);
+        $staff_renewal = $this->db->count_all_results();
+
+        // Expired contracts
+        $this->db->select('sc.staff_id');
+        $this->db->from('staff_contracts sc');
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->where_in('sc.staff_id', $staff_ids);
+        $this->db->where('sc.status_id', 3);
+        if ($division_id) $this->db->where('sc.division_id', $division_id);
+        if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
+        if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
+        if ($job_id) $this->db->where('sc.job_id', $job_id);
+        $expired = $this->db->count_all_results();
+
+        // Staff by gender
+        $this->db->select("s.gender as name, COUNT(s.staff_id) AS y");
+        $this->db->from("staff s");
+        $this->db->join("staff_contracts sc", "sc.staff_id = s.staff_id", "left");
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->where_in("sc.status_id", [1, 2]);
+        $this->db->where_in("s.staff_id", $staff_ids);
+        if ($division_id) $this->db->where('sc.division_id', $division_id);
+        if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
+        if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
+        if ($job_id) $this->db->where('sc.job_id', $job_id);
+        $this->db->group_by("s.gender");
+        $data_points = $this->db->get()->result();
+
+        // Staff by contract type
+        $this->db->select("ct.contract_type, COUNT(s.staff_id) AS no");
+        $this->db->from("staff s");
+        $this->db->join("staff_contracts sc", "sc.staff_id = s.staff_id", "left");
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->join("contract_types ct", "ct.contract_type_id = sc.contract_type_id", "left");
+        $this->db->where_in("sc.status_id", [1, 2]);
+        $this->db->where_in("s.staff_id", $staff_ids);
+        if ($division_id) $this->db->where('sc.division_id', $division_id);
+        if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
+        if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
+        if ($job_id) $this->db->where('sc.job_id', $job_id);
+        $this->db->group_by("sc.contract_type_id");
+        $contract_result = $this->db->get()->result();
+        $contract_type = [];
+        $contract_value = [];
+        foreach ($contract_result as $row) {
+            $contract_type[] = $row->contract_type;
+            $contract_value[] = (int)$row->no;
+        }
+
+        // Staff by division
+        $this->db->select("d.division_name, COUNT(s.staff_id) AS no");
+        $this->db->from("staff s");
+        $this->db->join("staff_contracts sc", "sc.staff_id = s.staff_id", "left");
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->join("divisions d", "d.division_id = sc.division_id", "left");
+        $this->db->where_in("sc.status_id", [1, 2]);
+        $this->db->where_in("s.staff_id", $staff_ids);
+        if ($division_id) $this->db->where('sc.division_id', $division_id);
+        if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
+        if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
+        if ($job_id) $this->db->where('sc.job_id', $job_id);
+        $this->db->group_by("sc.division_id");
+        $division_result = $this->db->get()->result();
+        $division = [];
+        $division_value = [];
+        foreach ($division_result as $row) {
+            $division[] = $row->division_name;
+            $division_value[] = (int)$row->no;
+        }
+
+        // Staff by member state (nationality)
+        $this->db->select("n.nationality, COUNT(s.staff_id) AS tt");
+        $this->db->from("staff s");
+        $this->db->join("nationalities n", "n.nationality_id = s.nationality_id", "left");
+        $this->db->join("staff_contracts sc", "sc.staff_id = s.staff_id", "left");
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->where_in("sc.status_id", [1, 2]);
+        $this->db->where_in("s.staff_id", $staff_ids);
+        if ($division_id) $this->db->where('sc.division_id', $division_id);
+        if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
+        if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
+        if ($job_id) $this->db->where('sc.job_id', $job_id);
+        $this->db->group_by("s.nationality_id");
+        $member_state_result = $this->db->get()->result();
+        $member_states = [];
+        $member_state_value = [];
+        foreach ($member_state_result as $row) {
+            $member_states[] = $row->nationality;
+            $member_state_value[] = (int)$row->tt;
+        }
+
+        // Staff by funder - include Active (1), Due (2), and Under Renewal (7)
+        // Query independently to include all active staff (not limited by $staff_ids)
+        $this->db->select("f.funder, COUNT(DISTINCT s.staff_id) AS no");
+        $this->db->from("staff s");
+        $this->db->join("staff_contracts sc", "sc.staff_id = s.staff_id", "left");
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->join("funders f", "f.funder_id = sc.funder_id", "left");
+        $this->db->where_in("sc.status_id", [1, 2, 7]); // Active, Due, and Under Renewal
+        if ($division_id) $this->db->where('sc.division_id', $division_id);
+        if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
+        if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
+        if ($job_id) $this->db->where('sc.job_id', $job_id);
+        $this->db->group_by("sc.funder_id");
+        $funder_result = $this->db->get()->result();
+        $funder_names = [];
+        $funder_value = [];
+        foreach ($funder_result as $row) {
+            $funder_names[] = $row->funder;
+            $funder_value[] = (int)$row->no;
+        }
+
+        return [
+            'staff' => $staff,
+            'two_months' => $two_months,
+            'staff_renewal' => $staff_renewal,
+            'expired' => $expired,
+            'data_points' => $data_points,
+            'staff_by_contract' => ['contract_type' => $contract_type, 'value' => $contract_value],
+            'staff_by_division' => ['division' => $division, 'value' => $division_value],
+            'staff_by_member_state' => ['member_states' => $member_states, 'value' => $member_state_value],
+            'staff_by_funder' => ['funder' => $funder_names, 'value' => $funder_value]
+        ];
+    }
+
+    public function get_birthday_events($division_id = null, $duty_station_id = null, $funder_id = null, $job_id = null, $start = null, $end = null)
+    {
+        // Get latest contract for each staff
+        $subquery = $this->db->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
+        // Build base query
+        $this->db->select("
+            s.staff_id,
+            s.fname,
+            s.lname,
+            s.oname,
+            s.title,
+            s.date_of_birth,
+            s.gender,
+            s.photo,
+            sc.grade_id,
+            g.grade,
+            j.job_name,
+            ds.duty_station_name,
+            d.division_name
+        ");
+        $this->db->from('staff s');
+        $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+        $this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
+        $this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+        $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+        $this->db->where_in('sc.status_id', [1, 2]); // Active & Due (same as staff table)
+        $this->db->where('s.date_of_birth IS NOT NULL', null, false);
+        $this->db->where("s.date_of_birth NOT LIKE '0000-00-00%'", null, false);
+        // Note: Empty string check is done in PHP loop, not in SQL to avoid DATE comparison errors
+
+        // Apply filters - only if not empty
+        if (!empty($division_id)) {
+            $this->db->where('sc.division_id', $division_id);
+        }
+        if (!empty($duty_station_id)) {
+            $this->db->where('sc.duty_station_id', $duty_station_id);
+        }
+        if (!empty($funder_id)) {
+            $this->db->where('sc.funder_id', $funder_id);
+        }
+        if (!empty($job_id)) {
+            $this->db->where('sc.job_id', $job_id);
+        }
+
+        $staff_list = $this->db->get()->result();
+        $events = [];
+        
+        log_message('debug', 'Birthday events query returned ' . count($staff_list) . ' staff members');
+
+        foreach ($staff_list as $staff) {
+            if (empty($staff->date_of_birth) || !strtotime($staff->date_of_birth)) {
+                continue;
+            }
+
+            try {
+                $dob_obj = new DateTime($staff->date_of_birth);
+                $current_year = date('Y');
+                $birthday_this_year = new DateTime($current_year . '-' . $dob_obj->format('m-d'));
+
+                // If birthday has passed this year, use next year
+                if ($birthday_this_year < new DateTime('today')) {
+                    $birthday_this_year->modify('+1 year');
+                }
+
+                // Filter by date range if provided
+                if ($start && $end) {
+                    $start_obj = new DateTime($start);
+                    $end_obj = new DateTime($end);
+                    if ($birthday_this_year < $start_obj || $birthday_this_year > $end_obj) {
+                        continue;
+                    }
+                }
+
+                $age = calculate_age($staff->date_of_birth);
+                $full_name = trim(($staff->lname ?? '') . ' ' . ($staff->fname ?? '') . ' ' . (@$staff->oname ?? ''));
+                
+                if (empty($full_name)) {
+                    continue; // Skip if no name
+                }
+                
+                $birthday_date = $birthday_this_year->format('Y-m-d');
+                
+                $events[] = [
+                    'id' => 'birthday_' . $staff->staff_id,
+                    'title' => $full_name . ' (' . $age . ' years)',
+                    'start' => $birthday_date,
+                    'end' => $birthday_date, // End date same as start for all-day events
+                    'allDay' => true,
+                    'color' => '#119A48',
+                    'extendedProps' => [
+                        'staff_id' => $staff->staff_id,
+                        'age' => $age,
+                        'grade' => $staff->grade ?? '',
+                        'job_name' => $staff->job_name ?? '',
+                        'duty_station' => $staff->duty_station_name ?? '',
+                        'division' => $staff->division_name ?? '',
+                        'photo' => $staff->photo ?? '',
+                        'title' => $staff->title ?? ''
+                    ]
+                ];
+            } catch (Exception $e) {
+                log_message('error', 'Error parsing date of birth for staff_id ' . $staff->staff_id . ': ' . $e->getMessage());
+                continue; // Skip this staff member if date is invalid
+            }
+        }
+        
+        log_message('debug', 'Birthday events generated: ' . count($events) . ' events');
+
+        return $events;
+    }
+
 
 }

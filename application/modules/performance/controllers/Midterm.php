@@ -112,6 +112,27 @@ class Midterm extends MX_Controller
         redirect("performance/midterm/midterm_review/{$entry_id}/{$staff_id}");
     }
     
+public function create_for_period()
+	{
+		$staff_id = $this->input->post('staff_id');
+		$period = $this->input->post('period');
+		
+		if (empty($staff_id) || empty($period)) {
+			Modules::run('utility/setFlash', [
+				'msg' => 'Please select a period',
+				'type' => 'error'
+			]);
+			$current_period = str_replace(' ', '-', current_period());
+			$current_entry_id = md5($staff_id . '_' . str_replace(' ', '', $current_period));
+			redirect("performance/midterm/recent_midterm/{$current_entry_id}/{$staff_id}");
+		}
+		
+		// Generate entry_id for the selected period (remove spaces and dashes from period)
+		$entry_id = md5($staff_id . '_' . str_replace(' ', '', $period));
+		
+		// Redirect to midterm review page
+		redirect("performance/midterm/midterm_review/{$entry_id}/{$staff_id}");
+	}
     
 public function midterm_review($entry_id)
 	{
@@ -144,6 +165,10 @@ public function midterm_review($entry_id)
 		$midterm = $this->midterm_mdl->get_recent_midterm_for_user($entry_id, $performance_period);
          //dd($midterm);
 		$data['midterm'] = $midterm;
+		
+		// Get list of periods for midterm selection
+		$data['periods'] = $this->db->query('SELECT DISTINCT performance_period FROM ppa_entries WHERE staff_id = ? ORDER BY performance_period DESC', [$staff_id])->result();
+		$data['staff_id'] = $staff_id;
 
 		render('current_midterm', $data);
 	}

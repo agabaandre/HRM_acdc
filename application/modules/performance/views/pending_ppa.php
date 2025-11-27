@@ -24,6 +24,8 @@
               <td>
                 <?php if (isset($plan['approval_type']) && $plan['approval_type'] === 'midterm' && !empty($plan['midterm_created_at'])): ?>
                   <?= date('d M Y', strtotime($plan['midterm_created_at'])) ?>
+                <?php elseif (isset($plan['approval_type']) && $plan['approval_type'] === 'endterm' && !empty($plan['endterm_created_at'])): ?>
+                  <?= date('d M Y', strtotime($plan['endterm_created_at'])) ?>
                 <?php else: ?>
                   <?= date('d M Y', strtotime($plan['created_at'])) ?>
                 <?php endif; ?>
@@ -32,6 +34,8 @@
               <td>
                 <?php if (isset($plan['approval_type']) && $plan['approval_type'] === 'midterm'): ?>
                   <span class="badge bg-warning text-dark">Midterm</span>
+                <?php elseif (isset($plan['approval_type']) && $plan['approval_type'] === 'endterm'): ?>
+                  <span class="badge bg-info text-dark">Endterm</span>
                 <?php else: ?>
                   <span class="badge bg-primary">PPA</span>
                 <?php endif; ?>
@@ -46,7 +50,7 @@
                     $badgeClass = 'bg-primary';
                     $badgeText = 'Pending First Supervisor: ' . staff_name($plan['supervisor_id']);
                   } elseif ($status == 'Pending Second Supervisor') {
-                    $badgeClass = 'bg-purple'; // Custom class, fallback to bg-info if not defined
+                    $badgeClass = 'bg-info text-white'; // Light blue background with white text for better contrast
                     $badgeText = 'Pending Second Supervisor: ' . staff_name($plan['supervisor2_id']);
                   } elseif (stripos($status, 'pending') !== false) {
                     $badgeClass = 'bg-warning text-dark';
@@ -62,6 +66,10 @@
                 <?php if (isset($plan['approval_type']) && $plan['approval_type'] === 'midterm'): ?>
                   <a href="<?php echo base_url()?>performance/midterm/midterm_review/<?=$plan['entry_id']; ?>/<?=$plan['staff_id']?>" class="btn btn-warning btn-sm" >
                     <i class="fa fa-eye"></i> Review Midterm
+                  </a>
+                <?php elseif (isset($plan['approval_type']) && $plan['approval_type'] === 'endterm'): ?>
+                  <a href="<?php echo base_url()?>performance/endterm/endterm_review/<?=$plan['entry_id']; ?>/<?=$plan['staff_id']?>" class="btn btn-info btn-sm" >
+                    <i class="fa fa-eye"></i> Review Endterm
                   </a>
                 <?php else: ?>
                   <a href="<?php echo base_url()?>performance/view_ppa/<?=$plan['entry_id']; ?>/<?=$plan['staff_id']?>" class="btn btn-primary btn-sm" >

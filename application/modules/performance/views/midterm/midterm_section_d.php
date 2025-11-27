@@ -68,7 +68,7 @@ if (!empty($ppa->midterm_competency)) {
                          data-competency-id="<?= $item['id'] ?>"
                          <?= $midreadonly ?>
                          <?= ((string)$selected === (string)$i) ? 'checked' : '' ?>
-                         <?= ($catKey !== 'leadership') ? 'required' : '' ?>>
+                         >
                   <label class="form-check-label"><?= $item['score_' . $i] ?></label>
                 </div>
               </td>

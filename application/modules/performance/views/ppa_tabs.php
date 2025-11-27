@@ -9,6 +9,29 @@ $ppa_entryid = md5($staff_id . '_' . str_replace(' ', '', $current_period));
 @$ppa_exists = $this->per_mdl->get_staff_plan_id($ppa_entryid);
 // dd($staff_id);
 ?>
+<style>
+    /* Tab styling matching workplan tabs */
+    .nav-tabs .nav-link {
+        border: none;
+        color: #6c757d;
+        font-weight: 500;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .nav-tabs .nav-link:hover {
+        border: none;
+        color: rgba(52, 143, 65, 1);
+        background-color: rgba(52, 143, 65, 0.1);
+    }
+
+    .nav-tabs .nav-link.active {
+        color: rgba(52, 143, 65, 1);
+        background-color: rgba(52, 143, 65, 0.1);
+        border: none;
+        border-bottom: 3px solid rgba(52, 143, 65, 1);
+    }
+</style>
 <div class="container">
     <ul class="nav nav-tabs mb-3" id="ppaTabMenu" role="tablist">
         <?php if (in_array('38', $permissions) && !$ppa_exists) : ?>
@@ -35,18 +58,36 @@ $ppa_entryid = md5($staff_id . '_' . str_replace(' ', '', $current_period));
             </li>
         <?php endif; ?>
 
+        <?php 
+        // @$endterm_exists = $this->per_mdl->isendterm_available($ppa_entryid);
+        if (in_array('38', $permissions) && $ppa_exists) : ?>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link <?php if (($this->uri->segment(3) == 'recent_endterm')|| ($this->uri->segment(3) == 'endterm_review')) echo 'active'; ?>" href="<?= base_url('performance/endterm/recent_endterm/' . $ppa_entryid . '/' . $this->session->userdata('user')->staff_id); ?>">
+                    <i class="bx bx-file"></i> Current Endterm
+                </a>
+            </li>
+        <?php endif; ?>
+
 
         <?php if (in_array('38', $permissions)) : ?>
             <li class="nav-item" role="presentation">
                 <a class="nav-link <?php if ($this->uri->segment(2) == 'my_ppas') echo 'active'; ?>" href="<?= base_url('performance/my_ppas'); ?>">
-                    <i class="bx bx-collection"></i> My PPAs
+                    <i class="bx bx-collection"></i> PPAs
                 </a>
             </li>
         <?php endif; ?>
         <?php if (in_array('38', $permissions)) : ?>
             <li class="nav-item" role="presentation">
                 <a class="nav-link <?php if ($this->uri->segment(3) == 'my_midterms') echo 'active'; ?>" href="<?= base_url('performance/midterm/my_midterms'); ?>">
-                    <i class="bx bx-collection"></i> My Mid Term Reviews 
+                    <i class="bx bx-collection"></i> Mid Term Reviews 
+                </a>
+            </li>
+        <?php endif; ?>
+
+        <?php if (in_array('38', $permissions)) : ?>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link <?php if ($this->uri->segment(3) == 'my_endterms') echo 'active'; ?>" href="<?= base_url('performance/endterm/my_endterms'); ?>">
+                    <i class="bx bx-collection"></i> End Term Reviews 
                 </a>
             </li>
         <?php endif; ?>
@@ -86,8 +127,16 @@ $ppa_entryid = md5($staff_id . '_' . str_replace(' ', '', $current_period));
         <?php endif; ?>
         <?php if (in_array('38', $permissions)) : ?>
             <li class="nav-item" role="presentation">
-                <a class="nav-link <?php if ($this->uri->segment(3) == 'approved_by_me') echo 'active'; ?>" href="<?= base_url('performance/midterm/approved_by_me'); ?>">
+                <a class="nav-link <?php if ($this->uri->segment(3) == 'approved_by_me' && $this->uri->segment(2) == 'midterm') echo 'active'; ?>" href="<?= base_url('performance/midterm/approved_by_me'); ?>">
                     <i class="bx bx-check-double"></i> Approved Midterms
+                </a>
+            </li>
+        <?php endif; ?>
+
+        <?php if (in_array('38', $permissions)) : ?>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link <?php if ($this->uri->segment(3) == 'approved_by_me' && $this->uri->segment(2) == 'endterm') echo 'active'; ?>" href="<?= base_url('performance/endterm/approved_by_me'); ?>">
+                    <i class="bx bx-check-double"></i> Approved Endterms
                 </a>
             </li>
         <?php endif; ?>

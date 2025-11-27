@@ -546,7 +546,7 @@ $days_remaining = days_to_ppa_deadline();
              );
          }
      }
- }
+ }            
 //reminder for ppa approval
 public function notify_supervisors_pending_ppas()
 {
@@ -648,6 +648,315 @@ public function notify_supervisors_pending_midterms()
     $this->notify_unsubmitted_midterms();
 
     $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
+}
+
+//notify staff on endterms
+public function notify_unsubmitted_endterms()
+{
+    $this->load->model("performance/Endterm_mdl",'endterm_mdl');
+    $current_period = str_replace(' ', '-', current_period());
+    $deadline = $this->db->select('end_term_deadline')->get('ppa_configs')->row()->end_term_deadline;
+
+    // Only notify if deadline is in 40 days or less
+    $days_remaining = days_to_endterm_deadline();
+
+    if ($days_remaining !== null && $days_remaining <= 40) {
+        $staff_list = $this->endterm_mdl->get_staff_without_endterm($current_period);
+
+        foreach ($staff_list as $staff) {
+            $entry_log_id = md5($staff->staff_id . '-empENDTERMREM-' . date('Y-m-d'));
+
+            // Check if a notification for this staff and period has already been logged today using only entry_id
+            $exists = $this->db
+                ->where('entry_id', $entry_log_id)
+                ->count_all_results('email_notifications');
+
+            if ($exists > 0) {
+                // Skip sending duplicate notification
+                continue;
+            }
+
+            $data = [
+                'name' => $staff->title . ' ' . $staff->fname . ' ' . $staff->lname,
+                'period' => $current_period,
+                'deadline' => $deadline,
+                'type' => 'Endterm Reminder',
+                'subject' => "Endterm Review Reminder: Submit your Endterm ($current_period)",
+                'email_to' => $staff->work_email.';'.settings()->email,
+            ];
+
+            $data['body'] = $this->load->view('staff_reminder_endterm', $data, true);
+
+            golobal_log_email(
+                'Staff Portal System',
+                $data['email_to'],
+                $data['body'],
+                $data['subject'],
+                $staff->staff_id,
+                date('Y-m-d'),
+                date('Y-m-d'),
+                $entry_log_id
+            );
+        }
+    }
+}
+
+//reminder for endterm approval - handles 3-stage approval flow
+public function notify_supervisors_pending_endterms()
+{
+    $current_period = str_replace(' ', '-', current_period());
+    $deadline = $this->db->get('ppa_configs')->row()->end_term_deadline;
+
+    // STAGE 1: Notify first supervisors who need to approve
+    $this->notify_first_supervisors_pending_endterms($current_period, $deadline);
+
+    // STAGE 2: Notify staff who need to consent after first supervisor approval
+    $this->notify_staff_consent_pending_endterms($current_period, $deadline);
+
+    // STAGE 3: Notify second supervisors who need to approve after staff consent
+    $this->notify_second_supervisors_pending_endterms($current_period, $deadline);
+
+    // Now, call notify_unsubmitted_endterms() ONCE
+    $this->notify_unsubmitted_endterms();
+
+    $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
+}
+
+// Stage 1: Notify first supervisors
+private function notify_first_supervisors_pending_endterms($current_period, $deadline)
+{
+    // Get endterms pending first supervisor approval
+    $this->db->select("
+        p.entry_id,
+        p.staff_id,
+        p.endterm_supervisor_1 AS supervisor_id,
+        CONCAT(s1.title, ' ', s1.fname, ' ', s1.lname) AS supervisor_name,
+        s1.work_email AS supervisor_email,
+        CONCAT(s2.title, ' ', s2.fname, ' ', s2.lname) AS staff_name
+    ");
+    $this->db->from('ppa_entries p');
+    $this->db->join('staff s1', 's1.staff_id = p.endterm_supervisor_1', 'left');
+    $this->db->join('staff s2', 's2.staff_id = p.staff_id', 'left');
+    $this->db->where('p.performance_period', $current_period);
+    $this->db->where('p.endterm_draft_status', 0); // Submitted
+    $this->db->where('p.endterm_sign_off', 1);
+    $this->db->where('p.endterm_supervisor_1 IS NOT NULL', null, false);
+    
+    // Check if first supervisor has not approved yet
+    $this->db->where("NOT EXISTS (
+        SELECT 1 FROM ppa_approval_trail_end_term a1 
+        WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+        AND a1.staff_id = p.endterm_supervisor_1 
+        AND a1.action = 'Approved'
+    )", null, false);
+    
+    $pending_endterms = $this->db->get()->result();
+
+    // Group by supervisor
+    $supervisor_pending = [];
+    foreach ($pending_endterms as $entry) {
+        if (!isset($supervisor_pending[$entry->supervisor_id])) {
+            $supervisor_pending[$entry->supervisor_id] = [
+                'supervisor_id' => $entry->supervisor_id,
+                'supervisor_name' => $entry->supervisor_name,
+                'supervisor_email' => $entry->supervisor_email,
+                'pending_list' => []
+            ];
+        }
+        $supervisor_pending[$entry->supervisor_id]['pending_list'][] = [
+            'entry_id' => $entry->entry_id,
+            'staff_id' => $entry->staff_id,
+            'staff_name' => $entry->staff_name
+        ];
+    }
+
+    // Send notifications to each supervisor
+    foreach ($supervisor_pending as $supervisor) {
+        if (empty($supervisor['pending_list'])) continue;
+
+        $entry_log_id = md5($supervisor['supervisor_id'] . '-SUP1ENDREM-' . $current_period . '-' . date('Y-m-d'));
+        
+        $exists = $this->db->where('entry_id', $entry_log_id)
+                          ->count_all_results('email_notifications');
+
+        if ($exists > 0) continue;
+
+        $data = [
+            'supervisor_name' => $supervisor['supervisor_name'],
+            'period' => $current_period,
+            'deadline' => $deadline,
+            'pending_list' => $supervisor['pending_list'],
+            'subject' => "Reminder: Pending Endterm Approvals for {$current_period}",
+            'email_to' => $supervisor['supervisor_email'].';'.settings()->email
+        ];
+
+        $data['body'] = $this->load->view('supervisor_reminder_endterm_first', $data, true);
+
+        golobal_log_email(
+            'Staff Portal System',
+            $data['email_to'],
+            $data['body'],
+            $data['subject'],
+            $supervisor['supervisor_id'],
+            date('Y-m-d'),
+            date('Y-m-d'),
+            $entry_log_id
+        );
+    }
+}
+
+// Stage 2: Notify staff who need to consent
+private function notify_staff_consent_pending_endterms($current_period, $deadline)
+{
+    // Get endterms where first supervisor has approved but staff hasn't consented
+    $this->db->select("
+        p.entry_id,
+        p.staff_id,
+        CONCAT(s.title, ' ', s.fname, ' ', s.lname) AS staff_name,
+        s.work_email AS staff_email
+    ");
+    $this->db->from('ppa_entries p');
+    $this->db->join('staff s', 's.staff_id = p.staff_id', 'left');
+    $this->db->where('p.performance_period', $current_period);
+    $this->db->where('p.endterm_draft_status', 0);
+    $this->db->where('p.endterm_sign_off', 1);
+    $this->db->where('p.endterm_supervisor_1 IS NOT NULL', null, false);
+    $this->db->where('(p.endterm_staff_consent_at IS NULL OR p.endterm_staff_consent_at = "")', null, false);
+    
+    // First supervisor has approved
+    $this->db->where("EXISTS (
+        SELECT 1 FROM ppa_approval_trail_end_term a1 
+        WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+        AND a1.staff_id = p.endterm_supervisor_1 
+        AND a1.action = 'Approved'
+    )", null, false);
+
+    $pending_consent = $this->db->get()->result();
+
+    foreach ($pending_consent as $entry) {
+        $entry_log_id = md5($entry->staff_id . '-STAFFCONSENTENDREM-' . $entry->entry_id . '-' . date('Y-m-d'));
+        
+        $exists = $this->db->where('entry_id', $entry_log_id)
+                          ->count_all_results('email_notifications');
+
+        if ($exists > 0) continue;
+
+        $data = [
+            'name' => $entry->staff_name,
+            'period' => $current_period,
+            'deadline' => $deadline,
+            'entry_id' => $entry->entry_id,
+            'staff_id' => $entry->staff_id,
+            'subject' => "Action Required: Consent to Endterm Review Rating for {$current_period}",
+            'email_to' => $entry->staff_email.';'.settings()->email
+        ];
+
+        $data['body'] = $this->load->view('staff_consent_reminder_endterm', $data, true);
+
+        golobal_log_email(
+            'Staff Portal System',
+            $data['email_to'],
+            $data['body'],
+            $data['subject'],
+            $entry->staff_id,
+            date('Y-m-d'),
+            date('Y-m-d'),
+            $entry_log_id
+        );
+    }
+}
+
+// Stage 3: Notify second supervisors
+private function notify_second_supervisors_pending_endterms($current_period, $deadline)
+{
+    // Get endterms where staff has consented but second supervisor hasn't approved
+    $this->db->select("
+        p.entry_id,
+        p.staff_id,
+        p.endterm_supervisor_2 AS supervisor_id,
+        CONCAT(s1.title, ' ', s1.fname, ' ', s1.lname) AS supervisor_name,
+        s1.work_email AS supervisor_email,
+        CONCAT(s2.title, ' ', s2.fname, ' ', s2.lname) AS staff_name
+    ");
+    $this->db->from('ppa_entries p');
+    $this->db->join('staff s1', 's1.staff_id = p.endterm_supervisor_2', 'left');
+    $this->db->join('staff s2', 's2.staff_id = p.staff_id', 'left');
+    $this->db->where('p.performance_period', $current_period);
+    $this->db->where('p.endterm_draft_status', 0);
+    $this->db->where('p.endterm_sign_off', 1);
+    $this->db->where('p.endterm_supervisor_2 IS NOT NULL', null, false);
+    $this->db->where('p.endterm_staff_consent_at IS NOT NULL', null, false);
+    $this->db->where("p.endterm_staff_consent_at != ''", null, false);
+    
+    // First supervisor has approved
+    $this->db->where("EXISTS (
+        SELECT 1 FROM ppa_approval_trail_end_term a1 
+        WHERE a1.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+        AND a1.staff_id = p.endterm_supervisor_1 
+        AND a1.action = 'Approved'
+    )", null, false);
+    
+    // Second supervisor has not approved yet
+    $this->db->where("NOT EXISTS (
+        SELECT 1 FROM ppa_approval_trail_end_term a2 
+        WHERE a2.entry_id COLLATE utf8mb4_general_ci = p.entry_id COLLATE utf8mb4_general_ci 
+        AND a2.staff_id = p.endterm_supervisor_2 
+        AND a2.action = 'Approved'
+    )", null, false);
+
+    $pending_endterms = $this->db->get()->result();
+
+    // Group by supervisor
+    $supervisor_pending = [];
+    foreach ($pending_endterms as $entry) {
+        if (!isset($supervisor_pending[$entry->supervisor_id])) {
+            $supervisor_pending[$entry->supervisor_id] = [
+                'supervisor_id' => $entry->supervisor_id,
+                'supervisor_name' => $entry->supervisor_name,
+                'supervisor_email' => $entry->supervisor_email,
+                'pending_list' => []
+            ];
+        }
+        $supervisor_pending[$entry->supervisor_id]['pending_list'][] = [
+            'entry_id' => $entry->entry_id,
+            'staff_id' => $entry->staff_id,
+            'staff_name' => $entry->staff_name
+        ];
+    }
+
+    // Send notifications to each supervisor
+    foreach ($supervisor_pending as $supervisor) {
+        if (empty($supervisor['pending_list'])) continue;
+
+        $entry_log_id = md5($supervisor['supervisor_id'] . '-SUP2ENDREM-' . $current_period . '-' . date('Y-m-d'));
+        
+        $exists = $this->db->where('entry_id', $entry_log_id)
+                          ->count_all_results('email_notifications');
+
+        if ($exists > 0) continue;
+
+        $data = [
+            'supervisor_name' => $supervisor['supervisor_name'],
+            'period' => $current_period,
+            'deadline' => $deadline,
+            'pending_list' => $supervisor['pending_list'],
+            'subject' => "Reminder: Pending Endterm Approvals (Second Supervisor) for {$current_period}",
+            'email_to' => $supervisor['supervisor_email'].';'.settings()->email
+        ];
+
+        $data['body'] = $this->load->view('supervisor_reminder_endterm_second', $data, true);
+
+        golobal_log_email(
+            'Staff Portal System',
+            $data['email_to'],
+            $data['body'],
+            $data['subject'],
+            $supervisor['supervisor_id'],
+            date('Y-m-d'),
+            date('Y-m-d'),
+            $entry_log_id
+        );
+    }
 }
 
 public function update_latest_contracts_in_ppa()
@@ -809,9 +1118,135 @@ public function add_midterm_fields_to_ppa_entries($drop = false)
     }
 }
 
+//endterm
 
+public function add_endterm_fields_to_ppa_entries($drop = false)
+{
+    // Field definitions with insert order preserved
+    $fields = [
+        'endterm_objectives'         => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+        'endterm_competency'         => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+        'endterm_achievements'       => "TEXT",
+        'endterm_non_achievements'   => "TEXT",
+        'endterm_comments'           => "TEXT",
+        'endterm_training_review'    => "TEXT",
+        'endterm_recommended_skills' => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+        'endterm_training_contributions' => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+        'endterm_recommended_trainings' => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+        'endterm_recommended_trainings_details' => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+        'endterm_rating_by'          => "INT DEFAULT NULL",
+        'endterm_sign_off'           => "TINYINT(1) DEFAULT 0",
+        'endterm_draft_status'       => "TINYINT(1) DEFAULT 1",
+        'endterm_supervisor_1'       => "INT DEFAULT NULL",
+        'endterm_supervisor_2'       => "INT DEFAULT NULL",
+        'endterm_created_at'         => "DATETIME DEFAULT NULL",
+        'endterm_updated_at'         => "DATETIME DEFAULT NULL",
+        'endterm_supervisor1_discussion_confirmed' => "TINYINT(1) DEFAULT 0",
+        'endterm_staff_discussion_confirmed' => "TINYINT(1) DEFAULT 0",
+        'endterm_staff_rating_acceptance' => "TINYINT(1) DEFAULT NULL",
+        'endterm_staff_consent_at'   => "DATETIME DEFAULT NULL",
+        'endterm_supervisor2_agreement' => "TINYINT(1) DEFAULT NULL",
+        'overall_end_term_status' => "VARCHAR(50) DEFAULT NULL"
+    ];
+    
 
+    if ($drop) {
+        foreach ($fields as $field => $definition) {
+            $exists = $this->db->query("SHOW COLUMNS FROM `ppa_entries` LIKE '$field'")->num_rows();
 
+            if ($exists > 0) {
+                $sql = "ALTER TABLE `ppa_entries` DROP COLUMN `$field`";
+                $this->db->query($sql);
+                echo "🗑️ Dropped column: <strong>$field</strong><br>";
+            } else {
+                echo "⚠️ Column does not exist: <strong>$field</strong><br>";
+            }
+        }
+    } else {
+        $previous = 'updated_at';
+        foreach ($fields as $field => $definition) {
+            $exists = $this->db->query("SHOW COLUMNS FROM `ppa_entries` LIKE '$field'")->num_rows();
+
+            if ($exists === 0) {
+                $sql = "ALTER TABLE `ppa_entries` ADD `$field` $definition AFTER `$previous`";
+                $this->db->query($sql);
+                echo "✅ Added column: <strong>$field</strong><br>";
+            } else {
+                echo "ℹ️ Column already exists: <strong>$field</strong><br>";
+            }
+
+            $previous = $field;
+        }
+    }
+}
+
+public function create_ppa_approval_trail_end_term_table($drop = false)
+{
+    $table_name = 'ppa_approval_trail_end_term';
+    
+    if ($drop) {
+        // Check if table exists and drop it
+        $exists = $this->db->query("SHOW TABLES LIKE '$table_name'")->num_rows();
+        if ($exists > 0) {
+            $this->db->query("DROP TABLE `$table_name`");
+            echo "🗑️ Dropped table: <strong>$table_name</strong><br>";
+        } else {
+            echo "⚠️ Table does not exist: <strong>$table_name</strong><br>";
+        }
+    } else {
+        // Check if table exists
+        $exists = $this->db->query("SHOW TABLES LIKE '$table_name'")->num_rows();
+        
+        if ($exists === 0) {
+            // Create the table
+            $sql = "CREATE TABLE `$table_name` (
+                `id` INT(11) NOT NULL AUTO_INCREMENT,
+                `entry_id` VARCHAR(255) NOT NULL,
+                `staff_id` INT(11) NOT NULL,
+                `comments` TEXT NULL,
+                `action` VARCHAR(255) NOT NULL,
+                `created_at` DATETIME NOT NULL,
+                `type` VARCHAR(255) NULL,
+                PRIMARY KEY (`id`),
+                INDEX `idx_entry_id` (`entry_id`),
+                INDEX `idx_staff_id` (`staff_id`),
+                INDEX `idx_created_at` (`created_at`)
+            ) ENGINE=InnoDB";
+            
+            $this->db->query($sql);
+            echo "✅ Created table: <strong>$table_name</strong><br>";
+        } else {
+            echo "ℹ️ Table already exists: <strong>$table_name</strong><br>";
+        }
+    }
+}
+
+public function add_other_associated_divisions_to_staff_contracts($drop = false)
+{
+    $field = 'other_associated_divisions';
+    $definition = "JSON DEFAULT NULL";
+    $after_column = 'division_id';
+    
+    if ($drop) {
+        $exists = $this->db->query("SHOW COLUMNS FROM `staff_contracts` LIKE '$field'")->num_rows();
+        if ($exists > 0) {
+            $sql = "ALTER TABLE `staff_contracts` DROP COLUMN `$field`";
+            $this->db->query($sql);
+            echo "🗑️ Dropped column: <strong>$field</strong><br>";
+        } else {
+            echo "⚠️ Column does not exist: <strong>$field</strong><br>";
+        }
+    } else {
+        $exists = $this->db->query("SHOW COLUMNS FROM `staff_contracts` LIKE '$field'")->num_rows();
+        if ($exists === 0) {
+            $sql = "ALTER TABLE `staff_contracts` ADD `$field` $definition AFTER `$after_column`";
+            $this->db->query($sql);
+            echo "✅ Added column: <strong>$field</strong><br>";
+        } else {
+            echo "ℹ️ Column already exists: <strong>$field</strong><br>";
+        }
+    }
+}
 
     
 }
