@@ -285,13 +285,28 @@
 
     // Helper function to render approver info
     function renderApproverInfo($approver, $role, $section, $specialMemo) {
-        $isOic = isset($approver['oic_staff']);
+        $isOic = isset($approver['oic_staff']) && !empty($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         $staffName = '';
         if ($staff) {
-            $staffName = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+            // Check if we have the new structure with 'name' field or old structure with fname/lname/oname
+            if (isset($staff['name'])) {
+                $staffName = trim($staff['name']);
+            } elseif (isset($staff['fname']) || isset($staff['lname'])) {
+                $staffName = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+            } elseif (is_object($staff) && (isset($staff->fname) || isset($staff->lname))) {
+                $staffName = trim(($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
+            }
         }
-        $name = $isOic ? $staffName . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . $staffName);
+        $title = '';
+        if ($staff) {
+            if (isset($staff['title'])) {
+                $title = $staff['title'];
+            } elseif (is_object($staff) && isset($staff->title)) {
+                $title = $staff->title;
+            }
+        }
+        $name = $isOic ? $staffName . ' (OIC)' : trim(($title ? $title . ' ' : '') . $staffName);
         echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
         echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
 
@@ -313,19 +328,46 @@
 
     // Helper function to render signature
     function renderSignature($approver, $order, $approval_trails, $specialMemo) {
-        $isOic = isset($approver['oic_staff']);
+        $isOic = isset($approver['oic_staff']) && !empty($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        $staffId = $staff['staff_id'] ?? $staff['id'] ?? null;
+        
+        // Get staff ID - handle both array and object structures
+        $staffId = null;
+        if ($staff) {
+            if (isset($staff['staff_id'])) {
+                $staffId = $staff['staff_id'];
+            } elseif (isset($staff['id'])) {
+                $staffId = $staff['id'];
+            } elseif (is_object($staff) && isset($staff->id)) {
+                $staffId = $staff->id;
+            }
+        }
 
         $approvalDate = getApprovalDate($staffId, $approval_trails, $order);
 
         echo '<div style="line-height: 1.2;">';
         
-        if (isset($staff['signature']) && !empty($staff['signature'])) {
+        // Get signature - handle both array and object structures
+        $signature = null;
+        $workEmail = null;
+        if ($staff) {
+            if (isset($staff['signature'])) {
+                $signature = $staff['signature'];
+            } elseif (is_object($staff) && isset($staff->signature)) {
+                $signature = $staff->signature;
+            }
+            if (isset($staff['work_email'])) {
+                $workEmail = $staff['work_email'];
+            } elseif (is_object($staff) && isset($staff->work_email)) {
+                $workEmail = $staff->work_email;
+            }
+        }
+        
+        if (!empty($signature)) {
             echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $signature) . '" alt="Signature">';
         } else {
-            echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+            echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($workEmail ?? 'Email not available') . '</small>';
         }
         
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';

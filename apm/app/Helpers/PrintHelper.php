@@ -406,17 +406,25 @@ class PrintHelper
             $approver = [
                 'staff' => $trail->staff ? [
                     'id' => $trail->staff->id,
-                    'name' => $trail->staff->fname . ' ' . $trail->staff->lname,
-                    'title' => $trail->staff->title,
-                    'work_email' => $trail->staff->work_email,
-                    'signature' => $trail->staff->signature
+                    'staff_id' => $trail->staff->id,
+                    'name' => trim(($trail->staff->fname ?? '') . ' ' . ($trail->staff->lname ?? '') . ' ' . ($trail->staff->oname ?? '')),
+                    'fname' => $trail->staff->fname ?? '',
+                    'lname' => $trail->staff->lname ?? '',
+                    'oname' => $trail->staff->oname ?? '',
+                    'title' => $trail->staff->title ?? '',
+                    'work_email' => $trail->staff->work_email ?? '',
+                    'signature' => $trail->staff->signature ?? ''
                 ] : null,
                 'oic_staff' => $trail->oicStaff ? [
                     'id' => $trail->oicStaff->id,
-                    'name' => $trail->oicStaff->fname . ' ' . $trail->oicStaff->lname,
-                    'title' => $trail->oicStaff->title,
-                    'work_email' => $trail->oicStaff->work_email,
-                    'signature' => $trail->oicStaff->signature
+                    'staff_id' => $trail->oicStaff->id,
+                    'name' => trim(($trail->oicStaff->fname ?? '') . ' ' . ($trail->oicStaff->lname ?? '') . ' ' . ($trail->oicStaff->oname ?? '')),
+                    'fname' => $trail->oicStaff->fname ?? '',
+                    'lname' => $trail->oicStaff->lname ?? '',
+                    'oname' => $trail->oicStaff->oname ?? '',
+                    'title' => $trail->oicStaff->title ?? '',
+                    'work_email' => $trail->oicStaff->work_email ?? '',
+                    'signature' => $trail->oicStaff->signature ?? ''
                 ] : null,
                 'role' => $workflowDefinition ? $workflowDefinition->role : ($trail->role ?? 'Approver'),
                 'order' => $order,
