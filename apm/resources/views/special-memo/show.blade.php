@@ -475,12 +475,12 @@
     <!-- Enhanced Header -->
     <div class="bg-white border-b border-gray-200 shadow-sm">
         <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center py-4">
-                <div>
+            <div class="py-4">
+                <div class="mb-3">
                     <h1 class="h2 fw-bold text-dark mb-0">Special Memo Details: {{ $specialMemo->document_number }}</h1>
                     <p class="text-muted mb-0">Review and manage special memo details</p>
                 </div>
-                <div class="d-flex gap-3">
+                <div class="d-flex justify-content-end gap-3">
                     <a href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
