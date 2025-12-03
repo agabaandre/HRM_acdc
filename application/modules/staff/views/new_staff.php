@@ -250,7 +250,48 @@
                 </div>
             </div>
 
-            <!-- Row 3: Location & Assignment and Supervisors side by side -->
+            <!-- Row 3: Contract Dates & Status (full width) -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <!-- Contract Dates & Status Section -->
+                    <div class="contract-form-section">
+                        <h5><i class="fa fa-calendar-alt"></i>Contract Dates & Status</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="start_date" class="required-field">Start Date</label>
+                                    <input type="text" class="form-control datepicker validate-required" name="start_date" id="start_date" autocomplete="off">
+                                     <div class="invalid-feedback">Start Date is Required</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                            <div class="form-group">
+                                    <label for="end_date" class="required-field">End Date</label>
+                                    <input type="text" class="form-control datepicker validate-required" name="end_date" id="end_date" autocomplete="off">
+                                     <div class="invalid-feedback">Must be greater than start date</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                            <div class="form-group">
+                                    <label for="status_id">Contract Status</label>
+                                <select class="form-control validate-required" name="status_id" id="status_id">
+                                    <option value="1" selected>Active</option>
+                                </select>
+                            </div>
+                            </div>
+                            </div>
+
+                            <div class="form-group">
+                            <label for="comments">Comments</label>
+                                <textarea class="form-control" name="comments" id="comments" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 4: Location & Assignment and Supervisors side by side -->
             <div class="row">
                 <div class="col-lg-6">
                     <!-- Location & Assignment Section -->
@@ -342,47 +383,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Row 4: Contract Dates & Status (full width) -->
-            <div class="row">
-                <div class="col-lg-12">
-                    <!-- Contract Dates & Status Section -->
-                    <div class="contract-form-section">
-                        <h5><i class="fa fa-calendar-alt"></i>Contract Dates & Status</h5>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="start_date" class="required-field">Start Date</label>
-                                    <input type="text" class="form-control datepicker validate-required" name="start_date" id="start_date" autocomplete="off">
-                                     <div class="invalid-feedback">Start Date is Required</div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-4">
-                            <div class="form-group">
-                                    <label for="end_date" class="required-field">End Date</label>
-                                    <input type="text" class="form-control datepicker validate-required" name="end_date" id="end_date" autocomplete="off">
-                                     <div class="invalid-feedback">Must be greater than start date</div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-4">
-                            <div class="form-group">
-                                    <label for="status_id">Contract Status</label>
-                                <select class="form-control validate-required" name="status_id" id="status_id">
-                                    <option value="1" selected>Active</option>
-                                </select>
-                            </div>
-                            </div>
-                            </div>
-
-                            <div class="form-group">
-                            <label for="comments">Comments</label>
-                                <textarea class="form-control" name="comments" id="comments" rows="3"></textarea>
-                        </div>
-                    </div>
-                </div>
-    </div>
       
             <!-- Submit Buttons -->
             <div class="row">
