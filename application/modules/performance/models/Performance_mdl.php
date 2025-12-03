@@ -751,7 +751,7 @@ public function get_dashboard_data()
     $this->db->group_by("ct.contract_type_id");
     $by_contract = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
 
-    // Staff with PPA (regardless of contract status)
+    // Staff with PPA (regardless of contract status, but filter to active staff for "without" calculation)
     $this->db->select("pe.staff_id")->from("ppa_entries pe");
     $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
@@ -759,7 +759,9 @@ public function get_dashboard_data()
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.performance_period", $period);
     $this->db->where("pe.draft_status !=", 1);
-    $ppa_staff = array_column($this->db->get()->result(), 'staff_id');
+    $all_ppa_staff = array_column($this->db->get()->result(), 'staff_id');
+    // Filter to only active staff for "without" calculation
+    $ppa_staff = array_intersect($all_ppa_staff, $staff_ids);
 
     // Staff with PDP (regardless of contract status)
     $this->db->select("pe.staff_id")->from("ppa_entries pe");
@@ -846,7 +848,7 @@ public function get_dashboard_data()
         'training_categories' => $training_categories,
         'training_skills' => $training_skills,
         'staff_count' => count($staff_ids),
-        'staff_without_ppas' => count($staff_ids) - count($ppa_staff),
+        'staff_without_ppas' => max(0, count($staff_ids) - count($ppa_staff)),
         'staff_with_pdps' => count($pdp_staff),
         'periods' => $periods,
         'current_period' => $current_period,

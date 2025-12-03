@@ -736,7 +736,7 @@ public function get_midterm_dashboard_data()
     $this->db->group_by("ct.contract_type_id");
     $by_contract = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
 
-    // Staff with midterm (regardless of contract status)
+    // Staff with midterm (regardless of contract status, but filter to active staff for "without" calculation)
     $this->db->select("pe.staff_id")->from("ppa_entries pe");
     $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
@@ -745,7 +745,9 @@ public function get_midterm_dashboard_data()
     $this->db->where("pe.performance_period", $period);
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
-    $midterm_staff = array_column($this->db->get()->result(), 'staff_id');
+    $all_midterm_staff = array_column($this->db->get()->result(), 'staff_id');
+    // Filter to only active staff for "without" calculation
+    $midterm_staff = array_intersect($all_midterm_staff, $staff_ids);
 
     // Staff with PDP at midterm (actual skills recommended) - regardless of contract status
     $this->db->select("pe.staff_id, pe.midterm_recommended_skills")->from("ppa_entries pe");
