@@ -756,16 +756,23 @@ public function get_endterm_dashboard_data($division_id = null, $funder_id = nul
 
     // Calculate staff without endterms (active staff with PPAs but without endterms)
     // Get staff who have endterm for the period - only entries with actual endterm data
+    // First get all staff with endterm (regardless of contract status)
     $this->db->select("pe.staff_id");
     $this->db->from("ppa_entries pe");
-    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.performance_period", $period);
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.endterm_draft_status !=", 1);
     $this->db->where("pe.endterm_updated_at IS NOT NULL", null, false); // Only entries with actual endterm data
-    $staff_with_endterm = array_column($this->db->get()->result(), 'staff_id');
+    $all_staff_with_endterm = array_column($this->db->get()->result(), 'staff_id');
+    // Filter to only active staff for "without" calculation
+    $staff_with_endterm = array_intersect($all_staff_with_endterm, $staff_ids);
     
-    // Staff without endterm = active staff - staff with endterm
+    // Staff without endterm = active staff - staff with endterm (ensure non-negative)
     $staff_without_endterm = array_diff($staff_ids, $staff_with_endterm);
     
     // Periods list (endterm) - only get distinct periods from actual endterm entries
@@ -934,7 +941,7 @@ public function get_endterm_dashboard_data($division_id = null, $funder_id = nul
         'funder_averages' => $funder_averages,
         'score_bands' => $score_bands,
         'staff_count' => count($staff_ids),
-        'staff_without_endterms' => count($staff_without_endterm),
+        'staff_without_endterms' => max(0, count($staff_without_endterm)),
         'staff_require_calibration' => count($calibration_staff),
         'periods' => $periods,
         'current_period' => $current_period,
