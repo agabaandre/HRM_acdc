@@ -30,12 +30,12 @@ $db['default'] = array(
 );
 
 
-$db['bms'] = array(
+$db['apm'] = array(
 	'dsn' => '',
 	'hostname' => $_ENV['DB_HOST'],
     'username' => $_ENV['DB_USER'],
     'password' => $_ENV['DB_PASS'],
-    'database' => $_ENV['DB_NAME'],
+    'database' => $_ENV['APM_DB_NAME'],
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,

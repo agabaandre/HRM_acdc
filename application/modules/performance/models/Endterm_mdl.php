@@ -462,20 +462,20 @@ public function get_staff_by_type($type, $division_id = null, $funder_id = null,
             // For completed reviews: show all who completed regardless of contract status
             // First, get staff who completed endterms
             if ($type === 'total') {
-                // Staff who have submitted endterm reviews (not drafts)
-                $this->db->select('pe.staff_id, pe.entry_id');
-                $this->db->from('ppa_entries pe');
-                if ($period) $this->db->where('pe.performance_period', $period);
-                $this->db->where('pe.draft_status !=', 1); // PPA submitted
-                $this->db->where('pe.endterm_draft_status !=', 1); // Submitted
+            // Staff who have submitted endterm reviews (not drafts)
+            $this->db->select('pe.staff_id, pe.entry_id');
+            $this->db->from('ppa_entries pe');
+            if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            $this->db->where('pe.endterm_draft_status !=', 1); // Submitted
             } elseif ($type === 'approved') {
-                // Staff whose endterm reviews have been approved
+            // Staff whose endterm reviews have been approved
                 // Use WHERE EXISTS with subquery to handle collation properly
-                $this->db->select('pe.staff_id, pe.entry_id');
-                $this->db->from('ppa_entries pe');
-                $this->db->where('pe.draft_status !=', 1);
-                $this->db->where('pe.endterm_draft_status !=', 1);
-                if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->select('pe.staff_id, pe.entry_id');
+            $this->db->from('ppa_entries pe');
+            $this->db->where('pe.draft_status !=', 1);
+            $this->db->where('pe.endterm_draft_status !=', 1);
+            if ($period) $this->db->where('pe.performance_period', $period);
                 // Use raw WHERE clause for collation handling
                 $this->db->where("EXISTS (
                     SELECT 1 FROM ppa_approval_trail_end_term pat
@@ -489,12 +489,12 @@ public function get_staff_by_type($type, $division_id = null, $funder_id = null,
                 )", null, false);
             } elseif ($type === 'require_calibration') {
                 // Staff whose endterm reviews require calibration
-                $this->db->select('pe.staff_id, pe.entry_id');
-                $this->db->from('ppa_entries pe');
-                $this->db->where('pe.endterm_draft_status !=', 1); // Submitted
-                $this->db->where('pe.draft_status !=', 1); // PPA submitted
-                $this->db->where('pe.overall_end_term_status', 'To be Calibrated');
-                if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->select('pe.staff_id, pe.entry_id');
+            $this->db->from('ppa_entries pe');
+            $this->db->where('pe.endterm_draft_status !=', 1); // Submitted
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            $this->db->where('pe.overall_end_term_status', 'To be Calibrated');
+            if ($period) $this->db->where('pe.performance_period', $period);
             }
             
             $completed_entries = $this->db->get()->result();
@@ -533,7 +533,7 @@ public function get_staff_by_type($type, $division_id = null, $funder_id = null,
                 if (isset($entry_map[$staff->staff_id])) {
                     $staff->entry_id = $entry_map[$staff->staff_id];
                 }
-                return $staff;
+                    return $staff;
             }, $staff_list);
 
         case 'without_ppa':
