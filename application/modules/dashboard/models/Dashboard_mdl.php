@@ -250,24 +250,24 @@ class Dashboard_mdl extends CI_Model
         if ($job_id) $this->db->where('sc.job_id', $job_id);
         $two_months = $this->db->count_all_results();
 
-        // Staff under renewal
+        // Staff under renewal - query independently (not limited by $staff_ids which only includes status 1,2)
         $this->db->select('sc.staff_id');
         $this->db->from('staff_contracts sc');
+        $this->db->join('staff s', 's.staff_id = sc.staff_id', 'left');
         $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-        $this->db->where_in('sc.staff_id', $staff_ids);
-        $this->db->where('sc.status_id', 7);
+        $this->db->where('sc.status_id', 7); // Under Renewal
         if ($division_id) $this->db->where('sc.division_id', $division_id);
         if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
         if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
         if ($job_id) $this->db->where('sc.job_id', $job_id);
         $staff_renewal = $this->db->count_all_results();
 
-        // Expired contracts
+        // Expired contracts - query independently (not limited by $staff_ids which only includes status 1,2)
         $this->db->select('sc.staff_id');
         $this->db->from('staff_contracts sc');
+        $this->db->join('staff s', 's.staff_id = sc.staff_id', 'left');
         $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-        $this->db->where_in('sc.staff_id', $staff_ids);
-        $this->db->where('sc.status_id', 3);
+        $this->db->where('sc.status_id', 3); // Expired
         if ($division_id) $this->db->where('sc.division_id', $division_id);
         if ($duty_station_id) $this->db->where('sc.duty_station_id', $duty_station_id);
         if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
