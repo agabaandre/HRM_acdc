@@ -10,6 +10,7 @@ class Share extends MX_Controller
 		parent::__construct();
 
 		$this->module = "share";
+		$this->load->model("apm_mdl");
 	}
 
 	public function index()
@@ -657,5 +658,558 @@ public function validate_password($post_password,$dbpassword){
      }
      
    }
+
+	/**
+	 * Get Service Requests
+	 * GET /share/service_requests?overall_status=approved&division_id=1&limit=10&offset=0
+	 */
+	public function service_requests()
+	{
+		if ($this->api_login()) {
+			try {
+				$filters = [
+					'overall_status' => $this->input->get('overall_status'),
+					'division_id' => $this->input->get('division_id'),
+					'staff_id' => $this->input->get('staff_id'),
+					'date_from' => $this->input->get('date_from'),
+					'date_to' => $this->input->get('date_to'),
+					'limit' => $this->input->get('limit') ? (int)$this->input->get('limit') : null,
+					'offset' => $this->input->get('offset') ? (int)$this->input->get('offset') : 0,
+					'order_by' => $this->input->get('order_by') ?: 'id',
+					'order_dir' => $this->input->get('order_dir') ?: 'DESC'
+				];
+				
+				// Remove empty filters
+				$filters = array_filter($filters, function($value) {
+					return $value !== null && $value !== '';
+				});
+				
+				$data = $this->apm_mdl->get_service_requests($filters);
+				$total = $this->apm_mdl->count_service_requests($filters);
+				
+				header('Content-Type: application/json');
+				http_response_code(200);
+				echo json_encode([
+					'success' => true,
+					'data' => $data,
+					'total' => $total,
+					'count' => count($data)
+				]);
+			} catch (Exception $e) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+			}
+		} else {
+			header('Content-Type: application/json');
+			http_response_code(401);
+			echo json_encode(['success' => false, 'error' => 'Authentication Failed! Invalid Request']);
+		}
+	}
+
+	/**
+	 * Get Activities
+	 * GET /share/activities?overall_status=approved&division_id=1&limit=10&offset=0
+	 */
+	public function activities()
+	{
+		if ($this->api_login()) {
+			try {
+				$filters = [
+					'overall_status' => $this->input->get('overall_status'),
+					'division_id' => $this->input->get('division_id'),
+					'staff_id' => $this->input->get('staff_id'),
+					'is_single_memo' => $this->input->get('is_single_memo'),
+					'date_from' => $this->input->get('date_from'),
+					'date_to' => $this->input->get('date_to'),
+					'limit' => $this->input->get('limit') ? (int)$this->input->get('limit') : null,
+					'offset' => $this->input->get('offset') ? (int)$this->input->get('offset') : 0,
+					'order_by' => $this->input->get('order_by') ?: 'id',
+					'order_dir' => $this->input->get('order_dir') ?: 'DESC'
+				];
+				
+				// Remove empty filters
+				$filters = array_filter($filters, function($value) {
+					return $value !== null && $value !== '';
+				});
+				
+				$data = $this->apm_mdl->get_activities($filters);
+				$total = $this->apm_mdl->count_activities($filters);
+				
+				header('Content-Type: application/json');
+				http_response_code(200);
+				echo json_encode([
+					'success' => true,
+					'data' => $data,
+					'total' => $total,
+					'count' => count($data)
+				]);
+			} catch (Exception $e) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+			}
+		} else {
+			header('Content-Type: application/json');
+			http_response_code(401);
+			echo json_encode(['success' => false, 'error' => 'Authentication Failed! Invalid Request']);
+		}
+	}
+
+	/**
+	 * Get Non-Travel Memos
+	 * GET /share/non_travel_memos?overall_status=approved&division_id=1&limit=10&offset=0
+	 */
+	public function non_travel_memos()
+	{
+		if ($this->api_login()) {
+			try {
+				$filters = [
+					'overall_status' => $this->input->get('overall_status'),
+					'division_id' => $this->input->get('division_id'),
+					'staff_id' => $this->input->get('staff_id'),
+					'date_from' => $this->input->get('date_from'),
+					'date_to' => $this->input->get('date_to'),
+					'limit' => $this->input->get('limit') ? (int)$this->input->get('limit') : null,
+					'offset' => $this->input->get('offset') ? (int)$this->input->get('offset') : 0,
+					'order_by' => $this->input->get('order_by') ?: 'id',
+					'order_dir' => $this->input->get('order_dir') ?: 'DESC'
+				];
+				
+				// Remove empty filters
+				$filters = array_filter($filters, function($value) {
+					return $value !== null && $value !== '';
+				});
+				
+				$data = $this->apm_mdl->get_non_travel_memos($filters);
+				$total = $this->apm_mdl->count_non_travel_memos($filters);
+				
+				header('Content-Type: application/json');
+				http_response_code(200);
+				echo json_encode([
+					'success' => true,
+					'data' => $data,
+					'total' => $total,
+					'count' => count($data)
+				]);
+			} catch (Exception $e) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+			}
+		} else {
+			header('Content-Type: application/json');
+			http_response_code(401);
+			echo json_encode(['success' => false, 'error' => 'Authentication Failed! Invalid Request']);
+		}
+	}
+
+	/**
+	 * Get Special Memos
+	 * GET /share/special_memos?overall_status=approved&division_id=1&limit=10&offset=0
+	 */
+	public function special_memos()
+	{
+		if ($this->api_login()) {
+			try {
+				$filters = [
+					'overall_status' => $this->input->get('overall_status'),
+					'division_id' => $this->input->get('division_id'),
+					'staff_id' => $this->input->get('staff_id'),
+					'date_from' => $this->input->get('date_from'),
+					'date_to' => $this->input->get('date_to'),
+					'limit' => $this->input->get('limit') ? (int)$this->input->get('limit') : null,
+					'offset' => $this->input->get('offset') ? (int)$this->input->get('offset') : 0,
+					'order_by' => $this->input->get('order_by') ?: 'id',
+					'order_dir' => $this->input->get('order_dir') ?: 'DESC'
+				];
+				
+				// Remove empty filters
+				$filters = array_filter($filters, function($value) {
+					return $value !== null && $value !== '';
+				});
+				
+				$data = $this->apm_mdl->get_special_memos($filters);
+				$total = $this->apm_mdl->count_special_memos($filters);
+				
+				header('Content-Type: application/json');
+				http_response_code(200);
+				echo json_encode([
+					'success' => true,
+					'data' => $data,
+					'total' => $total,
+					'count' => count($data)
+				]);
+			} catch (Exception $e) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+			}
+		} else {
+			header('Content-Type: application/json');
+			http_response_code(401);
+			echo json_encode(['success' => false, 'error' => 'Authentication Failed! Invalid Request']);
+		}
+	}
+
+	/**
+	 * Get Request ARFs
+	 * GET /share/request_arfs?overall_status=approved&division_id=1&limit=10&offset=0
+	 */
+	public function request_arfs()
+	{
+		if ($this->api_login()) {
+			try {
+				$filters = [
+					'overall_status' => $this->input->get('overall_status'),
+					'division_id' => $this->input->get('division_id'),
+					'staff_id' => $this->input->get('staff_id'),
+					'date_from' => $this->input->get('date_from'),
+					'date_to' => $this->input->get('date_to'),
+					'limit' => $this->input->get('limit') ? (int)$this->input->get('limit') : null,
+					'offset' => $this->input->get('offset') ? (int)$this->input->get('offset') : 0,
+					'order_by' => $this->input->get('order_by') ?: 'id',
+					'order_dir' => $this->input->get('order_dir') ?: 'DESC'
+				];
+				
+				// Remove empty filters
+				$filters = array_filter($filters, function($value) {
+					return $value !== null && $value !== '';
+				});
+				
+				$data = $this->apm_mdl->get_request_arfs($filters);
+				$total = $this->apm_mdl->count_request_arfs($filters);
+				
+				header('Content-Type: application/json');
+				http_response_code(200);
+				echo json_encode([
+					'success' => true,
+					'data' => $data,
+					'total' => $total,
+					'count' => count($data)
+				]);
+			} catch (Exception $e) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+			}
+		} else {
+			header('Content-Type: application/json');
+			http_response_code(401);
+			echo json_encode(['success' => false, 'error' => 'Authentication Failed! Invalid Request']);
+		}
+	}
+
+	/**
+	 * Get Change Requests
+	 * GET /share/change_requests?overall_status=approved&parent_memo_model=App\Models\SpecialMemo&limit=10&offset=0
+	 */
+	public function change_requests()
+	{
+		if ($this->api_login()) {
+			try {
+				$filters = [
+					'overall_status' => $this->input->get('overall_status'),
+					'parent_memo_model' => $this->input->get('parent_memo_model'),
+					'parent_memo_id' => $this->input->get('parent_memo_id'),
+					'staff_id' => $this->input->get('staff_id'),
+					'date_from' => $this->input->get('date_from'),
+					'date_to' => $this->input->get('date_to'),
+					'limit' => $this->input->get('limit') ? (int)$this->input->get('limit') : null,
+					'offset' => $this->input->get('offset') ? (int)$this->input->get('offset') : 0,
+					'order_by' => $this->input->get('order_by') ?: 'id',
+					'order_dir' => $this->input->get('order_dir') ?: 'DESC'
+				];
+				
+				// Remove empty filters
+				$filters = array_filter($filters, function($value) {
+					return $value !== null && $value !== '';
+				});
+				
+				$data = $this->apm_mdl->get_change_requests($filters);
+				$total = $this->apm_mdl->count_change_requests($filters);
+				
+				header('Content-Type: application/json');
+				http_response_code(200);
+				echo json_encode([
+					'success' => true,
+					'data' => $data,
+					'total' => $total,
+					'count' => count($data)
+				]);
+			} catch (Exception $e) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+			}
+		} else {
+			header('Content-Type: application/json');
+			http_response_code(401);
+			echo json_encode(['success' => false, 'error' => 'Authentication Failed! Invalid Request']);
+		}
+	}
+
+	/**
+	 * Get Fund Codes
+	 * GET /share/fund_codes?fund_type_id=1&division_id=1&funder_id=1&year=2025&is_active=1&limit=10&offset=0
+	 */
+	public function fund_codes()
+	{
+		if ($this->api_login()) {
+			try {
+				$filters = [
+					'fund_type_id' => $this->input->get('fund_type_id'),
+					'division_id' => $this->input->get('division_id'),
+					'funder_id' => $this->input->get('funder_id'),
+					'year' => $this->input->get('year'),
+					'is_active' => $this->input->get('is_active'),
+					'code' => $this->input->get('code'),
+					'limit' => $this->input->get('limit') ? (int)$this->input->get('limit') : null,
+					'offset' => $this->input->get('offset') ? (int)$this->input->get('offset') : 0,
+					'order_by' => $this->input->get('order_by') ?: 'fc.code',
+					'order_dir' => $this->input->get('order_dir') ?: 'ASC'
+				];
+				
+				// Remove empty filters
+				$filters = array_filter($filters, function($value) {
+					return $value !== null && $value !== '';
+				});
+				
+				$data = $this->apm_mdl->get_fund_codes($filters);
+				$total = $this->apm_mdl->count_fund_codes($filters);
+				
+				header('Content-Type: application/json');
+				http_response_code(200);
+				echo json_encode([
+					'success' => true,
+					'data' => $data,
+					'total' => $total,
+					'count' => count($data)
+				]);
+			} catch (Exception $e) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+			}
+		} else {
+			header('Content-Type: application/json');
+			http_response_code(401);
+			echo json_encode(['success' => false, 'error' => 'Authentication Failed! Invalid Request']);
+		}
+	}
+
+	/**
+	 * Get Fund Types
+	 * GET /share/fund_types?id=1&name=Donor&limit=10&offset=0
+	 */
+	public function fund_types()
+	{
+		if ($this->api_login()) {
+			try {
+				$filters = [
+					'id' => $this->input->get('id'),
+					'name' => $this->input->get('name'),
+					'limit' => $this->input->get('limit') ? (int)$this->input->get('limit') : null,
+					'offset' => $this->input->get('offset') ? (int)$this->input->get('offset') : 0,
+					'order_by' => $this->input->get('order_by') ?: 'ft.name',
+					'order_dir' => $this->input->get('order_dir') ?: 'ASC'
+				];
+				
+				// Remove empty filters
+				$filters = array_filter($filters, function($value) {
+					return $value !== null && $value !== '';
+				});
+				
+				$data = $this->apm_mdl->get_fund_types($filters);
+				$total = $this->apm_mdl->count_fund_types($filters);
+				
+				header('Content-Type: application/json');
+				http_response_code(200);
+				echo json_encode([
+					'success' => true,
+					'data' => $data,
+					'total' => $total,
+					'count' => count($data)
+				]);
+			} catch (Exception $e) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+			}
+		} else {
+			header('Content-Type: application/json');
+			http_response_code(401);
+			echo json_encode(['success' => false, 'error' => 'Authentication Failed! Invalid Request']);
+		}
+	}
+
+	/**
+	 * API Documentation endpoint
+	 * GET /share/api_docs
+	 */
+	public function api_docs()
+	{
+		header('Content-Type: application/json');
+		http_response_code(200);
+		echo json_encode([
+			'api_name' => 'Africa CDC Staff Tracker API',
+			'version' => '1.0.0',
+			'base_url' => base_url('share'),
+			'authentication' => [
+				'type' => 'HTTP Basic Authentication',
+				'description' => 'All endpoints require HTTP Basic Authentication using your CodeIgniter app credentials',
+				'example' => 'Authorization: Basic base64(username:password)'
+			],
+			'endpoints' => [
+				'service_requests' => [
+					'url' => base_url('share/service_requests'),
+					'method' => 'GET',
+					'description' => 'Get service requests with optional filtering',
+					'parameters' => [
+						'overall_status' => ['type' => 'string', 'options' => ['approved', 'pending', 'returned', 'draft', 'cancelled'], 'required' => false],
+						'division_id' => ['type' => 'integer', 'required' => false],
+						'staff_id' => ['type' => 'integer', 'required' => false],
+						'date_from' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'date_to' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'limit' => ['type' => 'integer', 'required' => false],
+						'offset' => ['type' => 'integer', 'required' => false],
+						'order_by' => ['type' => 'string', 'default' => 'id', 'required' => false],
+						'order_dir' => ['type' => 'string', 'options' => ['ASC', 'DESC'], 'default' => 'DESC', 'required' => false]
+					],
+					'example' => base_url('share/service_requests?overall_status=approved&division_id=1&limit=10')
+				],
+				'activities' => [
+					'url' => base_url('share/activities'),
+					'method' => 'GET',
+					'description' => 'Get activities with optional filtering',
+					'parameters' => [
+						'overall_status' => ['type' => 'string', 'options' => ['approved', 'pending', 'returned', 'draft', 'cancelled'], 'required' => false],
+						'division_id' => ['type' => 'integer', 'required' => false],
+						'staff_id' => ['type' => 'integer', 'required' => false],
+						'is_single_memo' => ['type' => 'boolean', 'required' => false],
+						'date_from' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'date_to' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'limit' => ['type' => 'integer', 'required' => false],
+						'offset' => ['type' => 'integer', 'required' => false],
+						'order_by' => ['type' => 'string', 'default' => 'id', 'required' => false],
+						'order_dir' => ['type' => 'string', 'options' => ['ASC', 'DESC'], 'default' => 'DESC', 'required' => false]
+					],
+					'example' => base_url('share/activities?overall_status=approved&limit=10')
+				],
+				'non_travel_memos' => [
+					'url' => base_url('share/non_travel_memos'),
+					'method' => 'GET',
+					'description' => 'Get non-travel memos (single memos) with optional filtering',
+					'parameters' => [
+						'overall_status' => ['type' => 'string', 'options' => ['approved', 'pending', 'returned', 'draft', 'cancelled'], 'required' => false],
+						'division_id' => ['type' => 'integer', 'required' => false],
+						'staff_id' => ['type' => 'integer', 'required' => false],
+						'date_from' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'date_to' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'limit' => ['type' => 'integer', 'required' => false],
+						'offset' => ['type' => 'integer', 'required' => false],
+						'order_by' => ['type' => 'string', 'default' => 'id', 'required' => false],
+						'order_dir' => ['type' => 'string', 'options' => ['ASC', 'DESC'], 'default' => 'DESC', 'required' => false]
+					],
+					'example' => base_url('share/non_travel_memos?overall_status=approved&limit=10')
+				],
+				'special_memos' => [
+					'url' => base_url('share/special_memos'),
+					'method' => 'GET',
+					'description' => 'Get special memos with optional filtering',
+					'parameters' => [
+						'overall_status' => ['type' => 'string', 'options' => ['approved', 'pending', 'returned', 'draft', 'cancelled'], 'required' => false],
+						'division_id' => ['type' => 'integer', 'required' => false],
+						'staff_id' => ['type' => 'integer', 'required' => false],
+						'date_from' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'date_to' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'limit' => ['type' => 'integer', 'required' => false],
+						'offset' => ['type' => 'integer', 'required' => false],
+						'order_by' => ['type' => 'string', 'default' => 'id', 'required' => false],
+						'order_dir' => ['type' => 'string', 'options' => ['ASC', 'DESC'], 'default' => 'DESC', 'required' => false]
+					],
+					'example' => base_url('share/special_memos?overall_status=approved&limit=10')
+				],
+				'request_arfs' => [
+					'url' => base_url('share/request_arfs'),
+					'method' => 'GET',
+					'description' => 'Get request ARFs with optional filtering',
+					'parameters' => [
+						'overall_status' => ['type' => 'string', 'options' => ['approved', 'pending', 'returned', 'draft', 'cancelled'], 'required' => false],
+						'division_id' => ['type' => 'integer', 'required' => false],
+						'staff_id' => ['type' => 'integer', 'required' => false],
+						'date_from' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'date_to' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'limit' => ['type' => 'integer', 'required' => false],
+						'offset' => ['type' => 'integer', 'required' => false],
+						'order_by' => ['type' => 'string', 'default' => 'id', 'required' => false],
+						'order_dir' => ['type' => 'string', 'options' => ['ASC', 'DESC'], 'default' => 'DESC', 'required' => false]
+					],
+					'example' => base_url('share/request_arfs?overall_status=approved&limit=10')
+				],
+				'change_requests' => [
+					'url' => base_url('share/change_requests'),
+					'method' => 'GET',
+					'description' => 'Get change requests with optional filtering',
+					'parameters' => [
+						'overall_status' => ['type' => 'string', 'options' => ['approved', 'pending', 'returned', 'draft', 'cancelled'], 'required' => false],
+						'parent_memo_model' => ['type' => 'string', 'example' => 'App\\Models\\SpecialMemo', 'required' => false],
+						'parent_memo_id' => ['type' => 'integer', 'required' => false],
+						'staff_id' => ['type' => 'integer', 'required' => false],
+						'date_from' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'date_to' => ['type' => 'date (Y-m-d)', 'required' => false],
+						'limit' => ['type' => 'integer', 'required' => false],
+						'offset' => ['type' => 'integer', 'required' => false],
+						'order_by' => ['type' => 'string', 'default' => 'id', 'required' => false],
+						'order_dir' => ['type' => 'string', 'options' => ['ASC', 'DESC'], 'default' => 'DESC', 'required' => false]
+					],
+					'example' => base_url('share/change_requests?overall_status=approved&limit=10')
+				],
+				'divisions' => [
+					'url' => base_url('share/divisions'),
+					'method' => 'GET',
+					'description' => 'Get all divisions',
+					'parameters' => [],
+					'example' => base_url('share/divisions')
+				],
+				'directorates' => [
+					'url' => base_url('share/directorates'),
+					'method' => 'GET',
+					'description' => 'Get all directorates',
+					'parameters' => [],
+					'example' => base_url('share/directorates')
+				],
+				'staff' => [
+					'url' => base_url('share/staff'),
+					'method' => 'GET',
+					'description' => 'Get staff information',
+					'parameters' => [],
+					'example' => base_url('share/staff')
+				],
+				'get_current_staff' => [
+					'url' => base_url('share/get_current_staff'),
+					'method' => 'GET',
+					'description' => 'Get current staff with filters',
+					'parameters' => [
+						'limit' => ['type' => 'integer', 'required' => false],
+						'start' => ['type' => 'integer', 'required' => false]
+					],
+					'example' => base_url('share/get_current_staff?limit=10&start=0')
+				]
+			],
+			'response_format' => [
+				'success' => 'boolean',
+				'data' => 'array',
+				'total' => 'integer (total records matching filters)',
+				'count' => 'integer (records in current response)',
+				'error' => 'string (only present on error)'
+			],
+			'status_codes' => [
+				'200' => 'Success',
+				'401' => 'Unauthorized - Invalid or missing authentication',
+				'500' => 'Internal Server Error'
+			]
+		], JSON_PRETTY_PRINT);
+	}
 
 }

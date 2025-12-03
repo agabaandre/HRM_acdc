@@ -497,18 +497,18 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             // For completed PPAs: show all who completed regardless of contract status
             // First, get staff who completed PPAs
             if ($type === 'total') {
-                // Staff who have submitted PPAs (not drafts)
-                $this->db->select('pe.staff_id, pe.entry_id');
-                $this->db->from('ppa_entries pe');
-                if ($period) $this->db->where('pe.performance_period', $period);
-                $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            // Staff who have submitted PPAs (not drafts)
+            $this->db->select('pe.staff_id, pe.entry_id');
+            $this->db->from('ppa_entries pe');
+            if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
             } elseif ($type === 'approved') {
-                // Staff whose PPAs have been approved
+            // Staff whose PPAs have been approved
                 // Use WHERE EXISTS with subquery to handle collation properly
-                $this->db->select('pe.staff_id, pe.entry_id');
-                $this->db->from('ppa_entries pe');
-                $this->db->where('pe.draft_status !=', 1);
-                if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->select('pe.staff_id, pe.entry_id');
+            $this->db->from('ppa_entries pe');
+            $this->db->where('pe.draft_status !=', 1);
+            if ($period) $this->db->where('pe.performance_period', $period);
                 // Use raw WHERE clause for approval check
                 $this->db->where("EXISTS (
                     SELECT 1 FROM ppa_approval_trail pat
@@ -521,12 +521,12 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
                     )
                 )", null, false);
             } elseif ($type === 'with_pdp') {
-                // Staff who have training recommendations in their PPA
-                $this->db->select('pe.staff_id, pe.entry_id, pe.required_skills');
-                $this->db->from('ppa_entries pe');
-                $this->db->where('pe.training_recommended', 'Yes');
-                $this->db->where('pe.draft_status !=', 1); // PPA submitted
-                if ($period) $this->db->where('pe.performance_period', $period);
+            // Staff who have training recommendations in their PPA
+            $this->db->select('pe.staff_id, pe.entry_id, pe.required_skills');
+            $this->db->from('ppa_entries pe');
+            $this->db->where('pe.training_recommended', 'Yes');
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            if ($period) $this->db->where('pe.performance_period', $period);
             }
             
             $completed_entries = $this->db->get()->result();
@@ -556,26 +556,26 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             }
             
             $staff_list = $this->db->get()->result();
-            
+
             // For with_pdp, we need to add skills data
             if ($type === 'with_pdp') {
-                // Map skills
-                $this->db->select('id, skill');
-                $skills_map = [];
-                foreach ($this->db->get('training_skills')->result() as $s) {
-                    $skills_map[$s->id] = $s->skill;
-                }
-                
+            // Map skills
+            $this->db->select('id, skill');
+            $skills_map = [];
+            foreach ($this->db->get('training_skills')->result() as $s) {
+                $skills_map[$s->id] = $s->skill;
+            }
+
                 // Get skills for each entry
                 $pdp_data = [];
                 foreach ($completed_entries as $entry) {
                     if (isset($entry->required_skills)) {
-                        $skill_ids = json_decode($entry->required_skills ?? '[]', true);
-                        if (!empty($skill_ids)) {
-                            $skill_names = array_map(fn($id) => $skills_map[$id] ?? '', $skill_ids);
+                $skill_ids = json_decode($entry->required_skills ?? '[]', true);
+                if (!empty($skill_ids)) {
+                    $skill_names = array_map(fn($id) => $skills_map[$id] ?? '', $skill_ids);
                             $pdp_data[$entry->staff_id] = array_filter($skill_names);
-                        }
-                    }
+                }
+            }
                 }
                 
                 // Add skills to staff list
