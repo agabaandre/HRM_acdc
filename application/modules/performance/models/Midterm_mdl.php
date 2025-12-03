@@ -455,121 +455,140 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
         ->group_by('staff_id')
         ->get_compiled_select();
 
-    // Base staff query
-    $this->db->select('
-        s.staff_id, s.fname, s.lname, s.oname, s.work_email, s.SAPNO,
-        d.division_name, ct.contract_type, st.status
-    ');
-    $this->db->from('staff s');
-    $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
-    $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
-    $this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
-    $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
-    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-    $this->db->where_in('sc.status_id', [1, 2]); // Active & Due
-    $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Exclude Regular, Fixed, AUYVC, ALD
-    if ($division_id) {
-        $this->db->where('sc.division_id', $division_id);
-    }
-
-    $active_staff = $this->db->get()->result();
-    $staff_ids = array_column($active_staff, 'staff_id');
-
-    if (empty($staff_ids)) return [];
-
     switch ($type) {
         case 'total':
-            // Staff who have submitted midterm reviews (not drafts)
-            $this->db->select('pe.staff_id, pe.entry_id');
-            $this->db->from('ppa_entries pe');
-            if ($period) $this->db->where('pe.performance_period', $period);
-            $this->db->where('pe.draft_status !=', 1); // PPA submitted
-            $this->db->where('pe.midterm_draft_status !=', 1); // Submitted
-            $this->db->where_in('pe.staff_id', $staff_ids);
-            $midterm_entries = $this->db->get()->result();
-
-            $midterm_map = [];
-            foreach ($midterm_entries as $row) {
-                $midterm_map[$row->staff_id] = $row->entry_id;
-            }
-
-            return array_filter(array_map(function ($staff) use ($midterm_map) {
-                if (isset($midterm_map[$staff->staff_id])) {
-                    $staff->entry_id = $midterm_map[$staff->staff_id];
-                    return $staff;
-                }
-                return null;
-            }, $active_staff));
-
         case 'approved':
-            // Staff whose midterm reviews have been approved
-            $this->db->select('pe.staff_id, pe.entry_id');
-            $this->db->from('ppa_entries pe');
-            $this->db->join("(
-                SELECT entry_id, MAX(id) AS max_id
-                FROM ppa_approval_trail_midterm
-                GROUP BY entry_id
-            ) latest", "latest.entry_id = pe.entry_id");
-            $this->db->join("ppa_approval_trail_midterm pat", "pat.id = latest.max_id");
-            $this->db->where('pat.action', 'Approved');
-            $this->db->where('pe.draft_status !=', 1);
-            $this->db->where('pe.midterm_draft_status !=', 1);
-            if ($period) $this->db->where('pe.performance_period', $period);
-            $this->db->where_in('pe.staff_id', $staff_ids);
-            $approved_entries = $this->db->get()->result();
-
-            $approved_map = [];
-            foreach ($approved_entries as $row) {
-                $approved_map[$row->staff_id] = $row->entry_id;
-            }
-
-            return array_filter(array_map(function ($staff) use ($approved_map) {
-                if (isset($approved_map[$staff->staff_id])) {
-                    $staff->entry_id = $approved_map[$staff->staff_id];
-                    return $staff;
-                }
-                return null;
-            }, $active_staff));
-
         case 'with_pdp':
-            // Staff who have training recommendations in their midterm review
-            $this->db->select('pe.staff_id, pe.entry_id, pe.midterm_recommended_skills');
-            $this->db->from('ppa_entries pe');
-            $this->db->where('pe.midterm_draft_status !=', 1); // Submitted
-            $this->db->where('pe.draft_status !=', 1); // PPA submitted
-            if ($period) $this->db->where('pe.performance_period', $period);
-            $this->db->where_in('pe.staff_id', $staff_ids);
-            $pdp_entries = $this->db->get()->result();
-
-            // Map skills
-            $this->db->select('id, skill');
-            $skills_map = [];
-            foreach ($this->db->get('training_skills')->result() as $s) {
-                $skills_map[$s->id] = $s->skill;
+            // For completed reviews: show all who completed regardless of contract status
+            // First, get staff who completed midterms
+            if ($type === 'total') {
+                // Staff who have submitted midterm reviews (not drafts)
+                $this->db->select('pe.staff_id, pe.entry_id');
+                $this->db->from('ppa_entries pe');
+                if ($period) $this->db->where('pe.performance_period', $period);
+                $this->db->where('pe.draft_status !=', 1); // PPA submitted
+                $this->db->where('pe.midterm_draft_status !=', 1); // Submitted
+            } elseif ($type === 'approved') {
+                // Staff whose midterm reviews have been approved
+                // Use WHERE EXISTS with subquery to handle collation properly
+                $this->db->select('pe.staff_id, pe.entry_id');
+                $this->db->from('ppa_entries pe');
+                $this->db->where('pe.draft_status !=', 1);
+                $this->db->where('pe.midterm_draft_status !=', 1);
+                if ($period) $this->db->where('pe.performance_period', $period);
+                // Use raw WHERE clause for approval check
+                $this->db->where("EXISTS (
+                    SELECT 1 FROM ppa_approval_trail_midterm pat
+                    WHERE pat.entry_id = pe.entry_id
+                    AND pat.action = 'Approved'
+                    AND pat.id = (
+                        SELECT MAX(id) 
+                        FROM ppa_approval_trail_midterm 
+                        WHERE entry_id = pe.entry_id
+                    )
+                )", null, false);
+            } elseif ($type === 'with_pdp') {
+                // Staff who have training recommendations in their midterm review
+                $this->db->select('pe.staff_id, pe.entry_id, pe.midterm_recommended_skills');
+                $this->db->from('ppa_entries pe');
+                $this->db->where('pe.midterm_draft_status !=', 1); // Submitted
+                $this->db->where('pe.draft_status !=', 1); // PPA submitted
+                if ($period) $this->db->where('pe.performance_period', $period);
+            }
+            
+            $completed_entries = $this->db->get()->result();
+            if (empty($completed_entries)) return [];
+            
+            $completed_staff_ids = array_column($completed_entries, 'staff_id');
+            $entry_map = [];
+            foreach ($completed_entries as $row) {
+                $entry_map[$row->staff_id] = $row->entry_id;
             }
 
-            $pdp_map = [];
-            foreach ($pdp_entries as $entry) {
-                $skill_ids = json_decode($entry->midterm_recommended_skills ?? '[]', true);
-                if (!empty($skill_ids)) {
-                    $skill_names = array_map(fn($id) => $skills_map[$id] ?? '', $skill_ids);
-                    $pdp_map[$entry->staff_id] = [
-                        'entry_id' => $entry->entry_id,
-                        'skills' => array_filter($skill_names)
-                    ];
+            // Now get staff details with contract info (no contract status filter)
+            $this->db->select('
+                s.staff_id, s.fname, s.lname, s.oname, s.work_email, s.SAPNO,
+                d.division_name, ct.contract_type, st.status
+            ');
+            $this->db->from('staff s');
+            $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+            $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+            $this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
+            $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+            $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+            $this->db->where_in('s.staff_id', $completed_staff_ids);
+            // Apply division filter if provided
+            if ($division_id) {
+                $this->db->where('sc.division_id', $division_id);
+            }
+            
+            $staff_list = $this->db->get()->result();
+            
+            // For with_pdp, we need to add skills data
+            if ($type === 'with_pdp') {
+                // Map skills
+                $this->db->select('id, skill');
+                $skills_map = [];
+                foreach ($this->db->get('training_skills')->result() as $s) {
+                    $skills_map[$s->id] = $s->skill;
                 }
-            }
-
-            return array_filter(array_map(function ($staff) use ($pdp_map) {
-                if (isset($pdp_map[$staff->staff_id])) {
-                    $staff->entry_id = $pdp_map[$staff->staff_id]['entry_id'];
-                    $staff->training_skills = $pdp_map[$staff->staff_id]['skills'];
+                
+                // Get skills for each entry
+                $pdp_data = [];
+                foreach ($completed_entries as $entry) {
+                    if (isset($entry->midterm_recommended_skills)) {
+                        $skill_ids = json_decode($entry->midterm_recommended_skills ?? '[]', true);
+                        if (!empty($skill_ids)) {
+                            $skill_names = array_map(fn($id) => $skills_map[$id] ?? '', $skill_ids);
+                            $pdp_data[$entry->staff_id] = array_filter($skill_names);
+                        }
+                    }
+                }
+                
+                // Add skills to staff list
+                return array_map(function ($staff) use ($entry_map, $pdp_data) {
+                    if (isset($entry_map[$staff->staff_id])) {
+                        $staff->entry_id = $entry_map[$staff->staff_id];
+                        if (isset($pdp_data[$staff->staff_id])) {
+                            $staff->training_skills = $pdp_data[$staff->staff_id];
+                        }
+                    }
                     return $staff;
+                }, $staff_list);
+            }
+            
+            // Add entry_id to each staff member
+            return array_map(function ($staff) use ($entry_map) {
+                if (isset($entry_map[$staff->staff_id])) {
+                    $staff->entry_id = $entry_map[$staff->staff_id];
                 }
-                return null;
-            }, $active_staff));
+                return $staff;
+            }, $staff_list);
 
         case 'without_ppa':
+            // For without_ppa: contract status filtering applies (include Under Renewal = 7)
+            // Base staff query with contract status filter
+            $this->db->select('
+                s.staff_id, s.fname, s.lname, s.oname, s.work_email, s.SAPNO,
+                d.division_name, ct.contract_type, st.status
+            ');
+            $this->db->from('staff s');
+            $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+            $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+            $this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
+            $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+            $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+            $this->db->where_in('sc.status_id', [1, 2, 7]); // Active, Due, and Under Renewal
+            $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Exclude Regular, Fixed, AUYVC, ALD
+            if ($division_id) {
+                $this->db->where('sc.division_id', $division_id);
+            }
+
+            $active_staff = $this->db->get()->result();
+            $staff_ids = array_column($active_staff, 'staff_id');
+
+            if (empty($staff_ids)) return [];
+
             // Staff who have submitted PPAs but haven't submitted midterm reviews
             $this->db->select('pe.staff_id');
             $this->db->from('ppa_entries pe');
@@ -610,24 +629,14 @@ public function get_midterm_dashboard_data()
     $is_restricted = ($user && isset($user->role) && $user->role == 17);
     $staff_id = $is_restricted ? $user->staff_id : null;
 
-    // Get active staff - use same logic as PPA dashboard
+    // Get latest contract for each staff
     $subquery = $this->db->select('MAX(staff_contract_id)', false)
         ->from('staff_contracts')
         ->group_by('staff_id')
         ->get_compiled_select();
 
-    $this->db->select('s.staff_id');
-    $this->db->from('staff s');
-    $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
-    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-    $this->db->where_in('sc.status_id', [1, 2]); // Active & Due (same as PPA dashboard)
-    $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Exclude Regular, Fixed, AUYVC, ALD (same as PPA dashboard)
-    if ($division_id) $this->db->where('sc.division_id', $division_id);
-    if ($is_restricted) $this->db->where('s.staff_id', $staff_id);
-    $staff_ids = array_column($this->db->get()->result(), 'staff_id');
-    if (empty($staff_ids)) return [];
-
-    // Summary counts for midterm
+    // For completed reviews: count all regardless of contract status, but apply division filters
+    // Summary counts for midterm (regardless of contract status)
     $this->db->select("
         COUNT(pe.entry_id) AS total,
         SUM(CASE WHEN latest.action = 'Approved' THEN 1 ELSE 0 END) AS approved,
@@ -636,18 +645,36 @@ public function get_midterm_dashboard_data()
     $this->db->join("(SELECT pat1.* FROM ppa_approval_trail_midterm pat1
         INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail_midterm GROUP BY entry_id) latest
         ON pat1.id = latest.max_id) latest", 'latest.entry_id = pe.entry_id', 'left');
-    $this->db->where_in('pe.staff_id', $staff_ids);
+    // Join with contracts to apply division filter (but no contract status filter)
+    $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where('pe.draft_status !=', 1);
     $this->db->where('pe.performance_period', $period);
     $this->db->where('pe.midterm_draft_status !=', 1);
     $summary = $this->db->get()->row();
 
-    // Submission trend for midterm
+    // Get active staff for "without_ppa" calculation (with contract status filter including Under Renewal)
+    $this->db->select('s.staff_id');
+    $this->db->from('staff s');
+    $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    $this->db->where_in('sc.status_id', [1, 2, 7]); // Active, Due, and Under Renewal
+    $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Exclude Regular, Fixed, AUYVC, ALD
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('s.staff_id', $staff_id);
+    $staff_ids = array_column($this->db->get()->result(), 'staff_id');
+
+    // Submission trend for midterm (regardless of contract status)
     $this->db->select("DATE(pe.midterm_updated_at) AS date, COUNT(pe.entry_id) AS count");
     $this->db->from("ppa_entries pe");
+    $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where('pe.draft_status !=', 1);
     $this->db->where('pe.midterm_draft_status !=', 1);
-    $this->db->where_in("pe.staff_id", $staff_ids);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("DATE(pe.midterm_updated_at)");
     $this->db->order_by("DATE(pe.midterm_updated_at)", "ASC");
@@ -655,13 +682,16 @@ public function get_midterm_dashboard_data()
         return ['date' => $r->date, 'count' => (int)$r->count];
     }, $this->db->get()->result());
 
-    // Average approval time for midterm
+    // Average approval time for midterm (regardless of contract status)
     $this->db->select("pe.midterm_updated_at AS submitted_date, latest.created_at AS approved_date");
     $this->db->from("ppa_entries pe");
     $this->db->join("(SELECT pat1.* FROM ppa_approval_trail_midterm pat1
         INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail_midterm WHERE action = 'Approved' GROUP BY entry_id) latest
         ON pat1.id = latest.max_id) latest", "latest.entry_id = pe.entry_id", "left");
-    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
@@ -678,43 +708,51 @@ public function get_midterm_dashboard_data()
     }
     $avg_days = $count ? round($total_days / $count, 1) : 0;
 
-    // Division-wise midterm count
+    // Division-wise midterm count (regardless of contract status)
     $this->db->select("d.division_name, COUNT(pe.entry_id) AS count");
     $this->db->from("ppa_entries pe");
     $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
     $this->db->join("divisions d", "d.division_id = sc.division_id", "left");
-    $this->db->where_in("pe.staff_id", $staff_ids);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("sc.division_id");
     $divisions = array_map(fn($r) => ['name' => $r->division_name, 'y' => (int)$r->count], $this->db->get()->result());
 
-    // Contract types (based on latest contract only) for midterm
+    // Contract types (based on latest contract only) for midterm (regardless of contract status)
     $this->db->select("ct.contract_type, COUNT(pe.entry_id) AS total");
     $this->db->from("ppa_entries pe");
     $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
     $this->db->join("contract_types ct", "ct.contract_type_id = sc.contract_type_id", "left");
-    $this->db->where_in("pe.staff_id", $staff_ids);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("ct.contract_type_id");
     $by_contract = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
 
-    // Staff with midterm
+    // Staff with midterm (regardless of contract status)
     $this->db->select("pe.staff_id")->from("ppa_entries pe");
-    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.performance_period", $period);
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     $midterm_staff = array_column($this->db->get()->result(), 'staff_id');
 
-    // Staff with PDP at midterm (actual skills recommended)
+    // Staff with PDP at midterm (actual skills recommended) - regardless of contract status
     $this->db->select("pe.staff_id, pe.midterm_recommended_skills")->from("ppa_entries pe");
-    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
@@ -752,7 +790,7 @@ public function get_midterm_dashboard_data()
     $periods = array_unique($periods); // Ensure distinct values
     $current_period = !empty($periods) ? $periods[0] : $period;
 
-    // Age groups for midterm
+    // Age groups for midterm (regardless of contract status)
     $age_groups = [
         'Under 30' => [null, 29],
         '30 - 39' => [30, 39],
@@ -764,7 +802,10 @@ public function get_midterm_dashboard_data()
     foreach ($age_groups as $label => [$min, $max]) {
         $this->db->from("ppa_entries pe");
         $this->db->join("staff s", "s.staff_id = pe.staff_id", "left");
-        $this->db->where_in("pe.staff_id", $staff_ids);
+        $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        if ($division_id) $this->db->where('sc.division_id', $division_id);
+        if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
         $this->db->where("pe.performance_period", $period);
         $this->db->where("pe.draft_status !=", 1);
         $this->db->where("pe.midterm_draft_status !=", 1);
