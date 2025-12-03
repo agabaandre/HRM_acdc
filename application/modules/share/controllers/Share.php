@@ -1045,33 +1045,147 @@ public function validate_password($post_password,$dbpassword){
 
 	/**
 	 * API Documentation Web View
-	 * GET /share/documentation
+	 * GET /share/documentation?file=README.md
 	 */
 	public function documentation()
 	{
 		// Check if user is logged in
+		//dd($this->session->userdata('user'));
 		if (!isset($this->session->userdata('user')->name)) {
 			redirect('auth/login');
 		}
 
-		$markdown_file = APPPATH . 'modules/share/API_DOCUMENTATION.md';
+		// Get file parameter or default to API_DOCUMENTATION.md
+		$file_param = $this->input->get('file');
+		
+		if ($file_param) {
+			// Get project root (one level up from application)
+			$project_root = realpath(APPPATH . '../');
+			
+			// Handle different documentation files
+			$file_map = [
+				'README.md' => $project_root . '/README.md',
+				'ENVIRONMENT_VARIABLES.md' => $project_root . '/assets/ENVIRONMENT_VARIABLES.md',
+				'APM_README.md' => $project_root . '/apm/README.md',
+				'APM_DOCS.md' => $project_root . '/apm/documentation/README.md',
+				'FINANCE_README.md' => $project_root . '/finance/README.md',
+				'FINANCE_DOCS.md' => $project_root . '/finance/documentation/README.md',
+				'DOCS_README.md' => $project_root . '/documentation/README.md',
+			];
+			
+			if (isset($file_map[$file_param])) {
+				$markdown_file = $file_map[$file_param];
+			} else {
+				// Try to resolve relative paths from API_DOCUMENTATION.md location
+				$base_path = APPPATH . 'modules/share/';
+				$markdown_file = realpath($base_path . $file_param);
+				
+				// Security: ensure file is within allowed directories
+				if (!$markdown_file || strpos($markdown_file, realpath($base_path)) !== 0) {
+					show_error('Documentation file not found or access denied.', 404);
+				}
+			}
+			
+			$title = ucfirst(str_replace(['.md', '_'], ['', ' '], $file_param));
+		} else {
+			// Default to API documentation
+			$markdown_file = APPPATH . 'modules/share/API_DOCUMENTATION.md';
+			$title = 'API Documentation';
+		}
+
+		//dd($markdown_file);
 		
 		if (!file_exists($markdown_file)) {
-			show_error('API Documentation file not found.', 404);
+			show_error('Documentation file not found.', 404);
 		}
 
 		$markdown_content = file_get_contents($markdown_file);
+		
+		// Convert relative markdown links to documentation routes
+		$markdown_content = $this->convert_markdown_links($markdown_content, $markdown_file);
+		
 		$html_content = $this->markdown_to_html($markdown_content);
 
 		$data = [
 			'module' => 'share',
 			'view' => 'documentation',
 			'documentation_html' => $html_content,
-			'title' => 'API Documentation'
+			'title' => $title
 		];
 
-		$this->load->module('templates');
-		$this->templates->main($data);
+			//dd($data['staff']);
+		render('documentation', $data);
+		
+	}
+
+	/**
+	 * Convert relative markdown file links to documentation routes
+	 */
+	private function convert_markdown_links($content, $current_file)
+	{
+		// Get the directory of the current file
+		$current_dir = dirname($current_file);
+		// Get project root (one level up from application)
+		$base_path = realpath(APPPATH . '../');
+		
+		// Map of common documentation files to their route names
+		$file_map = [
+			'README.md' => 'README.md',
+			'ENVIRONMENT_VARIABLES.md' => 'ENVIRONMENT_VARIABLES.md',
+			'apm/README.md' => 'APM_README.md',
+			'apm/documentation/README.md' => 'APM_DOCS.md',
+			'finance/README.md' => 'FINANCE_README.md',
+			'finance/documentation/README.md' => 'FINANCE_DOCS.md',
+			'documentation/README.md' => 'DOCS_README.md',
+		];
+		
+		// Convert markdown links [text](relative/path/to/file.md)
+		$content = preg_replace_callback('/\[([^\]]+)\]\(([^\)]+\.md)\)/', function($matches) use ($current_dir, $base_path, $file_map) {
+			$link_text = $matches[1];
+			$link_path = $matches[2];
+			
+			// Skip absolute URLs and anchors
+			if (preg_match('/^(https?:\/\/|#)/', $link_path)) {
+				return $matches[0]; // Return original
+			}
+			
+			// Resolve relative path
+			$resolved_path = realpath($current_dir . '/' . $link_path);
+			
+			if ($resolved_path && strpos($resolved_path, $base_path) === 0) {
+				// File exists and is within project directory
+				$relative_from_base = str_replace($base_path . '/', '', $resolved_path);
+				
+				// Check if it's in our file map
+				foreach ($file_map as $file_path => $route_name) {
+					if (strpos($relative_from_base, $file_path) !== false || 
+					    strpos($resolved_path, $file_path) !== false) {
+						$doc_url = base_url('share/documentation?file=' . urlencode($route_name));
+						return '[' . $link_text . '](' . $doc_url . ')';
+					}
+				}
+				
+				// For other files, try to create a route
+				// Extract filename
+				$filename = basename($resolved_path);
+				if (strpos($filename, 'README.md') !== false) {
+					// Try to infer the route name
+					$dir_name = basename(dirname($resolved_path));
+					$route_name = strtoupper($dir_name) . '_README.md';
+					$doc_url = base_url('share/documentation?file=' . urlencode($route_name));
+					return '[' . $link_text . '](' . $doc_url . ')';
+				}
+				
+				// Default: use filename
+				$doc_url = base_url('share/documentation?file=' . urlencode($filename));
+				return '[' . $link_text . '](' . $doc_url . ')';
+			}
+			
+			// If file doesn't exist or can't be resolved, return original
+			return $matches[0];
+		}, $content);
+		
+		return $content;
 	}
 
 	/**
@@ -1246,11 +1360,17 @@ public function validate_password($post_password,$dbpassword){
 	 */
 	private function process_inline_markdown($text)
 	{
-		// Escape HTML first
+		// First, escape HTML to prevent XSS
 		$text = htmlspecialchars($text);
-
-		// Links [text](url)
-		$text = preg_replace('/\[([^\]]+)\]\(([^\)]+)\)/', '<a href="$2">$1</a>', $text);
+		
+		// Process links [text](url) - URLs are already escaped by htmlspecialchars
+		$text = preg_replace_callback('/\[([^\]]+)\]\(([^\)]+)\)/', function($matches) {
+			$link_text = $matches[1]; // Already escaped
+			$link_url = $matches[2]; // Already escaped, but we need to decode it for href
+			// Decode URL for href attribute (but keep text escaped)
+			$link_url_decoded = html_entity_decode($link_url, ENT_QUOTES);
+			return '<a href="' . htmlspecialchars($link_url_decoded, ENT_QUOTES) . '">' . $link_text . '</a>';
+		}, $text);
 
 		// Bold **text**
 		$text = preg_replace('/\*\*([^*]+)\*\*/', '<strong>$1</strong>', $text);
