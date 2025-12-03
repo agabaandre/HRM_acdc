@@ -8,6 +8,8 @@ The Staff Tracker API provides access to various data endpoints from the Africa 
 
 **Version:** 1.0.0
 
+> 📖 **For general project documentation**, see the [Main Project README](../../../README.md) which provides an overview of the entire Africa CDC Central Business Platform (CBP) system, including the Staff Portal, APM module, and Finance module.
+
 ---
 
 ## Authentication
@@ -432,9 +434,9 @@ curl -u "email:password" \
 
 ---
 
-### 11. Staff
+### 9. Staff
 
-Get staff information.
+Get staff information with detailed contract and profile data.
 
 **Endpoint:** `GET /share/staff`
 
@@ -447,9 +449,81 @@ curl -u "email:password" \
   "https://cbp.africacdc.org/staff/share/staff"
 ```
 
+**Example Response:**
+
+```json
+[
+  {
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31",
+    "SAPNO": "SAP001",
+    "status": "Active",
+    "duty_station_name": "Addis Ababa",
+    "title": "Mr.",
+    "name": "John Doe",
+    "grade": "P5",
+    "date_of_birth": "1980-01-01",
+    "gender": "Male",
+    "job_name": "Program Manager",
+    "contract_type": "Fixed Term",
+    "nationality": "Ethiopian",
+    "division_name": "Administration",
+    "first_supervisor_email": "supervisor@example.com",
+    "second_supervisor_email": "supervisor2@example.com",
+    "work_email": "john.doe@example.com",
+    ...
+  }
+]
+```
+
 ---
 
-### 10. Get Current Staff
+### 10. Visualise Staff Data
+
+Get staff data formatted for visualization purposes. Returns staff with active contracts (status IDs: 1, 2, 3, 7) excluding division ID 27.
+
+**Endpoint:** `GET /share/visualise`
+
+**Query Parameters:** None
+
+**Example Request:**
+
+```bash
+curl -u "email:password" \
+  "https://cbp.africacdc.org/staff/share/visualise"
+```
+
+**Example Response:**
+
+```json
+[
+  {
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31",
+    "funder": "World Bank",
+    "SAPNO": "SAP001",
+    "status": "Active",
+    "duty_station_name": "Addis Ababa",
+    "title": "Mr.",
+    "name": "John Doe",
+    "grade": "P5",
+    "date_of_birth": "1980-01-01",
+    "gender": "Male",
+    "job_name": "Program Manager",
+    "contract_type": "Fixed Term",
+    "nationality": "Ethiopian",
+    "division_name": "Administration",
+    "first_supervisor_email": "supervisor@example.com",
+    "second_supervisor_email": "supervisor2@example.com",
+    "work_email": "john.doe@example.com",
+    ...
+  }
+]
+```
+
+---
+
+### 11. Get Current Staff
 
 Get current staff with filters.
 
@@ -469,9 +543,169 @@ curl -u "email:password" \
   "https://cbp.africacdc.org/staff/share/get_current_staff?limit=10&start=0"
 ```
 
+**Example Response:**
+
+```json
+[
+  {
+    "staff_id": 123,
+    "name": "John Doe",
+    "work_email": "john.doe@example.com",
+    "division_name": "Administration",
+    ...
+  }
+]
+```
+
 ---
 
-### 11. API Documentation
+### 12. Get Staff Signature
+
+Get staff signature image as base64-encoded data.
+
+**Endpoint:** `GET /share/get_signature`
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `staff_id` | integer | Yes | Staff ID to retrieve signature for |
+
+**Example Request:**
+
+```bash
+curl -u "email:password" \
+  "https://cbp.africacdc.org/staff/share/get_signature?staff_id=123"
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "staff_id": 123,
+  "signature_data": "iVBORw0KGgoAAAANSUhEUgAA..."
+}
+```
+
+**Note:** The signature file must be less than 2MB. The signature_data is base64-encoded image data.
+
+---
+
+### 13. Get Staff Photo
+
+Get staff photo image as base64-encoded data.
+
+**Endpoint:** `GET /share/get_photo`
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `staff_id` | integer | Yes | Staff ID to retrieve photo for |
+
+**Example Request:**
+
+```bash
+curl -u "email:password" \
+  "https://cbp.africacdc.org/staff/share/get_photo?staff_id=123"
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "staff_id": 123,
+  "photo_data": "iVBORw0KGgoAAAANSUhEUgAA..."
+}
+```
+
+**Note:** The photo file must be less than 2MB. The photo_data is base64-encoded image data.
+
+---
+
+### 14. Validate Session
+
+Validate a Bearer token session for Laravel app integration.
+
+**Endpoint:** `POST /share/validate_session`
+
+**Headers:**
+
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| `Authorization` | string | Yes | Bearer token (base64-encoded JSON) |
+
+**Example Request:**
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer eyJzdGFmZl9pZCI6MTIzfQ==" \
+  "https://cbp.africacdc.org/staff/share/validate_session"
+```
+
+**Example Response (Valid Session):**
+
+```json
+{
+  "success": true,
+  "message": "Session is valid",
+  "session_expired": false,
+  "user": {
+    "staff_id": 123,
+    "name": "John Doe",
+    "email": "john.doe@example.com"
+  }
+}
+```
+
+**Example Response (Invalid Session):**
+
+```json
+{
+  "success": false,
+  "message": "Invalid token format",
+  "session_expired": true
+}
+```
+
+---
+
+### 15. Refresh Token
+
+Refresh a Bearer token for Laravel app integration. Extends token expiry by 2 hours.
+
+**Endpoint:** `POST /share/refresh_token`
+
+**Headers:**
+
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| `Authorization` | string | Yes | Bearer token (base64-encoded JSON) |
+
+**Example Request:**
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer eyJzdGFmZl9pZCI6MTIzfQ==" \
+  "https://cbp.africacdc.org/staff/share/refresh_token"
+```
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "message": "Token refreshed successfully",
+  "token": "eyJzdGFmZl9pZCI6MTIzLCJ0b2tlbl9pc3N1ZWRfYXQiOjE3MDAwMDAwMDAsInRva2VuX2V4cGlyZXNfYXQiOjE3MDAwNzIwMDB9",
+  "expires_at": "2024-11-15T14:00:00+00:00"
+}
+```
+
+---
+
+### 16. API Documentation
 
 Get interactive API documentation.
 
@@ -533,6 +767,36 @@ curl -u "email:password" \
   "https://cbp.africacdc.org/staff/share/fund_types"
 ```
 
+### Get Staff Signature
+
+```bash
+curl -u "email:password" \
+  "https://cbp.africacdc.org/staff/share/get_signature?staff_id=123"
+```
+
+### Get Staff Photo
+
+```bash
+curl -u "email:password" \
+  "https://cbp.africacdc.org/staff/share/get_photo?staff_id=123"
+```
+
+### Validate Session Token
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer eyJzdGFmZl9pZCI6MTIzfQ==" \
+  "https://cbp.africacdc.org/staff/share/validate_session"
+```
+
+### Refresh Session Token
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer eyJzdGFmZl9pZCI6MTIzfQ==" \
+  "https://cbp.africacdc.org/staff/share/refresh_token"
+```
+
 ---
 
 ## Error Handling
@@ -569,7 +833,26 @@ For API support or questions, please contact the Africa CDC IT team.
 
 ---
 
+## Related Documentation
+
+- 📚 [Main Project README](../../../README.md) - Overview of the Africa CDC Central Business Platform (CBP)
+- 👥 [Staff Portal Documentation](../../../assets/ENVIRONMENT_VARIABLES.md) - Configuration and setup guides
+- 📋 [APM Documentation](../../../apm/documentation/README.md) - Laravel Approvals Management System
+- 💰 [Finance Documentation](../../../finance/documentation/README.md) - Node.js/React Finance Module
+- 📖 [Main Documentation Hub](../../../documentation/README.md) - Central documentation index
+
+---
+
 ## Changelog
+
+### Version 1.2.0 (2025-01-XX)
+- Added comprehensive documentation for all API endpoints
+- Documented session management endpoints (validate_session, refresh_token)
+- Documented staff data endpoints (staff, visualise, get_current_staff)
+- Documented media endpoints (get_signature, get_photo)
+- Fixed endpoint numbering and organization
+- Added examples for all endpoints in Common Use Cases section
+- Added links to main project documentation
 
 ### Version 1.1.0 (2025-01-XX)
 - Added endpoints for fund codes and fund types
