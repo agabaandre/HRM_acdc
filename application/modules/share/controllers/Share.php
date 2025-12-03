@@ -1044,6 +1044,227 @@ public function validate_password($post_password,$dbpassword){
 	}
 
 	/**
+	 * API Documentation Web View
+	 * GET /share/documentation
+	 */
+	public function documentation()
+	{
+		// Check if user is logged in
+		if (!isset($this->session->userdata('user')->name)) {
+			redirect('auth/login');
+		}
+
+		$markdown_file = APPPATH . 'modules/share/API_DOCUMENTATION.md';
+		
+		if (!file_exists($markdown_file)) {
+			show_error('API Documentation file not found.', 404);
+		}
+
+		$markdown_content = file_get_contents($markdown_file);
+		$html_content = $this->markdown_to_html($markdown_content);
+
+		$data = [
+			'module' => 'share',
+			'view' => 'documentation',
+			'documentation_html' => $html_content,
+			'title' => 'API Documentation'
+		];
+
+		$this->load->module('templates');
+		$this->templates->main($data);
+	}
+
+	/**
+	 * Simple Markdown to HTML converter
+	 * Converts basic markdown syntax to HTML
+	 */
+	private function markdown_to_html($markdown)
+	{
+		$html = $markdown;
+		$lines = explode("\n", $html);
+		$output = [];
+		$in_code_block = false;
+		$in_list = false;
+		$list_type = '';
+		$in_table = false;
+		$table_rows = [];
+
+		foreach ($lines as $line) {
+			// Handle code blocks
+			if (preg_match('/^```/', $line)) {
+				if ($in_code_block) {
+					$output[] = '</code></pre>';
+					$in_code_block = false;
+				} else {
+					$lang = preg_match('/^```(\w+)/', $line, $lang_match) ? $lang_match[1] : '';
+					$output[] = '<pre><code' . ($lang ? ' class="language-' . htmlspecialchars($lang) . '"' : '') . '>';
+					$in_code_block = true;
+				}
+				continue;
+			}
+
+			if ($in_code_block) {
+				$output[] = htmlspecialchars($line) . "\n";
+				continue;
+			}
+
+			// Headers
+			if (preg_match('/^#### (.*)$/', $line, $matches)) {
+				$output[] = '<h4>' . $this->process_inline_markdown($matches[1]) . '</h4>';
+				continue;
+			}
+			if (preg_match('/^### (.*)$/', $line, $matches)) {
+				$output[] = '<h3>' . $this->process_inline_markdown($matches[1]) . '</h3>';
+				continue;
+			}
+			if (preg_match('/^## (.*)$/', $line, $matches)) {
+				$output[] = '<h2>' . $this->process_inline_markdown($matches[1]) . '</h2>';
+				continue;
+			}
+			if (preg_match('/^# (.*)$/', $line, $matches)) {
+				$output[] = '<h1>' . $this->process_inline_markdown($matches[1]) . '</h1>';
+				continue;
+			}
+
+			// Horizontal rules
+			if (preg_match('/^---$/', $line)) {
+				$output[] = '<hr>';
+				continue;
+			}
+
+			// Tables
+			if (preg_match('/^\|/', $line)) {
+				if (!$in_table) {
+					$in_table = true;
+					$table_rows = [];
+				}
+				$cells = array_map('trim', explode('|', $line));
+				array_shift($cells); // Remove first empty element
+				array_pop($cells); // Remove last empty element
+				$table_rows[] = $cells;
+				continue;
+			} else {
+				if ($in_table) {
+					// Process table
+					if (count($table_rows) > 1) {
+						$output[] = '<table>';
+						// First row is header
+						$output[] = '<thead><tr>';
+						foreach ($table_rows[0] as $cell) {
+							$output[] = '<th>' . $this->process_inline_markdown($cell) . '</th>';
+						}
+						$output[] = '</tr></thead>';
+						// Skip separator row (index 1)
+						$output[] = '<tbody>';
+						for ($i = 2; $i < count($table_rows); $i++) {
+							$output[] = '<tr>';
+							foreach ($table_rows[$i] as $cell) {
+								$output[] = '<td>' . $this->process_inline_markdown($cell) . '</td>';
+							}
+							$output[] = '</tr>';
+						}
+						$output[] = '</tbody></table>';
+					}
+					$in_table = false;
+					$table_rows = [];
+				}
+			}
+
+			// Lists
+			if (preg_match('/^(\*|\-|\+)\s+(.*)$/', $line, $matches)) {
+				if (!$in_list || $list_type != 'ul') {
+					if ($in_list) $output[] = '</' . $list_type . '>';
+					$output[] = '<ul>';
+					$in_list = true;
+					$list_type = 'ul';
+				}
+				$output[] = '<li>' . $this->process_inline_markdown($matches[2]) . '</li>';
+				continue;
+			}
+			if (preg_match('/^\d+\.\s+(.*)$/', $line, $matches)) {
+				if (!$in_list || $list_type != 'ol') {
+					if ($in_list) $output[] = '</' . $list_type . '>';
+					$output[] = '<ol>';
+					$in_list = true;
+					$list_type = 'ol';
+				}
+				$output[] = '<li>' . $this->process_inline_markdown($matches[1]) . '</li>';
+				continue;
+			}
+
+			// Close list if needed
+			if ($in_list && trim($line) == '') {
+				$output[] = '</' . $list_type . '>';
+				$in_list = false;
+				$list_type = '';
+			}
+
+			// Blockquotes
+			if (preg_match('/^>\s+(.*)$/', $line, $matches)) {
+				$output[] = '<blockquote>' . $this->process_inline_markdown($matches[1]) . '</blockquote>';
+				continue;
+			}
+
+			// Regular paragraphs
+			if (trim($line) != '') {
+				$output[] = '<p>' . $this->process_inline_markdown($line) . '</p>';
+			} else {
+				$output[] = '';
+			}
+		}
+
+		// Close any open tags
+		if ($in_code_block) {
+			$output[] = '</code></pre>';
+		}
+		if ($in_list) {
+			$output[] = '</' . $list_type . '>';
+		}
+		if ($in_table && count($table_rows) > 1) {
+			$output[] = '<table>';
+			$output[] = '<thead><tr>';
+			foreach ($table_rows[0] as $cell) {
+				$output[] = '<th>' . $this->process_inline_markdown($cell) . '</th>';
+			}
+			$output[] = '</tr></thead>';
+			$output[] = '<tbody>';
+			for ($i = 2; $i < count($table_rows); $i++) {
+				$output[] = '<tr>';
+				foreach ($table_rows[$i] as $cell) {
+					$output[] = '<td>' . $this->process_inline_markdown($cell) . '</td>';
+				}
+				$output[] = '</tr>';
+			}
+			$output[] = '</tbody></table>';
+		}
+
+		return implode("\n", $output);
+	}
+
+	/**
+	 * Process inline markdown (bold, italic, code, links)
+	 */
+	private function process_inline_markdown($text)
+	{
+		// Escape HTML first
+		$text = htmlspecialchars($text);
+
+		// Links [text](url)
+		$text = preg_replace('/\[([^\]]+)\]\(([^\)]+)\)/', '<a href="$2">$1</a>', $text);
+
+		// Bold **text**
+		$text = preg_replace('/\*\*([^*]+)\*\*/', '<strong>$1</strong>', $text);
+
+		// Italic *text* (but not if it's part of **text**)
+		$text = preg_replace('/(?<!\*)\*([^*]+)\*(?!\*)/', '<em>$1</em>', $text);
+
+		// Inline code `code`
+		$text = preg_replace('/`([^`]+)`/', '<code>$1</code>', $text);
+
+		return $text;
+	}
+
+	/**
 	 * API Documentation endpoint
 	 * GET /share/api_docs
 	 */
