@@ -194,14 +194,21 @@
                         </tr>
                         @foreach ($items as $row)
                             @php 
-                                $qty = (int)($row['quantity'] ?? ($row->quantity ?? 1));
-                                $unit = (float)($row['unit_cost'] ?? ($row->unit_cost ?? 0));
-                                $total = $qty * $unit; 
+                                $qty = floatval($row['units'] ?? ($row['quantity'] ?? ($row->quantity ?? 1)));
+                                $unit = floatval($row['unit_cost'] ?? ($row->unit_cost ?? 0));
+                                $days = floatval($row['days'] ?? 1);
+                                
+                                // Use days when greater than 1, otherwise just unit_cost * units
+                                if ($days > 1) {
+                                    $total = $unit * $qty * $days;
+                                } else {
+                                    $total = $unit * $qty;
+                                }
                                 $grand += $total;
                             @endphp
                             <tr>
                                 <td class="muted small">{{ $code->code ?? '' }}</td>
-                                <td>{{ $row['description'] ?? ($row->description ?? '—') }}</td>
+                                <td>{{ $row['description'] ?? ($row->description ?? ($row['cost'] ?? '—')) }}</td>
                                 <td class="text-right">{{ number_format($qty) }}</td>
                                 <td class="text-right">{{ number_format($unit, 2) }}</td>
                                 <td class="text-right">{{ number_format($total, 2) }}</td>

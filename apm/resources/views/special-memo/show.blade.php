@@ -566,9 +566,8 @@
                 $budget = json_decode($budget, true);
             }
 
-            $attachments = is_string($specialMemo->attachment) 
-                ? json_decode($specialMemo->attachment, true) 
-                : $specialMemo->attachment;
+            // The accessor handles double-encoded JSON, so just use the attribute directly
+            $attachments = $specialMemo->attachment ?? [];
 
             $internalParticipants = is_string($specialMemo->internal_participants)
                 ? json_decode($specialMemo->internal_participants, true)

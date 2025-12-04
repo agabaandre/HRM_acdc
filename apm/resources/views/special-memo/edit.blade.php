@@ -132,9 +132,8 @@
                     </h5>
                     
                     @php
-                        $attachments = is_string($specialMemo->attachment) 
-                            ? json_decode($specialMemo->attachment, true) 
-                            : $specialMemo->attachment;
+                        // The accessor handles double-encoded JSON, so just use the attribute directly
+                        $attachments = $specialMemo->attachment ?? [];
                         $attachments = is_array($attachments) ? $attachments : [];
                     @endphp
                     
