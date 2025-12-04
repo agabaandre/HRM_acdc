@@ -75,7 +75,7 @@ class SpecialMemo extends Model
         
         'internal_participants' => 'array',
         'budget_breakdown' => 'array',
-        'attachment' => 'array',
+        // Don't cast attachment to array - let the accessor handle double-encoded JSON
         'is_special_memo' => 'boolean',
         'is_draft' => 'boolean',
     ];
@@ -232,14 +232,35 @@ class SpecialMemo extends Model
 
     public function getAttachmentAttribute($value)
     {
+        // Handle double-encoded JSON (sometimes happens when saving)
         if (is_array($value)) {
             return $value;
         }
         if (is_string($value)) {
+            // First decode
             $decoded = json_decode($value, true);
+            
+            // If still a string, it might be double-encoded
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+            
             return is_array($decoded) ? $decoded : [];
         }
         return [];
+    }
+
+    public function setAttachmentAttribute($value)
+    {
+        // Ensure attachment is stored as JSON string (single-encoded)
+        if (is_array($value)) {
+            $this->attributes['attachment'] = json_encode($value);
+        } elseif (is_string($value)) {
+            // If it's already a JSON string, store it as-is
+            $this->attributes['attachment'] = $value;
+        } else {
+            $this->attributes['attachment'] = json_encode([]);
+        }
     }
 
     public function getInternalParticipantsAttribute($value)

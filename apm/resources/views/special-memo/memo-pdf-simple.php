@@ -713,7 +713,16 @@
                            
                             <?php foreach($budgetBreakdown[$fundCode->id] ?? [] as $item): ?>
                                 <?php
-                                    $total = ($item['unit_cost'] ?? 0) * ($item['units'] ?? 0);
+                                    $unitCost = floatval($item['unit_cost'] ?? 0);
+                                    $units = floatval($item['units'] ?? 0);
+                                    $days = floatval($item['days'] ?? 1);
+                                    
+                                    // Use days when greater than 1, otherwise just unit_cost * units
+                                    if ($days > 1) {
+                                        $total = $unitCost * $units * $days;
+                                    } else {
+                                        $total = $unitCost * $units;
+                                    }
                                     $grandTotal+=$total;
                                 ?>
                                 <tr>

@@ -794,7 +794,18 @@ class ChangeRequestController extends Controller
 
     /**
      * Detect if internal participants have changed
-     * Returns true if new internal participant added but total participants unchanged
+     * Only checks if participants are added or removed (by ID), not their details
+     * 
+     * IMPORTANT: This method ONLY compares participant IDs (staff_id).
+     * It does NOT consider:
+     * - participant_start (start date)
+     * - participant_end (end date)
+     * - participant_days (number of days)
+     * - international_travel (travel flag)
+     * 
+     * Changes to these fields are tracked separately via:
+     * - detectParticipantDaysChange() for days
+     * - Other change flags for other participant details
      */
     private function detectInternalParticipantsChange($parentMemo, Request $request): bool
     {
@@ -803,51 +814,37 @@ class ChangeRequestController extends Controller
         if (is_string($parentParticipants)) {
             $parentParticipants = json_decode($parentParticipants, true) ?? [];
         }
-
-        // Get request internal participants
-        $participantStarts = $request->input('participant_start', []);
-        $participantEnds = $request->input('participant_end', []);
-        $participantDays = $request->input('participant_days', []);
-        $internationalTravel = $request->input('international_travel', []);
-
-        $requestParticipants = [];
-        foreach ($participantStarts as $staffId => $startDate) {
-            $requestParticipants[$staffId] = [
-                'participant_start' => $startDate,
-                'participant_end' => $participantEnds[$staffId] ?? null,
-                'participant_days' => $participantDays[$staffId] ?? null,
-                'international_travel' => isset($internationalTravel[$staffId]) ? 1 : 0,
-            ];
-        }
-
-        // Check if participants have changed
-        $parentKeys = array_keys($parentParticipants);
-        $requestKeys = array_keys($requestParticipants);
         
-        // If participant lists are different, there's a change
-        if (json_encode($parentKeys) !== json_encode($requestKeys)) {
-            return true;
+        // Ensure we have an array
+        if (!is_array($parentParticipants)) {
+            $parentParticipants = [];
         }
 
-        // Check if participant details have changed
-        foreach ($parentKeys as $staffId) {
-            if (!isset($requestParticipants[$staffId])) {
-                return true; // Participant removed
-            }
-            
-            $parentDetails = $parentParticipants[$staffId];
-            $requestDetails = $requestParticipants[$staffId];
-            
-            // Normalize data types for comparison
-            $parentNormalized = $this->normalizeParticipantDetails($parentDetails);
-            $requestNormalized = $this->normalizeParticipantDetails($requestDetails);
-            
-            if ($parentNormalized !== $requestNormalized) {
-                return true; // Participant details changed
-            }
+        // Get request internal participants - only get the participant IDs (keys)
+        // The keys of participant_start array are the staff IDs
+        $participantStarts = $request->input('participant_start', []);
+
+        // Ensure we have an array
+        if (!is_array($participantStarts)) {
+            $participantStarts = [];
         }
 
-        return false;
+        // Extract ONLY participant IDs (staff_id) from both arrays
+        // Convert to integers and ensure uniqueness
+        $parentParticipantIds = array_unique(array_map('intval', array_keys($parentParticipants)));
+        $requestParticipantIds = array_unique(array_map('intval', array_keys($participantStarts)));
+        
+        // Sort arrays for consistent comparison
+        sort($parentParticipantIds);
+        sort($requestParticipantIds);
+        
+        // Only check if participant IDs have changed (added or removed)
+        // This returns true if:
+        // - A participant was added (ID exists in request but not in parent)
+        // - A participant was removed (ID exists in parent but not in request)
+        // This returns false if:
+        // - Same participants (even if their dates/days/travel flags changed)
+        return $parentParticipantIds !== $requestParticipantIds;
     }
 
     /**
