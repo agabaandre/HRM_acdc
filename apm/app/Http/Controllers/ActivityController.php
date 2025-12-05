@@ -362,8 +362,24 @@ class ActivityController extends Controller
         });
     }
 
-    public function show(Matrix $matrix, Activity $activity): View
+    public function show(Matrix $matrix, Activity $activity)
     {
+        // Check if user is authenticated
+        $userSession = session('user', []);
+        if (empty($userSession) || !isset($userSession['staff_id'])) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authentication required. Please log in.',
+                    'requires_auth' => true
+                ], 401);
+            }
+            
+            // Redirect to CodeIgniter login page which will check session and redirect to home if authenticated
+            $base_url = env('BASE_URL', 'http://localhost/staff/');
+            return redirect($base_url . 'auth/login');
+        }
+        
         // Load related models
         $activity->load([
             'staff',

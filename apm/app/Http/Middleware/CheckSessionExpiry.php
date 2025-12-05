@@ -26,10 +26,27 @@ class CheckSessionExpiry
             return $next($request);
         }
 
+        // Check if a token is provided in the query string (for initial authentication from CI)
+        // If token is present, allow the request to proceed so the route handler can process it
+        if ($request->has('token') && !empty($request->query('token'))) {
+            return $next($request);
+        }
+
         // Check if user is logged in (using CI session data)
         $userSession = session('user', []);
-        if (empty($userSession)) {
-            return $next($request);
+        if (empty($userSession) || !isset($userSession['staff_id'])) {
+            // User is not logged in, redirect to login page which checks session and redirects to home if authenticated
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authentication required. Please log in.',
+                    'requires_auth' => true
+                ], 401);
+            }
+            
+            // Redirect to CodeIgniter login page which will check session and redirect to home if authenticated
+            $base_url = env('BASE_URL', 'http://localhost/staff/');
+            return redirect($base_url . 'auth/login');
         }
         $lastActivity = session('last_activity', now());
         $sessionTimeout = config('session.lifetime', 120) * 60; // Convert to seconds
@@ -50,7 +67,8 @@ class CheckSessionExpiry
                     ], 401);
                 }
                 
-                return redirect()->route('login')->with('error', 'Your session has expired. Please log in again.');
+                $base_url = env('BASE_URL', 'http://localhost/staff/');
+                return redirect($base_url . 'auth/login');
             }
         }
 
