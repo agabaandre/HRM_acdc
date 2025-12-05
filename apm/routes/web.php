@@ -27,23 +27,42 @@ Route::get('/', function (Request $request) {
             // Parse the JSON data
             $json = json_decode($decodedToken, true);
 
-            // dd($json);
-
             if (!$json) {
                 throw new Exception('Invalid token format');
             }
 
             // Save the decoded token to session as user data
-            session(['user' => $json, 'base_url' => $json['base_url'] ?? '', 'permissions' => $json['permissions'] ?? []]);
+            session([
+                'user' => $json, 
+                'base_url' => $json['base_url'] ?? '', 
+                'permissions' => $json['permissions'] ?? [],
+                'last_activity' => now()
+            ]);
+            
+            // Ensure session is saved before redirecting
+            session()->save();
 
-        } catch (\Exception $e) {
-            // Just redirect to home without error message since login functionality is removed
+            // Redirect to home page with session data
             return redirect('/home');
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            \Illuminate\Support\Facades\Log::error('Token processing error: ' . $e->getMessage());
+            // Redirect to CodeIgniter login if token is invalid
+            $base_url = env('BASE_URL', 'http://localhost/staff/');
+            return redirect($base_url . 'auth/login');
         }
     }
 
-    // Redirect to home page with or without session data
-    return redirect('/home');
+    // If no token, check if user has existing session
+    $userSession = session('user', []);
+    if (!empty($userSession) && isset($userSession['staff_id'])) {
+        // User has session, redirect to home
+        return redirect('/home');
+    }
+
+    // No token and no session, redirect to CodeIgniter login
+    $base_url = env('BASE_URL', 'http://localhost/staff/');
+    return redirect($base_url . 'auth/login');
 });
 
 // Logout route (should be accessible without middleware)

@@ -266,8 +266,19 @@ if (!function_exists('user_session')) {
     if (!function_exists('can_edit_memo')) {
         function can_edit_memo($memo, $user = null) {
             if ($user === null) {
-                $user = (object) session('user', []);
+                $userSession = session('user', []);
+                // Check if user is logged in
+                if (empty($userSession) || !isset($userSession['staff_id'])) {
+                    return false;
+                }
+                $user = (object) $userSession;
             }
+            
+            // Additional check: ensure user object has staff_id property
+            if (!isset($user->staff_id) || empty($user->staff_id)) {
+                return false;
+            }
+            
             $session_division_id = isset($user->division_id) ? $user->division_id : null;
 
             // Check if this is a single memo (Activity model with is_single_memo = true)
@@ -279,7 +290,7 @@ if (!function_exists('user_session')) {
             
             // Check if user is focal person of the memo's division
             $isFocalperson = false;
-            if (isset($memo->division_id)) {
+            if (isset($memo->division_id) && isset($user->staff_id)) {
                 $division = Division::find($memo->division_id);
                 if ($division && isset($division->focal_person, $user->staff_id)) {
                     $isFocalperson = $division->focal_person == $user->staff_id;
@@ -288,7 +299,7 @@ if (!function_exists('user_session')) {
             
             // Check if user is division head of the memo's division
             $isDivisionHead = false;
-            if (isset($memo->division_id)) {
+            if (isset($memo->division_id) && isset($user->staff_id)) {
                 $divisionIds = Division::where('division_head', $user->staff_id)->pluck('id')->toArray();
                 if (in_array($memo->division_id, $divisionIds)) {
                     $isDivisionHead = true; 
