@@ -1121,18 +1121,28 @@
               if (isset($grants['staff']) || isset($grants['oic_staff'])) {
                   // Structured data from PrintHelper
                   $isOic = isset($grants['oic_staff']);
-                  $staff = $isOic ? $grants['oic_staff'] : $grants['staff'];
+                  $staff = $isOic ? ($grants['oic_staff'] ?? null) : ($grants['staff'] ?? null);
                   
-                  if ($staff) {
-                      $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
-                      if ($isOic) {
-                          $name .= ' (OIC)';
-                      }
-                      $role = $grants['role'] ?? 'Grants';
+                  // Check if staff array exists and has data
+                  if ($staff && (is_array($staff) || is_object($staff))) {
+                      $fname = is_array($staff) ? ($staff['fname'] ?? '') : ($staff->fname ?? '');
+                      $lname = is_array($staff) ? ($staff['lname'] ?? '') : ($staff->lname ?? '');
+                      $oname = is_array($staff) ? ($staff['oname'] ?? '') : ($staff->oname ?? '');
+                      $name = trim($fname . ' ' . $lname . ' ' . $oname);
                       
-                      echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
-                      echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
-                      echo '<span class="fill line"></span>';
+                      // Only render if name is not empty
+                      if (!empty($name)) {
+                          if ($isOic) {
+                              $name .= ' (OIC)';
+                          }
+                          $role = $grants['role'] ?? 'Grants';
+                          
+                          echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+                          echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+                          echo '<span class="fill line"></span>';
+                      } else {
+                          renderBudgetApproverInfo(null);
+                      }
                   } else {
                       renderBudgetApproverInfo(null);
                   }
@@ -1196,29 +1206,41 @@
                 if (isset($grants['staff']) || isset($grants['oic_staff'])) {
                     // Structured data from PrintHelper
                     $isOic = isset($grants['oic_staff']);
-                    $staff = $isOic ? $grants['oic_staff'] : $grants['staff'];
+                    $staff = $isOic ? ($grants['oic_staff'] ?? null) : ($grants['staff'] ?? null);
                     
-                    if ($staff) {
-                        $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
-                        if ($isOic) {
-                            $name .= ' (OIC)';
-                        }
-                        $role = $grants['role'] ?? 'Grants';
+                    // Check if staff array exists and has data
+                    if ($staff && (is_array($staff) || is_object($staff))) {
+                        $fname = is_array($staff) ? ($staff['fname'] ?? '') : ($staff->fname ?? '');
+                        $lname = is_array($staff) ? ($staff['lname'] ?? '') : ($staff->lname ?? '');
+                        $oname = is_array($staff) ? ($staff['oname'] ?? '') : ($staff->oname ?? '');
+                        $name = trim($fname . ' ' . $lname . ' ' . $oname);
                         
-                        echo '<div style="line-height: 1.2;">';
-                        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
-                        if (!empty($staff['signature'])) {
-                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
-            } else {
-                            echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+                        // Only render if name is not empty
+                        if (!empty($name)) {
+                            if ($isOic) {
+                                $name .= ' (OIC)';
+                            }
+                            $role = $grants['role'] ?? 'Grants';
+                            
+                            echo '<div style="line-height: 1.2;">';
+                            echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
+                            $signature = is_array($staff) ? ($staff['signature'] ?? null) : ($staff->signature ?? null);
+                            if (!empty($signature)) {
+                                echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $signature) . '" alt="Signature">';
+                            } else {
+                                $workEmail = is_array($staff) ? ($staff['work_email'] ?? 'Email not available') : ($staff->work_email ?? 'Email not available');
+                                echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($workEmail) . '</small>';
+                            }
+                            // Use created_at from approval trail if available, otherwise use current date
+                            $approvalDate = isset($grants['created_at']) ? $grants['created_at'] : date('Y-m-d H:i:s');
+                            $formattedDate = is_object($approvalDate) ? $approvalDate->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalDate));
+                            echo '<div class="signature-date">' . htmlspecialchars($formattedDate) . '</div>';
+                            $staffId = is_array($staff) ? ($staff['staff_id'] ?? $staff['id'] ?? '') : ($staff->staff_id ?? $staff->id ?? '');
+                            echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
+                            echo '</div>';
+                        } else {
+                            renderBudgetSignature(null, $sourceModel);
                         }
-                        // Use created_at from approval trail if available, otherwise use current date
-                        $approvalDate = isset($grants['created_at']) ? $grants['created_at'] : date('Y-m-d H:i:s');
-                        $formattedDate = is_object($approvalDate) ? $approvalDate->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalDate));
-                        echo '<div class="signature-date">' . htmlspecialchars($formattedDate) . '</div>';
-                        $staffId = $staff['staff_id'] ?? $staff['id'] ?? '';
-                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
-                        echo '</div>';
                     } else {
                         renderBudgetSignature(null, $sourceModel);
                     }
