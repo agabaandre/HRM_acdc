@@ -1144,7 +1144,8 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                 
                 if ($isSingleMemo) {
                     // For single memo activities, load polymorphic approval trails from approval_trails table
-                    $sourceModel->load(['matrix.division.divisionHead', 'staff', 'activity_budget']);
+                    // Also load matrix approval trails for fallback if single memo trails don't have Grants approver
+                    $sourceModel->load(['matrix.division.divisionHead', 'matrix.approvalTrails.staff', 'matrix.approvalTrails.oicStaff', 'matrix.approvalTrails.approverRole', 'staff', 'activity_budget']);
                     // Load approval trails from the polymorphic approval_trails table
                     // Include approverRole relationship and filter by workflow_id if available
                     $approvalTrailsQuery = \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\Activity')

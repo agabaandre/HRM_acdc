@@ -1041,6 +1041,35 @@
     $grants = $memo_approvers['Grants'] ?? null;
     $chief_of_staff = $memo_approvers['Chief of Staff'] ?? null;
     $directorGeneralApproval = $memo_approvers['Director General'] ?? null;
+    
+    // Fallback for single memo: If Grants (Reviewed By) doesn't exist in single memo trails, use matrix trails
+    if ($sourceModelType === 'App\\Models\\Activity') {
+        $isSingleMemo = isset($sourceData['is_single_memo']) ? $sourceData['is_single_memo'] : false;
+        
+        if ($isSingleMemo && empty($grants)) {
+            // Try to get Grants approver from matrix approval trails
+            $matrixApprovalTrails = null;
+            
+            if (isset($sourceData['matrix']) && isset($sourceData['matrix']->approvalTrails)) {
+                $matrixApprovalTrails = $sourceData['matrix']->approvalTrails;
+            } elseif (isset($sourceModel) && $sourceModel->matrix_id && $sourceModel->matrix) {
+                // Load matrix approval trails if not already loaded
+                $sourceModel->matrix->load(['approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole']);
+                $matrixApprovalTrails = $sourceModel->matrix->approvalTrails ?? collect();
+            }
+            
+            if ($matrixApprovalTrails && $matrixApprovalTrails->count() > 0) {
+                // Get Grants approver from matrix trails
+                $matrixApprovers = PrintHelper::getARFApprovers($matrixApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
+                $matrixGrants = $matrixApprovers['Grants'] ?? null;
+                
+                if ($matrixGrants) {
+                    // Use matrix Grants approver as fallback
+                    $grants = $matrixGrants;
+                }
+            }
+        }
+    }
 ?>
     <!-- Budget / Certification (table-only, borderless unless specified inline) -->
  <div class="page-break"></div>
