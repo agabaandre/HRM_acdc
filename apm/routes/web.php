@@ -57,7 +57,7 @@ Route::get('/', function (Request $request) {
     $userSession = session('user', []);
     if (!empty($userSession) && isset($userSession['staff_id'])) {
         // User has session, redirect to home
-        return redirect('/home');
+    return redirect('/home');
     }
 
     // No token and no session, redirect to CodeIgniter login
