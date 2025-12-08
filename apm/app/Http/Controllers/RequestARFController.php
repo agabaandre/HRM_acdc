@@ -1140,18 +1140,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             // Load necessary relationships based on model type
             if ($requestARF->model_type === 'App\\Models\\Activity') {
                 // Load activity approval trails (activities use ActivityApprovalTrail table)
-                // For single memos, we need to load oicStaff and workflowDefinition relationships
-                $sourceModel->load([
-                    'matrix.division.divisionHead', 
-                    'matrix.matrixApprovalTrails.staff', 
-                    'matrix.matrixApprovalTrails.approverRole', 
-                    'staff', 
-                    'activity_budget', 
-                    'activityApprovalTrails.staff', 
-                    'activityApprovalTrails.oicStaff',
-                    'activityApprovalTrails.workflowDefinition',
-                    'activityApprovalTrails.approverRole'
-                ]);
+                $sourceModel->load(['matrix.division.divisionHead', 'matrix.matrixApprovalTrails.staff', 'matrix.matrixApprovalTrails.approverRole', 'staff', 'activity_budget', 'activityApprovalTrails.staff', 'activityApprovalTrails.approverRole']);
                 
                 // Get fund codes for budget display
                 $fundCodes = [];

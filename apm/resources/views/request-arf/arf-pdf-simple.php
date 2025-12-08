@@ -978,24 +978,16 @@
         $isSingleMemo = isset($sourceData['is_single_memo']) ? $sourceData['is_single_memo'] : false;
         
         if ($isSingleMemo) {
-            // For single memo activities, use activity approval trails from sourceData
-            // The controller already loaded activityApprovalTrails with all relationships
-            if (isset($sourceData['approval_trails']) && $sourceData['approval_trails']) {
+            // For single memo activities, use activity approval trails
+            if (isset($sourceData['approval_trails'])) {
                 $sourceApprovalTrails = $sourceData['approval_trails'];
-            } elseif (isset($sourceModel) && $sourceModel && method_exists($sourceModel, 'activityApprovalTrails')) {
-                // Fallback: get directly from source model if available
-                $sourceApprovalTrails = $sourceModel->activityApprovalTrails ?? collect();
-            } else {
-                $sourceApprovalTrails = collect();
             }
         } else {
             // For matrix activities, use matrix approval trails
-            if (isset($sourceData['matrix']) && $sourceData['matrix'] && isset($sourceData['matrix']->matrixApprovalTrails)) {
-                $sourceApprovalTrails = $sourceData['matrix']->matrixApprovalTrails;
-            } elseif (isset($sourceData['approval_trails']) && $sourceData['approval_trails']) {
+            if (isset($sourceData['matrix']) && isset($sourceData['matrix']->approvalTrails)) {
+                $sourceApprovalTrails = $sourceData['matrix']->approvalTrails;
+            } elseif (isset($sourceData['approval_trails'])) {
                 $sourceApprovalTrails = $sourceData['approval_trails'];
-            } else {
-                $sourceApprovalTrails = collect();
             }
         }
     } elseif ($sourceModelType === 'App\\Models\\SpecialMemo' || 
@@ -1003,50 +995,15 @@
               $sourceModelType === 'App\\Models\\ServiceRequest' || 
               $sourceModelType === 'App\\Models\\ChangeRequest') {
         // For single memos and other memo types, use their approval trails
-        if (isset($sourceData['approval_trails']) && $sourceData['approval_trails']) {
+        if (isset($sourceData['approval_trails'])) {
             $sourceApprovalTrails = $sourceData['approval_trails'];
-        } elseif (isset($sourceModel) && $sourceModel && method_exists($sourceModel, 'approvalTrails')) {
-            // Fallback: get directly from source model if available
-            $sourceApprovalTrails = $sourceModel->approvalTrails ?? collect();
-        } else {
-            $sourceApprovalTrails = collect();
         }
     } else {
         // Fallback to general approval trails
-        $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
+    $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
     }
     
-    // Ensure sourceApprovalTrails is a collection (convert if needed)
-    if (!is_object($sourceApprovalTrails) || !method_exists($sourceApprovalTrails, 'where')) {
-        $sourceApprovalTrails = collect($sourceApprovalTrails ?? []);
-    }
-    
-    // For single memo Activities, filter out archived trails and non-approved actions
-    if ($sourceModelType === 'App\\Models\\Activity' && isset($sourceData['is_single_memo']) && $sourceData['is_single_memo']) {
-        // Filter out archived trails and ensure we only have approved/passed actions
-        $sourceApprovalTrails = $sourceApprovalTrails->filter(function($trail) {
-            $isArchived = isset($trail->is_archived) ? (int)$trail->is_archived : 0;
-            $action = strtolower($trail->action ?? '');
-            return $isArchived == 0 && in_array($action, ['approved', 'passed']);
-        });
-    }
-    
-    // Get workflow ID - for single memos, use the activity's forward_workflow_id
-    $workflowId = 1; // Default
-    if ($sourceModelType === 'App\\Models\\Activity' && isset($sourceData['is_single_memo']) && $sourceData['is_single_memo']) {
-        // For single memo activities, get workflow_id from the source model
-        if (isset($sourceModel) && $sourceModel && isset($sourceModel->forward_workflow_id)) {
-            $workflowId = $sourceModel->forward_workflow_id;
-        } elseif (isset($sourceData['forward_workflow_id'])) {
-            $workflowId = $sourceData['forward_workflow_id'];
-        } elseif (isset($requestARF->forward_workflow_id)) {
-            $workflowId = $requestARF->forward_workflow_id;
-        }
-    } else {
-        $workflowId = $sourceData['forward_workflow_id'] ?? $requestARF->forward_workflow_id ?? 1;
-    }
-    
-    $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $workflowId);
+    $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
 
     //dd($memo_approvers);
     // Extract specific approvers for easier access
@@ -1233,26 +1190,8 @@
              } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
-                        // Get approval date from structured data
-                        $approvalDate = 'Not Signed';
-                        if (isset($chief_of_staff['created_at'])) {
-                            if (is_object($chief_of_staff['created_at'])) {
-                                $approvalDate = $chief_of_staff['created_at']->format('j F Y H:i');
-                            } elseif (is_string($chief_of_staff['created_at'])) {
-                                $approvalDate = date('j F Y H:i', strtotime($chief_of_staff['created_at']));
-                            }
-                        }
-                        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-                        
-                        // Generate hash using staff_id from the structured data
-                        $staffIdForHash = $isOic ? ($chief_of_staff['oic_staff_id'] ?? $staff['staff_id'] ?? $staff['id'] ?? '') : ($chief_of_staff['staff_id'] ?? $staff['staff_id'] ?? $staff['id'] ?? '');
-                        $dateForHash = $chief_of_staff['created_at'] ?? date('Y-m-d H:i:s');
-                        if (is_object($dateForHash)) {
-                            $dateForHash = $dateForHash->format('Y-m-d H:i:s');
-                        } elseif (is_string($dateForHash)) {
-                            $dateForHash = date('Y-m-d H:i:s', strtotime($dateForHash));
-                        }
-                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffIdForHash, $dateForHash)) . '</div>';
+                        echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
                         echo '</div>';
                     } else {
                         renderBudgetSignature(null, $sourceModel);
@@ -1341,26 +1280,8 @@
             } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
-                        // Get approval date from structured data
-                        $approvalDate = 'Not Signed';
-                        if (isset($directorGeneralApproval['created_at'])) {
-                            if (is_object($directorGeneralApproval['created_at'])) {
-                                $approvalDate = $directorGeneralApproval['created_at']->format('j F Y H:i');
-                            } elseif (is_string($directorGeneralApproval['created_at'])) {
-                                $approvalDate = date('j F Y H:i', strtotime($directorGeneralApproval['created_at']));
-                            }
-                        }
-                        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-                        
-                        // Generate hash using staff_id from the structured data
-                        $staffIdForHash = $isOic ? ($directorGeneralApproval['oic_staff_id'] ?? $staff['staff_id'] ?? $staff['id'] ?? '') : ($directorGeneralApproval['staff_id'] ?? $staff['staff_id'] ?? $staff['id'] ?? '');
-                        $dateForHash = $directorGeneralApproval['created_at'] ?? date('Y-m-d H:i:s');
-                        if (is_object($dateForHash)) {
-                            $dateForHash = $dateForHash->format('Y-m-d H:i:s');
-                        } elseif (is_string($dateForHash)) {
-                            $dateForHash = date('Y-m-d H:i:s', strtotime($dateForHash));
-                        }
-                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffIdForHash, $dateForHash)) . '</div>';
+                        echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
                         echo '</div>';
                     } else {
                         renderBudgetSignature(null, $sourceModel);
