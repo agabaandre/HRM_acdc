@@ -340,7 +340,12 @@ class PrintHelper
      */
     public static function getLatestApprovalForOrder($approvalTrails, $order)
     {
-        $approvals = $approvalTrails->where('approval_order', $order);
+        // Filter by approval_order and only include 'approved' actions
+        $approvals = $approvalTrails->where('approval_order', $order)
+            ->filter(function($trail) {
+                $action = strtolower((string)($trail->action ?? ''));
+                return $action === 'approved';
+            });
         return $approvals->sortByDesc('created_at')->first();
     }
 
@@ -632,10 +637,59 @@ class PrintHelper
             'Director General' => 11, // Approved by
         ];
         
+        // Ensure activityApprovalTrails is a collection
+        if (!is_object($activityApprovalTrails) || !method_exists($activityApprovalTrails, 'where')) {
+            $activityApprovalTrails = collect($activityApprovalTrails ?? []);
+        }
+        
         foreach ($ARFRoles as $role => $expectedOrder) {
             $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
             if ($approval) {
-                $ARFApprovers[$role] = $approval;
+                // Convert approval trail object to structured array format
+                $isOic = !empty($approval->oic_staff_id);
+                $staffModel = $isOic ? ($approval->oicStaff ?? null) : ($approval->staff ?? null);
+                $regularStaffModel = $approval->staff ?? null;
+                
+                // Get workflow definition for role
+                $workflowDefinition = null;
+                if (method_exists($approval, 'workflowDefinition') && $approval->workflowDefinition) {
+                    $workflowDefinition = $approval->workflowDefinition;
+                } elseif ($approval->forward_workflow_id ?? null) {
+                    $workflowDefinition = \App\Models\WorkflowDefinition::where('approval_order', $expectedOrder)
+                        ->where('workflow_id', $approval->forward_workflow_id)
+                        ->first();
+                }
+                
+                $ARFApprovers[$role] = [
+                    'staff' => $regularStaffModel ? [
+                        'id' => $regularStaffModel->id ?? null,
+                        'staff_id' => $regularStaffModel->staff_id ?? ($regularStaffModel->id ?? null),
+                        'fname' => $regularStaffModel->fname ?? '',
+                        'lname' => $regularStaffModel->lname ?? '',
+                        'oname' => $regularStaffModel->oname ?? '',
+                        'name' => trim(($regularStaffModel->fname ?? '') . ' ' . ($regularStaffModel->lname ?? '') . ' ' . ($regularStaffModel->oname ?? '')),
+                        'title' => $regularStaffModel->title ?? '',
+                        'signature' => $regularStaffModel->signature ?? null,
+                        'work_email' => $regularStaffModel->work_email ?? null
+                    ] : null,
+                    'oic_staff' => ($isOic && $approval->oicStaff) ? [
+                        'id' => $approval->oicStaff->id ?? null,
+                        'staff_id' => $approval->oicStaff->staff_id ?? ($approval->oicStaff->id ?? null),
+                        'fname' => $approval->oicStaff->fname ?? '',
+                        'lname' => $approval->oicStaff->lname ?? '',
+                        'oname' => $approval->oicStaff->oname ?? '',
+                        'name' => trim(($approval->oicStaff->fname ?? '') . ' ' . ($approval->oicStaff->lname ?? '') . ' ' . ($approval->oicStaff->oname ?? '')),
+                        'title' => $approval->oicStaff->title ?? '',
+                        'signature' => $approval->oicStaff->signature ?? null,
+                        'work_email' => $approval->oicStaff->work_email ?? null
+                    ] : null,
+                    'role' => $workflowDefinition ? $workflowDefinition->role : $role,
+                    'order' => $expectedOrder,
+                    'is_oic' => $isOic,
+                    'created_at' => $approval->created_at ?? null,
+                    'staff_id' => $approval->staff_id ?? null,
+                    'oic_staff_id' => $approval->oic_staff_id ?? null
+                ];
             }
         }
         
