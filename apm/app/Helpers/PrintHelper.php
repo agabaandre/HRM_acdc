@@ -344,8 +344,13 @@ class PrintHelper
         $order = (int)$order;
         
         // Filter by approval_order (ensure type-safe comparison)
+        // Also filter out non-signing actions (submitted, resubmitted, cancelled, rejected)
         $approvals = $approvalTrails->filter(function($trail) use ($order) {
-            return (int)($trail->approval_order ?? 0) === $order;
+            $trailOrder = (int)($trail->approval_order ?? 0);
+            $action = strtolower((string)($trail->action ?? ''));
+            $isSigningAction = !in_array($action, ['submitted', 'resubmitted', 'cancelled', 'rejected']);
+            
+            return $trailOrder === $order && $isSigningAction;
         });
         
         return $approvals->sortByDesc('created_at')->first();
