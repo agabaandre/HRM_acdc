@@ -1082,6 +1082,8 @@
 
 
     <!-- Signatures (borderless by default). Last column adds ONLY a left border inline -->
+
+    <div class="page-break"></div>
     <table class="sig-table" role="table" aria-label="Approvals">
     <tr>
         <td>Prepared by:</td>
