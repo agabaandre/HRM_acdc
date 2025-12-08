@@ -132,7 +132,7 @@
                                                 <td>{{ $count++ }}</td>
                                                 <td style="max-width: 250px; width: 250px; word-wrap: break-word; white-space: normal;">
                                                     <div class="mb-1">
-                                                        <span class="badge bg-primary">{{ $arf->arf_number }}</span>
+                                                        <span class="badge bg-primary">{{ $arf->document_number ?? $arf->arf_number }}</span>
                                                     </div>
                                                     <div class="fw-bold text-primary" style="word-wrap: break-word; word-break: break-word; max-width: 250px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $arf->activity_title }}</div>
                                                     <small class="text-muted">{{ Str::limit($arf->purpose, 50) }}</small>
@@ -245,7 +245,7 @@
                                                 <td>{{ $count++ }}</td>
                                                 <td style="max-width: 274px; width: 274px; word-wrap: break-word; white-space: normal;">
                                                     <div class="mb-1">
-                                                        <span class="badge bg-primary">{{ $arf->arf_number }}</span>
+                                                        <span class="badge bg-primary">{{ $arf->document_number ?? $arf->arf_number }}</span>
                                                     </div>
                                                     <div class="fw-bold text-primary" style="word-wrap: break-word; word-break: break-word; max-width: 274px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $arf->activity_title }}</div>
                                                     <small class="text-muted">{{ Str::limit($arf->purpose, 50) }}</small>
