@@ -971,6 +971,8 @@
     }
     
     // Get approval trails based on source model type
+    // IMPORTANT: For single memo activities, ALL approvers (Grants, Chief of Staff, Director General) 
+    // must come from the same approval_trails source (polymorphic approval_trails table)
     $sourceApprovalTrails = collect();
     
     if ($sourceModelType === 'App\\Models\\Activity') {
@@ -978,16 +980,35 @@
         $isSingleMemo = isset($sourceData['is_single_memo']) ? $sourceData['is_single_memo'] : false;
         
         if ($isSingleMemo) {
-            // For single memo activities, use activity approval trails
+            // For single memo activities, use activity approval trails from approval_trails table
+            // This ensures Grants, Chief of Staff, and Director General all come from the same source
             if (isset($sourceData['approval_trails'])) {
-                $sourceApprovalTrails = $sourceData['approval_trails'];
+                $sourceApprovalTrails = is_array($sourceData['approval_trails']) 
+                    ? collect($sourceData['approval_trails']) 
+                    : $sourceData['approval_trails'];
+            } else {
+                // Fallback: explicitly query approval_trails table for single memo activities
+                // Use source_id from requestARF if approval_trails not provided
+                if ($sourceModelId) {
+                    $workflowId = $sourceData['forward_workflow_id'] ?? $requestARF->forward_workflow_id ?? 1;
+                    $sourceApprovalTrails = \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\Activity')
+                        ->where('model_id', $sourceModelId)
+                        ->where('is_archived', 0)
+                        ->where('forward_workflow_id', $workflowId)
+                        ->with(['staff', 'oicStaff', 'approverRole'])
+                        ->orderBy('approval_order')
+                        ->orderBy('created_at')
+                        ->get();
+                }
             }
         } else {
             // For matrix activities, use matrix approval trails
             if (isset($sourceData['matrix']) && isset($sourceData['matrix']->approvalTrails)) {
                 $sourceApprovalTrails = $sourceData['matrix']->approvalTrails;
             } elseif (isset($sourceData['approval_trails'])) {
-                $sourceApprovalTrails = $sourceData['approval_trails'];
+                $sourceApprovalTrails = is_array($sourceData['approval_trails']) 
+                    ? collect($sourceData['approval_trails']) 
+                    : $sourceData['approval_trails'];
             }
         }
     } elseif ($sourceModelType === 'App\\Models\\SpecialMemo' || 
@@ -996,13 +1017,23 @@
               $sourceModelType === 'App\\Models\\ChangeRequest') {
         // For single memos and other memo types, use their approval trails
         if (isset($sourceData['approval_trails'])) {
-            $sourceApprovalTrails = $sourceData['approval_trails'];
+            $sourceApprovalTrails = is_array($sourceData['approval_trails']) 
+                ? collect($sourceData['approval_trails']) 
+                : $sourceData['approval_trails'];
         }
     } else {
         // Fallback to general approval trails
-        $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
+        $sourceApprovalTrails = isset($sourceData['approval_trails']) 
+            ? (is_array($sourceData['approval_trails']) ? collect($sourceData['approval_trails']) : $sourceData['approval_trails'])
+            : collect();
     }
     
+    // Ensure it's a collection for getARFApprovers
+    if (!($sourceApprovalTrails instanceof \Illuminate\Support\Collection)) {
+        $sourceApprovalTrails = collect($sourceApprovalTrails);
+    }
+    
+    // All approvers (Grants, Chief of Staff, Director General) come from the same source
     $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
 
     //dd($memo_approvers);
