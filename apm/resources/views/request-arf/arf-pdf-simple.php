@@ -973,14 +973,25 @@
     // Get approval trails based on source model type
     $sourceApprovalTrails = collect();
     
+    // Ensure sourceApprovalTrails is always a collection
+    if (!isset($sourceApprovalTrails) || !is_object($sourceApprovalTrails) || !method_exists($sourceApprovalTrails, 'where')) {
+        $sourceApprovalTrails = collect();
+    }
+    
     if ($sourceModelType === 'App\\Models\\Activity') {
         // Check if it's a single memo activity
         $isSingleMemo = isset($sourceData['is_single_memo']) ? $sourceData['is_single_memo'] : false;
         
         if ($isSingleMemo) {
             // For single memo activities, use activity approval trails
-            if (isset($sourceData['approval_trails'])) {
+            // Ensure we have the approval trails collection with proper relationships loaded
+            if (isset($sourceData['approval_trails']) && $sourceData['approval_trails']) {
                 $sourceApprovalTrails = $sourceData['approval_trails'];
+            } else {
+                // Fallback: try to get approval trails directly from the source model
+                $sourceApprovalTrails = isset($sourceModel) && method_exists($sourceModel, 'activityApprovalTrails') 
+                    ? $sourceModel->activityApprovalTrails 
+                    : collect();
             }
         } else {
             // For matrix activities, use matrix approval trails
@@ -988,6 +999,8 @@
                 $sourceApprovalTrails = $sourceData['matrix']->approvalTrails;
             } elseif (isset($sourceData['approval_trails'])) {
                 $sourceApprovalTrails = $sourceData['approval_trails'];
+            } else {
+                $sourceApprovalTrails = collect();
             }
         }
     } elseif ($sourceModelType === 'App\\Models\\SpecialMemo' || 
@@ -995,12 +1008,22 @@
               $sourceModelType === 'App\\Models\\ServiceRequest' || 
               $sourceModelType === 'App\\Models\\ChangeRequest') {
         // For single memos and other memo types, use their approval trails
-        if (isset($sourceData['approval_trails'])) {
+        if (isset($sourceData['approval_trails']) && $sourceData['approval_trails']) {
             $sourceApprovalTrails = $sourceData['approval_trails'];
+        } else {
+            // Fallback: try to get approval trails directly from the source model
+            $sourceApprovalTrails = isset($sourceModel) && method_exists($sourceModel, 'approvalTrails') 
+                ? $sourceModel->approvalTrails 
+                : collect();
         }
     } else {
         // Fallback to general approval trails
-    $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
+        $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
+    }
+    
+    // Ensure sourceApprovalTrails is a collection (convert if needed)
+    if (!is_object($sourceApprovalTrails) || !method_exists($sourceApprovalTrails, 'where')) {
+        $sourceApprovalTrails = collect($sourceApprovalTrails ?? []);
     }
     
     $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
