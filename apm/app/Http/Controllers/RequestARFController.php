@@ -1179,6 +1179,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'matrix' => $sourceModel->matrix ?? null, // Include the matrix object with approval trails
                     'approval_trails' => $sourceModel->activityApprovalTrails,
                     'is_single_memo' => $sourceModel->is_single_memo ?? false, // Add single memo flag
+                    'forward_workflow_id' => $sourceModel->forward_workflow_id ?? 1, // Add workflow ID for approver extraction
                     'created_at' => $sourceModel->created_at,
                     'updated_at' => $sourceModel->updated_at,
                 ];

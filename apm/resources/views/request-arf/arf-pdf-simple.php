@@ -1026,7 +1026,21 @@
         $sourceApprovalTrails = collect($sourceApprovalTrails ?? []);
     }
     
-    $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
+    // Filter approval trails by workflow_id if provided (for single memos)
+    $workflowId = $sourceData['forward_workflow_id'] ?? 1;
+    if ($workflowId && method_exists($sourceApprovalTrails, 'where')) {
+        // Filter to only include approval trails with matching workflow_id
+        $sourceApprovalTrails = $sourceApprovalTrails->filter(function($trail) use ($workflowId) {
+            // Check if trail has forward_workflow_id property
+            if (isset($trail->forward_workflow_id)) {
+                return (int)$trail->forward_workflow_id === (int)$workflowId;
+            }
+            // If no workflow_id on trail, include it (for backward compatibility)
+            return true;
+        });
+    }
+    
+    $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $workflowId);
 
     //dd($memo_approvers);
     // Extract specific approvers for easier access
@@ -1213,16 +1227,34 @@
              } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
-                        echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
-                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
+                        // Get approval date from the structured data
+                        $approvalDate = 'Not Signed';
+                        if (isset($chief_of_staff['created_at'])) {
+                            if (is_object($chief_of_staff['created_at'])) {
+                                $approvalDate = $chief_of_staff['created_at']->format('j F Y H:i');
+                            } elseif (is_string($chief_of_staff['created_at'])) {
+                                $approvalDate = date('j F Y H:i', strtotime($chief_of_staff['created_at']));
+                            }
+                        }
+                        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
+                        
+                        // Generate hash using staff_id from the structured data
+                        $staffIdForHash = $isOic ? ($chief_of_staff['oic_staff_id'] ?? $staff['staff_id'] ?? $staff['id'] ?? '') : ($chief_of_staff['staff_id'] ?? $staff['staff_id'] ?? $staff['id'] ?? '');
+                        $dateForHash = $chief_of_staff['created_at'] ?? date('Y-m-d H:i:s');
+                        if (is_object($dateForHash)) {
+                            $dateForHash = $dateForHash->format('Y-m-d H:i:s');
+                        } elseif (is_string($dateForHash)) {
+                            $dateForHash = date('Y-m-d H:i:s', strtotime($dateForHash));
+                        }
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffIdForHash, $dateForHash)) . '</div>';
                         echo '</div>';
                     } else {
                         renderBudgetSignature(null, $sourceModel);
                     }
                 } else {
-                    // Direct approval object from getARFApprovers
+                    // Direct approval object from getARFApprovers (fallback for old format)
                     $isOic = !empty($chief_of_staff->oic_staff_id);
-                    $staff = $isOic ? $chief_of_staff->oicStaff : $chief_of_staff->staff;
+                    $staff = $isOic ? ($chief_of_staff->oicStaff ?? null) : ($chief_of_staff->staff ?? null);
                     
                     if ($staff) {
                         $name = trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
@@ -1237,9 +1269,9 @@
                         } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
                         }
-                        $approvalDate = is_object($chief_of_staff->created_at) ? $chief_of_staff->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($chief_of_staff->created_at));
+                        $approvalDate = is_object($chief_of_staff->created_at) ? $chief_of_staff->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($chief_of_staff->created_at ?? 'now'));
                         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-                        $hash = generateVerificationHash($sourceModel->id, $isOic ? $chief_of_staff->oic_staff_id : $chief_of_staff->staff_id, $chief_of_staff->created_at);
+                        $hash = generateVerificationHash($sourceModel->id, $isOic ? ($chief_of_staff->oic_staff_id ?? '') : ($chief_of_staff->staff_id ?? ''), $chief_of_staff->created_at ?? date('Y-m-d H:i:s'));
                         echo '<div class="signature-hash">Hash: ' . htmlspecialchars($hash) . '</div>';
                         echo '</div>';
                     } else {
@@ -1303,16 +1335,34 @@
             } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
-                        echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
-                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
+                        // Get approval date from the structured data
+                        $approvalDate = 'Not Signed';
+                        if (isset($directorGeneralApproval['created_at'])) {
+                            if (is_object($directorGeneralApproval['created_at'])) {
+                                $approvalDate = $directorGeneralApproval['created_at']->format('j F Y H:i');
+                            } elseif (is_string($directorGeneralApproval['created_at'])) {
+                                $approvalDate = date('j F Y H:i', strtotime($directorGeneralApproval['created_at']));
+                            }
+                        }
+                        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
+                        
+                        // Generate hash using staff_id from the structured data
+                        $staffIdForHash = $isOic ? ($directorGeneralApproval['oic_staff_id'] ?? $staff['staff_id'] ?? $staff['id'] ?? '') : ($directorGeneralApproval['staff_id'] ?? $staff['staff_id'] ?? $staff['id'] ?? '');
+                        $dateForHash = $directorGeneralApproval['created_at'] ?? date('Y-m-d H:i:s');
+                        if (is_object($dateForHash)) {
+                            $dateForHash = $dateForHash->format('Y-m-d H:i:s');
+                        } elseif (is_string($dateForHash)) {
+                            $dateForHash = date('Y-m-d H:i:s', strtotime($dateForHash));
+                        }
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffIdForHash, $dateForHash)) . '</div>';
                         echo '</div>';
                     } else {
                         renderBudgetSignature(null, $sourceModel);
                     }
                 } else {
-                    // Direct approval object from getARFApprovers
+                    // Direct approval object from getARFApprovers (fallback for old format)
                     $isOic = !empty($directorGeneralApproval->oic_staff_id);
-                    $staff = $isOic ? $directorGeneralApproval->oicStaff : $directorGeneralApproval->staff;
+                    $staff = $isOic ? ($directorGeneralApproval->oicStaff ?? null) : ($directorGeneralApproval->staff ?? null);
                     
                     if ($staff) {
                         $name = trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
