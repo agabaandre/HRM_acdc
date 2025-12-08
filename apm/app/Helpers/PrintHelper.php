@@ -635,59 +635,7 @@ class PrintHelper
         foreach ($ARFRoles as $role => $expectedOrder) {
             $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
             if ($approval) {
-                // Convert approval trail object to structured array format
-                $isOic = !empty($approval->oic_staff_id);
-                $staffModel = $isOic ? ($approval->oicStaff ?? null) : ($approval->staff ?? null);
-                
-                if ($staffModel) {
-                    // Get workflow definition for role name
-                    $workflowDefinition = null;
-                    if (isset($approval->workflowDefinition)) {
-                        $workflowDefinition = $approval->workflowDefinition;
-                    } elseif (isset($approval->approverRole)) {
-                        $workflowDefinition = $approval->approverRole;
-                    } else {
-                        // Try to get from database
-                        $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $workflowId)
-                            ->where('approval_order', $expectedOrder)
-                            ->where('is_enabled', 1)
-                            ->first();
-                    }
-                    
-                    $ARFApprovers[$role] = [
-                        'staff' => [
-                            'id' => $staffModel->id ?? null,
-                            'staff_id' => $staffModel->staff_id ?? ($staffModel->id ?? null),
-                            'fname' => $staffModel->fname ?? '',
-                            'lname' => $staffModel->lname ?? '',
-                            'oname' => $staffModel->oname ?? '',
-                            'name' => trim(($staffModel->fname ?? '') . ' ' . ($staffModel->lname ?? '') . ' ' . ($staffModel->oname ?? '')),
-                            'title' => $staffModel->title ?? '',
-                            'signature' => $staffModel->signature ?? null,
-                            'work_email' => $staffModel->work_email ?? null
-                        ],
-                        'oic_staff' => $isOic && $approval->oicStaff ? [
-                            'id' => $approval->oicStaff->id ?? null,
-                            'staff_id' => $approval->oicStaff->staff_id ?? ($approval->oicStaff->id ?? null),
-                            'fname' => $approval->oicStaff->fname ?? '',
-                            'lname' => $approval->oicStaff->lname ?? '',
-                            'oname' => $approval->oicStaff->oname ?? '',
-                            'name' => trim(($approval->oicStaff->fname ?? '') . ' ' . ($approval->oicStaff->lname ?? '') . ' ' . ($approval->oicStaff->oname ?? '')),
-                            'title' => $approval->oicStaff->title ?? '',
-                            'signature' => $approval->oicStaff->signature ?? null,
-                            'work_email' => $approval->oicStaff->work_email ?? null
-                        ] : null,
-                        'role' => $workflowDefinition ? ($workflowDefinition->role ?? $role) : $role,
-                        'order' => $expectedOrder,
-                        'is_oic' => $isOic,
-                        'created_at' => $approval->created_at ?? null,
-                        'staff_id' => $isOic ? ($approval->oic_staff_id ?? null) : ($approval->staff_id ?? null),
-                        'oic_staff_id' => $approval->oic_staff_id ?? null
-                    ];
-                } else {
-                    // If no staff model, still return the approval trail object as fallback
-                    $ARFApprovers[$role] = $approval;
-                }
+                $ARFApprovers[$role] = $approval;
             }
         }
         
