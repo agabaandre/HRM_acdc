@@ -624,6 +624,11 @@ class PrintHelper
     {
         $ARFApprovers = [];
         
+        // Ensure it's a collection
+        if (is_array($activityApprovalTrails)) {
+            $activityApprovalTrails = collect($activityApprovalTrails);
+        }
+        
         // Define the financial approver roles and their expected approval orders
         $ARFRoles = [
              
@@ -635,7 +640,68 @@ class PrintHelper
         foreach ($ARFRoles as $role => $expectedOrder) {
             $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
             if ($approval) {
-                $ARFApprovers[$role] = $approval;
+                // If it's an ApprovalTrail model, convert to structured array format
+                if (is_object($approval) && method_exists($approval, 'getAttribute')) {
+                    $isOic = !empty($approval->oic_staff_id);
+                    $staffModel = $isOic ? $approval->oicStaff : $approval->staff;
+                    
+                    if ($staffModel) {
+                        // Get role from workflow definition (filtered by workflow_id and approval_order)
+                        $roleName = $role;
+                        if ($workflowId && $expectedOrder) {
+                            // First try to get from approval trail's forward_workflow_id if available
+                            $trailWorkflowId = $approval->forward_workflow_id ?? $workflowId;
+                            
+                            $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $trailWorkflowId)
+                                ->where('approval_order', $expectedOrder)
+                                ->where('is_enabled', 1)
+                                ->first();
+                            
+                            if ($workflowDefinition) {
+                                $roleName = $workflowDefinition->role ?? $role;
+                            } elseif ($approval->approverRole) {
+                                // Fallback to approverRole relationship if workflow definition not found
+                                $roleName = $approval->approverRole->role ?? $role;
+                            }
+                        } elseif ($approval->approverRole) {
+                            // Fallback to approverRole relationship if workflowId not available
+                            $roleName = $approval->approverRole->role ?? $role;
+                        }
+                        
+                        $ARFApprovers[$role] = [
+                            'staff' => [
+                                'id' => $staffModel->id ?? null,
+                                'staff_id' => $staffModel->staff_id ?? ($staffModel->id ?? null),
+                                'fname' => $staffModel->fname ?? '',
+                                'lname' => $staffModel->lname ?? '',
+                                'oname' => $staffModel->oname ?? '',
+                                'title' => $staffModel->title ?? '',
+                                'signature' => $staffModel->signature ?? null,
+                                'work_email' => $staffModel->work_email ?? null
+                            ],
+                            'oic_staff' => $isOic && $approval->oicStaff ? [
+                                'id' => $approval->oicStaff->id ?? null,
+                                'staff_id' => $approval->oicStaff->staff_id ?? ($approval->oicStaff->id ?? null),
+                                'fname' => $approval->oicStaff->fname ?? '',
+                                'lname' => $approval->oicStaff->lname ?? '',
+                                'oname' => $approval->oicStaff->oname ?? '',
+                                'title' => $approval->oicStaff->title ?? '',
+                                'signature' => $approval->oicStaff->signature ?? null,
+                                'work_email' => $approval->oicStaff->work_email ?? null
+                            ] : null,
+                            'role' => $roleName,
+                            'order' => (int)$expectedOrder,
+                            'is_oic' => $isOic,
+                            'created_at' => $approval->created_at ?? null
+                        ];
+                    } else {
+                        // Staff not found, but keep the approval object for backward compatibility
+                        $ARFApprovers[$role] = $approval;
+                    }
+                } else {
+                    // Already in array format or other format
+                    $ARFApprovers[$role] = $approval;
+                }
             }
         }
         

@@ -978,11 +978,8 @@
         $isSingleMemo = isset($sourceData['is_single_memo']) ? $sourceData['is_single_memo'] : false;
         
         if ($isSingleMemo) {
-            // For single memo activities, use matrix approval trails (they contain orders 10 and 11)
-            if (isset($sourceData['matrix']) && isset($sourceData['matrix']->approvalTrails)) {
-                $sourceApprovalTrails = $sourceData['matrix']->approvalTrails;
-            } elseif (isset($sourceData['approval_trails'])) {
-                // Fallback to activity approval trails if matrix trails not available
+            // For single memo activities, use activity approval trails
+            if (isset($sourceData['approval_trails'])) {
                 $sourceApprovalTrails = $sourceData['approval_trails'];
             }
         } else {
@@ -1003,7 +1000,7 @@
         }
     } else {
         // Fallback to general approval trails
-    $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
+        $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
     }
     
     $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);

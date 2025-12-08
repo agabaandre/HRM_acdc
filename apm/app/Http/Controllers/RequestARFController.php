@@ -1139,8 +1139,32 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         if ($sourceModel) {
             // Load necessary relationships based on model type
             if ($requestARF->model_type === 'App\\Models\\Activity') {
-                // Load activity approval trails (activities use ActivityApprovalTrail table)
-                $sourceModel->load(['matrix.division.divisionHead', 'matrix.matrixApprovalTrails.staff', 'matrix.matrixApprovalTrails.approverRole', 'staff', 'activity_budget', 'activityApprovalTrails.staff', 'activityApprovalTrails.approverRole']);
+                // Check if it's a single memo activity
+                $isSingleMemo = $sourceModel->is_single_memo ?? false;
+                
+                if ($isSingleMemo) {
+                    // For single memo activities, load polymorphic approval trails from approval_trails table
+                    $sourceModel->load(['matrix.division.divisionHead', 'staff', 'activity_budget']);
+                    // Load approval trails from the polymorphic approval_trails table
+                    // Include approverRole relationship and filter by workflow_id if available
+                    $approvalTrailsQuery = \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\Activity')
+                        ->where('model_id', $sourceModel->id)
+                        ->where('is_archived', 0)
+                        ->with(['staff', 'oicStaff', 'approverRole']);
+                    
+                    // Filter by workflow_id if available
+                    if ($sourceModel->forward_workflow_id) {
+                        $approvalTrailsQuery->where('forward_workflow_id', $sourceModel->forward_workflow_id);
+                    }
+                    
+                    $approvalTrails = $approvalTrailsQuery->orderBy('approval_order')
+                        ->orderBy('created_at')
+                        ->get();
+                } else {
+                    // For matrix activities, load activity approval trails (activities use ActivityApprovalTrail table)
+                    $sourceModel->load(['matrix.division.divisionHead', 'matrix.matrixApprovalTrails.staff', 'matrix.matrixApprovalTrails.approverRole', 'staff', 'activity_budget', 'activityApprovalTrails.staff', 'activityApprovalTrails.approverRole']);
+                    $approvalTrails = $sourceModel->activityApprovalTrails;
+                }
                 
                 // Get fund codes for budget display
                 $fundCodes = [];
@@ -1166,8 +1190,9 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'total_budget' => $sourceModel->total_budget ?? 0,
                     'matrix_id' => $sourceModel->matrix_id ?? null,
                     'matrix' => $sourceModel->matrix ?? null, // Include the matrix object with approval trails
-                    'approval_trails' => $sourceModel->activityApprovalTrails,
-                    'is_single_memo' => $sourceModel->is_single_memo ?? false, // Add single memo flag
+                    'approval_trails' => $approvalTrails,
+                    'is_single_memo' => $isSingleMemo,
+                    'forward_workflow_id' => $sourceModel->forward_workflow_id ?? 1,
                     'created_at' => $sourceModel->created_at,
                     'updated_at' => $sourceModel->updated_at,
                 ];
