@@ -42,12 +42,12 @@
                       $role = 'First Supervisor';
                   }
               } else {
-                  $role = 'First Supervisor';
+              $role = 'First Supervisor';
               }
           } elseif (!empty($ppa->endterm_supervisor_2) && $log->staff_id == $ppa->endterm_supervisor_2) {
               // Only show as Second Supervisor if not the same as first supervisor
               if (!$sameSupervisor) {
-                  $role = 'Second Supervisor';
+              $role = 'Second Supervisor';
               } else {
                   // This case is already handled above for same supervisor
                   $role = 'Other';
