@@ -117,7 +117,7 @@
   <table class="form-table table-bordered">
     <thead>
       <tr style="background-color: #f9fafb;">
-        <th colspan="4" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">A. Staff Details</th>
+        <th colspan="4" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;"><strong>A. Staff Details</strong></th>
       </tr>
     </thead>
     <tr>
@@ -150,7 +150,7 @@
   <table class="objective-table">
     <tr style="background-color: #f9fafb;">
       <td colspan="7" style="padding: 12px;">
-        <div style="text-align: left; font-weight: 600; color: #0f172a; margin-bottom: 6px;">B. Endterm Objectives Review</div>
+        <div style="text-align: left; font-weight: bold; color: #0f172a; margin-bottom: 6px;"><strong>B. Endterm Objectives Review</strong></div>
         <p style="margin: 0; font-style: italic; color: #64748b; font-size: 12px;">Review of objectives and progress at endterm.</p>
       </td>
     </tr>
@@ -199,7 +199,7 @@
   <table class="form-table table-bordered" style="margin-bottom: 15px;">
     <thead>
       <tr style="background-color: #f9fafb;">
-        <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">C. Appraiser's Comments</th>
+        <th colspan="2" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;"><strong>C. Appraiser's Comments</strong></th>
       </tr>
     </thead>
     <tbody>
@@ -268,7 +268,7 @@
   <table width="100%" border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
     <thead>
       <tr style="background-color: #f9fafb;">
-        <th colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">D. Competencies (Endterm)</th>
+        <th colspan="3" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;"><strong>D. Competencies (Endterm)</strong></th>
       </tr>
     </thead>
     <tbody>
@@ -309,7 +309,7 @@
   <table>
     <thead>
       <tr style="background-color: #f9fafb;">
-        <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">E. Endterm Review Comments & Training</th>
+        <th colspan="2" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;"><strong>E. Endterm Review Comments & Training</strong></th>
       </tr>
     </thead>
     <tr>
@@ -385,8 +385,8 @@
     <table width="100%" border="1" cellspacing="0" cellpadding="10" style="border-collapse: collapse; margin-bottom: 20px;">
       <thead>
         <tr style="background-color: #f9fafb;">
-          <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
-            F. Overall Rating and Supervisor Signoff
+          <th colspan="2" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;">
+            <strong>F. Overall Rating and Supervisor Signoff</strong>
           </th>
         </tr>
       </thead>
@@ -488,8 +488,8 @@
     <table width="100%" border="1" cellspacing="0" cellpadding="10" style="border-collapse: collapse; margin-bottom: 20px;">
       <thead>
         <tr style="background-color: #f9fafb;">
-          <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
-            G. Staff Sign Off
+          <th colspan="2" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;">
+            <strong>G. Staff Sign Off</strong>
           </th>
         </tr>
       </thead>
@@ -602,8 +602,8 @@
     <table width="100%" border="1" cellspacing="0" cellpadding="10" style="border-collapse: collapse; margin-bottom: 20px;">
       <thead>
         <tr style="background-color: #f9fafb;">
-          <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
-            H. Second Supervisor Sign Off
+          <th colspan="2" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;">
+            <strong>H. Second Supervisor Sign Off</strong>
           </th>
         </tr>
       </thead>
@@ -708,12 +708,47 @@
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($approval_trail as $log):
+        <?php 
+        // Check if first supervisor is the same as second supervisor
+        $sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
+                          !empty($ppa->endterm_supervisor_2) && 
+                          ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2);
+        
+        // Track approval count for same supervisor case
+        $firstSupervisorApprovalCount = 0;
+        
+        foreach ($approval_trail as $log):
           $logged = Modules::run('auth/contract_info', $log->staff_id);
-          if ($log->staff_id == $ppa->staff_id) $role = 'Staff';
-          elseif ($log->staff_id == $ppa->endterm_supervisor_1) $role = 'First Supervisor';
-          elseif ($ppa->endterm_supervisor_2 && $log->staff_id == $ppa->endterm_supervisor_2) $role = 'Second Supervisor';
-          else $role = 'Other';
+          
+          if ($log->staff_id == $ppa->staff_id) {
+              $role = 'Staff';
+          } elseif ($log->staff_id == $ppa->endterm_supervisor_1) {
+              // If same supervisor and this is an "Approved" action, track which approval this is
+              if ($sameSupervisor && $log->action === 'Approved') {
+                  $firstSupervisorApprovalCount++;
+                  // First approval shows as "First Supervisor", second shows as "Second Supervisor"
+                  if ($firstSupervisorApprovalCount === 1) {
+                      $role = 'First Supervisor';
+                  } elseif ($firstSupervisorApprovalCount === 2) {
+                      $role = 'Second Supervisor';
+                  } else {
+                      // Fallback for any additional approvals
+                      $role = 'First Supervisor';
+                  }
+              } else {
+                  $role = 'First Supervisor';
+              }
+          } elseif ($ppa->endterm_supervisor_2 && $log->staff_id == $ppa->endterm_supervisor_2) {
+              // Only show as Second Supervisor if not the same as first supervisor
+              if (!$sameSupervisor) {
+                  $role = 'Second Supervisor';
+              } else {
+                  // This case is already handled above for same supervisor
+                  $role = 'Other';
+              }
+          } else {
+              $role = 'Other';
+          }
         ?>
           <tr>
             <td><?= $logged->fname . ' ' . $logged->lname ?></td>

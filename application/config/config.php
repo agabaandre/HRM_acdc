@@ -404,12 +404,12 @@ $config['encryption_key'] = 'X7@8d9LqZ#2rT8s!p9bDf1eYq0kFzLmN'; // 32+ random ch
 // $config['sess_regenerate_destroy'] = FALSE;
 
 $config['sess_driver']             = 'database';
-$config['sess_cookie_name']        = 'africacdc_attendance_session'; // More unique, avoids conflicts
+$config['sess_cookie_name']        = 'africacdc_cbp_session'; // More unique, avoids conflicts
 $config['sess_expiration']         = 0;        // 2 hours (in seconds)
 $config['sess_save_path']          = 'access_sessions'; // Must match your DB table name
 $config['sess_match_ip'] = FALSE;
 $config['sess_time_to_update'] = 300;
-$config['sess_regenerate_destroy'] = FALSE;     // Destroy old session on regeneration
+$config['sess_regenerate_destroy'] = TRUE;     // Destroy old session on regeneration
 
 
 /*

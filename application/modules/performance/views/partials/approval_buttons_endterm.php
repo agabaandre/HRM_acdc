@@ -6,6 +6,11 @@ $isFirstSupervisor = ((int) $session->staff_id === (int) @$ppa->endterm_supervis
 $isSecondSupervisor = ((int) $session->staff_id === (int) @$ppa->endterm_supervisor_2);
 $isOwner = ((int) $session->staff_id === (int) @$ppa->staff_id);
 
+// Check if first supervisor is the same as second supervisor
+$sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
+                  !empty($ppa->endterm_supervisor_2) && 
+                  ((int) $ppa->endterm_supervisor_1 === (int) $ppa->endterm_supervisor_2);
+
 // Check approval trail to determine current stage
 $firstSupervisorApproved = false;
 $staffConsented = !empty($ppa->endterm_staff_consent_at);
@@ -58,7 +63,8 @@ if (!empty($approval_trail)) {
 }
 
 // Second supervisor can approve only if first supervisor approved AND staff consented
-if ($firstSupervisorApproved && $staffConsented && $ppa->endterm_supervisor_2) {
+// But NOT if first supervisor is the same as second supervisor (they already approved)
+if ($firstSupervisorApproved && $staffConsented && $ppa->endterm_supervisor_2 && !$sameSupervisor) {
     $secondSupervisorCanApprove = true;
 }
 
@@ -131,6 +137,25 @@ $showStaffConsent = $firstSupervisorApproved && !$staffConsented && $isOwner && 
       </label>
     </div>
   </div>
+
+  <?php if ($sameSupervisor): ?>
+    <!-- If first supervisor is the same as second supervisor, show agreement field -->
+    <div class="mb-3">
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="radio" name="supervisor2_agreement" id="agree_evaluation_first_<?= $ppa->entry_id ?>" value="1" checked required>
+        <label class="form-check-label" for="agree_evaluation_first_<?= $ppa->entry_id ?>">
+          I agree with the evaluation
+        </label>
+      </div>
+      
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="radio" name="supervisor2_agreement" id="disagree_evaluation_first_<?= $ppa->entry_id ?>" value="0" required>
+        <label class="form-check-label" for="disagree_evaluation_first_<?= $ppa->entry_id ?>">
+          I disagree with the evaluation
+        </label>
+      </div>
+    </div>
+  <?php endif; ?>
 
   <input type="hidden" name="action" id="approval_action_<?= $ppa->entry_id ?>" value="">
 

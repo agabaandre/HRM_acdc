@@ -298,16 +298,32 @@ public function endterm_review($entry_id)
 			'endterm_updated_at' => date('Y-m-d H:i:s')
 		];
 		
+		// Check if first supervisor is the same as second supervisor
+		$sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
+		                  !empty($ppa->endterm_supervisor_2) && 
+		                  ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2);
+		
 		// Determine overall_end_term_status based on staff rating acceptance
 		// If staff rejects (rating_acceptance = 0), set to "To be Calibrated"
 		if ((int)$rating_acceptance == 0) {
 			$update_data['overall_end_term_status'] = 'To be Calibrated';
 		} elseif ((int)$rating_acceptance == 1) {
 			// If staff accepts and there's no second supervisor, set to "Approved"
-			// If there's a second supervisor, status will be determined when they approve
+			// If first supervisor = second supervisor and both have approved, set to "Approved" or "To be Calibrated" based on agreement
 			if (!$ppa->endterm_supervisor_2) {
 				$update_data['overall_end_term_status'] = 'Approved';
+			} elseif ($sameSupervisor) {
+				// Both supervisors are the same person - check their agreement
+				$ppa_refresh = $this->per_mdl->get_plan_by_entry_id($entry_id);
+				if ((int)$ppa_refresh->endterm_supervisor2_agreement == 0) {
+					$update_data['overall_end_term_status'] = 'To be Calibrated';
+				} else {
+					$update_data['overall_end_term_status'] = 'Approved';
+					// Set draft_status to 2 (approved) since both supervisors (same person) have approved and employee consented
+					$update_data['endterm_draft_status'] = 2;
+				}
 			}
+			// If there's a different second supervisor, status will be determined when they approve
 		}
 		
 		$this->db->where('entry_id', $entry_id)->update('ppa_entries', $update_data);
@@ -365,6 +381,11 @@ public function endterm_review($entry_id)
 
 	$log_action = $action === 'approve' ? 'Approved' : 'Returned';
 		
+		// Check if first supervisor is the same as second supervisor
+		$sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
+		                  !empty($ppa->endterm_supervisor_2) && 
+		                  ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2);
+		
 		// Handle first supervisor approval
 		if ($action === 'approve' && $staff_id == $ppa->endterm_supervisor_1) {
 			$discussion_confirmed = $this->input->post('discussion_confirmation');
@@ -376,15 +397,72 @@ public function endterm_review($entry_id)
 				redirect("performance/endterm/endterm_review/{$entry_id}/{$staffno}");
 			}
 			
-			// Save first supervisor's discussion confirmation
-			$this->db->where('entry_id', $entry_id)->update('ppa_entries', [
-				'endterm_supervisor1_discussion_confirmed' => 1,
-				'endterm_updated_at' => date('Y-m-d H:i:s')
-			]);
+			// If first supervisor is the same as second supervisor, also require agreement field
+			if ($sameSupervisor) {
+				$supervisor2_agreement = $this->input->post('supervisor2_agreement');
+				if ($supervisor2_agreement === null) {
+					Modules::run('utility/setFlash', [
+						'msg' => 'Please indicate whether you agree or disagree with the evaluation.',
+						'type' => 'error'
+					]);
+					redirect("performance/endterm/endterm_review/{$entry_id}/{$staffno}");
+				}
+				
+				// Update both supervisor1 and supervisor2 fields at once
+				$update_data = [
+					'endterm_supervisor1_discussion_confirmed' => 1,
+					'endterm_supervisor2_agreement' => (int)$supervisor2_agreement,
+					'endterm_updated_at' => date('Y-m-d H:i:s')
+				];
+				
+				// Note: We don't set draft_status to 2 yet because employee consent is still needed
+				// The draft_status will be set to 2 after employee consents
+				
+				$this->db->where('entry_id', $entry_id)->update('ppa_entries', $update_data);
+				
+				// Log both approvals in the trail (first supervisor and second supervisor)
+				// First supervisor approval
+				$comments = $this->input->post('comments') ?? null;
+				if ($comments) {
+					$comments = preg_replace('/\s*I hereby confirm that I formally discussed the results of this review with the staff member\.?\s*/i', '', $comments);
+					$comments = preg_replace('/\s*I agree with the evaluation\.?\s*/i', '', $comments);
+					$comments = preg_replace('/\s*I disagree with the evaluation\.?\s*/i', '', $comments);
+					$comments = trim($comments);
+				}
+				
+				// Log first supervisor approval
+				$this->db->insert('ppa_approval_trail_end_term', [
+					'entry_id'   => $entry_id,
+					'staff_id'   => $staff_id,
+					'comments'   => $comments ?: null,
+					'action'     => 'Approved',
+					'created_at' => date('Y-m-d H:i:s'),
+					'type'       => 'ENDTERM'
+				]);
+				
+				// Log second supervisor approval (same person, same timestamp)
+				$this->db->insert('ppa_approval_trail_end_term', [
+					'entry_id'   => $entry_id,
+					'staff_id'   => $staff_id,
+					'comments'   => $comments ?: null,
+					'action'     => 'Approved',
+					'created_at' => date('Y-m-d H:i:s'),
+					'type'       => 'ENDTERM'
+				]);
+				
+				// Set flag to skip the normal approval trail logging below
+				$skip_normal_trail = true;
+			} else {
+				// Normal case: only first supervisor approval
+				$this->db->where('entry_id', $entry_id)->update('ppa_entries', [
+					'endterm_supervisor1_discussion_confirmed' => 1,
+					'endterm_updated_at' => date('Y-m-d H:i:s')
+				]);
+			}
 		}
 		
-		// Handle second supervisor approval
-		if ($action === 'approve' && $staff_id == $ppa->endterm_supervisor_2) {
+		// Handle second supervisor approval (only if not the same as first supervisor)
+		if ($action === 'approve' && $staff_id == $ppa->endterm_supervisor_2 && !$sameSupervisor) {
 			$supervisor2_agreement = $this->input->post('supervisor2_agreement');
 			if ($supervisor2_agreement === null) {
 				Modules::run('utility/setFlash', [
@@ -422,27 +500,31 @@ public function endterm_review($entry_id)
 		}
 
 	
-		// Log approval trail
-		// Get comments and clean them - remove any acceptance text that might have been added
-		$comments = $this->input->post('comments') ?? null;
-		if ($comments) {
-			// Remove acceptance text patterns if they exist in comments
-			$comments = preg_replace('/\s*I hereby confirm that I formally discussed the results of this review with the staff member\.?\s*/i', '', $comments);
-			$comments = preg_replace('/\s*I hereby confirm that I formally discussed the results of this review with my supervisor\.?\s*/i', '', $comments);
-			$comments = preg_replace('/\s*Second supervisor (agrees|disagrees) with the evaluation\.?\s*/i', '', $comments);
-			$comments = preg_replace('/\s*Staff confirmed discussion and (accepted|rejected) the overall rating\.?\s*/i', '', $comments);
-			$comments = trim($comments);
+		// Log approval trail (skip if we already logged both approvals for same supervisor)
+		if (!isset($skip_normal_trail) || !$skip_normal_trail) {
+			// Get comments and clean them - remove any acceptance text that might have been added
+			$comments = $this->input->post('comments') ?? null;
+			if ($comments) {
+				// Remove acceptance text patterns if they exist in comments
+				$comments = preg_replace('/\s*I hereby confirm that I formally discussed the results of this review with the staff member\.?\s*/i', '', $comments);
+				$comments = preg_replace('/\s*I hereby confirm that I formally discussed the results of this review with my supervisor\.?\s*/i', '', $comments);
+				$comments = preg_replace('/\s*Second supervisor (agrees|disagrees) with the evaluation\.?\s*/i', '', $comments);
+				$comments = preg_replace('/\s*Staff confirmed discussion and (accepted|rejected) the overall rating\.?\s*/i', '', $comments);
+				$comments = preg_replace('/\s*I agree with the evaluation\.?\s*/i', '', $comments);
+				$comments = preg_replace('/\s*I disagree with the evaluation\.?\s*/i', '', $comments);
+				$comments = trim($comments);
+			}
+			
+			// Save only the actual comments (without acceptance text)
+			$this->db->insert('ppa_approval_trail_end_term', [
+				'entry_id'   => $entry_id,
+				'staff_id'   => $staff_id,
+				'comments'   => $comments ?: null,
+				'action'     => $log_action,
+				'created_at' => date('Y-m-d H:i:s'),
+				'type'       => 'ENDTERM'
+			]);
 		}
-		
-		// Save only the actual comments (without acceptance text)
-		$this->db->insert('ppa_approval_trail_end_term', [
-			'entry_id'   => $entry_id,
-			'staff_id'   => $staff_id,
-			'comments'   => $comments ?: null,
-			'action'     => $log_action,
-			'created_at' => date('Y-m-d H:i:s'),
-            'type'=>'ENDTERM'
-		]);
 	
 		// If returned, update the draft status and reset employee consent
 		if ($action === 'return') {
