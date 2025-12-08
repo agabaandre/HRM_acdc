@@ -340,7 +340,14 @@ class PrintHelper
      */
     public static function getLatestApprovalForOrder($approvalTrails, $order)
     {
-        $approvals = $approvalTrails->where('approval_order', $order);
+        // Ensure order is an integer for type-safe comparison
+        $order = (int)$order;
+        
+        // Filter by approval_order (ensure type-safe comparison)
+        $approvals = $approvalTrails->filter(function($trail) use ($order) {
+            return (int)($trail->approval_order ?? 0) === $order;
+        });
+        
         return $approvals->sortByDesc('created_at')->first();
     }
 

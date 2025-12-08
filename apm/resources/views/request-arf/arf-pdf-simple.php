@@ -1115,21 +1115,72 @@
         <td>
           <?php 
           // Use Grants approver with role display
+          // Handle both structured array format (from PrintHelper) and ApprovalTrail object format
           if (!empty($grants)) {
-              $isOic = isset($grants['oic_staff']);
-              $staff = $isOic ? $grants['oic_staff'] : $grants['staff'];
-              
-              if ($staff) {
-                  $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
-                  if ($isOic) {
-                      $name .= ' (OIC)';
-                  }
-                  $role = $grants['role'] ?? 'Grants';
+              // Check if it's a structured array (from PrintHelper) or direct approval object
+              if (isset($grants['staff']) || isset($grants['oic_staff'])) {
+                  // Structured data from PrintHelper
+                  $isOic = isset($grants['oic_staff']);
+                  $staff = $isOic ? $grants['oic_staff'] : $grants['staff'];
                   
-                  echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
-                  echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
-                  echo '<span class="fill line"></span>';
-          } else {
+                  if ($staff) {
+                      $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+                      if ($isOic) {
+                          $name .= ' (OIC)';
+                      }
+                      $role = $grants['role'] ?? 'Grants';
+                      
+                      echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+                      echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+                      echo '<span class="fill line"></span>';
+                  } else {
+                      renderBudgetApproverInfo(null);
+                  }
+              } elseif (is_object($grants) && method_exists($grants, 'getAttribute')) {
+                  // Direct approval object from getARFApprovers (when staff relationship is null or not loaded)
+                  // Try to load staff relationship if not already loaded
+                  $isOic = !empty($grants->oic_staff_id);
+                  $staffModel = null;
+                  
+                  if ($isOic && $grants->oicStaff) {
+                      $staffModel = $grants->oicStaff;
+                  } elseif ($grants->staff) {
+                      $staffModel = $grants->staff;
+                  } elseif ($grants->staff_id) {
+                      // Try to load staff if relationship not loaded
+                      $staffModel = \App\Models\Staff::find($grants->staff_id);
+                  } elseif ($grants->oic_staff_id) {
+                      // Try to load OIC staff if relationship not loaded
+                      $staffModel = \App\Models\Staff::find($grants->oic_staff_id);
+                  }
+                  
+                  if ($staffModel) {
+                      $name = trim(($staffModel->title ?? '') . ' ' . ($staffModel->fname ?? '') . ' ' . ($staffModel->lname ?? '') . ' ' . ($staffModel->oname ?? ''));
+                      if ($isOic) {
+                          $name .= ' (OIC)';
+                      }
+                      
+                      // Get role from workflow definition or approverRole
+                      $role = 'Grants';
+                      if ($grants->approverRole) {
+                          $role = $grants->approverRole->role ?? 'Grants';
+                      } elseif ($grants->forward_workflow_id) {
+                          $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $grants->forward_workflow_id)
+                              ->where('approval_order', 3)
+                              ->where('is_enabled', 1)
+                              ->first();
+                          if ($workflowDefinition) {
+                              $role = $workflowDefinition->role ?? 'Grants';
+                          }
+                      }
+                      
+                      echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+                      echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+                      echo '<span class="fill line"></span>';
+                  } else {
+                      renderBudgetApproverInfo(null);
+                  }
+              } else {
                   renderBudgetApproverInfo(null);
               }
           } else {
@@ -1141,30 +1192,75 @@
           <span class="fill">
             <?php 
             if (!empty($grants)) {
-                $isOic = isset($grants['oic_staff']);
-                $staff = $isOic ? $grants['oic_staff'] : $grants['staff'];
-                
-                if ($staff) {
-                    $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
-                    if ($isOic) {
-                        $name .= ' (OIC)';
-                    }
-                    $role = $grants['role'] ?? 'Grants';
+                // Check if it's a structured array (from PrintHelper) or direct approval object
+                if (isset($grants['staff']) || isset($grants['oic_staff'])) {
+                    // Structured data from PrintHelper
+                    $isOic = isset($grants['oic_staff']);
+                    $staff = $isOic ? $grants['oic_staff'] : $grants['staff'];
                     
-                    echo '<div style="line-height: 1.2;">';
-                    echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
-                    if (!empty($staff['signature'])) {
-                        echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+                    if ($staff) {
+                        $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+                        if ($isOic) {
+                            $name .= ' (OIC)';
+                        }
+                        $role = $grants['role'] ?? 'Grants';
+                        
+                        echo '<div style="line-height: 1.2;">';
+                        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
+                        if (!empty($staff['signature'])) {
+                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
             } else {
-                        echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+                            echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+                        }
+                        // Use created_at from approval trail if available, otherwise use current date
+                        $approvalDate = isset($grants['created_at']) ? $grants['created_at'] : date('Y-m-d H:i:s');
+                        $formattedDate = is_object($approvalDate) ? $approvalDate->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalDate));
+                        echo '<div class="signature-date">' . htmlspecialchars($formattedDate) . '</div>';
+                        $staffId = $staff['staff_id'] ?? $staff['id'] ?? '';
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
+                        echo '</div>';
+                    } else {
+                        renderBudgetSignature(null, $sourceModel);
                     }
-                    // Use created_at from approval trail if available, otherwise use current date
-                    $approvalDate = isset($grants['created_at']) ? $grants['created_at'] : date('Y-m-d H:i:s');
-                    $formattedDate = is_object($approvalDate) ? $approvalDate->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalDate));
-                    echo '<div class="signature-date">' . htmlspecialchars($formattedDate) . '</div>';
-                    $staffId = $staff['staff_id'] ?? $staff['id'] ?? '';
-                    echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
-                    echo '</div>';
+                } elseif (is_object($grants) && method_exists($grants, 'getAttribute')) {
+                    // Direct approval object from getARFApprovers (when staff relationship is null or not loaded)
+                    $isOic = !empty($grants->oic_staff_id);
+                    $staffModel = null;
+                    
+                    if ($isOic && $grants->oicStaff) {
+                        $staffModel = $grants->oicStaff;
+                    } elseif ($grants->staff) {
+                        $staffModel = $grants->staff;
+                    } elseif ($grants->staff_id) {
+                        // Try to load staff if relationship not loaded
+                        $staffModel = \App\Models\Staff::find($grants->staff_id);
+                    } elseif ($grants->oic_staff_id) {
+                        // Try to load OIC staff if relationship not loaded
+                        $staffModel = \App\Models\Staff::find($grants->oic_staff_id);
+                    }
+                    
+                    if ($staffModel) {
+                        $name = trim(($staffModel->title ?? '') . ' ' . ($staffModel->fname ?? '') . ' ' . ($staffModel->lname ?? '') . ' ' . ($staffModel->oname ?? ''));
+                        if ($isOic) {
+                            $name .= ' (OIC)';
+                        }
+                        
+                        echo '<div style="line-height: 1.2;">';
+                        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
+                        if (!empty($staffModel->signature)) {
+                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staffModel->signature) . '" alt="Signature">';
+                        } else {
+                            echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staffModel->work_email ?? 'Email not available') . '</small>';
+                        }
+                        $approvalDate = is_object($grants->created_at) ? $grants->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($grants->created_at));
+                        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
+                        $staffId = $isOic ? $grants->oic_staff_id : $grants->staff_id;
+                        $hash = generateVerificationHash($sourceModel->id, $staffId, $grants->created_at);
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars($hash) . '</div>';
+                        echo '</div>';
+                    } else {
+                        renderBudgetSignature(null, $sourceModel);
+                    }
                 } else {
                     renderBudgetSignature(null, $sourceModel);
                 }
