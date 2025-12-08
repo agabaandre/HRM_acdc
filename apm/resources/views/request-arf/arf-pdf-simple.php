@@ -1072,7 +1072,10 @@
     }
 ?>
     <!-- Budget / Certification (table-only, borderless unless specified inline) -->
- <div class="page-break"></div>
+    
+    <!-- Page break before signing section (Prepared By onwards) -->
+    <div style="page-break-before: always; clear: both; height: 0; margin: 0; padding: 0;"></div>
+    
     <div class="section-label">Request for Approval</div>
     
     <p><?php echo $sourceModel['activity_request_remarks']; ?></p>
