@@ -1127,8 +1127,12 @@
             } else {
                         echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                     }
-                    echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
-                    echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
+                    // Use created_at from approval trail if available, otherwise use current date
+                    $approvalDate = isset($grants['created_at']) ? $grants['created_at'] : date('Y-m-d H:i:s');
+                    $formattedDate = is_object($approvalDate) ? $approvalDate->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalDate));
+                    echo '<div class="signature-date">' . htmlspecialchars($formattedDate) . '</div>';
+                    $staffId = $staff['staff_id'] ?? $staff['id'] ?? '';
+                    echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
                     echo '</div>';
                 } else {
                     renderBudgetSignature(null, $sourceModel);
@@ -1190,8 +1194,12 @@
              } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
-                        echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
-                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
+                        // Use created_at from approval trail if available, otherwise use current date
+                        $approvalDate = isset($chief_of_staff['created_at']) ? $chief_of_staff['created_at'] : date('Y-m-d H:i:s');
+                        $formattedDate = is_object($approvalDate) ? $approvalDate->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalDate));
+                        echo '<div class="signature-date">' . htmlspecialchars($formattedDate) . '</div>';
+                        $staffId = $staff['staff_id'] ?? $staff['id'] ?? '';
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
                         echo '</div>';
                     } else {
                         renderBudgetSignature(null, $sourceModel);
@@ -1280,8 +1288,12 @@
             } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
-                        echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
-                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
+                        // Use created_at from approval trail if available, otherwise use current date
+                        $approvalDate = isset($directorGeneralApproval['created_at']) ? $directorGeneralApproval['created_at'] : date('Y-m-d H:i:s');
+                        $formattedDate = is_object($approvalDate) ? $approvalDate->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalDate));
+                        echo '<div class="signature-date">' . htmlspecialchars($formattedDate) . '</div>';
+                        $staffId = $staff['staff_id'] ?? $staff['id'] ?? '';
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
                         echo '</div>';
                     } else {
                         renderBudgetSignature(null, $sourceModel);
