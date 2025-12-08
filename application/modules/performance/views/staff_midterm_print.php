@@ -117,7 +117,7 @@
   <table class="form-table table-bordered">
     <thead>
       <tr style="background-color: #f9fafb;">
-        <th colspan="4" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">A. Staff Details</th>
+        <th colspan="4" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;"><strong>A. Staff Details</strong></th>
       </tr>
     </thead>
     <tr>
@@ -150,7 +150,7 @@
   <table class="objective-table">
     <tr style="background-color: #f9fafb;">
       <td colspan="7" style="padding: 12px;">
-        <div style="text-align: left; font-weight: 600; color: #0f172a; margin-bottom: 6px;">B. Midterm Objectives Review</div>
+        <div style="text-align: left; font-weight: bold; color: #0f172a; margin-bottom: 6px;"><strong>B. Midterm Objectives Review</strong></div>
         <p style="margin: 0; font-style: italic; color: #64748b; font-size: 12px;">Review of objectives and progress at midterm.</p>
       </td>
     </tr>
@@ -190,7 +190,7 @@
   <table class="form-table table-bordered" style="margin-bottom: 15px;">
     <thead>
       <tr style="background-color: #f9fafb;">
-        <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">C. Appraiser's Comments</th>
+        <th colspan="2" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;"><strong>C. Appraiser's Comments</strong></th>
       </tr>
     </thead>
     <tbody>
@@ -242,7 +242,7 @@
   <table width="100%" border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
     <thead>
       <tr style="background-color: #f9fafb;">
-        <th colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">D. Competencies (Midterm)</th>
+        <th colspan="3" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;"><strong>D. Competencies (Midterm)</strong></th>
       </tr>
     </thead>
     <tbody>
@@ -283,7 +283,7 @@
   <table>
     <thead>
       <tr style="background-color: #f9fafb;">
-        <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">E. Personal Development Plan – Progress Review</th>
+        <th colspan="2" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;"><strong>E. Personal Development Plan – Progress Review</strong></th>
       </tr>
     </thead>
     <tbody>
@@ -378,13 +378,12 @@
     </tbody>
   </table>
 
-  <div style="margin-top: 20px;">
-    <div class="page-break"></div>
+  <div style="margin-top: 20px; page-break-before: always;">
 <table width="100%" border="1" cellspacing="0" cellpadding="10" style="border-collapse: collapse;">
   <thead>
     <tr style="background-color: #f9fafb;">
-      <th colspan="2" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
-        F. Staff and Supervisor Sign Off
+      <th colspan="2" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;">
+        <strong>F. Staff and Supervisor Sign Off</strong>
       </th>
     </tr>
   </thead>

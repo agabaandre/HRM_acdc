@@ -126,8 +126,8 @@
   <table class="form-table table-bordered">
   <thead>
     <tr style="background-color: #f9fafb;">
-      <th colspan="4" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
-	  A. Staff Details
+      <th colspan="4" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;">
+	  <strong>A. Staff Details</strong>
       </th>
     </tr>
   </thead>
@@ -165,7 +165,7 @@
   <table class="objective-table">
   <tr style="background-color: #f9fafb;">
       <td colspan="5" style="padding: 12px;">
-	  <div style="text-align: left; font-weight: 600; color: #0f172a; margin-bottom: 6px;"> B. Performance Objectives</div>
+	  <div style="text-align: left; font-weight: bold; color: #0f172a; margin-bottom: 6px;"><strong>B. Performance Objectives</strong></div>
        <p style="margin: 0; font-style: italic; color: #64748b; font-size: 12px;">Individual objectives should be derived from the Departmental Work Plan. There must be a cascading correlation between the two.</p>
 
       </td>
@@ -198,8 +198,8 @@
   <table width="100%" border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
   <thead>
       <tr style="background-color: #f9fafb;">
-      <th colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
-        C. Competencies
+      <th colspan="3" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;">
+        <strong>C. Competencies</strong>
       </th>
     </tr>
   </thead>
@@ -255,8 +255,8 @@
   <table>
   <thead>
       <tr style="background-color: #f9fafb;">
-      <th colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
-      D. Personal Development Plan
+      <th colspan="3" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;">
+      <strong>D. Personal Development Plan</strong>
       </th>
     </tr>
   </thead>
@@ -296,8 +296,8 @@
   <table width="100%" border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse;">
    <thead>
       <tr style="background-color: #f9fafb;">
-      <th colspan="3" style="text-align: left; font-weight: 600; color: #0f172a; padding: 12px;">
-	    E. Staff and Supervisor Sign Off
+      <th colspan="3" style="text-align: left; font-weight: bold; color: #0f172a; padding: 12px;">
+	    <strong>E. Staff and Supervisor Sign Off</strong>
       </th>
     </tr>
   </thead>

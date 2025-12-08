@@ -1551,6 +1551,6 @@ public function validate_password($post_password,$dbpassword){
 				'500' => 'Internal Server Error'
 			]
 		], JSON_PRETTY_PRINT);
-	}
+   }
 
 }

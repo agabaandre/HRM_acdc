@@ -27,11 +27,50 @@ class Auth extends MX_Controller
   
   public function index()
   {
+    // IMPORTANT: Prevent new session creation after logout
+    // CodeIgniter may create a new session when this page loads
+    // If there's a new session with no user data, delete it immediately
+    $sessionDriver = $this->config->item('sess_driver');
+    $sessionTable = $this->config->item('sess_save_path');
+    $cookieName = $this->config->item('sess_cookie_name');
+    $sessionId = $this->input->cookie($cookieName);
+    
+    // Check if this is a newly created empty session (no user data)
+    $user = $this->session->userdata('user');
+    if ($sessionDriver === 'database' && !empty($sessionTable) && !empty($sessionId)) {
+        // Check if session exists in database
+        $sessionExists = $this->db->query("SELECT id FROM `{$sessionTable}` WHERE id = ?", [$sessionId])->row();
+        
+        // If session exists but has no user data, it's a newly created empty session - delete it
+        if ($sessionExists && (empty($user) || !isset($user->staff_id))) {
+            // This is likely a session created after logout - delete it
+            $this->db->query("DELETE FROM `{$sessionTable}` WHERE id = ?", [$sessionId]);
+            setcookie($cookieName, '', time() - 3600, '/');
+            log_message('debug', 'Auth index: Deleted newly created empty session - ID: ' . $sessionId);
+            $this->session->sess_destroy();
+        }
+    }
+    
+    // Check if user is already logged in
+    $user = $this->session->userdata('user');
+    if (!empty($user) && isset($user->staff_id)) {
+      // User is already logged in, redirect to home
+      redirect('home/index');
+      return;
+    }
 
     $this->load->view("login/login");
   }
 
   public function login() {
+    // Check if user is already logged in
+    $user = $this->session->userdata('user');
+    if (!empty($user) && isset($user->staff_id)) {
+      // User is already logged in, redirect to home
+      redirect('home/index');
+      return;
+    }
+
     $authorize_url = "https://login.microsoftonline.com/{$this->tenant_id}/oauth2/v2.0/authorize";
     $params = [
         'client_id'     => $this->client_id,
@@ -369,26 +408,28 @@ public function revert()
   }
   public function logout()
   {
-    // Clear session
-   // Unset all session variables
-   $log_message = "Logged Out";
-   //log_user_action($log_message);
-   $this->session->unset_userdata('user');
-   $this->session->sess_destroy();
-
-   // Clear session variables manually
-   $_SESSION = array();
+    // Get session configuration
+    $sessionDriver = $this->config->item('sess_driver');
+    $sessionTable = $this->config->item('sess_save_path');
+    $cookieName = $this->config->item('sess_cookie_name'); // Should be 'africacdc_cbp_session'
+    
+    // Get session ID from CodeIgniter's session library (most reliable method)
+    // CodeIgniter stores session ID internally and provides it via __get('session_id')
+    $sessionId = $this->session->session_id;
+    
+    // Fallback: Get from cookie if session ID not available
+    if (empty($sessionId)) {
+        $sessionId = $this->input->cookie($cookieName);
+    }
+    
+    // Fallback: Get from PHP session
+    if (empty($sessionId) && session_status() === PHP_SESSION_ACTIVE) {
+        $sessionId = session_id();
+    }
+    
+    log_message('debug', 'Logout: Session ID: ' . ($sessionId ?: 'NOT FOUND'));
    
-   // Remove the session cookie (if set)
-   if (ini_get("session.use_cookies")) {
-       $params = session_get_cookie_params();
-       setcookie(session_name(), '', time() - 42000,
-           $params["path"], $params["domain"],
-           $params["secure"], $params["httponly"]
-       );
-   }
-   
-   // Also destroy Laravel APM session if it exists
+    // Also destroy Laravel APM session if it exists (do this FIRST before destroying CI session)
    // Get all cookies from the request
    $allCookies = $this->input->server('HTTP_COOKIE');
    
@@ -425,20 +466,175 @@ public function revert()
        // Log error but don't fail logout
        log_message('error', 'Failed to call Laravel logout API: ' . $e->getMessage());
    }
+    
+    // Get user data before clearing (for cleanup)
+    $user = $this->session->userdata('user');
+    $userId = isset($user->user_id) ? $user->user_id : null;
+    
+    // IMPORTANT: For database sessions, we MUST delete from database BEFORE calling sess_destroy()
+    // CodeIgniter's destroy() method requires a lock, so we'll delete directly using raw SQL
+    if ($sessionDriver === 'database' && !empty($sessionTable) && !empty($sessionId)) {
+        // Get database connection directly to ensure we can delete
+        $mysqli = $this->db->conn_id;
+        
+        // Escape the table name and session ID for safety
+        $tableName = $this->db->escape_str($sessionTable);
+        $escapedSessionId = $this->db->escape_str($sessionId);
+        
+        // First, verify the session exists
+        $checkSql = "SELECT id, ip_address, timestamp FROM `{$tableName}` WHERE id = '{$escapedSessionId}'";
+        $checkResult = $this->db->query($checkSql);
+        //dd($checkResult->result());
+        $sessionExists = $checkResult->row();
+        
+        if ($sessionExists) {
+            log_message('debug', 'Logout: Found session in database - ID: ' . $sessionId . ' | IP: ' . ($sessionExists->ip_address ?? 'N/A'));
+            
+            // Delete using direct SQL query - bypass CodeIgniter's query builder to avoid lock issues
+            $deleteSql = "DELETE FROM `{$tableName}` WHERE id = '{$escapedSessionId}'";
+            $deleteResult = $this->db->query($deleteSql);
+            $deletedRows = $this->db->affected_rows();
+            
+            log_message('debug', 'Logout: DELETE query executed - ID: ' . $sessionId . ' | Rows affected: ' . $deletedRows);
+            
+            if ($deletedRows == 0) {
+                // Try using mysqli directly as fallback
+                if ($mysqli && is_object($mysqli)) {
+                    $stmt = $mysqli->prepare("DELETE FROM `{$tableName}` WHERE id = ?");
+                    if ($stmt) {
+                        $stmt->bind_param("s", $sessionId);
+                        $stmt->execute();
+                        $deletedRows = $stmt->affected_rows;
+                        $stmt->close();
+                        log_message('debug', 'Logout: Direct mysqli delete - ID: ' . $sessionId . ' | Rows affected: ' . $deletedRows);
+                    }
+                }
+                
+                if ($deletedRows == 0) {
+                    log_message('error', 'Logout: FAILED to delete session - ID: ' . $sessionId . ' | All methods failed');
+                }
+            }
+        } else {
+            log_message('debug', 'Logout: Session not found in database - ID: ' . $sessionId);
+        }
+        
+        // Also delete any other sessions for this user (cleanup)
+        if ($userId) {
+            $escapedUserId = $this->db->escape_str($userId);
+            $userSessionsSql = "SELECT id FROM `{$tableName}` WHERE data LIKE '%user_id\";i:{$escapedUserId}%'";
+            $userSessionsResult = $this->db->query($userSessionsSql);
+            $userSessions = $userSessionsResult->result();
+            
+            foreach ($userSessions as $sess) {
+                $escapedSessId = $this->db->escape_str($sess->id);
+                $this->db->query("DELETE FROM `{$tableName}` WHERE id = '{$escapedSessId}'");
+                log_message('debug', 'Logout: Deleted user session - ID: ' . $sess->id);
+            }
+            
+            if (count($userSessions) > 0) {
+                log_message('debug', 'Logout: Deleted ' . count($userSessions) . ' user sessions for User ID: ' . $userId);
+            }
+        }
+    }
+    
+    // Clear all session data first
+    $this->session->unset_userdata('user');
+    $this->session->unset_userdata('original_user');
+    $this->session->unset_userdata('impersonation_start');
+    
+    // Now destroy the session - this will call the handler's destroy() method
+    // For database driver, it will try to delete from database (but we've already done it)
+    $this->session->sess_destroy();
+    
+    // Clear PHP session superglobal
+    $_SESSION = array();
+    
+    // IMPORTANT: Delete session from database AGAIN after sess_destroy (safety measure)
+    // CodeIgniter's sess_destroy() requires a lock which might not be active, so we delete directly
+    if ($sessionDriver === 'database' && !empty($sessionTable) && !empty($sessionId)) {
+        $tableName = $this->db->escape_str($sessionTable);
+        $escapedSessionId = $this->db->escape_str($sessionId);
+        
+        // Check if session still exists
+        $checkSql = "SELECT id FROM `{$tableName}` WHERE id = '{$escapedSessionId}'";
+        $checkResult = $this->db->query($checkSql);
+        
+        if ($checkResult->num_rows() > 0) {
+            // Force delete using direct SQL
+            $deleteSql = "DELETE FROM `{$tableName}` WHERE id = '{$escapedSessionId}'";
+            $this->db->query($deleteSql);
+            $postDeletedRows = $this->db->affected_rows();
+            
+            log_message('debug', 'Logout: Post-destroy cleanup - Session ID: ' . $sessionId . ' | Rows affected: ' . $postDeletedRows);
+            
+            // If still not deleted, try mysqli directly
+            if ($postDeletedRows == 0) {
+                $mysqli = $this->db->conn_id;
+                if ($mysqli && is_object($mysqli)) {
+                    $stmt = $mysqli->prepare("DELETE FROM `{$tableName}` WHERE id = ?");
+                    if ($stmt) {
+                        $stmt->bind_param("s", $sessionId);
+                        $stmt->execute();
+                        $postDeletedRows = $stmt->affected_rows;
+                        $stmt->close();
+                        log_message('debug', 'Logout: Post-destroy mysqli delete - Rows affected: ' . $postDeletedRows);
+                    }
+                }
+                
+                if ($postDeletedRows == 0) {
+                    log_message('error', 'Logout: Post-destroy cleanup FAILED - Session ID: ' . $sessionId);
+                }
+            }
+        } else {
+            log_message('debug', 'Logout: Post-destroy check - Session already deleted: ' . $sessionId);
+        }
+    }
+    
+    // Remove the session cookie using the correct cookie name (africacdc_cbp_session)
+    $cookiePath = $this->config->item('cookie_path') ?: '/';
+    $cookieDomain = $this->config->item('cookie_domain') ?: '';
+    $cookieSecure = $this->config->item('cookie_secure') ?: false;
+    $cookieHttpOnly = $this->config->item('cookie_httponly') ?: true;
+    
+    // Clear the session cookie with correct name
+    if (!empty($cookieName)) {
+        // Clear with domain
+        setcookie($cookieName, '', time() - 42000, $cookiePath, $cookieDomain, $cookieSecure, $cookieHttpOnly);
+        // Clear with empty domain
+        setcookie($cookieName, '', time() - 42000, $cookiePath, '', $cookieSecure, $cookieHttpOnly);
+        // Clear with root path
+        setcookie($cookieName, '', time() - 42000, '/', $cookieDomain, $cookieSecure, $cookieHttpOnly);
+        setcookie($cookieName, '', time() - 42000, '/', '', $cookieSecure, $cookieHttpOnly);
+    }
+    
+    // Also clear using PHP session cookie params as backup
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie($cookieName, '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+        setcookie($cookieName, '', time() - 42000,
+            $params["path"], '',
+            $params["secure"], $params["httponly"]
+        );
+    }
    
    // Also clear Laravel session cookie manually as backup
    // Try different cookie names and paths
-   $cookieNames = ['laravel_session', 'laravel_session_' . md5(base_url())];
+   $laravelCookieNames = ['laravel_session', 'laravel_session_' . md5(base_url())];
    $cookiePaths = ['/apm', '/'];
    
-   foreach ($cookieNames as $cookieName) {
+   foreach ($laravelCookieNames as $laravelCookieName) {
        foreach ($cookiePaths as $cookiePath) {
            // Clear cookie for current domain
-           setcookie($cookieName, '', time() - 3600, $cookiePath, '', isset($_SERVER['HTTPS']), true);
+           setcookie($laravelCookieName, '', time() - 3600, $cookiePath, '', isset($_SERVER['HTTPS']), true);
            // Also try with domain
            if (!empty($_SERVER['HTTP_HOST'])) {
-               setcookie($cookieName, '', time() - 3600, $cookiePath, $_SERVER['HTTP_HOST'], isset($_SERVER['HTTPS']), true);
+               setcookie($laravelCookieName, '', time() - 3600, $cookiePath, $_SERVER['HTTP_HOST'], isset($_SERVER['HTTPS']), true);
            }
+           // Try with empty domain
+           setcookie($laravelCookieName, '', time() - 3600, $cookiePath, '', isset($_SERVER['HTTPS']), true);
        }
    }
    
@@ -446,7 +642,21 @@ public function revert()
    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
    header("Pragma: no-cache");
    header("Expires: Wed, 11 Jan 1984 05:00:00 GMT");
-  redirect("auth");
+   
+   // Force session to close and prevent write
+   session_write_close();
+   
+   // IMPORTANT: Use direct header redirect instead of CodeIgniter's redirect()
+   // This prevents CodeIgniter from initializing a new session on the redirect
+   // CodeIgniter's redirect() function triggers session initialization
+   $loginUrl = base_url('auth');
+   
+   // Log logout completion
+   log_message('debug', 'Logout: Completed - Redirecting to login without creating new session');
+   
+   // Use direct header redirect to prevent session creation
+   header("Location: " . $loginUrl);
+   exit(); // Exit immediately to prevent any further code execution
   }
 
   public function getUserByid($id)

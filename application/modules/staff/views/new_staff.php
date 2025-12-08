@@ -382,7 +382,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+    </div>
       
             <!-- Submit Buttons -->
             <div class="row">
