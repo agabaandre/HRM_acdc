@@ -4,6 +4,7 @@
 <html>
 
 <head>
+  <meta charset="UTF-8">
   <style>
     * { box-sizing: border-box; }
     html, body { 
@@ -70,6 +71,18 @@
       font-size: 12px;
       color: #64748b;
       margin-top: 4px;
+    }
+
+    .objective-table td {
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      vertical-align: top;
+    }
+
+    .objective-table td br {
+      line-height: 1.4;
     }
 
     .page-break {
@@ -180,6 +193,48 @@
       if (empty($objectives) && !empty($ppa->objectives)) {
         $objectives = is_string($ppa->objectives) ? json_decode($ppa->objectives, true) : (array) $ppa->objectives;
       }
+      // Helper function to process HTML content with proper encoding
+      if (!function_exists('process_html_content')) {
+        function process_html_content($content) {
+          if (empty($content)) {
+            return '';
+          }
+          
+          // Ensure UTF-8 encoding - convert from any encoding to UTF-8
+          if (!mb_check_encoding($content, 'UTF-8')) {
+            $content = mb_convert_encoding($content, 'UTF-8', mb_detect_encoding($content, mb_detect_order(), true) ?: 'UTF-8');
+          }
+          
+          // First decode numeric HTML entities (like &#8226; for bullet, &#8227; for right-pointing angle, etc.)
+          // This handles entities like &#8226; (bullet), &#8227; (right-pointing angle), &#8228; (one dot leader), etc.
+          $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+          
+          // Then decode named HTML entities (like &nbsp;, &amp;, etc.)
+          $content = htmlspecialchars_decode($content, ENT_QUOTES | ENT_HTML5);
+          
+          // Handle common Unicode bullet points and special characters
+          // Replace various bullet point characters with proper HTML entities or keep as-is
+          // Common bullet points: • (U+2022), · (U+00B7), ▪ (U+25AA), ▫ (U+25AB), etc.
+          // We'll keep them as-is since UTF-8 should handle them
+          
+          // Convert common line break patterns to <br>
+          // Handle Windows (\r\n), Unix (\n), and Mac (\r) line breaks
+          // But preserve existing <br> tags
+          $content = preg_replace('/\r\n|\r|\n/', '<br>', $content);
+          
+          // Replace multiple consecutive <br> tags with single ones (but allow double for spacing)
+          $content = preg_replace('/(<br\s*\/?>){3,}/i', '<br><br>', $content);
+          
+          // Clean up any double spaces (but preserve intentional spacing)
+          $content = preg_replace('/[ \t]+/', ' ', $content);
+          
+          // Trim whitespace but preserve structure
+          $content = trim($content);
+          
+          return $content;
+        }
+      }
+      
       $i = 1;
       foreach ($objectives as $obj): 
         // Process HTML content for objectives, deliverables, and self appraisal
@@ -187,19 +242,19 @@
         $indicator = $obj['indicator'] ?? '';
         $self_appraisal = $obj['self_appraisal'] ?? '';
         
-        // Convert HTML entities and render as HTML (mPDF supports HTML)
-        $objective_html = !empty($objective) ? htmlspecialchars_decode($objective, ENT_QUOTES) : '';
-        $indicator_html = !empty($indicator) ? htmlspecialchars_decode($indicator, ENT_QUOTES) : '';
-        $self_appraisal_html = !empty($self_appraisal) ? htmlspecialchars_decode($self_appraisal, ENT_QUOTES) : '';
+        // Process as HTML with proper encoding and formatting
+        $objective_html = process_html_content($objective);
+        $indicator_html = process_html_content($indicator);
+        $self_appraisal_html = process_html_content($self_appraisal);
       ?>
         <tr>
           <td><?= $i++ ?></td>
           <td><?= $objective_html ?></td>
-          <td><?= htmlspecialchars($obj['timeline'] ?? '') ?></td>
+          <td><?= htmlspecialchars($obj['timeline'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= $indicator_html ?></td>
-          <td><?= htmlspecialchars($obj['weight'] ?? '') ?></td>
+          <td><?= htmlspecialchars($obj['weight'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
           <td><?= $self_appraisal_html ?></td>
-          <td><?= htmlspecialchars($obj['appraiser_rating'] ?? '') ?></td>
+          <td><?= htmlspecialchars($obj['appraiser_rating'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
         </tr>
       <?php endforeach; ?>
     </tbody>
