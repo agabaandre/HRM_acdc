@@ -99,8 +99,39 @@ $this->load->view('ppa_tabs');
 // ✅ SAFE to use here now
 if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 
-// Print Buttons - Only show when endterm is fully approved (top left position like midterm)
-if (!empty($ppa) && isset($ppa->endterm_draft_status) && (int)$ppa->endterm_draft_status === 2): ?>
+// Print Buttons - Show when approval process is complete (first supervisor approved, and second supervisor if exists)
+// Allow printing regardless of staff consent or second supervisor agreement
+$canPrint = false;
+if (!empty($ppa)) {
+    // Check if first supervisor has approved
+    $firstSupervisorApproved = !empty($ppa->endterm_supervisor1_discussion_confirmed);
+    
+    // Check if second supervisor exists and is different from first supervisor
+    $hasSecondSupervisor = !empty($ppa->endterm_supervisor_2) && (int)$ppa->endterm_supervisor_2 !== 0;
+    $sameSupervisor = !empty($ppa->endterm_supervisor_1) && (
+                      empty($ppa->endterm_supervisor_2) || 
+                      (int)$ppa->endterm_supervisor_2 === 0 ||
+                      ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2)
+                    );
+    
+    if ($firstSupervisorApproved) {
+        // If same supervisor or no second supervisor, can print after first supervisor approves
+        if ($sameSupervisor) {
+            $canPrint = true;
+        } 
+        // If different second supervisor exists, check if they have also approved (agreement field is set, regardless of value)
+        elseif ($hasSecondSupervisor && !$sameSupervisor) {
+            // Second supervisor has approved if agreement field is set (can be 0 for disagree or 1 for agree)
+            $secondSupervisorApproved = isset($ppa->endterm_supervisor2_agreement) && $ppa->endterm_supervisor2_agreement !== null;
+            $canPrint = $secondSupervisorApproved;
+        } else {
+            // No second supervisor, can print after first supervisor approves
+            $canPrint = true;
+        }
+    }
+}
+?>
+<?php if ($canPrint): ?>
     <div class="mb-3">
         <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>" 
            class="btn btn-dark btn-sm me-2" target="_blank">
