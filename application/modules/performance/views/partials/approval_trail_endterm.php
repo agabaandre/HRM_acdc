@@ -14,10 +14,13 @@
     <tbody>
       <?php if (!empty($approval_trail)): ?>
         <?php 
-        // Check if first supervisor is the same as second supervisor
-        $sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
-                          !empty($ppa->endterm_supervisor_2) && 
-                          ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2);
+        // Check if first supervisor is the same as second supervisor, or if second supervisor is empty/0
+        // In these cases, first supervisor handles both approvals
+        $sameSupervisor = !empty($ppa->endterm_supervisor_1) && (
+                          empty($ppa->endterm_supervisor_2) || 
+                          (int)$ppa->endterm_supervisor_2 === 0 ||
+                          ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2)
+                        );
         
         // Track approval count for same supervisor case
         $firstSupervisorApprovalCount = 0;
@@ -29,7 +32,7 @@
           if ($log->staff_id == $ppa->staff_id) {
               $role = 'Staff';
           } elseif ($log->staff_id == $ppa->endterm_supervisor_1) {
-              // If same supervisor and this is an "Approved" action, track which approval this is
+              // If same supervisor (or no second supervisor) and this is an "Approved" action, track which approval this is
               if ($sameSupervisor && $log->action === 'Approved') {
                   $firstSupervisorApprovalCount++;
                   // First approval shows as "First Supervisor", second shows as "Second Supervisor"
@@ -44,8 +47,8 @@
               } else {
               $role = 'First Supervisor';
               }
-          } elseif (!empty($ppa->endterm_supervisor_2) && $log->staff_id == $ppa->endterm_supervisor_2) {
-              // Only show as Second Supervisor if not the same as first supervisor
+          } elseif (!empty($ppa->endterm_supervisor_2) && (int)$ppa->endterm_supervisor_2 !== 0 && $log->staff_id == $ppa->endterm_supervisor_2) {
+              // Only show as Second Supervisor if not the same as first supervisor and second supervisor exists
               if (!$sameSupervisor) {
               $role = 'Second Supervisor';
               } else {

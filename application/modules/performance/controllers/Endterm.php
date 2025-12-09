@@ -298,20 +298,24 @@ public function endterm_review($entry_id)
 			'endterm_updated_at' => date('Y-m-d H:i:s')
 		];
 		
-		// Check if first supervisor is the same as second supervisor
-		$sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
-		                  !empty($ppa->endterm_supervisor_2) && 
-		                  ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2);
+		// Check if first supervisor is the same as second supervisor, or if second supervisor is empty/0
+		// In these cases, first supervisor handles both approvals
+		$sameSupervisor = !empty($ppa->endterm_supervisor_1) && (
+		                  empty($ppa->endterm_supervisor_2) || 
+		                  (int)$ppa->endterm_supervisor_2 === 0 ||
+		                  ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2)
+		                );
 		
 		// Determine overall_end_term_status based on staff rating acceptance
 		// If staff rejects (rating_acceptance = 0), set to "To be Calibrated"
 		if ((int)$rating_acceptance == 0) {
 			$update_data['overall_end_term_status'] = 'To be Calibrated';
 		} elseif ((int)$rating_acceptance == 1) {
-			// If staff accepts and there's no second supervisor, set to "Approved"
+			// If staff accepts and there's no second supervisor (empty/0), set to "Approved"
 			// If first supervisor = second supervisor and both have approved, set to "Approved" or "To be Calibrated" based on agreement
-			if (!$ppa->endterm_supervisor_2) {
+			if (empty($ppa->endterm_supervisor_2) || (int)$ppa->endterm_supervisor_2 === 0) {
 				$update_data['overall_end_term_status'] = 'Approved';
+				$update_data['endterm_draft_status'] = 2; // Approved since only one supervisor
 			} elseif ($sameSupervisor) {
 				// Both supervisors are the same person - check their agreement
 				$ppa_refresh = $this->per_mdl->get_plan_by_entry_id($entry_id);
@@ -381,10 +385,13 @@ public function endterm_review($entry_id)
 
 	$log_action = $action === 'approve' ? 'Approved' : 'Returned';
 		
-		// Check if first supervisor is the same as second supervisor
-		$sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
-		                  !empty($ppa->endterm_supervisor_2) && 
-		                  ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2);
+		// Check if first supervisor is the same as second supervisor, or if second supervisor is empty/0
+		// In these cases, first supervisor handles both approvals
+		$sameSupervisor = !empty($ppa->endterm_supervisor_1) && (
+		                  empty($ppa->endterm_supervisor_2) || 
+		                  (int)$ppa->endterm_supervisor_2 === 0 ||
+		                  ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2)
+		                );
 		
 		// Handle first supervisor approval
 		if ($action === 'approve' && $staff_id == $ppa->endterm_supervisor_1) {
@@ -397,7 +404,7 @@ public function endterm_review($entry_id)
 				redirect("performance/endterm/endterm_review/{$entry_id}/{$staffno}");
 			}
 			
-			// If first supervisor is the same as second supervisor, also require agreement field
+			// If first supervisor is the same as second supervisor OR second supervisor is empty/0, also require agreement field
 			if ($sameSupervisor) {
 				$supervisor2_agreement = $this->input->post('supervisor2_agreement');
 				if ($supervisor2_agreement === null) {
@@ -542,8 +549,8 @@ public function endterm_review($entry_id)
 				$return_update_data['endterm_supervisor1_discussion_confirmed'] = 0;
 			}
 			
-			// If second supervisor returns, also reset their agreement
-			if ($staff_id == $ppa->endterm_supervisor_2) {
+			// If second supervisor returns, also reset their agreement (only if second supervisor exists)
+			if (!empty($ppa->endterm_supervisor_2) && (int)$ppa->endterm_supervisor_2 !== 0 && $staff_id == $ppa->endterm_supervisor_2) {
 				$return_update_data['endterm_supervisor2_agreement'] = NULL;
 			}
 			
@@ -554,8 +561,8 @@ public function endterm_review($entry_id)
         log_user_action($log_message);
 		}
         else if ($action === 'approve') {
-			// For single supervisor case, determine overall_end_term_status
-			if (!$ppa->endterm_supervisor_2 && $staff_id == $ppa->endterm_supervisor_1) {
+			// For single supervisor case (no second supervisor or second supervisor is 0), determine overall_end_term_status
+			if ((empty($ppa->endterm_supervisor_2) || (int)$ppa->endterm_supervisor_2 === 0) && $staff_id == $ppa->endterm_supervisor_1) {
 				// Only one supervisor, check staff rating acceptance
 				// Refresh ppa to get latest staff_rating_acceptance
 				$ppa = $this->per_mdl->get_plan_by_entry_id($entry_id);
