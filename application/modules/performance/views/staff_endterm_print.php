@@ -411,16 +411,30 @@
           <div style="font-weight: bold; margin-bottom: 10px;">Supervisor Overall Comments</div>
           <div style="min-height: 100px; padding: 10px;">
             <?php
+            // Check if first supervisor is the same as second supervisor
+            $sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
+                              !empty($ppa->endterm_supervisor_2) && 
+                              ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2);
+            
             // Get all supervisor comments from approval trail
             $supervisor_comments = [];
+            $seen_comments = []; // Track unique comments to avoid duplicates
+            
             if (!empty($approval_trail)) {
               foreach ($approval_trail as $trail) {
+                // Collect comments from first supervisor
                 if ($trail->staff_id == $ppa->endterm_supervisor_1 && !empty($trail->comments)) {
                   // Filter out acceptance text
                   $comment = trim($trail->comments);
                   $comment = preg_replace('/\s*I hereby confirm that I formally discussed the results of this review with the staff member\.?\s*/i', '', $comment);
                   $comment = trim($comment);
-                  if (!empty($comment)) {
+                  
+                  // Create a normalized version for deduplication (remove extra whitespace)
+                  $normalized_comment = preg_replace('/\s+/', ' ', strtolower($comment));
+                  
+                  // Only add if comment is not empty and not already seen
+                  if (!empty($comment) && !in_array($normalized_comment, $seen_comments)) {
+                    $seen_comments[] = $normalized_comment;
                     $supervisor_comments[] = [
                       'comment' => $comment,
                       'date' => $trail->created_at,
@@ -433,6 +447,15 @@
             // Comments are stored in approval trail, not in separate fields
             
             if (!empty($supervisor_comments)):
+              // Display only the first (most recent) comment if supervisor is duplicated
+              if ($sameSupervisor && count($supervisor_comments) > 1) {
+                // Sort by date descending and take only the first one
+                usort($supervisor_comments, function($a, $b) {
+                  return strtotime($b['date']) - strtotime($a['date']);
+                });
+                $supervisor_comments = [array_shift($supervisor_comments)];
+              }
+              
               foreach ($supervisor_comments as $idx => $comment_data):
                 if ($idx > 0) echo '<div style="margin-top: 15px;"></div>';
                 echo nl2br(htmlspecialchars(trim($comment_data['comment'])));
@@ -622,8 +645,15 @@
           <div style="font-weight: bold; margin-bottom: 10px;">Second Supervisor Comments</div>
           <div style="min-height: 100px;padding: 10px;">
             <?php
+            // Check if first supervisor is the same as second supervisor
+            $sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
+                              !empty($ppa->endterm_supervisor_2) && 
+                              ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2);
+            
             // Get all second supervisor comments from approval trail
             $second_supervisor_comments = [];
+            $seen_comments = []; // Track unique comments to avoid duplicates
+            
             if (!empty($approval_trail) && !empty($ppa->endterm_supervisor_2)) {
               foreach ($approval_trail as $trail) {
                 if ($trail->staff_id == $ppa->endterm_supervisor_2 && !empty($trail->comments)) {
@@ -631,7 +661,13 @@
                   $comment = trim($trail->comments);
                   $comment = preg_replace('/\s*Second supervisor (agrees|disagrees) with the evaluation\.?\s*/i', '', $comment);
                   $comment = trim($comment);
-                  if (!empty($comment)) {
+                  
+                  // Create a normalized version for deduplication (remove extra whitespace)
+                  $normalized_comment = preg_replace('/\s+/', ' ', strtolower($comment));
+                  
+                  // Only add if comment is not empty and not already seen
+                  if (!empty($comment) && !in_array($normalized_comment, $seen_comments)) {
+                    $seen_comments[] = $normalized_comment;
                     $second_supervisor_comments[] = [
                       'comment' => $comment,
                       'date' => $trail->created_at,
@@ -641,9 +677,25 @@
                 }
               }
             }
+            
+            // If same supervisor, don't display duplicate comments in second supervisor section
+            // The comments should already be shown in the first supervisor section
+            if ($sameSupervisor) {
+              $second_supervisor_comments = [];
+            }
+            
             // Comments are stored in approval trail, not in separate fields
             
             if (!empty($second_supervisor_comments)):
+              // Display only the first (most recent) comment if there are duplicates
+              if (count($second_supervisor_comments) > 1) {
+                // Sort by date descending and take only the first one
+                usort($second_supervisor_comments, function($a, $b) {
+                  return strtotime($b['date']) - strtotime($a['date']);
+                });
+                $second_supervisor_comments = [array_shift($second_supervisor_comments)];
+              }
+              
               foreach ($second_supervisor_comments as $idx => $comment_data):
                 if ($idx > 0) echo '<div style="margin-top: 15px;"></div>';
                 echo nl2br(htmlspecialchars(trim($comment_data['comment'])));
