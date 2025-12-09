@@ -6,10 +6,13 @@ $isFirstSupervisor = ((int) $session->staff_id === (int) @$ppa->endterm_supervis
 $isSecondSupervisor = ((int) $session->staff_id === (int) @$ppa->endterm_supervisor_2);
 $isOwner = ((int) $session->staff_id === (int) @$ppa->staff_id);
 
-// Check if first supervisor is the same as second supervisor
-$sameSupervisor = !empty($ppa->endterm_supervisor_1) && 
-                  !empty($ppa->endterm_supervisor_2) && 
-                  ((int) $ppa->endterm_supervisor_1 === (int) $ppa->endterm_supervisor_2);
+// Check if first supervisor is the same as second supervisor, or if second supervisor is empty/0
+// In these cases, first supervisor handles both approvals
+$sameSupervisor = !empty($ppa->endterm_supervisor_1) && (
+                  empty($ppa->endterm_supervisor_2) || 
+                  (int)$ppa->endterm_supervisor_2 === 0 ||
+                  ((int) $ppa->endterm_supervisor_1 === (int) $ppa->endterm_supervisor_2)
+                );
 
 // Check approval trail to determine current stage
 $firstSupervisorApproved = false;
@@ -64,7 +67,11 @@ if (!empty($approval_trail)) {
 
 // Second supervisor can approve only if first supervisor approved AND staff consented
 // But NOT if first supervisor is the same as second supervisor (they already approved)
-if ($firstSupervisorApproved && $staffConsented && $ppa->endterm_supervisor_2 && !$sameSupervisor) {
+// Also NOT if second supervisor is empty/0 (no second supervisor exists)
+if ($firstSupervisorApproved && $staffConsented && 
+    !empty($ppa->endterm_supervisor_2) && 
+    (int)$ppa->endterm_supervisor_2 !== 0 && 
+    !$sameSupervisor) {
     $secondSupervisorCanApprove = true;
 }
 
