@@ -181,15 +181,25 @@
         $objectives = is_string($ppa->objectives) ? json_decode($ppa->objectives, true) : (array) $ppa->objectives;
       }
       $i = 1;
-      foreach ($objectives as $obj): ?>
+      foreach ($objectives as $obj): 
+        // Process HTML content for objectives, deliverables, and self appraisal
+        $objective = $obj['objective'] ?? '';
+        $indicator = $obj['indicator'] ?? '';
+        $self_appraisal = $obj['self_appraisal'] ?? '';
+        
+        // Convert HTML entities and render as HTML (mPDF supports HTML)
+        $objective_html = !empty($objective) ? htmlspecialchars_decode($objective, ENT_QUOTES) : '';
+        $indicator_html = !empty($indicator) ? htmlspecialchars_decode($indicator, ENT_QUOTES) : '';
+        $self_appraisal_html = !empty($self_appraisal) ? htmlspecialchars_decode($self_appraisal, ENT_QUOTES) : '';
+      ?>
         <tr>
           <td><?= $i++ ?></td>
-          <td><?= $obj['objective'] ?? '' ?></td>
-          <td><?= $obj['timeline'] ?? '' ?></td>
-          <td><?= $obj['indicator'] ?? '' ?></td>
-          <td><?= $obj['weight'] ?? '' ?></td>
-          <td><?= $obj['self_appraisal'] ?? '' ?></td>
-          <td><?= $obj['appraiser_rating'] ?? '' ?></td>
+          <td><?= $objective_html ?></td>
+          <td><?= htmlspecialchars($obj['timeline'] ?? '') ?></td>
+          <td><?= $indicator_html ?></td>
+          <td><?= htmlspecialchars($obj['weight'] ?? '') ?></td>
+          <td><?= $self_appraisal_html ?></td>
+          <td><?= htmlspecialchars($obj['appraiser_rating'] ?? '') ?></td>
         </tr>
       <?php endforeach; ?>
     </tbody>
