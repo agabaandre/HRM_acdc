@@ -105,6 +105,7 @@ public function get_approval_trail($entry_id)
     if (!$entry_id) return [];
     // genrate cuurent employees trails.
     $this->db->where("entry_id","$entry_id");
+    $this->db->order_by('id', 'DESC'); // Order by most recent first
     return $this->db->get('ppa_approval_trail_midterm')->result();
 
 }
