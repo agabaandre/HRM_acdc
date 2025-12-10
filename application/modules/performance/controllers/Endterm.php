@@ -168,10 +168,29 @@ class Endterm extends MX_Controller
               $comments = trim($comments);
             }
             
+            // Check if the same comments already exist in the approval trail for this submission
+            // Only save comments if they're different from the last submission to avoid duplication
+            $comments_to_save = $comments ?: null;
+            if (!empty($comments)) {
+                // Get the most recent "Submitted" or "Updated" action by this user
+                $this->db->where('entry_id', $entry_id);
+                $this->db->where('staff_id', $user_id);
+                $this->db->where_in('action', ['Submitted', 'Updated']);
+                $this->db->order_by('id', 'DESC');
+                $this->db->limit(1);
+                $last_submission = $this->db->get('ppa_approval_trail_end_term')->row();
+                
+                // If the comments are exactly the same as the last submission, don't save them again
+                if ($last_submission && !empty($last_submission->comments) && trim($last_submission->comments) === trim($comments)) {
+                    $comments_to_save = null; // Don't duplicate the same comments
+                }
+            }
+            
+            // Always log the submission action, but only include comments if they're different
             $this->db->insert('ppa_approval_trail_end_term', [
                 'entry_id'   => $entry_id,
                 'staff_id'   => $user_id,
-                'comments'   => $comments ?: null,
+                'comments'   => $comments_to_save,
                 'action'     => $action,
                 'type'       => 'END-TERM REVIEW',
                 'created_at' => date('Y-m-d H:i:s')
