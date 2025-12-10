@@ -22,6 +22,15 @@
               : (is_array($ppa->endterm_objectives) ? $ppa->endterm_objectives : []);
             $hasEndtermObjectives = is_array($decoded) && count($decoded) > 0;
           }
+
+          // Check if endterm was returned
+          $isReturned = false;
+          if (!empty($approval_trail) && is_array($approval_trail)) {
+            $lastAction = reset($approval_trail);
+            if ($lastAction && isset($lastAction->action) && $lastAction->action === 'Returned') {
+              $isReturned = true;
+            }
+          }
         ?>
 
         <br>
@@ -32,7 +41,7 @@
             Save Draft
           </button>
           <button type="submit" name="endterm_submit_action" value="submit" class="btn btn-success px-5">
-            Submit
+            <?= $isReturned && $isOwner ? 'Resubmit' : 'Submit' ?>
           </button>
         <?php elseif ((int)@$ppa->endterm_draft_status !== 2 && $isSupervisor): ?>
           <!-- Supervisor editing before approval -->
