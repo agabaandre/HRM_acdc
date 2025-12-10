@@ -22,13 +22,56 @@
     <tr>
       <th>Direct Supervisor</th>
       <td>
-        <?= staff_name($contract->first_supervisor) ?>
-        <input type="hidden" name="supervisor_id" value="<?= $contract->first_supervisor ?>">
+        <?php if (!empty($isReturnedForResubmit) && empty($endreadonly)): ?>
+          <!-- Editable dropdown when resubmitting after return -->
+          <?php 
+          // Use existing endterm supervisor if set, otherwise use contract supervisor
+          $current_supervisor_1 = !empty($ppa->endterm_supervisor_1) ? $ppa->endterm_supervisor_1 : $contract->first_supervisor;
+          $supervisor_lists = Modules::run('lists/supervisor');
+          ?>
+          <select class="form-control" name="supervisor_id" id="supervisor_id" required>
+            <option value="">Select First Supervisor</option>
+            <?php foreach ($supervisor_lists as $list): ?>
+              <option value="<?= $list->staff_id ?>" <?= ($list->staff_id == $current_supervisor_1) ? 'selected' : '' ?>>
+                <?= $list->lname . ' ' . $list->fname ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <small class="text-muted">You can update the supervisor if it was incorrect</small>
+        <?php else: ?>
+          <!-- Read-only display -->
+          <?= staff_name(!empty($ppa->endterm_supervisor_1) ? $ppa->endterm_supervisor_1 : $contract->first_supervisor) ?>
+          <input type="hidden" name="supervisor_id" value="<?= !empty($ppa->endterm_supervisor_1) ? $ppa->endterm_supervisor_1 : $contract->first_supervisor ?>">
+        <?php endif; ?>
       </td>
       <th>Second Supervisor</th>
       <td>
-        <?= staff_name($contract->second_supervisor) ?>
-        <input type="hidden" name="supervisor2_id" value="<?= $contract->second_supervisor ?>">
+        <?php if (!empty($isReturnedForResubmit) && empty($endreadonly)): ?>
+          <!-- Editable dropdown when resubmitting after return -->
+          <?php 
+          // Use existing endterm supervisor if set, otherwise use contract supervisor
+          $current_supervisor_2 = !empty($ppa->endterm_supervisor_2) ? $ppa->endterm_supervisor_2 : $contract->second_supervisor;
+          if (empty($supervisor_lists)) {
+            $supervisor_lists = Modules::run('lists/supervisor');
+          }
+          ?>
+          <select class="form-control" name="supervisor2_id" id="supervisor2_id">
+            <option value="">Select Second Supervisor (Optional)</option>
+            <?php foreach ($supervisor_lists as $list): ?>
+              <option value="<?= $list->staff_id ?>" <?= ($list->staff_id == $current_supervisor_2) ? 'selected' : '' ?>>
+                <?= $list->lname . ' ' . $list->fname ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <small class="text-muted">You can update the supervisor if it was incorrect</small>
+        <?php else: ?>
+          <!-- Read-only display -->
+          <?php 
+          $second_supervisor = !empty($ppa->endterm_supervisor_2) ? $ppa->endterm_supervisor_2 : $contract->second_supervisor;
+          echo !empty($second_supervisor) ? staff_name($second_supervisor) : 'N/A';
+          ?>
+          <input type="hidden" name="supervisor2_id" value="<?= !empty($ppa->endterm_supervisor_2) ? $ppa->endterm_supervisor_2 : (!empty($contract->second_supervisor) ? $contract->second_supervisor : '') ?>">
+        <?php endif; ?>
       </td>
     </tr>
     <tr>

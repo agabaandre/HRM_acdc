@@ -62,11 +62,32 @@ class Endterm extends MX_Controller
         }
         
         // Only update supervisor IDs if provided
+        // Allow updating supervisors when resubmitting after return
+        $supervisor_changed = false;
         if (isset($data['supervisor_id'])) {
+            // Check if supervisor is actually changing
+            if ($exists && $exists->endterm_supervisor_1 != $data['supervisor_id']) {
+                $supervisor_changed = true;
+            }
             $save_data['endterm_supervisor_1'] = $data['supervisor_id'];
         }
         if (isset($data['supervisor2_id'])) {
-            $save_data['endterm_supervisor_2'] = $data['supervisor2_id'];
+            // Check if second supervisor is actually changing
+            $new_supervisor2 = !empty($data['supervisor2_id']) ? $data['supervisor2_id'] : null;
+            if ($exists && $exists->endterm_supervisor_2 != $new_supervisor2) {
+                $supervisor_changed = true;
+            }
+            // Allow empty string to clear second supervisor
+            $save_data['endterm_supervisor_2'] = $new_supervisor2;
+        }
+        
+        // If supervisors changed during resubmission, reset approval-related fields
+        if ($supervisor_changed && isset($data['endterm_submit_action']) && $data['endterm_submit_action'] === 'submit') {
+            $save_data['endterm_supervisor1_discussion_confirmed'] = 0;
+            $save_data['endterm_supervisor2_agreement'] = null;
+            $save_data['endterm_staff_discussion_confirmed'] = 0;
+            $save_data['endterm_staff_rating_acceptance'] = null;
+            $save_data['endterm_staff_consent_at'] = null;
         }
         
         // Only update competency if provided

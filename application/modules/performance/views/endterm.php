@@ -60,9 +60,19 @@ if (!isset($endppa) || empty($endppa)) {
         ]
     );
 
+    // Check if endterm was returned - if so, allow owner to resubmit
+    $isReturned = false;
+    if (!empty($approval_trail) && is_array($approval_trail)) {
+        // Approval trail is ordered by most recent first (from model)
+        $lastAction = reset($approval_trail); // Get first element safely
+        if ($lastAction && isset($lastAction->action) && $lastAction->action === 'Returned') {
+            $isReturned = true;
+        }
+    }
+
     if (
         $isEndApproved ||
-        ($isEndSubmitted && !$isSupervisor) ||
+        ($isEndSubmitted && !$isSupervisor && !($isReturned && $isOwner)) ||
         ($isEndDraft && !$isOwner)
     ) {
         $endreadonly = 'readonly disabled';
@@ -150,7 +160,17 @@ if (!empty($ppa)) {
 <input type="hidden" name="staff_contract_id" value="<?= $staff_contract_id ?>">
 
 <!-- SECTION A: STAFF DETAILS -->
-<?php $this->load->view('performance/endterm/endterm_section_a', compact('contract', 'ppa','endreadonly')); ?>
+<?php 
+// Check if endterm was returned - needed for supervisor editing
+$isReturnedForResubmit = false;
+if (!empty($approval_trail) && is_array($approval_trail)) {
+    $lastAction = reset($approval_trail);
+    if ($lastAction && isset($lastAction->action) && $lastAction->action === 'Returned') {
+        $isOwner = isset($ppa->staff_id) && $session->staff_id == $ppa->staff_id;
+        $isReturnedForResubmit = $isOwner;
+    }
+}
+$this->load->view('performance/endterm/endterm_section_a', compact('contract', 'ppa','endreadonly', 'isReturnedForResubmit', 'session')); ?>
 <hr>
 
 <!-- SECTION B: PERFORMANCE OBJECTIVES WITH APPRAISAL -->
@@ -170,7 +190,7 @@ if (!empty($ppa)) {
 <hr>
 
 <!-- SECTION F: SIGN OFF -->
-<?php $this->load->view('performance/endterm/endterm_section_f', compact('ppa', 'ppa_settings', 'session', 'readonly','endreadonly')); ?>
+<?php $this->load->view('performance/endterm/endterm_section_f', compact('ppa', 'ppa_settings', 'session', 'readonly','endreadonly', 'approval_trail')); ?>
 
 <?php echo form_close(); ?>
 
