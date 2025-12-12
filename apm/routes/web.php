@@ -170,6 +170,7 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::delete('/backups/{filename}', [App\Http\Controllers\BackupController::class, 'delete'])->name('backups.delete');
     Route::post('/backups/cleanup', [App\Http\Controllers\BackupController::class, 'cleanup'])->name('backups.cleanup');
     Route::get('/backups/stats', [App\Http\Controllers\BackupController::class, 'stats'])->name('backups.stats');
+    Route::post('/backups/check-disk-space', [App\Http\Controllers\BackupController::class, 'checkDiskSpace'])->name('backups.check-disk-space');
     Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
     
