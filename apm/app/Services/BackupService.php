@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
+use App\Models\BackupDatabase;
 use Carbon\Carbon;
 use Exception;
 
@@ -27,82 +28,162 @@ class BackupService
     /**
      * Create a database backup
      * 
-     * @param string $type 'daily' or 'monthly'
+     * @param string $type 'daily', 'monthly', or 'annual'
+     * @param int|null $databaseId Specific database ID to backup, or null for all active databases
      * @return array|false Backup file info or false on failure
      */
-    public function createBackup($type = 'daily')
+    public function createBackup($type = 'daily', $databaseId = null)
     {
         try {
-            $dbConfig = $this->config['database'];
+            // Get databases to backup
+            $databases = [];
             
-            // Generate backup filename
-            $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
-            $filename = "backup_{$type}_{$timestamp}.sql";
-            $filePath = $this->storagePath . '/' . $filename;
+            if ($databaseId) {
+                // Backup specific database
+                $db = BackupDatabase::find($databaseId);
+                if ($db && $db->is_active) {
+                    $databases[] = $db;
+                }
+            } else {
+                // Backup all active databases from database config
+                $databases = BackupDatabase::getActiveDatabases();
+                
+                // If no databases in DB config, fallback to env config
+                if ($databases->isEmpty()) {
+                    $dbConfig = $this->config['database'];
+                    if (!empty($dbConfig['database'])) {
+                        // Create a temporary database object from config
+                        $databases = collect([(object)[
+                            'id' => 0,
+                            'name' => $dbConfig['database'],
+                            'display_name' => $dbConfig['database'],
+                            'host' => $dbConfig['host'],
+                            'port' => $dbConfig['port'],
+                            'username' => $dbConfig['username'],
+                            'password' => $dbConfig['password'],
+                            'decrypted_password' => $dbConfig['password']
+                        ]]);
+                    }
+                }
+            }
             
-            // Build mysqldump command (password without space after -p for security)
-            $command = sprintf(
-                'mysqldump -h %s -P %d -u %s -p%s %s > %s 2>&1',
-                escapeshellarg($dbConfig['host']),
-                $dbConfig['port'],
-                escapeshellarg($dbConfig['username']),
-                escapeshellarg($dbConfig['password']),
-                escapeshellarg($dbConfig['database']),
-                escapeshellarg($filePath)
-            );
-            
-            // Alternative: Use environment variable for password (more secure)
-            // Putenv('MYSQL_PWD=' . $dbConfig['password']);
-            // $command = sprintf(
-            //     'mysqldump -h %s -P %d -u %s %s > %s 2>&1',
-            //     escapeshellarg($dbConfig['host']),
-            //     $dbConfig['port'],
-            //     escapeshellarg($dbConfig['username']),
-            //     escapeshellarg($dbConfig['database']),
-            //     escapeshellarg($filePath)
-            // );
-            
-            // Execute backup
-            exec($command, $output, $returnVar);
-            
-            if ($returnVar !== 0) {
-                Log::error('Database backup failed', [
-                    'error' => implode("\n", $output),
-                    'return_code' => $returnVar
-                ]);
+            if ($databases->isEmpty()) {
+                Log::warning('No databases configured for backup');
                 return false;
             }
             
-            // Compress if enabled
-            if ($this->config['compression']['enabled']) {
-                $filePath = $this->compressBackup($filePath);
-                $filename = basename($filePath);
-            }
+            $results = [];
+            $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
             
-            $fileSize = File::size($filePath);
-            
-            Log::info('Database backup created successfully', [
-                'file' => $filename,
-                'size' => $this->formatBytes($fileSize),
-                'type' => $type
-            ]);
-            
-            // Upload to OneDrive if enabled
-            if ($this->config['onedrive']['enabled']) {
-                $this->uploadToOneDrive($filePath, $filename);
+            foreach ($databases as $db) {
+                $dbName = is_object($db) && isset($db->name) ? $db->name : $db['name'];
+                $dbDisplayName = is_object($db) && isset($db->display_name) ? $db->display_name : ($db['display_name'] ?? $dbName);
+                
+                // Generate backup filename with database name
+                $filename = "backup_{$type}_{$dbName}_{$timestamp}.sql";
+                $filePath = $this->storagePath . '/' . $filename;
+                
+                // Get database credentials
+                $host = is_object($db) && isset($db->host) ? $db->host : ($db['host'] ?? '127.0.0.1');
+                $port = is_object($db) && isset($db->port) ? $db->port : ($db['port'] ?? 3306);
+                $username = is_object($db) && isset($db->username) ? $db->username : $db['username'];
+                
+                // Get password - handle encrypted passwords from model
+                if (is_object($db) && $db instanceof BackupDatabase) {
+                    $password = $db->decrypted_password; // Accessor will decrypt automatically
+                } elseif (is_object($db) && isset($db->decrypted_password)) {
+                    $password = $db->decrypted_password;
+                } else {
+                    $password = $db['password'] ?? '';
+                }
+                
+                // Build mysqldump command
+                $command = sprintf(
+                    'mysqldump -h %s -P %d -u %s -p%s %s > %s 2>&1',
+                    escapeshellarg($host),
+                    $port,
+                    escapeshellarg($username),
+                    escapeshellarg($password),
+                    escapeshellarg($dbName),
+                    escapeshellarg($filePath)
+                );
+                
+                // Execute backup
+                exec($command, $output, $returnVar);
+                
+                if ($returnVar !== 0) {
+                    Log::error('Database backup failed', [
+                        'database' => $dbName,
+                        'error' => implode("\n", $output),
+                        'return_code' => $returnVar
+                    ]);
+                    
+                    $results[] = [
+                        'database' => $dbDisplayName,
+                        'success' => false,
+                        'error' => implode("\n", $output)
+                    ];
+                    continue;
+                }
+                
+                // Compress if enabled
+                if ($this->config['compression']['enabled']) {
+                    $filePath = $this->compressBackup($filePath);
+                    $filename = basename($filePath);
+                }
+                
+                $fileSize = File::size($filePath);
+                
+                Log::info('Database backup created successfully', [
+                    'database' => $dbName,
+                    'file' => $filename,
+                    'size' => $this->formatBytes($fileSize),
+                    'type' => $type
+                ]);
+                
+                // Upload to OneDrive if enabled
+                if ($this->config['onedrive']['enabled']) {
+                    $this->uploadToOneDrive($filePath, $filename);
+                }
+                
+                $results[] = [
+                    'database' => $dbDisplayName,
+                    'filename' => $filename,
+                    'path' => $filePath,
+                    'size' => $fileSize,
+                    'success' => true
+                ];
             }
             
             // Send notification if enabled
             if ($this->config['notification']['enabled']) {
-                $this->sendNotification($filename, $fileSize, true);
+                $successCount = count(array_filter($results, fn($r) => $r['success']));
+                $totalCount = count($results);
+                $totalSize = array_sum(array_column($results, 'size'));
+                
+                $message = "Backed up {$successCount}/{$totalCount} database(s).\n\n";
+                foreach ($results as $result) {
+                    if ($result['success']) {
+                        $message .= "✓ {$result['database']}: {$result['filename']} (" . $this->formatBytes($result['size']) . ")\n";
+                    } else {
+                        $message .= "✗ {$result['database']}: Failed - " . ($result['error'] ?? 'Unknown error') . "\n";
+                    }
+                }
+                
+                $this->sendNotification(
+                    $successCount === $totalCount ? "All backups completed" : "Partial backup completion",
+                    $totalSize,
+                    $successCount === $totalCount,
+                    $successCount < $totalCount ? $message : null
+                );
             }
             
             return [
-                'filename' => $filename,
-                'path' => $filePath,
-                'size' => $fileSize,
+                'results' => $results,
                 'type' => $type,
-                'created_at' => Carbon::now()->toDateTimeString()
+                'created_at' => Carbon::now()->toDateTimeString(),
+                'success_count' => count(array_filter($results, fn($r) => $r['success'])),
+                'total_count' => count($results)
             ];
             
         } catch (Exception $e) {
@@ -327,18 +408,37 @@ class BackupService
      */
     protected function sendNotification($filename, $fileSize, $success, $error = null)
     {
-        if (empty($this->config['notification']['email'])) {
+        // Get recipients from disk monitor config (preferred) or fallback to backup notification email
+        $recipients = [];
+        
+        // Try to get disk notification emails first
+        $diskMonitorConfig = config('backup.disk_monitor', []);
+        if (!empty($diskMonitorConfig['notification_emails'])) {
+            $recipients = $diskMonitorConfig['notification_emails'];
+        }
+        
+        // Fallback to backup notification email if disk emails not configured
+        if (empty($recipients) && !empty($this->config['notification']['email'])) {
+            $recipients = [$this->config['notification']['email']];
+        }
+        
+        // If no recipients configured, skip notification
+        if (empty($recipients)) {
             return;
         }
         
         try {
             $subject = $success 
-                ? 'Database Backup Completed Successfully'
-                : 'Database Backup Failed';
+                ? '✅ Database Backup Completed Successfully'
+                : '❌ Database Backup Failed';
             
-            $message = $success
-                ? "Database backup completed successfully.\n\nFile: {$filename}\nSize: " . $this->formatBytes($fileSize)
-                : "Database backup failed.\n\nError: " . ($error ?? 'Unknown error');
+            if (is_string($error) && !empty($error)) {
+                $message = $error;
+            } elseif ($success) {
+                $message = "Database backup completed successfully.\n\nFile: {$filename}\nSize: " . $this->formatBytes($fileSize);
+            } else {
+                $message = "Database backup failed.\n\nError: " . ($error ?? 'Unknown error');
+            }
             
             // Use existing email service
             require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
@@ -353,12 +453,31 @@ class BackupService
                 $config['auth_method']
             );
             
-            $oauth->sendEmail(
-                $this->config['notification']['email'],
-                $subject,
-                $message,
-                false
-            );
+            // Send to all recipients
+            $sent = false;
+            foreach ($recipients as $email) {
+                try {
+                    $oauth->sendEmail(
+                        $email,
+                        $subject,
+                        $message,
+                        false
+                    );
+                    $sent = true;
+                } catch (Exception $e) {
+                    Log::error('Failed to send backup notification', [
+                        'email' => $email,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+            
+            if ($sent) {
+                Log::info('Backup notification sent', [
+                    'recipients' => count($recipients),
+                    'success' => $success
+                ]);
+            }
             
         } catch (Exception $e) {
             Log::error('Failed to send backup notification', [

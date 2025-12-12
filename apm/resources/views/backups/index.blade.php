@@ -257,7 +257,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <button type="button" class="btn btn-success w-100" onclick="createBackup('daily')">
                                 <i class="fas fa-plus-circle me-2"></i>Create Daily Backup
                             </button>
@@ -277,7 +277,12 @@
                                 <i class="fas fa-broom me-2"></i>Run Cleanup
                             </button>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-secondary w-100" onclick="showDatabaseModal()">
+                                <i class="fas fa-database me-2"></i>Manage Databases
+                            </button>
+                        </div>
+                        <div class="col-md-2">
                             <div class="form-check form-switch d-flex align-items-center h-100">
                                 <input class="form-check-input me-2" type="checkbox" id="onedriveToggle" 
                                     {{ $config['onedrive']['enabled'] ? 'checked' : '' }} 
@@ -373,6 +378,16 @@
                                     </td>
                                     <td>
                                         @php
+                                            // Extract database name from filename (format: backup_type_dbname_timestamp.sql)
+                                            $dbName = 'N/A';
+                                            if (preg_match('/backup_(daily|monthly|annual)_([^_]+)_/', $backup['filename'], $matches)) {
+                                                $dbName = $matches[2];
+                                            }
+                                        @endphp
+                                        <span class="badge bg-secondary">{{ $dbName }}</span>
+                                    </td>
+                                    <td>
+                                        @php
                                             $badgeColor = match($backup['type']) {
                                                 'daily' => 'success',
                                                 'monthly' => 'primary',
@@ -413,7 +428,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">
+                                    <td colspan="7" class="text-center py-4 text-muted">
                                         <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
                                         No backups found
                                     </td>
@@ -422,6 +437,149 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Database Management Modal -->
+<div class="modal fade" id="databaseModal" tabindex="-1" aria-labelledby="databaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="databaseModalLabel">
+                    <i class="fas fa-database me-2"></i>Manage Backup Databases
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="mb-0 text-muted">Configure databases to backup on this server</p>
+                    <button type="button" class="btn btn-sm btn-success" onclick="showAddDatabaseForm()">
+                        <i class="fas fa-plus me-1"></i>Add Database
+                    </button>
+                </div>
+                
+                <div id="databaseList">
+                    @if($databases && $databases->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Display Name</th>
+                                        <th>Database</th>
+                                        <th>Host</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($databases as $db)
+                                    <tr>
+                                        <td>
+                                            <strong>{{ $db->display_name }}</strong>
+                                            @if($db->is_default)
+                                                <span class="badge bg-primary ms-1">Default</span>
+                                            @endif
+                                        </td>
+                                        <td><code>{{ $db->name }}</code></td>
+                                        <td>{{ $db->host }}:{{ $db->port }}</td>
+                                        <td>{{ $db->priority }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ $db->is_active ? 'success' : 'secondary' }}">
+                                                {{ $db->is_active ? 'Active' : 'Inactive' }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="editDatabase({{ $db->id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDatabaseConfig({{ $db->id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-database fa-3x mb-3 d-block"></i>
+                            <p>No databases configured. Add your first database to get started.</p>
+                            <button type="button" class="btn btn-success" onclick="showAddDatabaseForm()">
+                                <i class="fas fa-plus me-1"></i>Add Database
+                            </button>
+                        </div>
+                    @endif
+                </div>
+                
+                <!-- Add/Edit Database Form -->
+                <div id="databaseForm" style="display: none;">
+                    <hr>
+                    <h6 id="formTitle">Add Database</h6>
+                    <form id="databaseFormElement">
+                        <input type="hidden" id="dbId" name="id">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Database Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="dbName" name="name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Display Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="dbDisplayName" name="display_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Host <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="dbHost" name="host" value="127.0.0.1" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Port <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="dbPort" name="port" value="3306" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Priority</label>
+                                <input type="number" class="form-control" id="dbPriority" name="priority" value="0">
+                                <small class="text-muted">Higher = backup first</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="dbUsername" name="username" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="dbPassword" name="password" required>
+                                <small class="text-muted" id="passwordHint">Leave blank to keep existing password</small>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" id="dbDescription" name="description" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="dbIsActive" name="is_active" checked>
+                                    <label class="form-check-label" for="dbIsActive">Active</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="dbIsDefault" name="is_default">
+                                    <label class="form-check-label" for="dbIsDefault">Set as Default</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="cancelDatabaseForm()">Cancel</button>
+                            <button type="button" class="btn btn-info" onclick="testDatabaseConnection()">
+                                <i class="fas fa-plug me-1"></i>Test Connection
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-1"></i>Save Database
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

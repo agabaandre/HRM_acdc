@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\BackupService;
 use App\Services\DiskSpaceMonitorService;
+use App\Models\BackupDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
 class BackupController extends Controller
@@ -36,7 +38,10 @@ class BackupController extends Controller
         // Get disk space information
         $diskSpace = $this->diskMonitorService->getDiskSpace();
         
-        return view('backups.index', compact('stats', 'config', 'backups', 'diskSpace'));
+        // Get configured databases
+        $databases = BackupDatabase::orderedByPriority()->get();
+        
+        return view('backups.index', compact('stats', 'config', 'backups', 'diskSpace', 'databases'));
     }
 
     /**
@@ -56,11 +61,18 @@ class BackupController extends Controller
                 $fileSize = File::size($filePath);
                 $modifiedTime = File::lastModified($filePath);
                 
-                // Parse backup type and date from filename
+                // Parse backup type, database name, and date from filename
+                // Format: backup_type_dbname_YYYY-MM-DD_HH-MM-SS.sql[.gz]
                 $type = 'unknown';
                 $date = null;
+                $databaseName = null;
                 
-                if (preg_match('/backup_(daily|monthly|annual)_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                if (preg_match('/backup_(daily|monthly|annual)_([^_]+)_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                    $type = $matches[1];
+                    $databaseName = $matches[2];
+                    $date = Carbon::parse($matches[3]);
+                } elseif (preg_match('/backup_(daily|monthly|annual)_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                    // Fallback for old format without database name
                     $type = $matches[1];
                     $date = Carbon::parse($matches[2]);
                 }
@@ -71,6 +83,7 @@ class BackupController extends Controller
                     'size' => $fileSize,
                     'size_formatted' => $this->formatBytes($fileSize),
                     'type' => $type,
+                    'database' => $databaseName,
                     'date' => $date,
                     'modified_at' => Carbon::createFromTimestamp($modifiedTime),
                     'is_compressed' => preg_match('/\.(gz|zip)$/', $filename)
@@ -92,6 +105,7 @@ class BackupController extends Controller
     public function create(Request $request)
     {
         $type = $request->input('type', 'daily');
+        $databaseId = $request->input('database_id', null);
         
         if (!in_array($type, ['daily', 'monthly', 'annual'])) {
             return response()->json([
@@ -101,12 +115,17 @@ class BackupController extends Controller
         }
         
         try {
-            $result = $this->backupService->createBackup($type);
+            $result = $this->backupService->createBackup($type, $databaseId);
             
             if ($result) {
+                $message = ucfirst($type) . ' backup created successfully';
+                if (isset($result['success_count']) && isset($result['total_count'])) {
+                    $message .= " ({$result['success_count']}/{$result['total_count']} databases)";
+                }
+                
                 return response()->json([
                     'success' => true,
-                    'message' => ucfirst($type) . ' backup created successfully',
+                    'message' => $message,
                     'backup' => $result
                 ]);
             } else {
@@ -228,6 +247,213 @@ class BackupController extends Controller
                 'disk_space' => $diskSpace,
                 'notification_sent' => $notificationSent
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all configured databases
+     */
+    public function getDatabases()
+    {
+        $databases = BackupDatabase::orderedByPriority()->get();
+        
+        return response()->json([
+            'success' => true,
+            'databases' => $databases
+        ]);
+    }
+
+    /**
+     * Get a single database configuration
+     */
+    public function getDatabase($id)
+    {
+        try {
+            $database = BackupDatabase::findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'database' => $database
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Database not found'
+            ], 404);
+        }
+    }
+
+    /**
+     * Store a new database configuration
+     */
+    public function storeDatabase(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255|unique:backup_databases,name',
+            'display_name' => 'required|string|max:255',
+            'host' => 'required|string|max:255',
+            'port' => 'required|integer|min:1|max:65535',
+            'username' => 'required|string|max:255',
+            'password' => 'required|string',
+            'is_active' => 'boolean',
+            'is_default' => 'boolean',
+            'priority' => 'integer|min:0',
+            'description' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // If this is set as default, unset other defaults
+            if ($request->input('is_default', false)) {
+                BackupDatabase::where('is_default', true)->update(['is_default' => false]);
+            }
+
+            $database = BackupDatabase::create($request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Database configuration created successfully',
+                'database' => $database
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a database configuration
+     */
+    public function updateDatabase(Request $request, $id)
+    {
+        $database = BackupDatabase::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255|unique:backup_databases,name,' . $id,
+            'display_name' => 'required|string|max:255',
+            'host' => 'required|string|max:255',
+            'port' => 'required|integer|min:1|max:65535',
+            'username' => 'required|string|max:255',
+            'password' => 'nullable|string',
+            'is_active' => 'boolean',
+            'is_default' => 'boolean',
+            'priority' => 'integer|min:0',
+            'description' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // If this is set as default, unset other defaults
+            if ($request->input('is_default', false) && !$database->is_default) {
+                BackupDatabase::where('is_default', true)->where('id', '!=', $id)->update(['is_default' => false]);
+            }
+
+            $data = $request->all();
+            // Only update password if provided
+            if (empty($data['password'])) {
+                unset($data['password']);
+            }
+
+            $database->update($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Database configuration updated successfully',
+                'database' => $database->fresh()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a database configuration
+     */
+    public function deleteDatabase($id)
+    {
+        try {
+            $database = BackupDatabase::findOrFail($id);
+            $database->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Database configuration deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Test database connection
+     */
+    public function testDatabaseConnection(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'host' => 'required|string',
+            'port' => 'required|integer',
+            'username' => 'required|string',
+            'password' => 'required|string',
+            'name' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $host = $request->input('host');
+            $port = $request->input('port');
+            $username = $request->input('username');
+            $password = $request->input('password');
+            $database = $request->input('name');
+
+            // Test connection
+            $connection = @mysqli_connect($host, $username, $password, $database, $port);
+
+            if ($connection) {
+                mysqli_close($connection);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Database connection successful'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Database connection failed: ' . mysqli_connect_error()
+                ], 400);
+            }
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
