@@ -274,8 +274,10 @@
             // Pre-fill filters from URL
             const params = new URLSearchParams(window.location.search);
             // Default to current year if no year parameter exists (initial page load)
+            // If year parameter exists but is empty, use empty string (explicit "All Years" selection)
             const currentYear = new Date().getFullYear();
-            $('#yearFilter').val(params.get('year') || (params.has('year') ? '' : currentYear));
+            const yearParam = params.get('year');
+            $('#yearFilter').val(yearParam !== null ? yearParam : currentYear);
             $('#quarterFilter').val(params.get('quarter') || '');
             $('#divisionFilter').val(params.get('division') || '');
             $('#focalFilter').val(params.get('focal_person') || '');
