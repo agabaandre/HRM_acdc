@@ -4,6 +4,11 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 
 ## 📚 Documentation Index
 
+### User Guides
+
+- **[User Guide](./USER_GUIDE.md)** - Complete guide for creating and managing documents (Matrices, Memos, Requests)
+- **[Approvers Guide](./APPROVERS_GUIDE.md)** - Guide for approvers on how to approve, return, or reject documents
+
 ### Core Features
 
 - **[Approval Trail Management](./APPROVAL_TRAIL_MANAGEMENT.md)** - Complete guide to approval trail tracking and management
@@ -19,6 +24,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 - **[Queue Troubleshooting](./QUEUE_TROUBLESHOOTING.md)** - Common queue issues and solutions
 - **[Cron Setup](./CRON_SETUP.md)** - Cron job configuration for scheduled tasks
 - **[Supervisor Setup Demo](./SUPERVISOR_SETUP_DEMO.md)** - Supervisor configuration for queue workers
+- **[Database Backup System](../README_BACKUP.md)** - Automatic database backups with retention policies and OneDrive integration
 
 ### Notifications & Automation
 
@@ -97,10 +103,12 @@ php artisan view:clear
 2. **Monitoring & Maintenance**
    - Review [Approval Trail Archiving](./APPROVAL_TRAIL_ARCHIVING.md)
    - Check [Queue Troubleshooting](./QUEUE_TROUBLESHOOTING.md)
+   - Set up [Database Backup System](../README_BACKUP.md) - Configure automatic backups and retention policies
 
 3. **Automation**
    - Configure [Daily Notifications](./DAILY_NOTIFICATIONS_SETUP.md)
    - Set up [Session Expiry](./SESSION_EXPIRY_SETUP.md)
+   - Configure [Database Backups](../README_BACKUP.md) - Automatic backup scheduling and cleanup
 
 ## 🔧 Common Tasks
 

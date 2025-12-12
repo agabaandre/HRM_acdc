@@ -48,6 +48,7 @@ Laravel-based system for managing approvals, workflows, and document processing.
 - [Systemd Queue Guide](../apm/documentation/SYSTEMD_QUEUE_GUIDE.md)
 - [Deployment Guide](../apm/documentation/DEPLOYMENT.md)
 - [Cron Setup](../apm/documentation/CRON_SETUP.md)
+- [Database Backup System](../apm/README_BACKUP.md) - Automatic database backups with retention policies
 
 ### 3. Finance Module
 

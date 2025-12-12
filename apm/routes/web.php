@@ -182,6 +182,11 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
     
+    // Help & Documentation Routes
+    Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
+    Route::get('/help/user-guide', [App\Http\Controllers\HelpController::class, 'userGuide'])->name('help.user-guide');
+    Route::get('/help/approvers-guide', [App\Http\Controllers\HelpController::class, 'approversGuide'])->name('help.approvers-guide');
+    
     // Systemd Monitor Routes
     Route::get('/systemd-monitor', [App\Http\Controllers\SystemdMonitorController::class, 'index'])->name('systemd-monitor.index');
     Route::post('/systemd-monitor/execute', [App\Http\Controllers\SystemdMonitorController::class, 'executeCommand'])->name('systemd-monitor.execute');

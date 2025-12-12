@@ -84,6 +84,7 @@ The Approvals Management (APM) system is a Laravel-based application for managin
 - **[Cron Setup](./documentation/CRON_SETUP.md)** - Scheduled tasks configuration
 - **[Daily Notifications Setup](./documentation/DAILY_NOTIFICATIONS_SETUP.md)** - Notification system
 - **[Session Expiry Setup](./documentation/SESSION_EXPIRY_SETUP.md)** - Session management
+- **[Database Backup System](./README_BACKUP.md)** - Automatic database backups with retention policies
 
 ### Related Documentation
 

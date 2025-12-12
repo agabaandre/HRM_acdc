@@ -257,33 +257,40 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-sm-6">
                             <button type="button" class="btn btn-success w-100" onclick="createBackup('daily')">
                                 <i class="fas fa-plus-circle me-2"></i>Create Daily Backup
                             </button>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-sm-6">
                             <button type="button" class="btn btn-primary w-100" onclick="createBackup('monthly')">
                                 <i class="fas fa-calendar-check me-2"></i>Create Monthly Backup
                             </button>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-sm-6">
                             <button type="button" class="btn btn-info w-100" onclick="createBackup('annual')">
                                 <i class="fas fa-calendar me-2"></i>Create Annual Backup
                             </button>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-sm-6">
                             <button type="button" class="btn btn-warning w-100" onclick="runCleanup()">
                                 <i class="fas fa-broom me-2"></i>Run Cleanup
                             </button>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 col-sm-6">
                             <button type="button" class="btn btn-secondary w-100" onclick="showDatabaseModal()">
                                 <i class="fas fa-database me-2"></i>Manage Databases
                             </button>
                         </div>
-                        <div class="col-md-2">
-                            <div class="form-check form-switch d-flex align-items-center h-100">
+                        <div class="col-md-2 col-sm-6">
+                            <button type="button" class="btn btn-outline-info w-100" onclick="showBackupPolicyModal()">
+                                <i class="fas fa-info-circle me-2"></i>Backup Policy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="form-check form-switch d-flex align-items-center">
                                 <input class="form-check-input me-2" type="checkbox" id="onedriveToggle" 
                                     {{ $config['onedrive']['enabled'] ? 'checked' : '' }} 
                                     onchange="toggleOneDrive(this.checked)">
@@ -580,6 +587,137 @@
     </div>
 </div>
 
+<!-- Backup Policy Modal -->
+<div class="modal fade" id="backupPolicyModal" tabindex="-1" aria-labelledby="backupPolicyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="backupPolicyModalLabel">
+                    <i class="fas fa-info-circle me-2"></i>Backup Retention Policy
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-4">
+                    <h6 class="text-primary mb-3"><i class="fas fa-database me-2"></i>Database Backup Policy</h6>
+                    <p class="text-muted">Our backup system ensures data protection with intelligent retention policies. Each database is backed up independently with the following rules:</p>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card border-success h-100">
+                            <div class="card-body">
+                                <h6 class="card-title text-success">
+                                    <i class="fas fa-calendar-day me-2"></i>Daily Backups
+                                </h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li><strong>Frequency:</strong> Once per day</li>
+                                    <li><strong>Retention:</strong> {{ $config['retention']['daily_days'] }} days</li>
+                                    <li><strong>Rule:</strong> One backup per database per day</li>
+                                </ul>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="fas fa-info-circle"></i> Only the most recent backup for each database on each day is kept.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-primary h-100">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary">
+                                    <i class="fas fa-calendar-alt me-2"></i>Monthly Backups
+                                </h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li><strong>Frequency:</strong> Once per month</li>
+                                    <li><strong>Retention:</strong> {{ $config['retention']['monthly_months'] }} months</li>
+                                    <li><strong>Rule:</strong> One backup per database per month</li>
+                                </ul>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="fas fa-info-circle"></i> Only the most recent backup for each database in each month is kept.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-info h-100">
+                            <div class="card-body">
+                                <h6 class="card-title text-info">
+                                    <i class="fas fa-calendar me-2"></i>Annual Backups
+                                </h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li><strong>Frequency:</strong> Once per year</li>
+                                    <li><strong>Retention:</strong> {{ $config['retention']['annual_years'] ?? 1 }} year(s)</li>
+                                    <li><strong>Rule:</strong> One backup per database per year</li>
+                                </ul>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="fas fa-info-circle"></i> Only the most recent backup for each database in each year is kept.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <h6 class="alert-heading"><i class="fas fa-lightbulb me-2"></i>Key Points:</h6>
+                    <ul class="mb-0">
+                        <li><strong>Per-Database Policy:</strong> Each configured database has its own backup retention independent of others.</li>
+                        <li><strong>Automatic Cleanup:</strong> Old backups are automatically removed based on retention policies during cleanup.</li>
+                        <li><strong>Most Recent First:</strong> When multiple backups exist for the same database within a period, only the most recent is kept.</li>
+                        <li><strong>Manual Deletion Disabled:</strong> Backups cannot be manually deleted to prevent accidental data loss. Only automated cleanup removes old backups.</li>
+                    </ul>
+                </div>
+
+                <div class="mt-4">
+                    <h6 class="text-secondary mb-2"><i class="fas fa-cog me-2"></i>Current Configuration</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Setting</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Daily Retention</td>
+                                    <td><strong>{{ $config['retention']['daily_days'] }} days</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Monthly Retention</td>
+                                    <td><strong>{{ $config['retention']['monthly_months'] }} months</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Annual Retention</td>
+                                    <td><strong>{{ $config['retention']['annual_years'] ?? 1 }} year(s)</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Daily Schedule</td>
+                                    <td><strong>{{ $config['schedule']['daily_time'] }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Monthly Schedule</td>
+                                    <td><strong>Day {{ $config['schedule']['monthly_day'] }} of month</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Compression</td>
+                                    <td><strong>{{ $config['compression']['enabled'] ? 'Enabled (' . strtoupper($config['compression']['format']) . ')' : 'Disabled' }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>OneDrive Sync</td>
+                                    <td><strong>{{ $config['onedrive']['enabled'] ? 'Enabled' : 'Disabled' }}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Loading Overlay -->
 <div class="loading-overlay" id="loadingOverlay">
     <div class="text-center text-white">
@@ -740,6 +878,12 @@
         setTimeout(() => {
             alert.remove();
         }, 5000);
+    }
+    
+    // Show Backup Policy Modal
+    function showBackupPolicyModal() {
+        const modal = new bootstrap.Modal(document.getElementById('backupPolicyModal'));
+        modal.show();
     }
     
     // Database Management Functions

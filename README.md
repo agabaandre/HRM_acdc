@@ -168,6 +168,7 @@ npm run dev:all
 - [APM Queue Setup](./apm/documentation/QUEUE_SETUP_GUIDE.md) - Queue worker configuration
 - [Systemd Queue Guide](./apm/documentation/SYSTEMD_QUEUE_GUIDE.md) - Systemd queue management
 - [Cron Configuration](./apm/documentation/CRON_SETUP.md) - Scheduled tasks
+- [Database Backup System](./apm/README_BACKUP.md) - Automatic database backups and retention policies
 
 **Architecture & Development:**
 - [Finance Frontend Architecture](./finance/documentation/FRONTEND_ARCHITECTURE.md) - React app structure
