@@ -283,59 +283,112 @@ class BackupService
             foreach ($files as $file) {
                 $filename = $file->getFilename();
                 
-                if (preg_match('/backup_daily_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                // Match daily backups: backup_daily_dbname_YYYY-MM-DD_HH-MM-SS.sql[.gz]
+                // Also support old format: backup_daily_YYYY-MM-DD_HH-MM-SS.sql[.gz]
+                if (preg_match('/backup_daily_([^_]+)_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                    $databaseName = $matches[1];
+                    $date = Carbon::parse($matches[2]);
+                    $dailyBackups[] = [
+                        'file' => $file,
+                        'date' => $date,
+                        'database' => $databaseName,
+                        'filename' => $filename
+                    ];
+                } elseif (preg_match('/backup_daily_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                    // Old format without database name
                     $date = Carbon::parse($matches[1]);
                     $dailyBackups[] = [
                         'file' => $file,
-                        'date' => $date
+                        'date' => $date,
+                        'database' => 'default',
+                        'filename' => $filename
+                    ];
+                } elseif (preg_match('/backup_monthly_([^_]+)_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                    $databaseName = $matches[1];
+                    $date = Carbon::parse($matches[2]);
+                    $monthlyBackups[] = [
+                        'file' => $file,
+                        'date' => $date,
+                        'database' => $databaseName
                     ];
                 } elseif (preg_match('/backup_monthly_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                    // Old format without database name
                     $date = Carbon::parse($matches[1]);
                     $monthlyBackups[] = [
                         'file' => $file,
-                        'date' => $date
+                        'date' => $date,
+                        'database' => 'default'
+                    ];
+                } elseif (preg_match('/backup_annual_([^_]+)_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                    $databaseName = $matches[1];
+                    $date = Carbon::parse($matches[2]);
+                    $annualBackups[] = [
+                        'file' => $file,
+                        'date' => $date,
+                        'database' => $databaseName
                     ];
                 } elseif (preg_match('/backup_annual_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                    // Old format without database name
                     $date = Carbon::parse($matches[1]);
                     $annualBackups[] = [
                         'file' => $file,
-                        'date' => $date
+                        'date' => $date,
+                        'database' => 'default'
                     ];
                 }
             }
             
-            // Clean up daily backups older than retention period
+            // Group daily backups by database and date, keep only one per database per day
+            $dailyGroups = [];
             foreach ($dailyBackups as $backup) {
-                if ($backup['date']->lt($cutoffDate)) {
-                    $size = File::size($backup['file']);
-                    File::delete($backup['file']);
-                    $deletedCount++;
-                    $deletedSize += $size;
-                    
-                    Log::info('Deleted old daily backup', [
-                        'file' => $backup['file']->getFilename(),
-                        'date' => $backup['date']->toDateString()
-                    ]);
+                $key = $backup['database'] . '_' . $backup['date']->format('Y-m-d');
+                if (!isset($dailyGroups[$key])) {
+                    $dailyGroups[$key] = [];
+                }
+                $dailyGroups[$key][] = $backup;
+            }
+            
+            foreach ($dailyGroups as $key => $backups) {
+                // Sort by filename (most recent first, as filename contains timestamp)
+                usort($backups, function($a, $b) {
+                    return strcmp($b['filename'], $a['filename']);
+                });
+                
+                // Keep only the most recent backup for each database per day
+                // Delete the rest if they're older than retention period
+                foreach ($backups as $index => $backup) {
+                    if ($index > 0 || $backup['date']->lt($cutoffDate)) {
+                        $size = File::size($backup['file']);
+                        File::delete($backup['file']);
+                        $deletedCount++;
+                        $deletedSize += $size;
+                        
+                        Log::info('Deleted old daily backup', [
+                            'file' => $backup['file']->getFilename(),
+                            'database' => $backup['database'],
+                            'date' => $backup['date']->toDateString()
+                        ]);
+                    }
                 }
             }
             
-            // Keep only one monthly backup per month, remove older ones
+            // Keep only one monthly backup per database per month, remove older ones
             $monthlyGroups = [];
             foreach ($monthlyBackups as $backup) {
-                $key = $backup['date']->format('Y-m');
+                $key = ($backup['database'] ?? 'default') . '_' . $backup['date']->format('Y-m');
                 if (!isset($monthlyGroups[$key])) {
                     $monthlyGroups[$key] = [];
                 }
                 $monthlyGroups[$key][] = $backup;
             }
             
-            foreach ($monthlyGroups as $month => $backups) {
+            foreach ($monthlyGroups as $key => $backups) {
                 // Sort by date descending
                 usort($backups, function($a, $b) {
                     return $b['date']->gt($a['date']) ? 1 : -1;
                 });
                 
-                // Keep only the most recent backup for each month
+                // Keep only the most recent backup for each database per month
                 // Delete the rest if they're older than retention period
                 foreach ($backups as $index => $backup) {
                     if ($index > 0 || $backup['date']->lt($monthlyCutoffDate)) {
@@ -346,29 +399,30 @@ class BackupService
                         
                         Log::info('Deleted old monthly backup', [
                             'file' => $backup['file']->getFilename(),
+                            'database' => $backup['database'] ?? 'default',
                             'date' => $backup['date']->toDateString()
                         ]);
                     }
                 }
             }
             
-            // Keep only one annual backup per year, remove older ones
+            // Keep only one annual backup per database per year, remove older ones
             $annualGroups = [];
             foreach ($annualBackups as $backup) {
-                $key = $backup['date']->format('Y');
+                $key = ($backup['database'] ?? 'default') . '_' . $backup['date']->format('Y');
                 if (!isset($annualGroups[$key])) {
                     $annualGroups[$key] = [];
                 }
                 $annualGroups[$key][] = $backup;
             }
             
-            foreach ($annualGroups as $year => $backups) {
+            foreach ($annualGroups as $key => $backups) {
                 // Sort by date descending
                 usort($backups, function($a, $b) {
                     return $b['date']->gt($a['date']) ? 1 : -1;
                 });
                 
-                // Keep only the most recent backup for each year
+                // Keep only the most recent backup for each database per year
                 // Delete the rest if they're older than retention period
                 foreach ($backups as $index => $backup) {
                     if ($index > 0 || $backup['date']->lt($annualCutoffDate)) {
@@ -379,6 +433,7 @@ class BackupService
                         
                         Log::info('Deleted old annual backup', [
                             'file' => $backup['file']->getFilename(),
+                            'database' => $backup['database'] ?? 'default',
                             'date' => $backup['date']->toDateString()
                         ]);
                     }
