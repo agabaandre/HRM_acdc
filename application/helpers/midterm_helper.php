@@ -36,7 +36,7 @@ if (!function_exists('show_midterm_approval_action')) {
                 $isReturned = true;
             }
         }
-        
+
         // Logic to show Approve buttons or print options
         if ($isSupervisor1 && $ppa->midterm_draft_status == 0 && in_array($last_action, ['Submitted', 'Updated']) && !$isReturned) {
             return 'show';

@@ -106,11 +106,17 @@ class MatrixController extends Controller
         $currentYear = now()->year;
         $currentQuarter = 'Q' . now()->quarter;
        
-        // Get selected values from request
-        // If 'year' parameter exists but is empty (explicit "All Years" selection), use empty string
-        // If 'year' parameter doesn't exist (initial page load), default to current year
-        $selectedYear = $request->has('year') ? $request->get('year', '') : $currentYear;
-        $selectedQuarter = $request->has('quarter') ? $request->get('quarter', '') : $currentQuarter;
+        // Get selected values from request, use defaults only if not provided at all
+        $selectedYear = $request->get('year', '');
+        $selectedQuarter = $request->get('quarter', '');
+        
+        // Use defaults only on initial page load (no filters provided)
+        if (empty($selectedYear) && !$request->has('year')) {
+            $selectedYear = $currentYear;
+        }
+        if (empty($selectedQuarter) && !$request->has('quarter')) {
+            $selectedQuarter = $currentQuarter;
+        }
 
         // Apply year filter only if a year is selected
         if (!empty($selectedYear)) {
