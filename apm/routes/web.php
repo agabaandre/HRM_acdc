@@ -171,6 +171,14 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::post('/backups/cleanup', [App\Http\Controllers\BackupController::class, 'cleanup'])->name('backups.cleanup');
     Route::get('/backups/stats', [App\Http\Controllers\BackupController::class, 'stats'])->name('backups.stats');
     Route::post('/backups/check-disk-space', [App\Http\Controllers\BackupController::class, 'checkDiskSpace'])->name('backups.check-disk-space');
+    
+    // Database Configuration Routes
+    Route::get('/backups/databases', [App\Http\Controllers\BackupController::class, 'getDatabases'])->name('backups.databases.index');
+    Route::get('/backups/databases/{id}', [App\Http\Controllers\BackupController::class, 'getDatabase'])->name('backups.databases.show');
+    Route::post('/backups/databases', [App\Http\Controllers\BackupController::class, 'storeDatabase'])->name('backups.databases.store');
+    Route::put('/backups/databases/{id}', [App\Http\Controllers\BackupController::class, 'updateDatabase'])->name('backups.databases.update');
+    Route::delete('/backups/databases/{id}', [App\Http\Controllers\BackupController::class, 'deleteDatabase'])->name('backups.databases.delete');
+    Route::post('/backups/databases/test-connection', [App\Http\Controllers\BackupController::class, 'testDatabaseConnection'])->name('backups.databases.test-connection');
     Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
     
