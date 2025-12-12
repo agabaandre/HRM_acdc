@@ -186,6 +186,8 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
     Route::get('/help/user-guide', [App\Http\Controllers\HelpController::class, 'userGuide'])->name('help.user-guide');
     Route::get('/help/approvers-guide', [App\Http\Controllers\HelpController::class, 'approversGuide'])->name('help.approvers-guide');
+    Route::get('/documentation', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation');
+    Route::get('/documentation/{file}', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation.file')->where('file', '[a-zA-Z0-9_-]+\.md');
     
     // Systemd Monitor Routes
     Route::get('/systemd-monitor', [App\Http\Controllers\SystemdMonitorController::class, 'index'])->name('systemd-monitor.index');
