@@ -23,6 +23,12 @@
                         </div>
                         <div class="top-menu ms-auto">
                             <ul class="navbar-nav align-items-center">
+                                <!-- Help Link -->
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('help.index') }}" title="Help & Documentation">
+                                        <i class="fas fa-question-circle fs-5"></i>
+                                    </a>
+                                </li>
                                 @php
                                     $session = (array) session('user');
                                     $session['base_url'] = session('user.base_url', env('BASE_URL', 'http://localhost/staff'));

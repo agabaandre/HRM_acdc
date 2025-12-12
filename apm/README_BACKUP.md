@@ -7,15 +7,20 @@ Automatic database backup system with retention policies and OneDrive integratio
 - **Automatic Daily Backups**: Creates daily backups at configured time
 - **Automatic Monthly Backups**: Creates monthly backups on specified day
 - **Automatic Annual Backups**: Creates annual backups (one per year)
-- **Retention Policies**: 
+- **Multiple Database Support**: Configure and backup multiple databases on the same server
+- **Database Management Interface**: Web-based interface to add, edit, and manage database configurations
+- **Per-Database Retention Policies**: 
   - Keeps daily backups for last N days (default: 5 days, configurable)
   - Keeps monthly backups for last N months (default: 6 months, configurable)
   - Keeps annual backups for last N years (default: 1 year, configurable)
+  - **One backup per database per day/month/year**: Only the most recent backup for each database within each period is kept
 - **OneDrive Integration**: Optional automatic upload to OneDrive
 - **Automatic Cleanup**: Removes old backups based on retention policies
 - **Compression**: Optional gzip/zip compression
 - **Email Notifications**: Optional email notifications on backup completion/failure
 - **Disk Space Monitoring**: Automatic disk space monitoring with email alerts
+- **Secure Password Storage**: Database passwords are encrypted in the database
+- **Connection Testing**: Test database connections before saving configurations
 
 ## Configuration
 
@@ -164,18 +169,53 @@ BACKUP_DISK_NOTIFICATION_EMAILS=admin1@example.com,admin2@example.com
 BACKUP_DISK_CHECK_INTERVAL=24
 ```
 
+## Multiple Database Support
+
+The backup system supports backing up multiple databases on the same server:
+
+1. **Add Databases**: Use the "Manage Databases" button in the backup interface to add database configurations
+2. **Database Configuration**: Each database can have its own host, port, username, and password
+3. **Priority System**: Set backup priority to control the order in which databases are backed up
+4. **Active/Inactive**: Enable or disable databases without deleting configurations
+5. **Default Database**: Mark one database as default (falls back to `.env` config if no databases configured)
+
+### Database Management Features
+
+- **Web Interface**: Add, edit, and delete database configurations through the web UI
+- **Encrypted Passwords**: Database passwords are encrypted using Laravel's Crypt
+- **Connection Testing**: Test database connectivity before saving configurations
+- **Priority Ordering**: Higher priority databases are backed up first
+
 ## File Naming
 
-- Daily backups: `backup_daily_YYYY-MM-DD_HH-MM-SS.sql[.gz]`
-- Monthly backups: `backup_monthly_YYYY-MM-DD_HH-MM-SS.sql[.gz]`
-- Annual backups: `backup_annual_YYYY-MM-DD_HH-MM-SS.sql[.gz]`
+- Daily backups: `backup_daily_dbname_YYYY-MM-DD_HH-MM-SS.sql[.gz]`
+- Monthly backups: `backup_monthly_dbname_YYYY-MM-DD_HH-MM-SS.sql[.gz]`
+- Annual backups: `backup_annual_dbname_YYYY-MM-DD_HH-MM-SS.sql[.gz]`
+
+Where `dbname` is the database name from the configuration.
 
 ## Retention Policy
 
-- **Daily Backups**: Kept for last N days (default: 5)
-- **Monthly Backups**: One backup per month, kept for last N months (default: 6)
-- **Annual Backups**: One backup per year, kept for last N years (default: 1)
-- Older backups are automatically deleted during cleanup based on their respective retention policies
+The retention policy ensures efficient storage management:
+
+- **Daily Backups**: 
+  - One backup per database per day (most recent kept)
+  - Kept for last N days (default: 5)
+  - If multiple backups exist for the same database on the same day, only the most recent is kept
+  
+- **Monthly Backups**: 
+  - One backup per database per month (most recent kept)
+  - Kept for last N months (default: 6)
+  - If multiple backups exist for the same database in the same month, only the most recent is kept
+  
+- **Annual Backups**: 
+  - One backup per database per year (most recent kept)
+  - Kept for last N years (default: 1)
+  - If multiple backups exist for the same database in the same year, only the most recent is kept
+
+- **Per-Database Policy**: Each database has independent retention. Backups from different databases don't affect each other.
+- **Automatic Cleanup**: Older backups are automatically deleted during cleanup based on their respective retention policies
+- **Manual Deletion Disabled**: Backups cannot be manually deleted to prevent accidental data loss. Only automated cleanup removes old backups.
 
 ## Troubleshooting
 
