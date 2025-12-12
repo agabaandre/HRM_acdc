@@ -178,3 +178,9 @@ Artisan::command('backup:stats', function () {
     }
 })->purpose('Display backup statistics');
 
+// Disk Space Monitoring Command
+Artisan::command('backup:check-disk', function () {
+    $this->info('🔍 Checking disk space...');
+    $this->call('backup:check-disk-space');
+})->purpose('Check server disk space and send notifications');
+

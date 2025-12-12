@@ -188,13 +188,16 @@ class BackupService
             
             $dailyRetention = $this->config['retention']['daily_days'];
             $monthlyRetention = $this->config['retention']['monthly_months'];
+            $annualRetention = $this->config['retention']['annual_years'] ?? 1;
             
             $cutoffDate = Carbon::now()->subDays($dailyRetention);
             $monthlyCutoffDate = Carbon::now()->subMonths($monthlyRetention);
+            $annualCutoffDate = Carbon::now()->subYears($annualRetention);
             
             // Group files by type and date
             $dailyBackups = [];
             $monthlyBackups = [];
+            $annualBackups = [];
             
             foreach ($files as $file) {
                 $filename = $file->getFilename();
@@ -208,6 +211,12 @@ class BackupService
                 } elseif (preg_match('/backup_monthly_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
                     $date = Carbon::parse($matches[1]);
                     $monthlyBackups[] = [
+                        'file' => $file,
+                        'date' => $date
+                    ];
+                } elseif (preg_match('/backup_annual_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                    $date = Carbon::parse($matches[1]);
+                    $annualBackups[] = [
                         'file' => $file,
                         'date' => $date
                     ];
@@ -255,6 +264,39 @@ class BackupService
                         $deletedSize += $size;
                         
                         Log::info('Deleted old monthly backup', [
+                            'file' => $backup['file']->getFilename(),
+                            'date' => $backup['date']->toDateString()
+                        ]);
+                    }
+                }
+            }
+            
+            // Keep only one annual backup per year, remove older ones
+            $annualGroups = [];
+            foreach ($annualBackups as $backup) {
+                $key = $backup['date']->format('Y');
+                if (!isset($annualGroups[$key])) {
+                    $annualGroups[$key] = [];
+                }
+                $annualGroups[$key][] = $backup;
+            }
+            
+            foreach ($annualGroups as $year => $backups) {
+                // Sort by date descending
+                usort($backups, function($a, $b) {
+                    return $b['date']->gt($a['date']) ? 1 : -1;
+                });
+                
+                // Keep only the most recent backup for each year
+                // Delete the rest if they're older than retention period
+                foreach ($backups as $index => $backup) {
+                    if ($index > 0 || $backup['date']->lt($annualCutoffDate)) {
+                        $size = File::size($backup['file']);
+                        File::delete($backup['file']);
+                        $deletedCount++;
+                        $deletedSize += $size;
+                        
+                        Log::info('Deleted old annual backup', [
                             'file' => $backup['file']->getFilename(),
                             'date' => $backup['date']->toDateString()
                         ]);
@@ -349,6 +391,7 @@ class BackupService
             $totalSize = 0;
             $dailyCount = 0;
             $monthlyCount = 0;
+            $annualCount = 0;
             
             foreach ($files as $file) {
                 $totalSize += File::size($file);
@@ -358,6 +401,8 @@ class BackupService
                     $dailyCount++;
                 } elseif (strpos($filename, 'backup_monthly_') === 0) {
                     $monthlyCount++;
+                } elseif (strpos($filename, 'backup_annual_') === 0) {
+                    $annualCount++;
                 }
             }
             
@@ -365,6 +410,7 @@ class BackupService
                 'total_files' => count($files),
                 'daily_backups' => $dailyCount,
                 'monthly_backups' => $monthlyCount,
+                'annual_backups' => $annualCount,
                 'total_size' => $totalSize,
                 'total_size_formatted' => $this->formatBytes($totalSize),
                 'storage_path' => $this->storagePath

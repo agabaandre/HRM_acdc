@@ -66,6 +66,30 @@
 
 @section('content')
 <div class="container-fluid">
+    <!-- Disk Space Alert -->
+    @if($diskSpace && $diskSpace['status'] !== 'ok')
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-{{ $diskSpace['status'] === 'critical' ? 'danger' : 'warning' }} alert-dismissible fade show shadow-sm" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-{{ $diskSpace['status'] === 'critical' ? 'exclamation-triangle' : 'exclamation-circle' }} fa-2x me-3"></i>
+                    <div class="flex-grow-1">
+                        <h5 class="alert-heading mb-1">
+                            {{ $diskSpace['status'] === 'critical' ? '🚨 CRITICAL' : '⚠️ WARNING' }}: Disk Space Alert
+                        </h5>
+                        <p class="mb-0">
+                            Server disk usage is at <strong>{{ $diskSpace['usage_percent'] }}%</strong>. 
+                            Free space: <strong>{{ $diskSpace['free_formatted'] }}</strong> of {{ $diskSpace['total_formatted'] }}.
+                            Please take action to free up space.
+                        </p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-md-3">
@@ -98,7 +122,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="card stats-card-info shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -113,8 +137,23 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="card stats-card-warning shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50 mb-1">Annual Backups</h6>
+                            <h3 class="mb-0 text-white">{{ $stats['annual_backups'] ?? 0 }}</h3>
+                        </div>
+                        <div class="fs-1 opacity-50">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stats-card-warning shadow-sm" style="background: linear-gradient(135deg, #fd7e14 0%, #dc6502 100%);">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -129,6 +168,82 @@
             </div>
         </div>
     </div>
+
+    <!-- Disk Space Monitoring Card -->
+    @if($diskSpace)
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-{{ $diskSpace['status'] === 'critical' ? 'danger' : ($diskSpace['status'] === 'warning' ? 'warning' : 'success') }}">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-server me-2 text-{{ $diskSpace['status'] === 'critical' ? 'danger' : ($diskSpace['status'] === 'warning' ? 'warning' : 'success') }}"></i>
+                        Server Disk Space Monitor
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="checkDiskSpace()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <small class="text-muted d-block mb-2">Total Space</small>
+                                <h4 class="mb-0">{{ $diskSpace['total_formatted'] }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <small class="text-muted d-block mb-2">Used Space</small>
+                                <h4 class="mb-0 text-{{ $diskSpace['status'] === 'critical' ? 'danger' : ($diskSpace['status'] === 'warning' ? 'warning' : 'success') }}">
+                                    {{ $diskSpace['used_formatted'] }}
+                                </h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <small class="text-muted d-block mb-2">Free Space</small>
+                                <h4 class="mb-0">{{ $diskSpace['free_formatted'] }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-3 bg-light rounded">
+                                <small class="text-muted d-block mb-2">Usage</small>
+                                <h4 class="mb-0">
+                                    <span class="badge bg-{{ $diskSpace['status'] === 'critical' ? 'danger' : ($diskSpace['status'] === 'warning' ? 'warning' : 'success') }} fs-6">
+                                        {{ $diskSpace['usage_percent'] }}%
+                                    </span>
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar 
+                                {{ $diskSpace['status'] === 'critical' ? 'bg-danger' : ($diskSpace['status'] === 'warning' ? 'bg-warning' : 'bg-success') }}" 
+                                role="progressbar" 
+                                style="width: {{ $diskSpace['usage_percent'] }}%"
+                                aria-valuenow="{{ $diskSpace['usage_percent'] }}" 
+                                aria-valuemin="0" 
+                                aria-valuemax="100">
+                                {{ $diskSpace['usage_percent'] }}%
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Path: <code>{{ $diskSpace['path'] }}</code>
+                            </small>
+                            <small class="text-muted">
+                                Warning: {{ $config['disk_monitor']['warning_threshold'] ?? 80 }}% | 
+                                Critical: {{ $config['disk_monitor']['critical_threshold'] ?? 90 }}%
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Action Buttons -->
     <div class="row mb-4">
@@ -147,12 +262,17 @@
                                 <i class="fas fa-plus-circle me-2"></i>Create Daily Backup
                             </button>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <button type="button" class="btn btn-primary w-100" onclick="createBackup('monthly')">
                                 <i class="fas fa-calendar-check me-2"></i>Create Monthly Backup
                             </button>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-info w-100" onclick="createBackup('annual')">
+                                <i class="fas fa-calendar me-2"></i>Create Annual Backup
+                            </button>
+                        </div>
+                        <div class="col-md-2">
                             <button type="button" class="btn btn-warning w-100" onclick="runCleanup()">
                                 <i class="fas fa-broom me-2"></i>Run Cleanup
                             </button>
@@ -193,6 +313,10 @@
                         <div class="col-md-2">
                             <small class="text-muted">Monthly Retention</small>
                             <p class="mb-0"><strong>{{ $config['retention']['monthly_months'] }} months</strong></p>
+                        </div>
+                        <div class="col-md-2">
+                            <small class="text-muted">Annual Retention</small>
+                            <p class="mb-0"><strong>{{ $config['retention']['annual_years'] ?? 1 }} year(s)</strong></p>
                         </div>
                         <div class="col-md-2">
                             <small class="text-muted">Daily Schedule</small>
@@ -248,7 +372,15 @@
                                         <code class="small">{{ $backup['filename'] }}</code>
                                     </td>
                                     <td>
-                                        <span class="badge backup-type-badge bg-{{ $backup['type'] == 'daily' ? 'success' : 'primary' }}">
+                                        @php
+                                            $badgeColor = match($backup['type']) {
+                                                'daily' => 'success',
+                                                'monthly' => 'primary',
+                                                'annual' => 'info',
+                                                default => 'secondary'
+                                            };
+                                        @endphp
+                                        <span class="badge backup-type-badge bg-{{ $badgeColor }}">
                                             {{ ucfirst($backup['type']) }}
                                         </span>
                                     </td>
@@ -422,6 +554,31 @@
         .catch(error => {
             hideLoading();
             showAlert('danger', 'Error refreshing stats');
+        });
+    }
+    
+    // Check disk space
+    function checkDiskSpace() {
+        showLoading();
+        fetch('{{ route("backups.check-disk-space") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                showAlert('success', 'Disk space checked successfully' + (data.notification_sent ? '. Notification sent if needed.' : ''));
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert('danger', data.message || 'Failed to check disk space');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('danger', 'Error: ' + error.message);
         });
     }
     

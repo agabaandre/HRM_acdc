@@ -20,7 +20,10 @@ return [
         'daily_days' => env('BACKUP_DAILY_DAYS', 5),
         
         // Keep monthly backups for the last N months
-        'monthly_months' => env('BACKUP_MONTHLY_MONTHS', 5),
+        'monthly_months' => env('BACKUP_MONTHLY_MONTHS', 6),
+        
+        // Keep annual backups for the last N years (one backup per year)
+        'annual_years' => env('BACKUP_ANNUAL_YEARS', 1),
     ],
 
     // OneDrive Integration
@@ -60,6 +63,15 @@ return [
     'notification' => [
         'enabled' => env('BACKUP_NOTIFICATION_ENABLED', true),
         'email' => env('BACKUP_NOTIFICATION_EMAIL', ''),
+    ],
+
+    // Disk Space Monitoring
+    'disk_monitor' => [
+        'enabled' => env('BACKUP_DISK_MONITOR_ENABLED', true),
+        'warning_threshold' => env('BACKUP_DISK_WARNING_THRESHOLD', 80), // Percentage
+        'critical_threshold' => env('BACKUP_DISK_CRITICAL_THRESHOLD', 90), // Percentage
+        'notification_emails' => array_filter(explode(',', env('BACKUP_DISK_NOTIFICATION_EMAILS', ''))),
+        'check_interval_hours' => env('BACKUP_DISK_CHECK_INTERVAL', 24), // Check every N hours
     ],
 ];
 

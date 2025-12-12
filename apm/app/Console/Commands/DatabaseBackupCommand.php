@@ -14,7 +14,7 @@ class DatabaseBackupCommand extends Command
      * @var string
      */
     protected $signature = 'backup:database 
-                            {--type=daily : Backup type (daily or monthly)}
+                            {--type=daily : Backup type (daily, monthly, or annual)}
                             {--cleanup : Run cleanup after backup}';
 
     /**
@@ -31,8 +31,8 @@ class DatabaseBackupCommand extends Command
     {
         $type = $this->option('type');
         
-        if (!in_array($type, ['daily', 'monthly'])) {
-            $this->error('Invalid backup type. Use "daily" or "monthly"');
+        if (!in_array($type, ['daily', 'monthly', 'annual'])) {
+            $this->error('Invalid backup type. Use "daily", "monthly", or "annual"');
             return 1;
         }
         

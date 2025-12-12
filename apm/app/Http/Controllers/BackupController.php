@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\BackupService;
+use App\Services\DiskSpaceMonitorService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
@@ -13,10 +14,12 @@ use Carbon\Carbon;
 class BackupController extends Controller
 {
     protected $backupService;
+    protected $diskMonitorService;
 
-    public function __construct(BackupService $backupService)
+    public function __construct(BackupService $backupService, DiskSpaceMonitorService $diskMonitorService)
     {
         $this->backupService = $backupService;
+        $this->diskMonitorService = $diskMonitorService;
     }
 
     /**
@@ -30,7 +33,10 @@ class BackupController extends Controller
         // Get list of backup files
         $backups = $this->getBackupList();
         
-        return view('backups.index', compact('stats', 'config', 'backups'));
+        // Get disk space information
+        $diskSpace = $this->diskMonitorService->getDiskSpace();
+        
+        return view('backups.index', compact('stats', 'config', 'backups', 'diskSpace'));
     }
 
     /**
@@ -54,7 +60,7 @@ class BackupController extends Controller
                 $type = 'unknown';
                 $date = null;
                 
-                if (preg_match('/backup_(daily|monthly)_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
+                if (preg_match('/backup_(daily|monthly|annual)_(\d{4}-\d{2}-\d{2})/', $filename, $matches)) {
                     $type = $matches[1];
                     $date = Carbon::parse($matches[2]);
                 }
@@ -87,7 +93,7 @@ class BackupController extends Controller
     {
         $type = $request->input('type', 'daily');
         
-        if (!in_array($type, ['daily', 'monthly'])) {
+        if (!in_array($type, ['daily', 'monthly', 'annual'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid backup type'
@@ -198,12 +204,36 @@ class BackupController extends Controller
     {
         $stats = $this->backupService->getBackupStats();
         $backups = $this->getBackupList();
+        $diskSpace = $this->diskMonitorService->getDiskSpace();
         
         return response()->json([
             'success' => true,
             'stats' => $stats,
-            'backups' => $backups
+            'backups' => $backups,
+            'disk_space' => $diskSpace
         ]);
+    }
+
+    /**
+     * Check disk space manually
+     */
+    public function checkDiskSpace()
+    {
+        try {
+            $diskSpace = $this->diskMonitorService->getDiskSpace();
+            $notificationSent = $this->diskMonitorService->checkAndNotify();
+            
+            return response()->json([
+                'success' => true,
+                'disk_space' => $diskSpace,
+                'notification_sent' => $notificationSent
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
