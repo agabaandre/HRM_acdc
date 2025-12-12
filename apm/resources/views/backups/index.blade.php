@@ -741,6 +741,265 @@
             alert.remove();
         }, 5000);
     }
+    
+    // Database Management Functions
+    function showDatabaseModal() {
+        const modal = new bootstrap.Modal(document.getElementById('databaseModal'));
+        modal.show();
+        loadDatabases();
+    }
+    
+    function loadDatabases() {
+        fetch('{{ route("backups.databases.index") }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderDatabaseList(data.databases);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading databases:', error);
+            showAlert('danger', 'Error loading databases: ' + error.message);
+        });
+    }
+    
+    function renderDatabaseList(databases) {
+        const listDiv = document.getElementById('databaseList');
+        if (databases.length === 0) {
+            listDiv.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-database fa-3x mb-3 d-block"></i>
+                    <p>No databases configured. Add your first database to get started.</p>
+                    <button type="button" class="btn btn-success" onclick="showAddDatabaseForm()">
+                        <i class="fas fa-plus me-1"></i>Add Database
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Display Name</th>
+                            <th>Database</th>
+                            <th>Host</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        databases.forEach(db => {
+            html += `
+                <tr>
+                    <td>
+                        <strong>${db.display_name}</strong>
+                        ${db.is_default ? '<span class="badge bg-primary ms-1">Default</span>' : ''}
+                    </td>
+                    <td><code>${db.name}</code></td>
+                    <td>${db.host}:${db.port}</td>
+                    <td>${db.priority}</td>
+                    <td>
+                        <span class="badge bg-${db.is_active ? 'success' : 'secondary'}">
+                            ${db.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="editDatabase(${db.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDatabaseConfig(${db.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        listDiv.innerHTML = html;
+    }
+    
+    function showAddDatabaseForm() {
+        document.getElementById('formTitle').textContent = 'Add Database';
+        document.getElementById('databaseFormElement').reset();
+        document.getElementById('dbId').value = '';
+        document.getElementById('dbPassword').required = true;
+        document.getElementById('passwordHint').style.display = 'none';
+        document.getElementById('databaseForm').style.display = 'block';
+        document.getElementById('databaseList').style.display = 'none';
+    }
+    
+    function editDatabase(id) {
+        fetch(`{{ url('backups/databases') }}/${id}`, {
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const db = data.database;
+                document.getElementById('formTitle').textContent = 'Edit Database';
+                document.getElementById('dbId').value = db.id;
+                document.getElementById('dbName').value = db.name;
+                document.getElementById('dbDisplayName').value = db.display_name;
+                document.getElementById('dbHost').value = db.host;
+                document.getElementById('dbPort').value = db.port;
+                document.getElementById('dbUsername').value = db.username;
+                document.getElementById('dbPassword').value = '';
+                document.getElementById('dbPassword').required = false;
+                document.getElementById('passwordHint').style.display = 'block';
+                document.getElementById('dbPriority').value = db.priority;
+                document.getElementById('dbDescription').value = db.description || '';
+                document.getElementById('dbIsActive').checked = db.is_active;
+                document.getElementById('dbIsDefault').checked = db.is_default;
+                document.getElementById('databaseForm').style.display = 'block';
+                document.getElementById('databaseList').style.display = 'none';
+            } else {
+                showAlert('danger', data.message || 'Failed to load database');
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Error loading database: ' + error.message);
+        });
+    }
+    
+    function cancelDatabaseForm() {
+        document.getElementById('databaseForm').style.display = 'none';
+        document.getElementById('databaseList').style.display = 'block';
+        document.getElementById('databaseFormElement').reset();
+    }
+    
+    function deleteDatabaseConfig(id) {
+        if (!confirm('Are you sure you want to delete this database configuration?')) {
+            return;
+        }
+        
+        fetch(`{{ url('backups/databases') }}/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message);
+                loadDatabases();
+            } else {
+                showAlert('danger', data.message || 'Failed to delete database');
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Error: ' + error.message);
+        });
+    }
+    
+    function testDatabaseConnection() {
+        const formData = {
+            host: document.getElementById('dbHost').value,
+            port: document.getElementById('dbPort').value,
+            username: document.getElementById('dbUsername').value,
+            password: document.getElementById('dbPassword').value,
+            name: document.getElementById('dbName').value
+        };
+        
+        if (!formData.host || !formData.port || !formData.username || !formData.password || !formData.name) {
+            showAlert('warning', 'Please fill in all required fields');
+            return;
+        }
+        
+        showLoading();
+        
+        fetch('{{ route("backups.databases.test-connection") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                showAlert('success', data.message);
+            } else {
+                showAlert('danger', data.message || 'Connection test failed');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('danger', 'Error: ' + error.message);
+        });
+    }
+    
+    // Handle database form submission
+    document.getElementById('databaseFormElement').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData);
+        const id = document.getElementById('dbId').value;
+        
+        // Convert checkbox values
+        data.is_active = document.getElementById('dbIsActive').checked;
+        data.is_default = document.getElementById('dbIsDefault').checked;
+        
+        // Convert port and priority to integers
+        data.port = parseInt(data.port);
+        data.priority = parseInt(data.priority) || 0;
+        
+        showLoading();
+        
+        const url = id 
+            ? `{{ url('backups/databases') }}/${id}`
+            : '{{ route("backups.databases.store") }}';
+        const method = id ? 'PUT' : 'POST';
+        
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            hideLoading();
+            if (result.success) {
+                showAlert('success', result.message);
+                cancelDatabaseForm();
+                loadDatabases();
+            } else {
+                showAlert('danger', result.message || 'Failed to save database');
+                if (result.errors) {
+                    console.error('Validation errors:', result.errors);
+                    let errorMsg = 'Validation errors:\n';
+                    Object.keys(result.errors).forEach(key => {
+                        errorMsg += `${key}: ${result.errors[key][0]}\n`;
+                    });
+                    showAlert('danger', errorMsg);
+                }
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showAlert('danger', 'Error: ' + error.message);
+        });
+    });
 </script>
 @endpush
 
