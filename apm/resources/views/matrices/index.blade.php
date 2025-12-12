@@ -273,8 +273,12 @@
         $(document).ready(function() {
             // Pre-fill filters from URL
             const params = new URLSearchParams(window.location.search);
-            $('#yearFilter').val(params.get('year') || '');
-            $('#quarterFilter').val(params.get('quarter') || '');
+            // Default to current year if no year parameter exists
+            const currentYear = new Date().getFullYear();
+            $('#yearFilter').val(params.get('year') || currentYear);
+            // Default to current quarter if no quarter parameter exists
+            const currentQuarter = 'Q' + Math.ceil((new Date().getMonth() + 1) / 3);
+            $('#quarterFilter').val(params.get('quarter') || currentQuarter);
             $('#divisionFilter').val(params.get('division') || '');
             $('#focalFilter').val(params.get('focal_person') || '');
 
