@@ -109,35 +109,24 @@ $this->load->view('ppa_tabs');
 // ✅ SAFE to use here now
 if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 
-// Print Buttons - Show when approval process is complete (first supervisor approved, and second supervisor if exists)
-// Allow printing regardless of staff consent or second supervisor agreement
+// Print Buttons - Show only when endterm is actually approved (draft_status = 2) and not returned
+// If draft_status == 2, it means the endterm is fully approved regardless of supervisor fields
 $canPrint = false;
-if (!empty($ppa)) {
-    // Check if first supervisor has approved
-    $firstSupervisorApproved = !empty($ppa->endterm_supervisor1_discussion_confirmed);
-    
-    // Check if second supervisor exists and is different from first supervisor
-    $hasSecondSupervisor = !empty($ppa->endterm_supervisor_2) && (int)$ppa->endterm_supervisor_2 !== 0;
-    $sameSupervisor = !empty($ppa->endterm_supervisor_1) && (
-                      empty($ppa->endterm_supervisor_2) || 
-                      (int)$ppa->endterm_supervisor_2 === 0 ||
-                      ((int)$ppa->endterm_supervisor_1 === (int)$ppa->endterm_supervisor_2)
-                    );
-    
-    if ($firstSupervisorApproved) {
-        // If same supervisor or no second supervisor, can print after first supervisor approves
-        if ($sameSupervisor) {
-            $canPrint = true;
-        } 
-        // If different second supervisor exists, check if they have also approved (agreement field is set, regardless of value)
-        elseif ($hasSecondSupervisor && !$sameSupervisor) {
-            // Second supervisor has approved if agreement field is set (can be 0 for disagree or 1 for agree)
-            $secondSupervisorApproved = isset($ppa->endterm_supervisor2_agreement) && $ppa->endterm_supervisor2_agreement !== null;
-            $canPrint = $secondSupervisorApproved;
-        } else {
-            // No second supervisor, can print after first supervisor approves
-            $canPrint = true;
+if (!empty($ppa) && !empty($endppa)) {
+    // Check if endterm was returned (most recent action is "Returned")
+    $isReturned = false;
+    if (!empty($approval_trail) && is_array($approval_trail)) {
+        $most_recent_action = reset($approval_trail);
+        if ($most_recent_action && isset($most_recent_action->action) && $most_recent_action->action === 'Returned') {
+            $isReturned = true;
         }
+    }
+    
+    // Only show print buttons if endterm is actually approved (draft_status = 2) and not returned
+    $isEndApproved = isset($endppa->endterm_draft_status) && (int)$endppa->endterm_draft_status === 2;
+    
+    if ($isEndApproved && !$isReturned) {
+        $canPrint = true;
     }
 }
 ?>
