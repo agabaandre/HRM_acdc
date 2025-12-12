@@ -156,3 +156,25 @@ Artisan::command('jobs:dispatch-returned-memos', function () {
 // Instant Reminders Command - Registered in SendInstantRemindersCommand.php
 // Scheduled tasks are now configured in app/Console/Kernel.php
 
+// Database Backup Commands
+Artisan::command('backup:stats', function () {
+    $this->info('📊 Backup Statistics:');
+    
+    try {
+        $service = new \App\Services\BackupService();
+        $stats = $service->getBackupStats();
+        
+        if ($stats) {
+            $this->line("  Total Files: {$stats['total_files']}");
+            $this->line("  Daily Backups: {$stats['daily_backups']}");
+            $this->line("  Monthly Backups: {$stats['monthly_backups']}");
+            $this->line("  Total Size: {$stats['total_size_formatted']}");
+            $this->line("  Storage Path: {$stats['storage_path']}");
+        } else {
+            $this->error('Failed to get backup statistics');
+        }
+    } catch (\Exception $e) {
+        $this->error('Error: ' . $e->getMessage());
+    }
+})->purpose('Display backup statistics');
+
