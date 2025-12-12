@@ -119,14 +119,14 @@ if (!empty($ppa) && !empty($endppa)) {
         $most_recent_action = reset($approval_trail);
         if ($most_recent_action && isset($most_recent_action->action) && $most_recent_action->action === 'Returned') {
             $isReturned = true;
-        }
+        } 
     }
     
     // Only show print buttons if endterm is actually approved (draft_status = 2) and not returned
     $isEndApproved = isset($endppa->endterm_draft_status) && (int)$endppa->endterm_draft_status === 2;
     
     if ($isEndApproved && !$isReturned) {
-        $canPrint = true;
+            $canPrint = true;
     }
 }
 ?>
