@@ -93,14 +93,14 @@
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card stats-card shadow-sm">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-white-50 mb-1">Total Backups</h6>
-                            <h3 class="mb-0 text-white">{{ $stats['total_files'] ?? 0 }}</h3>
+                            <h6 class="text-white mb-1" style="opacity: 0.9; font-weight: 500;">Total Backups</h6>
+                            <h3 class="mb-0 text-white" style="font-weight: 700;">{{ $stats['total_files'] ?? 0 }}</h3>
                         </div>
-                        <div class="fs-1 opacity-50">
+                        <div class="fs-1 opacity-50 text-white">
                             <i class="fas fa-database"></i>
                         </div>
                     </div>
@@ -108,14 +108,14 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stats-card-success shadow-sm">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-white-50 mb-1">Daily Backups</h6>
-                            <h3 class="mb-0 text-white">{{ $stats['daily_backups'] ?? 0 }}</h3>
+                            <h6 class="text-white mb-1" style="opacity: 0.9; font-weight: 500;">Daily Backups</h6>
+                            <h3 class="mb-0 text-white" style="font-weight: 700;">{{ $stats['daily_backups'] ?? 0 }}</h3>
                         </div>
-                        <div class="fs-1 opacity-50">
+                        <div class="fs-1 opacity-50 text-white">
                             <i class="fas fa-calendar-day"></i>
                         </div>
                     </div>
@@ -123,14 +123,14 @@
             </div>
         </div>
         <div class="col-md-2">
-            <div class="card stats-card-info shadow-sm">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-white-50 mb-1">Monthly Backups</h6>
-                            <h3 class="mb-0 text-white">{{ $stats['monthly_backups'] ?? 0 }}</h3>
+                            <h6 class="text-white mb-1" style="opacity: 0.9; font-weight: 500;">Monthly Backups</h6>
+                            <h3 class="mb-0 text-white" style="font-weight: 700;">{{ $stats['monthly_backups'] ?? 0 }}</h3>
                         </div>
-                        <div class="fs-1 opacity-50">
+                        <div class="fs-1 opacity-50 text-white">
                             <i class="fas fa-calendar-alt"></i>
                         </div>
                     </div>
@@ -138,14 +138,14 @@
             </div>
         </div>
         <div class="col-md-2">
-            <div class="card stats-card-warning shadow-sm">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-white-50 mb-1">Annual Backups</h6>
-                            <h3 class="mb-0 text-white">{{ $stats['annual_backups'] ?? 0 }}</h3>
+                            <h6 class="text-white mb-1" style="opacity: 0.9; font-weight: 500;">Annual Backups</h6>
+                            <h3 class="mb-0 text-white" style="font-weight: 700;">{{ $stats['annual_backups'] ?? 0 }}</h3>
                         </div>
-                        <div class="fs-1 opacity-50">
+                        <div class="fs-1 opacity-50 text-white">
                             <i class="fas fa-calendar"></i>
                         </div>
                     </div>
@@ -153,14 +153,14 @@
             </div>
         </div>
         <div class="col-md-2">
-            <div class="card stats-card-warning shadow-sm" style="background: linear-gradient(135deg, #fd7e14 0%, #dc6502 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #fd7e14 0%, #dc6502 100%);">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-white-50 mb-1">Total Size</h6>
-                            <h3 class="mb-0 text-white">{{ $stats['total_size_formatted'] ?? '0 B' }}</h3>
+                            <h6 class="text-white mb-1" style="opacity: 0.9; font-weight: 500;">Total Size</h6>
+                            <h3 class="mb-0 text-white" style="font-weight: 700;">{{ $stats['total_size_formatted'] ?? '0 B' }}</h3>
                         </div>
-                        <div class="fs-1 opacity-50">
+                        <div class="fs-1 opacity-50 text-white">
                             <i class="fas fa-hdd"></i>
                         </div>
                     </div>
@@ -418,12 +418,6 @@
                                            title="Download">
                                             <i class="fas fa-download"></i>
                                         </a>
-                                        <button type="button" 
-                                                class="btn btn-sm btn-outline-danger" 
-                                                onclick="deleteBackup('{{ $backup['filename'] }}')"
-                                                title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
                                     </td>
                                 </tr>
                                 @empty
@@ -623,36 +617,6 @@
                 setTimeout(() => location.reload(), 1500);
             } else {
                 showAlert('danger', data.message || 'Failed to create backup');
-            }
-        })
-        .catch(error => {
-            hideLoading();
-            showAlert('danger', 'Error: ' + error.message);
-        });
-    }
-    
-    // Delete backup
-    function deleteBackup(filename) {
-        if (!confirm(`Are you sure you want to delete "${filename}"?`)) {
-            return;
-        }
-        
-        showLoading();
-        
-        fetch(`{{ url('backups') }}/${encodeURIComponent(filename)}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideLoading();
-            if (data.success) {
-                showAlert('success', data.message);
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showAlert('danger', data.message || 'Failed to delete backup');
             }
         })
         .catch(error => {

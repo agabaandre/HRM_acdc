@@ -159,32 +159,18 @@ class BackupController extends Controller
 
     /**
      * Delete a backup file
+     * 
+     * DISABLED: This method has been disabled for security reasons.
+     * Backups can only be deleted through the automated cleanup process
+     * which follows the retention policy. Manual deletion is not allowed
+     * to prevent accidental or malicious deletion of important backups.
      */
     public function delete($filename)
     {
-        $storagePath = config('backup.storage_path');
-        $filePath = $storagePath . '/' . basename($filename);
-        
-        if (!File::exists($filePath)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Backup file not found'
-            ], 404);
-        }
-        
-        try {
-            File::delete($filePath);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Backup deleted successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error deleting backup: ' . $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Manual backup deletion is disabled for security. Backups are automatically cleaned up based on retention policy.'
+        ], 403);
     }
 
     /**
