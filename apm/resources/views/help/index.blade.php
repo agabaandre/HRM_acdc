@@ -94,17 +94,26 @@
                                 <i class="fas fa-link me-2 text-secondary"></i>Additional Resources
                             </h5>
                             <div class="list-group">
-                                <a href="{{ url('../apm/documentation/README.md') }}" target="_blank" class="list-group-item list-group-item-action">
+                                <a href="{{ route('help.documentation.file', 'README.md') }}" class="list-group-item list-group-item-action">
                                     <i class="fas fa-book me-2"></i>Complete APM Documentation
                                 </a>
-                                <a href="{{ url('../apm/documentation/DEPLOYMENT.md') }}" target="_blank" class="list-group-item list-group-item-action">
+                                <a href="{{ route('help.documentation.file', 'DEPLOYMENT.md') }}" class="list-group-item list-group-item-action">
                                     <i class="fas fa-server me-2"></i>Deployment Guide
                                 </a>
-                                <a href="{{ url('../apm/documentation/QUEUE_SETUP_GUIDE.md') }}" target="_blank" class="list-group-item list-group-item-action">
+                                <a href="{{ route('help.documentation.file', 'QUEUE_SETUP_GUIDE.md') }}" class="list-group-item list-group-item-action">
                                     <i class="fas fa-tasks me-2"></i>Queue Setup Guide
                                 </a>
-                                <a href="{{ url('../apm/README_BACKUP.md') }}" target="_blank" class="list-group-item list-group-item-action">
-                                    <i class="fas fa-database me-2"></i>Database Backup System
+                                <a href="{{ route('help.documentation.file', 'QUEUE_TROUBLESHOOTING.md') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-wrench me-2"></i>Queue Troubleshooting
+                                </a>
+                                <a href="{{ route('help.documentation.file', 'CRON_SETUP.md') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-clock me-2"></i>Cron Setup Guide
+                                </a>
+                                <a href="{{ route('help.documentation.file', 'APPROVAL_TRAIL_MANAGEMENT.md') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-list-check me-2"></i>Approval Trail Management
+                                </a>
+                                <a href="{{ route('help.documentation.file', 'DOCUMENT_NUMBERING_SYSTEM.md') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-hashtag me-2"></i>Document Numbering System
                                 </a>
                             </div>
                         </div>

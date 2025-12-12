@@ -58,6 +58,75 @@ class HelpController extends Controller
     }
 
     /**
+     * Display a documentation file
+     */
+    public function documentation($file = null)
+    {
+        // If no file specified, show README.md
+        if (!$file) {
+            $file = 'README.md';
+        }
+
+        // Security: Only allow .md files
+        if (!preg_match('/^[a-zA-Z0-9_-]+\.md$/', $file)) {
+            abort(404, 'Invalid file name');
+        }
+
+        // Map common documentation files
+        $fileMap = [
+            'README.md' => 'documentation/README.md',
+            'USER_GUIDE.md' => 'documentation/USER_GUIDE.md',
+            'APPROVERS_GUIDE.md' => 'documentation/APPROVERS_GUIDE.md',
+            'DEPLOYMENT.md' => 'documentation/DEPLOYMENT.md',
+            'QUEUE_SETUP_GUIDE.md' => 'documentation/QUEUE_SETUP_GUIDE.md',
+            'QUEUE_TROUBLESHOOTING.md' => 'documentation/QUEUE_TROUBLESHOOTING.md',
+            'CRON_SETUP.md' => 'documentation/CRON_SETUP.md',
+            'APPROVAL_TRAIL_MANAGEMENT.md' => 'documentation/APPROVAL_TRAIL_MANAGEMENT.md',
+            'APPROVAL_TRAIL_ARCHIVING.md' => 'documentation/APPROVAL_TRAIL_ARCHIVING.md',
+            'DOCUMENT_NUMBERING_SYSTEM.md' => 'documentation/DOCUMENT_NUMBERING_SYSTEM.md',
+            'DOCUMENT_NUMBER_MANAGEMENT.md' => 'documentation/DOCUMENT_NUMBER_MANAGEMENT.md',
+            'CHANGE_TRACKING_FEASIBILITY.md' => 'documentation/CHANGE_TRACKING_FEASIBILITY.md',
+            'DAILY_NOTIFICATIONS_SETUP.md' => 'documentation/DAILY_NOTIFICATIONS_SETUP.md',
+            'SESSION_EXPIRY_SETUP.md' => 'documentation/SESSION_EXPIRY_SETUP.md',
+            'SUPERVISOR_SETUP_DEMO.md' => 'documentation/SUPERVISOR_SETUP_DEMO.md',
+            'SYSTEMD_QUEUE_GUIDE.md' => 'documentation/SYSTEMD_QUEUE_GUIDE.md',
+            'SYNC_IMPROVEMENTS.md' => 'documentation/SYNC_IMPROVEMENTS.md',
+        ];
+
+        // Check if file is in the map
+        if (isset($fileMap[$file])) {
+            $filePath = base_path($fileMap[$file]);
+        } else {
+            // Try to find in documentation directory
+            $filePath = base_path('documentation/' . $file);
+        }
+        
+        if (!File::exists($filePath)) {
+            abort(404, 'Documentation file not found');
+        }
+
+        // Security: Ensure file is within documentation directory
+        $realPath = realpath($filePath);
+        $docPath = realpath(base_path('documentation'));
+        if (!$realPath || strpos($realPath, $docPath) !== 0) {
+            abort(404, 'Access denied');
+        }
+
+        $content = File::get($filePath);
+        $html = $this->markdownToHtml($content);
+
+        // Generate title from filename
+        $title = str_replace(['.md', '_'], ['', ' '], $file);
+        $title = ucwords($title);
+
+        return view('help.guide', [
+            'title' => $title,
+            'content' => $html,
+            'guideType' => 'documentation'
+        ]);
+    }
+
+    /**
      * Convert markdown to HTML
      */
     protected function markdownToHtml($markdown)
