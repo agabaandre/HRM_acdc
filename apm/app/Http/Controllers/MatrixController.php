@@ -106,21 +106,26 @@ class MatrixController extends Controller
         $currentYear = now()->year;
         $currentQuarter = 'Q' . now()->quarter;
        
-        $selectedYear = $request->get('year', $currentYear);
-        $selectedQuarter = $request->get('quarter', $currentQuarter);
-
-        // Apply year filter (default to current year)
-        $query->where('year', $selectedYear);
+        // Get selected values from request, use defaults only if not provided at all
+        $selectedYear = $request->get('year', '');
+        $selectedQuarter = $request->get('quarter', '');
         
-        if ($request->filled('year')) {
-            $query->where('year', $request->year);
+        // Use defaults only on initial page load (no filters provided)
+        if (empty($selectedYear) && !$request->has('year')) {
+            $selectedYear = $currentYear;
+        }
+        if (empty($selectedQuarter) && !$request->has('quarter')) {
+            $selectedQuarter = $currentQuarter;
+        }
+
+        // Apply year filter only if a year is selected
+        if (!empty($selectedYear)) {
+            $query->where('year', $selectedYear);
         }
     
-        // Apply quarter filter (default to current quarter)
-        $query->where('quarter', $selectedQuarter);
-    
-        if ($request->filled('quarter')) {
-            $query->where('quarter', $request->quarter);
+        // Apply quarter filter only if a quarter is selected
+        if (!empty($selectedQuarter)) {
+            $query->where('quarter', $selectedQuarter);
         }
     
         if ($request->filled('focal_person')) {
@@ -128,7 +133,7 @@ class MatrixController extends Controller
         }
     
         if ($request->filled('division')) {
-            $query->where('id', $request->division);
+            $query->where('division_id', $request->division);
         }
 
        //  dd(getFullSql($query));
@@ -179,21 +184,18 @@ class MatrixController extends Controller
             }
         });
 
-        // Apply filters to my division query (default to current year and quarter)
-        $myDivisionQuery->where('year', $selectedYear);
-        $myDivisionQuery->where('quarter', $selectedQuarter);
-        
-        if ($request->filled('year')) {
-            $myDivisionQuery->where('year', $request->year);
+        // Apply filters to my division query (only if values are provided)
+        if (!empty($selectedYear)) {
+            $myDivisionQuery->where('year', $selectedYear);
         }
-        if ($request->filled('quarter')) {
-            $myDivisionQuery->where('quarter', $request->quarter);
+        if (!empty($selectedQuarter)) {
+            $myDivisionQuery->where('quarter', $selectedQuarter);
         }
         if ($request->filled('focal_person')) {
             $myDivisionQuery->where('focal_person_id', $request->focal_person);
         }
         if ($request->filled('division')) {
-            $myDivisionQuery->where('id', $request->division);
+            $myDivisionQuery->where('division_id', $request->division);
         }
 
         $myDivisionMatrices = $myDivisionQuery->orderBy('year', 'desc')
@@ -214,16 +216,12 @@ class MatrixController extends Controller
                 }
             ]);
 
-            // Apply same filters to all matrices query (default to current year and quarter)
-            $allMatricesQuery->where('year', $selectedYear);
-            $allMatricesQuery->where('quarter', $selectedQuarter);
-            
-            if ($request->filled('year')) {
-                $allMatricesQuery->where('year', $request->year);
+            // Apply same filters to all matrices query (only if values are provided)
+            if (!empty($selectedYear)) {
+                $allMatricesQuery->where('year', $selectedYear);
             }
-        
-            if ($request->filled('quarter')) {
-                $allMatricesQuery->where('quarter', $request->quarter);
+            if (!empty($selectedQuarter)) {
+                $allMatricesQuery->where('quarter', $selectedQuarter);
             }
         
             if ($request->filled('focal_person')) {
@@ -231,7 +229,7 @@ class MatrixController extends Controller
             }
         
             if ($request->filled('division')) {
-                $allMatricesQuery->where('id', $request->division);
+                $allMatricesQuery->where('division_id', $request->division);
             }
 
             $allMatrices = $allMatricesQuery->orderBy('year', 'desc')

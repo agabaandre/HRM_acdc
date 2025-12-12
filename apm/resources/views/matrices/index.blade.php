@@ -322,14 +322,15 @@
                 currentUrl.searchParams.set('page', page);
                 currentUrl.searchParams.set('tab', tabId);
                 
-                // Include current filter values
-                const year = document.getElementById('yearFilter')?.value;
-                const quarter = document.getElementById('quarterFilter')?.value;
-                const division = document.getElementById('divisionFilter')?.value;
-                const focalPerson = document.getElementById('focalFilter')?.value;
+                // Include current filter values (include empty values to clear filters)
+                const year = document.getElementById('yearFilter')?.value || '';
+                const quarter = document.getElementById('quarterFilter')?.value || '';
+                const division = document.getElementById('divisionFilter')?.value || '';
+                const focalPerson = document.getElementById('focalFilter')?.value || '';
                 
-                if (year) currentUrl.searchParams.set('year', year);
-                if (quarter) currentUrl.searchParams.set('quarter', quarter);
+                // Always set parameters, even if empty, to properly handle "All Years" and "All Quarters"
+                currentUrl.searchParams.set('year', year);
+                currentUrl.searchParams.set('quarter', quarter);
                 if (division) currentUrl.searchParams.set('division', division);
                 if (focalPerson) currentUrl.searchParams.set('focal_person', focalPerson);
                 
