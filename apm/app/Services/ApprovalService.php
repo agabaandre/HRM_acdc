@@ -294,6 +294,9 @@ class ApprovalService
                 if (get_class($model) === 'App\Models\Matrix') {
                     $model->activities()->where('is_single_memo', 0)->update(['overall_status' => 'approved']);
                 }
+                
+                // Send final approval notifications
+                $this->sendFinalApprovalNotifications($model);
             }
         }
 
@@ -1315,12 +1318,172 @@ class ApprovalService
             
             return true;
         } catch (\Exception $e) {
-            \Log::error('Failed to update approval order map', [
+            Log::error('Failed to update approval order map', [
                 'model_id' => $model->id,
                 'model_type' => get_class($model),
                 'error' => $e->getMessage()
             ]);
             return false;
         }
+    }
+
+    /**
+     * Send final approval notifications to relevant stakeholders
+     * Notifies the creator and (for matrices) division-related staff
+     * 
+     * @param Model $model The approved model
+     * @return void
+     */
+    public function sendFinalApprovalNotifications(Model $model): void
+    {
+        try {
+            // Get all recipients
+            $recipients = $this->getFinalApprovalRecipients($model);
+            
+            if (empty($recipients)) {
+                Log::warning('No recipients found for final approval notification', [
+                    'model_id' => $model->id,
+                    'model_type' => get_class($model)
+                ]);
+                return;
+            }
+
+            // Generate message
+            $resourceType = ucfirst(class_basename($model));
+            $message = sprintf(
+                '%s #%d has been approved by the final approver.',
+                $resourceType,
+                $model->id
+            );
+
+            // Determine the appropriate email template based on model type
+            $modelClass = get_class($model);
+            $template = 'emails.generic-notification'; // Default template
+            
+            switch ($modelClass) {
+                case 'App\Models\Matrix':
+                    $template = 'emails.matrix-notification';
+                    break;
+                case 'App\Models\RequestARF':
+                    $template = 'emails.arf-notification';
+                    break;
+                case 'App\Models\SpecialMemo':
+                    $template = 'emails.special-memo-notification';
+                    break;
+                case 'App\Models\NonTravelMemo':
+                case 'App\Models\Activity':
+                case 'App\Models\ServiceRequest':
+                case 'App\Models\ChangeRequest':
+                    $template = 'emails.matrix-notification';
+                    break;
+                default:
+                    $template = 'emails.generic-notification';
+            }
+
+            // Send notification to each recipient
+            foreach ($recipients as $recipient) {
+                if (!$recipient || !$recipient->work_email) {
+                    continue;
+                }
+
+                // Queue the email notification
+                \App\Jobs\SendNotificationEmailJob::dispatch(
+                    $model, 
+                    $recipient, 
+                    'approved', 
+                    $message, 
+                    $template
+                );
+                
+                // Create database notification
+                \App\Models\Notification::create([
+                    'staff_id' => $recipient->staff_id,
+                    'model_id' => $model->id,
+                    'model_type' => $modelClass,
+                    'message' => $message,
+                    'type' => 'approved',
+                    'is_read' => false
+                ]);
+            }
+
+            Log::info('Final approval notifications sent', [
+                'model_id' => $model->id,
+                'model_type' => $modelClass,
+                'recipient_count' => count($recipients)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send final approval notifications', [
+                'model_id' => $model->id,
+                'model_type' => get_class($model),
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get recipients for final approval notifications
+     * 
+     * @param Model $model The approved model
+     * @return array Array of Staff objects
+     */
+    private function getFinalApprovalRecipients(Model $model): array
+    {
+        $recipients = [];
+        
+        // Always notify the creator
+        if (isset($model->staff_id) && $model->staff_id) {
+            $creator = Staff::where('staff_id', $model->staff_id)->first();
+            if ($creator && $creator->work_email) {
+                $recipients[$creator->staff_id] = $creator;
+            }
+        }
+
+        // For matrices, also notify division-related staff
+        if (get_class($model) === 'App\Models\Matrix' && method_exists($model, 'division') && $model->division) {
+            $division = $model->division;
+            
+            // Focal Person
+            if ($division->focal_person) {
+                $focalPerson = Staff::where('staff_id', $division->focal_person)->first();
+                if ($focalPerson && $focalPerson->work_email && !isset($recipients[$focalPerson->staff_id])) {
+                    $recipients[$focalPerson->staff_id] = $focalPerson;
+                }
+            }
+
+            // Division Head
+            if ($division->division_head) {
+                $divisionHead = Staff::where('staff_id', $division->division_head)->first();
+                if ($divisionHead && $divisionHead->work_email && !isset($recipients[$divisionHead->staff_id])) {
+                    $recipients[$divisionHead->staff_id] = $divisionHead;
+                }
+            }
+
+            // Director
+            if ($division->director_id) {
+                $director = Staff::where('staff_id', $division->director_id)->first();
+                if ($director && $director->work_email && !isset($recipients[$director->staff_id])) {
+                    $recipients[$director->staff_id] = $director;
+                }
+            }
+
+            // Finance Officer
+            if ($division->finance_officer) {
+                $financeOfficer = Staff::where('staff_id', $division->finance_officer)->first();
+                if ($financeOfficer && $financeOfficer->work_email && !isset($recipients[$financeOfficer->staff_id])) {
+                    $recipients[$financeOfficer->staff_id] = $financeOfficer;
+                }
+            }
+
+            // Admin Assistant
+            if ($division->admin_assistant) {
+                $adminAssistant = Staff::where('staff_id', $division->admin_assistant)->first();
+                if ($adminAssistant && $adminAssistant->work_email && !isset($recipients[$adminAssistant->staff_id])) {
+                    $recipients[$adminAssistant->staff_id] = $adminAssistant;
+                }
+            }
+        }
+
+        return array_values($recipients);
     }
 }

@@ -143,7 +143,7 @@
                         <span class="input-group-text bg-white"><i class="bx bx-calendar"></i></span>
                         <select class="form-select" id="yearFilter">
                             <option value="">All Years</option>
-                            @foreach (range(date('Y'), date('Y') - 5) as $year)
+                            @foreach (range(date('Y') + 1, date('Y') - 5) as $year)
                                 <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
                             @endforeach
                         </select>

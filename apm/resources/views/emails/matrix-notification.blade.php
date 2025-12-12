@@ -185,6 +185,10 @@
                     {{ $resource_type }} Approval Request
                 @elseif($type == 'returned')
                     {{ $resource_type }} Returned for Revision
+                @elseif($type == 'created')
+                    {{ $resource->division ? ($resource->division->name ?? $resource->division->division_name ?? 'Matrix') : 'Matrix' }} Notification
+                @elseif($type == 'approved')
+                    {{ $resource_type }} Approved
                 @else
                     {{ $resource_type }} Notification
                 @endif
@@ -195,34 +199,86 @@
         <div class="content">
             <p>Dear <strong>{{ $recipient->title }} {{ $recipient->fname }} {{ $recipient->lname }}</strong>,</p>
 
-            <p>{{ $message }}</p>
-
-            <div class="details">
-                <h2>Approval Details</h2>
-                <div class="details-grid">
-                    <div class="detail-item">
-                        <span class="detail-label">Document Number:</span>
-                        <span class="detail-value">#{{ isset($resource->document_number) ? $resource->document_number : 'QM/'.$resource->year.'/'.$resource->quarter }} </span>
+            @if($type == 'created')
+                <!-- Special format for created notifications -->
+                <div class="details" style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin-bottom: 30px; border-left: 4px solid #119A48;">
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Matrix:</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $resource->title ?? 'Matrix #' . $resource->id }}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Created by:</span>
-                        <span class="detail-value">{{ $resource->staff->fname }} {{ $resource->staff->lname }}</span>
+                    @if($resource->description)
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Description:</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $resource->description }}</span>
                     </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Division:</span>
-                        <span class="detail-value">{{ $resource->division ? ($resource->division->name ?? $resource->division->division_name ?? 'N/A') : 'N/A' }}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Status:</span>
-                        <span class="detail-value status-{{ strtolower($resource->overall_status) }}">{{ ucfirst($resource->overall_status) }}</span>
+                    @endif
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: none;">
+                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Message:</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $message }}</span>
                     </div>
                 </div>
-            </div>
+            @elseif($type == 'approved')
+                <!-- Special format for approved notifications -->
+                <div class="details" style="background-color: #d4edda; border-radius: 6px; padding: 20px; margin-bottom: 30px; border-left: 4px solid #28a745;">
+                    <h2 style="color: #155724; margin-top: 0; margin-bottom: 15px;">
+                        ✓ Approval Confirmed
+                    </h2>
+                    <p style="color: #155724; font-size: 16px; margin-bottom: 15px;">{{ $message }}</p>
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #c3e6cb;">
+                        <span class="detail-label" style="font-weight: 600; color: #155724; min-width: 140px;">Document:</span>
+                        <span class="detail-value" style="color: #155724; flex: 1;">{{ $resource->title ?? $resource_type . ' #' . $resource->id }}</span>
+                    </div>
+                    @if($resource->description)
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #c3e6cb;">
+                        <span class="detail-label" style="font-weight: 600; color: #155724; min-width: 140px;">Description:</span>
+                        <span class="detail-value" style="color: #155724; flex: 1;">{{ $resource->description }}</span>
+                    </div>
+                    @endif
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: none;">
+                        <span class="detail-label" style="font-weight: 600; color: #155724; min-width: 140px;">Status:</span>
+                        <span class="detail-value" style="color: #155724; flex: 1;">
+                            <span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500;">Approved</span>
+                        </span>
+                    </div>
+                </div>
+            @else
+                <p>{{ $message }}</p>
 
-            <div style="text-align: center;">
+                <div class="details">
+                    <h2>Approval Details</h2>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Document Number:</span>
+                            <span class="detail-value">#{{ isset($resource->document_number) ? $resource->document_number : 'QM/'.$resource->year.'/'.$resource->quarter }} </span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Created by:</span>
+                            <span class="detail-value">{{ $resource->staff->fname }} {{ $resource->staff->lname }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Division:</span>
+                            <span class="detail-value">{{ $resource->division ? ($resource->division->name ?? $resource->division->division_name ?? 'N/A') : 'N/A' }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Status:</span>
+                            <span class="detail-value status-{{ strtolower($resource->overall_status) }}">{{ ucfirst($resource->overall_status) }}</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if($type != 'approved')
+            <p style="margin-top: 20px;">Please review and take appropriate action.</p>
+            @endif
+
+            <div style="text-align: center; margin-top: 30px;">
                 <a href="{{ $resource->resource_url }}" class="btn">View Details</a>
             </div>
 
+            <p style="margin-top: 30px; margin-bottom: 0;">
+                Best regards,<br>
+                <strong>Africa CDC APM System</strong>
+            </p>
 
         </div>
 
