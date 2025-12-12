@@ -301,12 +301,18 @@ class BackupController extends Controller
         }
 
         try {
+            $data = $request->all();
+            
+            // Convert boolean values properly
+            $data['is_active'] = filter_var($data['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            $data['is_default'] = filter_var($data['is_default'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            
             // If this is set as default, unset other defaults
-            if ($request->input('is_default', false)) {
+            if ($data['is_default']) {
                 BackupDatabase::where('is_default', true)->update(['is_default' => false]);
             }
 
-            $database = BackupDatabase::create($request->all());
+            $database = BackupDatabase::create($data);
 
             return response()->json([
                 'success' => true,
@@ -360,6 +366,10 @@ class BackupController extends Controller
             if (empty($data['password'])) {
                 unset($data['password']);
             }
+            
+            // Convert boolean values properly
+            $data['is_active'] = filter_var($data['is_active'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $data['is_default'] = filter_var($data['is_default'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
             $database->update($data);
 
