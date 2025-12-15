@@ -26,6 +26,7 @@ use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Models\FundCodeTransaction;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 
 class SpecialMemoController extends Controller
 {
@@ -1838,5 +1839,68 @@ class SpecialMemoController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Admin-only method to update creator (staff_id) and responsible person for special memos
+     * Only accessible to users with role == 10 (system admin)
+     */
+    public function adminUpdate(Request $request, SpecialMemo $specialMemo): JsonResponse
+    {
+        // Check if user is system admin (role == 10)
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        
+        if ($userRole != 10) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Only system administrators can perform this action.'
+            ], 403);
+        }
+
+        // Validate request
+        $request->validate([
+            'staff_id' => 'required|integer|exists:staff,staff_id',
+            'responsible_person_id' => 'required|integer|exists:staff,staff_id',
+        ]);
+
+        try {
+            // Store original values for logging
+            $oldStaffId = $specialMemo->staff_id;
+            $oldResponsiblePersonId = $specialMemo->responsible_person_id;
+            
+            // Update the special memo
+            $specialMemo->update([
+                'staff_id' => $request->input('staff_id'),
+                'responsible_person_id' => $request->input('responsible_person_id'),
+            ]);
+
+            // Log the admin action
+            Log::info('Admin updated special memo creator/responsible person', [
+                'admin_user_id' => $user['user_id'] ?? $user['id'] ?? null,
+                'special_memo_id' => $specialMemo->id,
+                'old_staff_id' => $oldStaffId,
+                'new_staff_id' => $request->input('staff_id'),
+                'old_responsible_person_id' => $oldResponsiblePersonId,
+                'new_responsible_person_id' => $request->input('responsible_person_id'),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Creator and Responsible Person updated successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update special memo creator/responsible person', [
+                'special_memo_id' => $specialMemo->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
