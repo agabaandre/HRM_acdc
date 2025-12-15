@@ -477,11 +477,11 @@
     <!-- Enhanced Header -->
     <div class="bg-white border-b border-gray-200 shadow-sm">
         <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center py-4">
-                <div>
+            <div class="py-4">
+                <div class="mb-3">
                     <h1 class="h2 fw-bold text-dark mb-0">Activity Details: {{ $activity->document_number }}</h1>
                     <p class="text-muted mb-0">Review and manage activity details</p>
-</div>
+                </div>
                 <div class="d-flex gap-2 flex-wrap">
                     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
                         <i class="bx bx-arrow-back"></i>
@@ -493,6 +493,17 @@
                             <i class="bx bx-edit"></i>
                             <span>Edit Activity</span>
                         </a>
+                    @endif
+                    
+                    @php
+                        $isAdmin = user_session('user_role') == 10;
+                    @endphp
+                    
+                    @if($isAdmin)
+                        <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#adminUpdateModal">
+                            <i class="bx bx-user-pin"></i>
+                            <span>Admin: Update Creator/Responsible</span>
+                        </button>
                     @endif
                     
                     @php
@@ -516,6 +527,7 @@
                             <span>Create ARF</span>
                         </button>
                     @endif
+                </div>
                                 
                          
                     {{-- Service Request Button --}}
@@ -1288,6 +1300,69 @@
   </div>
 </div>
 
+<!-- Admin Update Creator/Responsible Person Modal -->
+@if($isAdmin ?? false)
+<div class="modal fade" id="adminUpdateModal" tabindex="-1" aria-labelledby="adminUpdateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="adminUpdateModalLabel">
+                    <i class="bx bx-user-pin me-2"></i>Admin: Update Creator & Responsible Person
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="adminUpdateForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bx bx-info-circle me-2"></i>
+                        <strong>Warning:</strong> This action can only be performed by system administrators. Use with caution.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="admin_creator_id" class="form-label fw-semibold">
+                            <i class="bx bx-user me-1 text-primary"></i>Creator (Staff ID) <span class="text-danger">*</span>
+                        </label>
+                        <select name="staff_id" id="admin_creator_id" class="form-select select2" required style="width: 100%;">
+                            <option value="">Select Creator</option>
+                            @foreach(\App\Models\Staff::active()->select(['id', 'fname', 'lname', 'staff_id', 'job_name'])->get() as $staff)
+                                <option value="{{ $staff->staff_id }}" {{ $activity->staff_id == $staff->staff_id ? 'selected' : '' }}>
+                                    {{ $staff->fname }} {{ $staff->lname }} - {{ $staff->job_name ?? 'N/A' }} (ID: {{ $staff->staff_id }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Current: {{ optional($activity->staff)->fname }} {{ optional($activity->staff)->lname ?? 'Not assigned' }}</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="admin_responsible_person_id" class="form-label fw-semibold">
+                            <i class="bx bx-user-check me-1 text-success"></i>Responsible Person (Staff ID) <span class="text-danger">*</span>
+                        </label>
+                        <select name="responsible_person_id" id="admin_responsible_person_id" class="form-select select2" required style="width: 100%;">
+                            <option value="">Select Responsible Person</option>
+                            @foreach(\App\Models\Staff::active()->select(['id', 'fname', 'lname', 'staff_id', 'job_name'])->get() as $staff)
+                                <option value="{{ $staff->staff_id }}" {{ $activity->responsible_person_id == $staff->staff_id ? 'selected' : '' }}>
+                                    {{ $staff->fname }} {{ $staff->lname }} - {{ $staff->job_name ?? 'N/A' }} (ID: {{ $staff->staff_id }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Current: {{ optional($activity->focalPerson)->fname }} {{ optional($activity->focalPerson)->lname ?? 'Not assigned' }}</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bx bx-x me-1"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bx bx-save me-1"></i> Update
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 @endsection
 
 @push('styles')
@@ -1518,6 +1593,72 @@
 
 @push('scripts')
 <script>
+// Initialize Select2 for admin modal
+$(document).ready(function() {
+    @if($isAdmin ?? false)
+    $('#adminUpdateModal').on('shown.bs.modal', function() {
+        $('#admin_creator_id, #admin_responsible_person_id').select2({
+            dropdownParent: $('#adminUpdateModal'),
+            width: '100%'
+        });
+    });
+    
+    // Handle admin update form submission
+    $('#adminUpdateForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = $(this).serialize();
+        const activityId = {{ $activity->id }};
+        const matrixId = {{ $matrix->id }};
+        
+        // Show loading state
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true).html('<i class="bx bx-loader bx-spin me-1"></i> Updating...');
+        
+        $.ajax({
+            url: '/apm/matrices/' + matrixId + '/activities/' + activityId + '/admin-update',
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                if (response.success) {
+                    // Show success message using Bootstrap alert
+                    const alertHtml = '<div class="alert alert-success alert-dismissible fade show" role="alert">' +
+                        '<i class="bx bx-check-circle me-2"></i>' + (response.message || 'Creator and Responsible Person updated successfully.') +
+                        '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+                        '</div>';
+                    $('body').prepend(alertHtml);
+                    
+                    // Close modal
+                    $('#adminUpdateModal').modal('hide');
+                    
+                    // Reload page after a short delay
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    const alertHtml = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+                        '<i class="bx bx-error-circle me-2"></i>' + (response.message || 'Failed to update. Please try again.') +
+                        '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+                        '</div>';
+                    $('body').prepend(alertHtml);
+                    submitBtn.prop('disabled', false).html(originalText);
+                }
+            },
+            error: function(xhr) {
+                const errorMsg = xhr.responseJSON?.message || 'An error occurred. Please try again.';
+                const alertHtml = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+                    '<i class="bx bx-error-circle me-2"></i>' + errorMsg +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+                    '</div>';
+                $('body').prepend(alertHtml);
+                submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+    @endif
+});
+
 $(document).on('click', '.preview-attachment', function() {
     var fileUrl = $(this).data('file-url');
     var ext = $(this).data('file-ext');
