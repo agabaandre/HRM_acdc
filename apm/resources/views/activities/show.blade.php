@@ -309,6 +309,17 @@
         border-radius: 0.375rem;
     }
 
+    /* Ensure buttons stay on one line */
+    .d-flex.gap-2.justify-content-end {
+        flex-wrap: nowrap !important;
+        white-space: nowrap !important;
+    }
+    
+    .d-flex.gap-2.justify-content-end .btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+    }
+
     /* Responsive adjustments */
     @media (max-width: 768px) {
         #previewModal .modal-dialog {
@@ -482,7 +493,7 @@
                     <h1 class="h2 fw-bold text-dark mb-0">Activity Details: {{ $activity->document_number }}</h1>
                     <p class="text-muted mb-0">Review and manage activity details</p>
                 </div>
-                <div class="d-flex gap-2 justify-content-end align-items-center" style="flex-wrap: nowrap; white-space: nowrap; overflow-x: auto;">
+                <div class="d-flex gap-2 justify-content-end align-items-center" style="flex-wrap: nowrap !important; white-space: nowrap !important; overflow-x: auto; width: 100%;">
                     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to Matrix</span>
@@ -496,7 +507,8 @@
                     @endif
                     
                     @php
-                        $isAdmin = user_session('user_role') == 10;
+                    //@dd(user_session());
+                        $isAdmin = user_session('role') == 10;
                     @endphp
                     
                     @if($isAdmin)
@@ -527,9 +539,7 @@
                             <span>Create ARF</span>
                         </button>
                     @endif
-                </div>
-                                
-                         
+                    
                     {{-- Service Request Button --}}
                     @php
                         // Check if Service Request already exists for this activity
@@ -541,35 +551,37 @@
                     
                     @if($existingServiceRequest)
                         {{-- Show View Service Request button if Service Request exists --}}
-                        <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1">
+                        <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="fas fa-eye"></i>
                             <span>View Request</span>
                         </a>
                     @elseif(can_request_services($activity))
                         {{-- Show Create Service Request button if memo is approved and no Service Request exists --}}
                         <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
-                           class="btn btn-info btn-sm d-flex align-items-center gap-1">
+                           class="btn btn-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="fas fa-tools"></i>
                             <span>Request Services</span>
                         </a>
                     @endif
-                            {{-- @dd(can_print_memo($activity)) --}}
+                    
+                    {{-- Print Button --}}
                     @if(can_print_memo($activity))
                         <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
-                           class="btn btn-primary btn-sm d-flex align-items-center gap-1" target="_blank">
+                           class="btn btn-primary btn-sm d-flex align-items-center gap-1" target="_blank" style="flex-shrink: 0;">
                             <i class="bx bx-printer"></i>
                             <span>Print</span>
                         </a>
                     @endif
                     
+                    {{-- Change Request Button --}}
                     @if($activity->overall_status === 'approved')
                         <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}?change_request=1" 
-                           class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1">
+                           class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="fas fa-edit"></i>
                             <span>Change Request</span>
                         </a>
                     @endif
-                            </div>
+                </div>
                         </div>
                     </div>
                 </div>
@@ -1301,67 +1313,11 @@
 </div>
 
 <!-- Admin Update Creator/Responsible Person Modal -->
-@if($isAdmin ?? false)
-<div class="modal fade" id="adminUpdateModal" tabindex="-1" aria-labelledby="adminUpdateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-md">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="adminUpdateModalLabel">
-                    <i class="bx bx-user-pin me-2"></i>Admin: Update Creator & Responsible Person
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="adminUpdateForm">
-                @csrf
-                <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i class="bx bx-info-circle me-2"></i>
-                        <strong>Warning:</strong> This action can only be performed by system administrators. Use with caution.
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="admin_creator_id" class="form-label fw-semibold">
-                            <i class="bx bx-user me-1 text-primary"></i>Creator (Staff ID) <span class="text-danger">*</span>
-                        </label>
-                        <select name="staff_id" id="admin_creator_id" class="form-select select2" required style="width: 100%;">
-                            <option value="">Select Creator</option>
-                            @foreach(\App\Models\Staff::active()->select(['id', 'fname', 'lname', 'staff_id', 'job_name'])->get() as $staff)
-                                <option value="{{ $staff->staff_id }}" {{ $activity->staff_id == $staff->staff_id ? 'selected' : '' }}>
-                                    {{ $staff->fname }} {{ $staff->lname }} - {{ $staff->job_name ?? 'N/A' }} (ID: {{ $staff->staff_id }})
-                                </option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted">Current: {{ optional($activity->staff)->fname }} {{ optional($activity->staff)->lname ?? 'Not assigned' }}</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="admin_responsible_person_id" class="form-label fw-semibold">
-                            <i class="bx bx-user-check me-1 text-success"></i>Responsible Person (Staff ID) <span class="text-danger">*</span>
-                        </label>
-                        <select name="responsible_person_id" id="admin_responsible_person_id" class="form-select select2" required style="width: 100%;">
-                            <option value="">Select Responsible Person</option>
-                            @foreach(\App\Models\Staff::active()->select(['id', 'fname', 'lname', 'staff_id', 'job_name'])->get() as $staff)
-                                <option value="{{ $staff->staff_id }}" {{ $activity->responsible_person_id == $staff->staff_id ? 'selected' : '' }}>
-                                    {{ $staff->fname }} {{ $staff->lname }} - {{ $staff->job_name ?? 'N/A' }} (ID: {{ $staff->staff_id }})
-                                </option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted">Current: {{ optional($activity->focalPerson)->fname }} {{ optional($activity->focalPerson)->lname ?? 'Not assigned' }}</small>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bx bx-x me-1"></i> Cancel
-                    </button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bx bx-save me-1"></i> Update
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-@endif
+@include('activities.partials.admin-update-creator-responsible', [
+    'activity' => $activity,
+    'matrix' => $matrix,
+    'isAdmin' => $isAdmin ?? false
+])
 
 @endsection
 
@@ -1593,71 +1549,6 @@
 
 @push('scripts')
 <script>
-// Initialize Select2 for admin modal
-$(document).ready(function() {
-    @if($isAdmin ?? false)
-    $('#adminUpdateModal').on('shown.bs.modal', function() {
-        $('#admin_creator_id, #admin_responsible_person_id').select2({
-            dropdownParent: $('#adminUpdateModal'),
-            width: '100%'
-        });
-    });
-    
-    // Handle admin update form submission
-    $('#adminUpdateForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = $(this).serialize();
-        const activityId = {{ $activity->id }};
-        const matrixId = {{ $matrix->id }};
-        
-        // Show loading state
-        const submitBtn = $(this).find('button[type="submit"]');
-        const originalText = submitBtn.html();
-        submitBtn.prop('disabled', true).html('<i class="bx bx-loader bx-spin me-1"></i> Updating...');
-        
-        $.ajax({
-            url: '/apm/matrices/' + matrixId + '/activities/' + activityId + '/admin-update',
-            method: 'POST',
-            data: formData,
-            success: function(response) {
-                if (response.success) {
-                    // Show success message using Bootstrap alert
-                    const alertHtml = '<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                        '<i class="bx bx-check-circle me-2"></i>' + (response.message || 'Creator and Responsible Person updated successfully.') +
-                        '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
-                        '</div>';
-                    $('body').prepend(alertHtml);
-                    
-                    // Close modal
-                    $('#adminUpdateModal').modal('hide');
-                    
-                    // Reload page after a short delay
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    const alertHtml = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                        '<i class="bx bx-error-circle me-2"></i>' + (response.message || 'Failed to update. Please try again.') +
-                        '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
-                        '</div>';
-                    $('body').prepend(alertHtml);
-                    submitBtn.prop('disabled', false).html(originalText);
-                }
-            },
-            error: function(xhr) {
-                const errorMsg = xhr.responseJSON?.message || 'An error occurred. Please try again.';
-                const alertHtml = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                    '<i class="bx bx-error-circle me-2"></i>' + errorMsg +
-                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
-                    '</div>';
-                $('body').prepend(alertHtml);
-                submitBtn.prop('disabled', false).html(originalText);
-            }
-        });
-    });
-    @endif
-});
 
 $(document).on('click', '.preview-attachment', function() {
     var fileUrl = $(this).data('file-url');

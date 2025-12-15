@@ -3265,7 +3265,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
     public function adminUpdate(Request $request, Matrix $matrix, Activity $activity): JsonResponse
     {
         // Check if user is system admin (role == 10)
-        $userRole = session('user.user_role') ?? session('user.role') ?? null;
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
         
         if ($userRole != 10) {
             return response()->json([
