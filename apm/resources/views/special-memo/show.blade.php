@@ -480,26 +480,37 @@
                     <h1 class="h2 fw-bold text-dark mb-0">Special Memo Details: {{ $specialMemo->document_number }}</h1>
                     <p class="text-muted mb-0">Review and manage special memo details</p>
                 </div>
-                <div class="d-flex justify-content-end gap-3">
-                    <a href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                <div class="d-flex gap-2 justify-content-end align-items-center" style="flex-wrap: nowrap !important; white-space: nowrap !important; overflow-x: auto; width: 100%;">
+                    <a href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
                     </a>
+                    
                     @if(can_edit_memo($specialMemo))
-                        <a href="{{ route('special-memo.edit', $specialMemo) }}" class="btn btn-warning d-flex align-items-center gap-2">
+                        <a href="{{ route('special-memo.edit', $specialMemo) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="bx bx-edit"></i>
                             <span>Edit Memo</span>
                         </a>
                     @endif
                     
-                 
-                        <a href="{{ route('special-memo.status', $specialMemo) }}" class="btn btn-info d-flex align-items-center gap-2">
-                            <i class="bx bx-info-circle"></i>
-                            <span>Approval Status</span>
-                        </a>
+                    @php
+                        $isAdmin = user_session('role') == 10;
+                    @endphp
+                    
+                    @if($isAdmin)
+                        <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#adminUpdateModal" style="flex-shrink: 0;">
+                            <i class="bx bx-user-pin"></i>
+                            <span>Admin: Update Owners</span>
+                        </button>
+                    @endif
+                    
+                    <a href="{{ route('special-memo.status', $specialMemo) }}" class="btn btn-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
+                        <i class="bx bx-info-circle"></i>
+                        <span>Approval Status</span>
+                    </a>
                 
                     @if(can_print_memo($specialMemo))
-                        <a href="{{ route('special-memo.print', $specialMemo) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
+                        <a href="{{ route('special-memo.print', $specialMemo) }}" target="_blank" class="btn btn-primary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="bx bx-printer"></i>
                             <span>Print PDF</span>
                         </a>
@@ -514,13 +525,13 @@
                     
                     @if($existingArfTop)
                         {{-- Show View ARF button if ARF exists --}}
-                        <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
+                        <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="bx bx-show"></i>
                             <span>View Activity Request</span>
                         </a>
                     @elseif(can_request_arf($specialMemo))
                         {{-- Show Create ARF button if memo is approved and no ARF exists --}}
-                        <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                        <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal" style="flex-shrink: 0;">
                             <i class="bx bx-file-plus"></i>
                             <span>Create Activity Request</span>
                         </button>
@@ -537,14 +548,14 @@
                     
                     @if($existingServiceRequest)
                         {{-- Show View Service Request button if Service Request exists --}}
-                        <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                        <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="fas fa-eye"></i>
                             <span>View Request</span>
                         </a>
                     @elseif(can_request_services($specialMemo))
                         {{-- Show Create Service Request button if memo is approved and no Service Request exists --}}
                         <a href="{{ route('service-requests.create') }}?source_type=special_memo&source_id={{ $specialMemo->id }}" 
-                           class="btn btn-info d-flex align-items-center gap-2">
+                           class="btn btn-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="fas fa-tools"></i>
                             <span>Request Services</span>
                         </a>
@@ -1572,6 +1583,14 @@
             
         @endif
         
+<!-- Admin Update Creator/Responsible Person Modal -->
+@include('activities.partials.admin-update-creator-responsible', [
+    'activity' => $specialMemo,
+    'matrix' => null,
+    'isAdmin' => $isAdmin ?? false,
+    'isSpecialMemo' => true
+])
+
 @endsection
 
 @push('scripts')

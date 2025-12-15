@@ -260,6 +260,14 @@ Route::get('/api/returned-memos/filter-options', [App\Http\Controllers\ReturnedM
     // Admin-only route to update creator and responsible person
     Route::post('/matrices/{matrix}/activities/{activity}/admin-update', [ActivityController::class, 'adminUpdate'])
         ->name('matrices.activities.admin-update');
+    
+    // Admin-only route to update creator and responsible person for single memos
+    Route::post('/single-memos/{activity}/admin-update', [ActivityController::class, 'adminUpdateSingleMemo'])
+        ->name('activities.single-memos.admin-update');
+    
+    // Admin-only route to update creator and responsible person for special memos
+    Route::post('/special-memo/{specialMemo}/admin-update', [App\Http\Controllers\SpecialMemoController::class, 'adminUpdate'])
+        ->name('special-memo.admin-update');
 
     Route::get('/participant-schedules', [ActivityController::class, 'get_participant_schedules'])->name('participant-schedules');
     

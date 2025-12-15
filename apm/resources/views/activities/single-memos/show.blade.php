@@ -492,37 +492,53 @@
         <!-- Enhanced Header -->
         <div class="bg-white border-b border-gray-200 shadow-sm">
             <div class="container-fluid">
-                <div class="d-flex justify-content-between align-items-center py-4">
-                    <div>
+                <div class="py-4">
+                    <div class="mb-3">
                         <h1 class="h2 fw-bold text-dark mb-0">Single Memo Details: {{ $activity->document_number }}</h1>
                         <p class="text-muted mb-0">Review and manage single memo details</p>
-                </div>
-                    <div class="d-flex gap-2 flex-wrap">
-                        {{-- @dd($activity->overall_status,$activity->staff_id,$activity->responsible_person_id) --}}
-                            @if (can_edit_memo($activity))
+                    </div>
+                    <div class="d-flex gap-2 justify-content-end align-items-center" style="flex-wrap: nowrap !important; white-space: nowrap !important; overflow-x: auto; width: 100%;">
+                        <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
+                            <i class="bx bx-arrow-back"></i>
+                            <span>Back to List</span>
+                        </a>
+                        
+                        @if (can_edit_memo($activity))
                             <a href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}"
-                                class="btn btn-warning btn-sm d-flex align-items-center gap-1">
+                                class="btn btn-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                 <i class="bx bx-edit"></i>
                                 <span>Edit Memo</span>
                             </a>
-                    @endif
+                        @endif
+                        
+                        @php
+                            $isAdmin = user_session('role') == 10;
+                        @endphp
+                        
+                        @if($isAdmin)
+                            <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#adminUpdateModal" style="flex-shrink: 0;">
+                                <i class="bx bx-user-pin"></i>
+                                <span>Admin: Update Owners</span>
+                            </button>
+                        @endif
+                        
                         @if ($activity->overall_status === 'pending')
                             <a href="{{ route('activities.single-memos.status', $activity) }}"
-                                class="btn btn-info btn-sm d-flex align-items-center gap-1">
+                                class="btn btn-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                 <i class="bx bx-info-circle"></i>
                                 <span>Approval Status</span>
                             </a>
-                    @endif
+                        @endif
 
                         @if ($activity->overall_status === 'approved')
                             <a href="{{ route('matrices.activities.memo-pdf', [$activity->matrix, $activity]) }}" target="_blank"
-                                class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+                                class="btn btn-primary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                 <i class="bx bx-printer"></i>
                                 <span>Print PDF</span>
                             </a>
                             
                             <a href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}?change_request=1" 
-                               class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1">
+                               class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                 <i class="fas fa-edit"></i>
                                 <span>Change Request</span>
                             </a>
@@ -539,12 +555,12 @@
                             @endphp
                             
                             @if(!$existingArf)
-                                <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                                <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal" style="flex-shrink: 0;">
                                     <i class="bx bx-file-plus"></i>
                                     <span>Create ARF</span>
                                 </button>
                             @else
-                                <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                                <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                     <i class="bx bx-show"></i>
                                     <span>View ARF</span>
                                 </a>
@@ -563,21 +579,20 @@
                             
                             @if(!$existingServiceRequest)
                                 <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
-                                   class="btn btn-info btn-sm d-flex align-items-center gap-1">
+                                   class="btn btn-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                     <i class="fas fa-tools"></i>
                                     <span>Create RQS</span>
                                 </a>
                             @else
-                                <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1">
+                                <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                     <i class="fas fa-eye"></i>
                                     <span>View RQS</span>
                                 </a>
                             @endif
                         @endif
-                        </div>
-                        </div>
-                        </div>
                     </div>
+                </div>
+            </div>
 
         <div class="container-fluid py-4">
             @php
@@ -1606,6 +1621,14 @@
         @endif
         
     @endif
+
+<!-- Admin Update Creator/Responsible Person Modal -->
+@include('activities.partials.admin-update-creator-responsible', [
+    'activity' => $activity,
+    'matrix' => $matrix ?? $activity->matrix,
+    'isAdmin' => $isAdmin ?? false,
+    'isSingleMemo' => true
+])
 
 @endsection
 

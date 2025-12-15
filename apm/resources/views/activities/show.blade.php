@@ -514,7 +514,7 @@
                     @if($isAdmin)
                         <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#adminUpdateModal" style="flex-shrink: 0;">
                             <i class="bx bx-user-pin"></i>
-                            <span>Admin: Update Creator/Responsible</span>
+                            <span>Admin: Update Owners</span>
                         </button>
                     @endif
                     

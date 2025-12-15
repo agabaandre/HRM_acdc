@@ -1,11 +1,27 @@
 {{-- 
     Reusable Admin Update Creator/Responsible Person Modal Component
     
-    Usage:
+    Usage for regular activities:
     @include('activities.partials.admin-update-creator-responsible', [
         'activity' => $activity,
         'matrix' => $matrix,
         'isAdmin' => $isAdmin ?? false
+    ])
+    
+    Usage for single memos:
+    @include('activities.partials.admin-update-creator-responsible', [
+        'activity' => $activity,
+        'matrix' => $matrix ?? $activity->matrix,
+        'isAdmin' => $isAdmin ?? false,
+        'isSingleMemo' => true
+    ])
+    
+    Usage for special memos:
+    @include('activities.partials.admin-update-creator-responsible', [
+        'activity' => $specialMemo,
+        'matrix' => null,
+        'isAdmin' => $isAdmin ?? false,
+        'isSpecialMemo' => true
     ])
 --}}
 
@@ -15,7 +31,7 @@
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title text-white" id="adminUpdateModalLabel">
-                    <i class="bx bx-user-pin me-2"></i>Admin: Update Creator & Responsible Person
+                    <i class="bx bx-user-pin me-2"></i>Admin: Update Owners
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -34,7 +50,7 @@
                         <select name="staff_id" id="admin_creator_id" class="form-select select2" required style="width: 100%;">
                             <option value="">Select Creator</option>
                             @foreach(\App\Models\Staff::active()->select(['id', 'fname', 'lname', 'staff_id', 'job_name'])->get() as $staff)
-                                <option value="{{ $staff->staff_id }}" {{ $activity->staff_id == $staff->staff_id ? 'selected' : '' }}>
+                                <option value="{{ $staff->staff_id }}" {{ ($activity->staff_id ?? null) == $staff->staff_id ? 'selected' : '' }}>
                                     {{ $staff->fname }} {{ $staff->lname }} - {{ $staff->job_name ?? 'N/A' }} (ID: {{ $staff->staff_id }})
                                 </option>
                             @endforeach
@@ -49,12 +65,12 @@
                         <select name="responsible_person_id" id="admin_responsible_person_id" class="form-select select2" required style="width: 100%;">
                             <option value="">Select Responsible Person</option>
                             @foreach(\App\Models\Staff::active()->select(['id', 'fname', 'lname', 'staff_id', 'job_name'])->get() as $staff)
-                                <option value="{{ $staff->staff_id }}" {{ $activity->responsible_person_id == $staff->staff_id ? 'selected' : '' }}>
+                                <option value="{{ $staff->staff_id }}" {{ ($activity->responsible_person_id ?? null) == $staff->staff_id ? 'selected' : '' }}>
                                     {{ $staff->fname }} {{ $staff->lname }} - {{ $staff->job_name ?? 'N/A' }} (ID: {{ $staff->staff_id }})
                                 </option>
                             @endforeach
                         </select>
-                        <small class="text-muted">Current: {{ optional($activity->focalPerson)->fname }} {{ optional($activity->focalPerson)->lname ?? 'Not assigned' }}</small>
+                        <small class="text-muted">Current: {{ optional($activity->responsiblePerson ?? $activity->focalPerson ?? null)->fname ?? '' }} {{ optional($activity->responsiblePerson ?? $activity->focalPerson ?? null)->lname ?? 'Not assigned' }}</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -62,7 +78,7 @@
                         <i class="bx bx-x me-1"></i> Cancel
                     </button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bx bx-save me-1"></i> Update
+                        <i class="bx bx-save me-1"></i> Update Owners
                     </button>
                 </div>
             </form>
@@ -86,7 +102,13 @@ $(document).ready(function() {
         e.preventDefault();
         
         const formData = $(this).serialize();
+        @if(isset($isSpecialMemo) && $isSpecialMemo)
+        const updateUrl = '{{ route("special-memo.admin-update", $activity) }}';
+        @elseif(isset($isSingleMemo) && $isSingleMemo)
+        const updateUrl = '{{ route("activities.single-memos.admin-update", $activity) }}';
+        @else
         const updateUrl = '{{ route("matrices.activities.admin-update", [$matrix, $activity]) }}';
+        @endif
         
         // Show loading state
         const submitBtn = $(this).find('button[type="submit"]');
