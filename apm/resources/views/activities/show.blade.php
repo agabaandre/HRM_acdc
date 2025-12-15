@@ -482,14 +482,14 @@
                     <h1 class="h2 fw-bold text-dark mb-0">Activity Details: {{ $activity->document_number }}</h1>
                     <p class="text-muted mb-0">Review and manage activity details</p>
                 </div>
-                <div class="d-flex gap-2 flex-wrap justify-content-end">
-                    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+                <div class="d-flex gap-2 justify-content-end align-items-center" style="flex-wrap: nowrap; white-space: nowrap; overflow-x: auto;">
+                    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to Matrix</span>
                     </a>
                     
                     @if (can_edit_memo($activity))
-                        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1">
+                        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="bx bx-edit"></i>
                             <span>Edit Activity</span>
                         </a>
@@ -500,7 +500,7 @@
                     @endphp
                     
                     @if($isAdmin)
-                        <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#adminUpdateModal">
+                        <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#adminUpdateModal" style="flex-shrink: 0;">
                             <i class="bx bx-user-pin"></i>
                             <span>Admin: Update Creator/Responsible</span>
                         </button>
@@ -516,13 +516,13 @@
                     
                     @if($existingArf)
                         {{-- Show View ARF button if ARF exists --}}
-                        <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                        <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="bx bx-show"></i>
                             <span>View ARF</span>
                         </a>
                     @elseif(can_request_arf($activity))
                         {{-- Show Create ARF button if memo is approved and no ARF exists --}}
-                        <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                        <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal" style="flex-shrink: 0;">
                             <i class="bx bx-file-plus"></i>
                             <span>Create ARF</span>
                         </button>
