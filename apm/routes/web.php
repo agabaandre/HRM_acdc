@@ -256,6 +256,10 @@ Route::get('/api/returned-memos/filter-options', [App\Http\Controllers\ReturnedM
     // Activity PDF Generation Route
     Route::get('/matrices/{matrix}/activities/{activity}/memo-pdf', [ActivityController::class, 'generateMemoPdf'])
         ->name('matrices.activities.memo-pdf');
+    
+    // Admin-only route to update creator and responsible person
+    Route::post('/matrices/{matrix}/activities/{activity}/admin-update', [ActivityController::class, 'adminUpdate'])
+        ->name('matrices.activities.admin-update');
 
     Route::get('/participant-schedules', [ActivityController::class, 'get_participant_schedules'])->name('participant-schedules');
     
