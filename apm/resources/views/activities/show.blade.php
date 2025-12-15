@@ -482,7 +482,7 @@
                     <h1 class="h2 fw-bold text-dark mb-0">Activity Details: {{ $activity->document_number }}</h1>
                     <p class="text-muted mb-0">Review and manage activity details</p>
                 </div>
-                <div class="d-flex gap-2 flex-wrap">
+                <div class="d-flex gap-2 flex-wrap justify-content-end">
                     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to Matrix</span>
