@@ -524,7 +524,7 @@
                                     </td>
                                     <td class="px-3 py-3 text-center">
                                         <div class="btn-group" role="group">
-                                            <a href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm" title="View Single Memo">
+                                            <a href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Single Memo">
                                                 <i class="bx bx-show"></i>
                                             </a>
                                             @if($memo->overall_status == 'draft' && 
@@ -538,7 +538,7 @@
                                                             data-bs-target="#copyActivityModal" 
                                                             data-activity-id="{{ $memo->id }}"
                                                             data-activity-title="{{ $memo->activity_title }}"
-                                                            title="Copy Activity">
+                                                            data-bs-title="Copy Activity">
                                                         <i class="bx bx-copy"></i> Copy
                                                     </button>
                                                 @endif
@@ -547,7 +547,7 @@
                                                         data-bs-target="#deleteSingleMemoModal" 
                                                         data-memo-id="{{ $memo->id }}"
                                                         data-memo-title="{{ $memo->activity_title }}"
-                                                        title="Delete Single Memo">
+                                                        data-bs-title="Delete Single Memo">
                                                     <i class="bx bx-trash"></i>
                                                 </button>
                                             @endif
@@ -1222,7 +1222,7 @@ function renderActivities(activities) {
             
             html += '<td class="px-3 py-3 text-center">';
             html += '<div class="btn-group" role="group">';
-            html += `<a href="${getActivityUrl(activity.id)}" class="btn btn-outline-primary btn-sm" title="View Activity">`;
+            html += `<a href="${getActivityUrl(activity.id)}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Activity">`;
             html += '<i class="bx bx-show"></i>';
             html += '</a>';
             
@@ -1231,7 +1231,7 @@ function renderActivities(activities) {
                 html += '<button type="button" class="btn btn-outline-info btn-sm" ';
                 html += 'data-bs-toggle="modal" data-bs-target="#copyActivityModal" ';
                 html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}" `;
-                html += 'title="Copy Activity">';
+                html += 'data-bs-title="Copy Activity">';
                 html += '<i class="bx bx-copy"></i>';
                 html += '</button>';
             }
@@ -1240,7 +1240,7 @@ function renderActivities(activities) {
                 html += '<button type="button" class="btn btn-outline-danger btn-sm" ';
                 html += 'data-bs-toggle="modal" data-bs-target="#deleteActivityModal" ';
                 html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}" `;
-                html += 'title="Delete Activity">';
+                html += 'data-bs-title="Delete Activity">';
                 html += '<i class="bx bx-trash"></i>';
                 html += '</button>';
             }
@@ -1255,6 +1255,9 @@ function renderActivities(activities) {
     
     // Reinitialize checkbox functionality
     initializeCheckboxes();
+    
+    // Reinitialize tooltips for dynamically added buttons
+    initializeTooltips();
 }
 
 // Calculate budget from breakdown
@@ -1722,7 +1725,7 @@ function renderSingleMemos(singleMemos) {
                     </td>
                     <td class="px-3 py-3 text-center">
                         <div class="btn-group" role="group">
-                            <a href="${getSingleMemoUrl(memo.id)}" class="btn btn-outline-primary btn-sm" title="View Single Memo">
+                            <a href="${getSingleMemoUrl(memo.id)}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Single Memo">
                                 <i class="bx bx-show"></i>
                             </a>
                             ${canShowSingleMemoDeleteButton(memo) ? `
@@ -1731,7 +1734,7 @@ function renderSingleMemos(singleMemos) {
                                         data-bs-target="#deleteSingleMemoModal" 
                                         data-memo-id="${memo.id}"
                                         data-memo-title="${memo.activity_title}"
-                                        title="Delete Single Memo">
+                                        data-bs-title="Delete Single Memo">
                                     <i class="bx bx-trash"></i>
                                 </button>
                             ` : ''}
@@ -1743,6 +1746,9 @@ function renderSingleMemos(singleMemos) {
     }
     
     tbody.innerHTML = html;
+    
+    // Reinitialize tooltips for dynamically added buttons
+    initializeTooltips();
 }
 
 // Get single memo status
@@ -2071,10 +2077,42 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
 });
 
+// Initialize Bootstrap tooltips
+function initializeTooltips() {
+    // Initialize tooltips for elements with data-bs-toggle="tooltip"
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        // Dispose existing tooltip if any
+        const existingTooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+        if (existingTooltip) {
+            existingTooltip.dispose();
+        }
+        // Create new tooltip
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Initialize tooltips for buttons with modals (using data-bs-title)
+    const modalButtons = document.querySelectorAll('[data-bs-toggle="modal"][data-bs-title]');
+    modalButtons.forEach(function (button) {
+        // Dispose existing tooltip if any
+        const existingTooltip = bootstrap.Tooltip.getInstance(button);
+        if (existingTooltip) {
+            existingTooltip.dispose();
+        }
+        // Create new tooltip
+        new bootstrap.Tooltip(button, {
+            title: button.getAttribute('data-bs-title')
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('selectAll');
     const activityCheckboxes = document.querySelectorAll('.activity-checkbox');
     const approveSelectedSection = document.getElementById('approveSelectedSection');
+    
+    // Initialize tooltips on page load
+    initializeTooltips();
     
     // Copy Activity Modal functionality
     const copyActivityModal = document.getElementById('copyActivityModal');
