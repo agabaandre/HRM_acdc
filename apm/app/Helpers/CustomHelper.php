@@ -129,6 +129,107 @@ if (!function_exists('user_session')) {
         }
      }
 
+    if (!function_exists('is_admin_assistant')) {
+        /**
+         * Check if the current user is an admin assistant
+         * Returns true if user is admin assistant in divisions table or approvers table
+         */
+        function is_admin_assistant(): bool
+        {
+            $user = session('user', []);
+            $staffId = $user['staff_id'] ?? null;
+
+            if (!$staffId) {
+                return false;
+            }
+
+            // Check if user is admin assistant in divisions table
+            $isDivisionAdminAssistant = \App\Models\Division::where('admin_assistant', $staffId)->exists();
+
+            // Check if user is admin assistant in approvers table
+            $isApproverAdminAssistant = \App\Models\Approver::where('admin_assistant', $staffId)->exists();
+
+            return $isDivisionAdminAssistant || $isApproverAdminAssistant;
+        }
+    }
+
+    if (!function_exists('get_admin_assistant_approvers')) {
+        /**
+         * Get list of approver staff IDs that the current admin assistant supports
+         * Returns array of staff_ids
+         */
+        function get_admin_assistant_approvers(): array
+        {
+            $user = session('user', []);
+            $staffId = $user['staff_id'] ?? null;
+
+            if (!$staffId) {
+                return [];
+            }
+
+            $approverIds = [];
+
+            // Get approvers from divisions table where user is admin assistant
+            $divisions = \App\Models\Division::where('admin_assistant', $staffId)->get();
+            foreach ($divisions as $division) {
+                // Add division head, focal person, and finance officer
+                if ($division->division_head) {
+                    $approverIds[] = $division->division_head;
+                }
+                if ($division->focal_person) {
+                    $approverIds[] = $division->focal_person;
+                }
+                if ($division->finance_officer) {
+                    $approverIds[] = $division->finance_officer;
+                }
+                
+                // Also include active OIC (Officer in Charge) approvers
+                $today = \Carbon\Carbon::today();
+                
+                // Check head OIC
+                if ($division->head_oic_id) {
+                    $isOicActive = true;
+                    if ($division->head_oic_start_date) {
+                        $isOicActive = $isOicActive && $division->head_oic_start_date <= $today;
+                    }
+                    if ($division->head_oic_end_date) {
+                        $isOicActive = $isOicActive && $division->head_oic_end_date >= $today;
+                    }
+                    if ($isOicActive) {
+                        $approverIds[] = $division->head_oic_id;
+                    }
+                }
+                
+                // Check director OIC
+                if ($division->director_oic_id) {
+                    $isOicActive = true;
+                    if ($division->director_oic_start_date) {
+                        $isOicActive = $isOicActive && $division->director_oic_start_date <= $today;
+                    }
+                    if ($division->director_oic_end_date) {
+                        $isOicActive = $isOicActive && $division->director_oic_end_date >= $today;
+                    }
+                    if ($isOicActive) {
+                        $approverIds[] = $division->director_oic_id;
+                    }
+                }
+            }
+
+            // Get approvers from approvers table where user is admin assistant
+            $approvers = \App\Models\Approver::where('admin_assistant', $staffId)
+                ->with('staff')
+                ->get();
+            
+            foreach ($approvers as $approver) {
+                if ($approver->staff_id) {
+                    $approverIds[] = $approver->staff_id;
+                }
+            }
+
+            return array_unique(array_filter($approverIds));
+        }
+    }
+
     if (!function_exists('is_finance_officer')) {
         /**
          * Check if the current user is a finance officer for the matrix's division

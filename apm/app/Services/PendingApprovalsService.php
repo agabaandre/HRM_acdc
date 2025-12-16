@@ -49,26 +49,35 @@ class PendingApprovalsService
     {
         $pendingItems = collect();
 
+        // Check if user is an admin assistant
+        $isAdminAssistant = is_admin_assistant();
+        $adminAssistantApproverIds = [];
+
+        if ($isAdminAssistant) {
+            // Get the approvers this admin assistant supports
+            $adminAssistantApproverIds = get_admin_assistant_approvers();
+        }
+
         // Get pending matrices
-        $pendingItems = $pendingItems->merge($this->getPendingMatrices());
+        $pendingItems = $pendingItems->merge($this->getPendingMatrices($isAdminAssistant, $adminAssistantApproverIds));
 
         // Get pending special memos
-        $pendingItems = $pendingItems->merge($this->getPendingSpecialMemos());
+        $pendingItems = $pendingItems->merge($this->getPendingSpecialMemos($isAdminAssistant, $adminAssistantApproverIds));
 
         // Get pending non-travel memos
-        $pendingItems = $pendingItems->merge($this->getPendingNonTravelMemos());
+        $pendingItems = $pendingItems->merge($this->getPendingNonTravelMemos($isAdminAssistant, $adminAssistantApproverIds));
 
         // Get pending single memos (activities with is_single_memo = true)
-        $pendingItems = $pendingItems->merge($this->getPendingSingleMemos());
+        $pendingItems = $pendingItems->merge($this->getPendingSingleMemos($isAdminAssistant, $adminAssistantApproverIds));
 
         // Get pending service requests
-        $pendingItems = $pendingItems->merge($this->getPendingServiceRequests());
+        $pendingItems = $pendingItems->merge($this->getPendingServiceRequests($isAdminAssistant, $adminAssistantApproverIds));
 
         // Get pending ARF requests
-        $pendingItems = $pendingItems->merge($this->getPendingARFRequests());
+        $pendingItems = $pendingItems->merge($this->getPendingARFRequests($isAdminAssistant, $adminAssistantApproverIds));
 
         // Get pending change requests
-        $pendingItems = $pendingItems->merge($this->getPendingChangeRequests());
+        $pendingItems = $pendingItems->merge($this->getPendingChangeRequests($isAdminAssistant, $adminAssistantApproverIds));
 
         // Group by category and sort by date received
         return $this->groupByCategory($pendingItems);
@@ -77,7 +86,7 @@ class PendingApprovalsService
     /**
      * Get pending matrices
      */
-    protected function getPendingMatrices(): Collection
+    protected function getPendingMatrices(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = Matrix::with([
             'division',
@@ -97,6 +106,13 @@ class PendingApprovalsService
 
         // Get all approval levels for this user (both division-specific and non-division-specific)
         $approvalLevels = $this->getUserApprovalLevels('Matrix');
+        
+        // If admin assistant, also get approval levels for their approvers
+        if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+            $adminAssistantLevels = $this->getApprovalLevelsForApprovers('Matrix', $adminAssistantApproverIds);
+            $approvalLevels = array_merge($approvalLevels, $adminAssistantLevels);
+            $approvalLevels = array_unique($approvalLevels);
+        }
         
         if (!empty($approvalLevels)) {
             $query->whereIn('approval_level', $approvalLevels);
@@ -123,10 +139,20 @@ class PendingApprovalsService
             }
         }
 
-        return $query->get()->filter(function ($matrix) {
+        return $query->get()->filter(function ($matrix) use ($isAdminAssistant, $adminAssistantApproverIds) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($matrix);
-        })->map(function ($matrix) {
+            if ($this->isCurrentApprover($matrix)) {
+                return true;
+            }
+            
+            // If admin assistant, also check if any of their approvers is the current approver
+            if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+                return $this->isCurrentApproverForAny($matrix, $adminAssistantApproverIds);
+            }
+            
+            return false;
+        })->map(function ($matrix) use ($isAdminAssistant) {
+            $isAdminAssistantView = $isAdminAssistant && !$this->isCurrentApprover($matrix);
             return $this->formatPendingItem($matrix, 'Matrix', [
                 'title' => "Matrix - {$matrix->quarter} {$matrix->year}",
                 'division' => $matrix->division->division_name ?? 'N/A',
@@ -139,14 +165,89 @@ class PendingApprovalsService
                 'workflow_role' => $this->getCurrentApproverRole($matrix),
                 'item_id' => $matrix->id,
                 'item_type' => 'Matrix'
-            ]);
+            ], $isAdminAssistantView);
         });
+    }
+
+    /**
+     * Get approval levels for a list of approver staff IDs
+     */
+    protected function getApprovalLevelsForApprovers(string $modelType, array $approverIds): array
+    {
+        if (empty($approverIds)) {
+            return [];
+        }
+
+        $workflowId = \App\Models\WorkflowModel::getWorkflowIdForModel($modelType);
+        if (!$workflowId) {
+            return [];
+        }
+
+        $approvalLevels = [];
+
+        // Get approval levels from approvers table for these approvers
+        $approvers = Approver::whereIn('staff_id', $approverIds)->get();
+        $workflowDfnIds = $approvers->pluck('workflow_dfn_id')->toArray();
+        
+        if (!empty($workflowDfnIds)) {
+            $workflowDefinitions = WorkflowDefinition::whereIn('id', $workflowDfnIds)
+                ->where('workflow_id', $workflowId)
+                ->where('is_division_specific', 0)
+                ->get();
+            
+            $approvalLevels = array_merge($approvalLevels, $workflowDefinitions->pluck('approval_order')->toArray());
+        }
+
+        // Get division-specific approval levels for these approvers
+        $divisions = Division::where(function($query) use ($approverIds) {
+            $query->whereIn('division_head', $approverIds)
+                  ->orWhereIn('focal_person', $approverIds)
+                  ->orWhereIn('finance_officer', $approverIds);
+        })->get();
+
+        foreach ($divisions as $division) {
+            $divisionLevels = $this->getDivisionSpecificApprovalLevelsForDivision($modelType, $division->id);
+            $approvalLevels = array_merge($approvalLevels, $divisionLevels);
+        }
+
+        return array_unique($approvalLevels);
+    }
+
+    /**
+     * Get division-specific approval levels for a specific division
+     */
+    protected function getDivisionSpecificApprovalLevelsForDivision(string $modelType, int $divisionId): array
+    {
+        $workflowId = \App\Models\WorkflowModel::getWorkflowIdForModel($modelType);
+        if (!$workflowId) {
+            return [];
+        }
+
+        $divisionDefinitions = WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_division_specific', 1)
+            ->get();
+
+        return $divisionDefinitions->pluck('approval_order')->toArray();
+    }
+
+    /**
+     * Check if any of the given approver IDs is the current approver for the item
+     */
+    protected function isCurrentApproverForAny($model, array $approverIds): bool
+    {
+        foreach ($approverIds as $approverId) {
+            $approvalService = app(\App\Services\ApprovalService::class);
+            if ($approvalService->canTakeAction($model, $approverId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
      * Get pending special memos
      */
-    protected function getPendingSpecialMemos(): Collection
+    protected function getPendingSpecialMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = SpecialMemo::with(['staff', 'division', 'approvalTrails.staff'])
             ->where('overall_status', 'pending');
@@ -182,7 +283,8 @@ class PendingApprovalsService
         return $query->get()->filter(function ($memo) {
             // Check if the current user is actually the current approver for this item
             return $this->isCurrentApprover($memo);
-        })->map(function ($memo) {
+        })->map(function ($memo) use ($isAdminAssistant) {
+            $isAdminAssistantView = $isAdminAssistant && !$this->isCurrentApprover($memo);
             return $this->formatPendingItem($memo, 'Special Memo', [
                 'title' => $memo->activity_title ?? 'Special Memo',
                 'division' => $memo->division->division_name ?? 'N/A',
@@ -193,14 +295,14 @@ class PendingApprovalsService
                 'workflow_role' => $this->getCurrentApproverRole($memo),
                 'item_id' => $memo->id,
                 'item_type' => 'SpecialMemo'
-            ]);
+            ], $isAdminAssistantView);
         });
     }
 
     /**
      * Get pending non-travel memos
      */
-    protected function getPendingNonTravelMemos(): Collection
+    protected function getPendingNonTravelMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = NonTravelMemo::with(['staff', 'division', 'approvalTrails.staff'])
             ->where('overall_status', 'pending')
@@ -209,6 +311,13 @@ class PendingApprovalsService
 
         // Get all approval levels for this user (both division-specific and non-division-specific)
         $approvalLevels = $this->getUserApprovalLevels('NonTravelMemo');
+        
+        // If admin assistant, also get approval levels for their approvers
+        if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+            $adminAssistantLevels = $this->getApprovalLevelsForApprovers('NonTravelMemo', $adminAssistantApproverIds);
+            $approvalLevels = array_merge($approvalLevels, $adminAssistantLevels);
+            $approvalLevels = array_unique($approvalLevels);
+        }
         
         if (!empty($approvalLevels)) {
             $query->whereIn('approval_level', $approvalLevels);
@@ -235,10 +344,20 @@ class PendingApprovalsService
             }
         }
 
-        return $query->get()->filter(function ($memo) {
+        return $query->get()->filter(function ($memo) use ($isAdminAssistant, $adminAssistantApproverIds) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($memo);
-        })->map(function ($memo) {
+            if ($this->isCurrentApprover($memo)) {
+                return true;
+            }
+            
+            // If admin assistant, also check if any of their approvers is the current approver
+            if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+                return $this->isCurrentApproverForAny($memo, $adminAssistantApproverIds);
+            }
+            
+            return false;
+        })->map(function ($memo) use ($isAdminAssistant) {
+            $isAdminAssistantView = $isAdminAssistant && !$this->isCurrentApprover($memo);
             return $this->formatPendingItem($memo, 'Non-Travel Memo', [
                 'title' => $memo->activity_title ?? 'Non-Travel Memo',
                 'division' => $memo->division->division_name ?? 'N/A',
@@ -249,14 +368,14 @@ class PendingApprovalsService
                 'workflow_role' => $this->getCurrentApproverRole($memo),
                 'item_id' => $memo->id,
                 'item_type' => 'NonTravelMemo'
-            ]);
+            ], $isAdminAssistantView);
         });
     }
 
     /**
      * Get pending single memos (activities with is_single_memo = true)
      */
-    protected function getPendingSingleMemos(): Collection
+    protected function getPendingSingleMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = Activity::with(['staff', 'division', 'approvalTrails.staff'])
             ->where('is_single_memo', true)
@@ -264,6 +383,13 @@ class PendingApprovalsService
 
         // Get all approval levels for this user (both division-specific and non-division-specific)
         $approvalLevels = $this->getUserApprovalLevels('Activity');
+        
+        // If admin assistant, also get approval levels for their approvers
+        if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+            $adminAssistantLevels = $this->getApprovalLevelsForApprovers('Activity', $adminAssistantApproverIds);
+            $approvalLevels = array_merge($approvalLevels, $adminAssistantLevels);
+            $approvalLevels = array_unique($approvalLevels);
+        }
         
         if (!empty($approvalLevels)) {
             $query->whereIn('approval_level', $approvalLevels);
@@ -290,10 +416,20 @@ class PendingApprovalsService
             }
         }
 
-        return $query->get()->filter(function ($activity) {
+        return $query->get()->filter(function ($activity) use ($isAdminAssistant, $adminAssistantApproverIds) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($activity);
-        })->map(function ($activity) {
+            if ($this->isCurrentApprover($activity)) {
+                return true;
+            }
+            
+            // If admin assistant, also check if any of their approvers is the current approver
+            if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+                return $this->isCurrentApproverForAny($activity, $adminAssistantApproverIds);
+            }
+            
+            return false;
+        })->map(function ($activity) use ($isAdminAssistant) {
+            $isAdminAssistantView = $isAdminAssistant && !$this->isCurrentApprover($activity);
             return $this->formatPendingItem($activity, 'Single Memo', [
                 'title' => $activity->activity_title ?? 'Single Memo',
                 'division' => $activity->division->division_name ?? 'N/A',
@@ -304,14 +440,14 @@ class PendingApprovalsService
                 'workflow_role' => $this->getCurrentApproverRole($activity),
                 'item_id' => $activity->id,
                 'item_type' => 'Activity'
-            ]);
+            ], $isAdminAssistantView);
         });
     }
 
     /**
      * Get pending service requests
      */
-    protected function getPendingServiceRequests(): Collection
+    protected function getPendingServiceRequests(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
             ->where('overall_status', 'pending')
@@ -320,6 +456,13 @@ class PendingApprovalsService
 
         // Get all approval levels for this user (both division-specific and non-division-specific)
         $approvalLevels = $this->getUserApprovalLevels('ServiceRequest');
+        
+        // If admin assistant, also get approval levels for their approvers
+        if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+            $adminAssistantLevels = $this->getApprovalLevelsForApprovers('ServiceRequest', $adminAssistantApproverIds);
+            $approvalLevels = array_merge($approvalLevels, $adminAssistantLevels);
+            $approvalLevels = array_unique($approvalLevels);
+        }
         
         if (!empty($approvalLevels)) {
             $query->whereIn('approval_level', $approvalLevels);
@@ -346,10 +489,20 @@ class PendingApprovalsService
             }
         }
 
-        return $query->get()->filter(function ($serviceRequest) {
+        return $query->get()->filter(function ($serviceRequest) use ($isAdminAssistant, $adminAssistantApproverIds) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($serviceRequest);
-        })->map(function ($serviceRequest) {
+            if ($this->isCurrentApprover($serviceRequest)) {
+                return true;
+            }
+            
+            // If admin assistant, also check if any of their approvers is the current approver
+            if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+                return $this->isCurrentApproverForAny($serviceRequest, $adminAssistantApproverIds);
+            }
+            
+            return false;
+        })->map(function ($serviceRequest) use ($isAdminAssistant) {
+            $isAdminAssistantView = $isAdminAssistant && !$this->isCurrentApprover($serviceRequest);
             return $this->formatPendingItem($serviceRequest, 'Service Request', [
                 'title' => $serviceRequest->title ?? 'Service Request',
                 'division' => $serviceRequest->division->division_name ?? 'N/A',
@@ -362,14 +515,14 @@ class PendingApprovalsService
                 'workflow_role' => $this->getCurrentApproverRole($serviceRequest),
                 'item_id' => $serviceRequest->id,
                 'item_type' => 'ServiceRequest'
-            ]);
+            ], $isAdminAssistantView);
         });
     }
 
     /**
      * Get pending ARF requests
      */
-    protected function getPendingARFRequests(): Collection
+    protected function getPendingARFRequests(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = RequestARF::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
             ->where('overall_status', 'pending')
@@ -378,6 +531,13 @@ class PendingApprovalsService
 
         // Get all approval levels for this user (both division-specific and non-division-specific)
         $approvalLevels = $this->getUserApprovalLevels('RequestARF');
+        
+        // If admin assistant, also get approval levels for their approvers
+        if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+            $adminAssistantLevels = $this->getApprovalLevelsForApprovers('RequestARF', $adminAssistantApproverIds);
+            $approvalLevels = array_merge($approvalLevels, $adminAssistantLevels);
+            $approvalLevels = array_unique($approvalLevels);
+        }
         
         if (!empty($approvalLevels)) {
             $query->whereIn('approval_level', $approvalLevels);
@@ -404,10 +564,20 @@ class PendingApprovalsService
             }
         }
 
-        $results = $query->get()->filter(function ($arfRequest) {
+        $results = $query->get()->filter(function ($arfRequest) use ($isAdminAssistant, $adminAssistantApproverIds) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($arfRequest);
-        })->map(function ($arfRequest) {
+            if ($this->isCurrentApprover($arfRequest)) {
+                return true;
+            }
+            
+            // If admin assistant, also check if any of their approvers is the current approver
+            if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+                return $this->isCurrentApproverForAny($arfRequest, $adminAssistantApproverIds);
+            }
+            
+            return false;
+        })->map(function ($arfRequest) use ($isAdminAssistant) {
+            $isAdminAssistantView = $isAdminAssistant && !$this->isCurrentApprover($arfRequest);
             return $this->formatPendingItem($arfRequest, 'ARF', [
                 'title' => $arfRequest->activity_title ?? 'ARF Request',
                 'division' => $arfRequest->division->division_name ?? 'N/A',
@@ -420,7 +590,7 @@ class PendingApprovalsService
                 'workflow_role' => $this->getCurrentApproverRole($arfRequest),
                 'item_id' => $arfRequest->id,
                 'item_type' => 'RequestARF'
-            ]);
+            ], $isAdminAssistantView);
         });
         
         return $results;
@@ -694,7 +864,7 @@ class PendingApprovalsService
     /**
      * Format a pending item with common structure
      */
-    protected function formatPendingItem($item, string $category, array $data): array
+    protected function formatPendingItem($item, string $category, array $data, bool $isAdminAssistant = false): array
     {
         return array_merge([
             'id' => $item->id,
@@ -703,6 +873,7 @@ class PendingApprovalsService
             'status' => $item->overall_status,
             'created_at' => $item->created_at,
             'updated_at' => $item->updated_at,
+            'is_admin_assistant_view' => $isAdminAssistant && !$this->isCurrentApprover($item), // True if admin assistant viewing but not the actual approver
         ], $data);
     }
 
@@ -925,7 +1096,7 @@ class PendingApprovalsService
     /**
      * Get pending change requests
      */
-    protected function getPendingChangeRequests(): Collection
+    protected function getPendingChangeRequests(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = ChangeRequest::with(['staff', 'division', 'approvalTrails.staff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
             ->where('overall_status', 'pending')
@@ -941,6 +1112,14 @@ class PendingApprovalsService
             // Get approval levels for this workflow
             $workflowLevels = $this->getUserApprovalLevelsForWorkflow($workflowId);
             $approvalLevels = array_merge($approvalLevels, $workflowLevels);
+        }
+        
+        // If admin assistant, also get approval levels for their approvers
+        if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+            foreach ($possibleWorkflowIds as $workflowId) {
+                $adminAssistantLevels = $this->getApprovalLevelsForApproversForWorkflow($workflowId, $adminAssistantApproverIds);
+                $approvalLevels = array_merge($approvalLevels, $adminAssistantLevels);
+            }
         }
         
         $approvalLevels = array_unique($approvalLevels);
@@ -976,10 +1155,20 @@ class PendingApprovalsService
             }
         }
 
-        return $query->get()->filter(function ($changeRequest) {
+        return $query->get()->filter(function ($changeRequest) use ($isAdminAssistant, $adminAssistantApproverIds) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($changeRequest);
-        })->map(function ($changeRequest) {
+            if ($this->isCurrentApprover($changeRequest)) {
+                return true;
+            }
+            
+            // If admin assistant, also check if any of their approvers is the current approver
+            if ($isAdminAssistant && !empty($adminAssistantApproverIds)) {
+                return $this->isCurrentApproverForAny($changeRequest, $adminAssistantApproverIds);
+            }
+            
+            return false;
+        })->map(function ($changeRequest) use ($isAdminAssistant) {
+            $isAdminAssistantView = $isAdminAssistant && !$this->isCurrentApprover($changeRequest);
             return $this->formatPendingItem($changeRequest, 'Change Request', [
                 'title' => $changeRequest->activity_title ?? 'Change Request',
                 'document_number' => $changeRequest->document_number ?? 'N/A',
@@ -1058,6 +1247,47 @@ class PendingApprovalsService
         }
 
         return false;
+    }
+
+    /**
+     * Get approval levels for approvers for a specific workflow
+     */
+    protected function getApprovalLevelsForApproversForWorkflow(int $workflowId, array $approverIds): array
+    {
+        if (empty($approverIds)) {
+            return [];
+        }
+
+        $approvalLevels = [];
+
+        // Get approval levels from approvers table for these approvers
+        $approvers = Approver::whereIn('staff_id', $approverIds)->get();
+        $workflowDfnIds = $approvers->pluck('workflow_dfn_id')->toArray();
+        
+        if (!empty($workflowDfnIds)) {
+            $workflowDefinitions = WorkflowDefinition::whereIn('id', $workflowDfnIds)
+                ->where('workflow_id', $workflowId)
+                ->where('is_division_specific', 0)
+                ->get();
+            
+            $approvalLevels = array_merge($approvalLevels, $workflowDefinitions->pluck('approval_order')->toArray());
+        }
+
+        // Get division-specific approval levels for these approvers
+        $divisions = Division::where(function($query) use ($approverIds) {
+            $query->whereIn('division_head', $approverIds)
+                  ->orWhereIn('focal_person', $approverIds)
+                  ->orWhereIn('finance_officer', $approverIds);
+        })->get();
+
+        foreach ($divisions as $division) {
+            $divisionDefinitions = WorkflowDefinition::where('workflow_id', $workflowId)
+                ->where('is_division_specific', 1)
+                ->get();
+            $approvalLevels = array_merge($approvalLevels, $divisionDefinitions->pluck('approval_order')->toArray());
+        }
+
+        return array_unique($approvalLevels);
     }
 
     /**
