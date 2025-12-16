@@ -243,7 +243,9 @@ class Matrix extends Model
         // Use the matrix's division_id instead of the logged-in user's division_id
         $division_id = $this->division_id;
         //Get staff with with the division days in this quater and year
+        // Exclude staff with status "Expired" and "Separated"
         return Staff::where('division_id', $division_id)
+        ->whereNotIn('status', ['Expired', 'Separated'])
         ->withSum([
             'participant_schedules as division_days' => function ($query) {
                 $query->where('quarter', $this->quarter)

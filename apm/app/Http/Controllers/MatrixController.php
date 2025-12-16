@@ -1291,7 +1291,9 @@ class MatrixController extends Controller
             $quarter_year = $matrix->quarter . "-" . $matrix->year;
 
             // Build query for filtered staff
-            $query = Staff::where('division_id', $matrix->division_id);
+            // Exclude staff with status "Expired" and "Separated"
+            $query = Staff::where('division_id', $matrix->division_id)
+                ->whereNotIn('status', ['Expired', 'Separated']);
 
             // Apply search filter
             if (!empty($search)) {
