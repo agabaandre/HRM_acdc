@@ -492,7 +492,7 @@
                 <div class="mb-3">
                     <h1 class="h2 fw-bold text-dark mb-0">Activity Details: {{ $activity->document_number }}</h1>
                     <p class="text-muted mb-0">Review and manage activity details</p>
-                </div>
+</div>
                 <div class="d-flex gap-2 justify-content-end align-items-center" style="flex-wrap: nowrap !important; white-space: nowrap !important; overflow-x: auto; width: 100%;">
                     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                         <i class="bx bx-arrow-back"></i>
@@ -539,7 +539,7 @@
                             <span>Create ARF</span>
                         </button>
                     @endif
-                    
+                         
                     {{-- Service Request Button --}}
                     @php
                         // Check if Service Request already exists for this activity
@@ -581,7 +581,7 @@
                             <span>Change Request</span>
                         </a>
                     @endif
-                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

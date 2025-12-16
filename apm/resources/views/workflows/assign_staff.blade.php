@@ -34,7 +34,8 @@
                         </h6>
                         <p class="mb-2 small text-muted">
                             <strong>Primary Approver:</strong> Start date and end date are <span class="text-danger fw-bold">required only when OIC is selected</span>.<br>
-                            <strong>OIC (Officer in Charge):</strong> Start date and end date are <span class="text-success fw-bold">optional</span> for OIC assignments.
+                            <strong>OIC (Officer in Charge):</strong> Start date and end date are <span class="text-success fw-bold">optional</span> for OIC assignments.<br>
+                            <strong>Admin Assistant:</strong> No start/end dates required - admin assistants are permanent assignments.
                         </p>
                         <p class="mb-0 small text-muted">
                             <i class="bx bx-refresh me-1"></i>Existing approvers will be pre-selected in the form fields for easy editing.
@@ -143,6 +144,7 @@
                                         <tr>
                                             <th>Staff Name</th>
                                             <th>OIC</th>
+                                            <th>Admin Assistant</th>
                                             <th>Start Date</th>
                                             <th>End Date</th>
                                             <th class="text-center">Actions</th>
@@ -157,6 +159,12 @@
                                                                     @if($approver->oic_staff_id)
                                                                         {{ optional($approver->oicStaff)->fname }}
                                                                         {{ optional($approver->oicStaff)->lname }}
+                                                                    @endif
+                                                                </td>
+                                                                <td>
+                                                                    @if($approver->admin_assistant)
+                                                                        {{ optional($approver->adminAssistant)->fname }}
+                                                                        {{ optional($approver->adminAssistant)->lname }}
                                                                     @endif
                                                                 </td>
                                                                 <td>{{ $approver->start_date }}</td>
@@ -189,7 +197,7 @@
                                     data-definition-id="{{ $definition->id }}">
                                     @csrf
                                     <div class="row g-3">
-                                        <div class="col-md-3">
+                                        <div class="col-md-2">
                                             <div class="form-group position-relative">
                                                 <label for="staff-{{ $definition->id }}" class="form-label fw-semibold">
                                                     <i class="bx bx-user me-1 text-success"></i>Staff: <span class="text-danger">*</span>
@@ -204,18 +212,18 @@
                                                         </option>
                                                     @endforeach
                                                 </select>
-                                                <small class="text-muted mt-1 d-block">Primary approver (required)</small>
+                                                <small class="text-muted mt-1 d-block small">Primary (required)</small>
                                             </div>
                                         </div>
 
-                                        <div class="col-md-3">
+                                        <div class="col-md-2">
                                             <div class="form-group position-relative">
                                                 <label for="oic-{{ $definition->id }}" class="form-label fw-semibold">
-                                                    <i class="bx bx-user-voice me-1 text-success"></i>OIC (Optional):
+                                                    <i class="bx bx-user-voice me-1 text-success"></i>OIC:
                                                 </label>
                                                 <select name="oic_staff_id" id="oic-{{ $definition->id }}"
                                                     class="form-select select2 border-success">
-                                                    <option value="">Select OIC (Optional)</option>
+                                                    <option value="">Select OIC</option>
                                                     @foreach($availableStaff as $staff)
                                                         <option value="{{ $staff->staff_id }}"
                                                             @if($definition->approvers->isNotEmpty() && $definition->approvers->first()->oic_staff_id == $staff->staff_id) selected @endif>
@@ -223,7 +231,26 @@
                                                         </option>
                                                     @endforeach
                                                 </select>
-                                                <small class="text-muted mt-1 d-block">Officer in charge (stand-in) - optional</small>
+                                                <small class="text-muted mt-1 d-block small">OIC (optional)</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-2">
+                                            <div class="form-group position-relative">
+                                                <label for="admin-assistant-{{ $definition->id }}" class="form-label fw-semibold">
+                                                    <i class="bx bx-user-check me-1 text-success"></i>Admin Asst:
+                                                </label>
+                                                <select name="admin_assistant" id="admin-assistant-{{ $definition->id }}"
+                                                    class="form-select select2 border-success">
+                                                    <option value="">Select Admin</option>
+                                                    @foreach($availableStaff as $staff)
+                                                        <option value="{{ $staff->staff_id }}"
+                                                            @if($definition->approvers->isNotEmpty() && $definition->approvers->first()->admin_assistant == $staff->staff_id) selected @endif>
+                                                            {{ $staff->fname }} {{ $staff->lname }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="text-muted mt-1 d-block small">Admin (optional)</small>
                                             </div>
                                         </div>
 
@@ -236,26 +263,26 @@
                                                     id="start-date-{{ $definition->id }}" class="form-control datepicker border-success"
                                                     placeholder="Select start date"
                                                     value="{{ $definition->approvers->isNotEmpty() ? $definition->approvers->first()->start_date : '' }}">
-                                                <small class="text-muted mt-1 d-block">Primary approver start date (required when OIC is selected)</small>
+                                                <small class="text-muted mt-1 d-block small">Start (OIC only)</small>
                                             </div>
                                         </div>
 
                                         <div class="col-md-2">
                                             <div class="form-group position-relative">
                                                 <label for="end-date-{{ $definition->id }}" class="form-label fw-semibold">
-                                                    <i class="bx bx-calendar-minus me-1 text-success"></i>End Date: <span class="text-danger">*</span>
+                                                    <i class="bx bx-calendar-minus me-1 text-success"></i>End Date: <span class="text-danger oic-required" style="display: none;">*</span>
                                                 </label>
                                                 <input type="text" name="end_date"
                                                     id="end-date-{{ $definition->id }}" class="form-control datepicker border-success"
                                                     placeholder="Select end date"
                                                     value="{{ $definition->approvers->isNotEmpty() ? $definition->approvers->first()->end_date : '' }}">
-                                                <small class="text-muted mt-1 d-block">Primary approver end date (required when OIC is selected)</small>
+                                                <small class="text-muted mt-1 d-block small">End (OIC only)</small>
                                             </div>
                                         </div>
 
                                         <div class="col-md-2 d-flex align-items-end">
-                                            <div class="mb-3">
-                                                <button type="submit" class="btn btn-success">
+                                            <div class="mb-3 w-100">
+                                                <button type="submit" class="btn btn-success w-100">
                                                     <i class="bx bx-plus-circle me-1"></i>{{ $definition->approvers->isNotEmpty() ? 'Replace Approver' : 'Assign Approver' }}
                                                 </button>
                                             </div>
@@ -414,20 +441,7 @@
                     updateDateFieldRequirements(definitionId, hasOIC);
                 });
 
-                // Helper function to show alerts
-                function showAlert(message, type = 'success') {
-                    const alertContainer = document.getElementById('alert-container');
-                    const alert = document.createElement('div');
-                    alert.className = `alert alert-${type} alert-dismissible fade show`;
-                    alert.innerHTML = `
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                `;
-                    alertContainer.appendChild(alert);
-
-                    // Auto dismiss after 5 seconds
-                    setTimeout(() => alert.remove(), 5000);
-                }
+                // Use show_notification from footer instead of custom showAlert
 
                 // Handle new approver assignment
                 document.querySelectorAll('.assignment-form').forEach(form => {
@@ -440,29 +454,30 @@
                         // Validate form - staff is always required, dates only when OIC is selected
                         const staffId = this.querySelector('select[name="staff_id"]').value;
                         const oicStaffId = this.querySelector('select[name="oic_staff_id"]').value;
+                        const adminAssistant = this.querySelector('select[name="admin_assistant"]').value;
                         const startDate = this.querySelector('input[name="start_date"]').value;
                         const endDate = this.querySelector('input[name="end_date"]').value;
                         
                         if (!staffId) {
-                            showAlert('Please select a staff member', 'danger');
+                            show_notification('Please select a staff member', 'error');
                             return;
                         }
                         
                         // Only require dates if OIC is selected
                         if (oicStaffId) {
                             if (!startDate) {
-                                showAlert('Start date is required when OIC is selected', 'danger');
+                                show_notification('Start date is required when OIC is selected', 'error');
                                 return;
                             }
                             
                             if (!endDate) {
-                                showAlert('End date is required when OIC is selected', 'danger');
+                                show_notification('End date is required when OIC is selected', 'error');
                                 return;
                             }
                             
                             // Validate end date is after start date
                             if (new Date(endDate) <= new Date(startDate)) {
-                                showAlert('End date must be after start date', 'danger');
+                                show_notification('End date must be after start date', 'error');
                                 return;
                             }
                         }
@@ -491,7 +506,7 @@
                                 console.error('Response not ok:', response.status, response.statusText);
                                 const errorText = await response.text();
                                 console.error('Error response body:', errorText);
-                                showAlert(`HTTP Error: ${response.status} - ${response.statusText}`, 'danger');
+                                show_notification(`HTTP Error: ${response.status} - ${response.statusText}`, 'error');
                                 return;
                             }
 
@@ -519,6 +534,7 @@
                                 newRow.innerHTML = `
                                 <td>${result.approver.staff ? (result.approver.staff.fname + ' ' + result.approver.staff.lname) : 'N/A'}</td>
                                 <td>${result.approver.oic_staff ? (result.approver.oic_staff.fname + ' ' + result.approver.oic_staff.lname) : ''}</td>
+                                <td>${result.approver.admin_assistant ? (result.approver.admin_assistant.fname + ' ' + result.approver.admin_assistant.lname) : ''}</td>
                                 <td>${result.approver.start_date || ''}</td>
                                 <td>${result.approver.end_date || ''}</td>
                                 <td>
@@ -531,17 +547,17 @@
                             `;
                                 approversList.appendChild(newRow);
 
-                                showAlert('Staff assigned successfully - replaced existing approver');
+                                show_notification('Staff assigned successfully - replaced existing approver', 'success');
                             } else {
                                 // Debug: Log the error response
                                 console.error('Error response:', result);
                                 if (result.errors) {
                                     console.error('Validation errors:', result.errors);
                                 }
-                                showAlert(result.message || 'Failed to assign staff', 'danger');
+                                show_notification(result.message || 'Failed to assign staff', 'error');
                             }
                         } catch (error) {
-                            showAlert('An error occurred while assigning staff', 'danger');
+                            show_notification('An error occurred while assigning staff', 'error');
                             console.error('Fetch error:', error);
                         }
                     });
@@ -572,7 +588,7 @@
                                 console.error('Response not ok:', response.status, response.statusText);
                                 const errorText = await response.text();
                                 console.error('Error response body:', errorText);
-                                showAlert(`HTTP Error: ${response.status} - ${response.statusText}`, 'danger');
+                                show_notification(`HTTP Error: ${response.status} - ${response.statusText}`, 'error');
                                 return;
                             }
 
@@ -581,12 +597,12 @@
                             if (result.success) {
                                 // Remove the row
                                 button.closest('tr').remove();
-                                showAlert('Staff removed successfully');
+                                show_notification('Staff removed successfully', 'success');
                             } else {
-                                showAlert(result.message, 'danger');
+                                show_notification(result.message, 'error');
                             }
                         } catch (error) {
-                            showAlert('An error occurred while removing staff', 'danger');
+                            show_notification('An error occurred while removing staff', 'error');
                             console.error(error);
                         }
                     }

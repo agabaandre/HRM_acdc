@@ -539,7 +539,7 @@ class WorkflowController extends Controller
     {
         $workflowDefinitions = $workflow->workflowDefinitions()
             ->orderBy('approval_order')
-            ->with(['approvers.staff', 'approvers.oicStaff'])
+            ->with(['approvers.staff', 'approvers.oicStaff', 'approvers.adminAssistant'])
             ->get();
 
         $availableStaff = Staff::active()
@@ -603,6 +603,7 @@ class WorkflowController extends Controller
                 'workflow_dfn_id' => 'required|exists:workflow_definition,id',
                 'staff_id' => 'required|exists:staff,staff_id',
                 'oic_staff_id' => 'nullable|exists:staff,staff_id',
+                'admin_assistant' => 'nullable|exists:staff,staff_id',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after:start_date',
             ]);
@@ -631,19 +632,36 @@ class WorkflowController extends Controller
             $approver = Approver::create([
                 'workflow_dfn_id' => $validated['workflow_dfn_id'],
                 'staff_id' => $validated['staff_id'],
-                'oic_staff_id' => $validated['oic_staff_id'],
+                'oic_staff_id' => $validated['oic_staff_id'] ?? null,
+                'admin_assistant' => $validated['admin_assistant'] ?? null,
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'],
             ]);
 
-            $approver->load(['staff', 'oicStaff']);
+            $approver->load(['staff', 'oicStaff', 'adminAssistant']);
 
             Log::info('Approver created successfully:', $approver->toArray());
+
+            // Format approver data to ensure admin_assistant relationship is properly serialized
+            // Laravel serializes relationships in snake_case, so adminAssistant becomes admin_assistant
+            // But since the column is also admin_assistant, we need to ensure the relationship object is included
+            $approverData = $approver->toArray();
+            
+            // Override admin_assistant with the relationship object instead of just the column value
+            if ($approver->adminAssistant) {
+                $approverData['admin_assistant'] = [
+                    'staff_id' => $approver->adminAssistant->staff_id,
+                    'fname' => $approver->adminAssistant->fname,
+                    'lname' => $approver->adminAssistant->lname,
+                ];
+            } else {
+                $approverData['admin_assistant'] = null;
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Staff assigned successfully',
-                'approver' => $approver
+                'approver' => $approverData
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Validation failed:', [

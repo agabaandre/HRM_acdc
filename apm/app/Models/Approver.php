@@ -36,7 +36,7 @@ class Approver extends Model
      * @var array
      */
     protected $fillable = [
-        'workflow_dfn_id', 'staff_id', 'oic_staff_id', 'start_date', 'end_date'
+        'workflow_dfn_id', 'staff_id', 'oic_staff_id', 'admin_assistant', 'start_date', 'end_date'
     ];
 
     /**
@@ -61,5 +61,13 @@ class Approver extends Model
     public function oicStaff(): BelongsTo
     {
         return $this->belongsTo(Staff::class, 'oic_staff_id', 'staff_id');
+    }
+
+    /**
+     * Get the admin assistant assigned to the approver.
+     */
+    public function adminAssistant(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'admin_assistant', 'staff_id');
     }
 }
