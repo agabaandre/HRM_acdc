@@ -3205,19 +3205,28 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
      */
     public function copy(Matrix $matrix, Activity $activity)
     {
-        // Check if user has permission to copy activities
-        if (!in_array(91, user_session('permissions', []))) {
-            return redirect()->back()->with('error', 'You do not have permission to copy activities.');
-        }
-
         // Check if activity is in draft status
         if ($activity->overall_status !== 'draft') {
             return redirect()->back()->with('error', 'Only draft activities can be copied.');
         }
 
         // Check if matrix allows activity creation
-        if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
-            return redirect()->back()->with('error', 'Activities can only be copied when the matrix is in draft or returned status.');
+        if ($matrix->overall_status !== 'draft') {
+            return redirect()->back()->with('error', 'Activities can only be copied when the matrix is in draft status.');
+        }
+
+        // Check if user has permission to copy this activity
+        // User must be: responsible person, creator, division head, or matrix creator
+        $userStaffId = user_session('staff_id');
+        $matrix->load('division');
+        
+        $canCopy = $activity->responsible_person_id == $userStaffId ||
+                   $activity->staff_id == $userStaffId ||
+                   ($matrix->division && $matrix->division->division_head == $userStaffId) ||
+                   $matrix->staff_id == $userStaffId;
+
+        if (!$canCopy) {
+            return redirect()->back()->with('error', 'You do not have permission to copy this activity.');
         }
 
         try {
