@@ -75,7 +75,7 @@
 
   .stat-item {
     text-align: center;
-    padding: 1.5rem 1rem;
+    padding: 1rem 0.75rem;
     background: white;
     box-shadow: var(--shadow);
     transition: var(--transition);
@@ -120,29 +120,47 @@
   }
 
   .stat-number {
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 800;
     color: var(--stat-color);
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
     animation: countUp 1s ease-out;
   }
 
   .stat-label {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 1px;
     font-weight: 700;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
   }
 
   .stat-icon {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     color: var(--stat-color);
-    margin-bottom: 0.5rem;
-    display: block;
+    margin-bottom: 0.4rem;
+    display: inline-block;
+    padding: 0.5rem;
+    border-radius: 8px;
     animation: pulse 2s infinite;
+  }
+
+  .stat-item.total .stat-icon {
+    background: rgba(23, 162, 184, 0.1);
+  }
+
+  .stat-item.pending .stat-icon {
+    background: rgba(255, 193, 7, 0.1);
+  }
+
+  .stat-item.workflow .stat-icon {
+    background: rgba(111, 66, 193, 0.1);
+  }
+
+  .stat-item.updated .stat-icon {
+    background: rgba(17, 154, 72, 0.1);
   }
 
   @keyframes pulse {
@@ -317,7 +335,7 @@
         <div class="stat-item workflow">
           <i class="fa fa-cogs stat-icon"></i>
           <span class="stat-number" id="activeWorkflow">-</span>
-          <span class="stat-label">Active Workflow</span>
+          <span class="stat-label">Active Workflows</span>
         </div>
       </div>
       <div class="col-md-3">
