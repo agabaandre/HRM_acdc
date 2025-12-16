@@ -299,6 +299,11 @@
                                         <a href="{{ $item['view_url'] }}" class="btn btn-sm btn-outline-primary" target="_blank">
                                             <i class="fas fa-eye me-1"></i> View
                                         </a>
+                                        @if(isset($isAdminAssistant) && $isAdminAssistant && isset($item['is_admin_assistant_view']) && $item['is_admin_assistant_view'])
+                                            <small class="d-block text-muted mt-1">
+                                                <i class="fas fa-info-circle"></i> View Only
+                                            </small>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach

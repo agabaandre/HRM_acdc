@@ -51,13 +51,17 @@ class PendingApprovalsController extends Controller
             $pendingApprovals = $this->filterByGroupedCategory($pendingApprovals, $category);
         }
         
+        // Check if user is an admin assistant
+        $isAdminAssistant = is_admin_assistant();
+
         return view('pending-approvals.index', compact(
             'pendingApprovals',
             'summaryStats',
             'groupedCategories',
             'divisions',
             'category',
-            'division'
+            'division',
+            'isAdminAssistant'
         ));
     }
 
