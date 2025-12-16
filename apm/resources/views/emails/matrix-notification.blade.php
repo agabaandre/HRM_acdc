@@ -242,29 +242,29 @@
                     </div>
                 </div>
             @else
-                <p>{{ $message }}</p>
+            <p>{{ $message }}</p>
 
-                <div class="details">
-                    <h2>Approval Details</h2>
-                    <div class="details-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">Document Number:</span>
-                            <span class="detail-value">#{{ isset($resource->document_number) ? $resource->document_number : 'QM/'.$resource->year.'/'.$resource->quarter }} </span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Created by:</span>
-                            <span class="detail-value">{{ $resource->staff->fname }} {{ $resource->staff->lname }}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Division:</span>
-                            <span class="detail-value">{{ $resource->division ? ($resource->division->name ?? $resource->division->division_name ?? 'N/A') : 'N/A' }}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Status:</span>
-                            <span class="detail-value status-{{ strtolower($resource->overall_status) }}">{{ ucfirst($resource->overall_status) }}</span>
-                        </div>
+            <div class="details">
+                <h2>Approval Details</h2>
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Document Number:</span>
+                        <span class="detail-value">#{{ isset($resource->document_number) ? $resource->document_number : 'QM/'.$resource->year.'/'.$resource->quarter }} </span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Created by:</span>
+                        <span class="detail-value">{{ $resource->staff->fname }} {{ $resource->staff->lname }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Division:</span>
+                        <span class="detail-value">{{ $resource->division ? ($resource->division->name ?? $resource->division->division_name ?? 'N/A') : 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Status:</span>
+                        <span class="detail-value status-{{ strtolower($resource->overall_status) }}">{{ ucfirst($resource->overall_status) }}</span>
                     </div>
                 </div>
+            </div>
             @endif
 
             @if($type != 'approved')
