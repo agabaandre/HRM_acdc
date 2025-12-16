@@ -53,8 +53,14 @@ class SendNotificationEmailJob implements ShouldQueue
                 return;
             }
 
+            // Get admin assistant emails for CC (if enabled)
+            $ccEmails = [];
+            if (env('NOTIFICATION_CC_ADMIN_ASSISTANTS', true)) {
+                $ccEmails = $this->getAdminAssistantEmails();
+            }
+
             // Use the same Exchange service that works for matrix notifications
-            $result = $this->sendWithExchange([], ['system@africacdc.org']);
+            $result = $this->sendWithExchange($ccEmails, ['system@africacdc.org']);
 
             if (!$result) {
                 throw new \Exception('Failed to send email notification via Exchange');
@@ -266,5 +272,66 @@ class SendNotificationEmailJob implements ShouldQueue
 
         $returnedMemosService = new \App\Services\ReturnedMemosService($sessionData);
         return $returnedMemosService->getReturnedMemos();
+    }
+
+    /**
+     * Get admin assistant email addresses for the recipient approver
+     * Handles both division-specific and non-division approvers
+     */
+    private function getAdminAssistantEmails(): array
+    {
+        if (!$this->recipient) {
+            return [];
+        }
+
+        $adminAssistantEmails = [];
+
+        try {
+            // 1. Check if recipient is a division-specific approver
+            // Get division where recipient is division_head, focal_person, or finance_officer
+            $division = \App\Models\Division::where(function($query) {
+                $query->where('division_head', $this->recipient->staff_id)
+                      ->orWhere('focal_person', $this->recipient->staff_id)
+                      ->orWhere('finance_officer', $this->recipient->staff_id);
+            })->first();
+
+            if ($division && $division->admin_assistant) {
+                $adminAssistant = \App\Models\Staff::where('staff_id', $division->admin_assistant)
+                    ->where('active', 1)
+                    ->whereNotNull('work_email')
+                    ->first();
+                
+                if ($adminAssistant && $adminAssistant->work_email) {
+                    $adminAssistantEmails[] = $adminAssistant->work_email;
+                }
+            }
+
+            // 2. Check if recipient is a non-division approver (from approvers table)
+            $approver = \App\Models\Approver::where('staff_id', $this->recipient->staff_id)
+                ->with('adminAssistant')
+                ->first();
+
+            if ($approver && $approver->admin_assistant) {
+                $adminAssistant = \App\Models\Staff::where('staff_id', $approver->admin_assistant)
+                    ->where('active', 1)
+                    ->whereNotNull('work_email')
+                    ->first();
+                
+                if ($adminAssistant && $adminAssistant->work_email) {
+                    // Avoid duplicates
+                    if (!in_array($adminAssistant->work_email, $adminAssistantEmails)) {
+                        $adminAssistantEmails[] = $adminAssistant->work_email;
+                    }
+                }
+            }
+
+        } catch (\Exception $e) {
+            Log::warning('Failed to get admin assistant emails', [
+                'recipient_id' => $this->recipient->staff_id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return array_filter($adminAssistantEmails);
     }
 }
