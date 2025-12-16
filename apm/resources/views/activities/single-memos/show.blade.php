@@ -496,20 +496,20 @@
                     <div class="mb-3">
                         <h1 class="h2 fw-bold text-dark mb-0">Single Memo Details: {{ $activity->document_number }}</h1>
                         <p class="text-muted mb-0">Review and manage single memo details</p>
-                    </div>
+                </div>
                     <div class="d-flex gap-2 justify-content-end align-items-center" style="flex-wrap: nowrap !important; white-space: nowrap !important; overflow-x: auto; width: 100%;">
                         <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="bx bx-arrow-back"></i>
                             <span>Back to List</span>
                         </a>
                         
-                        @if (can_edit_memo($activity))
+                            @if (can_edit_memo($activity))
                             <a href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}"
                                 class="btn btn-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                 <i class="bx bx-edit"></i>
                                 <span>Edit Memo</span>
                             </a>
-                        @endif
+                    @endif
                         
                         @php
                             $isAdmin = user_session('role') == 10;
@@ -528,7 +528,7 @@
                                 <i class="bx bx-info-circle"></i>
                                 <span>Approval Status</span>
                             </a>
-                        @endif
+                    @endif
 
                         @if ($activity->overall_status === 'approved')
                             <a href="{{ route('matrices.activities.memo-pdf', [$activity->matrix, $activity]) }}" target="_blank"
@@ -590,9 +590,9 @@
                                 </a>
                             @endif
                         @endif
+                        </div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
         <div class="container-fluid py-4">
             @php
