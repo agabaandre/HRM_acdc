@@ -645,6 +645,7 @@
                                     <td class="bg-highlight">#</td>
                                     <th class="bg-highlight">Name</th>
                                     <th class="bg-highlight">Division</th>
+                                    <th class="bg-highlight">Contract Status</th>
                                     <th class="bg-highlight">Job Title</th>
                                     <th class="bg-highlight">Duty Station</th>
                                   
@@ -656,7 +657,7 @@
                                 $count = 1;
                                 ?>
                                 <?php if (empty($internalParticipants)): ?>
-                                    <tr><td colspan="6" class="text-center text-muted">No participants listed</td></tr>
+                                    <tr><td colspan="7" class="text-center text-muted">No participants listed</td></tr>
                                 <?php else: ?>
                                     <?php foreach($internalParticipants as $entry): ?>
                                         <?php if ($entry['staff']): ?>
@@ -669,6 +670,7 @@
                                                         }
                                                     ?></td>
                                                      <td><?php echo htmlspecialchars(is_array($entry['staff']) ? ($entry['staff']['division_name'] ?? 'N/A') : ($entry['staff']->division_name ?? 'N/A')); ?></td>
+                                                    <td><?php echo htmlspecialchars(is_array($entry['staff']) ? ($entry['staff']['status'] ?? 'N/A') : ($entry['staff']->status ?? 'N/A')); ?></td>
                                                     <td><?php echo htmlspecialchars(is_array($entry['staff']) ? ($entry['staff']['job_name'] ?? 'N/A') : ($entry['staff']->job_name ?? 'N/A')); ?></td>
                                                   <td><?php echo htmlspecialchars(is_array($entry['staff']) ? ($entry['staff']['duty_station_name'] ?? 'N/A') : ($entry['staff']->duty_station_name ?? 'N/A')); ?></td>
                                                 <td><?php echo htmlspecialchars($entry['participant_days'] ?? '-'); ?></td>
