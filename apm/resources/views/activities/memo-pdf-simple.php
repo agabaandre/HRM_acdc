@@ -429,6 +429,7 @@
                                     <td class="bg-highlight">#</td>
                                     <th class="bg-highlight">Name</th>
                                     <th class="bg-highlight">Division</th>
+                                    <th class="bg-highlight">Contract Status</th>
                                     <th class="bg-highlight">Job Title</th>
                                     <th class="bg-highlight">Duty Station</th>
                                   
@@ -443,6 +444,7 @@
                                     <tr><td><?php echo $count; ?></td>
                                             <td><?php echo htmlspecialchars($entry['staff']->name ?? 'N/A'); ?></td>
                                              <td><?php echo htmlspecialchars($entry['staff']->division_name ?? 'N/A'); ?></td>
+                                            <td><?php echo htmlspecialchars($entry['staff']->status ?? 'N/A'); ?></td>
                                             <td><?php echo htmlspecialchars($entry['staff']->job_name ?? 'N/A'); ?></td>
                                           <td><?php echo htmlspecialchars($entry['staff']->duty_station_name ?? 'N/A'); ?></td>
                                         <td><?php echo htmlspecialchars($entry['participant_days'] ?? '-'); ?></td>

@@ -954,6 +954,7 @@
                                             <th>Staff</th>
                                     <th>Job Title</th>
                                             <th>Division</th>
+                                            <th>Contract Status</th>
                                     <th>Duty Station</th>
                                             <th>Start Date</th>
                                             <th>End Date</th>
@@ -981,6 +982,13 @@
                                                 <td>
                                                     @if (isset($participant['staff']) && $participant['staff'])
                                                         {{ $participant['staff']->division_name ?? '-' }}
+                                                    @else
+                                                        <span class="text-muted">-</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if (isset($participant['staff']) && $participant['staff'])
+                                                        <span class="badge bg-info">{{ $participant['staff']->status ?? '-' }}</span>
                                                     @else
                                                         <span class="text-muted">-</span>
                                                     @endif

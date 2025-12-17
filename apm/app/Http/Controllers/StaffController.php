@@ -24,7 +24,8 @@ class StaffController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Staff::with(['division', 'directorate', 'dutyStation']);
+        $query = Staff::with(['division', 'directorate', 'dutyStation'])
+            ->whereNotIn('status', ['Expired', 'Separated']); // Exclude Expired and Separated staff
 
         // Search filter
         if ($request->has('search') && !empty($request->search)) {
@@ -64,6 +65,7 @@ class StaffController extends Controller
         $dutyStations = Staff::select('duty_station_name')
             ->whereNotNull('duty_station_name')
             ->where('duty_station_name', '!=', '')
+            ->whereNotIn('status', ['Expired', 'Separated']) // Exclude Expired and Separated staff
             ->distinct()
             ->orderBy('duty_station_name')
             ->get();
@@ -182,7 +184,11 @@ class StaffController extends Controller
         $divisions = Division::orderBy('division_name')->get();
         $directorates = Directorate::where('is_active', 1)->orderBy('name')->get();
         $dutyStations = DutyStation::where('is_active', 1)->orderBy('name')->get();
-        $supervisors = Staff::where('active', 1)->where('id', '!=', $id)->orderBy('fname')->get();
+        // Exclude Expired and Separated staff from supervisor dropdown
+        $supervisors = Staff::where('active', 1)
+            ->where('id', '!=', $id)
+            ->whereNotIn('status', ['Expired', 'Separated'])
+            ->orderBy('fname')->get();
 
         return view('staff.edit', compact('staff', 'divisions', 'directorates', 'dutyStations', 'supervisors'));
     }
@@ -291,14 +297,16 @@ class StaffController extends Controller
             // Calculate pagination
             $skip = ($page - 1) * $pageSize;
             
-            // Get all staff first for summary statistics
+            // Get all staff first for summary statistics (exclude Expired and Separated)
             $allStaff = Staff::with(['division', 'dutyStation'])
                 ->where('active', 1)
+                ->whereNotIn('status', ['Expired', 'Separated'])
                 ->get();
             
-            // Build query for filtered staff
+            // Build query for filtered staff (exclude Expired and Separated)
             $query = Staff::with(['division', 'dutyStation'])
-                ->where('active', 1);
+                ->where('active', 1)
+                ->whereNotIn('status', ['Expired', 'Separated']);
             
             // Apply search filter
             if (!empty($search)) {

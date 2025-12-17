@@ -995,6 +995,8 @@
                                         <tr>
                                                 <th>#</th>
                                                 <th>Staff</th>
+                                                <th>Division</th>
+                                                <th>Contract Status</th>
                                             <th>Start Date</th>
                                             <th>End Date</th>
                                             <th>Days</th>
@@ -1012,6 +1014,20 @@
                                                             <span class="text-muted">Unknown Staff</span>
                                                             @endif
                                                         </td>
+                                                    <td>
+                                                        @if (isset($participant['staff']) && $participant['staff'])
+                                                            {{ $participant['staff']->division_name ?? '-' }}
+                                                        @else
+                                                            <span class="text-muted">-</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if (isset($participant['staff']) && $participant['staff'])
+                                                            <span class="badge bg-info">{{ $participant['staff']->status ?? '-' }}</span>
+                                                        @else
+                                                            <span class="text-muted">-</span>
+                                                        @endif
+                                                    </td>
                                                     <td>{{ $participant['participant_start'] ?? '-' }}</td>
                                                     <td>{{ $participant['participant_end'] ?? '-' }}</td>
                                                     <td>{{ $participant['participant_days'] ?? '-' }}</td>
