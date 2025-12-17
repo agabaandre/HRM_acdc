@@ -104,11 +104,12 @@ class ServiceRequestController extends Controller
     public function create(Request $request): View
     {
         try {
-        $staff = Staff::all();
+        // Exclude Expired and Separated staff from dropdown
+        $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])->get();
             
             // Ensure we have at least one staff member for the dropdown
             if ($staff->isEmpty()) {
-                $staff = Staff::take(10)->get(); // Fallback to any 10 staff members
+                $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])->take(10)->get(); // Fallback to any 10 staff members
             }
         $divisions = Division::all();
         $workflows = Workflow::all();

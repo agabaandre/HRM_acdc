@@ -2368,8 +2368,9 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $years = range($currentYear - 2, $currentYear + 2);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         
-        // Get staff data for filter
-        $staff = \App\Models\Staff::orderBy('fname')->orderBy('lname')->get();
+        // Get staff data for filter (exclude Expired and Separated)
+        $staff = \App\Models\Staff::whereNotIn('status', ['Expired', 'Separated'])
+            ->orderBy('fname')->orderBy('lname')->get();
         
         // Debug logging
         Log::info('Activities Index Debug', [

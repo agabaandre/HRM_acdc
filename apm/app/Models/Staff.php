@@ -76,10 +76,12 @@ class Staff extends Model
 
     /**
      * Scope a query to only include active staff.
+     * Excludes staff with status "Expired" and "Separated"
      */
     public function scopeActive($query)
     {
-        return $query->whereIn('status', ['Active', 'Due','Expired','Under Renewal']);
+        return $query->whereIn('status', ['Active', 'Due', 'Under Renewal'])
+                     ->whereNotIn('status', ['Expired', 'Separated']);
     }
 
     /**
