@@ -383,7 +383,9 @@ class ChangeRequestController extends Controller
         $fundTypes = FundType::all();
         $locations = Location::all();
         $divisions = Division::orderBy('division_name')->get();
-        $staff = Staff::orderBy('fname')->get();
+        // Exclude Expired and Separated staff from dropdown
+        $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])
+            ->orderBy('fname')->get();
 
         return view('change-requests.create', [
             'parentMemo' => $parentMemo,
