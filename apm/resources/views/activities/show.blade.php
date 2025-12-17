@@ -979,7 +979,7 @@
                                                         <span class="text-muted">-</span>
                                                     @endif
                                                 </td>
-                                                <td>
+                                                <td style="word-wrap: break-word; word-break: break-word; max-width: 200px;">
                                                     @if (isset($participant['staff']) && $participant['staff'])
                                                         {{ $participant['staff']->division_name ?? '-' }}
                                                     @else
