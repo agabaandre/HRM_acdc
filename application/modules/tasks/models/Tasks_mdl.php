@@ -556,7 +556,7 @@ class Tasks_mdl extends CI_Model {
         }
 
         return $this->db
-            ->group_by('s.staff_id')
+            ->group_by('s.staff_id, s.fname, s.lname, s.title, j.job_name')
             ->order_by('s.fname', 'ASC')
             ->get()
             ->result();
