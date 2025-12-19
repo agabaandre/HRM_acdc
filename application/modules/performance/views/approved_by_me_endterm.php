@@ -34,7 +34,7 @@
                                 ?>
                             </td>
                             <td><?= !empty($endterm['approval_date']) ? date('d M Y', strtotime($endterm['approval_date'])) : '-' ?></td>
-                            <td><?= htmlspecialchars($endterm['comments'] ?? '') ?></td>
+                            <td style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: normal; max-width: 300px; line-height: 1.4;"><?= htmlspecialchars($endterm['comments'] ?? '') ?></td>
                             <td>
                                 <a href="<?= base_url()?>performance/endterm/endterm_review/<?=$endterm['entry_id']?>/<?=$endterm['staff_id']?>" class="btn btn-primary btn-sm">
                                     <i class="fa fa-eye"></i> Review
