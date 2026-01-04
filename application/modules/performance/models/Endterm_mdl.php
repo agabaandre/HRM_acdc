@@ -471,23 +471,18 @@ public function get_staff_by_type($type, $division_id = null, $funder_id = null,
             $this->db->where('pe.endterm_draft_status !=', 1); // Submitted
             } elseif ($type === 'approved') {
             // Staff whose endterm reviews have been approved
-                // Use WHERE EXISTS with subquery to handle collation properly
+            // Filter by overall_end_term_status = 'Approved' OR where status is not null
+            // This accounts for three approver checks (first supervisor, second supervisor, employee consent)
             $this->db->select('pe.staff_id, pe.entry_id');
             $this->db->from('ppa_entries pe');
             $this->db->where('pe.draft_status !=', 1);
             $this->db->where('pe.endterm_draft_status !=', 1);
             if ($period) $this->db->where('pe.performance_period', $period);
-                // Use raw WHERE clause for collation handling
-                $this->db->where("EXISTS (
-                    SELECT 1 FROM ppa_approval_trail_end_term pat
-                    WHERE pat.entry_id COLLATE utf8mb4_general_ci = pe.entry_id COLLATE utf8mb4_general_ci
-                    AND pat.action = 'Approved'
-                    AND pat.id = (
-                        SELECT MAX(id) 
-                        FROM ppa_approval_trail_end_term 
-                        WHERE entry_id COLLATE utf8mb4_general_ci = pe.entry_id COLLATE utf8mb4_general_ci
-                    )
-                )", null, false);
+            // Filter by overall_end_term_status = 'Approved' OR where status is not null
+            $this->db->group_start();
+            $this->db->where('pe.overall_end_term_status', 'Approved');
+            $this->db->or_where('pe.overall_end_term_status IS NOT NULL', null, false);
+            $this->db->group_end();
             } elseif ($type === 'require_calibration') {
                 // Staff whose endterm reviews require calibration
             $this->db->select('pe.staff_id, pe.entry_id');
