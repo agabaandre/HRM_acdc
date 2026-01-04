@@ -41,6 +41,10 @@
         <?php else: ?>
           <!-- Read-only display -->
           <?= staff_name(!empty($ppa->endterm_supervisor_1) ? $ppa->endterm_supervisor_1 : $contract->first_supervisor) ?>
+          <?php //dd($ppa->overall_end_term_status); ?>
+          <?php if (!empty($ppa) && $ppa->overall_end_term_status !='Approved'): ?>
+            <?php $this->load->view('performance/partials/change_supervisor_modal', ['ppa' => $ppa, 'type' => 'endterm']); ?>
+          <?php endif; ?>
           <input type="hidden" name="supervisor_id" value="<?= !empty($ppa->endterm_supervisor_1) ? $ppa->endterm_supervisor_1 : $contract->first_supervisor ?>">
         <?php endif; ?>
       </td>

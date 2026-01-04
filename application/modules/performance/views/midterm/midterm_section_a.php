@@ -22,13 +22,16 @@
     <tr>
       <th>Direct Supervisor</th>
       <td>
-        <?= staff_name($contract->first_supervisor) ?>
-        <input type="hidden" name="supervisor_id" value="<?= $contract->first_supervisor ?>">
+        <?= staff_name(!empty($ppa->midterm_supervisor_1) ? $ppa->midterm_supervisor_1 : $contract->first_supervisor) ?>
+        <?php if (!empty($ppa) && isset($ppa->draft_status) && (int)$ppa->draft_status !== 2): ?>
+          <?php $this->load->view('performance/partials/change_supervisor_modal', ['ppa' => $ppa, 'type' => 'midterm']); ?>
+        <?php endif; ?>
+        <input type="hidden" name="supervisor_id" value="<?= !empty($ppa->midterm_supervisor_1) ? $ppa->midterm_supervisor_1 : $contract->first_supervisor ?>">
       </td>
       <th>Second Supervisor</th>
       <td>
-        <?= staff_name($contract->second_supervisor) ?>
-        <input type="hidden" name="supervisor2_id" value="<?= $contract->second_supervisor ?>">
+        <?= staff_name(!empty($ppa->midterm_supervisor_2) ? $ppa->midterm_supervisor_2 : $contract->second_supervisor) ?>
+        <input type="hidden" name="supervisor2_id" value="<?= !empty($ppa->midterm_supervisor_2) ? $ppa->midterm_supervisor_2 : $contract->second_supervisor ?>">
       </td>
     </tr>
     <tr>

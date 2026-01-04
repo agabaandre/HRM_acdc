@@ -588,6 +588,156 @@ public function ppa_contract($contract_id){
        // /dd($this->db->last_query());
        }      
 
+    /**
+     * Update supervisors for PPA entry and staff contract
+     * Only allowed if user has permission 83 (allow_return_ppa) and PPA is not approved (draft_status != 2)
+     */
+    /**
+     * Helper method to send JSON response with CSRF token
+     */
+    private function _send_json_response($success, $message, $is_ajax)
+    {
+        if (!$is_ajax) {
+            return false; // Not an AJAX request, caller should handle redirect
+        }
+        
+        $response = [
+            'success' => $success,
+            'message' => $message
+        ];
+        
+        // Include new CSRF hash if CSRF regeneration is enabled
+        if ($this->config->item('csrf_regenerate')) {
+            $response['new_csrf_hash'] = $this->security->get_csrf_hash();
+        }
+        
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode($response));
+        return true;
+    }
+    
+    public function update_supervisors()
+    {
+        // Check if this is an AJAX request
+        $is_ajax = $this->input->is_ajax_request() || 
+                   !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                   strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+        
+        // Check if user has permission 83 (allow_return_ppa)
+        $permissions = $this->session->userdata('user')->permissions ?? [];
+        if (!in_array('83', $permissions)) {
+            $error_msg = 'You do not have permission to change supervisors';
+            if ($this->_send_json_response(false, $error_msg, $is_ajax)) {
+                return;
+            }
+            Modules::run('utility/setFlash', ['msg' => $error_msg, 'type' => 'error']);
+            redirect($_SERVER['HTTP_REFERER'] ?? 'performance');
+            return;
+        }
+        
+        $entry_id = $this->input->post('entry_id');
+        $supervisor_1 = $this->input->post('supervisor_1');
+        $supervisor_2 = $this->input->post('supervisor_2');
+        $type = $this->input->post('type'); // 'ppa', 'midterm', or 'endterm'
+        
+        // Debug: Log received data for troubleshooting
+        log_message('debug', 'Update supervisors - entry_id: ' . var_export($entry_id, true));
+        log_message('debug', 'Update supervisors - type: ' . var_export($type, true));
+        log_message('debug', 'Update supervisors - POST data keys: ' . implode(', ', array_keys($this->input->post() ?? [])));
+        
+        // Check if entry_id is provided and not empty (handle alphanumeric strings)
+        // Use trim and check for null/empty string explicitly
+        $entry_id = trim($entry_id ?? '');
+        if (empty($entry_id) || $entry_id === '' || $entry_id === null) {
+            $error_msg = 'Invalid entry ID: Entry ID is required. Received: ' . var_export($this->input->post('entry_id'), true);
+            if ($this->_send_json_response(false, $error_msg, $is_ajax)) {
+                return;
+            }
+            Modules::run('utility/setFlash', ['msg' => $error_msg, 'type' => 'error']);
+            redirect($_SERVER['HTTP_REFERER'] ?? 'performance');
+            return;
+        }
+        
+        // Get PPA entry
+        $ppa = $this->db->where('entry_id', $entry_id)->get('ppa_entries')->row();
+        
+        if (!$ppa) {
+            $error_msg = 'PPA entry not found';
+            if ($this->_send_json_response(false, $error_msg, $is_ajax)) {
+                return;
+            }
+            Modules::run('utility/setFlash', ['msg' => $error_msg, 'type' => 'error']);
+            redirect($_SERVER['HTTP_REFERER'] ?? 'performance');
+            return;
+        }
+        
+        // Check if PPA is approved - if so, don't allow changes
+        // For endterm, check overall_end_term_status instead
+        $is_approved = false;
+        if ($type === 'endterm') {
+            $is_approved = isset($ppa->overall_end_term_status) && $ppa->overall_end_term_status === 'Approved';
+        } else {
+            $is_approved = (int)$ppa->draft_status === 2;
+        }
+        
+        if ($is_approved) {
+            $error_msg = 'Cannot change supervisors for approved ' . ucfirst($type);
+            if ($this->_send_json_response(false, $error_msg, $is_ajax)) {
+                return;
+            }
+            Modules::run('utility/setFlash', ['msg' => $error_msg, 'type' => 'error']);
+            redirect($_SERVER['HTTP_REFERER'] ?? 'performance');
+            return;
+        }
+        
+        // Prepare update data based on type
+        $ppa_update = [];
+        $contract_update = [];
+        
+        if ($type === 'ppa') {
+            $ppa_update['supervisor_id'] = $supervisor_1 ?: null;
+            $contract_update['first_supervisor'] = $supervisor_1 ?: null;
+        } elseif ($type === 'midterm') {
+            $ppa_update['midterm_supervisor_1'] = $supervisor_1 ?: null;
+            $contract_update['first_supervisor'] = $supervisor_1 ?: null;
+        } elseif ($type === 'endterm') {
+            $ppa_update['endterm_supervisor_1'] = $supervisor_1 ?: null;
+            $ppa_update['endterm_supervisor_2'] = $supervisor_2 ?: null;
+            $contract_update['first_supervisor'] = $supervisor_1 ?: null;
+            $contract_update['second_supervisor'] = $supervisor_2 ?: null;
+        } else {
+            $error_msg = 'Invalid type';
+            if ($this->_send_json_response(false, $error_msg, $is_ajax)) {
+                return;
+            }
+            Modules::run('utility/setFlash', ['msg' => $error_msg, 'type' => 'error']);
+            redirect($_SERVER['HTTP_REFERER'] ?? 'performance');
+            return;
+        }
+        
+        $ppa_update['updated_at'] = date('Y-m-d H:i:s');
+        
+        // Update ppa_entries
+        $this->db->where('entry_id', $entry_id)->update('ppa_entries', $ppa_update);
+        
+        // Update staff_contracts (latest contract for the staff)
+        if (!empty($contract_update) && !empty($ppa->staff_contract_id)) {
+            $this->db->where('staff_contract_id', $ppa->staff_contract_id)->update('staff_contracts', $contract_update);
+        }
+        
+        // Log the action
+        $log_message = "Updated {$type} supervisors for PPA entry [{$entry_id}]";
+        log_user_action($log_message);
+        
+        $success_msg = 'Supervisors updated successfully';
+        if ($this->_send_json_response(true, $success_msg, $is_ajax)) {
+            return;
+        }
+        
+        Modules::run('utility/setFlash', ['msg' => $success_msg, 'type' => 'success']);
+        redirect($_SERVER['HTTP_REFERER'] ?? 'performance');
+    }
  
     
 	

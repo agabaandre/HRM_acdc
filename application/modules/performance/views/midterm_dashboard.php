@@ -104,13 +104,13 @@
       <label class="form-label fw-bold" style="color: #495057;">
         <i class="fa fa-calendar-alt me-1"></i>Performance Period
       </label>
-      <select id="periodFilter" class="form-select select2" style="border-color: #119A48;">
+      <select id="periodFilter" class="form-select select2" style="border-color: #119A48;" multiple>
         <option value="">Loading periods...</option>
       </select>
     </div>
     <div class="col-md-2 d-flex align-items-end">
       <button class="btn w-100" style="background-color: #119A48; color: white;" onclick="loadMidtermDashboard()">
-        <i class="fa fa-sync-alt me-1"></i>Refresh
+        <i class="fa fa-sync-alt me-1"></i>Load
       </button>
     </div>
   </div>
@@ -201,7 +201,9 @@
 
   function loadMidtermDashboard() {
     const divisionId = $('#divisionFilter').val();
-    const period = $('#periodFilter').val();
+    const periods = $('#periodFilter').val() || [];
+    // Send periods as comma-separated string, or empty if none selected
+    const period = periods.length > 0 ? periods.join(',') : '';
 
     $.getJSON(base_url + 'performance/midterm/fetch_ppa_dashboard_data', {
       division_id: divisionId,
@@ -210,17 +212,28 @@
 
       // Populate period filter with distinct periods
       if (data.periods && data.periods.length > 0) {
-        $('#periodFilter').html('<option value="">All Periods</option>');
-        data.periods.forEach(period => {
+        $('#periodFilter').html('');
+        // Sort periods descending (newest first)
+        const sortedPeriods = [...data.periods].sort().reverse();
+        
+        // Default to last two periods if none selected
+        const selectedPeriods = $('#periodFilter').val() || [];
+        const shouldSetDefault = selectedPeriods.length === 0;
+        
+        sortedPeriods.forEach((period, index) => {
           const periodDisplay = period.replace(/-/g, ' ');
-          const isSelected = period === data.current_period ? 'selected' : '';
+          // Select last two periods by default
+          const isSelected = shouldSetDefault && index < 2 ? 'selected' : 
+                            selectedPeriods.includes(period) ? 'selected' : '';
           $('#periodFilter').append(`<option value="${period}" ${isSelected}>${periodDisplay}</option>`);
         });
+        
         // Re-initialize select2 to update display
         $('#periodFilter').select2({
           theme: 'bootstrap4',
           width: '100%',
-          dropdownParent: $('#periodFilter').parent()
+          dropdownParent: $('#periodFilter').parent(),
+          placeholder: 'Select periods (default: last 2)'
         });
       } else {
         $('#periodFilter').html('<option value="">No periods available</option>');
@@ -455,7 +468,8 @@
   $(document).on('click', '.view-staff-link', function () {
     const type = $(this).data('type');
     const divisionId = $('#divisionFilter').val();
-    const period = $('#periodFilter').val();
+    const periods = $('#periodFilter').val() || [];
+    const period = periods.length > 0 ? periods.join(',') : '';
     window.open(`${base_url}performance/midterm/staff_list?type=${type}&division_id=${divisionId}&period=${period}`, '_blank');
   });
 </script>
