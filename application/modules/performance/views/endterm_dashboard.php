@@ -89,7 +89,7 @@
 
   <!-- Filters -->
   <div class="row mb-4" id="dashboardFilters">
-    <div class="col-md-4">
+    <div class="col-md-3">
       <label class="form-label fw-bold" style="color: #495057;">
         <i class="fa fa-building me-1"></i>Division
       </label>
@@ -100,7 +100,7 @@
         <?php endforeach; ?>
       </select>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <label class="form-label fw-bold" style="color: #495057;">
         <i class="fa fa-money-bill-wave me-1"></i>Funder
       </label>
@@ -111,17 +111,17 @@
         <?php endforeach; ?>
       </select>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
       <label class="form-label fw-bold" style="color: #495057;">
         <i class="fa fa-calendar-alt me-1"></i>Performance Period
       </label>
-      <select id="periodFilter" class="form-select select2" style="border-color: #119A48;">
+      <select id="periodFilter" class="form-select select2" style="border-color: #119A48;" multiple>
         <option value="">Loading periods...</option>
       </select>
     </div>
-    <div class="col-md-1 d-flex align-items-end">
+    <div class="col-md-2 d-flex align-items-end">
       <button class="btn w-100" style="background-color: #119A48; color: white;" onclick="loadEndtermDashboard()">
-        <i class="fa fa-sync-alt me-1"></i>Refresh
+        <i class="fa fa-sync-alt me-1"></i>Load
       </button>
     </div>
   </div>
@@ -222,7 +222,9 @@
   function loadEndtermDashboard() {
     const divisionId = $('#divisionFilter').val();
     const funderId = $('#funderFilter').val();
-    const period = $('#periodFilter').val();
+    const periods = $('#periodFilter').val() || [];
+    // Send periods as comma-separated string, or empty if none selected
+    const period = periods.length > 0 ? periods.join(',') : '';
 
     $.getJSON(base_url + 'performance/endterm/fetch_ppa_dashboard_data', {
       division_id: divisionId,
@@ -232,11 +234,28 @@
 
       // Populate period filter with distinct periods
       if (data.periods && data.periods.length > 0) {
-        $('#periodFilter').html('<option value="">All Periods</option>');
-        data.periods.forEach(period => {
+        $('#periodFilter').html('');
+        // Sort periods descending (newest first)
+        const sortedPeriods = [...data.periods].sort().reverse();
+        
+        // Default to last two periods if none selected
+        const selectedPeriods = $('#periodFilter').val() || [];
+        const shouldSetDefault = selectedPeriods.length === 0;
+        
+        sortedPeriods.forEach((period, index) => {
           const periodDisplay = period.replace(/-/g, ' ');
-          const isSelected = period === data.current_period ? 'selected' : '';
+          // Select last two periods by default
+          const isSelected = shouldSetDefault && index < 2 ? 'selected' : 
+                            selectedPeriods.includes(period) ? 'selected' : '';
           $('#periodFilter').append(`<option value="${period}" ${isSelected}>${periodDisplay}</option>`);
+        });
+        
+        // Re-initialize select2 to update display
+        $('#periodFilter').select2({
+          theme: 'bootstrap4',
+          width: '100%',
+          dropdownParent: $('#periodFilter').parent(),
+          placeholder: 'Select periods (default: last 2)'
         });
       } else {
         $('#periodFilter').html('<option value="">No periods available</option>');
@@ -483,7 +502,8 @@
     const type = $(this).data('type');
     const divisionId = $('#divisionFilter').val();
     const funderId = $('#funderFilter').val();
-    const period = $('#periodFilter').val();
+    const periods = $('#periodFilter').val() || [];
+    const period = periods.length > 0 ? periods.join(',') : '';
     window.open(`${base_url}performance/endterm/staff_list?type=${type}&division_id=${divisionId}&funder_id=${funderId}&period=${period}`, '_blank');
   });
 </script>

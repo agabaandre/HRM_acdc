@@ -115,6 +115,18 @@ if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 
 <?php echo form_close(); ?>
 
+<!-- Set performance period years for JavaScript validation -->
+<script>
+  // Extract years from performance period (e.g., "January-2025-to-December-2025" -> [2025])
+  <?php if (!empty($ppa->performance_period)): ?>
+    const performancePeriod = '<?= $ppa->performance_period ?>';
+    const yearMatches = performancePeriod.match(/\d{4}/g);
+    window.performancePeriodYears = yearMatches ? [...new Set(yearMatches.map(y => parseInt(y)))] : [];
+  <?php else: ?>
+    window.performancePeriodYears = [];
+  <?php endif; ?>
+</script>
+
 <!-- Temporary test button -->
 <!-- <button type="button" onclick="testNotification()" class="btn btn-warning btn-sm mb-3">Test Notification</button> -->
 

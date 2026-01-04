@@ -689,10 +689,117 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
                 }, $staff_list);
             }
             
-            // Add entry_id to each staff member
-            return array_map(function ($staff) use ($entry_map) {
+            // Get all entry IDs for batch query
+            $entry_ids = array_values($entry_map);
+            if (empty($entry_ids)) {
+                return $staff_list;
+            }
+            
+            // Get all PPA entries in one query
+            $ppa_entries = $this->db->where_in('entry_id', $entry_ids)->get('ppa_entries')->result();
+            $ppa_map = [];
+            foreach ($ppa_entries as $entry) {
+                $ppa_map[$entry->entry_id] = $entry;
+            }
+            
+            // Get latest approval trail action for each entry and supervisor
+            $this->db->select('entry_id, staff_id, action, id');
+            $this->db->from('ppa_approval_trail');
+            $this->db->where_in('entry_id', $entry_ids);
+            $this->db->order_by('entry_id, staff_id, id', 'DESC');
+            $all_trails = $this->db->get()->result();
+            
+            // Map: entry_id => [staff_id => latest_action]
+            $trail_map = [];
+            foreach ($all_trails as $trail) {
+                $key = $trail->entry_id . '_' . $trail->staff_id;
+                if (!isset($trail_map[$key])) {
+                    $trail_map[$key] = $trail->action;
+                }
+            }
+            
+            // Get supervisor names for pending items
+            $supervisor_ids = [];
+            foreach ($ppa_map as $entry) {
+                if (!empty($entry->supervisor_id)) $supervisor_ids[] = $entry->supervisor_id;
+                if (!empty($entry->supervisor2_id)) $supervisor_ids[] = $entry->supervisor2_id;
+            }
+            $supervisor_ids = array_unique($supervisor_ids);
+            $supervisor_names = [];
+            if (!empty($supervisor_ids)) {
+                $supervisors = $this->db->select('staff_id, fname, lname')
+                    ->where_in('staff_id', $supervisor_ids)
+                    ->get('staff')
+                    ->result();
+                foreach ($supervisors as $sup) {
+                    $supervisor_names[$sup->staff_id] = trim($sup->fname . ' ' . $sup->lname);
+                }
+            }
+            
+            // Add entry_id and approval status to each staff member
+            return array_map(function ($staff) use ($entry_map, $ppa_map, $trail_map, $supervisor_names) {
                 if (isset($entry_map[$staff->staff_id])) {
                     $staff->entry_id = $entry_map[$staff->staff_id];
+                    $entry_id = $entry_map[$staff->staff_id];
+                    
+                    if (isset($ppa_map[$entry_id])) {
+                        $ppa_entry = $ppa_map[$entry_id];
+                        
+                        // Check draft_status
+                        if ((int)$ppa_entry->draft_status === 2) {
+                            $staff->approval_status = 'Approved';
+                            $staff->pending_supervisor_name = null;
+                        } else {
+                            // Check supervisor1 action
+                            $sup1_key = $entry_id . '_' . $ppa_entry->supervisor_id;
+                            $sup1_action = isset($trail_map[$sup1_key]) ? $trail_map[$sup1_key] : null;
+                            
+                            // Check supervisor2 action (if exists)
+                            $sup2_action = null;
+                            if (!empty($ppa_entry->supervisor2_id)) {
+                                $sup2_key = $entry_id . '_' . $ppa_entry->supervisor2_id;
+                                $sup2_action = isset($trail_map[$sup2_key]) ? $trail_map[$sup2_key] : null;
+                            }
+                            
+                            // Determine status and pending supervisor
+                            if ($sup1_action === 'Returned' || $sup2_action === 'Returned') {
+                                $staff->approval_status = 'Returned';
+                                $staff->pending_supervisor_name = null;
+                            } elseif (!empty($ppa_entry->supervisor2_id)) {
+                                // Two supervisors: both must approve
+                                if ($sup1_action === 'Approved' && $sup2_action === 'Approved') {
+                                    $staff->approval_status = 'Approved';
+                                    $staff->pending_supervisor_name = null;
+                                } elseif ($sup1_action === 'Approved') {
+                                    // Supervisor1 approved, waiting for supervisor2
+                                    $staff->approval_status = 'Pending Approval';
+                                    $staff->pending_supervisor_name = isset($supervisor_names[$ppa_entry->supervisor2_id]) 
+                                        ? $supervisor_names[$ppa_entry->supervisor2_id] 
+                                        : null;
+                                } else {
+                                    // Waiting for supervisor1
+                                    $staff->approval_status = 'Pending Approval';
+                                    $staff->pending_supervisor_name = isset($supervisor_names[$ppa_entry->supervisor_id]) 
+                                        ? $supervisor_names[$ppa_entry->supervisor_id] 
+                                        : null;
+                                }
+                            } else {
+                                // Single supervisor
+                                if ($sup1_action === 'Approved') {
+                                    $staff->approval_status = 'Approved';
+                                    $staff->pending_supervisor_name = null;
+                                } else {
+                                    $staff->approval_status = 'Pending Approval';
+                                    $staff->pending_supervisor_name = isset($supervisor_names[$ppa_entry->supervisor_id]) 
+                                        ? $supervisor_names[$ppa_entry->supervisor_id] 
+                                        : null;
+                                }
+                            }
+                        }
+                    } else {
+                        $staff->approval_status = 'N/A';
+                        $staff->pending_supervisor_name = null;
+                    }
                 }
                 return $staff;
             }, $staff_list);
@@ -743,6 +850,10 @@ public function get_dashboard_data()
     $period = $this->input->get('period');
     $current_period = str_replace(' ', '-', current_period());
     $period = !empty($period) ? $period : $current_period;
+    
+    // Handle multiple periods (comma-separated)
+    $periods = !empty($period) ? array_map('trim', explode(',', $period)) : [$current_period];
+    $is_multiple_periods = count($periods) > 1;
 
     $user = $this->session->userdata('user');
     $is_restricted = ($user && isset($user->role) && $user->role == 17);
@@ -770,7 +881,11 @@ public function get_dashboard_data()
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where('pe.draft_status !=', 1);
-    $this->db->where('pe.performance_period', $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where('pe.performance_period', $period);
+    }
     $summary = $this->db->get()->row();
 
     // Get active staff for "without_ppa" calculation (with contract status filter including Under Renewal)
@@ -792,7 +907,11 @@ public function get_dashboard_data()
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where('pe.draft_status !=', 1);
-    $this->db->where("pe.performance_period", $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where('pe.performance_period', $period);
+    }
     $this->db->group_by("DATE(pe.created_at)");
     $this->db->order_by("DATE(pe.created_at)", "ASC");
     $trend = array_map(function ($r) {
@@ -810,7 +929,11 @@ public function get_dashboard_data()
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
-    $this->db->where("pe.performance_period", $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where('pe.performance_period', $period);
+    }
     $approvals = $this->db->get()->result();
 
     $total_days = 0;
@@ -833,7 +956,11 @@ public function get_dashboard_data()
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
-    $this->db->where("pe.performance_period", $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where('pe.performance_period', $period);
+    }
     $this->db->group_by("sc.division_id");
     $divisions = array_map(fn($r) => ['name' => $r->division_name, 'y' => (int)$r->count], $this->db->get()->result());
 
@@ -846,7 +973,11 @@ public function get_dashboard_data()
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
-    $this->db->where("pe.performance_period", $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where('pe.performance_period', $period);
+    }
     $this->db->group_by("ct.contract_type_id");
     $by_contract = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
 
@@ -856,7 +987,11 @@ public function get_dashboard_data()
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
-    $this->db->where("pe.performance_period", $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where('pe.performance_period', $period);
+    }
     $this->db->where("pe.draft_status !=", 1);
     $all_ppa_staff = array_column($this->db->get()->result(), 'staff_id');
     // Filter to only active staff for "without" calculation
@@ -870,7 +1005,11 @@ public function get_dashboard_data()
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.training_recommended", "Yes");
     $this->db->where("pe.draft_status !=", 1);
-    $this->db->where("pe.performance_period", $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where('pe.performance_period', $period);
+    }
     $pdp_staff = array_column($this->db->get()->result(), 'staff_id');
 
     // Periods list - only get distinct periods from actual PPA entries

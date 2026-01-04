@@ -11,6 +11,9 @@
               <th>Name</th>
               <th>SAPNO</th>
               <th>Status</th>
+              <th>First Supervisor</th>
+              <th>Second Supervisor</th>
+              <th>Employee Consent</th>
               <?php if ($type === 'with_pdp'): ?>
                 <th>Recommended Trainings</th>
               <?php endif; ?>
@@ -25,6 +28,60 @@
                 <td><?= $staff->fname . ' ' . $staff->lname ?></td>
                 <td><?= $staff->SAPNO ?></td>
                 <td><?= $staff->status ?></td>
+                <td class="text-center">
+                  <?php
+                  $first_sup_status = $staff->first_supervisor_status ?? 'N/A';
+                  $badge_class = 'bg-secondary';
+                  $status_text = $first_sup_status;
+                  
+                  if ($first_sup_status === 'Approved') {
+                      $badge_class = 'bg-success';
+                  } elseif ($first_sup_status === 'Returned') {
+                      $badge_class = 'bg-danger';
+                  } elseif ($first_sup_status === 'Pending') {
+                      $badge_class = 'bg-warning text-dark';
+                      // Add supervisor name if available
+                      if (!empty($staff->first_supervisor_name)) {
+                          $status_text = 'Pending: ' . $staff->first_supervisor_name;
+                      }
+                  }
+                  ?>
+                  <span class="badge <?= $badge_class ?>" title="<?= htmlspecialchars($status_text, ENT_QUOTES, 'UTF-8') ?>"><?= $status_text ?></span>
+                </td>
+                <td class="text-center">
+                  <?php
+                  $second_sup_status = $staff->second_supervisor_status ?? 'N/A';
+                  $badge_class = 'bg-secondary';
+                  $status_text = $second_sup_status;
+                  
+                  if ($second_sup_status === 'Approved') {
+                      $badge_class = 'bg-success';
+                  } elseif ($second_sup_status === 'Returned') {
+                      $badge_class = 'bg-danger';
+                  } elseif ($second_sup_status === 'Pending') {
+                      $badge_class = 'bg-warning text-dark';
+                      // Add supervisor name if available
+                      if (!empty($staff->second_supervisor_name)) {
+                          $status_text = 'Pending: ' . $staff->second_supervisor_name;
+                      }
+                  } elseif ($second_sup_status === 'N/A') {
+                      $badge_class = 'bg-light text-dark';
+                  }
+                  ?>
+                  <span class="badge <?= $badge_class ?>" title="<?= htmlspecialchars($status_text, ENT_QUOTES, 'UTF-8') ?>"><?= $status_text ?></span>
+                </td>
+                <td class="text-center">
+                  <?php
+                  $consent_status = $staff->employee_consent ?? 'N/A';
+                  $badge_class = 'bg-secondary';
+                  if ($consent_status === 'Consented') {
+                      $badge_class = 'bg-success';
+                  } elseif ($consent_status === 'Pending') {
+                      $badge_class = 'bg-warning text-dark';
+                  }
+                  ?>
+                  <span class="badge <?= $badge_class ?>"><?= $consent_status ?></span>
+                </td>
                 <?php if ($type === 'with_pdp'): ?>
                   <td>
                     <?php if (!empty($staff->training_skills)): ?>

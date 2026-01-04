@@ -119,9 +119,28 @@
 </script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    const currentYear = new Date().getFullYear();
-    const minDate = `${currentYear}-01-01`;
-    const maxDate = `${currentYear}-12-31`;
+    // Check if this is a performance form (PPA, Midterm, or Endterm) and use performance period years if available
+    const form = document.querySelector('form[id="staff_ppa"]');
+    const isPerformanceForm = form && form.action && (
+      form.action.includes('endterm/save_ppa') ||
+      form.action.includes('midterm/save_ppa') ||
+      form.action.includes('performance/save_ppa')
+    );
+    
+    let minDate, maxDate;
+    
+    if (isPerformanceForm && window.performancePeriodYears && window.performancePeriodYears.length > 0) {
+      // Use performance period years for performance forms (PPA, Midterm, Endterm)
+      const minYear = Math.min(...window.performancePeriodYears);
+      const maxYear = Math.max(...window.performancePeriodYears);
+      minDate = `${minYear}-01-01`;
+      maxDate = `${maxYear}-12-31`;
+    } else {
+      // Use current year for other forms
+      const currentYear = new Date().getFullYear();
+      minDate = `${currentYear}-01-01`;
+      maxDate = `${currentYear}-12-31`;
+    }
 
     flatpickr('.current_datepicker', {
       dateFormat: "Y-m-d",
@@ -655,10 +674,14 @@
       let validObjectives = 0;
       let totalWeight = 0;
       let isValid = true;
-      // Use performance period years if available (for endterm), otherwise use current year
-      // Check if this is an endterm form by checking the form action URL
-      const isEndtermForm = form.action && form.action.includes('endterm/save_ppa');
-      const performancePeriodYears = (isEndtermForm && window.performancePeriodYears) ? window.performancePeriodYears : [];
+      // Use performance period years if available (for PPA, Midterm, Endterm), otherwise use current year
+      // Check if this is a performance form by checking the form action URL
+      const isPerformanceForm = form.action && (
+        form.action.includes('endterm/save_ppa') ||
+        form.action.includes('midterm/save_ppa') ||
+        form.action.includes('performance/save_ppa')
+      );
+      const performancePeriodYears = (isPerformanceForm && window.performancePeriodYears) ? window.performancePeriodYears : [];
       const currentYear = new Date().getFullYear();
       const validYears = performancePeriodYears.length > 0 ? performancePeriodYears : [currentYear];
       let errorMessages = [];

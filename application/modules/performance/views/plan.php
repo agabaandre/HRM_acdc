@@ -131,15 +131,18 @@ input[type="number"] {
   <tr>
     <td><b>First Supervisor</b></td>
     <td colspan="1">
-      <?= staff_name($contract->first_supervisor ) ?>
+      <?= staff_name(!empty($ppa->supervisor_id) ? $ppa->supervisor_id : $contract->first_supervisor) ?>
+      <?php if (!empty($ppa) && isset($ppa->draft_status) && (int)$ppa->draft_status !== 2): ?>
+        <?php $this->load->view('performance/partials/change_supervisor_modal', ['ppa' => $ppa, 'type' => 'ppa']); ?>
+      <?php endif; ?>
       <input type="hidden" name="supervisor_id"
-        value="<?= $contract->first_supervisor ?>">
+        value="<?= !empty($ppa->supervisor_id) ? $ppa->supervisor_id : $contract->first_supervisor ?>">
     </td>
     <td><b>Second Supervisor</b></td>
     <td colspan="">
-      <?= @staff_name($contract->second_supervisor) ?>
+      <?= @staff_name(!empty($ppa->supervisor2_id) ? $ppa->supervisor2_id : $contract->second_supervisor) ?>
         <input type="hidden" name="supervisor2_id"
-        value="<?=$contract->second_supervisor ?>">
+        value="<?= !empty($ppa->supervisor2_id) ? $ppa->supervisor2_id : $contract->second_supervisor ?>">
     </td>
   </tr>
   <tr>
@@ -300,6 +303,17 @@ input[type="number"] {
 
     <?php echo form_close(); ?>
 
+<!-- Set performance period years for JavaScript validation -->
+<script>
+  // Extract years from performance period (e.g., "January-2025-to-December-2025" -> [2025])
+  <?php if (!empty($ppa->performance_period)): ?>
+    const performancePeriod = '<?= $ppa->performance_period ?>';
+    const yearMatches = performancePeriod.match(/\d{4}/g);
+    window.performancePeriodYears = yearMatches ? [...new Set(yearMatches.map(y => parseInt(y)))] : [];
+  <?php else: ?>
+    window.performancePeriodYears = [];
+  <?php endif; ?>
+</script>
 
 <?php 
   //dd($showApprovalBtns); 
