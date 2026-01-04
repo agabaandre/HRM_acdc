@@ -700,14 +700,12 @@ public function get_endterm_dashboard_data($division_id = null, $funder_id = nul
 
     // For completed reviews: count all regardless of contract status, but apply division/funder filters
     // Summary counts for endterm - only count entries with actual endterm data (regardless of contract status)
+    // Use overall_end_term_status to match the staff list filter logic
     $this->db->select("
         COUNT(pe.entry_id) AS total,
-        SUM(CASE WHEN latest.action = 'Approved' THEN 1 ELSE 0 END) AS approved,
-        SUM(CASE WHEN latest.action = 'Submitted' THEN 1 ELSE 0 END) AS submitted", false);
+        SUM(CASE WHEN pe.overall_end_term_status = 'Approved' THEN 1 WHEN pe.overall_end_term_status IS NOT NULL THEN 1 ELSE 0 END) AS approved,
+        SUM(CASE WHEN pe.endterm_draft_status != 1 THEN 1 ELSE 0 END) AS submitted", false);
     $this->db->from('ppa_entries pe');
-    $this->db->join("(SELECT pat1.* FROM ppa_approval_trail_end_term pat1
-        INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail_end_term GROUP BY entry_id) latest
-        ON pat1.id = latest.max_id) latest", 'latest.entry_id COLLATE utf8mb4_general_ci = pe.entry_id COLLATE utf8mb4_general_ci', 'left', false);
     // Join with contracts to apply division/funder filters (but no contract status filter)
     $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
@@ -715,7 +713,11 @@ public function get_endterm_dashboard_data($division_id = null, $funder_id = nul
     if ($funder_id) $this->db->where('sc.funder_id', $funder_id);
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where('pe.draft_status !=', 1);
-    $this->db->where('pe.performance_period', $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where('pe.performance_period', $period);
+    }
     $this->db->where('pe.endterm_draft_status !=', 1);
     $this->db->where('pe.endterm_updated_at IS NOT NULL', null, false); // Only entries with actual endterm data
     $summary = $this->db->get()->row();
