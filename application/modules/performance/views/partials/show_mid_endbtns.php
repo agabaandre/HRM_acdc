@@ -14,11 +14,10 @@ if (
 <?php endif; ?>
 
 <?php
-// Show End Term button if today is within the end_term period
+// Show End Term button if end_term_start date has passed (allows creating endterms for previous periods)
 if (
-    isset($ppa_settings->end_term_start, $ppa_settings->end_term_deadline) &&
-    $today >= $ppa_settings->end_term_start &&
-    $today <= $ppa_settings->end_term_deadline
+    isset($ppa_settings->end_term_start) &&
+    $today >= $ppa_settings->end_term_start
 ): ?>
   <a href="<?= base_url("performance/endterm/end_term_review/{$ppa->entry_id}/{$staff_id}") ?>"
      class="btn btn-primary me-2 btn-sm">

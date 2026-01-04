@@ -135,11 +135,11 @@
                      <?php endif; ?>
                         
                         <?php
-                           // Show End Term menu link if today is within the end_term period
+                           // Show End Term menu link if end_term_start date has passed (allows creating endterms for previous periods)
                            if (
-                               isset($ppa_settings->end_term_start, $ppa_settings->end_term_deadline) &&
-                               $today >= $ppa_settings->end_term_start &&
-                               $today <= $ppa_settings->end_term_deadline && $ppa_exists && $ppaIsapproved && !isset($endterm_exists) && !$this->per_mdl->isendterm_available($ppa_entryid)
+                               isset($ppa_settings->end_term_start) &&
+                               $today >= $ppa_settings->end_term_start && 
+                               $ppa_exists && $ppaIsapproved && !isset($endterm_exists) && !$this->per_mdl->isendterm_available($ppa_entryid)
                            ): ?>
                               <li>
                                   <a class="dropdown-item" href="<?= base_url("performance/endterm/endterm_review/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>">
