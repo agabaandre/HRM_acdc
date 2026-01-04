@@ -453,6 +453,105 @@ public function get_recent_ppas_for_user($staff_id, $period)
     return $this->db->query($sql, [$staff_id, $period])->result_array();
 }
 
+public function get_all_ppas_for_user($staff_id, $period = null)
+{
+    $sql = "
+        SELECT 
+            p.*, 
+            CONCAT(s.fname, ' ', s.lname) AS staff_name,
+
+            -- Last action by Supervisor 1
+            (
+                SELECT a1.action 
+                FROM ppa_approval_trail a1
+                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                ORDER BY a1.id DESC LIMIT 1
+            ) AS supervisor1_action,
+            
+            -- Last action by Supervisor 2
+            (
+                SELECT a2.action 
+                FROM ppa_approval_trail a2
+                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                ORDER BY a2.id DESC LIMIT 1
+            ) AS supervisor2_action,
+            
+            -- Final status decision with draft consideration
+            CASE 
+                WHEN p.draft_status = 1 THEN 'Pending (Draft)'
+                ELSE (
+                    CASE
+                        WHEN p.supervisor2_id IS NULL AND
+                            (
+                                SELECT a1.action 
+                                FROM ppa_approval_trail a1
+                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                                ORDER BY a1.id DESC LIMIT 1
+                            ) = 'Approved'
+                        THEN 'Approved'
+
+                        WHEN p.supervisor2_id IS NOT NULL AND
+                            (
+                                SELECT a1.action 
+                                FROM ppa_approval_trail a1
+                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                                ORDER BY a1.id DESC LIMIT 1
+                            ) = 'Approved' AND
+                            (
+                                SELECT a2.action 
+                                FROM ppa_approval_trail a2
+                                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                                ORDER BY a2.id DESC LIMIT 1
+                            ) = 'Approved'
+                        THEN 'Approved'
+
+                        WHEN (
+                                SELECT a2.action 
+                                FROM ppa_approval_trail a2
+                                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                                ORDER BY a2.id DESC LIMIT 1
+                            ) = 'Returned'
+                        THEN 'Returned'
+
+                        WHEN (
+                                SELECT a1.action 
+                                FROM ppa_approval_trail a1
+                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                                ORDER BY a1.id DESC LIMIT 1
+                            ) = 'Returned'
+                        THEN 'Returned'
+
+                        WHEN p.supervisor2_id IS NOT NULL AND
+                            (
+                                SELECT a1.action 
+                                FROM ppa_approval_trail a1
+                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                                ORDER BY a1.id DESC LIMIT 1
+                            ) = 'Approved'
+                        THEN 'Pending Second Supervisor'
+
+                        ELSE 'Pending First Supervisor'
+                    END
+                )
+            END AS overall_status
+
+        FROM ppa_entries p
+        JOIN staff s ON s.staff_id = p.staff_id
+        WHERE p.staff_id = ?
+    ";
+    
+    $params = [$staff_id];
+    
+    if ($period) {
+        $sql .= " AND p.performance_period = ?";
+        $params[] = $period;
+    }
+    
+    $sql .= " ORDER BY p.created_at DESC";
+    
+    return $this->db->query($sql, $params)->result_array();
+}
+
 
 public function get_approved_by_supervisor($supervisor_id)
 {

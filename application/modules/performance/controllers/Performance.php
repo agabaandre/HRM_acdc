@@ -395,8 +395,18 @@ class Performance extends MX_Controller
     
     $staff_id = $this->session->userdata('user')->staff_id;
     
-    // Load paginated results (optional: add pagination logic here)
-    $data['plans'] = $this->per_mdl->get_all_approved_ppas_for_user($staff_id);
+    // Get period filter from GET parameter
+    $period = $this->input->get('period');
+    if ($period) {
+        $period = str_replace(' ', '-', $period);
+    }
+    
+    // Get all periods for dropdown
+    $data['periods'] = $this->db->query('SELECT DISTINCT performance_period FROM ppa_entries ORDER BY performance_period DESC')->result();
+    $data['selected_period'] = $period;
+    
+    // Load all PPAs (not just approved) with optional period filter
+    $data['plans'] = $this->per_mdl->get_all_ppas_for_user($staff_id, $period);
 
     // If using pagination links
     $data['links'] = ''; // placeholder, update if using pagination
