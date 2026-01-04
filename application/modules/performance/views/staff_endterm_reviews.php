@@ -16,7 +16,7 @@
           <?php if (!empty($plans)): $i = 1; foreach ($plans as $endterm): ?>
             <tr>
               <td><?= $i++; ?></td>
-              <td><?= !empty($endterm['endterm_created_at']) ? date('d M Y', strtotime($endterm['endterm_created_at'])) : '-' ?></td>
+              <td><?= !empty($endterm['endterm_created_at']) ? date('d M Y', strtotime($endterm['endterm_created_at'])) : (!empty($endterm['endterm_updated_at']) ? date('d M Y', strtotime($endterm['endterm_updated_at'])) : (!empty($endterm['updated_at']) ? date('d M Y', strtotime($endterm['updated_at'])) : '-')) ?></td>
               <td><?= str_replace('-',' ',$endterm['performance_period']); ?></td>
               <td>
                 <?php
