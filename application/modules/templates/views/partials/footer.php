@@ -655,7 +655,12 @@
       let validObjectives = 0;
       let totalWeight = 0;
       let isValid = true;
+      // Use performance period years if available (for endterm), otherwise use current year
+      // Check if this is an endterm form by checking the form action URL
+      const isEndtermForm = form.action && form.action.includes('endterm/save_ppa');
+      const performancePeriodYears = (isEndtermForm && window.performancePeriodYears) ? window.performancePeriodYears : [];
       const currentYear = new Date().getFullYear();
+      const validYears = performancePeriodYears.length > 0 ? performancePeriodYears : [currentYear];
       let errorMessages = [];
 
       // Clear previous validation states
@@ -687,9 +692,13 @@
           // }
 
           const year = new Date(timeline?.value).getFullYear();
-          if (!timeline?.value.trim() || year !== currentYear) {
+          const isValidYear = validYears.includes(year);
+          if (!timeline?.value.trim() || !isValidYear) {
             timeline.classList.add('is-invalid');
-            addError(timeline, 'Timeline must be a valid date within this year');
+            const periodText = performancePeriodYears.length > 0 
+              ? `within the performance period (${performancePeriodYears.join(' or ')})` 
+              : 'within this year';
+            addError(timeline, `Timeline must be a valid date ${periodText}`);
             rowValid = false;
           }
 

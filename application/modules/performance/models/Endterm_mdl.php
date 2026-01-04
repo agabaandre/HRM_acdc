@@ -1340,8 +1340,13 @@ public function get_all_approved_endterms_for_user($staff_id)
         FROM ppa_entries p
         JOIN staff s ON s.staff_id = p.staff_id
         WHERE p.staff_id = ?
-        AND p.endterm_draft_status != 1
-        ORDER BY p.endterm_created_at DESC
+        AND (
+            p.endterm_created_at IS NOT NULL 
+            OR p.endterm_updated_at IS NOT NULL 
+            OR p.endterm_objectives IS NOT NULL
+            OR p.endterm_draft_status = 1
+        )
+        ORDER BY COALESCE(p.endterm_created_at, p.endterm_updated_at, p.updated_at) DESC
     ";
     return $this->db->query($sql, [$staff_id])->result_array();
 }

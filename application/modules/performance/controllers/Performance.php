@@ -20,9 +20,26 @@ class Performance extends MX_Controller
 		$data['module'] = $this->module;
 		$data['title'] = "Performance Plan - " . $this->session->userdata('user')->name;
 		$data['skills'] = $this->db->get('training_skills')->result();
-        $performance_period = str_replace(' ','-',current_period());
-		// Fetch existing plan if any
-        $data['ppa'] = $this->employee_ppa($performance_period,$staff_id);
+        
+        // Get period from GET parameter, default to current period
+        $performance_period = $this->input->get('period');
+        if ($performance_period) {
+            $performance_period = str_replace(' ', '-', $performance_period);
+        } else {
+            $performance_period = str_replace(' ','-',current_period());
+        }
+        
+		// Check if PPA already exists for this period
+        $existing_ppa = $this->employee_ppa($performance_period, $staff_id);
+        
+        // If PPA exists, redirect to view page
+        if ($existing_ppa && !empty($existing_ppa) && is_object($existing_ppa) && isset($existing_ppa->entry_id)) {
+            redirect('performance/view_ppa/' . $existing_ppa->entry_id . '/' . $staff_id);
+            return;
+        }
+        
+		// Fetch existing plan if any (will be empty/FALSE for new PPA)
+        $data['ppa'] = $existing_ppa;
 
         //dd($this->session->userdata('user'));
 		

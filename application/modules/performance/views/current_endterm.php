@@ -31,10 +31,26 @@ $periods = isset($periods) ? $periods : [];
 
                             <?php
                            
-                            // Show End Term button if PPA exists, approved, user has midterm data, and end_term_start date has passed
-                            $has_midterm_data = isset($has_midterm_data) ? $has_midterm_data : false;
+                            // Show End Term button if PPA exists, approved, and end_term_start date has passed
+                            // (allows creating endterms for previous periods even without midterm data)
                             $endterm_start_passed = isset($ppa_settings->end_term_start) && $today >= $ppa_settings->end_term_start;
-                            if ($ppa_exists && $ppaIsapproved && $has_midterm_data && $endterm_start_passed): ?>
+                            
+                            // Get periods for dropdown - if not passed from controller, get all approved PPAs for this staff
+                            if (empty($periods)) {
+                                $periods = $this->db->query(
+                                    'SELECT DISTINCT performance_period 
+                                    FROM ppa_entries 
+                                    WHERE staff_id = ? 
+                                    AND draft_status != 1
+                                    ORDER BY performance_period DESC', 
+                                    [$staff_id]
+                                )->result();
+                            }
+                            
+                            // Debug: Uncomment to check values
+                            // echo "<!-- Debug: ppa_exists=" . ($ppa_exists ? 'true' : 'false') . ", ppaIsapproved=" . ($ppaIsapproved ? 'true' : 'false') . ", endterm_start_passed=" . ($endterm_start_passed ? 'true' : 'false') . ", end_term_start=" . (isset($ppa_settings->end_term_start) ? $ppa_settings->end_term_start : 'not set') . ", today=" . $today . " -->";
+                            
+                            if ($endterm_start_passed): ?>
                                <!-- Endterm Creation Section -->
                                <div class="mb-3">
                                    <button type="button" class="btn btn-info btn-sm mb-2" data-bs-toggle="modal" data-bs-target="#endtermModal">
