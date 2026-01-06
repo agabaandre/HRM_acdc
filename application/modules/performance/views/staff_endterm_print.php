@@ -24,12 +24,6 @@
       margin-bottom: 1.2em;
     }
 
-    /* Override body font-size for objective table cells */
-    .objective-table td,
-    .objective-table td * {
-      font-size: 16px !important;
-    }
-
     .header img {
       width: 150px;
     }
@@ -58,6 +52,7 @@
       padding: 10px;
       text-align: left;
       vertical-align: top;
+      font-size: inherit;
     }
 
     th {
@@ -87,6 +82,7 @@
       vertical-align: top;
       font-size: 16px !important;
       line-height: 1.6 !important;
+      color: #0f172a !important;
     }
 
     /* Ensure all nested elements inherit the larger font size */
@@ -99,11 +95,13 @@
     .objective-table td ol {
       font-size: 16px !important;
       line-height: 1.6 !important;
+      color: #0f172a !important;
     }
 
     /* Override small tags within objective table */
     .objective-table td small {
       font-size: 16px !important;
+      color: #0f172a !important;
     }
 
     .objective-table td br {
@@ -116,6 +114,9 @@
         font-size: 16px !important;
         line-height: 1.6 !important;
         padding: 12px !important;
+        color: #0f172a !important;
+        visibility: visible !important;
+        display: table-cell !important;
       }
 
       .objective-table td *,
@@ -127,15 +128,20 @@
       .objective-table td ol {
         font-size: 16px !important;
         line-height: 1.6 !important;
+        color: #0f172a !important;
+        visibility: visible !important;
       }
 
       .objective-table td small {
         font-size: 16px !important;
+        color: #0f172a !important;
+        visibility: visible !important;
       }
       
       .objective-table th {
         font-size: 14px !important;
         padding: 12px !important;
+        color: #0f172a !important;
       }
     }
 
@@ -302,13 +308,13 @@
         $self_appraisal_html = process_html_content($self_appraisal);
       ?>
         <tr>
-          <td style="font-size: 16px !important;"><?= $i++ ?></td>
-          <td style="font-size: 16px !important;"><?= $objective_html ?></td>
-          <td style="font-size: 16px !important;"><?= htmlspecialchars($obj['timeline'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
-          <td style="font-size: 16px !important;"><?= $indicator_html ?></td>
-          <td style="font-size: 16px !important;"><?= htmlspecialchars($obj['weight'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
-          <td style="font-size: 16px !important;"><?= $self_appraisal_html ?></td>
-          <td style="font-size: 16px !important;"><?= htmlspecialchars($obj['appraiser_rating'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= $i++ ?></td>
+          <td><?= $objective_html ?></td>
+          <td><?= htmlspecialchars($obj['timeline'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= $indicator_html ?></td>
+          <td><?= htmlspecialchars($obj['weight'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= $self_appraisal_html ?></td>
+          <td><?= htmlspecialchars($obj['appraiser_rating'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
         </tr>
       <?php endforeach; ?>
     </tbody>
