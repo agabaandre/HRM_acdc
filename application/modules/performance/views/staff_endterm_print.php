@@ -52,7 +52,11 @@
       padding: 10px;
       text-align: left;
       vertical-align: top;
-      font-size: inherit;
+    }
+
+    /* Override default font-size for objective table specifically */
+    .objective-table {
+      font-size: 18px !important;
     }
 
     th {
@@ -80,8 +84,8 @@
       overflow-wrap: break-word;
       white-space: normal;
       vertical-align: top;
-      font-size: 16px !important;
-      line-height: 1.6 !important;
+      font-size: 18px !important;
+      line-height: 1.7 !important;
       color: #0f172a !important;
     }
 
@@ -92,15 +96,17 @@
     .objective-table td span,
     .objective-table td li,
     .objective-table td ul,
-    .objective-table td ol {
-      font-size: 16px !important;
-      line-height: 1.6 !important;
+    .objective-table td ol,
+    .objective-table td strong,
+    .objective-table td b {
+      font-size: 18px !important;
+      line-height: 1.7 !important;
       color: #0f172a !important;
     }
 
     /* Override small tags within objective table */
     .objective-table td small {
-      font-size: 16px !important;
+      font-size: 18px !important;
       color: #0f172a !important;
     }
 
@@ -111,8 +117,8 @@
     /* Ensure objectives are readable in print */
     @media print {
       .objective-table td {
-        font-size: 16px !important;
-        line-height: 1.6 !important;
+        font-size: 18px !important;
+        line-height: 1.7 !important;
         padding: 12px !important;
         color: #0f172a !important;
         visibility: visible !important;
@@ -125,21 +131,23 @@
       .objective-table td span,
       .objective-table td li,
       .objective-table td ul,
-      .objective-table td ol {
-        font-size: 16px !important;
-        line-height: 1.6 !important;
+      .objective-table td ol,
+      .objective-table td strong,
+      .objective-table td b {
+        font-size: 18px !important;
+        line-height: 1.7 !important;
         color: #0f172a !important;
         visibility: visible !important;
       }
 
       .objective-table td small {
-        font-size: 16px !important;
+        font-size: 18px !important;
         color: #0f172a !important;
         visibility: visible !important;
       }
       
       .objective-table th {
-        font-size: 14px !important;
+        font-size: 15px !important;
         padding: 12px !important;
         color: #0f172a !important;
       }
