@@ -79,10 +79,26 @@
       overflow-wrap: break-word;
       white-space: normal;
       vertical-align: top;
+      font-size: 16px !important;
+      line-height: 1.6 !important;
     }
 
     .objective-table td br {
       line-height: 1.4;
+    }
+
+    /* Ensure objectives are readable in print */
+    @media print {
+      .objective-table td {
+        font-size: 16px !important;
+        line-height: 1.6 !important;
+        padding: 12px !important;
+      }
+      
+      .objective-table th {
+        font-size: 14px !important;
+        padding: 12px !important;
+      }
     }
 
     .page-break {

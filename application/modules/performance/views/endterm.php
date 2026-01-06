@@ -240,6 +240,21 @@ $this->load->view('performance/endterm/endterm_section_a', compact('contract', '
 .validation-summary li {
   margin-bottom: 0.25rem;
 }
+
+/* Increase font size for objectives table in print */
+@media print {
+  .table.text-sm td,
+  .table.text-sm th {
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+    padding: 12px !important;
+  }
+  
+  .table.text-sm textarea {
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+  }
+}
 </style>
 
 <?php if ($showApprovalBtns == 'show' || in_array('83', $permissions)) {
