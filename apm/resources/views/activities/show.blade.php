@@ -735,7 +735,7 @@
                                 <span class="text-dark fw-bold">{{ ucwords($activity->workplan_activity_code) }}</span>
                             </td>
                         </tr>
-                @endif
+                       @endif
                         <tr>
                             <td class="field-label">
                                 <i class="bx bx-user me-2 text-primary"></i>Creator
@@ -766,7 +766,7 @@
                                 {{ optional($activity->focalPerson)->job_name ?? 'Not specified' }}
                             </td>
                         </tr>
-                        @if($activity->fund_type_id == 1)
+                        @if($activity->fund_type_id)
                         <tr>
                             <td class="field-label">
                                 <i class="bx bx-calendar me-2 text-danger"></i>Date Range
@@ -801,7 +801,7 @@
                         @endif
                         
                         <!-- Location Information -->
-                        @if($activity->fund_type_id != 1)
+                        @if($activity->fund_type_id)
                         <tr>
                             <td class="field-label">
                                 <i class="bx bx-map me-2 text-success"></i>Location(s)
