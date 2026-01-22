@@ -1156,7 +1156,7 @@ function renderActivities(activities) {
             // Add locations below date range
             if (activity.locations && activity.locations.length > 0) {
                 html += '<div class="mt-2 pt-2 border-top">';
-                html += '<div class="text-muted small fw-semibold mb-1"><i class="bx bx-map me-1"></i>Locations:</div>';
+                html += '<div class="text-muted small fw-semibold mb-1"><i class="bx bx-map me-1"></i>Location:</div>';
                 activity.locations.forEach((location, idx) => {
                     html += `<div class="small text-muted">${location.name || 'N/A'}</div>`;
                 });
