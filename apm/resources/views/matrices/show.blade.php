@@ -1153,6 +1153,15 @@ function renderActivities(activities) {
             html += '<div class="small text-wrap" style="max-width: 120px;">';
             html += `<div class="fw-bold text-primary">${formatDate(activity.date_from)}</div>`;
             html += `<div class="text-muted">to ${formatDate(activity.date_to)}</div>`;
+            // Add locations below date range
+            if (activity.locations && activity.locations.length > 0) {
+                html += '<div class="mt-2 pt-2 border-top">';
+                html += '<div class="text-muted small fw-semibold mb-1"><i class="bx bx-map me-1"></i>Locations:</div>';
+                activity.locations.forEach((location, idx) => {
+                    html += `<div class="small text-muted">${location.name || 'N/A'}</div>`;
+                });
+                html += '</div>';
+            }
             html += '</div>';
             html += '</td>';
             
@@ -1696,6 +1705,14 @@ function renderSingleMemos(singleMemos) {
                         <div class="small text-wrap" style="max-width: 120px;">
                             <div class="fw-bold text-primary">${formatDate(memo.date_from)}</div>
                             <div class="text-muted">to ${formatDate(memo.date_to)}</div>
+                            ${memo.locations && memo.locations.length > 0 ? `
+                                <div class="mt-2 pt-2 border-top">
+                                    <div class="text-muted small fw-semibold mb-1"><i class="bx bx-map me-1"></i>Location:</div>
+                                    ${memo.locations.map(location => `
+                                        <div class="small text-muted">${location.name || 'N/A'}</div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
                         </div>
                     </td>
                     <td class="px-3 py-3">
