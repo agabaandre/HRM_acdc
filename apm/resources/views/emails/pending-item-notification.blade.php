@@ -94,7 +94,7 @@
         <div class="header">
             <img src="https://khub.africacdc.org/storage/uploads/config/fcb24779b37db15ee15fd4a32eaab0ac.png" alt="Africa CDC Logo">
             <h2>New {{ $itemType }} Pending Approval</h2>
-            <p>Hello {{ $approverTitle }} {{ $approverName }},</p>
+            <p>Hello  {{ $approverName }},</p>
             <p>A new {{ $itemType }} requires your approval.</p>
         </div>
 
