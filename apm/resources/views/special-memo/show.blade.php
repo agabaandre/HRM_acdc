@@ -1318,7 +1318,7 @@
                 </div>
 
                 <!-- Enhanced Approval Actions -->
-                @if(can_take_action_generic($specialMemo) || (is_with_creator_generic($specialMemo) && $specialMemo->overall_status != 'draft') || (isdivision_head($specialMemo) && $specialMemo->overall_status == 'returned'))
+                @if(can_take_action_generic($specialMemo) || (isdivision_head($specialMemo) && $specialMemo->overall_status == 'returned'))
                     <div class="card border-0 shadow-lg mt-4" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
                         <div class="card-header bg-transparent border-0 py-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px 12px 0 0;">
                             <h6 class="mb-0 fw-bold text-gray-800 d-flex align-items-center gap-2" style="color: #1f2937;">
@@ -1343,9 +1343,13 @@
                                         <div class="mb-3">
                                             <label for="remarks" class="form-label fw-semibold">
                                                 <i class="bx bx-message-square-detail me-1"></i>Comments
+                                                <span id="commentsRequired" class="text-danger" style="display: none;">*</span>
                                             </label>
                                             <textarea class="form-control" id="remarks" name="remarks" rows="3"
                                                 placeholder="Add your comments here..."></textarea>
+                                            <div id="remarksError" class="text-danger small mt-1" style="display: none;">
+                                                Comments are required when returning a memo.
+                                            </div>
                                         </div>
                                         @if($specialMemo->approval_level=='5')
                                         <div class="mb-3">
@@ -1660,6 +1664,69 @@
                     form.submit();
                 }
             });
+        });
+
+        // Track which button was clicked
+        let clickedAction = null;
+        
+        // Handle button clicks to track action
+        $('#approvalForm button[type="submit"]').on('click', function(e) {
+            clickedAction = $(this).attr('value');
+            const commentsRequired = $('#commentsRequired');
+            
+            // Show/hide required indicator based on button
+            if (clickedAction === 'returned') {
+                commentsRequired.show();
+            } else {
+                commentsRequired.hide();
+            }
+        });
+
+        // Handle approval form submission with conditional validation
+        $('#approvalForm').on('submit', function(e) {
+            const remarksField = $('#remarks');
+            const remarksError = $('#remarksError');
+            const commentsRequired = $('#commentsRequired');
+            
+            // Check if it's a return action
+            if (clickedAction === 'returned') {
+                const remarksValue = remarksField.val().trim();
+                
+                // Hide previous errors
+                remarksError.hide();
+                remarksField.removeClass('is-invalid');
+                
+                // Validate comments are required for return
+                if (!remarksValue) {
+                    e.preventDefault();
+                    remarksError.show();
+                    remarksField.addClass('is-invalid');
+                    commentsRequired.show();
+                    remarksField.focus();
+                    
+                    // Show error notification if Swal is available
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Comments Required',
+                            text: 'Please provide comments when returning a memo.',
+                            confirmButtonColor: '#dc3545'
+                        });
+                    }
+                    
+                    // Reset clicked action to allow retry
+                    clickedAction = null;
+                    return false;
+                }
+            } else {
+                // For approve action, comments are optional - hide required indicator
+                commentsRequired.hide();
+                remarksError.hide();
+                remarksField.removeClass('is-invalid');
+            }
+            
+            // Reset clicked action after validation
+            clickedAction = null;
         });
     });
 </script>
