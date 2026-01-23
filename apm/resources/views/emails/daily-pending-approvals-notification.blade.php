@@ -210,7 +210,7 @@
                 $currentHour = (int) date('H');
                 $greeting = $currentHour < 12 ? 'Good morning' : 'Good afternoon';
             @endphp
-            <p>{{ $greeting }}, {{ $approverTitle }} {{ $approverName }}! Here's your pending approvals overview.</p>
+            <p>{{ $greeting }}, {{ $approverName }}! Here's your pending approvals overview.</p>
         </div>
 
         <div class="content">
