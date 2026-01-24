@@ -107,13 +107,28 @@
                         <?php if (in_array('38', $permissions) && $ppa_exists) : ?>
                             <li><a class="dropdown-item" href="<?= base_url("performance/recent_ppa/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current PPA</a></li>
                         <?php endif; ?>
-                   
+                        
+                        <?php
+                           // Show Mid Term menu link if user has at least one approved PPA (allows creating midterms for any approved period)
+                           // Get periods for dropdown - only approved PPAs for this staff (draft_status = 2 means approved)
+                           // draft_status: 0 = submitted, 1 = draft, 2 = approved
+                           $nav_midterm_staff_id = $this->session->userdata('user')->staff_id;
+                           $nav_midterm_periods = $this->db->query(
+                               'SELECT DISTINCT performance_period 
+                               FROM ppa_entries 
+                               WHERE staff_id = ? 
+                               AND draft_status = 2
+                               ORDER BY performance_period DESC'
+                           )->result();
+                           
+                           // Show button if user has at least one approved PPA (regardless of current period)
+                           if (!empty($nav_midterm_periods)): ?>
                               <li>
                                   <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#navMidtermModal">
                                       <i class="fa fa-plus"></i> Create Midterm
                                   </a>
                               </li>
-                           
+                           <?php endif; ?>
 
                         <?php if (in_array('38', $permissions) && $midterm_exists) : ?>
                             <li><a class="dropdown-item" href="<?= base_url("performance/midterm/recent_midterm/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current Midterm</a></li>
@@ -160,7 +175,7 @@
 
                  
                         <li><a class="dropdown-item" href="<?= base_url('performance/my_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>My PPAs</a></li>
-                        <li><a class="dropdown-item" href="<?= base_url('performance/pending_approval') ?>"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge bg-danger ms-1"><?= isset($approvals_count) ? $approvals_count : 0 ?></span></a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('performance/pending_approval') ?>"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge bg-danger ms-1"><?= isset($approvals_count) ? $approvals_count : ?></span></a></li>
                         <li><a class="dropdown-item" href="<?= base_url('performance/approved_by_me') ?>"><i class="bx bx-right-arrow-alt"></i>All Approved PPAs</a></li>
 
 
