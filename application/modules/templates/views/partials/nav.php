@@ -86,26 +86,14 @@
             <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('74', $permissions)) : ?>
                 <?php
                 // Calculate pending approvals count for badge
-                $nav_pendingcount = 0;
-                try {
-                    if (!isset($this->per_mdl)) {
-                        $this->load->model('performance_mdl', 'per_mdl');
-                    }
-                    if (isset($this->per_mdl) && method_exists($this->per_mdl, 'get_all_pending_approvals')) {
-                        $nav_pending = $this->per_mdl->get_all_pending_approvals($this->session->userdata('user')->staff_id);
-                        $nav_pendingcount = is_array($nav_pending) ? count($nav_pending) : 0;
-                    } elseif (isset($this->per_mdl) && method_exists($this->per_mdl, 'get_pending_ppa')) {
-                        $nav_pending = $this->per_mdl->get_pending_ppa($this->session->userdata('user')->staff_id);
-                        $nav_pendingcount = is_array($nav_pending) ? count($nav_pending) : 0;
-                    }
-                } catch (Exception $e) {
-                    $nav_pendingcount = 0;
-                }
+                $staff_id = $this->session->userdata('user')->staff_id;
+                $pendings = $this->per_mdl->get_all_pending_approvals($staff_id);
+                $approvals_count = count($pendings);
                 ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('performance', $this->uri->segment(1)) ?>" href="<?php echo base_url() ?>/performance/ppa_dashboard" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-line-chart"></i></div>
-                        <div class="menu-title">Performance<?php if ($nav_pendingcount > 0): ?><span class="badge bg-danger ms-2"><?= $nav_pendingcount ?></span><?php endif; ?></div>
+                        <div class="menu-title">Performance<?php if ($approvals_count > 0): ?><span class="badge bg-danger ms-2"><?= $approvals_count ?></span><?php endif; ?></div>
                     </a>
                     <?php //dd($ppa_exists); ?>
                     <ul class="dropdown-menu">
@@ -188,7 +176,7 @@
 
                  
                         <li><a class="dropdown-item" href="<?= base_url('performance/my_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>My PPAs</a></li>
-                        <li><a class="dropdown-item" href="<?= base_url('performance/pending_approval') ?>"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge bg-danger ms-1"><?= isset($pendingcount) ? $pendingcount : $nav_pendingcount ?></span></a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('performance/pending_approval') ?>"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge bg-danger ms-1"><?= isset($approvals_count) ? $approvals_count : 0 ?></span></a></li>
                         <li><a class="dropdown-item" href="<?= base_url('performance/approved_by_me') ?>"><i class="bx bx-right-arrow-alt"></i>All Approved PPAs</a></li>
 
 
