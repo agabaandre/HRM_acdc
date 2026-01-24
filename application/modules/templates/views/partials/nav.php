@@ -118,7 +118,8 @@
                                FROM ppa_entries 
                                WHERE staff_id = ? 
                                AND draft_status = 2
-                               ORDER BY performance_period DESC'
+                               ORDER BY performance_period DESC', 
+                               [$nav_midterm_staff_id]
                            )->result();
                            
                            // Show button if user has at least one approved PPA (regardless of current period)
