@@ -59,6 +59,35 @@
         border-radius: 0.5rem;
         padding: 0.75rem;
     }
+    
+    /* Budget table styles for non-travel memo */
+    .table.table-hover.border {
+        table-layout: fixed;
+        width: 100%;
+    }
+    
+    .table.table-hover.border th.border-0.fw-bold:first-child {
+        width: 40px;
+    }
+    
+    .table.table-hover.border th.border-0.fw-bold:nth-child(2) {
+        width: 60%;
+    }
+    
+    .table.table-hover.border td:nth-child(2) {
+        width: 60%;
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        overflow-wrap: break-word;
+    }
+    
+    .table.table-hover.border td:nth-child(2) > div {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
+        line-height: 1.3;
+    }
 
     /* Matrix-style metadata */
     .memo-meta-row {
@@ -552,8 +581,8 @@
                         <table class="table table-hover border rounded-3 overflow-hidden">
                             <thead style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
                                 <tr>
-                                    <th class="border-0 fw-bold">#</th>
-                                    <th class="border-0 fw-bold">Description</th>
+                                    <th class="border-0 fw-bold" style="width: 40px;">#</th>
+                                    <th class="border-0 fw-bold" style="width: 60%;">Description</th>
                                     <th class="border-0 fw-bold text-center">Quantity</th>
                                     <th class="border-0 fw-bold text-end">Unit Price</th>
                                     <th class="border-0 fw-bold text-end">Total</th>
@@ -577,7 +606,7 @@
                                             <tr class="border-bottom">
                                                 <td class="fw-medium">{{ $rowIndex++ }}</td>
                                                 <td>
-                                                    <div>
+                                                    <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;">
                                                         <p class="mb-1 fw-medium">{{ $item['description'] ?? 'N/A' }}</p>
                                                         @if(isset($item['notes']) && !empty($item['notes']))
                                                             <small class="text-muted">{{ $item['notes'] }}</small>

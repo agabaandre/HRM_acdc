@@ -88,8 +88,27 @@
         }
         
         .modal-body {
-            max-height: 70vh;
+            max-height: calc(90vh - 120px);
             overflow-y: auto;
+        }
+        
+        .budget-table td {
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+        
+        .budget-table th.cost-item,
+        .budget-table td.cost-item {
+            max-width: 200px;
+            min-width: 150px;
+        }
+        
+        .budget-table th.description,
+        .budget-table td.description {
+            max-width: 250px;
+            min-width: 200px;
         }
         
         /* Custom scrollbar for modal */
@@ -115,8 +134,8 @@
 
 <!-- Create ARF Modal Component -->
 <div class="modal fade" id="createArfModal" tabindex="-1" aria-labelledby="createArfModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 95vw; width: 95vw; height: 90vh;">
-        <div class="modal-content" style="height: 90vh; display: flex; flex-direction: column;">
+    <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 90vw; width: 90vw;">
+        <div class="modal-content" style="max-height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-header" style="background: var(--primary-green); color: white;">
                 <h5 class="modal-title fw-bold text-white" id="createArfModalLabel">
                     <i class="bx bx-file-plus me-2"></i>Create Activity Request
@@ -213,17 +232,17 @@
                                     
                                     <div class="table-responsive">
                                         <table class="table table-bordered budget-table">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th class="fw-bold">#</th>
-                                                    <th class="fw-bold">Cost Item</th>
-                                                    <th class="fw-bold text-end">Unit Cost</th>
-                                                    <th class="fw-bold text-end">Units</th>
-                                                    <th class="fw-bold text-end">Days</th>
-                                                    <th class="fw-bold text-end">Total</th>
-                                                    <th class="fw-bold">Description</th>
-                                                </tr>
-                                            </thead>
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th class="fw-bold" style="width: 40px;">#</th>
+                                                        <th class="fw-bold cost-item">Cost Item</th>
+                                                        <th class="fw-bold text-end" style="width: 100px;">Unit Cost</th>
+                                                        <th class="fw-bold text-end" style="width: 80px;">Units</th>
+                                                        <th class="fw-bold text-end" style="width: 80px;">Days</th>
+                                                        <th class="fw-bold text-end" style="width: 120px;">Total</th>
+                                                        <th class="fw-bold description">Description</th>
+                                                    </tr>
+                                                </thead>
                                             <tbody>
                                                 @php
                                                     $count = 1;
@@ -238,12 +257,12 @@
                                                         @endphp
                                                         <tr>
                                                             <td>{{ $count++ }}</td>
-                                                            <td>{{ $item->cost }}</td>
+                                                            <td class="cost-item">{{ $item->cost }}</td>
                                                             <td class="text-end">${{ number_format($item->unit_cost, 2) }}</td>
                                                             <td class="text-end">{{ $item->units }}</td>
                                                             <td class="text-end">{{ $item->days }}</td>
                                                             <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
-                                                            <td>{{ $item->description }}</td>
+                                                            <td class="description">{{ $item->description }}</td>
                                                         </tr>
                                                     @endif
                                                 @endforeach
@@ -296,12 +315,12 @@
                                             <table class="table table-bordered budget-table">
                                                 <thead class="table-light">
                                                     <tr>
-                                                        <th class="fw-bold">#</th>
-                                                        <th class="fw-bold">Cost Item</th>
-                                                        <th class="fw-bold text-end">Unit Cost</th>
-                                                        <th class="fw-bold text-end">Quantity</th>
-                                                        <th class="fw-bold text-end">Total</th>
-                                                        <th class="fw-bold">Description</th>
+                                                        <th class="fw-bold" style="width: 40px;">#</th>
+                                                        <th class="fw-bold cost-item">Cost Item</th>
+                                                        <th class="fw-bold text-end" style="width: 100px;">Unit Cost</th>
+                                                        <th class="fw-bold text-end" style="width: 80px;">Quantity</th>
+                                                        <th class="fw-bold text-end" style="width: 120px;">Total</th>
+                                                        <th class="fw-bold description">Description</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -316,11 +335,11 @@
                                                         @endphp
                                                         <tr>
                                                             <td>{{ $count++ }}</td>
-                                                            <td>{{ $item['cost'] ?? $item['description'] ?? 'N/A' }}</td>
+                                                            <td class="cost-item">{{ $item['cost'] ?? $item['description'] ?? 'N/A' }}</td>
                                                             <td class="text-end">${{ number_format($item['unit_cost'], 2) }}</td>
                                                             <td class="text-end">{{ $quantity }}</td>
                                                             <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
-                                                            <td>{{ $item['description'] ?? 'N/A' }}</td>
+                                                            <td class="description">{{ $item['description'] ?? 'N/A' }}</td>
                                                         </tr>
                                                     @endforeach
                                                 </tbody>
@@ -356,14 +375,14 @@
                 </div>
 
                 <!-- Request for Approval Section -->
-                <div>
+                <div class="mt-4">
                     <div class="section-header">
                         <h6 class="fw-bold mb-0 text-primary">
                             <i class="bx bx-check-circle me-2"></i>Request for Approval
                         </h6>
                     </div>
                     
-                    <div class="bg-light p-3 rounded border mb-3">
+                    <div class="bg-light p-3 rounded border mb-3" style="word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word; max-height: 150px; overflow-y: auto;">
                         {!! $requestForApproval ?? 'N/A' !!}
                     </div>
                     

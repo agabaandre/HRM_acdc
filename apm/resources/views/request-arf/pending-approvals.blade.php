@@ -42,7 +42,13 @@
                         <strong>Note:</strong> These filters apply to ARF requests currently at your approval level (excluding draft ARF requests).
                     </small>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label for="documentNumberFilter" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-hash me-1 text-success"></i> Document Number
+                    </label>
+                    <input type="text" class="form-control" id="documentNumberFilter" placeholder="Search by document number" value="{{ request('document_number') }}">
+                </div>
+                <div class="col-md-3">
                     <label for="divisionFilter" class="form-label fw-semibold mb-1">
                         <i class="bx bx-building me-1 text-success"></i> Division
                     </label>
@@ -50,12 +56,12 @@
                         <select class="form-select select2" id="divisionFilter">
                             <option value="">All Divisions</option>
                             @foreach ($divisions as $division)
-                                <option value="{{ $division->id }}">{{ $division->division_name }}</option>
+                                <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>{{ $division->division_name }}</option>
                             @endforeach
                         </select>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="staffFilter" class="form-label fw-semibold mb-1">
                         <i class="bx bx-user me-1 text-success"></i> Staff Member
                     </label>
@@ -64,13 +70,13 @@
                             <option value="">All Staff</option>
                             @foreach ($pendingArfs as $arf)
                                 @if($arf->staff)
-                                    <option value="{{ $arf->staff->staff_id }}">{{ $arf->staff->fname }} {{ $arf->staff->lname }}</option>
+                                    <option value="{{ $arf->staff->staff_id }}" {{ request('staff_id') == $arf->staff->staff_id ? 'selected' : '' }}>{{ $arf->staff->fname }} {{ $arf->staff->lname }}</option>
                                 @endif
                             @endforeach
                         </select>
                     </div>
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
+                <div class="col-md-3 d-flex align-items-end">
                     <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Apply Filters
                     </button>
@@ -349,6 +355,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Auto-apply filters when they change
+    if (document.getElementById('documentNumberFilter')) {
+        document.getElementById('documentNumberFilter').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+    }
+    
     if (document.getElementById('divisionFilter')) {
         document.getElementById('divisionFilter').addEventListener('change', applyFilters);
     }
@@ -371,9 +385,11 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUrl.searchParams.set('tab', tabId);
         
         // Include current filter values
+        const documentNumber = document.getElementById('documentNumberFilter')?.value;
         const divisionId = document.getElementById('divisionFilter')?.value;
         const staffId = document.getElementById('staffFilter')?.value;
         
+        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         
