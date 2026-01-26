@@ -134,7 +134,7 @@ trait ApproverDashboardHelper
      * Get pending counts for each approver.
      * Combines approvers by staff_id to aggregate counts across all roles/levels.
      */
-    protected function getPendingCountsForApprovers($approvers, $workflowDefinitionId, $docType = null, $divisionId = null)
+    protected function getPendingCountsForApprovers($approvers, $workflowDefinitionId, $docType = null, $divisionId = null, $year = null)
     {
         $approversByStaffId = [];
 
@@ -191,7 +191,7 @@ trait ApproverDashboardHelper
         $approversWithCounts = [];
         foreach ($approversByStaffId as $staffId => $data) {
             // Get pending counts across ALL workflows using PendingApprovalsService logic
-            $allPendingCounts = $this->getPendingCountsForApproverAll($staffId, $divisionId);
+            $allPendingCounts = $this->getPendingCountsForApproverAll($staffId, $divisionId, $year);
             
             // Use the aggregated counts from all workflows
             $data['pending_counts'] = $allPendingCounts;
@@ -238,7 +238,7 @@ trait ApproverDashboardHelper
      * This ensures counts match what's shown in pending-approvals and excludes already handled items.
      * Uses ApprovalService::canTakeAction to verify the approver can actually approve each item.
      */
-    protected function getPendingCountsForApproverAll($staffId, $divisionId = null)
+    protected function getPendingCountsForApproverAll($staffId, $divisionId = null, $year = null)
     {
         $counts = [
             'matrix' => 0,
@@ -262,6 +262,10 @@ trait ApproverDashboardHelper
         
         if ($divisionId) {
             $query->where('division_id', $divisionId);
+        }
+        
+        if ($year) {
+            $query->where('year', $year);
         }
         
         $matrices = $query->get();

@@ -41,6 +41,7 @@ class ApproverDashboardController extends Controller
                 'doc_type' => 'nullable|string|in:matrix,non_travel,single_memos,special,memos,arf,requests_for_service,change_requests',
                 'workflow_definition_id' => 'nullable|integer|exists:workflows,id',
                 'approval_level' => 'nullable|integer|min:1',
+                'year' => 'nullable|integer|min:2000|max:2100',
                 'export' => 'nullable|boolean',
             ]);
 
@@ -56,6 +57,7 @@ class ApproverDashboardController extends Controller
             $docType = $request->get('doc_type') ?: null;
             $workflowDefinitionId = $request->get('workflow_definition_id') ?: null;
             $approvalLevel = $request->get('approval_level') ?: null;
+            $year = $request->get('year') ?: null;
 
             // If user doesn't have permission 88, restrict to their division
             // Only apply restriction if we have valid session data
@@ -82,11 +84,52 @@ class ApproverDashboardController extends Controller
 
             // Get pending counts for ALL approvers first (before pagination)
             // This will combine approvers by staff_id
-            $allApproversWithCounts = $this->getPendingCountsForApprovers($approversCollection, $workflowDefinitionId, $docType, $divisionId);
+            $allApproversWithCounts = $this->getPendingCountsForApprovers($approversCollection, $workflowDefinitionId, $docType, $divisionId, $year);
 
-            // Sort approvers by total_pending (descending) - biggest number first
-            usort($allApproversWithCounts, function($a, $b) {
-                return $b['total_pending'] <=> $a['total_pending'];
+            // Handle sorting - check for DataTables order parameter or use default
+            $orderColumn = 4; // Default: Total Pending (column index 4)
+            $orderDirection = 'desc'; // Default: descending
+            
+            // Check if this is a DataTables request with order parameter
+            if ($request->has('order') && is_array($request->get('order')) && !empty($request->get('order'))) {
+                $order = $request->get('order')[0];
+                $orderColumn = (int) $order['column'];
+                $orderDirection = $order['dir'] === 'asc' ? 'asc' : 'desc';
+            }
+            
+            // Map column index to sort field
+            $sortFields = [
+                1 => 'approver_name',
+                2 => 'roles',
+                4 => 'total_pending',
+                5 => 'total_handled',
+                6 => 'avg_approval_time_hours'
+            ];
+            
+            $sortField = $sortFields[$orderColumn] ?? 'total_pending';
+            
+            // Sort approvers based on selected column
+            usort($allApproversWithCounts, function($a, $b) use ($sortField, $orderDirection) {
+                $aValue = $a[$sortField] ?? 0;
+                $bValue = $b[$sortField] ?? 0;
+                
+                // Handle array fields (like roles)
+                if (is_array($aValue)) {
+                    $aValue = implode(', ', $aValue);
+                }
+                if (is_array($bValue)) {
+                    $bValue = implode(', ', $bValue);
+                }
+                
+                // Handle string comparison
+                if (is_string($aValue) && is_string($bValue)) {
+                    $result = strcasecmp($aValue, $bValue);
+                } else {
+                    // Numeric comparison
+                    $result = ($aValue <=> $bValue);
+                }
+                
+                return $orderDirection === 'asc' ? $result : -$result;
             });
 
             // Get total count AFTER combining by staff_id (for correct pagination)
@@ -103,9 +146,12 @@ class ApproverDashboardController extends Controller
             // Get total number of workflows for display
             $totalWorkflows = Workflow::count();
 
+            // Return response compatible with both DataTables and original format
             return response()->json([
                 'success' => true,
                 'data' => $approversWithCounts,
+                'recordsTotal' => $totalCount,
+                'recordsFiltered' => $totalCount,
                 'total_workflows' => $totalWorkflows,
                 'pagination' => [
                     'current_page' => $page,
@@ -121,6 +167,7 @@ class ApproverDashboardController extends Controller
                     'division_id' => $divisionId,
                     'doc_type' => $docType,
                     'approval_level' => $approvalLevel,
+                    'year' => $year,
                 ]
             ]);
 
@@ -182,6 +229,20 @@ class ApproverDashboardController extends Controller
                 ['value' => 'change_requests', 'label' => 'Change Requests'],
             ];
 
+            // Get distinct years from matrices table
+            $years = DB::table('matrices')
+                ->select(DB::raw('DISTINCT year'))
+                ->whereNotNull('year')
+                ->orderBy('year', 'desc')
+                ->pluck('year')
+                ->toArray();
+
+            // If no years found, generate default years
+            if (empty($years)) {
+                $currentYear = Carbon::now()->year;
+                $years = range($currentYear - 5, $currentYear + 2);
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -189,6 +250,7 @@ class ApproverDashboardController extends Controller
                     'workflow_definitions' => $workflowDefinitions,
                     'document_types' => $documentTypes,
                     'approval_levels' => $approvalLevels,
+                    'years' => $years,
                     'user_division_id' => $userDivisionId,
                     'has_permission_88' => $hasPermission88,
                 ]

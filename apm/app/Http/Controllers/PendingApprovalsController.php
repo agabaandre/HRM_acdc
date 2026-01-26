@@ -33,6 +33,66 @@ class PendingApprovalsController extends Controller
     {
         $category = $request->get('category', 'all');
         $division = $request->get('division', 'all');
+        $staffId = $request->get('staff_id');
+        
+        $approverInfo = null;
+        
+        // If staff_id is provided (from dashboard), filter pending approvals for that specific approver
+        if ($staffId) {
+            // Get approver information (name and roles)
+            $staff = \App\Models\Staff::where('staff_id', (int) $staffId)->first();
+            if ($staff) {
+                // Get roles from workflow definitions
+                $approvers = \App\Models\Approver::where('staff_id', (int) $staffId)
+                    ->with(['workflowDefinition' => function($query) {
+                        $query->where('is_enabled', 1);
+                    }])
+                    ->get();
+                
+                $roles = [];
+                foreach ($approvers as $approver) {
+                    if ($approver->workflowDefinition && $approver->workflowDefinition->is_enabled) {
+                        $roleLevel = $approver->workflowDefinition->role . ' (Level ' . $approver->workflowDefinition->approval_order . ')';
+                        if (!in_array($roleLevel, $roles)) {
+                            $roles[] = $roleLevel;
+                        }
+                    }
+                }
+                
+                // Also check for division-specific roles
+                $approverDivisions = \App\Models\Division::where(function($query) use ($staffId) {
+                    $query->where('division_head', $staffId)
+                          ->orWhere('focal_person', $staffId)
+                          ->orWhere('finance_officer', $staffId)
+                          ->orWhere('director_id', $staffId);
+                })->get();
+                
+                foreach ($approverDivisions as $div) {
+                    if ($div->division_head == $staffId) {
+                        $roles[] = 'Head of Division';
+                    }
+                    if ($div->focal_person == $staffId) {
+                        $roles[] = 'Focal Person';
+                    }
+                    if ($div->finance_officer == $staffId) {
+                        $roles[] = 'Finance Officer';
+                    }
+                    if ($div->director_id == $staffId) {
+                        $roles[] = 'Director';
+                    }
+                }
+                
+                $approverInfo = [
+                    'name' => trim($staff->fname . ' ' . $staff->lname),
+                    'email' => $staff->work_email ?? '',
+                    'roles' => array_unique($roles),
+                    'division_name' => $staff->division_name ?? 'N/A'
+                ];
+            }
+            
+            // Temporarily override the session staff_id to filter by the specified approver
+            $this->pendingApprovalsService->setTemporaryStaffId((int) $staffId);
+        }
         
         // Get all pending approvals
         $pendingApprovals = $this->pendingApprovalsService->getPendingApprovals();
@@ -53,6 +113,11 @@ class PendingApprovalsController extends Controller
         
         // Check if user is an admin assistant
         $isAdminAssistant = is_admin_assistant();
+        
+        // Reset to original staff_id if it was temporarily changed
+        if ($staffId) {
+            $this->pendingApprovalsService->resetStaffId();
+        }
 
         return view('pending-approvals.index', compact(
             'pendingApprovals',
@@ -61,7 +126,9 @@ class PendingApprovalsController extends Controller
             'divisions',
             'category',
             'division',
-            'isAdminAssistant'
+            'isAdminAssistant',
+            'staffId',
+            'approverInfo'
         ));
     }
 

@@ -25,6 +25,7 @@ class PendingApprovalsService
     protected $currentDivisionId;
     protected $userPermissions;
     protected $sessionData;
+    protected $originalStaffId;
 
     public function __construct(?array $sessionData = null)
     {
@@ -38,8 +39,39 @@ class PendingApprovalsService
         ];
         
         $this->currentStaffId = $this->sessionData['staff_id'];
+        $this->originalStaffId = $this->currentStaffId;
         $this->currentDivisionId = $this->sessionData['division_id'];
         $this->userPermissions = $this->sessionData['permissions'];
+    }
+
+    /**
+     * Set a temporary staff_id for filtering (e.g., when viewing from dashboard)
+     */
+    public function setTemporaryStaffId(int $staffId): void
+    {
+        if (!$this->originalStaffId) {
+            $this->originalStaffId = $this->currentStaffId;
+        }
+        $this->currentStaffId = $staffId;
+    }
+
+    /**
+     * Reset staff_id to original value
+     */
+    public function resetStaffId(): void
+    {
+        if ($this->originalStaffId) {
+            $this->currentStaffId = $this->originalStaffId;
+            $this->originalStaffId = null;
+        }
+    }
+
+    /**
+     * Get session data
+     */
+    public function getSessionData(): array
+    {
+        return $this->sessionData;
     }
 
     /**

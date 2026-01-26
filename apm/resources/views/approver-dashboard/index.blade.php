@@ -235,14 +235,45 @@
   }
 
   .table thead th {
-    background: var(--accent-black);
-    color: white;
+    background: #2c3e50 !important;
+    color: white !important;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-size: 0.8rem;
     padding: 1rem 0.75rem;
     border: none;
+    position: relative;
+  }
+
+  .table thead th.sorting,
+  .table thead th.sorting_asc,
+  .table thead th.sorting_desc {
+    cursor: pointer;
+  }
+
+  .table thead th.sorting:after {
+    content: "\f0dc";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    float: right;
+    opacity: 0.5;
+  }
+
+  .table thead th.sorting_asc:after {
+    content: "\f0de";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    float: right;
+    color: white;
+  }
+
+  .table thead th.sorting_desc:after {
+    content: "\f0dd";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    float: right;
+    color: white;
   }
 
   .table tbody tr {
@@ -259,6 +290,7 @@
     vertical-align: middle;
     border-color: var(--medium-grey);
   }
+
 
   .status-badge {
     padding: 0.5rem 1rem;
@@ -357,13 +389,13 @@
     </div>
     <div class="card-body">
       <div class="row g-3 align-items-end">
-        <div class="col-md-4">
+        <div class="col-md-2">
           <label class="form-label fw-semibold">
             <i class="fa fa-search me-1"></i>Search Approver
           </label>
-          <input type="text" id="searchApprover" class="form-control" placeholder="Search by name, email, or role...">
+          <input type="text" id="searchApprover" class="form-control" placeholder="Search...">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label class="form-label fw-semibold">
             <i class="fa fa-building me-1"></i>Division
           </label>
@@ -371,7 +403,7 @@
             <option value="">All Divisions</option>
           </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label class="form-label fw-semibold">
             <i class="fa fa-file-alt me-1"></i>Document Type
           </label>
@@ -387,6 +419,19 @@
             <option value="">All Levels</option>
           </select>
         </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-calendar me-1"></i>Year
+          </label>
+          <select id="filterYear" class="form-select">
+            <option value="">All Years</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="button" class="btn btn-outline-secondary w-100" id="clearFilters">
+            <i class="fa fa-times me-1"></i>Clear Filters
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -396,18 +441,14 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bx bx-table me-2 text-primary"></i>Approver Dashboard</h6>
-                <div class="d-flex gap-2">
-                    <select class="form-select form-select-sm" id="perPage" style="width: auto;">
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                        <option value="100">100 per page</option>
-                    </select>
-                </div>
+                <button type="button" class="btn btn-success btn-sm" id="exportExcel">
+                    <i class="fa fa-file-excel me-1"></i>Export to Excel
+                </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0" id="approverTable">
-                        <thead class="table-light">
+                        <thead>
                             <tr>
                                 <th style="width: 30px;">#</th>
                                 <th>Approver</th>
@@ -428,11 +469,6 @@
                         </tbody>
                     </table>
                 </div>
-                
-                <!-- Pagination -->
-                <div class="card-footer" id="paginationContainer">
-                    <!-- Pagination will be inserted here -->
-                </div>
             </div>
         </div>
     </div>
@@ -441,47 +477,58 @@
 
 @push('scripts')
 <script>
-let currentPage = 1;
-let currentFilters = {};
+let approverTable;
 let filterOptions = {};
         let userDivisionId = {{ $userDivisionId ?? 'null' }};
         let hasPermission88 = {{ $hasPermission88 ? 'true' : 'false' }};
-        
-        // Debug session data
-        console.log('User Division ID:', userDivisionId);
-        console.log('Has Permission 88:', hasPermission88);
+const baseUrl = '{{ user_session("base_url") ?? url("/") }}';
+const pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
 
 $(document).ready(function() {
     loadFilterOptions();
-    loadDashboardData();
     
-    // Initialize date pickers
-    $('.datepicker').datepicker({
-        format: 'yyyy-mm-dd',
-        autoclose: true,
-        todayHighlight: true
-    });
-    
-    // Set up event listeners
-    $('#perPage').on('change', function() {
-        currentPage = 1;
-        loadDashboardData();
-    });
+    // Initialize DataTable
+    initializeDataTable();
     
     // Auto-submit filters on change
     let filterTimeout;
-    $('#searchApprover, #filterDivision, #filterDocType, #filterApprovalLevel').on('change keyup', function() {
+    $('#searchApprover').on('keyup', function() {
         clearTimeout(filterTimeout);
         filterTimeout = setTimeout(() => {
-            currentPage = 1;
-            loadDashboardData();
+            if (approverTable) {
+                approverTable.draw();
+            }
         }, 500);
     });
     
-    // Auto-refresh every 5 minutes
-    setInterval(function() {
-        loadDashboardData();
-    }, 300000);
+    $('#filterDivision, #filterDocType, #filterApprovalLevel, #filterYear').on('change', function() {
+        if (approverTable) {
+            approverTable.draw();
+        }
+    });
+    
+    // Clear filters button
+    $('#clearFilters').on('click', function() {
+        $('#searchApprover').val('');
+        $('#filterDivision').val('');
+        $('#filterDocType').val('');
+        $('#filterApprovalLevel').val('');
+        $('#filterYear').val('');
+        
+        // Reset to user's division if no permission 88
+        if (!hasPermission88 && userDivisionId) {
+            $('#filterDivision').val(userDivisionId);
+        }
+        
+        if (approverTable) {
+            approverTable.draw();
+        }
+    });
+    
+    // Export to Excel
+    $('#exportExcel').on('click', function() {
+        exportToExcel();
+    });
 });
 
 function loadFilterOptions() {
@@ -526,268 +573,229 @@ function populateFilterOptions() {
     filterOptions.approval_levels.forEach(function(level) {
         approvalLevelSelect.append(`<option value="${level.value}">${level.label}</option>`);
     });
+    
+    // Populate years
+    const yearSelect = $('#filterYear');
+    yearSelect.empty().append('<option value="">All Years</option>');
+    if (filterOptions.years && filterOptions.years.length > 0) {
+        filterOptions.years.forEach(function(year) {
+            yearSelect.append(`<option value="${year}">${year}</option>`);
+        });
+    } else {
+        // Generate years if not provided
+        const currentYear = new Date().getFullYear();
+        for (let i = currentYear - 5; i <= currentYear + 2; i++) {
+            yearSelect.append(`<option value="${i}">${i}</option>`);
+        }
+    }
 }
 
-function loadDashboardData() {
-    const params = {
-        page: currentPage,
-        per_page: $('#perPage').val(),
-        q: $('#searchApprover').val(),
-        division_id: $('#filterDivision').val(),
-        doc_type: $('#filterDocType').val(),
-        approval_level: $('#filterApprovalLevel').val(),
-        ...currentFilters
-    };
-    
-    $.ajax({
+function initializeDataTable() {
+    approverTable = $('#approverTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: true,
+        order: [[4, 'desc']], // Sort by Total Pending descending by default
+        ajax: {
         url: '{{ route("approver-dashboard.api") }}',
         type: 'GET',
-        data: params,
-        success: function(response) {
-            console.log('API Response:', response);
-            if (response.success) {
-                console.log('Data received:', response.data);
-                // Debug: Check first approver's photo data
-                if (response.data && response.data.length > 0) {
-                    console.log('First approver photo:', response.data[0].photo);
-                    console.log('First approver data:', response.data[0]);
+            data: function(d) {
+                // Add custom filters
+                d.q = $('#searchApprover').val();
+                d.division_id = $('#filterDivision').val();
+                d.doc_type = $('#filterDocType').val();
+                d.approval_level = $('#filterApprovalLevel').val();
+                d.year = $('#filterYear').val();
+                // Convert DataTables parameters to our API format
+                d.page = Math.floor(d.start / d.length) + 1;
+                d.per_page = d.length;
+                // Keep order parameter for server-side sorting
+                // Remove DataTables default params we don't need
+                delete d.start;
+                delete d.draw;
+            },
+            dataSrc: function(json) {
+                // Update summary stats
+                if (json.success && json.data) {
+                    updateSummaryStats(json);
+                    return json.data;
                 }
-                updateTable(response.data, response.pagination);
-                updatePagination(response.pagination);
-                updateSummaryStats(response);
-            } else {
-                showError('Failed to load dashboard data: ' + response.message);
+                return [];
             }
         },
-        error: function() {
-            showError('Failed to load dashboard data');
-        }
-    });
-}
-
-function updateTable(data, pagination) {
-    console.log('updateTable called with data:', data);
-    const tbody = $('#approverTableBody');
-    tbody.empty();
-    
-    if (data.length === 0) {
-        tbody.append(`
-            <tr>
-                <td colspan="7" class="text-center py-4">
-                    <i class="bx bx-info-circle text-muted" style="font-size: 2rem;"></i>
-                    <p class="mt-2 text-muted">No approvers found</p>
-                </td>
-            </tr>
-        `);
-        return;
-    }
-    
-    const baseUrl = '{{ user_session("base_url") ?? url("/") }}';
-    // Get the base URL for pending approvals using route helper
-    const pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
-    const currentPage = pagination ? pagination.current_page : 1;
-    const perPage = pagination ? pagination.per_page : 25;
-    
-    data.forEach(function(approver, index) {
-        // Calculate row number based on current page and per page
-        const rowNumber = (currentPage - 1) * perPage + index + 1;
-        
-        // Get photo URL or generate avatar
-        let avatarHtml = '';
-        // Generate initials for fallback (used in both cases)
-        const firstName = approver.fname || approver.approver_name.split(' ')[0] || 'U';
-        const lastName = approver.lname || approver.approver_name.split(' ')[1] || '';
+        columns: [
+            {
+                data: null,
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row, meta) {
+                    return meta.row + meta.settings._iDisplayStart + 1;
+                }
+            },
+            {
+                data: 'approver_name',
+                orderable: false,
+                searchable: true,
+                render: function(data, type, row) {
+                    const firstName = row.fname || row.approver_name.split(' ')[0] || 'U';
+                    const lastName = row.lname || row.approver_name.split(' ')[1] || '';
         const initials = (firstName[0] + (lastName ? lastName[0] : '')).toUpperCase();
         const colors = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
         const colorIndex = (firstName.charCodeAt(0) - 65) % colors.length;
         const bgColor = colors[colorIndex >= 0 ? colorIndex : 0];
         
-        // Check if photo exists and is not empty/null
-        const hasPhoto = approver.photo && approver.photo !== null && approver.photo !== '' && approver.photo.trim() !== '';
+                    let avatarHtml = '';
+                    const hasPhoto = row.photo && row.photo !== null && row.photo !== '' && row.photo.trim() !== '';
         
         if (hasPhoto) {
-            // Ensure baseUrl doesn't have trailing slash and photo path is correct
             const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-            const photoUrl = cleanBaseUrl + '/uploads/staff/' + approver.photo;
-            
+                        const photoUrl = cleanBaseUrl + '/uploads/staff/' + row.photo;
             avatarHtml = `<div style="position: relative; width: 40px; height: 40px;">
-                <img src="${photoUrl}" 
-                    class="rounded-circle" 
-                    style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;" 
-                    alt="${approver.approver_name}"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.nextElementSibling.style.zIndex='1';"
-                    onload="this.nextElementSibling.style.display='none';">
-                <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                    style="display: none; width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 0;">
-                    ${initials}
-                </div>
+                            <img src="${photoUrl}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;" alt="${row.approver_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.nextElementSibling.style.zIndex='1';" onload="this.nextElementSibling.style.display='none';">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="display: none; width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 0;">${initials}</div>
             </div>`;
         } else {
-            // Generate initials avatar (no photo available)
-            avatarHtml = `<div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                style="width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px;">
-                ${initials}
-            </div>`;
-        }
-        
-        const row = `
-            <tr>
-                <td class="text-center">${rowNumber}</td>
-                <td>
-                    <div class="d-flex align-items-center">
-                        <div class="me-2">
-                            ${avatarHtml}
-                        </div>
+                        avatarHtml = `<div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px;">${initials}</div>`;
+                    }
+                    
+                    return `<div class="d-flex align-items-center">
+                        <div class="me-2">${avatarHtml}</div>
                         <div>
-                            <div class="fw-semibold">${approver.approver_name}</div>
-                            <small class="text-muted">${approver.approver_email}</small>
-                            <div class="mt-1">
-                                <small class="text-muted">${approver.division_name || 'N/A'}</small>
-                            </div>
+                            <div class="fw-semibold">${row.approver_name}</div>
+                            <small class="text-muted">${row.approver_email}</small>
+                            <div class="mt-1"><small class="text-muted">${row.division_name || 'N/A'}</small></div>
                         </div>
-                    </div>
-                </td>
-                <td style="width: 20%;">
-                    <div>
-                        ${approver.roles && approver.roles.length > 0 ? 
-                            approver.roles.map(role => `<span class="badge bg-info me-1 mb-1 d-inline-block">${role}</span>`).join('') :
-                            `<span class="badge bg-info">${approver.role || 'N/A'}</span>`
-                        }
-                    </div>
-                </td>
-                <td>
-                    <div class="d-flex flex-wrap gap-1">
-                        ${approver.pending_counts.matrix > 0 ? 
-                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Matrix" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Matrix">Matrix: ${approver.pending_counts.matrix}</a>` : 
-                            ''
-                        }
-                        ${approver.pending_counts.non_travel > 0 ? 
-                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Non-Travel Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Non-Travel Memos">Non-Travel: ${approver.pending_counts.non_travel}</a>` : 
-                            ''
-                        }
-                        ${approver.pending_counts.single_memos > 0 ? 
-                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Single Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Single Memos">Single: ${approver.pending_counts.single_memos}</a>` : 
-                            ''
-                        }
-                        ${approver.pending_counts.special > 0 ? 
-                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Special Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Special Memos">Special: ${approver.pending_counts.special}</a>` : 
-                            ''
-                        }
-                        ${approver.pending_counts.arf > 0 ? 
-                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=ARF" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="ARF Requests">ARF: ${approver.pending_counts.arf}</a>` : 
-                            ''
-                        }
-                        ${approver.pending_counts.requests_for_service > 0 ? 
-                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Service Request" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Service Requests">Requests: ${approver.pending_counts.requests_for_service}</a>` : 
-                            ''
-                        }
-                        ${(approver.pending_counts.change_requests || 0) > 0 ? 
-                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Change Request" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Change Requests">Change: ${approver.pending_counts.change_requests || 0}</a>` : 
-                            ''
-                        }
-                        ${approver.total_pending === 0 ? 
-                            `<span class="badge bg-light text-dark">No pending items</span>` : 
-                            ''
-                        }
-                    </div>
-                </td>
-                <td><span class="badge ${approver.total_pending > 0 ? 'bg-danger' : 'bg-success'}">${approver.total_pending}</span></td>
-                <td><span class="badge bg-primary">${approver.total_handled || 0}</span></td>
-                <td><span class="badge bg-info">${approver.avg_approval_time_display || 'No data'}</span></td>
-            </tr>
-        `;
-        tbody.append(row);
+                    </div>`;
+                }
+            },
+            {
+                data: 'roles',
+                orderable: false,
+                searchable: true,
+                render: function(data, type, row) {
+                    if (row.roles && row.roles.length > 0) {
+                        return row.roles.map(role => `<span class="badge bg-info me-1 mb-1 d-inline-block">${role}</span>`).join('');
+                    }
+                    return `<span class="badge bg-info">${row.role || 'N/A'}</span>`;
+                }
+            },
+            {
+                data: 'pending_counts',
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row) {
+                    let html = '<div class="d-flex flex-wrap gap-1">';
+                    if (row.pending_counts.matrix > 0) {
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Matrix&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Matrix">Matrix: ${row.pending_counts.matrix}</a>`;
+                    }
+                    if (row.pending_counts.non_travel > 0) {
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Non-Travel Memo&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Non-Travel Memos">Non-Travel: ${row.pending_counts.non_travel}</a>`;
+                    }
+                    if (row.pending_counts.single_memos > 0) {
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Single Memo&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Single Memos">Single: ${row.pending_counts.single_memos}</a>`;
+                    }
+                    if (row.pending_counts.special > 0) {
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Special Memo&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Special Memos">Special: ${row.pending_counts.special}</a>`;
+                    }
+                    if (row.pending_counts.arf > 0) {
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=ARF&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="ARF Requests">ARF: ${row.pending_counts.arf}</a>`;
+                    }
+                    if (row.pending_counts.requests_for_service > 0) {
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Service Request&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Service Requests">Requests: ${row.pending_counts.requests_for_service}</a>`;
+                    }
+                    if ((row.pending_counts.change_requests || 0) > 0) {
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Change Request&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Change Requests">Change: ${row.pending_counts.change_requests || 0}</a>`;
+                    }
+                    if (row.total_pending === 0) {
+                        html += `<span class="badge bg-light text-dark">No pending items</span>`;
+                    }
+                    html += '</div>';
+                    return html;
+                }
+            },
+            {
+                data: 'total_pending',
+                orderable: true,
+                searchable: false,
+                render: function(data, type, row) {
+                    // Return numeric value for sorting
+                    if (type === 'sort' || type === 'type') {
+                        return row.total_pending || 0;
+                    }
+                    return `<span class="badge ${row.total_pending > 0 ? 'bg-danger' : 'bg-success'}">${row.total_pending}</span>`;
+                }
+            },
+            {
+                data: 'total_handled',
+                orderable: true,
+                searchable: false,
+                render: function(data, type, row) {
+                    // Return numeric value for sorting
+                    if (type === 'sort' || type === 'type') {
+                        return row.total_handled || 0;
+                    }
+                    return `<span class="badge bg-primary">${row.total_handled || 0}</span>`;
+                }
+            },
+            {
+                data: 'avg_approval_time_display',
+                orderable: true,
+                searchable: false,
+                render: function(data, type, row) {
+                    // Return numeric value for sorting (use hours for proper numeric sorting)
+                    if (type === 'sort' || type === 'type') {
+                        return row.avg_approval_time_hours || 0;
+                    }
+                    return `<span class="badge bg-info">${row.avg_approval_time_display || 'No data'}</span>`;
+                }
+            }
+        ],
+        pageLength: 25,
+        lengthMenu: [[25, 50, 100], [25, 50, 100]],
+        order: [[4, 'desc']], // Sort by Total Pending descending by default
+        language: {
+            processing: '<i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i> Loading...'
+        },
+        dom: 'Bfrtip',
+        buttons: []
     });
 }
 
-function updatePagination(pagination) {
-    const container = $('#paginationContainer');
-    container.empty();
+function exportToExcel() {
+    // Get current filter values
+    const filters = {
+        q: $('#searchApprover').val(),
+        division_id: $('#filterDivision').val(),
+        doc_type: $('#filterDocType').val(),
+        approval_level: $('#filterApprovalLevel').val(),
+        year: $('#filterYear').val(),
+        export: 1
+    };
     
-    if (pagination.last_page <= 1) return;
-    
-    let paginationHtml = '<nav><ul class="pagination pagination-sm justify-content-center mb-0">';
-    
-    // Previous button
-    if (pagination.current_page > 1) {
-        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(${pagination.current_page - 1}); return false;">Previous</a></li>`;
-    }
-    
-    // Show page numbers with ellipsis for large page counts
-    const maxVisiblePages = 10;
-    let startPage = Math.max(1, pagination.current_page - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(pagination.last_page, startPage + maxVisiblePages - 1);
-    
-    // Adjust start if we're near the end
-    if (endPage - startPage < maxVisiblePages - 1) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    // First page
-    if (startPage > 1) {
-        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(1); return false;">1</a></li>`;
-        if (startPage > 2) {
-            paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    // Build URL with filters
+    const params = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+        if (filters[key]) {
+            params.append(key, filters[key]);
         }
-    }
+    });
     
-    // Page numbers
-    for (let i = startPage; i <= endPage; i++) {
-        if (i === pagination.current_page) {
-            paginationHtml += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
-        } else {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(${i}); return false;">${i}</a></li>`;
-        }
-    }
-    
-    // Last page
-    if (endPage < pagination.last_page) {
-        if (endPage < pagination.last_page - 1) {
-            paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-        }
-        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(${pagination.last_page}); return false;">${pagination.last_page}</a></li>`;
-    }
-    
-    // Next button
-    if (pagination.current_page < pagination.last_page) {
-        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(${pagination.current_page + 1}); return false;">Next</a></li>`;
-    }
-    
-    paginationHtml += '</ul></nav>';
-    container.html(paginationHtml);
+    // Open export URL in new window
+    window.open('{{ route("approver-dashboard.api") }}?' + params.toString(), '_blank');
 }
 
 function updateSummaryStats(response) {
     // Update summary statistics
+    if (response.pagination) {
     $('#totalApprovers').text(response.pagination.total);
-    $('#totalPending').text(response.data.reduce((sum, approver) => sum + approver.total_pending, 0));
-    $('#activeWorkflow').text(response.total_workflows || 0);
-    $('#lastUpdated').text(new Date().toLocaleTimeString());
-}
-
-function changePage(page) {
-    currentPage = page;
-    loadDashboardData();
-}
-
-function applyFilters() {
-    currentPage = 1;
-    loadDashboardData();
-}
-
-function clearFilters() {
-    $('#searchApprover').val('');
-    $('#filterDivision').val('');
-    $('#filterDocType').val('');
-    $('#filterApprovalLevel').val('');
-    
-    // Reset to user's division if no permission 88
-    if (!hasPermission88 && userDivisionId) {
-        $('#filterDivision').val(userDivisionId);
     }
-    
-    currentPage = 1;
-    loadDashboardData();
+    if (response.data && response.data.length > 0) {
+        $('#totalPending').text(response.data.reduce((sum, approver) => sum + (approver.total_pending || 0), 0));
+    }
+    if (response.total_workflows !== undefined) {
+    $('#activeWorkflow').text(response.total_workflows || 0);
+    }
+    $('#lastUpdated').text(new Date().toLocaleTimeString());
 }
 
 function refreshDashboard() {

@@ -245,6 +245,39 @@
     </div>
 </div>
 
+@if(isset($approverInfo) && $approverInfo)
+<!-- Approver Information -->
+<div class="card mb-4 border-info">
+    <div class="card-body">
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <i class="fas fa-user-circle fa-3x text-info"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h5 class="mb-1">
+                    <i class="fas fa-user me-2 text-info"></i>
+                    {{ $approverInfo['name'] }}
+                </h5>
+                <p class="mb-1 text-muted">
+                    <i class="fas fa-envelope me-1"></i>{{ $approverInfo['email'] }}
+                </p>
+                <p class="mb-1 text-muted">
+                    <i class="fas fa-building me-1"></i>{{ $approverInfo['division_name'] }}
+                </p>
+                @if(!empty($approverInfo['roles']))
+                    <div class="mt-2">
+                        <strong class="me-2">Roles:</strong>
+                        @foreach($approverInfo['roles'] as $role)
+                            <span class="badge bg-info me-1">{{ $role }}</span>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Pending Approvals by Category -->
 @foreach($pendingApprovals as $categoryName => $items)
     @if(count($items) > 0)
@@ -340,6 +373,13 @@ $(document).ready(function() {
         const url = new URL(window.location);
         url.searchParams.set('category', category);
         url.searchParams.set('division', division);
+        
+        // Preserve staff_id if it exists
+        const staffId = new URLSearchParams(window.location.search).get('staff_id');
+        if (staffId) {
+            url.searchParams.set('staff_id', staffId);
+        }
+        
         window.location.href = url.toString();
     });
     
