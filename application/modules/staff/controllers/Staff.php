@@ -71,7 +71,10 @@ class Staff extends MX_Controller
 		
 		try {
 			$page = (int)($this->input->post('page') ?: 0);
-			$per_page = 20;
+			$per_page = (int)($this->input->post('per_page') ?: 20);
+			// Validate per_page is between 20 and 50
+			if ($per_page < 20) $per_page = 20;
+			if ($per_page > 50) $per_page = 50;
 			$start = $page * $per_page;
 			
 			// Get filters from POST
@@ -79,6 +82,7 @@ class Staff extends MX_Controller
 			
 			// Remove non-filter fields
 			unset($filters['page']);
+			unset($filters['per_page']);
 			$csrf_token_name = $this->security->get_csrf_token_name();
 			if (isset($filters[$csrf_token_name])) {
 				unset($filters[$csrf_token_name]);
@@ -361,6 +365,8 @@ class Staff extends MX_Controller
 		$filters['pdf'] =$pdf;
 		$data['divisions'] = $this->db->get('divisions')->result(); 
         $data['duty_stations'] = $this->db->get('duty_stations')->result();
+		$data['jobs'] = Modules::run('lists/jobs');
+		$data['grades'] = Modules::run('lists/grades');
 		
 		// Handle CSV and PDF exports
 		if($csv==1){
@@ -407,7 +413,10 @@ class Staff extends MX_Controller
 		
 		try {
 			$page = (int)($this->input->post('page') ?: 0);
-			$per_page = 20;
+			$per_page = (int)($this->input->post('per_page') ?: 20);
+			// Validate per_page is between 20 and 50
+			if ($per_page < 20) $per_page = 20;
+			if ($per_page > 50) $per_page = 50;
 			$start = $page * $per_page;
 			
 			// Get filters from POST
@@ -415,6 +424,7 @@ class Staff extends MX_Controller
 			
 			// Remove non-filter fields
 			unset($filters['page']);
+			unset($filters['per_page']);
 			$csrf_token_name = $this->security->get_csrf_token_name();
 			if (isset($filters[$csrf_token_name])) {
 				unset($filters[$csrf_token_name]);
@@ -975,6 +985,8 @@ class Staff extends MX_Controller
 		$data['staffs'] = [];
         $data['divisions'] = $this->db->get('divisions')->result(); 
         $data['duty_stations'] = $this->db->get('duty_stations')->result();
+		$data['jobs'] = Modules::run('lists/jobs');
+		$data['grades'] = Modules::run('lists/grades');
 		$data['records'] = 0;
 		$data['status'] = $status;
 		$data['links'] = ''; // Empty links for AJAX pagination
@@ -993,7 +1005,10 @@ class Staff extends MX_Controller
 		
 		try {
 			$page = (int)($this->input->post('page') ?: 0);
-			$per_page = 20;
+			$per_page = (int)($this->input->post('per_page') ?: 20);
+			// Validate per_page is between 20 and 50
+			if ($per_page < 20) $per_page = 20;
+			if ($per_page > 50) $per_page = 50;
 			$start = $page * $per_page;
 			
 			// Get filters from POST
@@ -1002,6 +1017,7 @@ class Staff extends MX_Controller
 			
 			// Remove non-filter fields
 			unset($filters['page']);
+			unset($filters['per_page']);
 			$csrf_token_name = $this->security->get_csrf_token_name();
 			if (isset($filters[$csrf_token_name])) {
 				unset($filters[$csrf_token_name]);

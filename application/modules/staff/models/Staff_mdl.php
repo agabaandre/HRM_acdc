@@ -212,6 +212,12 @@ class Staff_mdl extends CI_Model
 		if (!empty($filters['funder_id'])) {
 			$this->db->where_in('sc.funder_id', $filters['funder_id']);
 		}
+		if (!empty($filters['job_id'])) {
+			$this->db->where_in('sc.job_id', $filters['job_id']);
+		}
+		if (!empty($filters['grade_id'])) {
+			$this->db->where_in('sc.grade_id', $filters['grade_id']);
+		}
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
@@ -235,6 +241,12 @@ class Staff_mdl extends CI_Model
 			}
 			if (isset($filters['funder_id'])) {
 				unset($filters['funder_id']);
+			}
+			if (isset($filters['job_id'])) {
+				unset($filters['job_id']);
+			}
+			if (isset($filters['grade_id'])) {
+				unset($filters['grade_id']);
 			}
 		}
 		
@@ -585,6 +597,12 @@ class Staff_mdl extends CI_Model
 		if (!empty($filters['funder_id'])) {
 			$this->db->where_in('sc.funder_id', $filters['funder_id']);
 		}
+		if (!empty($filters['job_id'])) {
+			$this->db->where_in('sc.job_id', $filters['job_id']);
+		}
+		if (!empty($filters['grade_id'])) {
+			$this->db->where_in('sc.grade_id', $filters['grade_id']);
+		}
 	
 		if ($this->uri->segment(1) == 'admanager') {
 			if ($this->uri->segment(2) == 'expired_accounts') {
@@ -613,7 +631,7 @@ class Staff_mdl extends CI_Model
 		
 	
 		// Special keys to exclude from dynamic loop
-		$exclude_keys = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto','division_id','duty_station_id','funder_id'];
+		$exclude_keys = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto','division_id','duty_station_id','funder_id','job_id','grade_id'];
 		
 	
 		foreach ($filters as $key => $value) {
