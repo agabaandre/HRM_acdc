@@ -389,7 +389,7 @@
     </div>
     <div class="card-body">
       <div class="row g-3 align-items-end">
-        <div class="col-md-2">
+        <div class="col-md-3">
           <label class="form-label fw-semibold">
             <i class="fa fa-search me-1"></i>Search Approver
           </label>
@@ -419,7 +419,27 @@
             <option value="">All Levels</option>
           </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-1">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-calendar-alt me-1"></i>Month
+          </label>
+          <select id="filterMonth" class="form-select">
+            <option value="">All</option>
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
+        </div>
+        <div class="col-md-1">
           <label class="form-label fw-semibold">
             <i class="fa fa-calendar me-1"></i>Year
           </label>
@@ -427,9 +447,10 @@
             <option value="">All Years</option>
           </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-1">
+          <label class="form-label fw-semibold d-block">&nbsp;</label>
           <button type="button" class="btn btn-outline-secondary w-100" id="clearFilters">
-            <i class="fa fa-times me-1"></i>Clear Filters
+            Clear
           </button>
         </div>
       </div>
@@ -502,7 +523,7 @@ $(document).ready(function() {
         }, 500);
     });
     
-    $('#filterDivision, #filterDocType, #filterApprovalLevel, #filterYear').on('change', function() {
+    $('#filterDivision, #filterDocType, #filterApprovalLevel, #filterMonth, #filterYear').on('change', function() {
         if (approverTable) {
             approverTable.draw();
         }
@@ -514,12 +535,17 @@ $(document).ready(function() {
         $('#filterDivision').val('');
         $('#filterDocType').val('');
         $('#filterApprovalLevel').val('');
+        $('#filterMonth').val('');
         $('#filterYear').val('');
         
         // Reset to user's division if no permission 88
         if (!hasPermission88 && userDivisionId) {
             $('#filterDivision').val(userDivisionId);
         }
+        
+        // Reset year to current year
+        const currentYear = new Date().getFullYear();
+        $('#filterYear').val(currentYear);
         
         if (approverTable) {
             approverTable.draw();
@@ -611,6 +637,8 @@ function initializeDataTable() {
                 d.division_id = $('#filterDivision').val() || null;
                 d.doc_type = $('#filterDocType').val() || null;
                 d.approval_level = $('#filterApprovalLevel').val() || null;
+                const monthValue = $('#filterMonth').val();
+                d.month = monthValue ? parseInt(monthValue) : null;
                 const yearValue = $('#filterYear').val();
                 d.year = yearValue ? parseInt(yearValue) : null;
                 // Convert DataTables parameters to our API format
@@ -671,7 +699,7 @@ function initializeDataTable() {
                             <div class="fw-semibold">${row.approver_name}</div>
                             <small class="text-muted">${row.approver_email}</small>
                             <div class="mt-1"><small class="text-muted">${row.division_name || 'N/A'}</small></div>
-                        </div>
+                            </div>
                     </div>`;
                 }
             },
@@ -793,6 +821,7 @@ function initializeDataTable() {
                         division_id: $('#filterDivision').val(),
                         doc_type: $('#filterDocType').val(),
                         approval_level: $('#filterApprovalLevel').val(),
+                        month: $('#filterMonth').val(),
                         year: $('#filterYear').val(),
                         export: 1,
                         per_page: 10000, // Get all records
