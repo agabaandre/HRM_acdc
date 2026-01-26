@@ -134,7 +134,7 @@ trait ApproverDashboardHelper
      * Get pending counts for each approver.
      * Combines approvers by staff_id to aggregate counts across all roles/levels.
      */
-    protected function getPendingCountsForApprovers($approvers, $workflowDefinitionId, $docType = null, $divisionId = null, $year = null)
+    protected function getPendingCountsForApprovers($approvers, $workflowDefinitionId, $docType = null, $divisionId = null, $year = null, $month = null)
     {
         $approversByStaffId = [];
 
@@ -191,7 +191,7 @@ trait ApproverDashboardHelper
         $approversWithCounts = [];
         foreach ($approversByStaffId as $staffId => $data) {
             // Get pending counts across ALL workflows using PendingApprovalsService logic
-            $allPendingCounts = $this->getPendingCountsForApproverAll($staffId, $divisionId, $year);
+            $allPendingCounts = $this->getPendingCountsForApproverAll($staffId, $divisionId, $year, $month);
             
             // Use the aggregated counts from all workflows
             $data['pending_counts'] = $allPendingCounts;
@@ -200,10 +200,10 @@ trait ApproverDashboardHelper
             $totalPending = array_sum(array_diff_key($data['pending_counts'], ['total' => '', 'memos' => '']));
             
             // Calculate total handled across ALL workflows and levels for this approver
-            $totalHandled = $this->getTotalHandledForApproverAll($staffId, $divisionId);
+            $totalHandled = $this->getTotalHandledForApproverAll($staffId, $divisionId, $year, $month);
             
             // Calculate average approval time across ALL workflows and levels using approval_trails
-            $avgApprovalTime = $this->getAverageApprovalTimeAll($staffId, $divisionId);
+            $avgApprovalTime = $this->getAverageApprovalTimeAll($staffId, $divisionId, $year, $month);
             
             // Sort roles and levels for display
             sort($data['levels']);
@@ -238,7 +238,7 @@ trait ApproverDashboardHelper
      * This ensures counts match what's shown in pending-approvals and excludes already handled items.
      * Uses ApprovalService::canTakeAction to verify the approver can actually approve each item.
      */
-    protected function getPendingCountsForApproverAll($staffId, $divisionId = null, $year = null)
+    protected function getPendingCountsForApproverAll($staffId, $divisionId = null, $year = null, $month = null)
     {
         $counts = [
             'matrix' => 0,
@@ -266,6 +266,12 @@ trait ApproverDashboardHelper
         
         if ($year) {
             $query->where('year', $year);
+        }
+        
+        // Apply month filter by converting to quarter for matrices
+        if ($month) {
+            $quarter = 'Q' . ceil($month / 3);
+            $query->where('quarter', $quarter);
         }
         
         $matrices = $query->get();
@@ -337,6 +343,14 @@ trait ApproverDashboardHelper
             });
         }
         
+        // Apply month filter through matrix relationship (convert month to quarter)
+        if ($month) {
+            $quarter = 'Q' . ceil($month / 3);
+            $query->whereHas('matrix', function($q) use ($quarter) {
+                $q->where('quarter', $quarter);
+            });
+        }
+        
         $activities = $query->get();
         foreach ($activities as $activity) {
             if ($approvalService->canTakeAction($activity, $staffId)) {
@@ -359,6 +373,11 @@ trait ApproverDashboardHelper
             $query->whereYear('created_at', $year);
         }
         
+        // Apply month filter by created_at month
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+        
         $arfs = $query->get();
         foreach ($arfs as $arf) {
             if ($approvalService->canTakeAction($arf, $staffId)) {
@@ -379,6 +398,11 @@ trait ApproverDashboardHelper
         // Apply year filter by created_at year
         if ($year) {
             $query->whereYear('created_at', $year);
+        }
+        
+        // Apply month filter by created_at month
+        if ($month) {
+            $query->whereMonth('created_at', $month);
         }
         
         $serviceRequests = $query->get();
@@ -407,6 +431,19 @@ trait ApproverDashboardHelper
                 })
                 // Or filter by created_at year if no matrix
                 ->orWhereYear('created_at', $year);
+            });
+        }
+        
+        // Apply month filter through matrix relationship (convert month to quarter) or created_at
+        if ($month) {
+            $quarter = 'Q' . ceil($month / 3);
+            $query->where(function($q) use ($quarter, $month) {
+                // Filter by matrix quarter if change request has a matrix
+                $q->whereHas('matrix', function($matrixQuery) use ($quarter) {
+                    $matrixQuery->where('quarter', $quarter);
+                })
+                // Or filter by created_at month if no matrix
+                ->orWhereMonth('created_at', $month);
             });
         }
         
@@ -892,7 +929,7 @@ trait ApproverDashboardHelper
      * Get total handled documents for a specific approver across ALL workflows and levels.
      * This counts all documents that have been approved/rejected by this approver using approval_trails.
      */
-    protected function getTotalHandledForApproverAll($staffId, $divisionId = null)
+    protected function getTotalHandledForApproverAll($staffId, $divisionId = null, $year = null, $month = null)
     {
         try {
             // Count all documents handled by this approver across all workflows and levels
@@ -902,9 +939,70 @@ trait ApproverDashboardHelper
                 ->whereIn('at.action', ['approved', 'rejected'])
                 ->where('at.is_archived', 0); // Only non-archived trails
             
-            // If division filter is applied, we need to join with the document tables
-            // For now, we'll count all handled items regardless of division
-            // (Division filtering is handled at the pending counts level)
+            // Apply year and month filters
+            if ($year || $month) {
+                $query->where(function($q) use ($year, $month) {
+                    $quarter = $month ? 'Q' . ceil($month / 3) : null;
+                    
+                    // For matrices, filter by matrix year and quarter
+                    $q->where(function($subQ) use ($year, $quarter) {
+                        $subQ->where('at.model_type', 'App\\Models\\Matrix')
+                             ->whereExists(function($exists) use ($year, $quarter) {
+                                 $exists->select(DB::raw(1))
+                                       ->from('matrices as m')
+                                       ->whereColumn('m.id', 'at.model_id');
+                                 if ($year) {
+                                     $exists->where('m.year', $year);
+                                 }
+                                 if ($quarter) {
+                                     $exists->where('m.quarter', $quarter);
+                                 }
+                             });
+                    })
+                    // For activities (single memos), filter by matrix year and quarter
+                    ->orWhere(function($subQ) use ($year, $quarter) {
+                        $subQ->where('at.model_type', 'App\\Models\\Activity')
+                             ->whereExists(function($exists) use ($year, $quarter) {
+                                 $exists->select(DB::raw(1))
+                                       ->from('activities as a')
+                                       ->join('matrices as m', 'm.id', '=', 'a.matrix_id')
+                                       ->whereColumn('a.id', 'at.model_id');
+                                 if ($year) {
+                                     $exists->where('m.year', $year);
+                                 }
+                                 if ($quarter) {
+                                     $exists->where('m.quarter', $quarter);
+                                 }
+                             });
+                    })
+                    // For change requests with matrix, filter by matrix year and quarter
+                    ->orWhere(function($subQ) use ($year, $quarter) {
+                        $subQ->where('at.model_type', 'App\\Models\\ChangeRequest')
+                             ->whereExists(function($exists) use ($year, $quarter) {
+                                 $exists->select(DB::raw(1))
+                                       ->from('change_request as cr')
+                                       ->join('matrices as m', 'm.id', '=', 'cr.matrix_id')
+                                       ->whereColumn('cr.id', 'at.model_id');
+                                 if ($year) {
+                                     $exists->where('m.year', $year);
+                                 }
+                                 if ($quarter) {
+                                     $exists->where('m.quarter', $quarter);
+                                 }
+                             });
+                    })
+                    // For other types, filter by created_at year and month
+                    ->orWhere(function($subQ) use ($year, $month) {
+                        $subQ->whereNotIn('at.model_type', ['App\\Models\\Matrix', 'App\\Models\\Activity', 'App\\Models\\ChangeRequest']);
+                        if ($year) {
+                            $subQ->whereYear('at.created_at', $year);
+                        }
+                        if ($month) {
+                            $subQ->whereMonth('at.created_at', $month);
+                        }
+                    });
+                });
+            }
             
             $result = $query->select(DB::raw('COUNT(DISTINCT CONCAT(at.model_type, "-", at.model_id)) as total_count'))
                 ->first();
@@ -922,9 +1020,87 @@ trait ApproverDashboardHelper
      * Calculates time between when item reached approver's level and when they approved it.
      * Uses approval_trails created_at timestamps.
      */
-    protected function getAverageApprovalTimeAll($staffId, $divisionId = null)
+    protected function getAverageApprovalTimeAll($staffId, $divisionId = null, $year = null, $month = null)
     {
         try {
+            // Build year and month filter conditions
+            $yearMonthConditions = '';
+            $params = [$staffId];
+            
+            if ($year || $month) {
+                // Use parameterized queries for model types to avoid SQL injection
+                $matrixType = 'App\\Models\\Matrix';
+                $activityType = 'App\\Models\\Activity';
+                $changeRequestType = 'App\\Models\\ChangeRequest';
+                $quarter = $month ? 'Q' . ceil($month / 3) : null;
+                
+                $conditions = [];
+                $tempParams = [];
+                
+                // For matrices, filter by matrix year and quarter
+                $matrixCond = "at.model_type = ?";
+                $tempParams[] = $matrixType;
+                $matrixExists = "EXISTS (SELECT 1 FROM matrices m WHERE m.id = at.model_id";
+                if ($year) {
+                    $matrixExists .= " AND m.year = ?";
+                    $tempParams[] = $year;
+                }
+                if ($quarter) {
+                    $matrixExists .= " AND m.quarter = ?";
+                    $tempParams[] = $quarter;
+                }
+                $matrixExists .= ")";
+                $conditions[] = "({$matrixCond} AND {$matrixExists})";
+                
+                // For activities (single memos), filter by matrix year and quarter
+                $activityCond = "at.model_type = ?";
+                $tempParams[] = $activityType;
+                $activityExists = "EXISTS (SELECT 1 FROM activities a JOIN matrices m ON m.id = a.matrix_id WHERE a.id = at.model_id";
+                if ($year) {
+                    $activityExists .= " AND m.year = ?";
+                    $tempParams[] = $year;
+                }
+                if ($quarter) {
+                    $activityExists .= " AND m.quarter = ?";
+                    $tempParams[] = $quarter;
+                }
+                $activityExists .= ")";
+                $conditions[] = "({$activityCond} AND {$activityExists})";
+                
+                // For change requests with matrix, filter by matrix year and quarter
+                $crCond = "at.model_type = ?";
+                $tempParams[] = $changeRequestType;
+                $crExists = "EXISTS (SELECT 1 FROM change_request cr JOIN matrices m ON m.id = cr.matrix_id WHERE cr.id = at.model_id";
+                if ($year) {
+                    $crExists .= " AND m.year = ?";
+                    $tempParams[] = $year;
+                }
+                if ($quarter) {
+                    $crExists .= " AND m.quarter = ?";
+                    $tempParams[] = $quarter;
+                }
+                $crExists .= ")";
+                $conditions[] = "({$crCond} AND {$crExists})";
+                
+                // For other types, filter by created_at year and month
+                $otherCond = "at.model_type NOT IN (?, ?, ?)";
+                $tempParams[] = $matrixType;
+                $tempParams[] = $activityType;
+                $tempParams[] = $changeRequestType;
+                if ($year) {
+                    $otherCond .= " AND YEAR(at.created_at) = ?";
+                    $tempParams[] = $year;
+                }
+                if ($month) {
+                    $otherCond .= " AND MONTH(at.created_at) = ?";
+                    $tempParams[] = $month;
+                }
+                $conditions[] = "({$otherCond})";
+                
+                $yearMonthConditions = " AND (" . implode(" OR ", $conditions) . ")";
+                $params = array_merge($params, $tempParams);
+            }
+            
             // Get all approval actions by this approver
             // For each approval, find when the item reached their level (previous approval or submission)
             $sql = "
@@ -959,12 +1135,13 @@ trait ApproverDashboardHelper
                 WHERE at.staff_id = ?
                   AND at.action IN ('approved', 'rejected')
                   AND at.is_archived = 0
+                  {$yearMonthConditions}
                 HAVING received_time IS NOT NULL
                   AND approval_time >= received_time
                 ORDER BY at.created_at DESC
             ";
             
-            $results = DB::select($sql, [$staffId]);
+            $results = DB::select($sql, $params);
             
             if (empty($results)) {
                 return 0;

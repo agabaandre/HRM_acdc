@@ -41,6 +41,7 @@ class ApproverDashboardController extends Controller
                 'doc_type' => 'nullable|string|in:matrix,non_travel,single_memos,special,memos,arf,requests_for_service,change_requests',
                 'workflow_definition_id' => 'nullable|integer|exists:workflows,id',
                 'approval_level' => 'nullable|integer|min:1',
+                'month' => 'nullable|integer|min:1|max:12',
                 'year' => 'nullable|integer|min:2000|max:2100',
                 'export' => 'nullable|boolean',
             ]);
@@ -57,6 +58,7 @@ class ApproverDashboardController extends Controller
             $docType = $request->get('doc_type') ?: null;
             $workflowDefinitionId = $request->get('workflow_definition_id') ?: null;
             $approvalLevel = $request->get('approval_level') ?: null;
+            $month = $request->get('month') ?: null;
             $year = $request->get('year') ?: null;
 
             // If user doesn't have permission 88, restrict to their division
@@ -84,7 +86,7 @@ class ApproverDashboardController extends Controller
 
             // Get pending counts for ALL approvers first (before pagination)
             // This will combine approvers by staff_id
-            $allApproversWithCounts = $this->getPendingCountsForApprovers($approversCollection, $workflowDefinitionId, $docType, $divisionId, $year);
+            $allApproversWithCounts = $this->getPendingCountsForApprovers($approversCollection, $workflowDefinitionId, $docType, $divisionId, $year, $month);
 
             // Handle sorting - check for DataTables order parameter or use default
             $orderColumn = 6; // Default: Avg. Time (column index 6)
@@ -177,6 +179,7 @@ class ApproverDashboardController extends Controller
                     'division_id' => $divisionId,
                     'doc_type' => $docType,
                     'approval_level' => $approvalLevel,
+                    'month' => $month,
                     'year' => $year,
                 ]
             ]);
