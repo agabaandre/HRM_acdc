@@ -40,10 +40,22 @@
 <?= form_close() ?>
 
 <div class="row mb-3 align-items-center">
-	<div class="col-md-6">
+	<div class="col-md-4">
 		<div id="paginationLinksTop" class="d-flex align-items-center"></div>
 	</div>
-	<div class="col-md-6 text-end">
+	<div class="col-md-4 text-center">
+		<div class="d-flex align-items-center justify-content-center gap-2">
+			<label for="recordsPerPage" class="mb-0 fw-semibold">Records per page:</label>
+			<select id="recordsPerPage" class="form-select form-select-sm" style="width: auto;">
+				<option value="20" selected>20</option>
+				<option value="25">25</option>
+				<option value="30">30</option>
+				<option value="40">40</option>
+				<option value="50">50</option>
+			</select>
+		</div>
+	</div>
+	<div class="col-md-4 text-end">
 		<div id="exportButtonsTop" class="d-flex gap-2 justify-content-end">
 			<!-- Export buttons will be moved here from staff_filters -->
 		</div>
@@ -64,6 +76,7 @@
 					<th>Nationality</th>
 					<th>Duty Station</th>
 					<th>Division</th>
+					<th>Grade</th>
 					<th>Job</th>
 					<th>Acting Job</th>
 					<th>First Supervisor</th>
@@ -649,6 +662,7 @@ $(document).ready(function() {
 	// All Staff AJAX Data Loading
 	var currentPage = 0;
 	var currentFilters = {};
+	var currentPerPage = 20;
 
 	// Move export buttons to top right on page load and hide originals
 	$(document).ready(function() {
@@ -671,6 +685,13 @@ $(document).ready(function() {
 				</a>
 			`);
 		}
+	});
+
+	// Records per page change handler
+	$('#recordsPerPage').on('change', function() {
+		currentPerPage = parseInt($(this).val());
+		currentPage = 0; // Reset to first page when changing per page
+		loadAllStaffData();
 	});
 
 	// Load data on page load
@@ -748,7 +769,7 @@ $(document).ready(function() {
 	function loadAllStaffData() {
 		$('#staffTableBody').html(`
 			<tr>
-				<td colspan="18" class="text-center">
+				<td colspan="19" class="text-center">
 					<div class="spinner-border text-primary" role="status">
 						<span class="visually-hidden">Loading...</span>
 					</div>
@@ -759,6 +780,7 @@ $(document).ready(function() {
 
 		var postData = Object.assign({}, currentFilters);
 		postData.page = currentPage;
+		postData.per_page = currentPerPage;
 		postData['<?php echo $this->security->get_csrf_token_name(); ?>'] = '<?php echo $this->security->get_csrf_hash(); ?>';
 
 		$.ajax({
@@ -778,7 +800,7 @@ $(document).ready(function() {
 					// Generate pagination (both top and bottom) with total staff count
 					generatePagination(response.total, response.page, response.per_page, response.records);
 				} else {
-					$('#staffTableBody').html('<tr><td colspan="18" class="text-center">No data available</td></tr>');
+					$('#staffTableBody').html('<tr><td colspan="19" class="text-center">No data available</td></tr>');
 				}
 			},
 			error: function(xhr, status, error) {
@@ -797,7 +819,7 @@ $(document).ready(function() {
 				
 				$('#staffTableBody').html(`
 					<tr>
-						<td colspan="18" class="text-center text-danger">
+						<td colspan="19" class="text-center text-danger">
 							${errorMessage}<br>
 							<small>Status: ${xhr.status}</small>
 						</td>

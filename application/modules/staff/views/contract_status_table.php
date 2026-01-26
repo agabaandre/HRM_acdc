@@ -1,6 +1,6 @@
 <?php
 if (empty($staffs)) {
-    echo '<tr><td colspan="18" class="text-center">No staff found</td></tr>';
+    echo '<tr><td colspan="19" class="text-center">No staff found</td></tr>';
 } else {
     $i = 1;
     $offset = ($page * $per_page);
@@ -31,6 +31,7 @@ if (empty($staffs)) {
         <td><?= $data->nationality; ?></td>
         <td><?= @$cont->duty_station_name; ?></td>
         <td><?= @$cont->division_name; ?></td>
+        <td><?= @$data->grade; ?></td>
         <td><?= @character_limiter($data->job_name, 30); ?></td>
         <td><?= @character_limiter($data->status); ?></td>
         <td><?= @character_limiter($cont->job_acting, 30); ?></td>

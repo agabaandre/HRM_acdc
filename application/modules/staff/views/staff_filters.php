@@ -73,6 +73,36 @@
             </select>
         </div>
 
+        <div class="col-md-2">
+            <label class="form-label fw-bold">Job(s)</label>
+            <select class="form-control select2" name="job_id[]" multiple>
+                <?php 
+				if (!empty($jobs)) {
+					foreach ($jobs as $job): ?>
+                    <option value="<?= $job->job_id ?>"
+                        <?= (!empty($this->input->get('job_id')) && in_array($job->job_id, $this->input->get('job_id'))) ? 'selected' : '' ?>>
+                        <?= $job->job_name ?>
+                    </option>
+                <?php endforeach; 
+				} ?>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label fw-bold">Grade(s)</label>
+            <select class="form-control select2" name="grade_id[]" multiple>
+                <?php 
+				if (!empty($grades)) {
+					foreach ($grades as $grade): ?>
+                    <option value="<?= $grade->grade_id ?>"
+                        <?= (!empty($this->input->get('grade_id')) && in_array($grade->grade_id, $this->input->get('grade_id'))) ? 'selected' : '' ?>>
+                        <?= $grade->grade ?>
+                    </option>
+                <?php endforeach; 
+				} ?>
+            </select>
+        </div>
+
         <!-- Apply Button -->
         <div class="col-md-2 ms-auto text-end">
             <button type="submit" class="btn btn-success w-100">
@@ -95,12 +125,16 @@
             'division_id' => 'Division',
             'duty_station_id' => 'Duty Station',
             'funder_id' => 'Funder',
+            'job_id' => 'Job',
+            'grade_id' => 'Grade',
         ];
 
         // Create lookup maps
         $division_map = array_column($divisions, 'division_name', 'division_id');
         $station_map  = array_column($duty_stations, 'duty_station_name', 'duty_station_id');
         $funder_map   = array_column($funders, 'funder', 'funder_id');
+        $job_map      = !empty($jobs) ? array_column($jobs, 'job_name', 'job_id') : [];
+        $grade_map    = !empty($grades) ? array_column($grades, 'grade', 'grade_id') : [];
 
         foreach ($this->input->get() as $key => $value) {
             if (!empty($value)) {
@@ -118,6 +152,12 @@
                     $value = implode(', ', $value);
                 } elseif ($key === 'funder_id') {
                     $value = array_map(fn($id) => $funder_map[$id] ?? $id, (array)$value);
+                    $value = implode(', ', $value);
+                } elseif ($key === 'job_id') {
+                    $value = array_map(fn($id) => $job_map[$id] ?? $id, (array)$value);
+                    $value = implode(', ', $value);
+                } elseif ($key === 'grade_id') {
+                    $value = array_map(fn($id) => $grade_map[$id] ?? $id, (array)$value);
                     $value = implode(', ', $value);
                 } elseif (is_array($value)) {
                     $value = implode(', ', $value);
