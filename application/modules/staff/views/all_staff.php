@@ -44,16 +44,15 @@
 		<div id="paginationLinksTop" class="d-flex align-items-center"></div>
 	</div>
 	<div class="col-md-4 text-center">
-		<div class="d-flex align-items-center justify-content-center gap-2">
-			<label for="recordsPerPage" class="mb-0 fw-semibold">Records per page:</label>
-			<select id="recordsPerPage" class="form-select form-select-sm" style="width: auto;">
-				<option value="20" selected>20</option>
-				<option value="25">25</option>
-				<option value="30">30</option>
-				<option value="40">40</option>
-				<option value="50">50</option>
-			</select>
-		</div>
+			<div class="d-flex align-items-center justify-content-center gap-2">
+				<label for="recordsPerPage" class="mb-0 fw-semibold">Records per page:</label>
+				<select id="recordsPerPage" class="form-select form-select-sm" style="width: auto;">
+					<option value="20" selected>20</option>
+					<option value="50">50</option>
+					<option value="75">75</option>
+					<option value="100">100</option>
+				</select>
+			</div>
 	</div>
 	<div class="col-md-4 text-end">
 		<div id="exportButtonsTop" class="d-flex gap-2 justify-content-end">

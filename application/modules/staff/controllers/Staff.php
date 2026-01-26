@@ -72,9 +72,9 @@ class Staff extends MX_Controller
 		try {
 			$page = (int)($this->input->post('page') ?: 0);
 			$per_page = (int)($this->input->post('per_page') ?: 20);
-			// Validate per_page is between 20 and 50
+			// Validate per_page is between 20 and 100
 			if ($per_page < 20) $per_page = 20;
-			if ($per_page > 50) $per_page = 50;
+			if ($per_page > 100) $per_page = 100;
 			$start = $page * $per_page;
 			
 			// Get filters from POST
@@ -414,9 +414,9 @@ class Staff extends MX_Controller
 		try {
 			$page = (int)($this->input->post('page') ?: 0);
 			$per_page = (int)($this->input->post('per_page') ?: 20);
-			// Validate per_page is between 20 and 50
+			// Validate per_page is between 20 and 100
 			if ($per_page < 20) $per_page = 20;
-			if ($per_page > 50) $per_page = 50;
+			if ($per_page > 100) $per_page = 100;
 			$start = $page * $per_page;
 			
 			// Get filters from POST
@@ -1006,9 +1006,9 @@ class Staff extends MX_Controller
 		try {
 			$page = (int)($this->input->post('page') ?: 0);
 			$per_page = (int)($this->input->post('per_page') ?: 20);
-			// Validate per_page is between 20 and 50
+			// Validate per_page is between 20 and 100
 			if ($per_page < 20) $per_page = 20;
-			if ($per_page > 50) $per_page = 50;
+			if ($per_page > 100) $per_page = 100;
 			$start = $page * $per_page;
 			
 			// Get filters from POST
