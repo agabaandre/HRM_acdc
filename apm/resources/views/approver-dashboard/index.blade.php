@@ -485,10 +485,11 @@ const baseUrl = '{{ user_session("base_url") ?? url("/") }}';
 const pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
 
 $(document).ready(function() {
-    loadFilterOptions();
-    
-    // Initialize DataTable
-    initializeDataTable();
+    // Load filter options first, then initialize DataTable
+    loadFilterOptions().then(function() {
+        // Initialize DataTable after filters are populated
+        initializeDataTable();
+    });
     
     // Auto-submit filters on change
     let filterTimeout;
@@ -525,14 +526,16 @@ $(document).ready(function() {
         }
     });
     
-    // Export to Excel
+    // Export to Excel - trigger DataTables button
     $('#exportExcel').on('click', function() {
-        exportToExcel();
+        if (approverTable) {
+            approverTable.button('.buttons-excel').trigger();
+        }
     });
 });
 
 function loadFilterOptions() {
-    $.ajax({
+    return $.ajax({
         url: '{{ route("approver-dashboard.filter-options") }}',
         type: 'GET',
         success: function(response) {
@@ -576,16 +579,18 @@ function populateFilterOptions() {
     
     // Populate years
     const yearSelect = $('#filterYear');
+    const currentYear = new Date().getFullYear();
     yearSelect.empty().append('<option value="">All Years</option>');
     if (filterOptions.years && filterOptions.years.length > 0) {
         filterOptions.years.forEach(function(year) {
-            yearSelect.append(`<option value="${year}">${year}</option>`);
+            const selected = (year == currentYear) ? 'selected' : '';
+            yearSelect.append(`<option value="${year}" ${selected}>${year}</option>`);
         });
     } else {
         // Generate years if not provided
-        const currentYear = new Date().getFullYear();
         for (let i = currentYear - 5; i <= currentYear + 2; i++) {
-            yearSelect.append(`<option value="${i}">${i}</option>`);
+            const selected = (i == currentYear) ? 'selected' : '';
+            yearSelect.append(`<option value="${i}" ${selected}>${i}</option>`);
         }
     }
 }
@@ -594,18 +599,20 @@ function initializeDataTable() {
     approverTable = $('#approverTable').DataTable({
         processing: true,
         serverSide: true,
+        searching: false, // Disable DataTables search box
         ordering: true,
-        order: [[4, 'desc']], // Sort by Total Pending descending by default
+        order: [[6, 'desc']], // Sort by Avg. Time (highest days) descending by default
         ajax: {
         url: '{{ route("approver-dashboard.api") }}',
         type: 'GET',
             data: function(d) {
                 // Add custom filters
                 d.q = $('#searchApprover').val();
-                d.division_id = $('#filterDivision').val();
-                d.doc_type = $('#filterDocType').val();
-                d.approval_level = $('#filterApprovalLevel').val();
-                d.year = $('#filterYear').val();
+                d.division_id = $('#filterDivision').val() || null;
+                d.doc_type = $('#filterDocType').val() || null;
+                d.approval_level = $('#filterApprovalLevel').val() || null;
+                const yearValue = $('#filterYear').val();
+                d.year = yearValue ? parseInt(yearValue) : null;
                 // Convert DataTables parameters to our API format
                 d.page = Math.floor(d.start / d.length) + 1;
                 d.per_page = d.length;
@@ -752,37 +759,71 @@ function initializeDataTable() {
         ],
         pageLength: 25,
         lengthMenu: [[25, 50, 100], [25, 50, 100]],
-        order: [[4, 'desc']], // Sort by Total Pending descending by default
+        order: [[6, 'desc']], // Sort by Avg. Time (highest days) descending by default
         language: {
             processing: '<i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i> Loading...'
         },
         dom: 'Bfrtip',
-        buttons: []
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                text: '<i class="fa fa-file-excel me-1"></i>Export to Excel',
+                className: 'btn btn-success btn-sm',
+                title: 'Approver Dashboard Export',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6], // Export all columns
+                    format: {
+                        body: function(data, row, column, node) {
+                            // Clean HTML from cells for export
+                            if (typeof data === 'string') {
+                                // Remove HTML tags and get text content
+                                var tmp = document.createElement('DIV');
+                                tmp.innerHTML = data;
+                                return tmp.textContent || tmp.innerText || '';
+                            }
+                            return data;
+                        }
+                    }
+                },
+                action: function(e, dt, button, config) {
+                    // For server-side processing, we need to fetch all data
+                    // Get current filters and sort order
+                    const filters = {
+                        q: $('#searchApprover').val(),
+                        division_id: $('#filterDivision').val(),
+                        doc_type: $('#filterDocType').val(),
+                        approval_level: $('#filterApprovalLevel').val(),
+                        year: $('#filterYear').val(),
+                        export: 1,
+                        per_page: 10000, // Get all records
+                        page: 1
+                    };
+                    
+                    // Get current sort order
+                    const order = dt.order();
+                    if (order.length > 0) {
+                        filters.order = JSON.stringify(order);
+                    }
+                    
+                    // Build URL with filters
+                    const params = new URLSearchParams();
+                    Object.keys(filters).forEach(key => {
+                        if (filters[key] !== '' && filters[key] !== null && filters[key] !== undefined) {
+                            params.append(key, filters[key]);
+                        }
+                    });
+                    
+                    // Open export URL in new window
+                    window.open('{{ route("approver-dashboard.api") }}?' + params.toString(), '_blank');
+                }
+            }
+        ]
     });
+    
+    // Hide the default buttons container (we're using our custom button)
+    approverTable.buttons().container().hide();
 }
 
-function exportToExcel() {
-    // Get current filter values
-    const filters = {
-        q: $('#searchApprover').val(),
-        division_id: $('#filterDivision').val(),
-        doc_type: $('#filterDocType').val(),
-        approval_level: $('#filterApprovalLevel').val(),
-        year: $('#filterYear').val(),
-        export: 1
-    };
-    
-    // Build URL with filters
-    const params = new URLSearchParams();
-    Object.keys(filters).forEach(key => {
-        if (filters[key]) {
-            params.append(key, filters[key]);
-        }
-    });
-    
-    // Open export URL in new window
-    window.open('{{ route("approver-dashboard.api") }}?' + params.toString(), '_blank');
-}
 
 function updateSummaryStats(response) {
     // Update summary statistics
