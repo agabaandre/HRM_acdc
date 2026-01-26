@@ -81,9 +81,53 @@
             letter-spacing: 0.5px;
         }
 
+        .budget-table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        
         .budget-table td {
             vertical-align: middle;
             font-size: 0.9rem;
+        }
+        
+        .budget-table td.cost-item,
+        .budget-table th.cost-item {
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            overflow-wrap: break-word;
+            width: 35%;
+            max-width: 35%;
+        }
+        
+        /* Non-travel memo: Description column at 50% width with proper wrapping */
+        .budget-table.non-travel-memo td.cost-item,
+        .budget-table.non-travel-memo th.cost-item {
+            width: 50%;
+            max-width: 50%;
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            overflow-wrap: break-word;
+            line-height: 1.3;
+        }
+        
+        .budget-table.non-travel-memo td.cost-item > div {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+            line-height: 1.3;
+        }
+        
+        .budget-table td.description,
+        .budget-table th.description {
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            overflow-wrap: break-word;
+            width: 25%;
+            max-width: 25%;
         }
 
         .budget-total-row {
@@ -738,54 +782,173 @@
                                 <div class="card-body">
                                     @php
                                         $budgetBreakdown = $sourceData['budget_breakdown'] ?? [];
+                                        $fundCodes = $sourceData['fund_codes'] ?? collect();
+                                        $isNonTravelMemo = $requestARF->model_type === 'App\\Models\\NonTravelMemo';
                                         // Decode JSON string if needed
                                         if (is_string($budgetBreakdown)) {
                                             $budgetBreakdown = json_decode($budgetBreakdown, true) ?? [];
                                         }
+                                        $grandTotal = 0;
                                     @endphp
 
                                     @if (!empty($budgetBreakdown))
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered table-sm budget-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Cost Item</th>
-                                                        <th>Description</th>
-                                                        <th>Unit Cost</th>
-                                                        <th>Units</th>
-                                                        <th>Days</th>
-                                                        <th>Total</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
+                                        @php
+                                            // Check if budget is structured by fund codes (keyed by fund_code_id)
+                                            $isFundCodeStructure = false;
+                                            foreach ($budgetBreakdown as $key => $value) {
+                                                if (is_numeric($key) && is_array($value)) {
+                                                    $isFundCodeStructure = true;
+                                                    break;
+                                                }
+                                            }
+                                        @endphp
+                                        
+                                        @if ($isFundCodeStructure && $fundCodes->isNotEmpty())
+                                            {{-- Budget structured by fund codes --}}
+                                            @foreach ($budgetBreakdown as $fundCodeId => $items)
+                                                @if ($fundCodeId !== 'grand_total' && is_array($items) && !empty($items))
                                                     @php
-                                                        $grandTotal = 0;
+                                                        $fundCode = $fundCodes[$fundCodeId] ?? null;
+                                                        $fundTotal = 0;
                                                     @endphp
-                                                    @foreach ($budgetBreakdown as $index => $item)
-                                                        @php
-                                                            $quantity = (float) ($item['quantity'] ?? 1);
-                                                            $unitPrice = (float) ($item['unit_price'] ?? 0);
-                                                            $itemTotal = (float) ($quantity * $unitPrice);
-                                                            $grandTotal = (float) $grandTotal + $itemTotal;
-                                                        @endphp
+                                                    
+                                                    <div class="mb-4">
+                                                        <div class="fund-code-header p-3 mb-3">
+                                                            <h6 class="fw-bold mb-0">
+                                                                @if($fundCode)
+                                                                    {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name ?? 'N/A' }})@if($fundCode->funder) - {{ $fundCode->funder->name }}@endif
+                                                                @else
+                                                                    Fund Code ID: {{ $fundCodeId }}
+                                                                @endif
+                                                            </h6>
+                                                        </div>
+                                                        
+                                                        <div class="table-responsive">
+                                                            <table class="table table-bordered budget-table {{ $isNonTravelMemo ? 'non-travel-memo' : '' }}">
+                                                                <thead class="table-light">
+                                                                    <tr>
+                                                                        <th class="fw-bold" style="width: 40px;">#</th>
+                                                                        <th class="fw-bold cost-item">Description</th>
+                                                                        <th class="fw-bold text-end" style="width: 100px;">Unit Cost</th>
+                                                                        <th class="fw-bold text-end" style="width: 80px;">Quantity</th>
+                                                                        <th class="fw-bold text-end" style="width: 120px;">Total</th>
+                                                                        @if(!$isNonTravelMemo)
+                                                                            <th class="fw-bold description">Description</th>
+                                                                        @endif
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    @php $count = 1; @endphp
+                                                                    @foreach($items as $item)
+                                                                        @php
+                                                                            $quantity = $item['quantity'] ?? $item['units'] ?? 1;
+                                                                            $unitCost = (float)($item['unit_cost'] ?? 0);
+                                                                            $total = $unitCost * (float)$quantity;
+                                                                            $fundTotal += $total;
+                                                                            $grandTotal += $total;
+                                                                        @endphp
+                                                                        <tr>
+                                                                            <td>{{ $count++ }}</td>
+                                                                            <td class="cost-item">
+                                                                                @if($isNonTravelMemo)
+                                                                                    <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;">
+                                                                                        {{ $item['cost'] ?? $item['description'] ?? 'N/A' }}
+                                                                                    </div>
+                                                                                @else
+                                                                                    {{ $item['cost'] ?? $item['description'] ?? 'N/A' }}
+                                                                                @endif
+                                                                            </td>
+                                                                            <td class="text-end">${{ number_format($unitCost, 2) }}</td>
+                                                                            <td class="text-end">{{ $quantity }}</td>
+                                                                            <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
+                                                                            @if(!$isNonTravelMemo)
+                                                                                <td class="description">{{ $item['description'] ?? 'N/A' }}</td>
+                                                                            @endif
+                                                                        </tr>
+                                                                    @endforeach
+                                                                </tbody>
+                                                                <tfoot class="table-light">
+                                                                    <tr>
+                                                                        <th colspan="{{ $isNonTravelMemo ? '4' : '5' }}" class="text-end">Total:</th>
+                                                                        <th class="text-end text-success">${{ number_format($fundTotal, 2) }}</th>
+                                                                        @if(!$isNonTravelMemo)
+                                                                            <th></th>
+                                                                        @endif
+                                                                    </tr>
+                                                                </tfoot>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                            
+                                            @if ($grandTotal > 0)
+                                                <div class="grand-total text-end mt-3">
+                                                    <h5 class="fw-bold mb-0">
+                                                        <i class="bx bx-dollar me-2"></i>
+                                                        Grand Total: ${{ number_format($grandTotal, 2) }}
+                                                    </h5>
+                                                </div>
+                                            @endif
+                                        @else
+                                            {{-- Simple array structure --}}
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered table-sm budget-table {{ $isNonTravelMemo ? 'non-travel-memo' : '' }}">
+                                                    <thead>
                                                         <tr>
-                                                            <td>{{ $item['item'] ?? 'Item ' . ((int) $index + 1) }}</td>
-                                                            <td>{{ $item['cost'] ?? ($item['description'] ?? 'N/A') }}</td>
-                                                            <td>${{ number_format($unitPrice, 2) }}</td>
-                                                            <td>{{ $quantity }}</td>
-                                                            <td>{{ (int) ($item['days'] ?? 1) }}</td>
-                                                            <td class="fw-bold">${{ number_format($itemTotal, 2) }}</td>
+                                                            <th style="width: 40px;">#</th>
+                                                            <th class="cost-item">Description</th>
+                                                            <th class="text-end" style="width: 100px;">Unit Cost</th>
+                                                            <th class="text-end" style="width: 80px;">Quantity</th>
+                                                            <th class="text-end" style="width: 120px;">Total</th>
+                                                            @if(!$isNonTravelMemo)
+                                                                <th class="description">Description</th>
+                                                            @endif
                                                         </tr>
-                                                    @endforeach
-                                                </tbody>
-                                                <tfoot>
-                                                    <tr>
-                                                        <th colspan="5" class="text-end">Grand Total</th>
-                                                        <th class="text-end">${{ number_format($grandTotal, 2) }}</th>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
-                                        </div>
+                                                    </thead>
+                                                    <tbody>
+                                                        @php $count = 1; @endphp
+                                                        @foreach ($budgetBreakdown as $index => $item)
+                                                            @if (is_array($item))
+                                                                @php
+                                                                    $quantity = (float) ($item['quantity'] ?? $item['units'] ?? 1);
+                                                                    $unitCost = (float) ($item['unit_cost'] ?? 0);
+                                                                    $itemTotal = $unitCost * $quantity;
+                                                                    $grandTotal += $itemTotal;
+                                                                @endphp
+                                                                <tr>
+                                                                    <td>{{ $count++ }}</td>
+                                                                    <td class="cost-item">
+                                                                        @if($isNonTravelMemo)
+                                                                            <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;">
+                                                                                {{ $item['cost'] ?? $item['description'] ?? 'Item ' . $index }}
+                                                                            </div>
+                                                                        @else
+                                                                            {{ $item['cost'] ?? $item['description'] ?? 'Item ' . $index }}
+                                                                        @endif
+                                                                    </td>
+                                                                    <td class="text-end">${{ number_format($unitCost, 2) }}</td>
+                                                                    <td class="text-end">{{ $quantity }}</td>
+                                                                    <td class="text-end fw-bold">${{ number_format($itemTotal, 2) }}</td>
+                                                                    @if(!$isNonTravelMemo)
+                                                                        <td class="description">{{ $item['description'] ?? 'N/A' }}</td>
+                                                                    @endif
+                                                                </tr>
+                                                            @endif
+                                                        @endforeach
+                                                    </tbody>
+                                                    <tfoot>
+                                                        <tr>
+                                                            <th colspan="{{ $isNonTravelMemo ? '4' : '5' }}" class="text-end">Grand Total</th>
+                                                            <th class="text-end">${{ number_format($grandTotal, 2) }}</th>
+                                                            @if(!$isNonTravelMemo)
+                                                                <th></th>
+                                                            @endif
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        @endif
                                     @else
                                         <div class="text-center text-muted py-4">
                                             <i class="bx bx-calculator display-4 mb-3"></i>

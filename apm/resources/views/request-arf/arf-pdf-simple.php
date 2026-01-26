@@ -155,6 +155,22 @@
             text-align: left;
         }
         
+        /* Budget table for non-travel memos */
+        .bordered-table.non-travel-memo {
+            table-layout: fixed;
+            width: 100%;
+        }
+        
+        .bordered-table.non-travel-memo th:nth-child(2),
+        .bordered-table.non-travel-memo td:nth-child(2) {
+            width: 50%;
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: normal;
+            overflow-wrap: break-word;
+            line-height: 1.3;
+        }
+        
         .bg-highlight {
             background-color: #f8f9fa !important;
         }
@@ -849,6 +865,7 @@
          
              <?php 
              $grandTotal = 0;
+             $isNonTravelMemo = $requestARF->model_type === 'App\\Models\\NonTravelMemo';
              // Decode JSON string if needed
              if (is_string($budgetBreakdown)) {
                  $budgetBreakdown = json_decode($budgetBreakdown, true) ?? [];
@@ -862,16 +879,22 @@
                  <h5 style="font-weight: 600; color: #006633; background: #f9fafb; padding: 8px; margin: 10px 0 5px 0; border-left: 4px solid #119A48;"><?php echo htmlspecialchars($fundCodeName); ?></h5>
 
                 <div>
-                    <table class="bordered-table mb-15">
+                    <table class="bordered-table mb-15 <?php echo $isNonTravelMemo ? 'non-travel-memo' : ''; ?>">
                         <thead>
                             <tr>
-                                <th class="bg-highlight">#</th>
-                                <th class="bg-highlight">Cost Item</th>
+                                <th class="bg-highlight" style="width: 40px;">#</th>
+                                <th class="bg-highlight"><?php echo $isNonTravelMemo ? 'Description' : 'Cost Item'; ?></th>
                                 <th class="bg-highlight">Unit Cost</th>
-                                <th class="bg-highlight">Units</th>
-                                <th class="bg-highlight">Days</th>
+                                <?php if ($isNonTravelMemo): ?>
+                                    <th class="bg-highlight">Quantity</th>
+                                <?php else: ?>
+                                    <th class="bg-highlight">Units</th>
+                                    <th class="bg-highlight">Days</th>
+                                <?php endif; ?>
                                 <th class="bg-highlight">Total</th>
-                                <th class="bg-highlight">Description</th>
+                                <?php if (!$isNonTravelMemo): ?>
+                                    <th class="bg-highlight">Description</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -883,30 +906,46 @@
                             <?php foreach($budgetItems as $item): ?>
                                 <?php
                                     if (is_array($item)) {
-                                        $cost = $item['cost'] ?? '';
+                                        $cost = $item['cost'] ?? $item['description'] ?? '';
                                         $unitCost = (float)($item['unit_cost'] ?? 0);
-                                        $units = (float)($item['units'] ?? 0);
-                                        $days = (float)($item['days'] ?? 0);
-                                        $description = $item['cost'] ?? $item['description'] ?? '';
-                                        $total = $unitCost * $units * $days;
+                                        if ($isNonTravelMemo) {
+                                            $quantity = (float)($item['quantity'] ?? 1);
+                                            $total = $unitCost * $quantity;
+                                        } else {
+                                            $units = (float)($item['units'] ?? 0);
+                                            $days = (float)($item['days'] ?? 0);
+                                            $total = $unitCost * $units * $days;
+                                        }
+                                        $description = $item['description'] ?? '';
                                     } else {
-                                        $cost = $item->cost ?? '';
+                                        $cost = $item->cost ?? $item->description ?? '';
                                         $unitCost = (float)($item->unit_cost ?? 0);
-                                        $units = (float)($item->units ?? 0);
-                                        $days = (float)($item->days ?? 0);
+                                        if ($isNonTravelMemo) {
+                                            $quantity = (float)($item->quantity ?? 1);
+                                            $total = $unitCost * $quantity;
+                                        } else {
+                                            $units = (float)($item->units ?? 0);
+                                            $days = (float)($item->days ?? 0);
+                                            $total = $unitCost * $units * $days;
+                                        }
                                         $description = $item->description ?? '';
-                                        $total = $unitCost * $units * $days;
                                     }
                                     $fundTotal += $total;
                                 ?>
                                 <tr>
                                     <td><?php echo $count; ?></td>
-                                    <td class="text-right"><?php echo htmlspecialchars($cost); ?></td>
-                                    <td class="text-right"><?php echo number_format($unitCost, 2); ?></td>
-                                    <td class="text-right"><?php echo $units; ?></td>
-                                    <td class="text-right"><?php echo $days; ?></td>
-                                    <td class="text-right"><?php echo number_format($total, 2); ?></td>
-                                    <td><?php echo htmlspecialchars($description); ?></td>
+                                    <td style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;"><?php echo htmlspecialchars($cost); ?></td>
+                                    <td class="text-right">$<?php echo number_format($unitCost, 2); ?></td>
+                                    <?php if ($isNonTravelMemo): ?>
+                                        <td class="text-right"><?php echo $quantity; ?></td>
+                                    <?php else: ?>
+                                        <td class="text-right"><?php echo $units; ?></td>
+                                        <td class="text-right"><?php echo $days; ?></td>
+                                    <?php endif; ?>
+                                    <td class="text-right">$<?php echo number_format($total, 2); ?></td>
+                                    <?php if (!$isNonTravelMemo): ?>
+                                        <td><?php echo htmlspecialchars($description); ?></td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php 
                                 $count++;
@@ -916,9 +955,11 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th class="bg-highlight text-right" colspan="5">Fund Total</th>
-                                <th class="bg-highlight text-right"><?php echo number_format($fundTotal, 2); ?></th>
-                                <th class="bg-highlight"></th>
+                                <th class="bg-highlight text-right" colspan="<?php echo $isNonTravelMemo ? '4' : '5'; ?>">Total:</th>
+                                <th class="bg-highlight text-right">$<?php echo number_format($fundTotal, 2); ?></th>
+                                <?php if (!$isNonTravelMemo): ?>
+                                    <th class="bg-highlight"></th>
+                                <?php endif; ?>
                             </tr>
                         </tfoot>
                     </table>

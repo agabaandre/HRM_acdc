@@ -24,6 +24,13 @@
 
         <div class="row g-3 align-items-end" id="arfFilters" autocomplete="off">
                 <div class="col-md-2">
+                    <label for="document_number" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-hash me-1 text-success"></i> Document Number
+                    </label>
+                    <input type="text" name="document_number" id="document_number" class="form-control" 
+                           value="{{ request('document_number') }}" placeholder="Search by doc number...">
+                </div>
+                <div class="col-md-2">
                     <label for="division_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-building me-1 text-success"></i> Division</label>
                     <select name="division_id" id="division_id" class="form-select">
@@ -35,7 +42,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="staff_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-user me-1 text-success"></i> Staff</label>
                     <select name="staff_id" id="staff_id" class="form-select">
@@ -65,14 +72,14 @@
                         <option value="returned" {{ request('overall_status') == 'returned' ? 'selected' : '' }}>Rejected</option>
                     </select>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
+                <div class="col-md-1 d-flex align-items-end">
                 <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
-                        <i class="bx bx-reset me-1"></i> Reset
+                <div class="col-md-1 d-flex align-items-end">
+                    <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary w-100 fw-bold" title="Reset Filters">
+                        <i class="bx bx-reset"></i>
                     </a>
             </div>
             </div>
@@ -180,6 +187,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('search')) {
         document.getElementById('search').addEventListener('input', applyFilters);
     }
+    
+    if (document.getElementById('document_number')) {
+        document.getElementById('document_number').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+        // Also trigger on input for real-time search
+        document.getElementById('document_number').addEventListener('input', function() {
+            clearTimeout(window.documentNumberTimeout);
+            window.documentNumberTimeout = setTimeout(applyFilters, 500);
+        });
+    }
 
     // Function to load tab data via AJAX
     function loadTabData(tabId) {
@@ -189,11 +209,13 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUrl.searchParams.set('tab', tabId);
         
         // Include current filter values
+        const documentNumber = document.getElementById('document_number')?.value;
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const status = document.getElementById('overall_status')?.value;
         const search = document.getElementById('search')?.value;
         
+        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (status) currentUrl.searchParams.set('overall_status', status);

@@ -41,6 +41,13 @@ class RequestARFController extends Controller
             ->where('staff_id', $currentStaffId);
             
         // Apply filters to My ARFs
+        if ($request->filled('document_number')) {
+            $mySubmittedArfsQuery->where(function($q) use ($request) {
+                $q->where('document_number', 'like', '%' . $request->document_number . '%')
+                  ->orWhere('arf_number', 'like', '%' . $request->document_number . '%');
+            });
+        }
+        
         if ($request->has('division_id') && $request->division_id) {
             $mySubmittedArfsQuery->where('division_id', $request->division_id);
         }
@@ -66,6 +73,13 @@ class RequestARFController extends Controller
                 ->latest();
                 
             // Apply filters to All ARFs
+            if ($request->filled('document_number')) {
+                $allArfsQuery->where(function($q) use ($request) {
+                    $q->where('document_number', 'like', '%' . $request->document_number . '%')
+                      ->orWhere('arf_number', 'like', '%' . $request->document_number . '%');
+                });
+            }
+            
             if ($request->has('division_id') && $request->division_id) {
                 $allArfsQuery->where('division_id', $request->division_id);
             }
@@ -783,7 +797,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                         'division' => $sourceModel->division ?? null,
                         'division_head' => $sourceModel->division->divisionHead ?? null,
                         'responsible_person' => $sourceModel->staff ?? null,
-                        'budget_breakdown' => $sourceModel->budget ?? null,
+                        'budget_breakdown' => is_string($sourceModel->budget_breakdown) ? json_decode($sourceModel->budget_breakdown, true) ?? [] : ($sourceModel->budget_breakdown ?? []),
                         'fund_codes' => $fundCodes, // Add fund codes for proper display
                         'internal_participants' => [], // Non-travel memos have no participants
                         'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
@@ -1217,7 +1231,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'division' => $sourceModel->division ?? null,
                     'division_head' => $sourceModel->division->divisionHead ?? null,
                     'responsible_person' => $sourceModel->staff ?? null,
-                    'budget_breakdown' => $sourceModel->budget ?? null,
+                    'budget_breakdown' => is_string($sourceModel->budget_breakdown) ? json_decode($sourceModel->budget_breakdown, true) ?? [] : ($sourceModel->budget_breakdown ?? []),
                     'fund_codes' => $fundCodes, // Add fund codes for proper display
                     'internal_participants' => [],
                     'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
@@ -1445,6 +1459,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         $userDivisionId = user_session('division_id');
         
         // Get filter parameters
+        $documentNumber = $request->get('document_number');
         $divisionId = $request->get('division_id');
         $staffId = $request->get('staff_id');
         
@@ -1484,6 +1499,13 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         });
 
         // Apply filters
+        if ($documentNumber) {
+            $pendingQuery->where(function($q) use ($documentNumber) {
+                $q->where('document_number', 'like', "%{$documentNumber}%")
+                  ->orWhere('arf_number', 'like', "%{$documentNumber}%");
+            });
+        }
+        
         if ($divisionId) {
             $pendingQuery->where('division_id', $divisionId);
         }
@@ -1508,6 +1530,13 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         });
 
         // Apply same filters to approved by me
+        if ($documentNumber) {
+            $approvedByMeQuery->where(function($q) use ($documentNumber) {
+                $q->where('document_number', 'like', "%{$documentNumber}%")
+                  ->orWhere('arf_number', 'like', "%{$documentNumber}%");
+            });
+        }
+        
         if ($divisionId) {
             $approvedByMeQuery->where('division_id', $divisionId);
         }
