@@ -22,6 +22,7 @@ trait ApproverDashboardHelper
             ->select([
                 's.id as approver_id',
                 's.staff_id',
+                's.title',
                 's.fname',
                 's.lname',
                 's.work_email',
@@ -82,6 +83,7 @@ trait ApproverDashboardHelper
                 ->select([
                     's.id as approver_id',
                     's.staff_id',
+                    's.title',
                     's.fname',
                     's.lname',
                     's.work_email',
@@ -147,12 +149,16 @@ trait ApproverDashboardHelper
             $staffId = $approverObj->staff_id;
             
             if (!isset($approversByStaffId[$staffId])) {
+                $title = $approverObj->title ?? '';
+                $fullName = trim(($title ? $title . ' ' : '') . $approverObj->fname . ' ' . $approverObj->lname);
+                
                 $approversByStaffId[$staffId] = [
                     'staff_id' => $staffId,
                     'approver_id' => $approverObj->approver_id,
-                    'approver_name' => trim($approverObj->fname . ' ' . $approverObj->lname),
+                    'approver_name' => $fullName,
                     'approver_email' => $approverObj->work_email,
                     'photo' => $approverObj->photo ?? null,
+                    'title' => $title,
                     'fname' => $approverObj->fname ?? '',
                     'lname' => $approverObj->lname ?? '',
                     'division_name' => $approverObj->division_name,
@@ -215,6 +221,7 @@ trait ApproverDashboardHelper
                 'approver_name' => $data['approver_name'],
                 'approver_email' => $data['approver_email'],
                 'photo' => !empty($data['photo']) ? $data['photo'] : null, // Ensure photo is included
+                'title' => $data['title'] ?? '',
                 'fname' => $data['fname'] ?? '',
                 'lname' => $data['lname'] ?? '',
                 'division_name' => $data['division_name'],
