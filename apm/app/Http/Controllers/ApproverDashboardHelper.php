@@ -285,6 +285,11 @@ trait ApproverDashboardHelper
             $query->where('division_id', $divisionId);
         }
         
+        // Apply year filter by created_at year
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        
         $memos = $query->get();
         foreach ($memos as $memo) {
             if ($approvalService->canTakeAction($memo, $staffId)) {
@@ -302,6 +307,11 @@ trait ApproverDashboardHelper
             $query->where('division_id', $divisionId);
         }
         
+        // Apply year filter by created_at year
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        
         $memos = $query->get();
         foreach ($memos as $memo) {
             if ($approvalService->canTakeAction($memo, $staffId)) {
@@ -310,7 +320,7 @@ trait ApproverDashboardHelper
         }
 
         // Get pending single memos (activities with is_single_memo = true, across all workflows)
-        $query = \App\Models\Activity::with(['staff', 'division'])
+        $query = \App\Models\Activity::with(['staff', 'division', 'matrix'])
             ->where('is_single_memo', true)
             ->where('overall_status', 'pending')
             ->where('forward_workflow_id', '!=', null)
@@ -318,6 +328,13 @@ trait ApproverDashboardHelper
         
         if ($divisionId) {
             $query->where('division_id', $divisionId);
+        }
+        
+        // Apply year filter through matrix relationship
+        if ($year) {
+            $query->whereHas('matrix', function($q) use ($year) {
+                $q->where('year', $year);
+            });
         }
         
         $activities = $query->get();
@@ -337,6 +354,11 @@ trait ApproverDashboardHelper
             $query->where('division_id', $divisionId);
         }
         
+        // Apply year filter by created_at year
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        
         $arfs = $query->get();
         foreach ($arfs as $arf) {
             if ($approvalService->canTakeAction($arf, $staffId)) {
@@ -354,6 +376,11 @@ trait ApproverDashboardHelper
             $query->where('division_id', $divisionId);
         }
         
+        // Apply year filter by created_at year
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        
         $serviceRequests = $query->get();
         foreach ($serviceRequests as $serviceRequest) {
             if ($approvalService->canTakeAction($serviceRequest, $staffId)) {
@@ -362,13 +389,25 @@ trait ApproverDashboardHelper
         }
 
         // Get pending change requests (uses workflows 1, 6, 7)
-        $query = \App\Models\ChangeRequest::with(['staff', 'division', 'forwardWorkflow'])
+        $query = \App\Models\ChangeRequest::with(['staff', 'division', 'forwardWorkflow', 'matrix'])
             ->where('overall_status', 'pending')
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
         
         if ($divisionId) {
             $query->where('division_id', $divisionId);
+        }
+        
+        // Apply year filter through matrix relationship or created_at
+        if ($year) {
+            $query->where(function($q) use ($year) {
+                // Filter by matrix year if change request has a matrix
+                $q->whereHas('matrix', function($matrixQuery) use ($year) {
+                    $matrixQuery->where('year', $year);
+                })
+                // Or filter by created_at year if no matrix
+                ->orWhereYear('created_at', $year);
+            });
         }
         
         $changeRequests = $query->get();

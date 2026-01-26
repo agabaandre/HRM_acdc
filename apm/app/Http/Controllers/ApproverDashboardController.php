@@ -87,14 +87,24 @@ class ApproverDashboardController extends Controller
             $allApproversWithCounts = $this->getPendingCountsForApprovers($approversCollection, $workflowDefinitionId, $docType, $divisionId, $year);
 
             // Handle sorting - check for DataTables order parameter or use default
-            $orderColumn = 4; // Default: Total Pending (column index 4)
-            $orderDirection = 'desc'; // Default: descending
+            $orderColumn = 6; // Default: Avg. Time (column index 6)
+            $orderDirection = 'desc'; // Default: descending (highest days first)
             
             // Check if this is a DataTables request with order parameter
             if ($request->has('order') && is_array($request->get('order')) && !empty($request->get('order'))) {
                 $order = $request->get('order')[0];
                 $orderColumn = (int) $order['column'];
                 $orderDirection = $order['dir'] === 'asc' ? 'asc' : 'desc';
+            }
+            
+            // Also check for direct order parameter (from export)
+            if ($request->has('order') && is_string($request->get('order'))) {
+                $orderData = json_decode($request->get('order'), true);
+                if (is_array($orderData) && !empty($orderData)) {
+                    $order = $orderData[0];
+                    $orderColumn = (int) $order['column'];
+                    $orderDirection = $order['dir'] === 'asc' ? 'asc' : 'desc';
+                }
             }
             
             // Map column index to sort field
@@ -106,7 +116,7 @@ class ApproverDashboardController extends Controller
                 6 => 'avg_approval_time_hours'
             ];
             
-            $sortField = $sortFields[$orderColumn] ?? 'total_pending';
+            $sortField = $sortFields[$orderColumn] ?? 'avg_approval_time_hours';
             
             // Sort approvers based on selected column
             usort($allApproversWithCounts, function($a, $b) use ($sortField, $orderDirection) {
