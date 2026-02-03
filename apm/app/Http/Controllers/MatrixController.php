@@ -1564,28 +1564,29 @@ class MatrixController extends Controller
 
         $last_approval_trail = ApprovalTrail::where('model_id',$matrix->id)->where('model_type', Matrix::class)->whereNotIn('action',['approved','submitted'])->orderByDesc('id')->first();
 
+        // Get assigned workflow ID for Matrix model when submitting for approval (before saving trail so trail has correct forward_workflow_id)
+        $assignedWorkflowId = $last_workflow_id;
         if($request->action == 'approvals'){
-
             if($last_approval_trail){
                 $workflow_defn       = WorkflowDefinition::where('approval_order', $last_approval_trail->approval_order)->first();
                 $last_workflow_id    = $workflow_defn->workflow_id??1;
                 $last_approval_order = $last_approval_trail->approval_order;
+                $assignedWorkflowId  = $last_workflow_id;
             }
             else
                 $last_approval_order=1;
 
+            if ($assignedWorkflowId == null) {
+                $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix');
+                if (!$assignedWorkflowId) {
+                    $assignedWorkflowId = 1; // Default workflow ID
+                    Log::warning('No workflow assignment found for Matrix model, using default workflow ID: 1');
+                }
+            }
+            // Set on matrix before saveMatrixTrail so the submitted trail gets the correct forward_workflow_id (fixes dashboard "No data" for avg time)
+            $matrix->forward_workflow_id = $assignedWorkflowId;
             $overall_status = 'pending';
             $this->saveMatrixTrail($matrix,'Submitted for approval','submitted');
-        }
-
-        // Get assigned workflow ID for Matrix model when submitting for approval
-        $assignedWorkflowId = $last_workflow_id;
-        if ($request->action == 'approvals' && $last_workflow_id == null) {
-            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix');
-            if (!$assignedWorkflowId) {
-                $assignedWorkflowId = 1; // Default workflow ID
-                Log::warning('No workflow assignment found for Matrix model, using default workflow ID: 1');
-            }
         }
 
         $update_data = [

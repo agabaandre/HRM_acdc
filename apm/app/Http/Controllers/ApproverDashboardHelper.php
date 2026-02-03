@@ -843,9 +843,14 @@ trait ApproverDashboardHelper
                         submitted_at.updated_at as submitted_time
                     FROM approval_trails at
                     INNER JOIN approval_trails submitted_at ON (
-                        submitted_at.model_type = at.model_type 
-                        AND submitted_at.model_id = at.model_id 
-                        AND submitted_at.forward_workflow_id = at.forward_workflow_id
+                        submitted_at.model_type = at.model_type
+                        AND submitted_at.model_id = at.model_id
+                        AND (
+                            submitted_at.forward_workflow_id = at.forward_workflow_id
+                            OR (submitted_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                            OR (submitted_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                            OR (submitted_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
+                        )
                         AND submitted_at.approval_order = 0
                         AND submitted_at.action = 'submitted'
                         AND submitted_at.is_archived = 0
@@ -1140,7 +1145,12 @@ trait ApproverDashboardHelper
                          FROM approval_trails sub_at
                          WHERE sub_at.model_type = at.model_type
                            AND sub_at.model_id = at.model_id
-                           AND sub_at.forward_workflow_id = at.forward_workflow_id
+                           AND (
+                               sub_at.forward_workflow_id = at.forward_workflow_id
+                               OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                               OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                               OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
+                           )
                            AND sub_at.approval_order = 0
                            AND sub_at.action = 'submitted'
                            AND sub_at.is_archived = 0)
