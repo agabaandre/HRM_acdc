@@ -287,7 +287,7 @@
                             </li>
                         <?php endif; ?>
                         <?php if (!empty($data->start_date)): ?>
-                            <li><strong>Contract Start Date:</strong> <?= $data->start_date ?></li>
+                            <li><strong>Current Contract Start Date:</strong> <?= $data->start_date ?></li>
                         <?php endif; ?>
                     </ul>
                 </div>
@@ -309,7 +309,7 @@
             <li><strong>Contract Type:</strong> <?= $data->contract_type ?></li>
                         <?php endif; ?>
                         <?php if (!empty($data->end_date)): ?>
-            <li><strong>Contract End Date:</strong> <?= $data->end_date ?></li>
+            <li><strong>Current Contract End Date:</strong> <?= $data->end_date ?></li>
                         <?php endif; ?>
         </ul>
                 </div>

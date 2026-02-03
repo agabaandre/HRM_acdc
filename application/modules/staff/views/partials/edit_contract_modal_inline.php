@@ -149,12 +149,12 @@
             </div>
 
             <div class="form-group">
-              <label for="start_date">Start Date: <?php echo asterik()?></label>
+              <label for="start_date">Current Contract Start Date: <?php echo asterik()?></label>
               <input type="text" class="form-control datepicker" value="<?php echo $contract->start_date; ?>" name="start_date" id="start_date" required <?=$readonly?>>
             </div>
 
             <div class="form-group">
-              <label for="end_date">End Date: <?php echo asterik()?></label>
+              <label for="end_date">Current Contract End Date: <?php echo asterik()?></label>
               <input type="text" class="form-control datepicker" value="<?php echo $contract->end_date; ?>" name="end_date" id="end_date" required <?=$readonly?>>
             </div>
 

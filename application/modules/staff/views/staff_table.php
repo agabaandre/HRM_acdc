@@ -367,8 +367,8 @@ $(document).ready(function() {
 									${contract.grade ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Grade</strong><span>${contract.grade}</span></div>` : ''}
 									${contract.contract_type ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Contract Type</strong><span>${contract.contract_type}</span></div>` : ''}
 									${contract.status ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Contract Status</strong><span class="badge bg-${contract.status == 'Active' ? 'success' : (contract.status == 'Expired' ? 'danger' : 'warning')}">${contract.status}</span></div>` : ''}
-									${contract.start_date ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Start Date</strong><span>${contract.start_date}</span></div>` : ''}
-									${contract.end_date ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">End Date</strong><span>${contract.end_date}</span></div>` : ''}
+									${contract.start_date ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Current Contract Start Date</strong><span>${contract.start_date}</span></div>` : ''}
+									${contract.end_date ? `<div class="col-md-4"><strong class="text-muted d-block mb-1">Current Contract End Date</strong><span>${contract.end_date}</span></div>` : ''}
 									${contract.comments ? `<div class="col-12"><strong class="text-muted d-block mb-1">Comments</strong><span>${contract.comments}</span></div>` : ''}
 								</div>
 							` : '<p class="text-muted">No contract information available.</p>'}

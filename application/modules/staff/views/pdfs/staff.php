@@ -45,8 +45,8 @@
                         <th>First Supervisor</th>
                         <th>Second Supervisor</th>
                         <th>Funder</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
+                        <th>Current Contract Start Date</th>
+                        <th>Current Contract End Date</th>
                         <th>Email</th>
                     </tr>
                 </thead>

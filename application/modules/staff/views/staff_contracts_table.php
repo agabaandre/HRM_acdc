@@ -20,8 +20,8 @@ $offset = isset($page) ? $page * 10 : 0;
         <th>Contracting Institution</th>
         <th>Grade</th>
         <th>Type</th>
-        <th>Start Date</th>
-        <th>End Date</th>
+        <th>Current Contract Start Date</th>
+        <th>Current Contract End Date</th>
         <th>Comment</th>
         <th>Status</th>
         <th>Option</th>

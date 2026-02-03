@@ -446,7 +446,9 @@ if (!function_exists('render_csv_data')) {
                         'lname' => 'Last Name',
                         'oname' => 'Other Name',
                         'tel_1' => 'Contact1',
-                        'tel_2' => 'Contact2'
+                        'tel_2' => 'Contact2',
+                        'start_date' => 'Current Contract Start Date',
+                        'end_date' => 'Current Contract End Date'
                     ];
                     $key = $replacements[$key] ?? str_replace('_', ' ', $key);
                     return ucwords($key);
