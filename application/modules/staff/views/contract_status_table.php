@@ -1,6 +1,6 @@
 <?php
 if (empty($staffs)) {
-    echo '<tr><td colspan="19" class="text-center">No staff found</td></tr>';
+    echo '<tr><td colspan="21" class="text-center">No staff found</td></tr>';
 } else {
     $i = 1;
     $offset = ($page * $per_page);
@@ -28,6 +28,8 @@ if (empty($staffs)) {
         </td>
         <td><a href="#" class="view-staff-profile" data-staff-id="<?php echo $data->staff_id; ?>" data-bs-toggle="modal" data-bs-target="#employeeProfileModal"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
         <td><?= $data->gender ?></td>
+        <td><?= !empty($data->date_of_birth) ? $data->date_of_birth : 'N/A' ?></td>
+        <td><?php echo !empty($data->date_of_birth) ? calculate_age($data->date_of_birth) : 'N/A'; ?></td>
         <td><?= $data->nationality; ?></td>
         <td><?= @$cont->duty_station_name; ?></td>
         <td><?= @$cont->division_name; ?></td>

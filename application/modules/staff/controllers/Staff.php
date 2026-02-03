@@ -40,6 +40,7 @@ class Staff extends MX_Controller
 				}
 			}
 			unset($staff_member); // Break reference
+			$staff = $this->reorder_staff_export_columns($staff);
 			
 			$file_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
 			render_csv_data($staff, $file_name,true);
@@ -330,6 +331,7 @@ class Staff extends MX_Controller
 			'division_id',
 			'unit_id',
 			'photo',
+			'signature',
 			'flag',
 			'created_at',
 			'updated_at',
@@ -339,7 +341,11 @@ class Staff extends MX_Controller
 			'admin_assistant',
 			'finance_officer',
 			'region_id',
-			'email_status'
+			'email_status',
+			'staff created_at',
+			'staff updated_at',
+			'contract_created_at',
+			'contract_updated_at'
 
 		];
 		
@@ -351,6 +357,32 @@ class Staff extends MX_Controller
 		}
 		
 		return $staffs;
+	}
+
+	/**
+	 * Reorder CSV/Excel row keys so that 'age' comes immediately after 'date_of_birth'.
+	 */
+	private function reorder_staff_export_columns($staff) {
+		if (empty($staff)) {
+			return $staff;
+		}
+		foreach ($staff as $index => $row) {
+			$keys = array_keys($row);
+			$pos_dob = array_search('date_of_birth', $keys);
+			$pos_age = array_search('age', $keys);
+			if ($pos_dob !== false && $pos_age !== false) {
+				unset($keys[$pos_age]);
+				$keys = array_values($keys);
+				$pos_dob = array_search('date_of_birth', $keys);
+				array_splice($keys, $pos_dob + 1, 0, ['age']);
+				$ordered = [];
+				foreach ($keys as $k) {
+					$ordered[$k] = $row[$k];
+				}
+				$staff[$index] = $ordered;
+			}
+		}
+		return $staff;
 	}
 	
 	
@@ -382,6 +414,7 @@ class Staff extends MX_Controller
 				}
 			}
 			unset($staff_member); // Break reference
+			$staff = $this->reorder_staff_export_columns($staff);
 			
 			$file_name = 'All-Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
 			render_csv_data($staff, $file_name,true);
@@ -969,6 +1002,7 @@ class Staff extends MX_Controller
 				}
 			}
 			unset($staff_member); // Break reference
+			$staff = $this->reorder_staff_export_columns($staff);
 			
 			$file_name = $data['title'].'_Africa CDC Staff_'.date('d-m-Y-H-i').'.csv';
 			render_csv_data($staff, $file_name,true);
@@ -1200,6 +1234,30 @@ class Staff extends MX_Controller
 			}
 		}
 		$data['other_associated_divisions'] = $other_divisions_json;
+		
+		// Convert date fields to Y-m-d for MySQL; only set when valid to avoid 0000-00-00
+		$start_date_raw = $this->input->post('start_date');
+		$end_date_raw   = $this->input->post('end_date');
+		if ($start_date_raw !== null && $start_date_raw !== '') {
+			$ts = strtotime(trim($start_date_raw));
+			if ($ts !== false) {
+				$data['start_date'] = date('Y-m-d', $ts);
+			} else {
+				unset($data['start_date']);
+			}
+		} else {
+			unset($data['start_date']);
+		}
+		if ($end_date_raw !== null && $end_date_raw !== '') {
+			$ts = strtotime(trim($end_date_raw));
+			if ($ts !== false) {
+				$data['end_date'] = date('Y-m-d', $ts);
+			} else {
+				unset($data['end_date']);
+			}
+		} else {
+			unset($data['end_date']);
+		}
 		
 		$staffid = $data['staff_id'];
 		$q= $this->staff_mdl->update_contract($data);

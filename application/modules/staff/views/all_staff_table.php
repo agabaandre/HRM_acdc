@@ -7,7 +7,7 @@ if ($offset != "") {
 
 if (empty($staffs)) : ?>
     <tr>
-        <td colspan="19" class="text-center">No data available</td>
+        <td colspan="20" class="text-center">No data available</td>
     </tr>
 <?php else :
 foreach ($staffs as $data) :
@@ -30,6 +30,7 @@ foreach ($staffs as $data) :
         </td>
         <td><a href="#" class="view-staff-profile" data-staff-id="<?php echo $data->staff_id; ?>" data-bs-toggle="modal" data-bs-target="#employeeProfileModal"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
         <td><?= $data->gender ?></td>
+        <td><?= !empty($data->date_of_birth) ? $data->date_of_birth : 'N/A' ?></td>
         <td><?php 
             if (!empty($data->date_of_birth)) {
                 echo calculate_age($data->date_of_birth);
