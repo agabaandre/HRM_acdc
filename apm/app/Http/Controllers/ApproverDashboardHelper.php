@@ -824,6 +824,7 @@ trait ApproverDashboardHelper
      * Calculate average approval time for a specific approver.
      * Returns the average time in hours between when a document reaches this approver's level
      * and when they approve/reject it.
+     * Uses updated_at: for level 1, received = submitted trail updated_at; for level >= 2, received = previous level's updated_at (when they approved/rejected).
      */
     protected function getAverageApprovalTime($approverId, $levelNo, $workflowId, $docType = null)
     {
@@ -831,16 +832,15 @@ trait ApproverDashboardHelper
             // No date filtering needed for approval time calculation
 
             // Get approval times for this approver at this level
-            // For level 1: Find documents submitted (order 0) and approved at level 1
-            // For other levels: Find documents approved at previous level and approved at current level
+            // For level 1: received = submitted trail updated_at; approval_time = at.updated_at
+            // For other levels: received = previous level's updated_at (approved/rejected); approval_time = at.updated_at
             if ($levelNo == 1) {
-                // Level 1: Documents submitted (order 0) and approved at level 1 by this specific approver
                 $sql = "
                     SELECT 
                         at.model_id,
                         at.model_type,
-                        at.created_at as approval_time,
-                        submitted_at.created_at as submitted_time
+                        at.updated_at as approval_time,
+                        submitted_at.updated_at as submitted_time
                     FROM approval_trails at
                     INNER JOIN approval_trails submitted_at ON (
                         submitted_at.model_type = at.model_type 
@@ -848,22 +848,23 @@ trait ApproverDashboardHelper
                         AND submitted_at.forward_workflow_id = at.forward_workflow_id
                         AND submitted_at.approval_order = 0
                         AND submitted_at.action = 'submitted'
+                        AND submitted_at.is_archived = 0
                     )
                     WHERE at.forward_workflow_id = ?
                     AND at.approval_order = ?
                     AND at.staff_id = ?
                     AND at.action IN ('approved', 'rejected')
-                    AND at.created_at >= submitted_at.created_at
+                    AND at.is_archived = 0
+                    AND at.updated_at >= submitted_at.updated_at
                 ";
                 $params = [$workflowId, $levelNo, $approverId];
             } else {
-                // Other levels: Documents approved at previous level and approved at current level by this specific approver
                 $sql = "
                     SELECT 
                         at.model_id,
                         at.model_type,
-                        at.created_at as approval_time,
-                        prev_at.created_at as submitted_time
+                        at.updated_at as approval_time,
+                        prev_at.updated_at as submitted_time
                     FROM approval_trails at
                     INNER JOIN approval_trails prev_at ON (
                         prev_at.model_type = at.model_type 
@@ -871,12 +872,14 @@ trait ApproverDashboardHelper
                         AND prev_at.forward_workflow_id = at.forward_workflow_id
                         AND prev_at.approval_order = ?
                         AND prev_at.action IN ('approved', 'rejected')
+                        AND prev_at.is_archived = 0
                     )
                     WHERE at.forward_workflow_id = ?
                     AND at.approval_order = ?
                     AND at.staff_id = ?
                     AND at.action IN ('approved', 'rejected')
-                    AND at.created_at >= prev_at.created_at
+                    AND at.is_archived = 0
+                    AND at.updated_at >= prev_at.updated_at
                 ";
                 $params = [$levelNo - 1, $workflowId, $levelNo, $approverId];
             }
@@ -1025,7 +1028,10 @@ trait ApproverDashboardHelper
     /**
      * Get average approval time for a specific approver across ALL workflows and levels.
      * Calculates time between when item reached approver's level and when they approved it.
-     * Uses approval_trails created_at timestamps.
+     * - Received time: for order >= 2, use previous level's updated_at (when they took approved/rejected action);
+     *   for order 1, use the submitted trail's updated_at (when item was submitted to workflow).
+     * - Approval time: current approver's updated_at (when they took the action).
+     * Using updated_at throughout keeps semantics consistent and improves consistency with approval actions.
      */
     protected function getAverageApprovalTimeAll($staffId, $divisionId = null, $year = null, $month = null)
     {
@@ -1108,8 +1114,11 @@ trait ApproverDashboardHelper
                 $params = array_merge($params, $tempParams);
             }
             
-            // Get all approval actions by this approver
-            // For each approval, find when the item reached their level (previous approval or submission)
+            // Get all approval actions by this approver.
+            // received_time = when item came to this approver:
+            // - Order >= 2: previous level's updated_at (when previous approver took approved/rejected action).
+            // - Order 1: submitted trail's updated_at (when item was submitted to workflow).
+            // approval_time = this approver's updated_at (when they took the action).
             $sql = "
                 SELECT 
                     at.id,
@@ -1117,19 +1126,17 @@ trait ApproverDashboardHelper
                     at.model_type,
                     at.forward_workflow_id,
                     at.approval_order,
-                    at.created_at as approval_time,
+                    at.updated_at as approval_time,
                     COALESCE(
-                        -- Previous level approval time
-                        (SELECT MAX(prev_at.created_at)
+                        (SELECT MAX(prev_at.updated_at)
                          FROM approval_trails prev_at
                          WHERE prev_at.model_type = at.model_type
                            AND prev_at.model_id = at.model_id
                            AND prev_at.forward_workflow_id = at.forward_workflow_id
-                           AND prev_at.approval_order < at.approval_order
-                           AND prev_at.action IN ('approved', 'rejected', 'submitted')
+                           AND prev_at.approval_order = at.approval_order - 1
+                           AND prev_at.action IN ('approved', 'rejected')
                            AND prev_at.is_archived = 0),
-                        -- Or submission time if no previous approval
-                        (SELECT MIN(sub_at.created_at)
+                        (SELECT MIN(sub_at.updated_at)
                          FROM approval_trails sub_at
                          WHERE sub_at.model_type = at.model_type
                            AND sub_at.model_id = at.model_id
@@ -1145,7 +1152,7 @@ trait ApproverDashboardHelper
                   {$yearMonthConditions}
                 HAVING received_time IS NOT NULL
                   AND approval_time >= received_time
-                ORDER BY at.created_at DESC
+                ORDER BY at.updated_at DESC
             ";
             
             $results = DB::select($sql, $params);
