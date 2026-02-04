@@ -9,9 +9,15 @@
 @section('header', $isEdit ? 'Edit Service Request' : 'Service Request Form')
 
 @section('header-actions')
-    <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
-        <i class="bx bx-arrow-back me-1 text-default"></i> Back to List
-    </a>
+    @if($isEdit)
+        <a href="{{ route('service-requests.show', $serviceRequest) }}" class="btn btn-outline-secondary">
+            <i class="bx bx-arrow-back me-1 text-default"></i> Back to Request
+        </a>
+    @else
+        <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
+            <i class="bx bx-arrow-back me-1 text-default"></i> Back to List
+        </a>
+    @endif
 @endsection
 
 @section('content')
@@ -22,6 +28,24 @@
     $budgetBreakdownView = $budgetBreakdown ?? null;
     $budgetByFundCode = [];
     $fundCodes = [];
+
+    // For "Original Budget Breakdown" section: in edit use source memo's budget (same as create); otherwise use service request or create source
+    $displayBudgetBreakdown = $budgetBreakdown ?? null;
+    $displayBudgetByFundCode = [];
+    $displayFundCodes = [];
+
+    if ($isEdit && !empty($originalBudgetBreakdownFromSource ?? null)) {
+        $displayBudgetBreakdown = $originalBudgetBreakdownFromSource;
+        foreach ($originalBudgetBreakdownFromSource as $key => $item) {
+            if ($key !== 'grand_total' && is_array($item)) {
+                $displayBudgetByFundCode[$key] = $item;
+            }
+        }
+        if (!empty($displayBudgetByFundCode)) {
+            $displayFundCodeIds = array_keys($displayBudgetByFundCode);
+            $displayFundCodes = \App\Models\FundCode::whereIn('id', $displayFundCodeIds)->get()->keyBy('id');
+        }
+    }
 
     if ($isEdit && isset($originalTotalBudget)) {
         $totalOriginal = (float) $originalTotalBudget;
@@ -39,7 +63,7 @@
             }
         }
     }
-    // Process source data if available (create mode or edit with source)
+    // Process source data if available (create mode)
     if (!$isEdit && $sourceData && isset($sourceData->budget_breakdown)) {
         $budgetBreakdown = is_string($sourceData->budget_breakdown) 
                 ? json_decode(stripslashes($sourceData->budget_breakdown), true)
@@ -90,6 +114,12 @@
                     }
             }
         }
+    }
+    // When display vars were not set from source (create mode or edit without source budget), use main budget vars
+    if (empty($displayBudgetByFundCode)) {
+        $displayBudgetBreakdown = $budgetBreakdownView;
+        $displayBudgetByFundCode = $budgetByFundCode;
+        $displayFundCodes = $fundCodes;
     }
 @endphp
 
@@ -151,7 +181,7 @@
                                     <i class="fas fa-file-alt text-success me-3"></i>
                                     <h6 class="text-muted mb-0 me-3">Activity Title:</h6>
                                     <h5 class="fw-bold text-dark mb-0">
-                                        {{ $sourceData ? ($sourceData->activity_title ?? $sourceData->title ?? 'Service Request') : 'Service Request' }}
+                                        {{ $isEdit ? ($serviceRequest->service_title ?? $serviceRequest->title ?? 'Service Request') : ($sourceData ? ($sourceData->activity_title ?? $sourceData->title ?? 'Service Request') : 'Service Request') }}
                                     </h5>
                                             </div>
                                         </div>
@@ -166,8 +196,12 @@
                                         <i class="fas fa-building text-info me-2"></i>
                                         <small class="text-muted me-2">Division:</small>
                                         <span class="fw-bold text-dark">
-                                            {{ $sourceData && isset($sourceData->division) ? $sourceData->division->division_name : 
-                                              ($sourceData && isset($sourceData->matrix) && $sourceData->matrix->division ? $sourceData->matrix->division->division_name : 'N/A') }}
+                                            @if($isEdit && $serviceRequest->division)
+                                                {{ $serviceRequest->division->division_name ?? $serviceRequest->division->name ?? 'N/A' }}
+                                            @else
+                                                {{ $sourceData && isset($sourceData->division) ? $sourceData->division->division_name : 
+                                                  ($sourceData && isset($sourceData->matrix) && $sourceData->matrix->division ? $sourceData->matrix->division->division_name : 'N/A') }}
+                                            @endif
                                         </span>
                                     </div>
                                 </div>
@@ -180,8 +214,12 @@
                                         <i class="fas fa-tag text-primary me-2"></i>
                                         <small class="text-muted me-2">Activity Type:</small>
                                         <span class="fw-bold text-dark">
-                                            {{ $sourceData && isset($sourceData->requestType) ? $sourceData->requestType->name : 
-                                              ($sourceData && isset($sourceData->fundType) ? $sourceData->fundType->name : 'Service Request') }}
+                                            @if($isEdit && $serviceRequest->fundType)
+                                                {{ $serviceRequest->fundType->name ?? 'Service Request' }}
+                                            @else
+                                                {{ $sourceData && isset($sourceData->requestType) ? $sourceData->requestType->name : 
+                                                  ($sourceData && isset($sourceData->fundType) ? $sourceData->fundType->name : 'Service Request') }}
+                                            @endif
                                         </span>
                                     </div>
                                 </div>
@@ -249,23 +287,23 @@
                         </div>
                     </div>
                 </div>
-            <!-- Section 2: Original Budget Breakdown -->
+            <!-- Section 2: Original Budget Breakdown (create: from source; edit: from source memo, same as create) -->
             <div class="mb-5">
                 <h6 class="fw-bold text-dark mb-4 border-bottom pb-2">
                     <i class="fas fa-file-invoice-dollar text-danger me-2"></i> Original Budget Breakdown
                 </h6>
                 
-                    @if (!empty($budgetBreakdown))
-                        @if ($sourceType != 'non_travel_memo' && !empty($budgetByFundCode))
+                    @if (!empty($displayBudgetBreakdown))
+                        @if ($sourceType != 'non_travel_memo' && !empty($displayBudgetByFundCode))
                             {{-- Detailed budget breakdown for special memos, matrix activities, and single memos --}}
                             @php
                                 $count = 1;
                                 $grandTotal = 0;
                             @endphp
 
-                            @foreach ($budgetByFundCode as $fundCodeId => $items)
+                            @foreach ($displayBudgetByFundCode as $fundCodeId => $items)
                                 @php
-                                    $fundCode = $fundCodes[$fundCodeId] ?? null;
+                                    $fundCode = $displayFundCodes[$fundCodeId] ?? null;
                                     $groupTotal = 0;
                                     $itemCount = 1; // Reset counter for each budget code
                                 @endphp
@@ -346,27 +384,27 @@
                                     </div>
                                 </div>
                             </div>
-                        @elseif ($sourceType == 'non_travel_memo')
-                            {{-- Budget breakdown for non-travel memos in table format --}}
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm mb-0">
-                                    <thead class="table-secondary">
-                                        <tr>
-                                            <th class="text-center">#</th>
-                                            <th>Description</th>
-                                            <th class="text-center">Quantity</th>
-                                            <th class="text-end">Unit Price</th>
-                                            <th class="text-end">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @php
-                                            $itemCount = 1;
-                                            $grandTotal = 0;
-                                            // Remove grand_total from budget data if it exists
-                                            $budgetItems = $budgetBreakdown;
-                                            unset($budgetItems['grand_total']);
-                                        @endphp
+                                        @elseif ($sourceType == 'non_travel_memo')
+                                            {{-- Budget breakdown for non-travel memos in table format --}}
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered table-sm mb-0">
+                                                    <thead class="table-secondary">
+                                                        <tr>
+                                                            <th class="text-center">#</th>
+                                                            <th>Description</th>
+                                                            <th class="text-center">Quantity</th>
+                                                            <th class="text-end">Unit Price</th>
+                                                            <th class="text-end">Total</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @php
+                                                            $itemCount = 1;
+                                                            $grandTotal = 0;
+                                                            // Remove grand_total from budget data if it exists
+                                                            $budgetItems = $displayBudgetBreakdown;
+                                                            unset($budgetItems['grand_total']);
+                                                        @endphp
                                         @forelse($budgetItems as $codeId => $items)
                                             @if(is_array($items))
                                                 @foreach($items as $item)
@@ -408,18 +446,18 @@
                                     @endif
                                 </table>
                             </div>
-                        @else
-                            {{-- Fallback: Show budget as key-value pairs for other source types --}}
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm mb-0">
-                                    <thead class="table-secondary">
-                                        <tr>
-                                            <th>Budget Item</th>
-                                            <th>Value</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($budgetBreakdown as $key => $value)
+                                        @else
+                                            {{-- Fallback: Show budget as key-value pairs for other source types --}}
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered table-sm mb-0">
+                                                    <thead class="table-secondary">
+                                                        <tr>
+                                                            <th>Budget Item</th>
+                                                            <th>Value</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach ($displayBudgetBreakdown as $key => $value)
                                             @if ($key !== 'grand_total')
                                                 <tr>
                                                     <td>{{ $key }}</td>
@@ -466,6 +504,45 @@
                             </tr>
                         </thead>
                         <tbody id="internalParticipants">
+                            @if($isEdit && !empty($internalParticipants))
+                                @foreach($internalParticipants as $pIdx => $participant)
+                                <tr>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-internal-row" {{ $pIdx === 0 ? 'disabled' : '' }}>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <select name="internal_participants[{{ $pIdx }}][staff_id]"
+                                            class="form-select border-success participant-select" style="width: 100%;">
+                                            <option value="">Select Participant</option>
+                                            @if (!empty($participantNames))
+                                                @foreach ($participantNames as $p)
+                                                <option value="{{ $p['id'] }}" {{ (($participant['staff_id'] ?? '') == $p['id']) ? 'selected' : '' }}>
+                                                    {{ $p['text'] }}
+                                                </option>
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                        <input type="hidden" name="internal_participants[{{ $pIdx }}][cost_type]" value="{{ $participant['cost_type'] ?? 'Daily Rate' }}">
+                                        <input type="hidden" name="internal_participants[{{ $pIdx }}][description]" value="{{ $participant['description'] ?? '' }}">
+                                    </td>
+                                    @foreach ($costItems as $costItem)
+                                    <td>
+                                        @php $costKey = $costItem->id ?? $costItem->name; $costVal = $participant['costs'][$costKey] ?? $participant['costs'][$costItem->name] ?? 0; @endphp
+                                        <input type="text"
+                                            name="internal_participants[{{ $pIdx }}][costs][{{ $costKey }}]"
+                                            class="form-control border-success cost-input" value="{{ $costVal }}"
+                                            data-cost-item="{{ $costItem->name }}"
+                                            placeholder="Enter {{ $costItem->name }}"
+                                            pattern="[0-9,]+(\.[0-9]{1,2})?"
+                                            title="Enter a valid number (e.g., 1,000.50)">
+                                    </td>
+                                    @endforeach
+                                    <td class="text-end fw-bold total-cell">$0.00</td>
+                                </tr>
+                                @endforeach
+                            @else
                             <tr>
                                 <td class="text-center">
                                         <button type="button" class="btn btn-outline-danger btn-sm remove-internal-row" disabled>
@@ -503,6 +580,7 @@
                                                         @endforeach
                                     <td class="text-end fw-bold total-cell">$0.00</td>
                             </tr>
+                            @endif
                         </tbody>
                             <tfoot class="table-secondary">
                                 <tr>
@@ -525,7 +603,7 @@
                                                     </label>
                                                     <textarea name="internal_participants_comment" id="internal_participants_comment" 
                                                         class="form-control border-success summernote" rows="3" 
-                                                        placeholder="Add any comments or notes about internal participants costs..."></textarea>
+                                                        placeholder="Add any comments or notes about internal participants costs...">{{ $isEdit ? ($serviceRequest->internal_participants_comment ?? '') : '' }}</textarea>
                                                 </div>
                                             </div>
             @endif
@@ -553,6 +631,40 @@
                             </tr>
                         </thead>
                         <tbody id="externalParticipants">
+                            @if($isEdit && !empty($externalParticipants ?? []))
+                                @foreach($externalParticipants as $eIdx => $extParticipant)
+                                <tr>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-external-row" {{ $eIdx === 0 ? 'disabled' : '' }}>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                    <td style="width: 200px; max-width: 200px;">
+                                        <input type="text" name="external_participants[{{ $eIdx }}][name]"
+                                            class="form-control border-success" placeholder="Name" value="{{ $extParticipant['name'] ?? '' }}">
+                                        <input type="hidden" name="external_participants[{{ $eIdx }}][cost_type]" value="{{ $extParticipant['cost_type'] ?? 'Daily Rate' }}">
+                                        <input type="hidden" name="external_participants[{{ $eIdx }}][description]" value="{{ $extParticipant['description'] ?? '' }}">
+                                    </td>
+                                    <td style="width: 200px; max-width: 200px;">
+                                        <input type="email" name="external_participants[{{ $eIdx }}][email]"
+                                            class="form-control border-success" placeholder="Email" value="{{ $extParticipant['email'] ?? '' }}">
+                                    </td>
+                                    @foreach ($costItems as $costItem)
+                                    @php $costKey = $costItem->id ?? $costItem->name; $costVal = $extParticipant['costs'][$costKey] ?? $extParticipant['costs'][$costItem->name] ?? 0; @endphp
+                                    <td>
+                                        <input type="text"
+                                            name="external_participants[{{ $eIdx }}][costs][{{ $costKey }}]"
+                                            class="form-control border-success cost-input" value="{{ $costVal }}"
+                                            data-cost-item="{{ $costItem->name }}"
+                                            placeholder="Enter {{ $costItem->name }}"
+                                            pattern="[0-9,]+(\.[0-9]{1,2})?"
+                                            title="Enter a valid number (e.g., 1,000.50)">
+                                    </td>
+                                    @endforeach
+                                    <td class="text-end fw-bold total-cell">$0.00</td>
+                                </tr>
+                                @endforeach
+                            @else
                             <tr>
                                     <td class="text-center">
                                         <button type="button" class="btn btn-outline-danger btn-sm remove-external-row" disabled>
@@ -580,6 +692,7 @@
                                 @endforeach
                                     <td class="text-end fw-bold total-cell">$0.00</td>
                             </tr>
+                            @endif
                         </tbody>
                             <tfoot class="table-secondary">
                                 <tr>
@@ -602,7 +715,7 @@
                                         </label>
                                         <textarea name="external_participants_comment" id="external_participants_comment" 
                                             class="form-control border-success summernote" rows="3" 
-                                            placeholder="Add any comments or notes about external participants costs..."></textarea>
+                                            placeholder="Add any comments or notes about external participants costs...">{{ $isEdit ? ($serviceRequest->external_participants_comment ?? '') : '' }}</textarea>
                                     </div>
                                 </div>
             @endif
@@ -629,14 +742,17 @@
                         <tbody id="otherCosts">
                                 @if ($otherCostItems->isNotEmpty())
                                     @foreach ($otherCostItems as $index => $costItem)
+                                    @php
+                                        $otherRow = ($isEdit && !empty($otherCostsForEdit ?? []) && isset($otherCostsForEdit[$index])) ? $otherCostsForEdit[$index] : null;
+                                    @endphp
                                     <tr>
                                         <td>
                                                 <select name="other_costs[{{ $index }}][cost_type]"
                                                     class="form-select border-success">
-                                                <option value="{{ $costItem->name }}">{{ $costItem->name }}</option>
+                                                <option value="{{ $costItem->name }}" {{ ($otherRow && ($otherRow['cost_type'] ?? '') == $costItem->name) ? 'selected' : '' }}>{{ $costItem->name }}</option>
                                                     @foreach ($otherCostItems as $item)
                                                         @if ($item->id != $costItem->id)
-                                                            <option value="{{ $item->name }}">{{ $item->name }}
+                                                            <option value="{{ $item->name }}" {{ ($otherRow && ($otherRow['cost_type'] ?? '') == $item->name) ? 'selected' : '' }}>{{ $item->name }}
                                                             </option>
                                                     @endif
                                                         @endforeach
@@ -644,19 +760,19 @@
                                         </td>
                                         <td>
                                                 <input type="text" name="other_costs[{{ $index }}][unit_cost]"
-                                                    class="form-control border-success cost-input" value="0"
+                                                    class="form-control border-success cost-input" value="{{ $otherRow ? ($otherRow['unit_cost'] ?? 0) : '0' }}"
                                                     placeholder="Enter unit cost"
                                                     pattern="[0-9,]+(\.[0-9]{1,2})?"
                                                     title="Enter a valid number (e.g., 1,000.50)">
                                         </td>
                                         <td>
                                                 <input type="number" name="other_costs[{{ $index }}][days]"
-                                                    class="form-control border-success cost-input" value="1" min="1"
+                                                    class="form-control border-success cost-input" value="{{ $otherRow ? ($otherRow['days'] ?? 1) : 1 }}" min="1"
                                                    placeholder="Enter days">
                                         </td>
                                         <td>
                                                 <textarea name="other_costs[{{ $index }}][description]" class="form-control border-success" rows="2"
-                                                      placeholder="Enter description"></textarea>
+                                                      placeholder="Enter description">{{ $otherRow ? ($otherRow['description'] ?? '') : '' }}</textarea>
                                         </td>
                                             <td class="text-end fw-bold total-cell">$0.00</td>
                                     </tr>
@@ -684,7 +800,7 @@
                                         </label>
                                         <textarea name="other_costs_comment" id="other_costs_comment" 
                                             class="form-control border-success summernote" rows="3" 
-                                            placeholder="Add any comments or notes about other costs..."></textarea>
+                                            placeholder="Add any comments or notes about other costs...">{{ $isEdit ? ($serviceRequest->other_costs_comment ?? '') : '' }}</textarea>
                                     </div>
                                 </div>
             @endif
@@ -809,9 +925,14 @@
                     <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary px-4">
                     <i class="fas fa-times me-1"></i> Cancel
                 </a>
-                    <button type="submit" class="btn btn-success px-4">
-                    <i class="fas fa-paper-plane me-1"></i> Submit Request
-                </button>
+                    <button type="submit" name="submit_action" value="submit" class="btn btn-success px-4">
+                        <i class="fas fa-paper-plane me-1"></i> Submit Request
+                    </button>
+                    @if(!$isEdit)
+                    <button type="submit" name="submit_action" value="draft" class="btn btn-outline-primary px-4">
+                        <i class="fas fa-save me-1"></i> Save as draft
+                    </button>
+                    @endif
             </div>
         </form>
     </div>
@@ -910,11 +1031,14 @@
 <script>
 // Make participant names available to JavaScript
 const participantNames = @json($participantNames ?? []);
-const sourceType = '{{ $sourceType }}';
+const sourceType = '{{ $sourceType ?? '' }}';
+const isEditMode = {{ isset($serviceRequest) ? 'true' : 'false' }};
+const initialInternalCount = {{ ($isEdit && !empty($internalParticipants)) ? count($internalParticipants) : 1 }};
+const initialExternalCount = {{ ($isEdit && !empty($externalParticipants ?? [])) ? count($externalParticipants) : 1 }};
 
 document.addEventListener('DOMContentLoaded', function() {
-    let internalParticipantCount = 1;
-    let externalParticipantCount = 1;
+    let internalParticipantCount = initialInternalCount;
+    let externalParticipantCount = initialExternalCount;
     
     // Add internal participant
     document.getElementById('addInternal').addEventListener('click', function() {

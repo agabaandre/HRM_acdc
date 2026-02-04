@@ -291,19 +291,29 @@ class ServiceRequestController extends Controller
         // Process budget data
         $budgetData = $this->processBudgetData($request);
 
-        // Get assigned workflow ID for ServiceRequest model
-        $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
-        if (!$assignedWorkflowId) {
-            $assignedWorkflowId = 3; // Default workflow ID for ServiceRequest
+        $isDraft = $request->input('submit_action') === 'draft';
+
+        if ($isDraft) {
+            // Draft: no workflow, overall_status = draft
+            $validated['overall_status'] = 'draft';
+            $validated['forward_workflow_id'] = null;
+            $validated['reverse_workflow_id'] = null;
+            $validated['approval_level'] = null;
+            $validated['next_approval_level'] = null;
+        } else {
+            // Full submit: set workflow and pending status
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 3; // Default workflow ID for ServiceRequest
+            }
+            $approvalLevel = 31;
+            $nextApprovalLevel = 32;
+            $validated['approval_level'] = $approvalLevel;
+            $validated['next_approval_level'] = $nextApprovalLevel;
+            $validated['overall_status'] = 'pending';
+            $validated['forward_workflow_id'] = $assignedWorkflowId;
+            $validated['reverse_workflow_id'] = $assignedWorkflowId;
         }
-        
-        // Set approval levels and workflow IDs for immediate submission
-        $approvalLevel = 31; // Start at level 31 for ServiceRequest (Director Finance)
-        $nextApprovalLevel = 32; // Next level to be approved (Director Administration)
-        $overallStatus = 'pending'; // Set to pending immediately
-        $forwardWorkflowId = $assignedWorkflowId; // Set the assigned workflow ID
-        $reverseWorkflowId = $assignedWorkflowId; // Set the same for reverse workflow
-        
         
         // Process specifications array if provided
         if (!isset($validated['specifications']) || !is_array($validated['specifications'])) {
@@ -313,14 +323,13 @@ class ServiceRequestController extends Controller
         // Merge budget data with validated data
         $validated = array_merge($validated, $budgetData);
         
-        // Add approval and workflow fields
-        $validated['approval_level'] = $approvalLevel;
-        $validated['next_approval_level'] = $nextApprovalLevel;
-        $validated['overall_status'] = $overallStatus;
-        $validated['forward_workflow_id'] = $forwardWorkflowId;
-        $validated['reverse_workflow_id'] = $reverseWorkflowId;
-        
         $serviceRequest = ServiceRequest::create($validated);
+        
+        if ($isDraft) {
+            return redirect()
+                ->route('service-requests.show', $serviceRequest)
+                ->with('success', 'Service request saved as draft. You can submit it for approval when ready.');
+        }
         
         // Save approval trail for ServiceRequest creation and submission
         $serviceRequest->saveApprovalTrail('Service request created and submitted for approval', 'submitted');
@@ -706,6 +715,7 @@ class ServiceRequestController extends Controller
      */
     public function edit(ServiceRequest $serviceRequest): View
     {
+        $serviceRequest->load(['division', 'fundType']);
         $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])->get();
         if ($staff->isEmpty()) {
             $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])->take(10)->get();
@@ -721,7 +731,19 @@ class ServiceRequestController extends Controller
             $sourceData = $this->getSourceDataForForm($sourceType, $sourceId);
         }
 
-        // Budget from stored service request
+        // Original Budget Breakdown display: use source memo's budget (same as create form), not service request's
+        $originalBudgetBreakdownFromSource = null;
+        if ($sourceData && isset($sourceData->budget_breakdown)) {
+            $decoded = is_string($sourceData->budget_breakdown)
+                ? json_decode(stripslashes($sourceData->budget_breakdown), true)
+                : $sourceData->budget_breakdown;
+            if (is_string($decoded ?? null)) {
+                $decoded = json_decode($decoded, true);
+            }
+            $originalBudgetBreakdownFromSource = is_array($decoded) ? $decoded : null;
+        }
+
+        // Budget and costs from stored service request (for form values and cost items; submission uses these)
         $budgetBreakdown = [];
         if ($serviceRequest->budget_breakdown) {
             $budgetBreakdown = is_string($serviceRequest->budget_breakdown)
@@ -736,9 +758,10 @@ class ServiceRequestController extends Controller
             $internalParticipants = is_array($decoded) ? $decoded : [];
         }
 
+        // Cost items: only those from this service request's budget (memo-related). Never re-pull from source.
         $costItems = collect();
         $otherCostItems = collect();
-        if ($sourceType !== 'non_travel_memo' && !empty($budgetBreakdown)) {
+        if (!empty($budgetBreakdown)) {
             $extractedCostItems = $this->extractCostItemsFromBudget($budgetBreakdown);
             if (!empty($extractedCostItems)) {
                 foreach ($extractedCostItems as $costItem) {
@@ -754,13 +777,28 @@ class ServiceRequestController extends Controller
                         $otherCostItems->push($dynamicCostItem);
                     }
                 }
-            } else {
-                $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
-                $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
             }
+        }
+        if ($costItems->isEmpty() && $otherCostItems->isEmpty()) {
+            $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
+            $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
         }
 
         $requestNumber = $serviceRequest->request_number;
+
+        $externalParticipants = [];
+        if ($serviceRequest->external_participants_cost) {
+            $decoded = is_string($serviceRequest->external_participants_cost)
+                ? json_decode($serviceRequest->external_participants_cost, true) : $serviceRequest->external_participants_cost;
+            $externalParticipants = is_array($decoded) ? $decoded : [];
+        }
+
+        $otherCostsForEdit = [];
+        if ($serviceRequest->other_costs) {
+            $decoded = is_string($serviceRequest->other_costs)
+                ? json_decode($serviceRequest->other_costs, true) : $serviceRequest->other_costs;
+            $otherCostsForEdit = is_array($decoded) ? $decoded : [];
+        }
 
         $participantNames = [];
         foreach ($internalParticipants as $participant) {
@@ -787,7 +825,8 @@ class ServiceRequestController extends Controller
         return view('service-requests.create', compact(
             'serviceRequest', 'staff', 'divisions', 'workflows', 'activities',
             'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId',
-            'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames'
+            'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames',
+            'externalParticipants', 'otherCostsForEdit', 'originalBudgetBreakdownFromSource'
         ));
     }
 
@@ -1628,12 +1667,43 @@ class ServiceRequestController extends Controller
     }
 
     /**
-     * Submit service request for approval.
+     * Submit service request for approval (e.g. from draft).
      */
     public function submitForApproval(ServiceRequest $serviceRequest): RedirectResponse
     {
-        
-        $serviceRequest->submitForApproval();
+        $status = $serviceRequest->overall_status ?? '';
+
+        if (!in_array($status, ['draft', 'returned'])) {
+            return redirect()->route('service-requests.show', $serviceRequest)->with([
+                'msg' => 'Only draft or returned service requests can be submitted for approval.',
+                'type' => 'error',
+            ]);
+        }
+
+        if (!is_with_creator_generic($serviceRequest)) {
+            return redirect()->route('service-requests.show', $serviceRequest)->with([
+                'msg' => 'You are not authorized to submit this service request.',
+                'type' => 'error',
+            ]);
+        }
+
+        $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
+        if (!$assignedWorkflowId) {
+            $assignedWorkflowId = 3;
+        }
+
+        $serviceRequest->forward_workflow_id = $assignedWorkflowId;
+        $serviceRequest->reverse_workflow_id = $assignedWorkflowId;
+        $serviceRequest->approval_level = 31;
+        $serviceRequest->next_approval_level = 32;
+        $serviceRequest->overall_status = 'pending';
+        $serviceRequest->save();
+
+        $serviceRequest->saveApprovalTrail('Submitted for approval', 'submitted');
+
+        if (function_exists('send_service_request_email_notification')) {
+            send_service_request_email_notification($serviceRequest, 'approval');
+        }
 
         return redirect()->route('service-requests.show', $serviceRequest)->with([
             'msg' => 'Service request submitted for approval successfully.',
