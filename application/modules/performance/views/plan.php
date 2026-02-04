@@ -7,14 +7,20 @@ if (!empty($ppa)) {
   $staff_contract_id = $ppa->staff_contract_id;
   //dd($staff_contract_id);
   $contract = Modules::run('performance/ppa_contract', $staff_contract_id);
+  $period_for_form = !empty($ppa->performance_period) ? $ppa->performance_period : (isset($performance_period) ? $performance_period : str_replace(' ', '-', current_period()));
 }
 else{
   $staff_id = $session->staff_id;
   $contract = Modules::run('auth/contract_info', $staff_id);
   $staff_contract_id = $contract->staff_contract_id;
-
+  $period_for_form = isset($performance_period) ? $performance_period : str_replace(' ', '-', current_period());
 }
 $permissions = $session->permissions;
+// End year of performance period for default timeline (e.g. January-2025-to-December-2025 -> 2025)
+$period_end_year = date('Y');
+if (!empty($period_for_form) && preg_match('/\d{4}/', $period_for_form, $m)) {
+  $period_end_year = $m[0];
+}
 //dd($contract);
 //dd($this->uri->segment(2));
 $ppa_settings=ppa_settings();
@@ -52,8 +58,8 @@ if (!isset($ppa) || empty($ppa)) {
 //sdd($showApprovalBtns);
 
 
-$selected_skills = is_string($ppa->required_skills ?? null) ? json_decode($ppa->required_skills, true) : ($ppa->required_skills ?? []);
-$objectives_raw = $ppa->objectives ?? [];
+$selected_skills = (!empty($ppa) && is_string(@$ppa->required_skills)) ? json_decode($ppa->required_skills, true) : ((!empty($ppa) && isset($ppa->required_skills)) ? $ppa->required_skills : []);
+$objectives_raw = !empty($ppa) ? (@$ppa->objectives ?? []) : [];
 
 
 if (is_string($objectives_raw)) {
@@ -108,6 +114,7 @@ input[type="number"] {
 
 <input type="hidden" name="staff_id" value="<?=$staff_id?>">
 <input type="hidden" name="staff_contract_id" value="<?=$staff_contract_id?>">
+<input type="hidden" name="performance_period" value="<?= htmlspecialchars($period_for_form ?? '') ?>">
 <h4>A. Staff Details</h4>
 <table class="form-table table-bordered">
   <tr>
@@ -126,7 +133,7 @@ input[type="number"] {
     <td><b>Division/Directorate</b></td>
     <td><?= acdc_division($contract->division_id) ?></td>
     <td><b>Performance Period</b></td>
-    <td><?php if(!empty($ppa->performance_period)){ echo $ppa->performance_period; } else { echo current_period();} ?></td>
+    <td><?= !empty($period_for_form) ? str_replace('-', ' ', $period_for_form) : current_period() ?></td>
   </tr>
   <tr>
     <td><b>First Supervisor</b></td>
@@ -187,7 +194,7 @@ input[type="number"] {
                     <?= $readonly ?> 
                     value="<?php
                         if (empty($val['timeline'])&&($i<=3)) {
-                          echo date('Y') . '-12-31';
+                          echo $period_end_year . '-12-31';
                         } else {
                           echo $val['timeline'];
                         }
@@ -303,11 +310,11 @@ input[type="number"] {
 
     <?php echo form_close(); ?>
 
-<!-- Set performance period years for JavaScript validation -->
+<!-- Set performance period years for JavaScript validation and flatpickr min/max (B. Performance Objectives timelines) -->
 <script>
-  // Extract years from performance period (e.g., "January-2025-to-December-2025" -> [2025])
-  <?php if (!empty($ppa->performance_period)): ?>
-    const performancePeriod = '<?= $ppa->performance_period ?>';
+  // Extract years from performance period (e.g., "January-2025-to-December-2025" -> [2025]) so timelines stay within period
+  <?php if (!empty($period_for_form)): ?>
+    const performancePeriod = <?= json_encode($period_for_form) ?>;
     const yearMatches = performancePeriod.match(/\d{4}/g);
     window.performancePeriodYears = yearMatches ? [...new Set(yearMatches.map(y => parseInt(y)))] : [];
   <?php else: ?>
