@@ -395,7 +395,7 @@
           </div>
         </div>
         <div class="col-lg-7">
-          <div id="workflowAvgTimeChart" style="min-height: 280px;"></div>
+          <div id="workflowAvgTimeChart" style="min-height: 350px;"></div>
         </div>
       </div>
     </div>
@@ -685,8 +685,14 @@ function renderWorkflowStats(stats) {
         return;
     }
     stats.forEach(function(row) {
+        const docTypes = (row.doc_type_labels && row.doc_type_labels.length)
+            ? row.doc_type_labels.join(', ')
+            : '';
+        const docTypesHtml = docTypes
+            ? `<div class="small text-muted mt-1"><em>${escapeHtml(docTypes)}</em></div>`
+            : '';
         tbody.append(`<tr>
-            <td>${escapeHtml(row.workflow_name || '-')}</td>
+            <td><div>${escapeHtml(row.workflow_name || '-')}</div>${docTypesHtml}</td>
             <td class="text-end">${row.memos != null ? row.memos : 0}</td>
             <td class="text-end">${escapeHtml(row.avg_display || 'No data')}</td>
         </tr>`);
@@ -695,6 +701,8 @@ function renderWorkflowStats(stats) {
     // Column chart: workflow name (x), average time to last approver in hours (y)
     const categories = stats.map(function(s) { return s.workflow_name || 'Unknown'; });
     const seriesData = stats.map(function(s) { return Math.round((s.avg_hours || 0) * 10) / 10; });
+    const maxHours = seriesData.length ? Math.max.apply(null, seriesData) : 0;
+    const yMax = maxHours > 0 ? Math.ceil(maxHours * 1.15) : 10;
 
     if (typeof Highcharts !== 'undefined') {
         const chartEl = document.getElementById('workflowAvgTimeChart');
@@ -702,12 +710,13 @@ function renderWorkflowStats(stats) {
             try { chartEl.__chart.destroy(); chartEl.__chart = null; } catch (e) {}
         }
         const chart = Highcharts.chart('workflowAvgTimeChart', {
-            chart: { type: 'column' },
+            chart: { type: 'column', height: 350 },
             title: { text: 'Average Time to Last Approver (approved documents only)' },
             subtitle: { text: 'Time from submission to final approval, in hours. Filters above apply.' },
-            xAxis: { categories: categories, title: { text: 'Workflow' }, crosshair: true },
+            xAxis: { categories: categories, title: { text: 'Workflow' }, crosshair: true, labels: { rotation: -45 } },
             yAxis: {
                 min: 0,
+                max: yMax,
                 title: { text: 'Time to last approver (hours)' },
                 allowDecimals: true
             },

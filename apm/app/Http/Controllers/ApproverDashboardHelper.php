@@ -1014,6 +1014,21 @@ trait ApproverDashboardHelper
         return $map[$docType] ?? null;
     }
 
+    /** Model type (full class) to human-readable label for workflow doc-type listing. */
+    protected static function getDocTypeLabelByModelType($modelType)
+    {
+        $map = [
+            'App\\Models\\Matrix' => 'Matrix',
+            'App\\Models\\NonTravelMemo' => 'Non-Travel Memo',
+            'App\\Models\\Activity' => 'Single Memo',
+            'App\\Models\\SpecialMemo' => 'Special Memo',
+            'App\\Models\\RequestARF' => 'ARF',
+            'App\\Models\\ServiceRequest' => 'Request for Service',
+            'App\\Models\\ChangeRequest' => 'Change Request',
+        ];
+        return $map[$modelType ?? ''] ?? $modelType;
+    }
+
     /**
      * Get average approval time by workflow with filters (division, doc_type, year, month).
      */
@@ -1176,13 +1191,21 @@ trait ApproverDashboardHelper
 
                 $totalHours = 0;
                 $count = 0;
+                $modelTypesSeen = [];
                 foreach ($rows as $row) {
                     if (!$row->submitted_time || !$row->last_approval_time) continue;
                     $submitted = Carbon::parse($row->submitted_time);
                     $lastApproval = Carbon::parse($row->last_approval_time);
                     $totalHours += $submitted->diffInSeconds($lastApproval) / 3600;
                     $count++;
+                    if (!empty($row->model_type)) {
+                        $modelTypesSeen[$row->model_type] = true;
+                    }
                 }
+                $docTypeLabels = array_values(array_unique(array_map(function ($mt) {
+                    return self::getDocTypeLabelByModelType($mt);
+                }, array_keys($modelTypesSeen))));
+                sort($docTypeLabels);
 
                 $avgHours = $count > 0 ? round($totalHours / $count, 2) : 0;
                 $result[] = [
@@ -1191,6 +1214,7 @@ trait ApproverDashboardHelper
                     'memos' => $count,
                     'avg_hours' => $avgHours,
                     'avg_display' => $this->formatApprovalTime($avgHours),
+                    'doc_type_labels' => $docTypeLabels,
                 ];
             }
 
