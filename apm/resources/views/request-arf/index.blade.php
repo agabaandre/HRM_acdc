@@ -29,7 +29,7 @@
                     </label>
                     <select name="year" id="year" class="form-select" style="width: 100%;">
                         @foreach($years ?? [] as $yr => $label)
-                            <option value="{{ $yr }}" {{ (request('year', $selectedYear ?? date('Y')) == $yr) ? 'selected' : '' }}>{{ $label }}</option>
+                            <option value="{{ $yr }}" {{ (string)($selectedYear ?? date('Y')) === (string)$yr ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
