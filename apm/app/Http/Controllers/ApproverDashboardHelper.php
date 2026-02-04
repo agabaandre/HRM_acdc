@@ -1155,7 +1155,33 @@ trait ApproverDashboardHelper
                             ->whereColumn('sub.model_type', 'at.model_type')
                             ->where(function ($q) {
                                 $q->whereColumn('sub.forward_workflow_id', 'at.forward_workflow_id')
-                                    ->orWhereNull('sub.forward_workflow_id');
+                                    ->orWhere(function ($q2) {
+                                        $q2->whereNull('sub.forward_workflow_id')->whereNull('at.forward_workflow_id');
+                                    })
+                                    ->orWhere(function ($q2) {
+                                        $q2->where('at.model_type', 'App\\Models\\Matrix')
+                                            ->whereNull('at.forward_workflow_id')
+                                            ->whereExists(function ($mx) {
+                                                $mx->select(DB::raw(1))->from('matrices as m')
+                                                    ->whereColumn('m.id', 'at.model_id')
+                                                    ->where(function ($mq) {
+                                                        $mq->whereColumn('m.forward_workflow_id', 'sub.forward_workflow_id')
+                                                            ->orWhereNull('sub.forward_workflow_id');
+                                                    });
+                                            });
+                                    })
+                                    ->orWhere(function ($q2) {
+                                        $q2->where('at.model_type', 'App\\Models\\Activity')
+                                            ->whereNull('at.forward_workflow_id')
+                                            ->whereExists(function ($ax) {
+                                                $ax->select(DB::raw(1))->from('activities as a')
+                                                    ->whereColumn('a.id', 'at.model_id')
+                                                    ->where(function ($aq) {
+                                                        $aq->whereColumn('a.forward_workflow_id', 'sub.forward_workflow_id')
+                                                            ->orWhereNull('sub.forward_workflow_id');
+                                                    });
+                                            });
+                                    });
                             })
                             ->where('sub.action', 'submitted')
                             ->where('sub.approval_order', 0)
@@ -1197,9 +1223,40 @@ trait ApproverDashboardHelper
                                 });
                         })
                         ->orWhere(function ($subQ) use ($year, $month) {
-                            $subQ->whereNotIn('at.model_type', ['App\\Models\\Matrix', 'App\\Models\\Activity', 'App\\Models\\ChangeRequest']);
-                            if ($year) $subQ->whereYear('at.created_at', $year);
-                            if ($month) $subQ->whereMonth('at.created_at', $month);
+                            $subQ->where('at.model_type', 'App\\Models\\NonTravelMemo')
+                                ->whereExists(function ($exists) use ($year, $month) {
+                                    $exists->select(DB::raw(1))->from('non_travel_memos as n')
+                                        ->whereColumn('n.id', 'at.model_id');
+                                    if ($year) $exists->whereYear('n.created_at', $year);
+                                    if ($month) $exists->whereMonth('n.created_at', $month);
+                                });
+                        })
+                        ->orWhere(function ($subQ) use ($year, $month) {
+                            $subQ->where('at.model_type', 'App\\Models\\SpecialMemo')
+                                ->whereExists(function ($exists) use ($year, $month) {
+                                    $exists->select(DB::raw(1))->from('special_memos as s')
+                                        ->whereColumn('s.id', 'at.model_id');
+                                    if ($year) $exists->whereYear('s.created_at', $year);
+                                    if ($month) $exists->whereMonth('s.created_at', $month);
+                                });
+                        })
+                        ->orWhere(function ($subQ) use ($year, $month) {
+                            $subQ->where('at.model_type', 'App\\Models\\RequestARF')
+                                ->whereExists(function ($exists) use ($year, $month) {
+                                    $exists->select(DB::raw(1))->from('request_arfs as r')
+                                        ->whereColumn('r.id', 'at.model_id');
+                                    if ($year) $exists->whereYear('r.created_at', $year);
+                                    if ($month) $exists->whereMonth('r.created_at', $month);
+                                });
+                        })
+                        ->orWhere(function ($subQ) use ($year, $month) {
+                            $subQ->where('at.model_type', 'App\\Models\\ServiceRequest')
+                                ->whereExists(function ($exists) use ($year, $month) {
+                                    $exists->select(DB::raw(1))->from('service_requests as sr')
+                                        ->whereColumn('sr.id', 'at.model_id');
+                                    if ($year) $exists->whereYear('sr.created_at', $year);
+                                    if ($month) $exists->whereMonth('sr.created_at', $month);
+                                });
                         });
                     });
                 }
