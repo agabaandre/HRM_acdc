@@ -374,7 +374,7 @@
       <h5 class="mb-0 text-dark">
         <i class="fa fa-chart-bar me-2"></i>Average Time to Last Approver by Workflow
       </h5>
-      <p class="mb-0 mt-1 small text-muted">Approved documents only. Time from submission to when the final approver approved. Respects filters below.</p>
+      <p class="mb-0 mt-1 small text-muted">Approved documents only. Time from submission to when the final approver approved.</p>
     </div>
     <div class="card-body">
       <div class="row">
@@ -712,7 +712,7 @@ function renderWorkflowStats(stats) {
         const chart = Highcharts.chart('workflowAvgTimeChart', {
             chart: { type: 'column', height: 350 },
             title: { text: 'Average Time to Last Approver (approved documents only)' },
-            subtitle: { text: 'Time from submission to final approval, in hours. Filters above apply.' },
+            subtitle: { text: 'Time from submission to final approval, in hours.' },
             xAxis: { categories: categories, title: { text: 'Workflow' }, crosshair: true, labels: { rotation: -45 } },
             yAxis: {
                 min: 0,
