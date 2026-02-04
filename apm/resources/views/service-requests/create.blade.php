@@ -177,16 +177,25 @@
                     <div class="mb-3">
                         <div class="card border-success">
                             <div class="card-body p-3">
-                                <div class="d-flex align-items-center">
+                                <div class="d-flex align-items-center flex-wrap gap-2">
                                     <i class="fas fa-file-alt text-success me-3"></i>
                                     <h6 class="text-muted mb-0 me-3">Activity Title:</h6>
-                                    <h5 class="fw-bold text-dark mb-0">
-                                        {{ $isEdit ? ($serviceRequest->service_title ?? $serviceRequest->title ?? 'Service Request') : ($sourceData ? ($sourceData->activity_title ?? $sourceData->title ?? 'Service Request') : 'Service Request') }}
-                                    </h5>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    @if($isEdit && !empty($mainActivityUrl ?? null))
+                                        <h5 class="fw-bold text-dark mb-0 me-2">
+                                            <a href="{{ $mainActivityUrl }}" target="_blank" class="text-success text-decoration-none">{{ $serviceRequest->service_title ?? $serviceRequest->title ?? 'Service Request' }}</a>
+                                        </h5>
+                                        <a href="{{ $mainActivityUrl }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                            <i class="fas fa-external-link-alt me-1"></i> View Parent memo
+                                        </a>
+                                    @else
+                                        <h5 class="fw-bold text-dark mb-0">
+                                            {{ $isEdit ? ($serviceRequest->service_title ?? $serviceRequest->title ?? 'Service Request') : ($sourceData ? ($sourceData->activity_title ?? $sourceData->title ?? 'Service Request') : 'Service Request') }}
+                                        </h5>
+                                    @endif
                                 </div>
+                            </div>
+                        </div>
+                    </div>
                                 
                     <div class="row g-2">
                         <div class="col-md-6">
@@ -813,11 +822,11 @@
                 </h6>
                 
                 <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
+                        <table class="table table-bordered table-hover" id="participantsSummaryTable">
                             <thead class="table-secondary">
                                 <tr>
                                     <th style="width: 5%;">#</th>
-                                <th style="width: 25%;">Name</th>
+                                <th style="width: 25%; max-width: 600px;">Name</th>
                                 <th style="width: 20%;">Type</th>
                                 <th style="width: 25%;">Email/Position</th>
                                 <th style="width: 15%;">Role</th>
@@ -1061,6 +1070,16 @@
              background-color: #dc3545;
              border-color: #dc3545;
              color: white;
+         }
+
+         /* Participants Summary: limit Name column to 600px and wrap */
+         #participantsSummaryTable th:nth-child(2),
+         #participantsSummaryTable td:nth-child(2) {
+             max-width: 600px !important;
+             word-wrap: break-word;
+             word-break: break-word;
+             overflow-wrap: break-word;
+             white-space: normal !important;
          }
     </style>
 

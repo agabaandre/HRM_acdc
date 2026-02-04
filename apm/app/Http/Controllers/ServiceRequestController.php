@@ -302,9 +302,9 @@ class ServiceRequestController extends Controller
             $validated['next_approval_level'] = null;
         } else {
             // Full submit: set workflow and pending status
-            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
-            if (!$assignedWorkflowId) {
-                $assignedWorkflowId = 3; // Default workflow ID for ServiceRequest
+        $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
+        if (!$assignedWorkflowId) {
+            $assignedWorkflowId = 3; // Default workflow ID for ServiceRequest
             }
             $approvalLevel = 31;
             $nextApprovalLevel = 32;
@@ -725,12 +725,14 @@ class ServiceRequestController extends Controller
         $divisions = Division::all();
         $workflows = Workflow::all();
         $activities = Activity::all();
-
+        
         $sourceType = $serviceRequest->source_type;
         $sourceId = (int) $serviceRequest->source_id;
         $sourceData = null;
+        $mainActivityUrl = null;
         if ($sourceType && $sourceId) {
             $sourceData = $this->getSourceDataForForm($sourceType, $sourceId);
+            $mainActivityUrl = $this->getMainActivityUrl($sourceType, $sourceId, $sourceData);
         }
 
         // Original Budget Breakdown display: use source memo's budget (same as create form), not service request's
@@ -858,7 +860,7 @@ class ServiceRequestController extends Controller
             'serviceRequest', 'staff', 'divisions', 'workflows', 'activities',
             'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId',
             'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames',
-            'externalParticipants', 'otherCostsForEdit', 'originalBudgetBreakdownFromSource'
+            'externalParticipants', 'otherCostsForEdit', 'originalBudgetBreakdownFromSource', 'mainActivityUrl'
         ));
     }
 
@@ -950,7 +952,7 @@ class ServiceRequestController extends Controller
                 ->route('service-requests.show', $serviceRequest)
                 ->with('success', 'Service request submitted for approval successfully.');
         }
-
+        
         return redirect()
             ->route('service-requests.show', $serviceRequest)
             ->with('success', 'Service request updated successfully.');
