@@ -368,6 +368,39 @@
     </div>
   </div>
 
+  <!-- Average Time to Last Approver by Workflow (approved documents only) -->
+  <div class="card filter-card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0 text-dark">
+        <i class="fa fa-chart-bar me-2"></i>Average Time to Last Approver by Workflow
+      </h5>
+      <p class="mb-0 mt-1 small text-muted">Approved documents only. Time from submission to when the final approver approved. Respects filters below.</p>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-lg-5">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0" id="workflowStatsTable">
+              <thead>
+                <tr>
+                  <th>Workflow Name</th>
+                  <th class="text-end">Approved Docs</th>
+                  <th class="text-end">Avg. Time to Last Approver</th>
+                </tr>
+              </thead>
+              <tbody id="workflowStatsBody">
+                <tr><td colspan="3" class="text-center text-muted">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="col-lg-7">
+          <div id="workflowAvgTimeChart" style="min-height: 280px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Enhanced Filters -->
   <div class="card filter-card">
     <div class="card-header">
@@ -515,6 +548,7 @@ $(document).ready(function() {
         if (approverTable) {
             approverTable.draw();
         }
+        loadWorkflowStats();
     });
     
     // Clear filters button
@@ -538,6 +572,7 @@ $(document).ready(function() {
         if (approverTable) {
             approverTable.draw();
         }
+        loadWorkflowStats();
     });
     
     // Export to Excel - trigger DataTables button
@@ -607,6 +642,98 @@ function populateFilterOptions() {
             yearSelect.append(`<option value="${i}" ${selected}>${i}</option>`);
         }
     }
+
+    // Load workflow stats (respects current filters)
+    loadWorkflowStats();
+}
+
+function loadWorkflowStats() {
+    const params = {
+        division_id: $('#filterDivision').val() || '',
+        doc_type: $('#filterDocType').val() || '',
+        month: $('#filterMonth').val() || '',
+        year: $('#filterYear').val() || ''
+    };
+    $.ajax({
+        url: '{{ route("approver-dashboard.workflow-stats") }}',
+        type: 'GET',
+        data: params,
+        success: function(response) {
+            if (response.success && response.data && Array.isArray(response.data)) {
+                renderWorkflowStats(response.data);
+            } else {
+                $('#workflowStatsBody').html('<tr><td colspan="3" class="text-center text-muted">No data</td></tr>');
+                if (typeof Highcharts !== 'undefined' && Highcharts.charts) {
+                    const chartEl = document.getElementById('workflowAvgTimeChart');
+                    if (chartEl && chartEl.__chart) {
+                        try { chartEl.__chart.destroy(); } catch (e) {}
+                    }
+                }
+            }
+        },
+        error: function() {
+            $('#workflowStatsBody').html('<tr><td colspan="3" class="text-center text-danger">Error loading workflow stats</td></tr>');
+        }
+    });
+}
+
+function renderWorkflowStats(stats) {
+    const tbody = $('#workflowStatsBody');
+    tbody.empty();
+    if (!stats || stats.length === 0) {
+        tbody.html('<tr><td colspan="3" class="text-center text-muted">No workflow data</td></tr>');
+        return;
+    }
+    stats.forEach(function(row) {
+        tbody.append(`<tr>
+            <td>${escapeHtml(row.workflow_name || '-')}</td>
+            <td class="text-end">${row.memos != null ? row.memos : 0}</td>
+            <td class="text-end">${escapeHtml(row.avg_display || 'No data')}</td>
+        </tr>`);
+    });
+
+    // Column chart: workflow name (x), average time to last approver in hours (y)
+    const categories = stats.map(function(s) { return s.workflow_name || 'Unknown'; });
+    const seriesData = stats.map(function(s) { return Math.round((s.avg_hours || 0) * 10) / 10; });
+
+    if (typeof Highcharts !== 'undefined') {
+        const chartEl = document.getElementById('workflowAvgTimeChart');
+        if (chartEl && chartEl.__chart) {
+            try { chartEl.__chart.destroy(); chartEl.__chart = null; } catch (e) {}
+        }
+        const chart = Highcharts.chart('workflowAvgTimeChart', {
+            chart: { type: 'column' },
+            title: { text: 'Average Time to Last Approver (approved documents only)' },
+            subtitle: { text: 'Time from submission to final approval, in hours. Filters above apply.' },
+            xAxis: { categories: categories, title: { text: 'Workflow' }, crosshair: true },
+            yAxis: {
+                min: 0,
+                title: { text: 'Time to last approver (hours)' },
+                allowDecimals: true
+            },
+            tooltip: {
+                headerFormat: '<b>{point.x}</b><br/>',
+                pointFormat: 'Avg. time to last approver: {point.y} hrs'
+            },
+            plotOptions: {
+                column: {
+                    color: 'var(--primary-color, #119a48)',
+                    borderRadius: 4,
+                    dataLabels: { enabled: true, format: '{y} hrs' }
+                }
+            },
+            series: [{ name: 'Avg. time to last approver (hrs)', data: seriesData }],
+            credits: { enabled: false }
+        });
+        if (chartEl) chartEl.__chart = chart;
+    }
+}
+
+function escapeHtml(text) {
+    if (text == null) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function initializeDataTable() {

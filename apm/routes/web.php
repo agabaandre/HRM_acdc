@@ -206,6 +206,7 @@ Route::get('/approver-dashboard', [App\Http\Controllers\ApproverDashboardControl
 Route::get('/api/approver-dashboard', [App\Http\Controllers\ApproverDashboardController::class, 'getDashboardData'])->name('approver-dashboard.api');
 Route::get('/api/approver-dashboard/filter-options', [App\Http\Controllers\ApproverDashboardController::class, 'getFilterOptions'])->name('approver-dashboard.filter-options');
 Route::get('/api/approver-dashboard/summary-stats', [App\Http\Controllers\ApproverDashboardController::class, 'getSummaryStats'])->name('approver-dashboard.summary-stats');
+Route::get('/api/approver-dashboard/workflow-stats', [App\Http\Controllers\ApproverDashboardController::class, 'getWorkflowStats'])->name('approver-dashboard.workflow-stats');
 
 // Audit Logs Routes
 Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');

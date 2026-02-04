@@ -941,6 +941,267 @@ trait ApproverDashboardHelper
     }
 
     /**
+     * Get average approval time by workflow for the dashboard.
+     * Returns for each workflow: workflow name, memo/document count, average approval time (hours and display).
+     * Approval time = from submitted (approval_order=0) to last approved/rejected for that document.
+     */
+    protected function getAverageApprovalTimeByWorkflow()
+    {
+        try {
+            $workflows = DB::table('workflows')
+                ->select('id', 'workflow_name')
+                ->orderBy('workflow_name')
+                ->get();
+
+            $result = [];
+            foreach ($workflows as $wf) {
+                $workflowId = $wf->id;
+                // Documents that have been submitted and have at least one approved/rejected in this workflow
+                $rows = DB::select("
+                    SELECT 
+                        at.model_id,
+                        at.model_type,
+                        MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time,
+                        MAX(CASE WHEN at.action IN ('approved', 'rejected') THEN at.updated_at END) AS last_approval_time
+                    FROM approval_trails at
+                    WHERE at.forward_workflow_id = ?
+                    AND at.is_archived = 0
+                    AND (
+                        (at.action = 'submitted' AND at.approval_order = 0)
+                        OR at.action IN ('approved', 'rejected')
+                    )
+                    GROUP BY at.model_id, at.model_type
+                    HAVING submitted_time IS NOT NULL AND last_approval_time IS NOT NULL AND last_approval_time >= submitted_time
+                ", [$workflowId]);
+
+                $totalHours = 0;
+                $count = 0;
+                foreach ($rows as $row) {
+                    $submitted = Carbon::parse($row->submitted_time);
+                    $lastApproval = Carbon::parse($row->last_approval_time);
+                    $totalHours += $submitted->diffInSeconds($lastApproval) / 3600;
+                    $count++;
+                }
+
+                $avgHours = $count > 0 ? round($totalHours / $count, 2) : 0;
+                $result[] = [
+                    'workflow_name' => $wf->workflow_name,
+                    'workflow_id' => $workflowId,
+                    'memos' => $count,
+                    'avg_hours' => $avgHours,
+                    'avg_display' => $this->formatApprovalTime($avgHours),
+                ];
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Error calculating average approval time by workflow: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    protected static function getModelTypeByDocType($docType)
+    {
+        $map = [
+            'matrix' => 'App\\Models\\Matrix',
+            'non_travel' => 'App\\Models\\NonTravelMemo',
+            'single_memos' => 'App\\Models\\Activity',
+            'special' => 'App\\Models\\SpecialMemo',
+            'arf' => 'App\\Models\\RequestARF',
+            'requests_for_service' => 'App\\Models\\ServiceRequest',
+            'change_requests' => 'App\\Models\\ChangeRequest',
+        ];
+        return $map[$docType] ?? null;
+    }
+
+    /**
+     * Get average approval time by workflow with filters (division, doc_type, year, month).
+     */
+    protected function getAverageApprovalTimeByWorkflowFiltered($divisionId = null, $docType = null, $year = null, $month = null)
+    {
+        try {
+            $workflows = DB::table('workflows')
+                ->select('id', 'workflow_name')
+                ->orderBy('workflow_name')
+                ->get();
+
+            $modelType = $docType ? self::getModelTypeByDocType($docType) : null;
+            $quarter = ($month && $year) ? 'Q' . ceil($month / 3) : null;
+
+            $result = [];
+            foreach ($workflows as $wf) {
+                $workflowId = $wf->id;
+
+                $query = DB::table('approval_trails as at')
+                    ->select(
+                        'at.model_id',
+                        'at.model_type',
+                        DB::raw("MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time"),
+                        DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) AS last_approval_time")
+                    )
+                    ->where('at.forward_workflow_id', $workflowId)
+                    ->where('at.is_archived', 0)
+                    ->where(function ($q) {
+                        $q->where(function ($q2) {
+                            $q2->where('at.action', 'submitted')->where('at.approval_order', 0);
+                        })->orWhere('at.action', 'approved');
+                    });
+
+                // Only documents that are fully approved (overall_status = 'approved')
+                $query->where(function ($q) {
+                    $q->where('at.model_type', 'App\\Models\\Matrix')
+                        ->whereExists(function ($ex) {
+                            $ex->select(DB::raw(1))->from('matrices as m')
+                                ->whereColumn('m.id', 'at.model_id')
+                                ->where('m.overall_status', 'approved');
+                        })
+                        ->orWhere(function ($q2) {
+                            $q2->where('at.model_type', 'App\\Models\\Activity')
+                                ->whereExists(function ($ex) {
+                                    $ex->select(DB::raw(1))->from('activities as a')
+                                        ->whereColumn('a.id', 'at.model_id')
+                                        ->where('a.overall_status', 'approved');
+                                });
+                        })
+                        ->orWhere(function ($q2) {
+                            $q2->where('at.model_type', 'App\\Models\\NonTravelMemo')
+                                ->whereExists(function ($ex) {
+                                    $ex->select(DB::raw(1))->from('non_travel_memos as n')
+                                        ->whereColumn('n.id', 'at.model_id')
+                                        ->where('n.overall_status', 'approved');
+                                });
+                        })
+                        ->orWhere(function ($q2) {
+                            $q2->where('at.model_type', 'App\\Models\\SpecialMemo')
+                                ->whereExists(function ($ex) {
+                                    $ex->select(DB::raw(1))->from('special_memos as s')
+                                        ->whereColumn('s.id', 'at.model_id')
+                                        ->where('s.overall_status', 'approved');
+                                });
+                        })
+                        ->orWhere(function ($q2) {
+                            $q2->where('at.model_type', 'App\\Models\\RequestARF')
+                                ->whereExists(function ($ex) {
+                                    $ex->select(DB::raw(1))->from('request_arfs as r')
+                                        ->whereColumn('r.id', 'at.model_id')
+                                        ->where('r.overall_status', 'approved');
+                                });
+                        })
+                        ->orWhere(function ($q2) {
+                            $q2->where('at.model_type', 'App\\Models\\ServiceRequest')
+                                ->whereExists(function ($ex) {
+                                    $ex->select(DB::raw(1))->from('service_requests as sr')
+                                        ->whereColumn('sr.id', 'at.model_id')
+                                        ->where('sr.overall_status', 'approved');
+                                });
+                        })
+                        ->orWhere(function ($q2) {
+                            $q2->where('at.model_type', 'App\\Models\\ChangeRequest')
+                                ->whereExists(function ($ex) {
+                                    $ex->select(DB::raw(1))->from('change_request as c')
+                                        ->whereColumn('c.id', 'at.model_id')
+                                        ->where('c.overall_status', 'approved');
+                                });
+                        });
+                });
+
+                if ($modelType) {
+                    $query->where('at.model_type', $modelType);
+                }
+
+                if ($divisionId) {
+                    $query->whereExists(function ($ex) use ($divisionId) {
+                        $ex->select(DB::raw(1))
+                            ->from('approval_trails as sub')
+                            ->join('staff as st', 'st.staff_id', '=', 'sub.staff_id')
+                            ->whereColumn('sub.model_id', 'at.model_id')
+                            ->whereColumn('sub.model_type', 'at.model_type')
+                            ->where(function ($q) {
+                                $q->whereColumn('sub.forward_workflow_id', 'at.forward_workflow_id')
+                                    ->orWhereNull('sub.forward_workflow_id');
+                            })
+                            ->where('sub.action', 'submitted')
+                            ->where('sub.approval_order', 0)
+                            ->where('sub.is_archived', 0)
+                            ->where('st.division_id', $divisionId);
+                    });
+                }
+
+                if ($year || $month) {
+                    $query->where(function ($q) use ($year, $quarter, $month) {
+                        $q->where(function ($subQ) use ($year, $quarter) {
+                            $subQ->where('at.model_type', 'App\\Models\\Matrix')
+                                ->whereExists(function ($exists) use ($year, $quarter) {
+                                    $exists->select(DB::raw(1))->from('matrices as m')->whereColumn('m.id', 'at.model_id');
+                                    if ($year) $exists->where('m.year', $year);
+                                    if ($quarter) $exists->where('m.quarter', $quarter);
+                                });
+                        })
+                        ->orWhere(function ($subQ) use ($year, $quarter) {
+                            $subQ->where('at.model_type', 'App\\Models\\Activity')
+                                ->whereExists(function ($exists) use ($year, $quarter) {
+                                    $exists->select(DB::raw(1))
+                                        ->from('activities as a')
+                                        ->join('matrices as m', 'm.id', '=', 'a.matrix_id')
+                                        ->whereColumn('a.id', 'at.model_id');
+                                    if ($year) $exists->where('m.year', $year);
+                                    if ($quarter) $exists->where('m.quarter', $quarter);
+                                });
+                        })
+                        ->orWhere(function ($subQ) use ($year, $quarter) {
+                            $subQ->where('at.model_type', 'App\\Models\\ChangeRequest')
+                                ->whereExists(function ($exists) use ($year, $quarter) {
+                                    $exists->select(DB::raw(1))
+                                        ->from('change_request as cr')
+                                        ->join('matrices as m', 'm.id', '=', 'cr.matrix_id')
+                                        ->whereColumn('cr.id', 'at.model_id');
+                                    if ($year) $exists->where('m.year', $year);
+                                    if ($quarter) $exists->where('m.quarter', $quarter);
+                                });
+                        })
+                        ->orWhere(function ($subQ) use ($year, $month) {
+                            $subQ->whereNotIn('at.model_type', ['App\\Models\\Matrix', 'App\\Models\\Activity', 'App\\Models\\ChangeRequest']);
+                            if ($year) $subQ->whereYear('at.created_at', $year);
+                            if ($month) $subQ->whereMonth('at.created_at', $month);
+                        });
+                    });
+                }
+
+                $query->groupBy('at.model_id', 'at.model_type');
+                $query->havingNotNull(DB::raw("MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END)"));
+                $query->havingNotNull(DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END)"));
+                $query->havingRaw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) >= MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END)");
+
+                $rows = $query->get();
+
+                $totalHours = 0;
+                $count = 0;
+                foreach ($rows as $row) {
+                    if (!$row->submitted_time || !$row->last_approval_time) continue;
+                    $submitted = Carbon::parse($row->submitted_time);
+                    $lastApproval = Carbon::parse($row->last_approval_time);
+                    $totalHours += $submitted->diffInSeconds($lastApproval) / 3600;
+                    $count++;
+                }
+
+                $avgHours = $count > 0 ? round($totalHours / $count, 2) : 0;
+                $result[] = [
+                    'workflow_name' => $wf->workflow_name,
+                    'workflow_id' => $workflowId,
+                    'memos' => $count,
+                    'avg_hours' => $avgHours,
+                    'avg_display' => $this->formatApprovalTime($avgHours),
+                ];
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Error calculating average approval time by workflow (filtered): ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Get total handled documents for a specific approver across ALL workflows and levels.
      * This counts all documents that have been approved/rejected by this approver using approval_trails.
      */
