@@ -41,8 +41,11 @@ class SpecialMemoController extends Controller
         $currentStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
 
-        // Year filter: default to current year
-        $year = $request->get('year', (string) date('Y'));
+        // Year filter: default to current year when missing or empty; keep "all" when explicitly chosen
+        $year = $request->get('year');
+        if ($year === null || $year === '') {
+            $year = (string) date('Y');
+        }
 
         // Tab 1: My Submitted Special Memos (memos created by current user)
         $mySubmittedQuery = SpecialMemo::with([
@@ -75,7 +78,7 @@ class SpecialMemoController extends Controller
             $mySubmittedQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
 
-        $mySubmittedMemos = $mySubmittedQuery->latest()->paginate(20)->withQueryString();
+        $mySubmittedMemos = $mySubmittedQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
         // Tab 2: All Special Memos (visible to users with permission 87)
         $allMemos = collect();
@@ -112,7 +115,7 @@ class SpecialMemoController extends Controller
                 $allMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
             }
 
-            $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
+            $allMemos = $allMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
         }
 
         // Tab 3: Shared Special Memos (memos where current user is added as participant but not creator)
@@ -150,7 +153,7 @@ class SpecialMemoController extends Controller
             $sharedMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
 
-        $sharedMemos = $sharedMemosQuery->latest()->paginate(20)->withQueryString();
+        $sharedMemos = $sharedMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
@@ -161,8 +164,11 @@ class SpecialMemoController extends Controller
             
             $tab = $request->get('tab', '');
             $html = '';
-            $year = $request->get('year', (string) date('Y'));
-            
+            $year = $request->get('year');
+            if ($year === null || $year === '') {
+                $year = (string) date('Y');
+            }
+
             $mySubmittedQueryAjax = SpecialMemo::with([
                 'staff', 'division', 'requestType', 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
@@ -185,7 +191,7 @@ class SpecialMemoController extends Controller
             if ($request->filled('search')) {
                 $mySubmittedQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
             }
-            $mySubmittedMemos = $mySubmittedQueryAjax->latest()->paginate(20)->withQueryString();
+            $mySubmittedMemos = $mySubmittedQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
 
             $allMemos = collect();
             if (in_array(87, user_session('permissions', []))) {
@@ -214,7 +220,7 @@ class SpecialMemoController extends Controller
                 if ($request->filled('search')) {
                     $allMemosQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
                 }
-                $allMemos = $allMemosQueryAjax->latest()->paginate(20)->withQueryString();
+                $allMemos = $allMemosQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
             }
 
             $sharedMemosQueryAjax = SpecialMemo::with([
@@ -242,8 +248,8 @@ class SpecialMemoController extends Controller
             if ($request->filled('search')) {
                 $sharedMemosQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
             }
-            $sharedMemos = $sharedMemosQueryAjax->latest()->paginate(20)->withQueryString();
-            
+            $sharedMemos = $sharedMemosQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
+
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('special-memo.partials.my-submitted-tab', compact(

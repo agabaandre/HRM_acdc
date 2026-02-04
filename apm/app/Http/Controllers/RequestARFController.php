@@ -32,7 +32,11 @@ class RequestARFController extends Controller
     {
         $currentStaffId = user_session('staff_id');
         $currentYear = (int) date('Y');
-        $selectedYear = $request->get('year', (string) $currentYear);
+        // Default to current year when year is missing or empty; keep "all" when explicitly chosen
+        $selectedYear = $request->get('year');
+        if ($selectedYear === null || $selectedYear === '') {
+            $selectedYear = (string) $currentYear;
+        }
         $years = array_merge(['all' => 'All years'], array_combine(
             range($currentYear, $currentYear - 10),
             range($currentYear, $currentYear - 10)
@@ -70,7 +74,7 @@ class RequestARFController extends Controller
             $mySubmittedArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
 
-        $mySubmittedArfs = $mySubmittedArfsQuery->latest()->paginate(20)->withQueryString();
+        $mySubmittedArfs = $mySubmittedArfsQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
         // Get All ARFs (only for users with permission 87)
         $allArfs = collect();
@@ -80,7 +84,7 @@ class RequestARFController extends Controller
                 'division',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ])
-                ->latest();
+                ->orderByDesc('created_at');
 
             if ($selectedYear !== '' && $selectedYear !== 'all') {
                 $allArfsQuery->whereYear('created_at', $selectedYear);
