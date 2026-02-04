@@ -153,8 +153,8 @@
 <script>
   $(document).ready(function() {
 
-    var message = "<?php echo $this->session->tempdata('msg'); ?>";
-    var msgtype = "<?php echo $this->session->tempdata('type'); ?>";
+    var message = <?php echo json_encode((string)$this->session->tempdata('msg')); ?>;
+    var msgtype = <?php echo json_encode((string)$this->session->tempdata('type')); ?>;
     if (msgtype !== '') {
       show_notification(message, msgtype);
     }
