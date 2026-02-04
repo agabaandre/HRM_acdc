@@ -134,7 +134,15 @@
     $(document).ready(function () {
       
         @if(session('msg') && session('type'))
-            show_notification(`{!! session('msg') !!}`, "{{ session('type') }}");
+            show_notification({!! json_encode(session('msg')) !!}, {!! json_encode(session('type')) !!});
+        @endif
+
+        @if(session('success'))
+            show_notification({!! json_encode(session('success')) !!}, 'success');
+        @endif
+
+        @if(session('error'))
+            show_notification({!! json_encode(session('error')) !!}, 'error');
         @endif
 
        

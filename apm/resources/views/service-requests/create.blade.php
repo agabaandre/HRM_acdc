@@ -655,8 +655,8 @@
                                         <input type="hidden" name="external_participants[{{ $eIdx }}][description]" value="{{ $extParticipant['description'] ?? '' }}">
                                     </td>
                                     <td style="min-width: 200px; width: 200px;">
-                                        <input type="email" name="external_participants[{{ $eIdx }}][email]"
-                                            class="form-control border-success" placeholder="Email" value="{{ $extParticipant['email'] ?? '' }}">
+                                        <input type="text" name="external_participants[{{ $eIdx }}][email]"
+                                            class="form-control border-success" placeholder="Email (optional)" value="{{ $extParticipant['email'] ?? '' }}">
                                     </td>
                                     @foreach ($costItems as $costItem)
                                     @php $costKey = $costItem->id ?? $costItem->name; $costVal = $extParticipant['costs'][$costKey] ?? $extParticipant['costs'][$costItem->name] ?? 0; @endphp
@@ -686,8 +686,8 @@
                                         <input type="hidden" name="external_participants[0][cost_type]" value="Daily Rate">
                                         <input type="hidden" name="external_participants[0][description]" value="">
                                     </td>
-                                    <td style="min-width: 200px; width: 200px;"><input type="email" name="external_participants[0][email]"
-                                            class="form-control border-success" placeholder="Email" value=""></td>
+                                    <td style="min-width: 200px; width: 200px;"><input type="text" name="external_participants[0][email]"
+                                            class="form-control border-success" placeholder="Email (optional)" value=""></td>
                                     @foreach ($costItems as $index => $costItem)
                                         <td class="cost-item-cell" style="width: 80px; min-width: 80px;">
                                             <input type="text"
@@ -1218,7 +1218,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (input.name.includes('[name]')) {
                     input.placeholder = 'Name';
                 } else if (input.name.includes('[email]')) {
-                    input.placeholder = 'Email';
+                    input.placeholder = 'Email (optional)';
                 }
             } else if (input.tagName === 'SELECT') {
                 input.selectedIndex = 0;
@@ -1401,6 +1401,24 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Form submission handler - strip commas from numeric inputs and validate budget
     document.getElementById('serviceRequestForm').addEventListener('submit', function(e) {
+        // Re-index external and internal participant rows to 0,1,2,... so all rows are submitted (no sparse indices)
+        const externalRows = document.querySelectorAll('#externalParticipants tr');
+        externalRows.forEach((row, idx) => {
+            row.querySelectorAll('input, select').forEach(input => {
+                if (input.name && input.name.includes('external_participants[')) {
+                    input.name = input.name.replace(/external_participants\[\d+\]/, 'external_participants[' + idx + ']');
+                }
+            });
+        });
+        const internalRows = document.querySelectorAll('#internalParticipants tr');
+        internalRows.forEach((row, idx) => {
+            row.querySelectorAll('input, select').forEach(input => {
+                if (input.name && input.name.includes('internal_participants[')) {
+                    input.name = input.name.replace(/internal_participants\[\d+\]/, 'internal_participants[' + idx + ']');
+                }
+            });
+        });
+
         // Strip commas from all cost inputs before submission
         const costInputs = document.querySelectorAll('.cost-input');
         costInputs.forEach(input => {
