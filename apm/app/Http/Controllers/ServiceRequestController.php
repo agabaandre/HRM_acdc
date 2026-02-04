@@ -360,12 +360,12 @@ class ServiceRequestController extends Controller
                     : $originalBudgetBreakdown;
                 
                 return [
-                    'internal_participants_cost' => json_encode([]),
-                    'external_participants_cost' => json_encode([]),
-                    'other_costs' => json_encode([]),
+                    'internal_participants_cost' => [],
+                    'external_participants_cost' => [],
+                    'other_costs' => [],
                     'original_total_budget' => $request->input('original_total_budget', 0),
                     'new_total_budget' => $request->input('new_total_budget', 0),
-                    'budget_breakdown' => json_encode($budgetBreakdown),
+                    'budget_breakdown' => $budgetBreakdown,
                     'title' => clean_unicode($request->input('service_title')),
                     'source_type' => $request->input('source_type'),
                     'source_id' => $request->input('source_id'),
@@ -431,10 +431,11 @@ class ServiceRequestController extends Controller
             $externalParticipants = [];
         }
         
+        // Save all external participants with a name; email is optional (may be empty)
         foreach ($externalParticipants as $participant) {
-            if (!empty($participant['name'])) {
-                $name = $participant['name'];
-                $email = $participant['email'] ?? '';
+            if (!empty(trim((string) ($participant['name'] ?? '')))) {
+                $name = trim($participant['name']);
+                $email = isset($participant['email']) ? trim((string) $participant['email']) : '';
                 $costs = $participant['costs'] ?? [];
                 $costType = $participant['cost_type'] ?? 'Daily Rate';
                 $description = $participant['description'] ?? '';
@@ -509,13 +510,14 @@ class ServiceRequestController extends Controller
             'difference' => $newTotalBudget - $originalTotalBudget
         ];
         
+        // Return arrays for JSON columns so the model cast encodes once (avoids double-encode / truncation)
         return [
-            'internal_participants_cost' => json_encode($internalCosts),
-            'external_participants_cost' => json_encode($externalCosts),
-            'other_costs' => json_encode($otherCostsData),
+            'internal_participants_cost' => $internalCosts,
+            'external_participants_cost' => $externalCosts,
+            'other_costs' => $otherCostsData,
             'original_total_budget' => $originalTotalBudget,
             'new_total_budget' => $newTotalBudget,
-            'budget_breakdown' => json_encode($budgetBreakdown),
+            'budget_breakdown' => $budgetBreakdown,
             'title' => $request->input('service_title'),
             'source_type' => $request->input('source_type'),
             'source_id' => $request->input('source_id'),
