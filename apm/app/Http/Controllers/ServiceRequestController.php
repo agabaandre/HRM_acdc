@@ -702,72 +702,146 @@ class ServiceRequestController extends Controller
 
     /**
      * Show the form for editing the specified service request.
+     * Reuses the create form with the same structure and data.
      */
     public function edit(ServiceRequest $serviceRequest): View
     {
-        $staff = Staff::active()->get();
+        $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])->get();
+        if ($staff->isEmpty()) {
+            $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])->take(10)->get();
+        }
         $divisions = Division::all();
         $workflows = Workflow::all();
         $activities = Activity::all();
-        
-        return view('service-requests.edit', compact('serviceRequest', 'staff', 'divisions', 'workflows', 'activities'));
+
+        $sourceType = $serviceRequest->source_type;
+        $sourceId = (int) $serviceRequest->source_id;
+        $sourceData = null;
+        if ($sourceType && $sourceId) {
+            $sourceData = $this->getSourceDataForForm($sourceType, $sourceId);
+        }
+
+        // Budget from stored service request
+        $budgetBreakdown = [];
+        if ($serviceRequest->budget_breakdown) {
+            $budgetBreakdown = is_string($serviceRequest->budget_breakdown)
+                ? json_decode($serviceRequest->budget_breakdown, true) ?? []
+                : (is_array($serviceRequest->budget_breakdown) ? $serviceRequest->budget_breakdown : []);
+        }
+        $originalTotalBudget = (float) ($serviceRequest->original_total_budget ?? 0);
+        $internalParticipants = [];
+        if ($serviceRequest->internal_participants_cost) {
+            $decoded = is_string($serviceRequest->internal_participants_cost)
+                ? json_decode($serviceRequest->internal_participants_cost, true) : $serviceRequest->internal_participants_cost;
+            $internalParticipants = is_array($decoded) ? $decoded : [];
+        }
+
+        $costItems = collect();
+        $otherCostItems = collect();
+        if ($sourceType !== 'non_travel_memo' && !empty($budgetBreakdown)) {
+            $extractedCostItems = $this->extractCostItemsFromBudget($budgetBreakdown);
+            if (!empty($extractedCostItems)) {
+                foreach ($extractedCostItems as $costItem) {
+                    $dynamicCostItem = (object) [
+                        'id' => $costItem['name'],
+                        'name' => $costItem['name'],
+                        'cost_type' => $costItem['cost_type'],
+                        'description' => $costItem['description'] ?? ''
+                    ];
+                    if (($costItem['cost_type'] ?? '') === 'Individual Cost') {
+                        $costItems->push($dynamicCostItem);
+                    } else {
+                        $otherCostItems->push($dynamicCostItem);
+                    }
+                }
+            } else {
+                $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
+                $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
+            }
+        }
+
+        $requestNumber = $serviceRequest->request_number;
+
+        $participantNames = [];
+        foreach ($internalParticipants as $participant) {
+            $staffId = $participant['staff_id'] ?? null;
+            if (!$staffId) {
+                continue;
+            }
+            $staffMember = Staff::with('division')->find($staffId);
+            if (!$staffMember) {
+                $staffMember = Staff::with('division')->where('staff_id', $staffId)->first();
+            }
+            if ($staffMember) {
+                $divisionName = $staffMember->division ? ($staffMember->division->division_name ?? $staffMember->division->name ?? 'No Division') : 'No Division';
+                $participantNames[] = [
+                    'id' => $staffMember->staff_id,
+                    'text' => $staffMember->fname . ' ' . $staffMember->lname . ' (' . ($staffMember->job_name ?? 'Staff') . ') - ' . $divisionName,
+                    'name' => $staffMember->fname . ' ' . $staffMember->lname,
+                    'position' => $staffMember->job_name ?? 'Staff',
+                    'division' => $divisionName
+                ];
+            }
+        }
+
+        return view('service-requests.create', compact(
+            'serviceRequest', 'staff', 'divisions', 'workflows', 'activities',
+            'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId',
+            'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames'
+        ));
     }
 
     /**
      * Update the specified service request.
+     * Accepts the same form payload as create (store) and processes budget data.
      */
     public function update(Request $request, ServiceRequest $serviceRequest): RedirectResponse
     {
         $validated = $request->validate([
-            'request_number' => 'required|string|unique:service_requests,request_number,' . $serviceRequest->id,
             'request_date' => 'required|date',
-            'staff_id' => 'required|exists:staff,id',
-            'activity_id' => 'nullable|exists:activities,id',
-            'workflow_id' => 'required|exists:workflows,id',
-            'reverse_workflow_id' => 'required|exists:workflows,id',
-            'division_id' => 'required|exists:divisions,id',
             'service_title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'justification' => 'required|string',
-            'required_by_date' => 'required|date|after_or_equal:request_date',
             'location' => 'nullable|string|max:255',
-            'estimated_cost' => 'required|numeric|min:0',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'service_type' => 'required|in:it,maintenance,procurement,travel,other',
-            'specifications' => 'nullable|array',
-            'attachments' => 'nullable|array',
-            'attachments.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
             'status' => 'sometimes|in:draft,submitted,in_progress,approved,rejected,completed',
             'remarks' => 'nullable|string',
+            'activity_id' => 'nullable|integer',
+            'source_type' => 'required|string',
+            'source_id' => 'required|integer',
+            'model_type' => 'required|string',
+            'fund_type_id' => 'required|integer',
+            'responsible_person_id' => 'required|exists:staff,staff_id',
+            'budget_id' => 'nullable|string',
+            'original_total_budget' => 'required|numeric|min:0',
+            'new_total_budget' => 'required|numeric|min:0',
+            'budget_breakdown' => 'nullable|string',
+            'internal_participants_cost' => 'nullable|string',
+            'internal_participants_comment' => 'nullable|string',
+            'external_participants_cost' => 'nullable|string',
+            'external_participants_comment' => 'nullable|string',
+            'other_costs' => 'nullable|array',
+            'other_costs_comment' => 'nullable|string',
+            'internal_participants' => 'nullable|array',
+            'external_participants' => 'nullable|array',
         ]);
-        
-        // Handle attachments update
-        $existingAttachments = $serviceRequest->attachments ?? [];
-        $attachments = $existingAttachments;
-        
-        // Process new attachments
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('service-request-attachments', $filename, 'public');
-                $attachments[] = [
-                    'name' => $file->getClientOriginalName(),
-                    'path' => $path,
-                    'type' => $file->getClientMimeType(),
-                    'size' => $file->getSize(),
-                ];
-            }
+
+        $validated['division_id'] = $request->input('division_id', $serviceRequest->division_id);
+        $validated['staff_id'] = user_session('staff_id');
+
+        // Process budget data (same as store)
+        $budgetData = $this->processBudgetData($request);
+        $validated = array_merge($validated, $budgetData);
+
+        // Map form 'status' to model overall_status when provided
+        if ($request->has('status')) {
+            $validated['overall_status'] = $request->input('status');
         }
-        
-        $validated['attachments'] = $attachments;
-        
-        // Process specifications array if provided
-        if (!isset($validated['specifications']) || !is_array($validated['specifications'])) {
-            $validated['specifications'] = [];
-        }
-        
+        // Preserve approval/workflow state - do not overwrite from form
+        $validated['approval_level'] = $serviceRequest->approval_level;
+        $validated['next_approval_level'] = $serviceRequest->next_approval_level;
+        $validated['forward_workflow_id'] = $serviceRequest->forward_workflow_id;
+        $validated['reverse_workflow_id'] = $serviceRequest->reverse_workflow_id;
+
         $serviceRequest->update($validated);
-        
+
         return redirect()
             ->route('service-requests.index')
             ->with('success', 'Service request updated successfully.');
