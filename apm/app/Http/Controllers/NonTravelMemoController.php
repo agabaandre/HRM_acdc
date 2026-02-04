@@ -39,8 +39,11 @@ class NonTravelMemoController extends Controller
         $currentStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
 
-        // Year filter: default to current year so "Non travels" for current year are shown by default
-        $year = $request->get('year', (string) date('Y'));
+        // Year filter: default to current year when missing or empty; keep "all" when explicitly chosen
+        $year = $request->get('year');
+        if ($year === null || $year === '') {
+            $year = (string) date('Y');
+        }
 
         // Tab 1: My Submitted Memos (memos created by current user)
         $mySubmittedQuery = NonTravelMemo::with([
@@ -77,7 +80,7 @@ class NonTravelMemoController extends Controller
             $mySubmittedQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
 
-        $mySubmittedMemos = $mySubmittedQuery->latest()->paginate(20)->withQueryString();
+        $mySubmittedMemos = $mySubmittedQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
         // Tab 2: All Non-Travel Memos (visible to users with permission 87)
         $allMemos = collect();
@@ -115,7 +118,7 @@ class NonTravelMemoController extends Controller
                 $allMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
             }
 
-            $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
+            $allMemos = $allMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
         }
 
         // Handle AJAX requests for tab content
@@ -128,7 +131,10 @@ class NonTravelMemoController extends Controller
             $tab = $request->get('tab', '');
             $html = '';
             
-            $year = $request->get('year', (string) date('Y'));
+            $year = $request->get('year');
+            if ($year === null || $year === '') {
+                $year = (string) date('Y');
+            }
 
             // Rebuild queries with filters for AJAX requests
             $mySubmittedQuery = NonTravelMemo::with([
@@ -164,7 +170,7 @@ class NonTravelMemoController extends Controller
                 $mySubmittedQuery->where('activity_title', 'like', '%' . $request->search . '%');
             }
 
-            $mySubmittedMemos = $mySubmittedQuery->latest()->paginate(20)->withQueryString();
+            $mySubmittedMemos = $mySubmittedQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
             // Tab 2: All Non-Travel Memos (visible to users with permission 87)
             $allMemos = collect();
@@ -201,9 +207,9 @@ class NonTravelMemoController extends Controller
                     $allMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
                 }
 
-                $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
+                $allMemos = $allMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
             }
-            
+
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('non-travel.partials.my-submitted-tab', compact(
