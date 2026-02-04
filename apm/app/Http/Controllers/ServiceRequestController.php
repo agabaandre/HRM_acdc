@@ -278,7 +278,7 @@ class ServiceRequestController extends Controller
             'internal_participants_comment' => 'nullable|string',
             'external_participants_cost' => 'nullable|string',
             'external_participants_comment' => 'nullable|string',
-            'other_costs' => 'nullable|array',
+            'other_costs' => 'nullable', // may be array (from table rows) or string (from hidden field)
             'other_costs_comment' => 'nullable|string',
             'internal_participants' => 'nullable|array',
             'external_participants' => 'nullable|array',
@@ -466,7 +466,10 @@ class ServiceRequestController extends Controller
         $otherCostsData = [];
         $otherTotal = 0;
         
-        // Ensure otherCosts is an array
+        // Ensure otherCosts is an array (form may send string from hidden field or array from table rows)
+        if (is_string($otherCosts)) {
+            $otherCosts = json_decode($otherCosts, true) ?? [];
+        }
         if (!is_array($otherCosts)) {
             $otherCosts = [];
         }
@@ -890,7 +893,7 @@ class ServiceRequestController extends Controller
             'internal_participants_comment' => 'nullable|string',
             'external_participants_cost' => 'nullable|string',
             'external_participants_comment' => 'nullable|string',
-            'other_costs' => 'nullable|array',
+            'other_costs' => 'nullable', // may be array (from table rows) or string (from hidden field)
             'other_costs_comment' => 'nullable|string',
             'internal_participants' => 'nullable|array',
             'external_participants' => 'nullable|array',
@@ -1393,7 +1396,7 @@ class ServiceRequestController extends Controller
                 'internal_participants_comment' => 'nullable|string',
                 'external_participants_cost' => 'nullable|array',
                 'external_participants_comment' => 'nullable|string',
-                'other_costs' => 'nullable|array',
+                'other_costs' => 'nullable',
                 'other_costs_comment' => 'nullable|string',
                 'original_total_budget' => 'required|numeric|min:0',
                 'new_total_budget' => 'required|numeric|min:0',
