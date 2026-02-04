@@ -1,8 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Create Service Request')
+@php
+    $isEdit = isset($serviceRequest);
+@endphp
 
-@section('header', 'Service Request Form')
+@section('title', $isEdit ? 'Edit Service Request' : 'Create Service Request')
+
+@section('header', $isEdit ? 'Edit Service Request' : 'Service Request Form')
 
 @section('header-actions')
     <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
@@ -12,14 +16,31 @@
 
 @section('content')
 @php
+    $isEdit = isset($serviceRequest);
     // Initialize budget variables
     $totalOriginal = 0;
-    $budgetBreakdown = null;
-        $budgetByFundCode = [];
-        $fundCodes = [];
-    
-    // Process source data if available
-    if ($sourceData && isset($sourceData->budget_breakdown)) {
+    $budgetBreakdownView = $budgetBreakdown ?? null;
+    $budgetByFundCode = [];
+    $fundCodes = [];
+
+    if ($isEdit && isset($originalTotalBudget)) {
+        $totalOriginal = (float) $originalTotalBudget;
+        if (!empty($budgetBreakdownView) && is_array($budgetBreakdownView)) {
+            foreach ($budgetBreakdownView as $key => $item) {
+                if ($key === 'grand_total') {
+                    $totalOriginal = floatval($item);
+                } elseif (is_array($item)) {
+                    $budgetByFundCode[$key] = $item;
+                }
+            }
+            if (!empty($budgetByFundCode)) {
+                $fundCodeIds = array_keys($budgetByFundCode);
+                $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
+            }
+        }
+    }
+    // Process source data if available (create mode or edit with source)
+    if (!$isEdit && $sourceData && isset($sourceData->budget_breakdown)) {
         $budgetBreakdown = is_string($sourceData->budget_breakdown) 
                 ? json_decode(stripslashes($sourceData->budget_breakdown), true)
             : $sourceData->budget_breakdown;
@@ -79,41 +100,44 @@
         </h4>
                 </div>
     <div class="card-body p-4">
-            <form action="{{ route('service-requests.store') }}" method="POST" enctype="multipart/form-data"
+            <form action="{{ $isEdit ? route('service-requests.update', $serviceRequest) : route('service-requests.store') }}" method="POST" enctype="multipart/form-data"
                 id="serviceRequestForm">
                         @csrf
-        
+                        @if($isEdit)
+                            @method('PUT')
+                        @endif
+
             <!-- Hidden fields for source data -->
-            <input type="hidden" name="source_type" value="{{ $sourceType }}">
-            <input type="hidden" name="source_id" value="{{ $sourceId }}">
-            <input type="hidden" name="activity_id" value="{{ $sourceData->id ?? 0 }}">
+            <input type="hidden" name="source_type" value="{{ $isEdit ? $serviceRequest->source_type : $sourceType }}">
+            <input type="hidden" name="source_id" value="{{ $isEdit ? $serviceRequest->source_id : $sourceId }}">
+            <input type="hidden" name="activity_id" value="{{ $isEdit ? ($serviceRequest->activity_id ?? 0) : ($sourceData->id ?? 0) }}">
                 <input type="hidden" name="model_type"
-                    value="{{ $sourceType ? 'App\\Models\\' . ucfirst(str_replace('_', '', $sourceType)) : '' }}">
-                <input type="hidden" name="fund_type_id" value="{{ $sourceData->fund_type_id ?? 1 }}">
+                    value="{{ $isEdit ? ($serviceRequest->model_type ?? '') : ($sourceType ? 'App\\Models\\' . ucfirst(str_replace('_', '', $sourceType)) : '') }}">
+                <input type="hidden" name="fund_type_id" value="{{ $isEdit ? ($serviceRequest->fund_type_id ?? 1) : ($sourceData->fund_type_id ?? 1) }}">
                 <input type="hidden" name="responsible_person_id"
-                    value="{{ user_session('staff_id') }}">
-                <input type="hidden" name="budget_id" value="{{ $sourceData->budget_id ?? '[]' }}">
+                    value="{{ $isEdit ? ($serviceRequest->responsible_person_id ?? user_session('staff_id')) : user_session('staff_id') }}">
+                <input type="hidden" name="budget_id" value="{{ $isEdit ? ($serviceRequest->budget_id ?? '[]') : ($sourceData->budget_id ?? '[]') }}">
                 <input type="hidden" name="original_total_budget" id="originalTotalBudget"
                     value="{{ $totalOriginal ?? 0 }}">
             <input type="hidden" name="new_total_budget" id="newTotalBudget" 
                 value="{{ $totalOriginal ?? 0 }}">
-            <input type="hidden" name="budget_breakdown" id="budgetBreakdown" value="">
-             <input type="hidden" name="division_id" id="divisionId" value="{{ $sourceData->division_id ?? ($sourceData->matrix->division_id ?? 0) }}">
-            <input type="hidden" name="internal_participants_cost" id="internalParticipantsCost" value="">
-            <input type="hidden" name="external_participants_cost" id="externalParticipantsCost" value="">
-            <input type="hidden" name="other_costs" id="otherCosts" value="">
+            <input type="hidden" name="budget_breakdown" id="budgetBreakdown" value="{{ $isEdit && $serviceRequest->budget_breakdown ? (is_string($serviceRequest->budget_breakdown) ? $serviceRequest->budget_breakdown : json_encode($serviceRequest->budget_breakdown)) : '' }}">
+             <input type="hidden" name="division_id" id="divisionId" value="{{ $isEdit ? $serviceRequest->division_id : ($sourceData->division_id ?? ($sourceData->matrix->division_id ?? 0)) }}">
+            <input type="hidden" name="internal_participants_cost" id="internalParticipantsCost" value="{{ $isEdit && $serviceRequest->internal_participants_cost ? (is_string($serviceRequest->internal_participants_cost) ? $serviceRequest->internal_participants_cost : json_encode($serviceRequest->internal_participants_cost)) : '' }}">
+            <input type="hidden" name="external_participants_cost" id="externalParticipantsCost" value="{{ $isEdit && $serviceRequest->external_participants_cost ? (is_string($serviceRequest->external_participants_cost) ? $serviceRequest->external_participants_cost : json_encode($serviceRequest->external_participants_cost)) : '' }}">
+            <input type="hidden" name="other_costs" id="otherCosts" value="{{ $isEdit && $serviceRequest->other_costs ? (is_string($serviceRequest->other_costs) ? $serviceRequest->other_costs : json_encode($serviceRequest->other_costs)) : '' }}">
             
             <!-- Additional required fields -->
-            <input type="hidden" name="request_date" value="{{ date('Y-m-d') }}">
-                <input type="hidden" name="location" value="{{ $sourceData ? $sourceData->location ?? 'N/A' : 'N/A' }}">
+            <input type="hidden" name="request_date" value="{{ $isEdit && $serviceRequest->request_date ? $serviceRequest->request_date : date('Y-m-d') }}">
+                <input type="hidden" name="location" value="{{ $isEdit ? ($serviceRequest->location ?? 'N/A') : ($sourceData ? $sourceData->location ?? 'N/A' : 'N/A') }}">
                
-            <input type="hidden" name="status" value="draft">
+            <input type="hidden" name="status" value="{{ $isEdit ? ($serviceRequest->overall_status ?? 'draft') : 'draft' }}">
                 <input type="hidden" name="service_title"
-                    value="{{ $sourceData ? ($sourceData->activity_title ?? $sourceData->title) : 'Service Request' }}">
+                    value="{{ $isEdit ? ($serviceRequest->service_title ?? $serviceRequest->title ?? 'Service Request') : ($sourceData ? ($sourceData->activity_title ?? $sourceData->title) : 'Service Request') }}">
                 <input type="hidden" name="description"
-                    value="{{ $sourceData ? ($sourceData->background ?? $sourceData->description) : 'Service Request Description' }}">
+                    value="{{ $isEdit ? ($serviceRequest->description ?? '') : ($sourceData ? ($sourceData->background ?? $sourceData->description) : 'Service Request Description') }}">
                 <input type="hidden" name="justification"
-                    value="{{ $sourceData ? ($sourceData->activity_request_remarks ?? $sourceData->justification) : 'Service Request Justification' }}">
+                    value="{{ $isEdit ? ($serviceRequest->justification ?? '') : ($sourceData ? ($sourceData->activity_request_remarks ?? $sourceData->justification) : 'Service Request Justification') }}">
 
     <!-- Section 6: Activity Information -->
             <div class="mb-5">
