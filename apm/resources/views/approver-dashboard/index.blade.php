@@ -689,7 +689,7 @@ function renderWorkflowStats(stats) {
             ? row.doc_type_labels.join(', ')
             : '';
         const docTypesHtml = docTypes
-            ? `<div class="small text-muted mt-1"><em>${escapeHtml(docTypes)}</em></div>`
+            ? `<div class="small text-muted mt-1">${escapeHtml(docTypes)}</div>`
             : '';
         tbody.append(`<tr>
             <td><div>${escapeHtml(row.workflow_name || '-')}</div>${docTypesHtml}</td>
