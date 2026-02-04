@@ -89,6 +89,13 @@
                 $staff_id = $this->session->userdata('user')->staff_id;
                 $pendings = $this->per_mdl->get_all_pending_approvals($staff_id);
                 $approvals_count = count($pendings);
+                // Nav periods for Create Midterm modal (approved PPAs only) - must be set before first use in dropdown
+                $nav_staff_id = $this->session->userdata('user')->staff_id;
+                $nav_midterm_periods = $this->db->query(
+                    'SELECT DISTINCT performance_period FROM ppa_entries WHERE staff_id = ? AND draft_status = 2 ORDER BY performance_period DESC',
+                    [$nav_staff_id]
+                )->result();
+                $nav_midterm_staff_id = $nav_staff_id;
                 ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('performance', $this->uri->segment(1)) ?>" href="<?php echo base_url() ?>/performance/ppa_dashboard" data-bs-toggle="dropdown">
@@ -109,11 +116,13 @@
                         <?php endif; ?>
                         
                        
+                        <?php if (!empty($nav_midterm_periods)): ?>
                         <li>
                                   <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#navMidtermModal">
                                       <i class="fa fa-plus"></i> Create Midterm
                                   </a>
                         </li>
+                        <?php endif; ?>
 
                         <?php if (in_array('38', $permissions) && $midterm_exists) : ?>
                             <li><a class="dropdown-item" href="<?= base_url("performance/midterm/recent_midterm/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current Midterm</a></li>
