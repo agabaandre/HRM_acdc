@@ -64,113 +64,101 @@
     color: rgba(23, 162, 184, 1);
   }
 
-  /* Enhanced Stats Styling */
+  /* Quality stats cards (workplan-style: top border, icon box, compact height) */
   .stats-container {
-    background: white;
-    box-shadow: var(--shadow-lg);
-    padding: 2rem;
+    background: transparent;
+    padding: 0;
     margin-bottom: 2rem;
-    border: 1px solid var(--medium-grey);
   }
 
-  .stat-item {
-    text-align: center;
+  .stats-container .stat-item {
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
     padding: 1rem 0.75rem;
-    background: white;
-    box-shadow: var(--shadow);
+    text-align: center;
     transition: var(--transition);
     position: relative;
     overflow: hidden;
     border: 1px solid var(--medium-grey);
+    height: 100%;
   }
 
-  .stat-item::before {
+  .stats-container .stat-item::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 4px;
     background: linear-gradient(90deg, var(--stat-color), var(--stat-color-light));
   }
 
-  .stat-item:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+  .stats-container .stat-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   }
 
-  .stat-item.total {
-    --stat-color: rgba(23, 162, 184, 0.7);
-    --stat-color-light: rgba(32, 201, 151, 0.4);
+  .stats-container .stat-item.total {
+    --stat-color: #17a2b8;
+    --stat-color-light: #20c997;
   }
 
-  .stat-item.pending {
-    --stat-color: rgba(255, 193, 7, 0.7);
-    --stat-color-light: rgba(255, 237, 78, 0.4);
+  .stats-container .stat-item.pending {
+    --stat-color: #f0ad4e;
+    --stat-color-light: #f5d071;
   }
 
-  .stat-item.workflow {
-    --stat-color: rgba(111, 66, 193, 0.7);
-    --stat-color-light: rgba(142, 68, 173, 0.4);
+  .stats-container .stat-item.workflow {
+    --stat-color: #0d7a3a;
+    --stat-color-light: #1bb85a;
   }
 
-  .stat-item.updated {
-    --stat-color: rgba(17, 154, 72, 0.7);
-    --stat-color-light: rgba(52, 206, 87, 0.4);
+  .stats-container .stat-item.updated {
+    --stat-color: #119A48;
+    --stat-color-light: #34ce57;
   }
 
-  .stat-number {
-    font-size: 2rem;
+  .stats-container .stat-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    background: var(--stat-color);
+    background: linear-gradient(135deg, var(--stat-color) 0%, var(--stat-color-light) 100%);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  }
+
+  .stats-container .stat-icon {
+    font-size: 1.35rem;
+    color: #fff;
+    margin: 0;
+    display: block;
+  }
+
+  .stats-container .stat-number {
+    font-size: 1.75rem;
     font-weight: 800;
     color: var(--stat-color);
     display: block;
-    margin-bottom: 0.4rem;
-    animation: countUp 1s ease-out;
+    margin-bottom: 0.25rem;
+    line-height: 1.2;
   }
 
-  .stat-label {
-    font-size: 0.85rem;
+  .stats-container .stat-label {
+    font-size: 0.75rem;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     font-weight: 700;
-    margin-bottom: 0.2rem;
-  }
-
-  .stat-icon {
-    font-size: 1.3rem;
-    color: var(--stat-color);
-    margin-bottom: 0.4rem;
-    display: inline-block;
-    padding: 0.5rem;
-    border-radius: 8px;
-    animation: pulse 2s infinite;
-  }
-
-  .stat-item.total .stat-icon {
-    background: rgba(23, 162, 184, 0.1);
-  }
-
-  .stat-item.pending .stat-icon {
-    background: rgba(255, 193, 7, 0.1);
-  }
-
-  .stat-item.workflow .stat-icon {
-    background: rgba(111, 66, 193, 0.1);
-  }
-
-  .stat-item.updated .stat-icon {
-    background: rgba(17, 154, 72, 0.1);
-  }
-
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+    margin: 0;
   }
 
   @keyframes countUp {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
@@ -343,7 +331,7 @@
 
 @section('content')
 <div class="container-fluid">
-  <!-- Approver Statistics -->
+  <!-- Approver Statistics (quality cards, workplan-style) -->
   <div class="stats-container">
     <h5 class="mb-4 fw-bold text-center">
       <i class="fa fa-chart-bar me-2"></i>Approver Dashboard Overview
@@ -351,28 +339,28 @@
     <div class="row g-3">
       <div class="col-md-3">
         <div class="stat-item total">
-          <i class="fa fa-users stat-icon"></i>
+          <div class="stat-icon-wrap"><i class="fa fa-users stat-icon"></i></div>
           <span class="stat-number" id="totalApprovers">0</span>
           <span class="stat-label">Total Approvers</span>
         </div>
       </div>
       <div class="col-md-3">
         <div class="stat-item pending">
-          <i class="fa fa-clock stat-icon"></i>
+          <div class="stat-icon-wrap"><i class="fa fa-clock stat-icon"></i></div>
           <span class="stat-number" id="totalPending">0</span>
           <span class="stat-label">Total Pending</span>
         </div>
       </div>
       <div class="col-md-3">
         <div class="stat-item workflow">
-          <i class="fa fa-cogs stat-icon"></i>
+          <div class="stat-icon-wrap"><i class="fa fa-cogs stat-icon"></i></div>
           <span class="stat-number" id="activeWorkflow">-</span>
           <span class="stat-label">Active Workflows</span>
         </div>
       </div>
       <div class="col-md-3">
         <div class="stat-item updated">
-          <i class="fa fa-clock stat-icon"></i>
+          <div class="stat-icon-wrap"><i class="fa fa-sync-alt stat-icon"></i></div>
           <span class="stat-number" id="lastUpdated">-</span>
           <span class="stat-label">Last Updated</span>
         </div>

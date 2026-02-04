@@ -45,21 +45,22 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 
-  /* Statistics Cards Styling */
+  /* Statistics Cards Styling (reduced height) */
   .stat-item {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 2px;
-    padding: 1.5rem;
+    border-radius: 8px;
+    padding: 1rem 0.75rem;
     text-align: center;
     transition: all 0.3s ease;
-    border: 2px solid transparent;
+    border: 1px solid rgba(0, 0, 0, 0.06);
     position: relative;
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
 
   .stat-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
     border-color: var(--stat-color, #007bff);
   }
 
@@ -74,22 +75,23 @@
   }
 
   .stat-icon {
-    font-size: 2.5rem;
+    font-size: 1.6rem;
     color: var(--stat-color, #007bff);
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     display: block;
   }
 
   .stat-number {
-    font-size: 2.5rem;
+    font-size: 1.85rem;
     font-weight: 800;
     color: var(--stat-color, #007bff);
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+    line-height: 1.2;
   }
 
   .stat-label {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: #6c757d;
     font-weight: 500;
     text-transform: uppercase;
@@ -101,7 +103,7 @@
     height: 4px;
     background-color: rgba(0, 0, 0, 0.1);
     border-radius: 2px;
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     overflow: hidden;
   }
 
@@ -244,11 +246,11 @@
     }
     
     .stat-number {
-      font-size: 2rem;
+      font-size: 1.5rem;
     }
     
     .stat-icon {
-      font-size: 2rem;
+      font-size: 1.4rem;
     }
   }
 </style>
