@@ -1054,12 +1054,11 @@ trait ApproverDashboardHelper
                         DB::raw("MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time"),
                         DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) AS last_approval_time")
                     )
+                    // Match by trail's workflow OR by document's workflow (same approach as General workflow memos)
                     ->where(function ($q) use ($workflowId) {
                         $q->where('at.forward_workflow_id', $workflowId)
                             ->orWhere(function ($q2) use ($workflowId) {
-                                // Matrix: when trail has null forward_workflow_id, use workflow from matrix
                                 $q2->where('at.model_type', 'App\\Models\\Matrix')
-                                    ->whereNull('at.forward_workflow_id')
                                     ->whereExists(function ($ex) use ($workflowId) {
                                         $ex->select(DB::raw(1))->from('matrices as m')
                                             ->whereColumn('m.id', 'at.model_id')
@@ -1067,9 +1066,7 @@ trait ApproverDashboardHelper
                                     });
                             })
                             ->orWhere(function ($q2) use ($workflowId) {
-                                // Activity: when trail has null forward_workflow_id, use workflow from activity
                                 $q2->where('at.model_type', 'App\\Models\\Activity')
-                                    ->whereNull('at.forward_workflow_id')
                                     ->whereExists(function ($ex) use ($workflowId) {
                                         $ex->select(DB::raw(1))->from('activities as a')
                                             ->whereColumn('a.id', 'at.model_id')
@@ -1077,9 +1074,23 @@ trait ApproverDashboardHelper
                                     });
                             })
                             ->orWhere(function ($q2) use ($workflowId) {
-                                // ServiceRequest: when trail has null forward_workflow_id, use workflow from service_requests
+                                $q2->where('at.model_type', 'App\\Models\\NonTravelMemo')
+                                    ->whereExists(function ($ex) use ($workflowId) {
+                                        $ex->select(DB::raw(1))->from('non_travel_memos as n')
+                                            ->whereColumn('n.id', 'at.model_id')
+                                            ->where('n.forward_workflow_id', $workflowId);
+                                    });
+                            })
+                            ->orWhere(function ($q2) use ($workflowId) {
+                                $q2->where('at.model_type', 'App\\Models\\SpecialMemo')
+                                    ->whereExists(function ($ex) use ($workflowId) {
+                                        $ex->select(DB::raw(1))->from('special_memos as s')
+                                            ->whereColumn('s.id', 'at.model_id')
+                                            ->where('s.forward_workflow_id', $workflowId);
+                                    });
+                            })
+                            ->orWhere(function ($q2) use ($workflowId) {
                                 $q2->where('at.model_type', 'App\\Models\\ServiceRequest')
-                                    ->whereNull('at.forward_workflow_id')
                                     ->whereExists(function ($ex) use ($workflowId) {
                                         $ex->select(DB::raw(1))->from('service_requests as sr')
                                             ->whereColumn('sr.id', 'at.model_id')
@@ -1087,13 +1098,19 @@ trait ApproverDashboardHelper
                                     });
                             })
                             ->orWhere(function ($q2) use ($workflowId) {
-                                // RequestARF: when trail has null forward_workflow_id, use workflow from request_arfs
                                 $q2->where('at.model_type', 'App\\Models\\RequestARF')
-                                    ->whereNull('at.forward_workflow_id')
                                     ->whereExists(function ($ex) use ($workflowId) {
                                         $ex->select(DB::raw(1))->from('request_arfs as r')
                                             ->whereColumn('r.id', 'at.model_id')
                                             ->where('r.forward_workflow_id', $workflowId);
+                                    });
+                            })
+                            ->orWhere(function ($q2) use ($workflowId) {
+                                $q2->where('at.model_type', 'App\\Models\\ChangeRequest')
+                                    ->whereExists(function ($ex) use ($workflowId) {
+                                        $ex->select(DB::raw(1))->from('change_request as c')
+                                            ->whereColumn('c.id', 'at.model_id')
+                                            ->where('c.forward_workflow_id', $workflowId);
                                     });
                             });
                     })
