@@ -383,12 +383,16 @@ class ServiceRequestController extends Controller
             return [$item->id => $item->name];
         })->toArray();
         
-        // Process internal participants
-        $internalParticipants = $request->input('internal_participants', []);
+        // Process internal participants (prefer JSON payload to avoid max_input_vars truncation with many rows)
+        $internalParticipants = $request->input('internal_participants_data');
+        if (is_string($internalParticipants) && $internalParticipants !== '') {
+            $internalParticipants = json_decode($internalParticipants, true) ?? [];
+        } else {
+            $internalParticipants = $request->input('internal_participants', []);
+        }
         $internalCosts = [];
         $internalTotal = 0;
         
-        // Ensure internalParticipants is an array
         if (!is_array($internalParticipants)) {
             $internalParticipants = [];
         }
@@ -421,12 +425,16 @@ class ServiceRequestController extends Controller
             }
         }
         
-        // Process external participants
-        $externalParticipants = $request->input('external_participants', []);
+        // Process external participants (prefer JSON payload to avoid max_input_vars truncation with many rows)
+        $externalParticipants = $request->input('external_participants_data');
+        if (is_string($externalParticipants) && $externalParticipants !== '') {
+            $externalParticipants = json_decode($externalParticipants, true) ?? [];
+        } else {
+            $externalParticipants = $request->input('external_participants', []);
+        }
         $externalCosts = [];
         $externalTotal = 0;
         
-        // Ensure externalParticipants is an array
         if (!is_array($externalParticipants)) {
             $externalParticipants = [];
         }
