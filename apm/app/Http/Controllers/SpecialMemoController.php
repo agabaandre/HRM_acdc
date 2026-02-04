@@ -41,15 +41,22 @@ class SpecialMemoController extends Controller
         $currentStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
 
+        // Year filter: default to current year
+        $year = $request->get('year', (string) date('Y'));
+
         // Tab 1: My Submitted Special Memos (memos created by current user)
         $mySubmittedQuery = SpecialMemo::with([
-            'staff', 
-            'division', 
-            'requestType', 
+            'staff',
+            'division',
+            'requestType',
             'fundType',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
             ->where('staff_id', $currentStaffId);
+
+        if ($year !== '' && $year !== 'all') {
+            $mySubmittedQuery->whereYear('created_at', $year);
+        }
 
         // Apply filters to my submitted memos
         if ($request->filled('request_type_id')) {
@@ -74,12 +81,16 @@ class SpecialMemoController extends Controller
         $allMemos = collect();
         if (in_array(87, user_session('permissions', []))) {
             $allMemosQuery = SpecialMemo::with([
-                'staff', 
-                'division', 
-                'requestType', 
+                'staff',
+                'division',
+                'requestType',
                 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ]);
+
+            if ($year !== '' && $year !== 'all') {
+                $allMemosQuery->whereYear('created_at', $year);
+            }
 
             // Apply filters to all memos
             if ($request->filled('staff_id')) {
@@ -106,14 +117,18 @@ class SpecialMemoController extends Controller
 
         // Tab 3: Shared Special Memos (memos where current user is added as participant but not creator)
         $sharedMemosQuery = SpecialMemo::with([
-            'staff', 
-            'division', 
-            'requestType', 
+            'staff',
+            'division',
+            'requestType',
             'fundType',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
-            ->where('staff_id', '!=', $currentStaffId) // Not created by current user
-            ->whereJsonContains('internal_participants', $currentStaffId); // But current user is a participant
+            ->where('staff_id', '!=', $currentStaffId)
+            ->whereJsonContains('internal_participants', $currentStaffId);
+
+        if ($year !== '' && $year !== 'all') {
+            $sharedMemosQuery->whereYear('created_at', $year);
+        }
 
         // Apply filters to shared memos
         if ($request->filled('request_type_id')) {
@@ -146,6 +161,88 @@ class SpecialMemoController extends Controller
             
             $tab = $request->get('tab', '');
             $html = '';
+            $year = $request->get('year', (string) date('Y'));
+            
+            $mySubmittedQueryAjax = SpecialMemo::with([
+                'staff', 'division', 'requestType', 'fundType',
+                'forwardWorkflow.workflowDefinitions.approvers.staff'
+            ])->where('staff_id', $currentStaffId);
+            if ($year !== '' && $year !== 'all') {
+                $mySubmittedQueryAjax->whereYear('created_at', $year);
+            }
+            if ($request->filled('request_type_id')) {
+                $mySubmittedQueryAjax->where('request_type_id', $request->request_type_id);
+            }
+            if ($request->filled('division_id')) {
+                $mySubmittedQueryAjax->where('division_id', $request->division_id);
+            }
+            if ($request->filled('status')) {
+                $mySubmittedQueryAjax->where('overall_status', $request->status);
+            }
+            if ($request->filled('document_number')) {
+                $mySubmittedQueryAjax->where('document_number', 'like', '%' . $request->document_number . '%');
+            }
+            if ($request->filled('search')) {
+                $mySubmittedQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
+            }
+            $mySubmittedMemos = $mySubmittedQueryAjax->latest()->paginate(20)->withQueryString();
+
+            $allMemos = collect();
+            if (in_array(87, user_session('permissions', []))) {
+                $allMemosQueryAjax = SpecialMemo::with([
+                    'staff', 'division', 'requestType', 'fundType',
+                    'forwardWorkflow.workflowDefinitions.approvers.staff'
+                ]);
+                if ($year !== '' && $year !== 'all') {
+                    $allMemosQueryAjax->whereYear('created_at', $year);
+                }
+                if ($request->filled('staff_id')) {
+                    $allMemosQueryAjax->where('staff_id', $request->staff_id);
+                }
+                if ($request->filled('request_type_id')) {
+                    $allMemosQueryAjax->where('request_type_id', $request->request_type_id);
+                }
+                if ($request->filled('division_id')) {
+                    $allMemosQueryAjax->where('division_id', $request->division_id);
+                }
+                if ($request->filled('status')) {
+                    $allMemosQueryAjax->where('overall_status', $request->status);
+                }
+                if ($request->filled('document_number')) {
+                    $allMemosQueryAjax->where('document_number', 'like', '%' . $request->document_number . '%');
+                }
+                if ($request->filled('search')) {
+                    $allMemosQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
+                }
+                $allMemos = $allMemosQueryAjax->latest()->paginate(20)->withQueryString();
+            }
+
+            $sharedMemosQueryAjax = SpecialMemo::with([
+                'staff', 'division', 'requestType', 'fundType',
+                'forwardWorkflow.workflowDefinitions.approvers.staff'
+            ])->where('staff_id', '!=', $currentStaffId)->whereJsonContains('internal_participants', $currentStaffId);
+            if ($year !== '' && $year !== 'all') {
+                $sharedMemosQueryAjax->whereYear('created_at', $year);
+            }
+            if ($request->filled('request_type_id')) {
+                $sharedMemosQueryAjax->where('request_type_id', $request->request_type_id);
+            }
+            if ($request->filled('division_id')) {
+                $sharedMemosQueryAjax->where('division_id', $request->division_id);
+            }
+            if ($request->filled('status')) {
+                $sharedMemosQueryAjax->where('overall_status', $request->status);
+            }
+            if ($request->filled('staff_id')) {
+                $sharedMemosQueryAjax->where('staff_id', $request->staff_id);
+            }
+            if ($request->filled('document_number')) {
+                $sharedMemosQueryAjax->where('document_number', 'like', '%' . $request->document_number . '%');
+            }
+            if ($request->filled('search')) {
+                $sharedMemosQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
+            }
+            $sharedMemos = $sharedMemosQueryAjax->latest()->paginate(20)->withQueryString();
             
             switch($tab) {
                 case 'mySubmitted':
@@ -170,15 +267,23 @@ class SpecialMemoController extends Controller
             return response()->json(['html' => $html]);
         }
 
+        $currentYear = (int) date('Y');
+        $years = array_merge(['all' => 'All years'], array_combine(
+            range($currentYear, $currentYear - 10),
+            range($currentYear, $currentYear - 10)
+        ));
+
         return view('special-memo.index', compact(
-            'mySubmittedMemos', 
-            'allMemos', 
+            'mySubmittedMemos',
+            'allMemos',
             'sharedMemos',
-            'staff', 
-            'requestTypes', 
+            'staff',
+            'requestTypes',
             'divisions',
             'currentStaffId',
-            'userDivisionId'
+            'userDivisionId',
+            'year',
+            'years'
         ));
     }
     
