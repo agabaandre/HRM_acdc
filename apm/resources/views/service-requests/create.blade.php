@@ -156,6 +156,9 @@
             <input type="hidden" name="internal_participants_cost" id="internalParticipantsCost" value="{{ $isEdit && $serviceRequest->internal_participants_cost ? (is_string($serviceRequest->internal_participants_cost) ? $serviceRequest->internal_participants_cost : json_encode($serviceRequest->internal_participants_cost)) : '' }}">
             <input type="hidden" name="external_participants_cost" id="externalParticipantsCost" value="{{ $isEdit && $serviceRequest->external_participants_cost ? (is_string($serviceRequest->external_participants_cost) ? $serviceRequest->external_participants_cost : json_encode($serviceRequest->external_participants_cost)) : '' }}">
             <input type="hidden" name="other_costs" id="otherCosts" value="{{ $isEdit && $serviceRequest->other_costs ? (is_string($serviceRequest->other_costs) ? $serviceRequest->other_costs : json_encode($serviceRequest->other_costs)) : '' }}">
+            <!-- JSON payloads for participants (avoids PHP max_input_vars truncation when many rows) -->
+            <input type="hidden" name="internal_participants_data" id="internalParticipantsData" value="">
+            <input type="hidden" name="external_participants_data" id="externalParticipantsData" value="">
             
             <!-- Additional required fields -->
             <input type="hidden" name="request_date" value="{{ $isEdit && $serviceRequest->request_date ? $serviceRequest->request_date : date('Y-m-d') }}">
@@ -1401,22 +1404,65 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Form submission handler - strip commas from numeric inputs and validate budget
     document.getElementById('serviceRequestForm').addEventListener('submit', function(e) {
-        // Re-index external and internal participant rows to 0,1,2,... so all rows are submitted (no sparse indices)
-        const externalRows = document.querySelectorAll('#externalParticipants tr');
-        externalRows.forEach((row, idx) => {
-            row.querySelectorAll('input, select').forEach(input => {
-                if (input.name && input.name.includes('external_participants[')) {
-                    input.name = input.name.replace(/external_participants\[\d+\]/, 'external_participants[' + idx + ']');
+        // Strip commas from cost inputs first so JSON payload has clean numbers
+        document.querySelectorAll('.cost-input').forEach(input => {
+            if (input.value) input.value = input.value.replace(/,/g, '');
+        });
+        // Build participant data as JSON and submit via hidden inputs to avoid PHP max_input_vars truncation (e.g. 92 rows)
+        const internalRows = document.querySelectorAll('#internalParticipants tr');
+        const internalData = [];
+        internalRows.forEach(row => {
+            const staffSelect = row.querySelector('select[name*="[staff_id]"]');
+            const costTypeInput = row.querySelector('input[name*="[cost_type]"]');
+            const descInput = row.querySelector('input[name*="[description]"]');
+            const staffId = staffSelect ? staffSelect.value : '';
+            if (!staffId) return;
+            const costs = {};
+            row.querySelectorAll('input').forEach(costInput => {
+                if (costInput.name && costInput.name.indexOf('[costs][') !== -1) {
+                    const m = costInput.name.match(/\[costs\]\[([^\]]+)\]/);
+                    if (m) costs[m[1]] = costInput.value || '0';
                 }
+            });
+            internalData.push({
+                staff_id: staffId,
+                cost_type: (costTypeInput && costTypeInput.value) ? costTypeInput.value : 'Daily Rate',
+                description: (descInput && descInput.value) ? descInput.value : '',
+                costs: costs
             });
         });
-        const internalRows = document.querySelectorAll('#internalParticipants tr');
-        internalRows.forEach((row, idx) => {
-            row.querySelectorAll('input, select').forEach(input => {
-                if (input.name && input.name.includes('internal_participants[')) {
-                    input.name = input.name.replace(/internal_participants\[\d+\]/, 'internal_participants[' + idx + ']');
+        const externalRows = document.querySelectorAll('#externalParticipants tr');
+        const externalData = [];
+        externalRows.forEach(row => {
+            const nameInput = row.querySelector('input[name*="[name]"]');
+            const emailInput = row.querySelector('input[name*="[email]"]');
+            const costTypeInput = row.querySelector('input[name*="[cost_type]"]');
+            const descInput = row.querySelector('input[name*="[description]"]');
+            const name = nameInput ? (nameInput.value || '').trim() : '';
+            if (!name) return;
+            const costs = {};
+            row.querySelectorAll('input').forEach(costInput => {
+                if (costInput.name && costInput.name.indexOf('[costs][') !== -1) {
+                    const m = costInput.name.match(/\[costs\]\[([^\]]+)\]/);
+                    if (m) costs[m[1]] = costInput.value || '0';
                 }
             });
+            externalData.push({
+                name: name,
+                email: (emailInput && emailInput.value) ? (emailInput.value || '').trim() : '',
+                cost_type: (costTypeInput && costTypeInput.value) ? costTypeInput.value : 'Daily Rate',
+                description: (descInput && descInput.value) ? descInput.value : '',
+                costs: costs
+            });
+        });
+        document.getElementById('internalParticipantsData').value = JSON.stringify(internalData);
+        document.getElementById('externalParticipantsData').value = JSON.stringify(externalData);
+        // Remove names from table inputs so only the JSON payload is submitted (avoids max_input_vars)
+        internalRows.forEach(row => {
+            row.querySelectorAll('input, select').forEach(input => { if (input.name) input.removeAttribute('name'); });
+        });
+        externalRows.forEach(row => {
+            row.querySelectorAll('input, select').forEach(input => { if (input.name) input.removeAttribute('name'); });
         });
 
         // Strip commas from all cost inputs before submission
