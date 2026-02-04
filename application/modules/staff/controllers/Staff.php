@@ -31,13 +31,14 @@ class Staff extends MX_Controller
 			$staffs = $this->staff_mdl->get_active_staff_data($filters);
             $staff = $this->remove_ids($staffs);
 			
-			// Add age as a separate column for each staff member
+			// Add age and years_of_tenure for each staff member
 			foreach ($staff as &$staff_member) {
 				if (!empty($staff_member['date_of_birth'])) {
 					$staff_member['age'] = calculate_age($staff_member['date_of_birth']);
 				} else {
 					$staff_member['age'] = 'N/A';
 				}
+				$staff_member['years_of_tenure'] = years_of_tenure($staff_member['initiation_date'] ?? null);
 			}
 			unset($staff_member); // Break reference
 			$staff = $this->reorder_staff_export_columns($staff);
@@ -342,8 +343,8 @@ class Staff extends MX_Controller
 			'finance_officer',
 			'region_id',
 			'email_status',
-			'staff created_at',
-			'staff updated_at',
+			'staff_created_at',
+			'staff_updated_at',
 			'contract_created_at',
 			'contract_updated_at'
 
@@ -360,7 +361,7 @@ class Staff extends MX_Controller
 	}
 
 	/**
-	 * Reorder CSV/Excel row keys so that 'age' comes immediately after 'date_of_birth'.
+	 * Reorder CSV/Excel row keys: 'age' after 'date_of_birth', 'years_of_tenure' after 'job_name'.
 	 */
 	private function reorder_staff_export_columns($staff) {
 		if (empty($staff)) {
@@ -368,6 +369,7 @@ class Staff extends MX_Controller
 		}
 		foreach ($staff as $index => $row) {
 			$keys = array_keys($row);
+			// Age immediately after date_of_birth
 			$pos_dob = array_search('date_of_birth', $keys);
 			$pos_age = array_search('age', $keys);
 			if ($pos_dob !== false && $pos_age !== false) {
@@ -375,12 +377,21 @@ class Staff extends MX_Controller
 				$keys = array_values($keys);
 				$pos_dob = array_search('date_of_birth', $keys);
 				array_splice($keys, $pos_dob + 1, 0, ['age']);
-				$ordered = [];
-				foreach ($keys as $k) {
-					$ordered[$k] = $row[$k];
-				}
-				$staff[$index] = $ordered;
 			}
+			// Years of tenure immediately after job_name
+			$pos_job = array_search('job_name', $keys);
+			$pos_tenure = array_search('years_of_tenure', $keys);
+			if ($pos_job !== false && $pos_tenure !== false) {
+				unset($keys[$pos_tenure]);
+				$keys = array_values($keys);
+				$pos_job = array_search('job_name', $keys);
+				array_splice($keys, $pos_job + 1, 0, ['years_of_tenure']);
+			}
+			$ordered = [];
+			foreach ($keys as $k) {
+				$ordered[$k] = $row[$k];
+			}
+			$staff[$index] = $ordered;
 		}
 		return $staff;
 	}
@@ -405,13 +416,14 @@ class Staff extends MX_Controller
 			$staffs = $this->staff_mdl->get_all_staff_data($filters);
             $staff = $this->remove_ids($staffs);
 			
-			// Add age as a separate column for each staff member
+			// Add age and years_of_tenure for each staff member
 			foreach ($staff as &$staff_member) {
 				if (!empty($staff_member['date_of_birth'])) {
 					$staff_member['age'] = calculate_age($staff_member['date_of_birth']);
 				} else {
 					$staff_member['age'] = 'N/A';
 				}
+				$staff_member['years_of_tenure'] = years_of_tenure($staff_member['initiation_date'] ?? null);
 			}
 			unset($staff_member); // Break reference
 			$staff = $this->reorder_staff_export_columns($staff);
@@ -993,13 +1005,14 @@ class Staff extends MX_Controller
 			$staffs = $this->staff_mdl->get_status($filters);
             $staff = $this->remove_ids($staffs);
 			
-			// Add age as a separate column for each staff member
+			// Add age and years_of_tenure for each staff member
 			foreach ($staff as &$staff_member) {
 				if (!empty($staff_member['date_of_birth'])) {
 					$staff_member['age'] = calculate_age($staff_member['date_of_birth']);
 				} else {
 					$staff_member['age'] = 'N/A';
 				}
+				$staff_member['years_of_tenure'] = years_of_tenure($staff_member['initiation_date'] ?? null);
 			}
 			unset($staff_member); // Break reference
 			$staff = $this->reorder_staff_export_columns($staff);

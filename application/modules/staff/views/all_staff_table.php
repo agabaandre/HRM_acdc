@@ -7,7 +7,7 @@ if ($offset != "") {
 
 if (empty($staffs)) : ?>
     <tr>
-        <td colspan="20" class="text-center">No data available</td>
+        <td colspan="21" class="text-center">No data available</td>
     </tr>
 <?php else :
 foreach ($staffs as $data) :
@@ -43,6 +43,7 @@ foreach ($staffs as $data) :
         <td><?= @$cont->division_name; ?></td>
         <td><?= @$data->grade; ?></td>
         <td><?= @character_limiter($data->job_name, 30); ?></td>
+        <td><?= !empty($data->initiation_date) ? years_of_tenure($data->initiation_date) : 'N/A'; ?></td>
         <td><?= @character_limiter($cont->job_acting, 30); ?></td>
         <td><?= @staff_name($cont->first_supervisor); ?></td>
         <td><?= @staff_name($cont->second_supervisor); ?></td>

@@ -48,6 +48,28 @@ if (!function_exists('calculate_age')) {
     }
 }
 
+if (!function_exists('years_of_tenure')) {
+    /**
+     * Years of tenure from initiation_date to today.
+     * @param string|null $initiation_date Date string (Y-m-d or similar)
+     * @return int|string Years (integer) or 'N/A' if no date
+     */
+    function years_of_tenure($initiation_date)
+    {
+        if (empty($initiation_date)) {
+            return 'N/A';
+        }
+        try {
+            $start = new DateTime($initiation_date);
+            $today = new DateTime();
+            $diff = $start->diff($today);
+            return $diff->y;
+        } catch (Exception $e) {
+            return 'N/A';
+        }
+    }
+}
+
 //render-front-main website
 if (!function_exists('render_site')) {
 
