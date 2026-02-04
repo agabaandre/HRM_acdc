@@ -1051,7 +1051,7 @@ trait ApproverDashboardHelper
                     ->select(
                         'at.model_id',
                         'at.model_type',
-                        DB::raw("MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time"),
+                        DB::raw("MIN(CASE WHEN at.action = 'submitted' THEN at.updated_at END) AS submitted_time"),
                         DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) AS last_approval_time")
                     )
                     // Match by trail's workflow OR by document's workflow (same approach as General workflow memos)
@@ -1115,11 +1115,7 @@ trait ApproverDashboardHelper
                             });
                     })
                     ->where('at.is_archived', 0)
-                    ->where(function ($q) {
-                        $q->where(function ($q2) {
-                            $q2->where('at.action', 'submitted')->where('at.approval_order', 0);
-                        })->orWhere('at.action', 'approved');
-                    });
+                    ->whereIn('at.action', ['submitted', 'approved']);
 
                 // Only documents that are fully approved (overall_status = 'approved')
                 $query->where(function ($q) {
@@ -1245,7 +1241,6 @@ trait ApproverDashboardHelper
                                     });
                             })
                             ->where('sub.action', 'submitted')
-                            ->where('sub.approval_order', 0)
                             ->where('sub.is_archived', 0)
                             ->where('st.division_id', $divisionId);
                     });
@@ -1323,9 +1318,9 @@ trait ApproverDashboardHelper
                 }
 
                 $query->groupBy('at.model_id', 'at.model_type');
-                $query->havingNotNull(DB::raw("MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END)"));
+                $query->havingNotNull(DB::raw("MIN(CASE WHEN at.action = 'submitted' THEN at.updated_at END)"));
                 $query->havingNotNull(DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END)"));
-                $query->havingRaw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) >= MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END)");
+                $query->havingRaw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) >= MIN(CASE WHEN at.action = 'submitted' THEN at.updated_at END)");
 
                 $rows = $query->get();
 
