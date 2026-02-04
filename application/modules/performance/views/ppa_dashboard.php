@@ -215,15 +215,16 @@
         $('#periodFilter').html('');
         // Sort periods descending (newest first)
         const sortedPeriods = [...data.periods].sort().reverse();
+        const currentYear = new Date().getFullYear().toString();
+        // Default: period that contains current year (e.g. January-2026-to-December-2026); else first in list
+        const defaultPeriod = sortedPeriods.find(p => p.indexOf(currentYear) !== -1) || sortedPeriods[0];
         
-        // Default to last two periods if none selected
         const selectedPeriods = $('#periodFilter').val() || [];
         const shouldSetDefault = selectedPeriods.length === 0;
         
-        sortedPeriods.forEach((period, index) => {
+        sortedPeriods.forEach((period) => {
           const periodDisplay = period.replace(/-/g, ' ');
-          // Select last two periods by default
-          const isSelected = shouldSetDefault && index < 2 ? 'selected' : 
+          const isSelected = shouldSetDefault && period === defaultPeriod ? 'selected' : 
                             selectedPeriods.includes(period) ? 'selected' : '';
           $('#periodFilter').append(`<option value="${period}" ${isSelected}>${periodDisplay}</option>`);
         });
@@ -233,7 +234,7 @@
           theme: 'bootstrap4',
           width: '100%',
           dropdownParent: $('#periodFilter').parent(),
-          placeholder: 'Select periods (default: last 2)'
+          placeholder: 'Select period(s) — default: current year'
         });
       } else {
         $('#periodFilter').html('<option value="">No periods available</option>');
