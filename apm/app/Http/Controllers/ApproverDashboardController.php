@@ -332,6 +332,41 @@ class ApproverDashboardController extends Controller
     }
 
     /**
+     * Get workflow stats (average approval time by workflow) respecting current filters.
+     */
+    public function getWorkflowStats(Request $request): JsonResponse
+    {
+        try {
+            $userSession = user_session();
+            $userDivisionId = $userSession['division_id'] ?? null;
+            $userPermissions = $userSession['permissions'] ?? [];
+            $hasPermission88 = in_array(88, $userPermissions);
+
+            $divisionId = $request->get('division_id') ? (int) $request->get('division_id') : null;
+            $docType = $request->get('doc_type') ?: null;
+            $month = $request->get('month') ? (int) $request->get('month') : null;
+            $year = $request->get('year') ? (int) $request->get('year') : null;
+
+            if (!$hasPermission88 && $userDivisionId && $userDivisionId > 0) {
+                $divisionId = $userDivisionId;
+            }
+
+            $workflowStats = $this->getAverageApprovalTimeByWorkflowFiltered($divisionId, $docType, $year, $month);
+
+            return response()->json([
+                'success' => true,
+                'data' => $workflowStats
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving workflow stats: ' . $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
+
+    /**
      * Export dashboard data to Excel format.
      * Exports all approvers with their pending counts, total handled, and average approval time.
      * Matches the new table structure with row numbers and combined pending items.
