@@ -1238,9 +1238,10 @@
                                         <i class="bx bx-building text-success me-1"></i>Funder <span
                                             class="text-danger">*</span>
                                     </label>
-                                    <select class="form-select" id="modal_funder_id" name="funder_id" required>
+                                    <select class="form-select select2 w-100" id="modal_funder_id" name="funder_id" required
+                                        data-placeholder="Select Funder" style="width: 100%;">
                                         <option value="">Select Funder</option>
-                                        @foreach (\App\Models\Funder::where('is_active', true)->get() as $funder)
+                                        @foreach (\App\Models\Funder::where('is_active', true)->orderBy('name', 'asc')->get() as $funder)
                                             <option value="{{ $funder->id }}"
                                                 {{ $requestARF->funder_id == $funder->id ? 'selected' : '' }}>
                                                 {{ $funder->name }}
@@ -1286,6 +1287,17 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
+            // Select2 for funder in approval modal (dropdown inside modal)
+            if ($.fn.select2) {
+                $('#modal_funder_id').select2({
+                    theme: 'bootstrap4',
+                    width: '100%',
+                    placeholder: 'Select Funder',
+                    allowClear: true,
+                    dropdownParent: $('#approvalModal')
+                });
+            }
+
             // Copy comment from main form to modal when opening
             $('#approvalModal').on('show.bs.modal', function() {
                 const mainComment = $('#comment').val();
