@@ -997,77 +997,89 @@ public function revert()
   }
   public function update_profile()
   {
-    
     $data = $this->input->post();
-    $is_error = false;
-    // Load the Upload library
+    $upload_errors = array();
     $this->load->library('upload');
-    // For each get the file name and upload it
-    // Get the cover
-    $photo = $_FILES['photo'];
-    $signature = $_FILES['signature'];
-    //passport
+
+    $photo = isset($_FILES['photo']) ? $_FILES['photo'] : null;
+    $signature = isset($_FILES['signature']) ? $_FILES['signature'] : null;
+
+    $staff_upload_path = FCPATH . 'uploads/staff';
+    $signature_upload_path = FCPATH . 'uploads/staff/signature';
+    if (!is_dir($staff_upload_path)) {
+      @mkdir($staff_upload_path, 0755, true);
+    }
+    if (!is_dir($signature_upload_path)) {
+      @mkdir($signature_upload_path, 0755, true);
+    }
+
     if (!empty($photo['name'])) {
-      // Chnage the file name to cover with the extension and timestamp
-      $photo['name'] = str_replace(' ', '_', $data['name']) . time() . pathinfo($photo['name'], PATHINFO_EXTENSION);
-      $config['upload_path']   = './uploads/staff/';
-      $config['allowed_types'] = 'gif|jpg|png|jpeg';
-      $config['file_name']     = $photo['name'];
-
+      $ext = pathinfo($photo['name'], PATHINFO_EXTENSION);
+      $safe_name = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9_\-.]/', '', $data['name']));
+      $photo_file_name = $safe_name . '_' . time() . '.' . ($ext ? $ext : 'jpg');
+      $config = array(
+        'upload_path'   => './uploads/staff/',
+        'allowed_types' => 'gif|jpg|png|jpeg',
+        'file_name'     => $photo_file_name,
+        'max_size'      => 1024,
+        'overwrite'     => false
+      );
       $this->upload->initialize($config);
-      // If the upload fails, set the error message
       if (!$this->upload->do_upload('photo')) {
-        $this->session->set_flashdata('error', $this->upload->display_errors());
-        $is_error = true;
+        $upload_errors[] = 'Profile photo: ' . $this->upload->display_errors('', '');
       } else {
-        // If the upload is successful, get the file name
-        $photo = $this->upload->data('file_name');
-        $data['photo'] = $photo;
-        $this->session->userdata('user')->photo = $photo;
+        $data['photo'] = $this->upload->data('file_name');
       }
     }
 
-    //passport
     if (!empty($signature['name'])) {
-      // Chnage the file name to cover with the extension and timestamp
-      $signature['name'] = str_replace(' ', '_', $data['name']) . time() . pathinfo($signature['name'], PATHINFO_EXTENSION);
-      $config['upload_path']   = './uploads/staff/signature/';
-      $config['allowed_types'] = 'gif|jpg|png|jpeg';
-      $config['file_name']     = $signature['name'];
-
+      $ext = pathinfo($signature['name'], PATHINFO_EXTENSION);
+      $safe_name = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9_\-.]/', '', $data['name']));
+      $signature_file_name = $safe_name . '_sig_' . time() . '.' . ($ext ? $ext : 'png');
+      $config = array(
+        'upload_path'   => './uploads/staff/signature/',
+        'allowed_types' => 'gif|jpg|png|jpeg',
+        'file_name'     => $signature_file_name,
+        'max_size'      => 1024,
+        'overwrite'     => false
+      );
       $this->upload->initialize($config);
-      // If the upload fails, set the error message
       if (!$this->upload->do_upload('signature')) {
-        $this->session->set_flashdata('error', $this->upload->display_errors());
-        $is_error = true;
-        //dd($this->upload->display_errors());
+        $upload_errors[] = 'Signature: ' . $this->upload->display_errors('', '');
       } else {
-        // If the upload is successful, get the file name
-        $signature = $this->upload->data('file_name');
-        $data['signature'] = $signature;
-        $this->session->userdata('user')->signature = $signature;
+        $data['signature'] = $this->upload->data('file_name');
       }
     }
-  
 
-
-    $this->session->userdata('user')->langauge = $data['langauge'];
     $res = $this->auth_mdl->updateProfile($data);
 
-    if ($res) {
-      $msg = array(
-        'msg' => $res,
-        'type' => 'success'
-      );
-      Modules::run('utility/setFlash', $msg);
-      redirect('auth/profile');
-    } else {
-      $msg = array(
-        'msg' => $res,
-        'type' => 'error'
-      );
-      redirect('auth/profile');
+    $user = $this->session->userdata('user');
+    if ($user) {
+      if (!empty($data['photo'])) {
+        $user->photo = $data['photo'];
+      }
+      if (!empty($data['signature'])) {
+        $user->signature = $data['signature'];
+      }
+      if (isset($data['langauge'])) {
+        $user->langauge = $data['langauge'];
+      }
+      $this->session->set_userdata('user', $user);
     }
+
+    if (!empty($upload_errors)) {
+      $error_text = implode(' ', $upload_errors);
+      Modules::run('utility/setFlash', array('msg' => $error_text, 'type' => 'error'));
+      redirect('auth/profile');
+      return;
+    }
+
+    if ($res) {
+      Modules::run('utility/setFlash', array('msg' => is_string($res) ? $res : 'Profile updated successfully.', 'type' => 'success'));
+    } else {
+      Modules::run('utility/setFlash', array('msg' => 'Profile update failed. Please try again.', 'type' => 'error'));
+    }
+    redirect('auth/profile');
   }
   public function photoMark($imagepath)
   {
