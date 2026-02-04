@@ -40,11 +40,12 @@ class ServiceRequestController extends Controller
     {
         $currentStaffId = user_session('staff_id');
         $currentYear = (int) date('Y');
-        // Default to current year when year is missing or empty; keep "all" when explicitly chosen
+        // Default to current year when year is missing, empty, or invalid (e.g. 0); filter by created_at
         $selectedYear = $request->get('year');
-        if ($selectedYear === null || $selectedYear === '') {
+        if ($selectedYear === null || $selectedYear === '' || (is_numeric($selectedYear) && (int) $selectedYear === 0)) {
             $selectedYear = (string) $currentYear;
         }
+        $selectedYear = (string) $selectedYear;
         $years = array_merge(['all' => 'All years'], array_combine(
             range($currentYear, $currentYear - 10),
             range($currentYear, $currentYear - 10)
@@ -54,7 +55,7 @@ class ServiceRequestController extends Controller
         $baseQuery = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'workflowDefinition'])
             ->orderByDesc('created_at');
 
-        if ($selectedYear !== '' && $selectedYear !== 'all') {
+        if ($selectedYear !== '' && $selectedYear !== 'all' && (int) $selectedYear > 0) {
             $baseQuery->whereYear('created_at', $selectedYear);
         }
 

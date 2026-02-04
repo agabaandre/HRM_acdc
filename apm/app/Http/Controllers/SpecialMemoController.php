@@ -41,11 +41,12 @@ class SpecialMemoController extends Controller
         $currentStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
 
-        // Year filter: default to current year when missing or empty; keep "all" when explicitly chosen
+        // Year filter: default to current year when missing, empty, or invalid (e.g. 0); use created_at
         $year = $request->get('year');
-        if ($year === null || $year === '') {
+        if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
             $year = (string) date('Y');
         }
+        $year = (string) $year;
 
         // Tab 1: My Submitted Special Memos (memos created by current user)
         $mySubmittedQuery = SpecialMemo::with([
@@ -57,7 +58,7 @@ class SpecialMemoController extends Controller
         ])
             ->where('staff_id', $currentStaffId);
 
-        if ($year !== '' && $year !== 'all') {
+        if ($year !== '' && $year !== 'all' && (int) $year > 0) {
             $mySubmittedQuery->whereYear('created_at', $year);
         }
 
@@ -91,7 +92,7 @@ class SpecialMemoController extends Controller
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ]);
 
-            if ($year !== '' && $year !== 'all') {
+            if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                 $allMemosQuery->whereYear('created_at', $year);
             }
 
@@ -129,7 +130,7 @@ class SpecialMemoController extends Controller
             ->where('staff_id', '!=', $currentStaffId)
             ->whereJsonContains('internal_participants', $currentStaffId);
 
-        if ($year !== '' && $year !== 'all') {
+        if ($year !== '' && $year !== 'all' && (int) $year > 0) {
             $sharedMemosQuery->whereYear('created_at', $year);
         }
 
@@ -165,15 +166,16 @@ class SpecialMemoController extends Controller
             $tab = $request->get('tab', '');
             $html = '';
             $year = $request->get('year');
-            if ($year === null || $year === '') {
+            if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
                 $year = (string) date('Y');
             }
+            $year = (string) $year;
 
             $mySubmittedQueryAjax = SpecialMemo::with([
                 'staff', 'division', 'requestType', 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ])->where('staff_id', $currentStaffId);
-            if ($year !== '' && $year !== 'all') {
+            if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                 $mySubmittedQueryAjax->whereYear('created_at', $year);
             }
             if ($request->filled('request_type_id')) {
@@ -199,7 +201,7 @@ class SpecialMemoController extends Controller
                     'staff', 'division', 'requestType', 'fundType',
                     'forwardWorkflow.workflowDefinitions.approvers.staff'
                 ]);
-                if ($year !== '' && $year !== 'all') {
+                if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                     $allMemosQueryAjax->whereYear('created_at', $year);
                 }
                 if ($request->filled('staff_id')) {
@@ -227,7 +229,7 @@ class SpecialMemoController extends Controller
                 'staff', 'division', 'requestType', 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ])->where('staff_id', '!=', $currentStaffId)->whereJsonContains('internal_participants', $currentStaffId);
-            if ($year !== '' && $year !== 'all') {
+            if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                 $sharedMemosQueryAjax->whereYear('created_at', $year);
             }
             if ($request->filled('request_type_id')) {

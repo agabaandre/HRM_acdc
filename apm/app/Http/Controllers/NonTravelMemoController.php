@@ -39,11 +39,12 @@ class NonTravelMemoController extends Controller
         $currentStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
 
-        // Year filter: default to current year when missing or empty; keep "all" when explicitly chosen
+        // Year filter: default to current year when missing, empty, or invalid (e.g. 0); use created_at
         $year = $request->get('year');
-        if ($year === null || $year === '') {
+        if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
             $year = (string) date('Y');
         }
+        $year = (string) $year;
 
         // Tab 1: My Submitted Memos (memos created by current user)
         $mySubmittedQuery = NonTravelMemo::with([
@@ -55,9 +56,8 @@ class NonTravelMemoController extends Controller
         ])
             ->where('staff_id', $currentStaffId);
 
-        // Year filter (memo_date or created_at)
-        if ($year !== '' && $year !== 'all') {
-            $mySubmittedQuery->whereRaw('YEAR(COALESCE(memo_date, created_at)) = ?', [$year]);
+        if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+            $mySubmittedQuery->whereYear('created_at', $year);
         }
 
         // Apply filters to my submitted memos
@@ -93,9 +93,8 @@ class NonTravelMemoController extends Controller
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ]);
 
-            // Year filter
-            if ($year !== '' && $year !== 'all') {
-                $allMemosQuery->whereRaw('YEAR(COALESCE(memo_date, created_at)) = ?', [$year]);
+            if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+                $allMemosQuery->whereYear('created_at', $year);
             }
 
             // Apply filters to all memos
@@ -132,9 +131,10 @@ class NonTravelMemoController extends Controller
             $html = '';
             
             $year = $request->get('year');
-            if ($year === null || $year === '') {
+            if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
                 $year = (string) date('Y');
             }
+            $year = (string) $year;
 
             // Rebuild queries with filters for AJAX requests
             $mySubmittedQuery = NonTravelMemo::with([
@@ -146,8 +146,8 @@ class NonTravelMemoController extends Controller
             ])
                 ->where('staff_id', $currentStaffId);
 
-            if ($year !== '' && $year !== 'all') {
-                $mySubmittedQuery->whereRaw('YEAR(COALESCE(memo_date, created_at)) = ?', [$year]);
+            if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+                $mySubmittedQuery->whereYear('created_at', $year);
             }
 
             // Apply filters to my submitted memos
@@ -183,8 +183,8 @@ class NonTravelMemoController extends Controller
                     'forwardWorkflow.workflowDefinitions.approvers.staff'
                 ]);
 
-                if ($year !== '' && $year !== 'all') {
-                    $allMemosQuery->whereRaw('YEAR(COALESCE(memo_date, created_at)) = ?', [$year]);
+                if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+                    $allMemosQuery->whereYear('created_at', $year);
                 }
 
                 // Apply filters to all memos
@@ -1577,6 +1577,10 @@ class NonTravelMemoController extends Controller
     {
         $currentStaffId = user_session('staff_id');
         $year = $request->get('year', (string) date('Y'));
+        if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
+            $year = (string) date('Y');
+        }
+        $year = (string) $year;
 
         $query = NonTravelMemo::with([
             'staff',
@@ -1584,8 +1588,8 @@ class NonTravelMemoController extends Controller
             'nonTravelMemoCategory'
         ])->where('staff_id', $currentStaffId);
 
-        if ($year !== '' && $year !== 'all') {
-            $query->whereRaw('YEAR(COALESCE(memo_date, created_at)) = ?', [$year]);
+        if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+            $query->whereYear('created_at', $year);
         }
 
         // Apply filters
@@ -1649,6 +1653,10 @@ class NonTravelMemoController extends Controller
         }
 
         $year = $request->get('year', (string) date('Y'));
+        if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
+            $year = (string) date('Y');
+        }
+        $year = (string) $year;
 
         $query = NonTravelMemo::with([
             'staff',
@@ -1656,8 +1664,8 @@ class NonTravelMemoController extends Controller
             'nonTravelMemoCategory'
         ]);
 
-        if ($year !== '' && $year !== 'all') {
-            $query->whereRaw('YEAR(COALESCE(memo_date, created_at)) = ?', [$year]);
+        if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+            $query->whereYear('created_at', $year);
         }
 
         // Apply filters
