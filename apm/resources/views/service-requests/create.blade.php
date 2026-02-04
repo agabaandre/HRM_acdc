@@ -496,9 +496,9 @@
                             <thead class="table-secondary">
                             <tr>
                                 <th style="width: 8%;">Remove</th>
-                                <th style="width: 25%;">Name</th>
+                                <th style="min-width: 200px; width: 200px;">Name</th>
                                     @foreach ($costItems as $costItem)
-                                    <th style="width: {{ 42 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                    <th class="cost-item-cell" style="width: 80px; min-width: 80px;">{{ $costItem->name }}</th>
                                                         @endforeach
                                 <th style="width: 10%;">Total</th>
                             </tr>
@@ -512,7 +512,7 @@
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
-                                    <td>
+                                    <td style="min-width: 200px; width: 200px;">
                                         <select name="internal_participants[{{ $pIdx }}][staff_id]"
                                             class="form-select border-success participant-select" style="width: 100%;">
                                             <option value="">Select Participant</option>
@@ -528,7 +528,7 @@
                                         <input type="hidden" name="internal_participants[{{ $pIdx }}][description]" value="{{ $participant['description'] ?? '' }}">
                                     </td>
                                     @foreach ($costItems as $costItem)
-                                    <td>
+                                    <td class="cost-item-cell" style="width: 80px; min-width: 80px;">
                                         @php $costKey = $costItem->id ?? $costItem->name; $costVal = $participant['costs'][$costKey] ?? $participant['costs'][$costItem->name] ?? 0; @endphp
                                         <input type="text"
                                             name="internal_participants[{{ $pIdx }}][costs][{{ $costKey }}]"
@@ -549,7 +549,7 @@
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
-                                <td>
+                                <td style="min-width: 200px; width: 200px;">
                                         <select name="internal_participants[0][staff_id]"
                                             class="form-select border-success participant-select" style="width: 100%;">
                                         <option value="">Select Participant</option>
@@ -568,7 +568,7 @@
                                     <input type="hidden" name="internal_participants[0][description]" value="">
                                 </td>
                                     @foreach ($costItems as $index => $costItem)
-                                    <td>
+                                    <td class="cost-item-cell" style="width: 80px; min-width: 80px;">
                                             <input type="text"
                                                name="internal_participants[0][costs][{{ $costItem->id }}]" 
                                                 class="form-control border-success cost-input" value="0"
@@ -622,10 +622,10 @@
                             <thead class="table-secondary">
                                 <tr>
                                     <th style="width: 8%;">Remove</th>
-                                    <th style="width: 200px; max-width: 200px;">Name</th>
-                                <th style="width: 200px; max-width: 200px;">Email</th>
+                                    <th style="min-width: 200px; width: 200px;">Name</th>
+                                <th style="min-width: 200px; width: 200px;">Email</th>
                                     @foreach ($costItems as $costItem)
-                                    <th style="width: {{ 27 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                    <th class="cost-item-cell" style="width: 80px; min-width: 80px;">{{ $costItem->name }}</th>
                                 @endforeach
                                 <th style="width: 10%;">Total</th>
                             </tr>
@@ -639,19 +639,19 @@
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
-                                    <td style="width: 200px; max-width: 200px;">
+                                    <td style="min-width: 200px; width: 200px;">
                                         <input type="text" name="external_participants[{{ $eIdx }}][name]"
                                             class="form-control border-success" placeholder="Name" value="{{ $extParticipant['name'] ?? '' }}">
                                         <input type="hidden" name="external_participants[{{ $eIdx }}][cost_type]" value="{{ $extParticipant['cost_type'] ?? 'Daily Rate' }}">
                                         <input type="hidden" name="external_participants[{{ $eIdx }}][description]" value="{{ $extParticipant['description'] ?? '' }}">
                                     </td>
-                                    <td style="width: 200px; max-width: 200px;">
+                                    <td style="min-width: 200px; width: 200px;">
                                         <input type="email" name="external_participants[{{ $eIdx }}][email]"
                                             class="form-control border-success" placeholder="Email" value="{{ $extParticipant['email'] ?? '' }}">
                                     </td>
                                     @foreach ($costItems as $costItem)
                                     @php $costKey = $costItem->id ?? $costItem->name; $costVal = $extParticipant['costs'][$costKey] ?? $extParticipant['costs'][$costItem->name] ?? 0; @endphp
-                                    <td>
+                                    <td class="cost-item-cell" style="width: 80px; min-width: 80px;">
                                         <input type="text"
                                             name="external_participants[{{ $eIdx }}][costs][{{ $costKey }}]"
                                             class="form-control border-success cost-input" value="{{ $costVal }}"
@@ -671,16 +671,16 @@
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
-                                    <td style="width: 200px; max-width: 200px;"><input type="text" name="external_participants[0][name]"
+                                    <td style="min-width: 200px; width: 200px;"><input type="text" name="external_participants[0][name]"
                                             class="form-control border-success" placeholder="Name" value="">
                                         <!-- Hidden fields for cost type and description -->
                                         <input type="hidden" name="external_participants[0][cost_type]" value="Daily Rate">
                                         <input type="hidden" name="external_participants[0][description]" value="">
                                     </td>
-                                    <td style="width: 200px; max-width: 200px;"><input type="email" name="external_participants[0][email]"
+                                    <td style="min-width: 200px; width: 200px;"><input type="email" name="external_participants[0][email]"
                                             class="form-control border-success" placeholder="Email" value=""></td>
                                     @foreach ($costItems as $index => $costItem)
-                                        <td>
+                                        <td class="cost-item-cell" style="width: 80px; min-width: 80px;">
                                             <input type="text"
                                                name="external_participants[0][costs][{{ $costItem->id }}]" 
                                                 class="form-control border-success cost-input" value="0"
@@ -922,17 +922,19 @@
                                 
             <!-- Action Buttons -->
                 <div class="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
-                    <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary px-4">
+                    <a href="{{ $isEdit ? route('service-requests.show', $serviceRequest) : route('service-requests.index') }}" class="btn btn-outline-secondary px-4">
                     <i class="fas fa-times me-1"></i> Cancel
                 </a>
                     <button type="submit" name="submit_action" value="submit" class="btn btn-success px-4">
+                        @if($isEdit)
+                        <i class="fas fa-paper-plane me-1"></i> Submit for approval
+                        @else
                         <i class="fas fa-paper-plane me-1"></i> Submit Request
+                        @endif
                     </button>
-                    @if(!$isEdit)
                     <button type="submit" name="submit_action" value="draft" class="btn btn-outline-primary px-4">
                         <i class="fas fa-save me-1"></i> Save as draft
                     </button>
-                    @endif
             </div>
         </form>
     </div>
@@ -996,6 +998,39 @@
              transform: scale(1.1);
          }
          
+         /* Internal participants: Name column 200px */
+         #internalParticipants th:nth-child(2),
+         #internalParticipants td:nth-child(2) {
+             min-width: 200px !important;
+             width: 200px !important;
+         }
+         
+        /* Cost item columns: 80px each in both participants tables */
+        #internalParticipants .cost-item-cell,
+        #externalParticipants .cost-item-cell {
+            min-width: 80px !important;
+            width: 80px !important;
+            max-width: 80px !important;
+        }
+         /* Wrap cost item header text so width stays strict */
+         #internalParticipants thead .cost-item-cell,
+         #externalParticipants thead .cost-item-cell {
+             white-space: normal !important;
+             word-wrap: break-word;
+             word-break: break-word;
+             overflow-wrap: break-word;
+             line-height: 1.2;
+             font-size: 0.75rem;
+             padding: 0.35rem;
+             text-align: center;
+         }
+         #internalParticipants .cost-item-cell input,
+         #externalParticipants .cost-item-cell input {
+             min-width: 0;
+             width: 100%;
+             box-sizing: border-box;
+         }
+         
          /* External participants table styling */
          #externalParticipants table {
              table-layout: fixed;
@@ -1003,14 +1038,15 @@
          
          #externalParticipants th:first-child,
          #externalParticipants td:first-child {
-             width: 200px !important;
-             max-width: 200px !important;
+             width: 8% !important;
          }
          
          #externalParticipants th:nth-child(2),
-         #externalParticipants td:nth-child(2) {
+         #externalParticipants td:nth-child(2),
+         #externalParticipants th:nth-child(3),
+         #externalParticipants td:nth-child(3) {
+             min-width: 200px !important;
              width: 200px !important;
-             max-width: 200px !important;
          }
          
         /* Remove button styling */
@@ -1176,16 +1212,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (costTypeInput) costTypeInput.value = 'Daily Rate';
         if (descriptionInput) descriptionInput.value = '';
         
-        // Ensure Name and Email columns have fixed width (now cells 1 and 2 due to remove button in cell 0)
+        // Ensure Name and Email columns have fixed width (cells 1 and 2; cell 0 is Remove)
         const nameCell = newRow.cells[1];
         const emailCell = newRow.cells[2];
         if (nameCell) {
+            nameCell.style.minWidth = '200px';
             nameCell.style.width = '200px';
-            nameCell.style.maxWidth = '200px';
         }
         if (emailCell) {
+            emailCell.style.minWidth = '200px';
             emailCell.style.width = '200px';
-            emailCell.style.maxWidth = '200px';
         }
         
         // Clear the total cell

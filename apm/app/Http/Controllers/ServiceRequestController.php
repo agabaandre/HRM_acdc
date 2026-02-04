@@ -696,8 +696,10 @@ class ServiceRequestController extends Controller
         
         // Load source data if available
         $sourceData = null;
+        $mainActivityUrl = null;
         if ($serviceRequest->source_type && $serviceRequest->source_id) {
             $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
+            $mainActivityUrl = $this->getMainActivityUrl($serviceRequest->source_type, $serviceRequest->source_id, $sourceData);
         }
         
         // Clean up stored budget data to remove "Unknown Cost" text
@@ -706,7 +708,7 @@ class ServiceRequestController extends Controller
         // Get approval levels for progress bar
         $approvalLevels = $this->getApprovalLevels($serviceRequest);
         
-        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels'));
+        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels', 'mainActivityUrl'));
     }
 
     /**
@@ -758,9 +760,10 @@ class ServiceRequestController extends Controller
             $internalParticipants = is_array($decoded) ? $decoded : [];
         }
 
-        // Cost items: only those from this service request's budget (memo-related). Never re-pull from source.
+        // Cost items: Individual from service request's budget; Other Costs from SOURCE MEMO so they match create form.
         $costItems = collect();
         $otherCostItems = collect();
+        $sourceBudgetForCostItems = is_array($originalBudgetBreakdownFromSource) ? $originalBudgetBreakdownFromSource : [];
         if (!empty($budgetBreakdown)) {
             $extractedCostItems = $this->extractCostItemsFromBudget($budgetBreakdown);
             if (!empty($extractedCostItems)) {
@@ -773,14 +776,43 @@ class ServiceRequestController extends Controller
                     ];
                     if (($costItem['cost_type'] ?? '') === 'Individual Cost') {
                         $costItems->push($dynamicCostItem);
-                    } else {
-                        $otherCostItems->push($dynamicCostItem);
                     }
+                    // Other Cost items are populated from source memo below, not from stored budget
                 }
             }
         }
-        if ($costItems->isEmpty() && $otherCostItems->isEmpty()) {
+        // Other Costs: use source memo budget so available options match the source memo (not "all" from DB).
+        if (!empty($sourceBudgetForCostItems)) {
+            $extractedFromSource = $this->extractCostItemsFromBudget($sourceBudgetForCostItems);
+            foreach ($extractedFromSource as $costItem) {
+                if (($costItem['cost_type'] ?? '') === 'Other Cost') {
+                    $otherCostItems->push((object) [
+                        'id' => $costItem['name'],
+                        'name' => $costItem['name'],
+                        'cost_type' => $costItem['cost_type'],
+                        'description' => $costItem['description'] ?? ''
+                    ]);
+                }
+            }
+        }
+        // If source had no Other Cost items, allow from stored budget so existing rows remain selectable
+        if ($otherCostItems->isEmpty() && !empty($budgetBreakdown)) {
+            $extractedCostItems = $this->extractCostItemsFromBudget($budgetBreakdown);
+            foreach ($extractedCostItems as $costItem) {
+                if (($costItem['cost_type'] ?? '') === 'Other Cost') {
+                    $otherCostItems->push((object) [
+                        'id' => $costItem['name'],
+                        'name' => $costItem['name'],
+                        'cost_type' => $costItem['cost_type'],
+                        'description' => $costItem['description'] ?? ''
+                    ]);
+                }
+            }
+        }
+        if ($costItems->isEmpty()) {
             $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
+        }
+        if ($otherCostItems->isEmpty()) {
             $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
         }
 
@@ -869,20 +901,58 @@ class ServiceRequestController extends Controller
         $budgetData = $this->processBudgetData($request);
         $validated = array_merge($validated, $budgetData);
 
-        // Map form 'status' to model overall_status when provided
+        $submitAction = $request->input('submit_action', 'draft');
+
+        if ($submitAction === 'draft') {
+            // Save as draft: clear workflow, set status to draft
+            $validated['overall_status'] = 'draft';
+            $validated['approval_level'] = null;
+            $validated['next_approval_level'] = null;
+            $validated['forward_workflow_id'] = null;
+            $validated['reverse_workflow_id'] = null;
+            $serviceRequest->update($validated);
+            return redirect()
+                ->route('service-requests.show', $serviceRequest)
+                ->with('success', 'Service request saved as draft.');
+        }
+
+        // Submit for approval: save form data first, preserve workflow if already submitted
+        $currentStatus = $serviceRequest->overall_status ?? '';
         if ($request->has('status')) {
             $validated['overall_status'] = $request->input('status');
         }
-        // Preserve approval/workflow state - do not overwrite from form
         $validated['approval_level'] = $serviceRequest->approval_level;
         $validated['next_approval_level'] = $serviceRequest->next_approval_level;
         $validated['forward_workflow_id'] = $serviceRequest->forward_workflow_id;
         $validated['reverse_workflow_id'] = $serviceRequest->reverse_workflow_id;
-
         $serviceRequest->update($validated);
 
+        // If draft or returned, perform actual submit for approval (workflow, trail, email)
+        if (in_array($currentStatus, ['draft', 'returned']) && is_with_creator_generic($serviceRequest)) {
+            $assignedWorkflowId = \App\Models\WorkflowModel::getWorkflowIdForModel('ServiceRequest');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 3;
+            }
+            $serviceRequest->forward_workflow_id = $assignedWorkflowId;
+            $serviceRequest->reverse_workflow_id = $assignedWorkflowId;
+            $serviceRequest->approval_level = 31;
+            $serviceRequest->next_approval_level = 32;
+            $serviceRequest->overall_status = 'pending';
+            $serviceRequest->save();
+
+            $serviceRequest->saveApprovalTrail('Submitted for approval', 'submitted');
+
+            if (function_exists('send_service_request_email_notification')) {
+                send_service_request_email_notification($serviceRequest, 'approval');
+            }
+
+            return redirect()
+                ->route('service-requests.show', $serviceRequest)
+                ->with('success', 'Service request submitted for approval successfully.');
+        }
+
         return redirect()
-            ->route('service-requests.index')
+            ->route('service-requests.show', $serviceRequest)
             ->with('success', 'Service request updated successfully.');
     }
 
@@ -1499,6 +1569,39 @@ class ServiceRequestController extends Controller
             }
             
             return $source;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Get URL to the main activity / source (activity, non-travel memo, or special memo) for linking from service request show.
+     */
+    private function getMainActivityUrl(?string $sourceType, $sourceId, $sourceData): ?string
+    {
+        if (!$sourceType || !$sourceId) {
+            return null;
+        }
+        try {
+            switch ($sourceType) {
+                case 'activity':
+                    if (!$sourceData) {
+                        $sourceData = Activity::find($sourceId);
+                    }
+                    if ($sourceData && $sourceData->is_single_memo) {
+                        return route('activities.single-memos.show', $sourceData->id);
+                    }
+                    if ($sourceData && $sourceData->matrix_id) {
+                        return route('matrices.activities.show', [$sourceData->matrix_id, $sourceData->id]);
+                    }
+                    return null;
+                case 'non_travel_memo':
+                    return route('non-travel.show', $sourceId);
+                case 'special_memo':
+                    return route('special-memo.show', $sourceId);
+                default:
+                    return null;
+            }
         } catch (\Exception $e) {
             return null;
         }

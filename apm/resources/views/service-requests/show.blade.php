@@ -242,6 +242,11 @@
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">Activity Title</label>
                                 <p class="mb-0 fw-semibold">{{ $sourceData->activity_title ?? $sourceData->title ?? 'Not specified' }}</p>
+                                @if($mainActivityUrl ?? null)
+                                    <a href="{{ $mainActivityUrl }}" class="btn btn-sm btn-outline-primary mt-2" target="_blank" rel="noopener">
+                                        <i class="fas fa-external-link-alt me-1"></i>View main activity
+                                    </a>
+                                @endif
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">Activity Type</label>
