@@ -130,7 +130,7 @@
                            value="{{ request('search') }}" placeholder="Enter memo title...">
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
+                    <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -308,6 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const staffId = document.getElementById('staff_id')?.value;
         const divisionId = document.getElementById('division_id')?.value;
         const status = document.getElementById('special_status')?.value;
+        const search = document.getElementById('search')?.value;
         
         if (year) currentUrl.searchParams.set('year', year);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
@@ -315,6 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (status) currentUrl.searchParams.set('status', status);
+        if (search) currentUrl.searchParams.set('search', search);
         
         console.log('Special memo request URL:', currentUrl.toString());
         
