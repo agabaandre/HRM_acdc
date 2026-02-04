@@ -40,16 +40,19 @@ class ServiceRequestController extends Controller
     {
         $currentStaffId = user_session('staff_id');
         $currentYear = (int) date('Y');
-        $selectedYear = (int) $request->get('year', $currentYear);
-        $years = array_combine(
+        $selectedYear = $request->get('year', (string) $currentYear);
+        $years = array_merge(['all' => 'All years'], array_combine(
             range($currentYear, $currentYear - 10),
             range($currentYear, $currentYear - 10)
-        );
+        ));
 
         // Base query for filtering
         $baseQuery = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'workflowDefinition'])
-            ->whereYear('created_at', $selectedYear)
             ->latest();
+
+        if ($selectedYear !== '' && $selectedYear !== 'all') {
+            $baseQuery->whereYear('created_at', $selectedYear);
+        }
 
         // Apply filters
         if ($request->has('staff_id') && $request->staff_id) {

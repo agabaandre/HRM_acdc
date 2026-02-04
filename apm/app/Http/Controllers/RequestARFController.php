@@ -32,11 +32,11 @@ class RequestARFController extends Controller
     {
         $currentStaffId = user_session('staff_id');
         $currentYear = (int) date('Y');
-        $selectedYear = (int) $request->get('year', $currentYear);
-        $years = array_combine(
+        $selectedYear = $request->get('year', (string) $currentYear);
+        $years = array_merge(['all' => 'All years'], array_combine(
             range($currentYear, $currentYear - 10),
             range($currentYear, $currentYear - 10)
-        );
+        ));
 
         // Get My ARFs (created by current user)
         $mySubmittedArfsQuery = RequestARF::with([
@@ -44,8 +44,11 @@ class RequestARFController extends Controller
             'division',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
-            ->where('staff_id', $currentStaffId)
-            ->whereYear('created_at', $selectedYear);
+            ->where('staff_id', $currentStaffId);
+
+        if ($selectedYear !== '' && $selectedYear !== 'all') {
+            $mySubmittedArfsQuery->whereYear('created_at', $selectedYear);
+        }
 
         // Apply filters to My ARFs
         if ($request->filled('document_number')) {
@@ -77,8 +80,11 @@ class RequestARFController extends Controller
                 'division',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ])
-                ->whereYear('created_at', $selectedYear)
                 ->latest();
+
+            if ($selectedYear !== '' && $selectedYear !== 'all') {
+                $allArfsQuery->whereYear('created_at', $selectedYear);
+            }
 
             // Apply filters to All ARFs
             if ($request->filled('document_number')) {
