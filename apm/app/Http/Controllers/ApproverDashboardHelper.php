@@ -1075,6 +1075,26 @@ trait ApproverDashboardHelper
                                             ->whereColumn('a.id', 'at.model_id')
                                             ->where('a.forward_workflow_id', $workflowId);
                                     });
+                            })
+                            ->orWhere(function ($q2) use ($workflowId) {
+                                // ServiceRequest: when trail has null forward_workflow_id, use workflow from service_requests
+                                $q2->where('at.model_type', 'App\\Models\\ServiceRequest')
+                                    ->whereNull('at.forward_workflow_id')
+                                    ->whereExists(function ($ex) use ($workflowId) {
+                                        $ex->select(DB::raw(1))->from('service_requests as sr')
+                                            ->whereColumn('sr.id', 'at.model_id')
+                                            ->where('sr.forward_workflow_id', $workflowId);
+                                    });
+                            })
+                            ->orWhere(function ($q2) use ($workflowId) {
+                                // RequestARF: when trail has null forward_workflow_id, use workflow from request_arfs
+                                $q2->where('at.model_type', 'App\\Models\\RequestARF')
+                                    ->whereNull('at.forward_workflow_id')
+                                    ->whereExists(function ($ex) use ($workflowId) {
+                                        $ex->select(DB::raw(1))->from('request_arfs as r')
+                                            ->whereColumn('r.id', 'at.model_id')
+                                            ->where('r.forward_workflow_id', $workflowId);
+                                    });
                             });
                     })
                     ->where('at.is_archived', 0)
@@ -1178,6 +1198,30 @@ trait ApproverDashboardHelper
                                                     ->whereColumn('a.id', 'at.model_id')
                                                     ->where(function ($aq) {
                                                         $aq->whereColumn('a.forward_workflow_id', 'sub.forward_workflow_id')
+                                                            ->orWhereNull('sub.forward_workflow_id');
+                                                    });
+                                            });
+                                    })
+                                    ->orWhere(function ($q2) {
+                                        $q2->where('at.model_type', 'App\\Models\\ServiceRequest')
+                                            ->whereNull('at.forward_workflow_id')
+                                            ->whereExists(function ($srx) {
+                                                $srx->select(DB::raw(1))->from('service_requests as sr')
+                                                    ->whereColumn('sr.id', 'at.model_id')
+                                                    ->where(function ($srq) {
+                                                        $srq->whereColumn('sr.forward_workflow_id', 'sub.forward_workflow_id')
+                                                            ->orWhereNull('sub.forward_workflow_id');
+                                                    });
+                                            });
+                                    })
+                                    ->orWhere(function ($q2) {
+                                        $q2->where('at.model_type', 'App\\Models\\RequestARF')
+                                            ->whereNull('at.forward_workflow_id')
+                                            ->whereExists(function ($rx) {
+                                                $rx->select(DB::raw(1))->from('request_arfs as r')
+                                                    ->whereColumn('r.id', 'at.model_id')
+                                                    ->where(function ($rq) {
+                                                        $rq->whereColumn('r.forward_workflow_id', 'sub.forward_workflow_id')
                                                             ->orWhereNull('sub.forward_workflow_id');
                                                     });
                                             });
