@@ -39,50 +39,57 @@ class ServiceRequestController extends Controller
     public function index(Request $request)
     {
         $currentStaffId = user_session('staff_id');
-        
+        $currentYear = (int) date('Y');
+        $selectedYear = (int) $request->get('year', $currentYear);
+        $years = array_combine(
+            range($currentYear, $currentYear - 10),
+            range($currentYear, $currentYear - 10)
+        );
+
         // Base query for filtering
         $baseQuery = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'workflowDefinition'])
+            ->whereYear('created_at', $selectedYear)
             ->latest();
-            
+
         // Apply filters
         if ($request->has('staff_id') && $request->staff_id) {
             $baseQuery->where('responsible_person_id', $request->staff_id);
         }
-        
+
         if ($request->has('division_id') && $request->division_id) {
             $baseQuery->where('division_id', $request->division_id);
         }
-        
+
         if ($request->has('service_type') && $request->service_type) {
             $baseQuery->where('service_type', $request->service_type);
         }
-        
+
         if ($request->has('status') && $request->status) {
             $baseQuery->where('overall_status', $request->status);
         }
-        
+
         if ($request->filled('search')) {
             $baseQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
-        
+
         // My Submitted Requests (current user's requests)
         $mySubmittedQuery = clone $baseQuery;
         $mySubmittedRequests = $mySubmittedQuery->where('staff_id', $currentStaffId)->paginate(20)->withQueryString();
-        
+
         // All Requests (for users with permission)
         $allRequests = null;
         if (in_array(87, user_session('permissions', []))) {
             $allRequests = $baseQuery->paginate(20)->withQueryString();
         }
-        
+
         $staff = Staff::all();
         $divisions = Division::all();
-        
+
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
             $tab = $request->get('tab', '');
             $html = '';
-            
+
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('service-requests.partials.my-submitted-tab', compact('mySubmittedRequests'))->render();
@@ -91,11 +98,11 @@ class ServiceRequestController extends Controller
                     $html = view('service-requests.partials.all-requests-tab', compact('allRequests'))->render();
                     break;
             }
-            
+
             return response()->json(['html' => $html]);
         }
-        
-        return view('service-requests.index', compact('mySubmittedRequests', 'allRequests', 'staff', 'divisions'));
+
+        return view('service-requests.index', compact('mySubmittedRequests', 'allRequests', 'staff', 'divisions', 'years', 'selectedYear'));
     }
 
     /**

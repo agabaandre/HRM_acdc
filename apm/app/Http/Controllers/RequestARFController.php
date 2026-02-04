@@ -31,15 +31,22 @@ class RequestARFController extends Controller
     public function index(Request $request)
     {
         $currentStaffId = user_session('staff_id');
-        
+        $currentYear = (int) date('Y');
+        $selectedYear = (int) $request->get('year', $currentYear);
+        $years = array_combine(
+            range($currentYear, $currentYear - 10),
+            range($currentYear, $currentYear - 10)
+        );
+
         // Get My ARFs (created by current user)
         $mySubmittedArfsQuery = RequestARF::with([
-            'staff', 
-            'division', 
+            'staff',
+            'division',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
-            ->where('staff_id', $currentStaffId);
-            
+            ->where('staff_id', $currentStaffId)
+            ->whereYear('created_at', $selectedYear);
+
         // Apply filters to My ARFs
         if ($request->filled('document_number')) {
             $mySubmittedArfsQuery->where(function($q) use ($request) {
@@ -47,31 +54,32 @@ class RequestARFController extends Controller
                   ->orWhere('arf_number', 'like', '%' . $request->document_number . '%');
             });
         }
-        
+
         if ($request->has('division_id') && $request->division_id) {
             $mySubmittedArfsQuery->where('division_id', $request->division_id);
         }
-        
+
         if ($request->has('status') && $request->status) {
             $mySubmittedArfsQuery->where('overall_status', $request->status);
         }
-        
+
         if ($request->filled('search')) {
             $mySubmittedArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
-        
+
         $mySubmittedArfs = $mySubmittedArfsQuery->latest()->paginate(20)->withQueryString();
-        
+
         // Get All ARFs (only for users with permission 87)
         $allArfs = collect();
         if (in_array(87, user_session('permissions', []))) {
             $allArfsQuery = RequestARF::with([
-                'staff', 
-                'division', 
+                'staff',
+                'division',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ])
+                ->whereYear('created_at', $selectedYear)
                 ->latest();
-                
+
             // Apply filters to All ARFs
             if ($request->filled('document_number')) {
                 $allArfsQuery->where(function($q) use ($request) {
@@ -79,34 +87,34 @@ class RequestARFController extends Controller
                       ->orWhere('arf_number', 'like', '%' . $request->document_number . '%');
                 });
             }
-            
+
             if ($request->has('division_id') && $request->division_id) {
                 $allArfsQuery->where('division_id', $request->division_id);
             }
-            
+
             if ($request->has('staff_id') && $request->staff_id) {
                 $allArfsQuery->where('staff_id', $request->staff_id);
             }
-            
+
             if ($request->has('status') && $request->status) {
                 $allArfsQuery->where('overall_status', $request->status);
             }
-            
+
             if ($request->filled('search')) {
                 $allArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
             }
-            
+
             $allArfs = $allArfsQuery->paginate(20)->withQueryString();
         }
-        
+
         $divisions = Division::orderBy('division_name')->get();
         $staff = Staff::active()->get();
-        
+
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
             $tab = $request->get('tab', '');
             $html = '';
-            
+
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('request-arf.partials.my-submitted-tab', compact('mySubmittedArfs'))->render();
@@ -115,11 +123,11 @@ class RequestARFController extends Controller
                     $html = view('request-arf.partials.all-arfs-tab', compact('allArfs'))->render();
                     break;
             }
-            
+
             return response()->json(['html' => $html]);
         }
-        
-        return view('request-arf.index', compact('mySubmittedArfs', 'allArfs', 'divisions', 'staff'));
+
+        return view('request-arf.index', compact('mySubmittedArfs', 'allArfs', 'divisions', 'staff', 'years', 'selectedYear'));
     }
 
     /**

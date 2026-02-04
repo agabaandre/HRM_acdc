@@ -39,6 +39,16 @@
 
         <div class="row g-3 align-items-end w-100" id="serviceFilters" autocomplete="off">
             <div class="col-md-2">
+                <label for="year" class="form-label fw-semibold mb-1">
+                    <i class="bx bx-calendar me-1 text-success"></i> Year
+                </label>
+                <select name="year" id="year" class="form-select select2" style="width: 100%;">
+                    @foreach($years ?? [] as $yr => $label)
+                        <option value="{{ $yr }}" {{ (request('year', $selectedYear ?? date('Y')) == $yr) ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label for="division_id" class="form-label fw-semibold mb-1">
                     <i class="bx bx-building me-1 text-success"></i> Division
                 </label>
@@ -94,13 +104,13 @@
                     <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Rejected</option>
                 </select>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-success btn-sm w-100 fw-bold" id="applyFilters">
                     <i class="bx bx-search-alt-2 me-1"></i> Filter
                 </button>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
+            <div class="col-md-1 d-flex align-items-end">
+                <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold" title="Reset Filters">
                     <i class="bx bx-reset me-1"></i> Reset
                 </a>
             </div>
@@ -181,7 +191,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Select2 for all select fields
     if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#division_id, #staff_id, #service_type, #request_status').select2({
+        $('#year, #division_id, #staff_id, #service_type, #request_status').select2({
             placeholder: 'Select an option',
             allowClear: true,
             width: '100%'
@@ -218,7 +228,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('request_status')) {
         document.getElementById('request_status').addEventListener('change', applyFilters);
     }
-    
+
+    if (document.getElementById('year')) {
+        document.getElementById('year').addEventListener('change', applyFilters);
+    }
+
     if (document.getElementById('search')) {
         document.getElementById('search').addEventListener('input', applyFilters);
     }
@@ -231,12 +245,14 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUrl.searchParams.set('tab', tabId);
         
         // Include current filter values
+        const year = document.getElementById('year')?.value;
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const serviceType = document.getElementById('service_type')?.value;
         const status = document.getElementById('request_status')?.value;
         const search = document.getElementById('search')?.value;
-        
+
+        if (year) currentUrl.searchParams.set('year', year);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (serviceType) currentUrl.searchParams.set('service_type', serviceType);

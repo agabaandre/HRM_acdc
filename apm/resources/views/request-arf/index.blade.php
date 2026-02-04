@@ -24,6 +24,16 @@
 
         <div class="row g-3 align-items-end" id="arfFilters" autocomplete="off">
                 <div class="col-md-2">
+                    <label for="year" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-calendar me-1 text-success"></i> Year
+                    </label>
+                    <select name="year" id="year" class="form-select" style="width: 100%;">
+                        @foreach($years ?? [] as $yr => $label)
+                            <option value="{{ $yr }}" {{ (request('year', $selectedYear ?? date('Y')) == $yr) ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label for="document_number" class="form-label fw-semibold mb-1">
                         <i class="bx bx-hash me-1 text-success"></i> Document Number
                     </label>
@@ -73,15 +83,15 @@
                     </select>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
-                <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
+                    <button type="button" class="btn btn-success btn-sm w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
-                    <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary w-100 fw-bold" title="Reset Filters">
-                        <i class="bx bx-reset"></i>
+                    <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold" title="Reset Filters">
+                        <i class="bx bx-reset me-1"></i> Reset
                     </a>
-            </div>
+                </div>
             </div>
         </div>
     </div>
@@ -188,6 +198,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('search').addEventListener('input', applyFilters);
     }
     
+    if (document.getElementById('year')) {
+        document.getElementById('year').addEventListener('change', applyFilters);
+    }
+
     if (document.getElementById('document_number')) {
         document.getElementById('document_number').addEventListener('keyup', function(e) {
             if (e.key === 'Enter') {
@@ -209,12 +223,14 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUrl.searchParams.set('tab', tabId);
         
         // Include current filter values
+        const year = document.getElementById('year')?.value;
         const documentNumber = document.getElementById('document_number')?.value;
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const status = document.getElementById('overall_status')?.value;
         const search = document.getElementById('search')?.value;
-        
+
+        if (year) currentUrl.searchParams.set('year', year);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);

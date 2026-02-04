@@ -48,6 +48,16 @@
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
             <div class="row g-3 align-items-end w-100">
                 <div class="col-md-2">
+                    <label for="year" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-calendar me-1 text-success"></i> Year
+                    </label>
+                    <select name="year" id="year" class="form-select select2" style="width: 100%;">
+                        @foreach($years ?? [] as $yr => $label)
+                            <option value="{{ $yr }}" {{ (request('year', date('Y')) == $yr) ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label for="document_number" class="form-label fw-semibold mb-1">
                         <i class="bx bx-file me-1 text-success"></i> Document #
                     </label>
@@ -226,6 +236,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('memo_status').addEventListener('change', applyFilters);
     }
     
+    if (document.getElementById('year')) {
+        document.getElementById('year').addEventListener('change', applyFilters);
+    }
+    
     // Document number filter - apply on Enter key or after 1 second delay
     if (document.getElementById('document_number')) {
         let documentNumberTimeout;
@@ -251,11 +265,13 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUrl.searchParams.set('tab', tabId);
         
         // Include current filter values
+        const year = document.getElementById('year')?.value;
         const documentNumber = document.getElementById('document_number')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const divisionId = document.getElementById('division_id')?.value;
         const status = document.getElementById('memo_status')?.value;
         
+        if (year) currentUrl.searchParams.set('year', year);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
