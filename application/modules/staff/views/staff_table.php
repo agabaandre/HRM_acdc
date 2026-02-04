@@ -83,6 +83,7 @@
 					<th>Division</th>
 					<th>Grade</th>
 					<th>Job</th>
+					<th>Years of Tenure</th>
 					<th>Acting Job</th>
 					<th>First Supervisor</th>
 					<th>Second Supervisor</th>
@@ -94,7 +95,7 @@
 			</thead>
 			<tbody id="staffTableBody">
 				<tr>
-					<td colspan="20" class="text-center">
+					<td colspan="21" class="text-center">
 						<div class="spinner-border text-primary" role="status">
 							<span class="visually-hidden">Loading...</span>
 						</div>
@@ -774,7 +775,7 @@ $(document).ready(function() {
 	function loadStaffIndexData() {
 		$('#staffTableBody').html(`
 			<tr>
-				<td colspan="20" class="text-center">
+				<td colspan="21" class="text-center">
 					<div class="spinner-border text-primary" role="status">
 						<span class="visually-hidden">Loading...</span>
 					</div>
@@ -805,7 +806,7 @@ $(document).ready(function() {
 					// Generate pagination (both top and bottom) with total staff count
 					generatePagination(response.total, response.page, response.per_page, response.records);
 				} else {
-					$('#staffTableBody').html('<tr><td colspan="20" class="text-center">No data available</td></tr>');
+					$('#staffTableBody').html('<tr><td colspan="21" class="text-center">No data available</td></tr>');
 				}
 			},
 			error: function(xhr, status, error) {
@@ -824,7 +825,7 @@ $(document).ready(function() {
 				
 				$('#staffTableBody').html(`
 					<tr>
-						<td colspan="20" class="text-center text-danger">
+						<td colspan="21" class="text-center text-danger">
 							${errorMessage}<br>
 							<small>Status: ${xhr.status}</small>
 						</td>
