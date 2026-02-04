@@ -40,6 +40,8 @@ class Performance extends MX_Controller
         
 		// Fetch existing plan if any (will be empty/FALSE for new PPA)
         $data['ppa'] = $existing_ppa;
+        // Pass selected period for new PPA so B. Performance Objectives timelines use that period (not current year)
+        $data['performance_period'] = $performance_period;
 
         //dd($this->session->userdata('user'));
 		
@@ -64,7 +66,13 @@ class Performance extends MX_Controller
     $data = $this->input->post();
     
     $staff_id = $data['staff_id'];
-    $performance_period = str_replace(' ','-',current_period());
+    // Use period from form (e.g. January-2025-to-December-2025) when creating for that period; else current period
+    $performance_period = $this->input->post('performance_period');
+    if (empty($performance_period)) {
+        $performance_period = str_replace(' ', '-', current_period());
+    } else {
+        $performance_period = str_replace(' ', '-', $performance_period);
+    }
     $entry_id = md5($staff_id . '_' . str_replace(' ', '', $performance_period));
 
     $save_data = [
