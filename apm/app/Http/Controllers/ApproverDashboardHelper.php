@@ -1054,7 +1054,29 @@ trait ApproverDashboardHelper
                         DB::raw("MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time"),
                         DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) AS last_approval_time")
                     )
-                    ->where('at.forward_workflow_id', $workflowId)
+                    ->where(function ($q) use ($workflowId) {
+                        $q->where('at.forward_workflow_id', $workflowId)
+                            ->orWhere(function ($q2) use ($workflowId) {
+                                // Matrix: when trail has null forward_workflow_id, use workflow from matrix
+                                $q2->where('at.model_type', 'App\\Models\\Matrix')
+                                    ->whereNull('at.forward_workflow_id')
+                                    ->whereExists(function ($ex) use ($workflowId) {
+                                        $ex->select(DB::raw(1))->from('matrices as m')
+                                            ->whereColumn('m.id', 'at.model_id')
+                                            ->where('m.forward_workflow_id', $workflowId);
+                                    });
+                            })
+                            ->orWhere(function ($q2) use ($workflowId) {
+                                // Activity: when trail has null forward_workflow_id, use workflow from activity
+                                $q2->where('at.model_type', 'App\\Models\\Activity')
+                                    ->whereNull('at.forward_workflow_id')
+                                    ->whereExists(function ($ex) use ($workflowId) {
+                                        $ex->select(DB::raw(1))->from('activities as a')
+                                            ->whereColumn('a.id', 'at.model_id')
+                                            ->where('a.forward_workflow_id', $workflowId);
+                                    });
+                            });
+                    })
                     ->where('at.is_archived', 0)
                     ->where(function ($q) {
                         $q->where(function ($q2) {
