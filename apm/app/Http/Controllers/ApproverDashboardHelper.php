@@ -1154,7 +1154,37 @@ trait ApproverDashboardHelper
                                 ->whereExists(function ($ex) {
                                     $ex->select(DB::raw(1))->from('request_arfs as r')
                                         ->whereColumn('r.id', 'at.model_id')
-                                        ->where('r.overall_status', 'approved');
+                                        ->where('r.overall_status', 'approved')
+                                        ->where(function ($parent) {
+                                            // Require parent memo overall_status = 'approved' when parent exists
+                                            $parent->where(function ($noParent) {
+                                                $noParent->whereNull('r.source_id')->orWhereNull('r.model_type');
+                                            })
+                                            ->orWhere(function ($act) {
+                                                $act->where('r.model_type', 'App\\Models\\Activity')
+                                                    ->whereExists(function ($pa) {
+                                                        $pa->select(DB::raw(1))->from('activities as pa')
+                                                            ->whereColumn('pa.id', 'r.source_id')
+                                                            ->where('pa.overall_status', 'approved');
+                                                    });
+                                            })
+                                            ->orWhere(function ($nt) {
+                                                $nt->where('r.model_type', 'App\\Models\\NonTravelMemo')
+                                                    ->whereExists(function ($pa) {
+                                                        $pa->select(DB::raw(1))->from('non_travel_memos as pa')
+                                                            ->whereColumn('pa.id', 'r.source_id')
+                                                            ->where('pa.overall_status', 'approved');
+                                                    });
+                                            })
+                                            ->orWhere(function ($sm) {
+                                                $sm->where('r.model_type', 'App\\Models\\SpecialMemo')
+                                                    ->whereExists(function ($pa) {
+                                                        $pa->select(DB::raw(1))->from('special_memos as pa')
+                                                            ->whereColumn('pa.id', 'r.source_id')
+                                                            ->where('pa.overall_status', 'approved');
+                                                    });
+                                            });
+                                        });
                                 });
                         })
                         ->orWhere(function ($q2) {
@@ -1162,7 +1192,49 @@ trait ApproverDashboardHelper
                                 ->whereExists(function ($ex) {
                                     $ex->select(DB::raw(1))->from('service_requests as sr')
                                         ->whereColumn('sr.id', 'at.model_id')
-                                        ->where('sr.overall_status', 'approved');
+                                        ->where('sr.overall_status', 'approved')
+                                        ->where(function ($parent) {
+                                            // Require parent memo overall_status = 'approved' when parent exists
+                                            $parent->where(function ($noParent) {
+                                                $noParent->whereNull('sr.source_id')->whereNull('sr.source_type')->whereNull('sr.activity_id');
+                                            })
+                                            ->orWhere(function ($act) {
+                                                $act->where(function ($a) {
+                                                    $a->whereNotNull('sr.activity_id')
+                                                        ->whereExists(function ($pa) {
+                                                            $pa->select(DB::raw(1))->from('activities as pa')
+                                                                ->whereColumn('pa.id', 'sr.activity_id')
+                                                                ->where('pa.overall_status', 'approved');
+                                                        });
+                                                })->orWhere(function ($a) {
+                                                    $a->where('sr.source_type', 'activity')
+                                                        ->whereNotNull('sr.source_id')
+                                                        ->whereExists(function ($pa) {
+                                                            $pa->select(DB::raw(1))->from('activities as pa')
+                                                                ->whereColumn('pa.id', 'sr.source_id')
+                                                                ->where('pa.overall_status', 'approved');
+                                                        });
+                                                });
+                                            })
+                                            ->orWhere(function ($sm) {
+                                                $sm->where('sr.source_type', 'special_memo')
+                                                    ->whereNotNull('sr.source_id')
+                                                    ->whereExists(function ($pa) {
+                                                        $pa->select(DB::raw(1))->from('special_memos as pa')
+                                                            ->whereColumn('pa.id', 'sr.source_id')
+                                                            ->where('pa.overall_status', 'approved');
+                                                    });
+                                            })
+                                            ->orWhere(function ($nt) {
+                                                $nt->where('sr.source_type', 'non_travel_memo')
+                                                    ->whereNotNull('sr.source_id')
+                                                    ->whereExists(function ($pa) {
+                                                        $pa->select(DB::raw(1))->from('non_travel_memos as pa')
+                                                            ->whereColumn('pa.id', 'sr.source_id')
+                                                            ->where('pa.overall_status', 'approved');
+                                                    });
+                                            });
+                                        });
                                 });
                         })
                         ->orWhere(function ($q2) {
