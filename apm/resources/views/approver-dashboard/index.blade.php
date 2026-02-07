@@ -494,6 +494,7 @@
                             <tr>
                                 <th style="width: 30px;">#</th>
                                 <th>Approver</th>
+                                <th>Last approval date</th>
                                 <th style="width: 15%;">Role</th>
                                 <th>Pending Items</th>
                                 <th>Total Pending</th>
@@ -503,7 +504,7 @@
                         </thead>
                         <tbody id="approverTableBody">
                             <tr>
-                                <td colspan="7" class="text-center py-4">
+                                <td colspan="8" class="text-center py-4">
                                     <i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i>
                                     <p class="mt-2">Loading approver data...</p>
                                 </td>
@@ -751,7 +752,7 @@ function initializeDataTable() {
         serverSide: true,
         searching: false, // Disable DataTables search box
         ordering: true,
-        order: [[6, 'desc']], // Sort by Avg. Time (highest days) descending by default
+        order: [[7, 'desc']], // Sort by Avg. Time (highest days) descending by default
         ajax: {
         url: '{{ route("approver-dashboard.api") }}',
         type: 'GET',
@@ -825,6 +826,17 @@ function initializeDataTable() {
                             <div class="mt-1"><small class="text-muted">${row.division_name || 'N/A'}</small></div>
                             </div>
                     </div>`;
+                }
+            },
+            {
+                data: 'last_approval_date_display',
+                orderable: true,
+                searchable: false,
+                render: function(data, type, row) {
+                    if (type === 'sort' || type === 'type') {
+                        return row.last_approval_date || '';
+                    }
+                    return row.last_approval_date_display ? `<span class="text-nowrap">${row.last_approval_date_display}</span>` : '<span class="text-muted">—</span>';
                 }
             },
             {
@@ -911,7 +923,7 @@ function initializeDataTable() {
         ],
         pageLength: 25,
         lengthMenu: [[25, 50, 100], [25, 50, 100]],
-        order: [[6, 'desc']], // Sort by Avg. Time (highest days) descending by default
+        order: [[7, 'desc']], // Sort by Avg. Time (highest days) descending by default
         language: {
             processing: '<i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i> Loading...'
         },
@@ -923,7 +935,7 @@ function initializeDataTable() {
                 className: 'btn btn-success btn-sm',
                 title: 'Approver Dashboard Export',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6], // Export all columns
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7], // Export all columns including Last approval date
                     format: {
                         body: function(data, row, column, node) {
                             // Clean HTML from cells for export
