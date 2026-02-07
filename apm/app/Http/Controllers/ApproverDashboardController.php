@@ -89,7 +89,7 @@ class ApproverDashboardController extends Controller
             $allApproversWithCounts = $this->getPendingCountsForApprovers($approversCollection, $workflowDefinitionId, $docType, $divisionId, $year, $month);
 
             // Handle sorting - check for DataTables order parameter or use default
-            $orderColumn = 6; // Default: Avg. Time (column index 6)
+            $orderColumn = 7; // Default: Avg. Time (column index 7)
             $orderDirection = 'desc'; // Default: descending (highest days first)
             
             // Check if this is a DataTables request with order parameter
@@ -109,13 +109,14 @@ class ApproverDashboardController extends Controller
                 }
             }
             
-            // Map column index to sort field
+            // Map column index to sort field (0=#, 1=Approver, 2=Last approval date, 3=Role, 4=Pending, 5=Total Pending, 6=Total Handled, 7=Avg. Time)
             $sortFields = [
                 1 => 'approver_name',
-                2 => 'roles',
-                4 => 'total_pending',
-                5 => 'total_handled',
-                6 => 'avg_approval_time_hours'
+                2 => 'last_approval_date',
+                3 => 'roles',
+                5 => 'total_pending',
+                6 => 'total_handled',
+                7 => 'avg_approval_time_hours'
             ];
             
             $sortField = $sortFields[$orderColumn] ?? 'avg_approval_time_hours';
@@ -124,7 +125,11 @@ class ApproverDashboardController extends Controller
             usort($allApproversWithCounts, function($a, $b) use ($sortField, $orderDirection) {
                 $aValue = $a[$sortField] ?? 0;
                 $bValue = $b[$sortField] ?? 0;
-                
+                // For last_approval_date use empty string for null so datetime comparison works and nulls sort last when desc
+                if ($sortField === 'last_approval_date') {
+                    $aValue = $aValue ?: '';
+                    $bValue = $bValue ?: '';
+                }
                 // Handle array fields (like roles)
                 if (is_array($aValue)) {
                     $aValue = implode(', ', $aValue);
@@ -390,6 +395,7 @@ class ApproverDashboardController extends Controller
             fputcsv($file, [
                 '#',
                 'Approver Name',
+                'Last Approval Date',
                 'Email',
                 'Division',
                 'Roles',
@@ -431,6 +437,7 @@ class ApproverDashboardController extends Controller
                 fputcsv($file, [
                     $index + 1, // Row number
                     $approver['approver_name'] ?? '',
+                    $approver['last_approval_date_display'] ?? '',
                     $approver['approver_email'] ?? '',
                     $approver['division_name'] ?? 'N/A',
                     is_array($approver['roles'] ?? null) ? implode('; ', $approver['roles']) : ($approver['role'] ?? ''),

@@ -192,6 +192,10 @@ trait ApproverDashboardHelper
             // across all workflows/levels in the second pass, so we don't need to calculate them per level here
         }
 
+        // Get last approval date per approver from approval_trails (approved/rejected actions)
+        $staffIds = array_keys($approversByStaffId);
+        $lastApprovalDates = $this->getLastApprovalDatesByStaffIds($staffIds);
+
         // Second pass: build final array with combined data
         // Get pending counts across ALL workflows for each approver (matching pending-approvals logic)
         $approversWithCounts = [];
@@ -215,6 +219,9 @@ trait ApproverDashboardHelper
             sort($data['levels']);
             sort($data['roles']);
             
+            $lastApprovalRaw = $lastApprovalDates[$staffId] ?? null;
+            $lastApprovalDisplay = $lastApprovalRaw ? Carbon::parse($lastApprovalRaw)->format('M j, Y g:i A') : null;
+
             $approversWithCounts[] = [
                 'staff_id' => $data['staff_id'],
                 'approver_id' => $data['approver_id'],
@@ -234,10 +241,35 @@ trait ApproverDashboardHelper
                 'total_handled' => $totalHandled,
                 'avg_approval_time_hours' => $avgApprovalTime,
                 'avg_approval_time_display' => $this->formatApprovalTime($avgApprovalTime),
+                'last_approval_date' => $lastApprovalRaw,
+                'last_approval_date_display' => $lastApprovalDisplay,
             ];
         }
 
         return $approversWithCounts;
+    }
+
+    /**
+     * Get the last approval/rejection date per staff_id from approval_trails.
+     * Returns array keyed by staff_id with ISO datetime string or null.
+     */
+    protected function getLastApprovalDatesByStaffIds(array $staffIds): array
+    {
+        if (empty($staffIds)) {
+            return [];
+        }
+        $rows = DB::table('approval_trails')
+            ->whereIn('staff_id', $staffIds)
+            ->whereIn('action', ['approved', 'rejected'])
+            ->where('is_archived', 0)
+            ->select('staff_id', DB::raw('MAX(updated_at) as last_approval_date'))
+            ->groupBy('staff_id')
+            ->get();
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(int) $row->staff_id] = $row->last_approval_date;
+        }
+        return $result;
     }
 
     /**
