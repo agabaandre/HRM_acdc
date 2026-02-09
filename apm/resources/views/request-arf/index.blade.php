@@ -103,14 +103,14 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="mySubmitted-tab" data-bs-toggle="tab" data-bs-target="#mySubmitted" type="button" role="tab" aria-controls="mySubmitted" aria-selected="true">
                     <i class="bx bx-file-alt me-2"></i> My Submitted ARFs
-                    <span class="badge bg-success text-white ms-2">{{ $mySubmittedArfs->count() ?? 0 }}</span>
+                    <span class="badge bg-success text-white ms-2" id="badge-mySubmitted">{{ $mySubmittedArfs->total() }}</span>
                 </button>
             </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="allArfs-tab" data-bs-toggle="tab" data-bs-target="#allArfs" type="button" role="tab" aria-controls="allArfs" aria-selected="false">
                         <i class="bx bx-grid me-2"></i> All ARF Requests
-                        <span class="badge bg-primary text-white ms-2">{{ $allArfs->count() ?? 0 }}</span>
+                        <span class="badge bg-primary text-white ms-2" id="badge-allArfs">{{ $allArfs instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allArfs->total() : 0 }}</span>
                     </button>
                 </li>
             @endif
@@ -215,30 +215,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function getYearValue() {
+        const el = document.getElementById('year');
+        if (!el) return new Date().getFullYear().toString();
+        const idx = el.selectedIndex;
+        if (idx < 0 || !el.options[idx]) return new Date().getFullYear().toString();
+        const v = el.options[idx].value;
+        return (v !== undefined && v !== null && v !== '') ? String(v) : new Date().getFullYear().toString();
+    }
+
     // Function to load tab data via AJAX
     function loadTabData(tabId) {
-        console.log('Loading ARF requests tab data for:', tabId);
-        
         const currentUrl = new URL(window.location);
         currentUrl.searchParams.set('tab', tabId);
-        
-        // Include current filter values
-        const year = document.getElementById('year')?.value;
+        currentUrl.searchParams.set('year', getYearValue());
         const documentNumber = document.getElementById('document_number')?.value;
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const status = document.getElementById('overall_status')?.value;
         const search = document.getElementById('search')?.value;
-
-        if (year) currentUrl.searchParams.set('year', year);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (status) currentUrl.searchParams.set('overall_status', status);
         if (search) currentUrl.searchParams.set('search', search);
-        
-        console.log('ARF requests request URL:', currentUrl.toString());
-        
+
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
         if (tabContent) {
@@ -252,25 +253,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Accept': 'application/json'
             }
         })
-        .then(response => {
-            console.log('ARF requests response status:', response.status);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('ARF requests response data:', data);
             if (data.html) {
                 if (tabContent) {
                     tabContent.innerHTML = data.html;
                 }
             } else {
-                console.error('No HTML data received for ARF requests');
                 if (tabContent) {
                     tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
                 }
             }
+            if (data.count_my_submitted !== undefined) {
+                const b = document.getElementById('badge-mySubmitted');
+                if (b) b.textContent = data.count_my_submitted;
+            }
+            if (data.count_all_arfs !== undefined) {
+                const b = document.getElementById('badge-allArfs');
+                if (b) b.textContent = data.count_all_arfs;
+            }
         })
         .catch(error => {
-            console.error('Error loading ARF requests tab data:', error);
             if (tabContent) {
                 tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
             }

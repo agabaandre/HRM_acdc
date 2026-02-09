@@ -38,10 +38,9 @@ class RequestARFController extends Controller
             $selectedYear = (string) $currentYear;
         }
         $selectedYear = (string) $selectedYear;
-        $years = array_merge(['all' => 'All years'], array_combine(
-            range($currentYear, $currentYear - 10),
-            range($currentYear, $currentYear - 10)
-        ));
+        $minYear = max(2025, $currentYear - 10);
+        $yearRange = range($currentYear, $minYear);
+        $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
 
         // Get My ARFs (created by current user)
         $mySubmittedArfsQuery = RequestARF::with([
@@ -125,6 +124,8 @@ class RequestARFController extends Controller
         if ($request->ajax()) {
             $tab = $request->get('tab', '');
             $html = '';
+            $countMy = $mySubmittedArfs->total();
+            $countAll = $allArfs instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allArfs->total() : 0;
 
             switch($tab) {
                 case 'mySubmitted':
@@ -135,7 +136,11 @@ class RequestARFController extends Controller
                     break;
             }
 
-            return response()->json(['html' => $html]);
+            return response()->json([
+                'html' => $html,
+                'count_my_submitted' => $countMy,
+                'count_all_arfs' => $countAll,
+            ]);
         }
 
         return view('request-arf.index', compact('mySubmittedArfs', 'allArfs', 'divisions', 'staff', 'years', 'selectedYear'));

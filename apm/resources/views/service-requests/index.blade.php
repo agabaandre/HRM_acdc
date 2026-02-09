@@ -125,14 +125,14 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="mySubmitted-tab" data-bs-toggle="tab" data-bs-target="#mySubmitted" type="button" role="tab" aria-controls="mySubmitted" aria-selected="true">
                     <i class="bx bx-file-alt me-2"></i> My Submitted Requests
-                    <span class="badge bg-success text-white ms-2">{{ $mySubmittedRequests->count() ?? 0 }}</span>
+                    <span class="badge bg-success text-white ms-2" id="badge-mySubmitted">{{ $mySubmittedRequests->total() }}</span>
                 </button>
             </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="allRequests-tab" data-bs-toggle="tab" data-bs-target="#allRequests" type="button" role="tab" aria-controls="allRequests" aria-selected="false">
                         <i class="bx bx-grid me-2"></i> All Service Requests
-                        <span class="badge bg-primary text-white ms-2">{{ $allRequests->count() ?? 0 }}</span>
+                        <span class="badge bg-primary text-white ms-2" id="badge-allRequests">{{ $allRequests ? $allRequests->total() : 0 }}</span>
                     </button>
                 </li>
             @endif
@@ -230,38 +230,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (document.getElementById('year')) {
-        document.getElementById('year').addEventListener('change', applyFilters);
+        document.getElementById('year').addEventListener('change', function() {
+            setTimeout(applyFilters, 0);
+        });
     }
 
     if (document.getElementById('search')) {
         document.getElementById('search').addEventListener('input', applyFilters);
     }
 
+    function getYearValue() {
+        const el = document.getElementById('year');
+        if (!el) return new Date().getFullYear().toString();
+        if (typeof $ !== 'undefined' && $(el).data('select2')) {
+            const val = $(el).val();
+            return (val !== undefined && val !== null && val !== '') ? String(val) : new Date().getFullYear().toString();
+        }
+        const idx = el.selectedIndex;
+        if (idx < 0 || !el.options[idx]) return new Date().getFullYear().toString();
+        const v = el.options[idx].value;
+        return (v !== undefined && v !== null && v !== '') ? String(v) : new Date().getFullYear().toString();
+    }
+
     // Function to load tab data via AJAX
     function loadTabData(tabId) {
-        console.log('Loading service requests tab data for:', tabId);
-        
         const currentUrl = new URL(window.location);
         currentUrl.searchParams.set('tab', tabId);
-        
-        // Include current filter values
-        const year = document.getElementById('year')?.value;
+        const year = getYearValue();
+        currentUrl.searchParams.set('year', year);
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const serviceType = document.getElementById('service_type')?.value;
         const status = document.getElementById('request_status')?.value;
         const search = document.getElementById('search')?.value;
-
-        if (year) currentUrl.searchParams.set('year', year);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (serviceType) currentUrl.searchParams.set('service_type', serviceType);
         if (status) currentUrl.searchParams.set('status', status);
         if (search) currentUrl.searchParams.set('search', search);
-        
-        console.log('Service requests request URL:', currentUrl.toString());
-        
-        // Show loading indicator
+
         const tabContent = document.getElementById(tabId);
         if (tabContent) {
             tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
@@ -274,25 +281,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Accept': 'application/json'
             }
         })
-        .then(response => {
-            console.log('Service requests response status:', response.status);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Service requests response data:', data);
             if (data.html) {
                 if (tabContent) {
                     tabContent.innerHTML = data.html;
                 }
             } else {
-                console.error('No HTML data received for service requests');
                 if (tabContent) {
                     tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
                 }
             }
+            if (data.count_my_submitted !== undefined) {
+                const b = document.getElementById('badge-mySubmitted');
+                if (b) b.textContent = data.count_my_submitted;
+            }
+            if (data.count_all_requests !== undefined) {
+                const b = document.getElementById('badge-allRequests');
+                if (b) b.textContent = data.count_all_requests;
+            }
         })
         .catch(error => {
-            console.error('Error loading service requests tab data:', error);
             if (tabContent) {
                 tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
             }

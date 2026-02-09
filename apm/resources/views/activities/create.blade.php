@@ -172,29 +172,44 @@ const oldParticipants = @json(old('internal_participants', []));
 const oldTravel = @json(old('international_travel', []));
 
 $(document).ready(function () {
-    // Initialize Summernote only for fields with summernote class
-    if ($('.summernote').length > 0) {
-        $('.summernote').summernote({
-            height: 150,
-            fontNames: ['Arial'],
-            fontNamesIgnoreCheck: ['Arial'],
-            defaultFontName: 'Arial',
-            toolbar: [
-                ['style', ['style']],
-                ['font', ['bold', 'italic', 'underline', 'clear']],
-                ['fontname', ['fontname']],
-                ['color', ['color']],
-                ['para', ['ul', 'ol', 'paragraph']],
-                ['table', ['table']],
-                ['insert', ['link']],
-                ['view', ['fullscreen', 'codeview', 'help']]
-            ]
-        });
+    // Activity Title: max 200 characters – real-time validation and counter
+    const ACTIVITY_TITLE_MAX = 200;
+    const $activityTitleInput = $('#activity_title');
+    const $activityTitleError = $('#activity-title-length-error');
+    const $activityTitleCount = $('#activity-title-char-count');
+
+    function validateActivityTitleField() {
+        if (!$activityTitleInput.length) return true;
+        const len = $activityTitleInput.val().length;
+        $activityTitleCount.text(len);
+        if (len > ACTIVITY_TITLE_MAX) {
+            $activityTitleInput.addClass('is-invalid');
+            $activityTitleError.show();
+            $('#activity-title-char-counter').addClass('text-danger');
+            return false;
+        }
+        $activityTitleInput.removeClass('is-invalid');
+        $activityTitleError.hide();
+        $('#activity-title-char-counter').removeClass('text-danger');
+        return true;
     }
+
+    $activityTitleInput.on('input paste', function () {
+        validateActivityTitleField();
+    });
+    validateActivityTitleField();
+
+    // Summernote is initialized once in layout (footer) with full toolbar (fontsize, fontname, etc.)
 
     // AJAX Form Submission
     $('#activityForm').on('submit', function(e) {
         e.preventDefault();
+
+        // Block submit if Activity Title exceeds 200 characters
+        if (!validateActivityTitleField()) {
+            $activityTitleInput.focus();
+            return;
+        }
         
         const form = $(this);
         const submitBtn = $('#submitBtn');
@@ -221,6 +236,16 @@ $(document).ready(function () {
         // Disable submit button and show loading state
         submitBtn.prop('disabled', true)
             .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Saving...');
+        
+        // Sync Summernote editors (Background/Context, Request for Approval) to textareas so full content is submitted without loss
+        $('textarea.summernote').each(function() {
+            var $ta = $(this);
+            try {
+                if ($ta.summernote('code') !== undefined) {
+                    $ta.val($ta.summernote('code'));
+                }
+            } catch (e) {}
+        });
         
         // Create FormData object to handle file uploads
         const formData = new FormData(this);
@@ -457,7 +482,8 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
                     <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
                     <td class="text-center">
                         <div class="form-check d-flex justify-content-center">
-                            <input type="checkbox" name="international_travel[${id}]" class="form-check-input" value="1" checked>
+                            <input type="hidden" name="international_travel[${id}]" value="1" class="international-travel-value">
+                            <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${id}" checked>
                             <label class="form-check-label ms-2">Yes</label>
                         </div>
                     </td>
@@ -589,16 +615,25 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
     if (oldParticipants && oldParticipants.length > 0) {
         $('#internal_participants').val(oldParticipants).trigger('change');
         
-        // Restore international travel checkboxes after participants are loaded
+        // Restore international travel from old() after validation errors
         setTimeout(() => {
             oldParticipants.forEach(participantId => {
-                const checkbox = $(`input[name="international_travel[${participantId}]"]`);
-                if (checkbox.length && oldTravel && oldTravel[participantId]) {
-                    checkbox.prop('checked', true);
+                const row = $(`tr[data-participant-id="${participantId}"]`);
+                if (row.length) {
+                    const val = (oldTravel && oldTravel[participantId]) ? '1' : '0';
+                    row.find('.international-travel-checkbox').prop('checked', val === '1');
+                    row.find('input.international-travel-value').val(val);
                 }
             });
         }, 100);
     }
+
+    // Sync hidden input when International Travel checkbox is toggled (so every participant saves correctly)
+    $(document).on('change', '.international-travel-checkbox', function () {
+        const row = $(this).closest('tr');
+        const hidden = row.find('input.international-travel-value');
+        hidden.val($(this).is(':checked') ? '1' : '0');
+    });
 });
 
 
@@ -663,7 +698,8 @@ $(document).ready(function () {
                 <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
                 <td class="text-center">
                     <div class="form-check d-flex justify-content-center">
-                        <input type="checkbox" name="international_travel[${id}]" class="form-check-input" value="1" checked>
+                        <input type="hidden" name="international_travel[${id}]" value="1" class="international-travel-value">
+                        <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${id}" checked>
                         <label class="form-check-label ms-2">Yes</label>
                     </div>
                 </td>

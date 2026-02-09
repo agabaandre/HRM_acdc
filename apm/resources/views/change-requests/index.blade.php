@@ -81,8 +81,8 @@
                         <i class="bx bx-calendar me-1 text-success"></i> Year
                     </label>
                     <select name="year" id="year" class="form-select select2" style="width: 100%;">
-                        @foreach($years ?? [] as $yr)
-                            <option value="{{ $yr }}" {{ (request('year', date('Y')) == $yr) ? 'selected' : '' }}>{{ $yr }}</option>
+                        @foreach($years ?? [] as $yrValue => $yrLabel)
+                            <option value="{{ $yrValue }}" {{ (request('year', $selectedYear ?? date('Y')) == (string)$yrValue) ? 'selected' : '' }}>{{ $yrLabel }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -174,26 +174,26 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="myChangeRequests-tab" data-bs-toggle="tab" data-bs-target="#myChangeRequests" type="button" role="tab" aria-controls="myChangeRequests" aria-selected="true">
                     <i class="bx bx-edit me-2"></i> My Change Requests
-                    <span class="badge bg-success text-white ms-2">{{ $myChangeRequests->count() ?? 0 }}</span>
+                    <span class="badge bg-success text-white ms-2" id="badge-myChangeRequests">{{ $myChangeRequests->total() }}</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="myDivisionChangeRequests-tab" data-bs-toggle="tab" data-bs-target="#myDivisionChangeRequests" type="button" role="tab" aria-controls="myDivisionChangeRequests" aria-selected="false">
                     <i class="bx bx-building me-2"></i> My Division CRs
-                    <span class="badge bg-info text-white ms-2">{{ $myDivisionChangeRequests->count() ?? 0 }}</span>
+                    <span class="badge bg-info text-white ms-2" id="badge-myDivisionChangeRequests">{{ $myDivisionChangeRequests->total() }}</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="sharedChangeRequests-tab" data-bs-toggle="tab" data-bs-target="#sharedChangeRequests" type="button" role="tab" aria-controls="sharedChangeRequests" aria-selected="false">
                     <i class="bx bx-share me-2"></i> Shared CRs
-                    <span class="badge bg-warning text-white ms-2">{{ $sharedChangeRequests->count() ?? 0 }}</span>
+                    <span class="badge bg-warning text-white ms-2" id="badge-sharedChangeRequests">{{ $sharedChangeRequests->total() }}</span>
                 </button>
             </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="allChangeRequests-tab" data-bs-toggle="tab" data-bs-target="#allChangeRequests" type="button" role="tab" aria-controls="allChangeRequests" aria-selected="false">
                         <i class="bx bx-grid me-2"></i> All CRs
-                        <span class="badge bg-primary text-white ms-2">{{ $allChangeRequests->count() ?? 0 }}</span>
+                        <span class="badge bg-primary text-white ms-2" id="badge-allChangeRequests">{{ $allChangeRequests ? $allChangeRequests->total() : 0 }}</span>
                     </button>
                 </li>
             @endif
@@ -280,6 +280,13 @@ document.addEventListener('DOMContentLoaded', function() {
         theme: 'bootstrap-5',
         width: '100%'
     });
+    // Year select: no placeholder/clear so no blank option and no duplicate-looking entry
+    $('#year').select2('destroy').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        allowClear: false,
+        placeholder: null
+    });
     
     // AJAX filtering - auto-update when filters change
     function applyFilters() {
@@ -308,7 +315,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     if (document.getElementById('year')) {
-        document.getElementById('year').addEventListener('change', applyFilters);
+        document.getElementById('year').addEventListener('change', function() {
+            setTimeout(applyFilters, 0);
+        });
     }
     
     // Document number filter - apply on Enter key or after 1 second delay
@@ -343,16 +352,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    function getYearValue() {
+        const currentYear = String(new Date().getFullYear());
+        const el = document.getElementById('year');
+        if (!el) return currentYear;
+        if (typeof $ !== 'undefined' && $(el).data('select2')) {
+            const val = $(el).val();
+            return (val !== undefined && val !== null && val !== '') ? String(val) : currentYear;
+        }
+        const idx = el.selectedIndex;
+        if (idx < 0 || !el.options[idx]) return currentYear;
+        const v = el.options[idx].value;
+        return (v !== undefined && v !== null && v !== '') ? String(v) : currentYear;
+    }
+
     // Function to load tab data via AJAX
     function loadTabData(tabId, page = 1) {
-        console.log('Loading change request tab data for:', tabId, 'page:', page);
-        
         const currentUrl = new URL(window.location);
         currentUrl.searchParams.set('page', page);
         currentUrl.searchParams.set('tab', tabId);
         
-        // Include current filter values
-        const year = document.getElementById('year')?.value;
+        const year = getYearValue();
+        currentUrl.searchParams.set('year', year);
         const documentNumber = document.getElementById('document_number')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const divisionId = document.getElementById('division_id')?.value;
@@ -360,15 +381,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const memoType = document.getElementById('memo_type')?.value;
         const search = document.getElementById('search')?.value;
         
-        if (year) currentUrl.searchParams.set('year', year);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (status) currentUrl.searchParams.set('status', status);
         if (memoType) currentUrl.searchParams.set('memo_type', memoType);
         if (search) currentUrl.searchParams.set('search', search);
-        
-        console.log('Change request request URL:', currentUrl.toString());
         
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
@@ -383,22 +401,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Accept': 'application/json'
             }
         })
-        .then(response => {
-            console.log('Change request response status:', response.status);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Change request response data:', data);
             if (data.html) {
                 if (tabContent) {
                     tabContent.innerHTML = data.html;
                     attachPaginationHandlers(tabId);
                 }
             } else {
-                console.error('No HTML data received for change request');
                 if (tabContent) {
                     tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
                 }
+            }
+            if (data.count_my_change_requests !== undefined) {
+                const b = document.getElementById('badge-myChangeRequests');
+                if (b) b.textContent = data.count_my_change_requests;
+            }
+            if (data.count_my_division !== undefined) {
+                const b = document.getElementById('badge-myDivisionChangeRequests');
+                if (b) b.textContent = data.count_my_division;
+            }
+            if (data.count_shared !== undefined) {
+                const b = document.getElementById('badge-sharedChangeRequests');
+                if (b) b.textContent = data.count_shared;
+            }
+            if (data.count_all !== undefined) {
+                const b = document.getElementById('badge-allChangeRequests');
+                if (b) b.textContent = data.count_all;
             }
         })
         .catch(error => {

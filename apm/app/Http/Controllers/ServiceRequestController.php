@@ -46,10 +46,9 @@ class ServiceRequestController extends Controller
             $selectedYear = (string) $currentYear;
         }
         $selectedYear = (string) $selectedYear;
-        $years = array_merge(['all' => 'All years'], array_combine(
-            range($currentYear, $currentYear - 10),
-            range($currentYear, $currentYear - 10)
-        ));
+        $minYear = max(2025, $currentYear - 10);
+        $yearRange = range($currentYear, $minYear);
+        $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
 
         // Base query for filtering (most recent first)
         $baseQuery = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'workflowDefinition'])
@@ -97,6 +96,8 @@ class ServiceRequestController extends Controller
         if ($request->ajax()) {
             $tab = $request->get('tab', '');
             $html = '';
+            $countMy = $mySubmittedRequests->total();
+            $countAll = $allRequests ? $allRequests->total() : 0;
 
             switch($tab) {
                 case 'mySubmitted':
@@ -107,7 +108,11 @@ class ServiceRequestController extends Controller
                     break;
             }
 
-            return response()->json(['html' => $html]);
+            return response()->json([
+                'html' => $html,
+                'count_my_submitted' => $countMy,
+                'count_all_requests' => $countAll,
+            ]);
         }
 
         return view('service-requests.index', compact('mySubmittedRequests', 'allRequests', 'staff', 'divisions', 'years', 'selectedYear'));

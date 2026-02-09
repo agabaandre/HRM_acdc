@@ -38,8 +38,16 @@ class ChangeRequestController extends Controller
         // If no session data, show all change requests
         $showAllDueToNoSession = empty($userStaffId);
 
-        // Get filter parameters
-        $selectedYear = $request->get('year', now()->year);
+        // Get filter parameters (year: default to current year when missing)
+        $currentYear = (int) now()->year;
+        $selectedYear = $request->get('year');
+        if ($selectedYear === null || $selectedYear === '') {
+            $selectedYear = (string) $currentYear;
+        }
+        $selectedYear = (string) $selectedYear;
+        if ($selectedYear !== 'all' && is_numeric($selectedYear) && (int) $selectedYear === 0) {
+            $selectedYear = (string) $currentYear;
+        }
         $selectedQuarter = $request->get('quarter', 'Q4');
         $selectedDivisionId = $request->get('division_id', $userDivisionId);
         $status = $request->get('status', 'all') ?: 'all';
@@ -70,8 +78,8 @@ class ChangeRequestController extends Controller
             });
         }
 
-        if ($selectedYear) {
-            $baseQuery->whereYear('created_at', $selectedYear);
+        if ($selectedYear !== 'all' && $selectedYear !== '' && (int) $selectedYear > 0) {
+            $baseQuery->whereYear('created_at', (int) $selectedYear);
         }
 
         if ($status && $status !== 'all') {
@@ -131,8 +139,11 @@ class ChangeRequestController extends Controller
             $allChangeRequests = $baseQuery->paginate(20)->withQueryString();
         }
 
-        // Get filter options
-        $years = range(now()->year - 2, now()->year + 2);
+        // Get filter options: All years + current year down to 2025 (system start year)
+        $currentYear = (int) now()->year;
+        $minYear = max(2025, $currentYear - 10);
+        $yearRange = range($currentYear, $minYear);
+        $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $divisions = Division::orderBy('division_name')->get();
         $staff = Staff::orderBy('fname')->get();
@@ -144,11 +155,71 @@ class ChangeRequestController extends Controller
             'rejected' => 'Rejected'
         ];
 
-        // Handle AJAX requests for tab content
+        // Handle AJAX requests for tab content (use query('year') so correct year is applied)
         if ($request->ajax()) {
             $tab = $request->get('tab', '');
             $html = '';
-            
+            $yearFromQuery = $request->query('year');
+            if ($yearFromQuery === null || $yearFromQuery === '') {
+                $yearFromQuery = (string) (int) now()->year;
+            }
+            $yearFromQuery = (string) $yearFromQuery;
+            if ($yearFromQuery !== 'all' && is_numeric($yearFromQuery) && (int) $yearFromQuery === 0) {
+                $yearFromQuery = (string) (int) now()->year;
+            }
+            if ($yearFromQuery !== $selectedYear) {
+                $selectedYear = $yearFromQuery;
+                $baseQuery = ChangeRequest::with([
+                    'staff', 'responsiblePerson', 'division', 'requestType', 'fundType', 'parentMemo'
+                ]);
+                if ($documentNumber) {
+                    $baseQuery->where('document_number', 'like', '%' . $documentNumber . '%');
+                }
+                if ($staffId) {
+                    $baseQuery->where(function ($q) use ($staffId) {
+                        $q->where('staff_id', $staffId)->orWhere('responsible_person_id', $staffId);
+                    });
+                }
+                if ($selectedYear !== 'all' && $selectedYear !== '' && (int) $selectedYear > 0) {
+                    $baseQuery->whereYear('created_at', (int) $selectedYear);
+                }
+                if ($status && $status !== 'all') {
+                    $baseQuery->where('overall_status', $status);
+                }
+                if ($memoType) {
+                    $baseQuery->where('parent_memo_model', $memoType);
+                }
+                if ($parentMemoId) {
+                    $baseQuery->where('parent_memo_id', (int) $parentMemoId);
+                }
+                if ($request->filled('division_id') && !$showAllDueToNoSession) {
+                    $baseQuery->where('division_id', (int) $selectedDivisionId);
+                }
+                if ($request->filled('search')) {
+                    $baseQuery->where('activity_title', 'like', '%' . $request->search . '%');
+                }
+                $baseQuery->orderBy('created_at', 'desc');
+                $myChangeRequestsQuery = clone $baseQuery;
+                $myChangeRequests = $showAllDueToNoSession
+                    ? $myChangeRequestsQuery->paginate(20)->withQueryString()
+                    : $myChangeRequestsQuery->where('staff_id', $userStaffId)->paginate(20)->withQueryString();
+                $myDivisionChangeRequestsQuery = clone $baseQuery;
+                $myDivisionChangeRequests = $showAllDueToNoSession
+                    ? $myDivisionChangeRequestsQuery->paginate(20)->withQueryString()
+                    : $myDivisionChangeRequestsQuery->where('division_id', $userDivisionId)->paginate(20)->withQueryString();
+                $sharedChangeRequestsQuery = clone $baseQuery;
+                $sharedChangeRequests = $showAllDueToNoSession
+                    ? $sharedChangeRequestsQuery->paginate(20)->withQueryString()
+                    : $sharedChangeRequestsQuery->where('responsible_person_id', $userStaffId)->paginate(20)->withQueryString();
+                $allChangeRequests = null;
+                if (in_array(87, user_session('permissions', []))) {
+                    $allChangeRequests = (clone $baseQuery)->paginate(20)->withQueryString();
+                }
+            }
+            $countMy = $myChangeRequests->total();
+            $countDivision = $myDivisionChangeRequests->total();
+            $countShared = $sharedChangeRequests->total();
+            $countAll = $allChangeRequests ? $allChangeRequests->total() : 0;
             switch($tab) {
                 case 'myChangeRequests':
                     $html = view('change-requests.partials.my-change-requests-tab', compact('myChangeRequests'))->render();
@@ -163,8 +234,13 @@ class ChangeRequestController extends Controller
                     $html = view('change-requests.partials.all-change-requests-tab', compact('allChangeRequests'))->render();
                     break;
             }
-            
-            return response()->json(['html' => $html]);
+            return response()->json([
+                'html' => $html,
+                'count_my_change_requests' => $countMy,
+                'count_my_division' => $countDivision,
+                'count_shared' => $countShared,
+                'count_all' => $countAll,
+            ]);
         }
 
         return view('change-requests.index', [

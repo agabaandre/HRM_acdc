@@ -39,12 +39,16 @@ class NonTravelMemoController extends Controller
         $currentStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
 
-        // Year filter: default to current year when missing, empty, or invalid (e.g. 0); use created_at
+        // Year filter: default to current year when missing; filter by Date Required (memo_date)
+        $currentYear = (int) date('Y');
         $year = $request->get('year');
-        if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
-            $year = (string) date('Y');
+        if ($year === null || $year === '') {
+            $year = (string) $currentYear;
         }
         $year = (string) $year;
+        if ($year !== 'all' && is_numeric($year) && (int) $year === 0) {
+            $year = (string) $currentYear;
+        }
 
         // Tab 1: My Submitted Memos (memos created by current user)
         $mySubmittedQuery = NonTravelMemo::with([
@@ -57,7 +61,7 @@ class NonTravelMemoController extends Controller
             ->where('staff_id', $currentStaffId);
 
         if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-            $mySubmittedQuery->whereYear('created_at', $year);
+            $mySubmittedQuery->whereYear('memo_date', (int) $year);
         }
 
         // Apply filters to my submitted memos
@@ -94,7 +98,7 @@ class NonTravelMemoController extends Controller
             ]);
 
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-                $allMemosQuery->whereYear('created_at', $year);
+                $allMemosQuery->whereYear('memo_date', (int) $year);
             }
 
             // Apply filters to all memos
@@ -122,19 +126,19 @@ class NonTravelMemoController extends Controller
 
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
-            \Log::info('AJAX request received in NonTravelMemoController index', [
-                'tab' => $request->get('tab'),
-                'all_params' => $request->all()
-            ]);
-            
             $tab = $request->get('tab', '');
             $html = '';
-            
-            $year = $request->get('year');
-            if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
-                $year = (string) date('Y');
+
+            // Read year from query string; default to current year when missing
+            $year = $request->query('year');
+            if ($year === null || $year === '') {
+                $year = (string) (int) date('Y');
             }
             $year = (string) $year;
+            if ($year !== 'all' && is_numeric($year) && (int) $year === 0) {
+                $year = (string) (int) date('Y');
+            }
+            $yearApplied = $year;
 
             // Rebuild queries with filters for AJAX requests
             $mySubmittedQuery = NonTravelMemo::with([
@@ -147,7 +151,7 @@ class NonTravelMemoController extends Controller
                 ->where('staff_id', $currentStaffId);
 
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-                $mySubmittedQuery->whereYear('created_at', $year);
+                $mySubmittedQuery->whereYear('memo_date', (int) $year);
             }
 
             // Apply filters to my submitted memos
@@ -184,7 +188,7 @@ class NonTravelMemoController extends Controller
                 ]);
 
                 if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-                    $allMemosQuery->whereYear('created_at', $year);
+                    $allMemosQuery->whereYear('memo_date', (int) $year);
                 }
 
                 // Apply filters to all memos
@@ -210,6 +214,9 @@ class NonTravelMemoController extends Controller
                 $allMemos = $allMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
             }
 
+            $countMySubmitted = $mySubmittedMemos->total();
+            $countAllMemos = $allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allMemos->total() : $allMemos->count();
+
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('non-travel.partials.my-submitted-tab', compact(
@@ -222,17 +229,20 @@ class NonTravelMemoController extends Controller
                     ))->render();
                     break;
             }
-            
-            \Log::info('Generated HTML length for non-travel', ['html_length' => strlen($html)]);
-            
-            return response()->json(['html' => $html]);
+
+            return response()->json([
+                'html' => $html,
+                'year_applied' => $yearApplied,
+                'count_my_submitted' => $countMySubmitted,
+                'count_all_memos' => $countAllMemos,
+            ]);
         }
 
+        // Preserve year keys; lowest year is 2025 (system start)
         $currentYear = (int) date('Y');
-        $years = array_merge(['all' => 'All years'], array_combine(
-            range($currentYear, $currentYear - 10),
-            range($currentYear, $currentYear - 10)
-        ));
+        $minYear = max(2025, $currentYear - 10);
+        $yearRange = range($currentYear, $minYear);
+        $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
 
         return view('non-travel.index', compact(
             'mySubmittedMemos',
@@ -280,7 +290,7 @@ class NonTravelMemoController extends Controller
             'location_id'                  => 'required|array|min:1',
             'location_id.*'                => 'exists:locations,id',
             'non_travel_memo_category_id'  => 'required|exists:non_travel_memo_categories,id',
-            'title'                        => 'required|string|max:255',
+            'title'                        => 'required|string|max:200',
             'background'                   => 'required|string',
             'justification'                => 'required|string',
             'activity_request_remarks'     => 'nullable|string',
