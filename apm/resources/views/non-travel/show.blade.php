@@ -802,9 +802,11 @@
                                         <div class="mb-3">
                                             <label for="remarks" class="form-label fw-semibold">
                                                 <i class="bx bx-message-square-detail me-1"></i>Comments
+                                                <span class="text-muted fw-normal small">(required for Return / Cancel)</span>
                                             </label>
                                             <textarea class="form-control" id="remarks" name="remarks" rows="3"
                                                 placeholder="Add your comments here..."></textarea>
+                                            <div class="invalid-feedback">Please provide a comment when returning or cancelling the memo.</div>
                                         </div>
                                         @if($nonTravel->approval_level=='5')
                                         <div class="mb-3">
@@ -1004,5 +1006,39 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+(function() {
+    var form = document.getElementById('approvalForm');
+    if (!form) return;
+    form.addEventListener('submit', function(e) {
+        var submitter = e.submitter;
+        var remarks = document.getElementById('remarks');
+        if (submitter && submitter.name === 'action' && (submitter.value === 'returned' || submitter.value === 'cancelled')) {
+            var val = remarks && remarks.value ? remarks.value.trim() : '';
+            if (!val) {
+                e.preventDefault();
+                if (remarks) {
+                    remarks.classList.add('is-invalid');
+                    remarks.focus();
+                }
+                if (typeof alert !== 'undefined') {
+                    alert('Please provide a comment when returning or cancelling the memo.');
+                }
+                return false;
+            }
+        }
+        if (remarks) remarks.classList.remove('is-invalid');
+    });
+    var remarksEl = document.getElementById('remarks');
+    if (remarksEl) {
+        remarksEl.addEventListener('input', function() {
+            if (this.value.trim()) this.classList.remove('is-invalid');
+        });
+    }
+})();
+</script>
+@endpush
         
 @endsection

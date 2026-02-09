@@ -1348,7 +1348,7 @@
                                             <textarea class="form-control" id="remarks" name="remarks" rows="3"
                                                 placeholder="Add your comments here..."></textarea>
                                             <div id="remarksError" class="text-danger small mt-1" style="display: none;">
-                                                Comments are required when returning a memo.
+                                                Comments are required when returning or cancelling a memo.
                                             </div>
                                         </div>
                                         @if($specialMemo->approval_level=='5')
@@ -1674,8 +1674,8 @@
             clickedAction = $(this).attr('value');
             const commentsRequired = $('#commentsRequired');
             
-            // Show/hide required indicator based on button
-            if (clickedAction === 'returned') {
+            // Show/hide required indicator based on button (Return and Cancel both require comments)
+            if (clickedAction === 'returned' || clickedAction === 'cancelled') {
                 commentsRequired.show();
             } else {
                 commentsRequired.hide();
@@ -1688,15 +1688,15 @@
             const remarksError = $('#remarksError');
             const commentsRequired = $('#commentsRequired');
             
-            // Check if it's a return action
-            if (clickedAction === 'returned') {
+            // Check if it's a return or cancel action (both require comments)
+            if (clickedAction === 'returned' || clickedAction === 'cancelled') {
                 const remarksValue = remarksField.val().trim();
                 
                 // Hide previous errors
                 remarksError.hide();
                 remarksField.removeClass('is-invalid');
                 
-                // Validate comments are required for return
+                // Validate comments are required for return/cancel
                 if (!remarksValue) {
                     e.preventDefault();
                     remarksError.show();
@@ -1709,7 +1709,7 @@
                         Swal.fire({
                             icon: 'error',
                             title: 'Comments Required',
-                            text: 'Please provide comments when returning a memo.',
+                            text: 'Please provide comments when returning or cancelling a memo.',
                             confirmButtonColor: '#dc3545'
                         });
                     }

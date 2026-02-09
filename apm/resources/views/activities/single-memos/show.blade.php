@@ -1341,9 +1341,11 @@
                                                 <div class="mb-3">
                                                     <label for="remarks" class="form-label fw-semibold">
                                                         <i class="bx bx-message-square-detail me-1"></i>Comments
+                                                        <span class="text-muted small ms-1">(required for Return / Cancel)</span>
                                                     </label>
                                                     <textarea class="form-control" id="remarks" name="remarks" rows="3"
                                                         placeholder="Add your comments here..."></textarea>
+                                                    <div id="remarksError" class="invalid-feedback d-none">Please enter a comment when returning or cancelling.</div>
                                                 </div>
                                                 @if($activity->approval_level=='5')
                                                 <div class="mb-3">
@@ -1678,6 +1680,32 @@
         });
 
         $(document).ready(function() {
+            // Require comment when approver clicks Return or Cancel
+            var approvalForm = document.getElementById('approvalForm');
+            if (approvalForm) {
+                approvalForm.addEventListener('submit', function(e) {
+                    var submitter = e.submitter;
+                    if (submitter && submitter.name === 'action' && (submitter.value === 'returned' || submitter.value === 'cancelled')) {
+                        var remarksEl = document.getElementById('remarks');
+                        var remarks = remarksEl && remarksEl.value ? remarksEl.value.trim() : '';
+                        if (!remarks) {
+                            e.preventDefault();
+                            remarksEl.classList.add('is-invalid');
+                            document.getElementById('remarksError').classList.remove('d-none');
+                            remarksEl.focus();
+                            return false;
+                        }
+                    }
+                    document.getElementById('remarks').classList.remove('is-invalid');
+                    document.getElementById('remarksError').classList.add('d-none');
+                });
+                // Clear validation state when user types in remarks
+                $('#remarks').on('input', function() {
+                    $(this).removeClass('is-invalid');
+                    $('#remarksError').addClass('d-none');
+                });
+            }
+
             // Setup delete confirmation
             $('#deleteMemoForm').on('submit', function(e) {
                 e.preventDefault();
