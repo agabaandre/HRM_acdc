@@ -10,6 +10,8 @@
  */
 $modal_entry_id = isset($entry_id) && $entry_id !== '' ? $entry_id : ($ppa->entry_id ?? '');
 
+//dd($modal_entry_id);
+
 // Check if user has permission 83 (allow_return_ppa)
 $session = $this->session->userdata('user');
 $permissions = $session->permissions ?? [];
@@ -211,9 +213,27 @@ $(document).ready(function() {
             formDataObj[field.name] = field.value;
         });
         
-        // Get entry_id for validation
-        var entryId = formDataObj.entry_id;
-        if (!entryId || entryId.trim() === '') {
+        // Ensure entry_id and type are from hidden inputs (serializeArray can miss them when modal is in DOM)
+        var entryIdInput = $('#entry_id_<?= $type ?>');
+        if (entryIdInput.length) {
+            formDataObj.entry_id = entryIdInput.val();
+        }
+        var typeInput = $('#type_<?= $type ?>');
+        if (typeInput.length) {
+            formDataObj.type = typeInput.val();
+        }
+        // Ensure supervisor values are from the selects (Select2/serializeArray often omit them)
+        var supervisor1Select = $('#supervisor_1_<?= $type ?>');
+        if (supervisor1Select.length) {
+            formDataObj.supervisor_1 = supervisor1Select.val();
+        }
+        var supervisor2Select = $('#supervisor_2_<?= $type ?>');
+        if (supervisor2Select.length) {
+            formDataObj.supervisor_2 = supervisor2Select.val();
+        }
+        var entryId = (formDataObj.entry_id != null && formDataObj.entry_id !== undefined)
+            ? String(formDataObj.entry_id).trim() : '';
+        if (!entryId) {
             submitBtn.prop('disabled', false).html(originalText);
             var errorMsg = 'Entry ID is missing. Please refresh the page and try again.';
             if (typeof show_notification !== 'undefined') {
@@ -232,8 +252,10 @@ $(document).ready(function() {
             return false;
         }
         
-        // Validate required fields
-        if (!formDataObj.supervisor_1) {
+        // Validate required fields (use value from select, not only formDataObj from serialize)
+        var supervisor1Val = (formDataObj.supervisor_1 != null && formDataObj.supervisor_1 !== undefined)
+            ? String(formDataObj.supervisor_1).trim() : '';
+        if (!supervisor1Val) {
             submitBtn.prop('disabled', false).html(originalText);
             var errorMsg = 'Please select a first supervisor';
             if (typeof show_notification !== 'undefined') {
