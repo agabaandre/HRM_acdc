@@ -168,7 +168,7 @@
                         }
                         // Handle resource names
                         else {
-                        $resourceNames = ['fund-types', 'fund-codes', 'directorates', 'staff', 'request-types', 'activities', 'non-travel', 'request-arf', 'special-memo', 'service-requests'];
+                        $resourceNames = ['fund-types', 'partners', 'fund-codes', 'directorates', 'staff', 'request-types', 'activities', 'non-travel', 'request-arf', 'special-memo', 'service-requests'];
                         if (in_array($segmentLower, $resourceNames)) {
                         $displayName = ucwords(str_replace('-', ' ', $segmentLower));
 
