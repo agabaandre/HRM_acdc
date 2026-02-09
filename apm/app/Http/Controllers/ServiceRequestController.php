@@ -191,9 +191,9 @@ class ServiceRequestController extends Controller
                         }
                     }
                 } else {
-                    // Fallback to all Individual Cost items if no budget breakdown
+                    // Fallback to all Individual Cost items if no budget breakdown; Other Costs stay empty (only as per original budget)
                     $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
-                    $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
+                    // $otherCostItems remains empty - do not show all DB Other Cost items
                 }
             }
             
@@ -830,7 +830,7 @@ class ServiceRequestController extends Controller
                 }
             }
         }
-        // If source had no Other Cost items, allow from stored budget so existing rows remain selectable
+        // If source had no Other Cost items, use stored budget so existing rows remain selectable (still original-budget only)
         if ($otherCostItems->isEmpty() && !empty($budgetBreakdown)) {
             $extractedCostItems = $this->extractCostItemsFromBudget($budgetBreakdown);
             foreach ($extractedCostItems as $costItem) {
@@ -847,9 +847,7 @@ class ServiceRequestController extends Controller
         if ($costItems->isEmpty()) {
             $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
         }
-        if ($otherCostItems->isEmpty()) {
-            $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
-        }
+        // Do not fallback to all DB Other Cost items - only original budget (and saved row types) above
 
         $requestNumber = $serviceRequest->request_number;
 
@@ -865,6 +863,18 @@ class ServiceRequestController extends Controller
             $decoded = is_string($serviceRequest->other_costs)
                 ? json_decode($serviceRequest->other_costs, true) : $serviceRequest->other_costs;
             $otherCostsForEdit = is_array($decoded) ? $decoded : [];
+        }
+        // Ensure saved other_costs rows have their cost_type in the list so dropdowns work (only existing saved, no "all" from DB)
+        foreach ($otherCostsForEdit as $row) {
+            $name = $row['cost_type'] ?? null;
+            if ($name && $otherCostItems->where('name', $name)->isEmpty()) {
+                $otherCostItems->push((object) [
+                    'id' => $name,
+                    'name' => $name,
+                    'cost_type' => 'Other Cost',
+                    'description' => $row['description'] ?? ''
+                ]);
+            }
         }
 
         $participantNames = [];
