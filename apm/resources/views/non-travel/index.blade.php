@@ -135,14 +135,14 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="mySubmitted-tab" data-bs-toggle="tab" data-bs-target="#mySubmitted" type="button" role="tab" aria-controls="mySubmitted" aria-selected="true">
                     <i class="bx bx-file-alt me-2"></i> My Submitted Memos
-                    <span class="badge bg-success text-white ms-2">{{ $mySubmittedMemos->count() ?? 0 }}</span>
+                    <span class="badge bg-success text-white ms-2" id="badge-mySubmitted">{{ $mySubmittedMemos->total() }}</span>
                 </button>
             </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="allMemos-tab" data-bs-toggle="tab" data-bs-target="#allMemos" type="button" role="tab" aria-controls="allMemos" aria-selected="false">
                         <i class="bx bx-grid me-2"></i> All Non-Travel Memos
-                        <span class="badge bg-primary text-white ms-2">{{ $allMemos->count() ?? 0 }}</span>
+                        <span class="badge bg-primary text-white ms-2" id="badge-allMemos">{{ $allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allMemos->total() : $allMemos->count() }}</span>
                     </button>
                 </li>
             @endif
@@ -208,13 +208,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // AJAX filtering - auto-update when filters change
+    // AJAX filtering - run after a tick so Select2 has updated the underlying select
     function applyFilters() {
-        const activeTab = document.querySelector('.tab-pane.active');
-        if (activeTab) {
-            const tabId = activeTab.id;
-            loadTabData(tabId);
-        }
+        setTimeout(function() {
+            var activeTab = document.querySelector('.tab-pane.active');
+            if (activeTab) {
+                loadTabData(activeTab.id);
+            }
+        }, 0);
     }
     
     // Manual filter button click
@@ -222,23 +223,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('applyFilters').addEventListener('click', applyFilters);
     }
     
-    // Auto-apply filters when they change
-    
-    if (document.getElementById('staff_id')) {
-        document.getElementById('staff_id').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('division_id')) {
-        document.getElementById('division_id').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('memo_status')) {
-        document.getElementById('memo_status').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('year')) {
-        document.getElementById('year').addEventListener('change', applyFilters);
-    }
+    // Auto-apply filters when they change (defer so Select2 has updated DOM)
+    ['staff_id', 'division_id', 'memo_status', 'year'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', applyFilters);
+        }
+    });
     
     // Document number filter - apply on Enter key or after 1 second delay
     if (document.getElementById('document_number')) {
@@ -256,28 +247,40 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Function to load tab data via AJAX
-    function loadTabData(tabId, page = 1) {
-        console.log('Loading non-travel tab data for:', tabId, 'page:', page);
-        
-        const currentUrl = new URL(window.location);
+    // Read year: use jQuery/Select2 value if available, else native select; default to current year
+    function getYearValue() {
+        var currentYear = String(new Date().getFullYear());
+        if (typeof $ !== 'undefined' && $('#year').length) {
+            var jqVal = $('#year').val();
+            if (jqVal != null && jqVal !== '') return String(jqVal).trim();
+        }
+        var sel = document.getElementById('year');
+        if (!sel) return currentYear;
+        var idx = sel.selectedIndex;
+        if (idx < 0 || !sel.options[idx]) return currentYear;
+        var v = (sel.options[idx].value || '').trim();
+        return v || currentYear;
+    }
+    
+    function loadTabData(tabId, page) {
+        page = page || 1;
+        var currentUrl = new URL(window.location);
         currentUrl.searchParams.set('page', page);
         currentUrl.searchParams.set('tab', tabId);
         
-        // Include current filter values
-        const year = document.getElementById('year')?.value;
-        const documentNumber = document.getElementById('document_number')?.value;
-        const staffId = document.getElementById('staff_id')?.value;
-        const divisionId = document.getElementById('division_id')?.value;
-        const status = document.getElementById('memo_status')?.value;
+        var year = getYearValue();
+        var documentNumber = (document.getElementById('document_number') && document.getElementById('document_number').value) ? document.getElementById('document_number').value.trim() : '';
+        var staffId = document.getElementById('staff_id') ? (document.getElementById('staff_id').value || '') : '';
+        var divisionId = document.getElementById('division_id') ? (document.getElementById('division_id').value || '') : '';
+        var status = document.getElementById('memo_status') ? (document.getElementById('memo_status').value || '') : '';
+        var search = document.getElementById('search') ? (document.getElementById('search').value || '').trim() : '';
         
-        if (year) currentUrl.searchParams.set('year', year);
+        currentUrl.searchParams.set('year', year);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (status) currentUrl.searchParams.set('status', status);
-        
-        console.log('Non-travel request URL:', currentUrl.toString());
+        if (search) currentUrl.searchParams.set('search', search);
         
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
@@ -292,22 +295,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Accept': 'application/json'
             }
         })
-        .then(response => {
-            console.log('Non-travel response status:', response.status);
+        .then(function(response) {
             return response.json();
         })
-        .then(data => {
-            console.log('Non-travel response data:', data);
-            if (data.html) {
-                if (tabContent) {
-                    tabContent.innerHTML = data.html;
-                    attachPaginationHandlers(tabId);
-                }
-            } else {
-                console.error('No HTML data received for non-travel');
-                if (tabContent) {
-                    tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
-                }
+        .then(function(data) {
+            if (data.html && tabContent) {
+                tabContent.innerHTML = data.html;
+                attachPaginationHandlers(tabId);
+            } else if (!data.html && tabContent) {
+                tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
+            }
+            if (data.count_my_submitted !== undefined) {
+                var badgeMy = document.querySelector('#mySubmitted-tab .badge');
+                if (badgeMy) badgeMy.textContent = data.count_my_submitted;
+            }
+            if (data.count_all_memos !== undefined) {
+                var badgeAll = document.querySelector('#allMemos-tab .badge');
+                if (badgeAll) badgeAll.textContent = data.count_all_memos;
             }
         })
         .catch(error => {

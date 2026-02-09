@@ -271,25 +271,51 @@ const existingExternalParticipants = @json($externalParticipants ?? []);
 const existingBudgetItems = @json($budgetItems);
 
 $(document).ready(function () {
-    // Initialize Summernote only for fields with summernote class
-    if ($('.summernote').length > 0) {
-        $('.summernote').summernote({
-            height: 150,
-            fontNames: ['Arial'],
-            fontNamesIgnoreCheck: ['Arial'],
-            defaultFontName: 'Arial',
-            toolbar: [
-                ['style', ['style']],
-                ['font', ['bold', 'italic', 'underline', 'clear']],
-                ['fontname', ['fontname']],
-                ['color', ['color']],
-                ['para', ['ul', 'ol', 'paragraph']],
-                ['table', ['table']],
-                ['insert', ['link']],
-                ['view', ['fullscreen', 'codeview', 'help']]
-            ]
-        });
+    // Activity Title: max 200 characters – real-time validation and counter
+    const ACTIVITY_TITLE_MAX = 200;
+    const $activityTitleInput = $('#activity_title');
+    const $activityTitleError = $('#activity-title-length-error');
+    const $activityTitleCount = $('#activity-title-char-count');
+
+    function validateActivityTitleField() {
+        if (!$activityTitleInput.length) return true;
+        const len = $activityTitleInput.val().length;
+        $activityTitleCount.text(len);
+        if (len > ACTIVITY_TITLE_MAX) {
+            $activityTitleInput.addClass('is-invalid');
+            $activityTitleError.show();
+            $('#activity-title-char-counter').addClass('text-danger');
+            return false;
+        }
+        $activityTitleInput.removeClass('is-invalid');
+        $activityTitleError.hide();
+        $('#activity-title-char-counter').removeClass('text-danger');
+        return true;
     }
+
+    $activityTitleInput.on('input paste', function () {
+        validateActivityTitleField();
+    });
+    validateActivityTitleField();
+
+    $('#activityForm').on('submit', function (e) {
+        // Sync Summernote editors to textareas so full content is submitted without loss
+        $('textarea.summernote').each(function() {
+            var $ta = $(this);
+            try {
+                if ($ta.summernote('code') !== undefined) {
+                    $ta.val($ta.summernote('code'));
+                }
+            } catch (err) {}
+        });
+        if (!validateActivityTitleField()) {
+            e.preventDefault();
+            $activityTitleInput.focus();
+            return false;
+        }
+    });
+
+    // Summernote is initialized once in layout (footer) with full toolbar (fontsize, fontname, etc.)
 
     // AJAX Form Submission
     // $('#activityForm').on('submit', function(e) {
@@ -418,36 +444,42 @@ $(document).ready(function () {
     //     });
     // });
 
-    // Restore existing participants and their international travel state
-    if (existingParticipants && existingParticipants.length > 0) {
-        const participantIds = existingParticipants.map(p => p.staff.staff_id);
-        $('#internal_participants').val(participantIds).trigger('change');
-        
-        // Restore international travel checkboxes after participants are loaded
-        setTimeout(() => {
-            existingParticipants.forEach(participant => {
-                const checkbox = $(`input[name="international_travel[${participant.staff.staff_id}]"]`);
-                if (checkbox.length) {
-                    checkbox.prop('checked', participant.international_travel == 1);
-                }
-            });
-        }, 100);
-    }
-
     // Restore old data if form was reloaded after validation errors
     if (oldParticipants && oldParticipants.length > 0) {
         $('#internal_participants').val(oldParticipants).trigger('change');
         
-        // Restore international travel checkboxes after participants are loaded
+        // Restore international travel from old() after validation errors
         setTimeout(() => {
             oldParticipants.forEach(participantId => {
-                const checkbox = $(`input[name="international_travel[${participantId}]"]`);
-                if (checkbox.length && oldTravel && oldTravel[participantId]) {
-                    checkbox.prop('checked', true);
+                const sid = String(participantId);
+                const row = $(`tr[data-participant-id="${sid}"]`);
+                if (row.length) {
+                    const val = (oldTravel && oldTravel[participantId]) ? '1' : '0';
+                    row.find('.international-travel-checkbox').prop('checked', val === '1');
+                    row.find('input.international-travel-value').val(val);
                 }
             });
-        }, 100);
+        }, 150);
     }
+
+    // Sync hidden input when International Travel checkbox is toggled (so every participant saves correctly)
+    $(document).on('change', '.international-travel-checkbox', function () {
+        const row = $(this).closest('tr');
+        const hidden = row.find('input.international-travel-value');
+        hidden.val($(this).is(':checked') ? '1' : '0');
+    });
+
+    // Before form submit: sync every International Travel checkbox to its hidden so submitted data always matches UI
+    $('#activityForm').on('submit', function () {
+        $('#participantsTableBody tr[data-participant-id]').each(function () {
+            const row = $(this);
+            const cb = row.find('.international-travel-checkbox');
+            const hidden = row.find('input.international-travel-value');
+            if (cb.length && hidden.length) {
+                hidden.val(cb.is(':checked') ? '1' : '0');
+            }
+        });
+    });
 
     // Fund type change handler
     $('#fund_type').change(function(event){
@@ -517,7 +549,8 @@ $(document).ready(function () {
         return Math.max(Math.ceil((end - start) / msPerDay) + 1, 1);
     }
 
-    function appendToInternalParticipantsTable(staffList) {
+    function appendToInternalParticipantsTable(staffList, internationalTravelMap) {
+        internationalTravelMap = internationalTravelMap || {};
         const mainStart = $('#date_from').val();
         const mainEnd = $('#date_to').val();
         const days = getActivityDays(mainStart, mainEnd);
@@ -528,21 +561,26 @@ $(document).ready(function () {
         }
 
         staffList.forEach(({ id, name }) => {
-            if (!tableBody.find(`input[name="participant_days[${id}]"]`).length) {
+            const sid = String(id);
+            if (!tableBody.find(`input[name="participant_days[${sid}]"]`).length) {
+                const travelVal = (internationalTravelMap[sid] !== undefined) ? internationalTravelMap[sid] : 1;
+                const travelStr = String(travelVal);
+                const checked = travelVal === 1;
                 const row = $(`
-                    <tr data-participant-id="${id}">
+                    <tr data-participant-id="${sid}">
                         <td>${name}</td>
-                        <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
-                        <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
-                        <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
+                        <td><input type="text" name="participant_start[${sid}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
+                        <td><input type="text" name="participant_end[${sid}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
+                        <td><input type="number" name="participant_days[${sid}]" class="form-control participant-days" value="${days}" readonly></td>
                         <td class="text-center">
                             <div class="form-check d-flex justify-content-center">
-                                <input type="checkbox" name="international_travel[${id}]" class="form-check-input" value="1" checked>
+                                <input type="hidden" name="international_travel[${sid}]" value="${travelStr}" class="international-travel-value">
+                                <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${sid}" ${checked ? 'checked' : ''}>
                                 <label class="form-check-label ms-2">Yes</label>
                             </div>
                         </td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${id}">
+                            <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${sid}">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -583,22 +621,67 @@ $(document).ready(function () {
             }
         });
 
+        // Apply international_travel map to every row so 0/1 from server is always reflected (handles any ordering/selector edge cases)
+        if (internationalTravelMap && Object.keys(internationalTravelMap).length > 0) {
+            tableBody.find('tr[data-participant-id]').each(function() {
+                const row = $(this);
+                const sid = row.attr('data-participant-id');
+                if (sid === undefined || sid === '') return;
+                const key = String(sid);
+                if (internationalTravelMap.hasOwnProperty(key)) {
+                    const v = internationalTravelMap[key];
+                    row.find('.international-travel-checkbox').prop('checked', v === 1);
+                    row.find('input.international-travel-value').val(String(v));
+                }
+            });
+        }
+
         updateTotalParticipants();
     }
 
-    // Participant selection change handler
-    $('#internal_participants').on('change', function () {
-        const selectedIds = $(this).val() || [];
-        const staffList = selectedIds.map(id => {
-            return {
-                id: id,
-                name: $(`#internal_participants option[value="${id}"]`).text()
-            };
+    // Apply international travel state from existing (internal + external) participants to every participant row (source of truth for edit page load)
+    function applyInternationalTravelFromExistingParticipants() {
+        const tableBody = $('#participantsTableBody');
+        const allParticipants = [].concat(
+            existingParticipants || [],
+            existingExternalParticipants || []
+        );
+        allParticipants.forEach(function (p) {
+            const sid = String((p.staff && p.staff.staff_id != null) ? p.staff.staff_id : '');
+            if (!sid) return;
+            const travelVal = (p.international_travel == 1) ? 1 : 0;
+            const row = tableBody.find('tr[data-participant-id="' + sid + '"]');
+            if (row.length) {
+                row.find('.international-travel-checkbox').prop('checked', travelVal === 1);
+                row.find('input.international-travel-value').val(String(travelVal));
+            }
         });
+    }
 
-        appendToInternalParticipantsTable(staffList);
+    // Participant selection change handler (use string id; pass internationalTravelMap when restoring from server)
+    $('#internal_participants').on('change', function () {
+        const selectedIds = ($(this).val() || []).map(id => String(id));
+        const staffList = selectedIds.map(id => ({
+            id: id,
+            name: $(`#internal_participants option[value="${id}"]`).text()
+        }));
+        const internationalTravelMap = $(this).data('internationalTravelMap') || {};
+        appendToInternalParticipantsTable(staffList, internationalTravelMap);
         updateTotalParticipants();
     });
+
+    // Restore existing participants after change handler is registered: pass international_travel map so each row is created with correct state
+    if (existingParticipants && existingParticipants.length > 0) {
+        const participantIds = existingParticipants.map(p => String(p.staff.staff_id));
+        const internationalTravelMap = {};
+        existingParticipants.forEach(p => {
+            internationalTravelMap[String(p.staff.staff_id)] = (p.international_travel == 1) ? 1 : 0;
+        });
+        $('#internal_participants').data('internationalTravelMap', internationalTravelMap);
+        $('#internal_participants').val(participantIds).trigger('change');
+        $('#internal_participants').removeData('internationalTravelMap');
+        setTimeout(applyInternationalTravelFromExistingParticipants, 0);
+    }
 
     // Update total participants on any input change
     $(document).on('input change', '#participantsTableBody input, #internal_participants, .staff-names, #total_external_participants', function () {
@@ -1098,20 +1181,17 @@ $(document).ready(function () {
         allowInput: true
     });
 
-    // Initialize existing participants table if there are existing participants
+    // Initialize existing participants table (second init point): use same map so display matches DB (1=checked, 0=unchecked)
     if (existingParticipants && existingParticipants.length > 0) {
-        const participantIds = existingParticipants.map(p => p.staff.staff_id);
+        const participantIds = existingParticipants.map(p => String(p.staff.staff_id));
+        const internationalTravelMap = {};
+        existingParticipants.forEach(p => {
+            internationalTravelMap[String(p.staff.staff_id)] = (p.international_travel == 1) ? 1 : 0;
+        });
+        $('#internal_participants').data('internationalTravelMap', internationalTravelMap);
         $('#internal_participants').val(participantIds).trigger('change');
-        
-        // Restore international travel checkboxes after participants are loaded
-        setTimeout(() => {
-            existingParticipants.forEach(participant => {
-                const checkbox = $(`input[name="international_travel[${participant.staff.staff_id}]"]`);
-                if (checkbox.length) {
-                    checkbox.prop('checked', participant.international_travel == 1);
-                }
-            });
-        }, 100);
+        $('#internal_participants').removeData('internationalTravelMap');
+        setTimeout(applyInternationalTravelFromExistingParticipants, 0);
     }
 
     // Function to restore external participants division blocks
@@ -1265,6 +1345,8 @@ $(document).ready(function () {
         // Restore external participants division blocks
         if (existingExternalParticipants && existingExternalParticipants.length > 0) {
             restoreExternalParticipants(existingExternalParticipants);
+            // Apply international_travel from existingExternalParticipants to table rows (external rows default to 1 otherwise)
+            setTimeout(applyInternationalTravelFromExistingParticipants, 0);
         }
 
         // Update total participants display

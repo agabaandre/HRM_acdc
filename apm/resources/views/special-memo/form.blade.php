@@ -5,8 +5,18 @@
                 <label for="activity_title" class="form-label fw-semibold">
                     <i class="fas fa-pen-nib me-1 text-success"></i> Activity Title <span class="text-danger">*</span>
                 </label>
-                <input type="text" name="activity_title" id="activity_title" class="form-control" 
-                       value="{{ old('activity_title', $specialMemo->activity_title ?? '') }}" required>
+                <input type="text" name="activity_title" id="activity_title" class="form-control @error('activity_title') is-invalid @enderror" 
+                       value="{{ old('activity_title', $specialMemo->activity_title ?? '') }}" required maxlength="200" 
+                       placeholder="Maximum 200 characters">
+                <div class="mt-1">
+                    <div id="activity-title-length-error" class="invalid-feedback d-block mb-0" style="display: none;">
+                        Activity Title must not exceed 200 characters.
+                    </div>
+                    <div class="small text-muted" id="activity-title-char-counter"><span id="activity-title-char-count">0</span>/200 characters</div>
+                </div>
+                @error('activity_title')
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                @enderror
             </div>
             <div class="col-md-6">
                 <label for="request_type_id" class="form-label fw-semibold">

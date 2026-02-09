@@ -261,20 +261,20 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="all-activities-tab" data-bs-toggle="tab" data-bs-target="#all-activities" type="button" role="tab" aria-controls="all-activities" aria-selected="true">
                             <i class="bx bx-grid me-2"></i> All Activities
-                            <span class="badge bg-primary text-white ms-2">{{ $allActivities->total() ?? 0 }}</span>
+                            <span class="badge bg-primary text-white ms-2" id="badge-all-activities">{{ $allActivities->total() ?? 0 }}</span>
                         </button>
                     </li>
                     @endif
                     <li class="nav-item" role="presentation">
                         <button class="nav-link {{ !in_array(87, user_session('permissions', [])) ? 'active' : '' }}" id="my-division-tab" data-bs-toggle="tab" data-bs-target="#my-division" type="button" role="tab" aria-controls="my-division" aria-selected="{{ !in_array(87, user_session('permissions', [])) ? 'true' : 'false' }}">
                             <i class="bx bx-home me-2"></i> My Division Activities
-                            <span class="badge bg-success text-white ms-2">{{ $myDivisionActivities->total() ?? 0 }}</span>
+                            <span class="badge bg-success text-white ms-2" id="badge-my-division">{{ $myDivisionActivities->total() ?? 0 }}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="shared-activities-tab" data-bs-toggle="tab" data-bs-target="#shared-activities" type="button" role="tab" aria-controls="shared-activities" aria-selected="false">
                             <i class="bx bx-share me-2"></i> Shared Activities
-                            <span class="badge bg-info text-white ms-2">{{ $sharedActivities->total() ?? 0 }}</span>
+                            <span class="badge bg-info text-white ms-2" id="badge-shared-activities">{{ $sharedActivities->total() ?? 0 }}</span>
                         </button>
                     </li>
                 </ul>
@@ -426,8 +426,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to load tab data via AJAX
     function loadTabData(tabId, page = 1) {
-        console.log('Loading tab data for:', tabId, 'page:', page);
-        
         const currentUrl = new URL(window.location);
         currentUrl.searchParams.set('page', page);
         currentUrl.searchParams.set('tab', tabId);
@@ -446,17 +444,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (search) currentUrl.searchParams.set('search', search);
-        
-        console.log('Request URL:', currentUrl.toString());
-        
+
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
         if (tabContent) {
             tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        } else {
-            console.error('Tab content element not found:', tabId);
         }
-        
+
         // Make AJAX request
         fetch(currentUrl.toString(), {
             method: 'GET',
@@ -465,29 +459,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Accept': 'application/json'
             }
         })
-        .then(response => {
-            console.log('Response status:', response.status);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Response data:', data);
             if (data.html) {
-                // Replace tab content with new data
                 if (tabContent) {
                     tabContent.innerHTML = data.html;
-                    
-                    // Re-attach pagination click handlers
                     attachPaginationHandlers(tabId);
                 }
             } else {
-                console.error('No HTML data received');
                 if (tabContent) {
                     tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
                 }
             }
+            if (data.count_all_activities !== undefined) {
+                const b = document.getElementById('badge-all-activities');
+                if (b) b.textContent = data.count_all_activities;
+            }
+            if (data.count_my_division !== undefined) {
+                const b = document.getElementById('badge-my-division');
+                if (b) b.textContent = data.count_my_division;
+            }
+            if (data.count_shared_activities !== undefined) {
+                const b = document.getElementById('badge-shared-activities');
+                if (b) b.textContent = data.count_shared_activities;
+            }
         })
         .catch(error => {
-            console.error('Error loading tab data:', error);
             if (tabContent) {
                 tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
             }

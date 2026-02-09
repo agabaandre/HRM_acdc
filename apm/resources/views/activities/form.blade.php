@@ -6,7 +6,18 @@
                 <label for="activity_title" class="form-label fw-semibold">
                     <i class="fas fa-pen-nib me-1 text-success"></i> {{ $title ?? 'Activity' }} Title <span class="text-danger">*</span>
                 </label>
-                <input type="text" name="activity_title" id="activity_title" class="form-control " value="{{ old('activity_title', $activity->activity_title ?? '') }}" required>
+                <input type="text" name="activity_title" id="activity_title" class="form-control @error('activity_title') is-invalid @enderror" 
+                       value="{{ old('activity_title', $activity->activity_title ?? '') }}" required maxlength="200" 
+                       placeholder="Maximum 200 characters">
+                <div class="mt-1">
+                    <div id="activity-title-length-error" class="invalid-feedback d-block mb-0" style="display: none;">
+                        {{ $title ?? 'Activity' }} Title must not exceed 200 characters.
+                    </div>
+                    <div class="small text-muted" id="activity-title-char-counter"><span id="activity-title-char-count">0</span>/200 characters</div>
+                </div>
+                @error('activity_title')
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                @enderror
             </div>
             <div class="col-md-3">
                 <label for="request_type_id" class="form-label fw-semibold">
@@ -63,14 +74,14 @@
 
             <div class="col-md-3">
                 <label for="date_from" class="form-label fw-semibold">
-                    <i class="fas fa-calendar-day me-1 text-success"></i> Date From <span class="text-danger">*</span>
+                    <i class="fas fa-calendar-day me-1 text-success"></i> Activity Date From <span class="text-danger">*</span>
                 </label>
                 <input type="text" name="date_from" id="date_from" class="form-control datepicker " value="{{ old('date_from', $activity->date_from ?? '') }}" required>
             </div>
 
             <div class="col-md-3">
                 <label for="date_to" class="form-label fw-semibold">
-                    <i class="fas fa-calendar-check me-1 text-success"></i> Date To <span class="text-danger">*</span>
+                    <i class="fas fa-calendar-check me-1 text-success"></i> Activity Date To <span class="text-danger">*</span>
                 </label>
                 <input type="text" name="date_to" id="date_to" class="form-control datepicker " value="{{ old('date_to', $activity->date_to ?? '') }}" required>
             </div>

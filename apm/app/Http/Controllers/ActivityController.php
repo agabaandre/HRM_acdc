@@ -49,8 +49,10 @@ class ActivityController extends Controller
         $requestTypes = RequestType::all();
         $fundTypes = FundType::all();
 
-        // For matrix-specific activities, we need to provide the same variables that the view expects
-        $years = range(now()->year - 2, now()->year + 2);
+        // For matrix-specific activities: years from current down to 2025 (system start)
+        $currentYear = (int) now()->year;
+        $minYear = max(2025, $currentYear - 10);
+        $years = range($currentYear, $minYear);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $divisions = \App\Models\Division::orderBy('division_name')->get();
         
@@ -147,16 +149,15 @@ class ActivityController extends Controller
 
     public function store(Request $request, Matrix $matrix): RedirectResponse|JsonResponse
     {
-      
-       // dd($request->all());
-    
         $userStaffId = session('user.auth_staff_id');
     
         return DB::transaction(function () use ($request, $matrix, $userStaffId) {
             try {
                 // Validate required fields
                 $validated = $request->validate([
-                    'activity_title' => 'required|string|max:255',
+                    'activity_title' => 'required|string|max:200',
+                    'background' => 'required|string', // LONGTEXT in DB; no max to allow large content
+                    'activity_request_remarks' => 'required|string', // LONGTEXT in DB; no max to allow large content
                     'location_id' => 'required|array|min:1',
                     'location_id.*' => 'exists:locations,id',
                     'participant_start' => 'required|array',
@@ -231,12 +232,9 @@ class ActivityController extends Controller
                         'participant_start' => $startDate,
                         'participant_end' => $participantEnds[$staffId] ?? null,
                         'participant_days' => $participantDays[$staffId] ?? null,
-                        'international_travel' => isset($internationalTravel[$staffId]) ? 1 : 0,
+                        'international_travel' => (int) ($internationalTravel[$staffId] ?? 0),
                     ];
                 }
-    
-                // Debug formatted array before insertion
-                //dd($internalParticipants);
 
                 $budgetCodes = $request->input('budget_codes', []);
                 $budgetItems = $request->input('budget', []);
@@ -290,14 +288,14 @@ class ActivityController extends Controller
                     'key_result_area' => clean_unicode($request->input('key_result_area')),
                     'request_type_id' => (int) $request->input('request_type_id', 1),
                     'activity_title' => clean_unicode($request->input('activity_title')),
-                    'background' => clean_unicode($request->input('background', '')),
-                    'activity_request_remarks' => clean_unicode($request->input('activity_request_remarks', '')),
+                    'background' => clean_unicode($validated['background'] ?? ''),
+                    'activity_request_remarks' => clean_unicode($validated['activity_request_remarks'] ?? ''),
                     'forward_workflow_id' => null,
                     'reverse_workflow_id' => 1,
                     'status' => \App\Models\Activity::STATUS_DRAFT,
                     'fund_type_id' => $request->input('fund_type', 1),
                     'location_id' => json_encode($request->input('location_id', [])),
-                    'internal_participants' => json_encode($internalParticipants),
+                    'internal_participants' => $internalParticipants,
                     'budget_id' => json_encode($budgetCodes),
                     'budget_breakdown' => json_encode($budgetItems),
                     'attachment' => json_encode($attachments),
@@ -306,8 +304,6 @@ class ActivityController extends Controller
                     'division_id' => $matrix->division_id,
                     'overall_status' =>\App\Models\Activity::STATUS_DRAFT,
                 ]);
-
-                Log::info('Activity created', ['activity' => $activity]);
 
                 if(count($internalParticipants)>0)
                 $this->storeParticipantSchedules($internalParticipants,$activity);
@@ -510,15 +506,6 @@ class ActivityController extends Controller
     public function edit(Matrix $matrix, Activity $activity)
     {
         // No need to swap variables - Laravel passes them in the correct order for resource routes
-        
-        // Debug logging
-        \Illuminate\Support\Facades\Log::info('Edit method called', [
-            'activity_id' => $activity->id,
-            'activity_title' => $activity->activity_title,
-            'is_single_memo' => $activity->is_single_memo,
-            'matrix_id' => $matrix->id,
-            'matrix_status' => $matrix->overall_status
-        ]);
 
         // Check if this is a change request
         $isChangeRequest = request('change_request') == '1';
@@ -604,7 +591,7 @@ class ActivityController extends Controller
                         'participant_start' => $participantData['participant_start'] ?? null,
                         'participant_end' => $participantData['participant_end'] ?? null,
                         'participant_days' => $participantData['participant_days'] ?? null,
-                        'international_travel' => $participantData['international_travel'] ?? 1,
+                        'international_travel' => (int) ($participantData['international_travel'] ?? 0),
                     ];
                     
                     // Separate internal and external participants
@@ -752,7 +739,7 @@ class ActivityController extends Controller
                         'participant_start' => $participantData['participant_start'] ?? null,
                         'participant_end' => $participantData['participant_end'] ?? null,
                         'participant_days' => $participantData['participant_days'] ?? null,
-                        'international_travel' => $participantData['international_travel'] ?? 1,
+                        'international_travel' => (int) ($participantData['international_travel'] ?? 0),
                     ];
                     
                     // Separate internal and external participants
@@ -806,13 +793,6 @@ class ActivityController extends Controller
      */
     public function updateSingleMemo(Request $request, Matrix $matrix, Activity $activity): RedirectResponse|JsonResponse
     {
-        Log::info('UpdateSingleMemo method called', [
-            'matrix_id' => $matrix->id,
-            'activity_id' => $activity->id,
-            'is_single_memo' => $activity->is_single_memo ?? false,
-            'request_data' => $request->all()
-        ]);
-        
         // Check if user has privileges to edit this memo using can_edit_memo()
         if (!can_edit_memo($activity)) {
             if ($request->ajax()) {
@@ -836,31 +816,10 @@ class ActivityController extends Controller
      */
     public function update(Request $request, Matrix $matrix, Activity $activity): RedirectResponse|JsonResponse
     {
-       // dd($request->all());
-        Log::info('Update method called', [
-            'matrix_id' => $matrix->id,
-            'activity_id' => $activity->id,
-            'is_single_memo' => $activity->is_single_memo ?? false,
-            'request_data' => $request->all()
-        ]);
-        
-        // Check if matrix is approved
-        Log::info('Checking matrix approval status', [
-            'matrix_id' => $matrix->id,
-            'matrix_status' => $matrix->overall_status,
-            'is_approved' => $matrix->overall_status === 'approved'
-        ]);
-        
         // Block regular activities if matrix is approved, but allow single memos
         if ($matrix->overall_status == 'approved' && $activity->is_single_memo == 0) {
             $message = 'Cannot update activity. The matrix has been approved.';
-            
-            Log::info('Matrix is approved, blocking regular activity update', [
-                'matrix_id' => $matrix->id,
-                'matrix_status' => $matrix->overall_status,
-                'is_single_memo' => $activity->is_single_memo
-            ]);
-            
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -871,15 +830,6 @@ class ActivityController extends Controller
             return redirect()
                 ->route('matrices.activities.show', [$matrix, $activity])
                 ->with('error', $message);
-        }
-        
-        // Log that single memo editing is allowed even with approved matrix
-        if ($matrix->overall_status == 'approved' && $activity->is_single_memo == 1) {
-            Log::info('Matrix is approved but allowing single memo update', [
-                'matrix_id' => $matrix->id,
-                'matrix_status' => $matrix->overall_status,
-                'is_single_memo' => $activity->is_single_memo
-            ]);
         }
 
         $userStaffId = session('user.auth_staff_id');
@@ -903,7 +853,9 @@ class ActivityController extends Controller
                 // Validate required fields
                 try {
                     $validated = $request->validate([
-                        'activity_title' => 'required|string|max:255',
+                        'activity_title' => 'required|string|max:200',
+                        'background' => 'required|string', // LONGTEXT in DB; no max to allow large content
+                        'activity_request_remarks' => 'required|string', // LONGTEXT in DB; no max to allow large content
                         'location_id' => 'required|array|min:1',
                         'location_id.*' => 'exists:locations,id',
                         'participant_start' => 'required|array',
@@ -913,11 +865,6 @@ class ActivityController extends Controller
                     'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240', // 10MB max
                 ]);
                 } catch (\Illuminate\Validation\ValidationException $e) {
-                    Log::error('Validation failed in update', [
-                        'errors' => $e->validator->errors()->all(),
-                        'request_data' => $request->all()
-                    ]);
-                    
                     $errorMessage = 'Validation failed: ' . implode(', ', $e->validator->errors()->all());
                     
                     if ($request->ajax()) {
@@ -933,8 +880,6 @@ class ActivityController extends Controller
                     ]);
                 }
 
-                Log::info('Validation passed, proceeding with update');
-
                 // Build internal_participants array with staff_id as key
                 $participantStarts = $request->input('participant_start', []);
                 $participantEnds = $request->input('participant_end', []);
@@ -948,7 +893,7 @@ class ActivityController extends Controller
                         'participant_start' => $startDate,
                         'participant_end' => $participantEnds[$staffId] ?? null,
                         'participant_days' => $participantDays[$staffId] ?? null,
-                        'international_travel' => isset($internationalTravel[$staffId]) ? 1 : 0,
+                        'international_travel' => (int) ($internationalTravel[$staffId] ?? 0),
                     ];
                 }
 
@@ -1061,12 +1006,11 @@ class ActivityController extends Controller
                     'total_external_participants' => (int) $request->input('total_external_participants', 0),
                     'key_result_area' => clean_unicode($request->input('key_result_area')),
                     'request_type_id' => (int) $request->input('request_type_id', 1),
-                    'activity_title' => clean_unicode($request->input('activity_title')),
-                    'background' => clean_unicode($request->input('background', '')),
-                    'activity_request_remarks' => clean_unicode($request->input('activity_request_remarks', '')),
+                    'activity_title' => clean_unicode($validated['activity_title']),
+                    'background' => clean_unicode($validated['background'] ?? ''),
+                    'activity_request_remarks' => clean_unicode($validated['activity_request_remarks'] ?? ''),
                     'fund_type_id' => $request->input('fund_type', 1),
                     'location_id' => json_encode($request->input('location_id', [])),
-                    'internal_participants' => json_encode($internalParticipants),
                     'budget_id' => json_encode($budgetCodes),
                     'budget_breakdown' => json_encode($budgetItems),
                     'attachment' => json_encode($attachments),
@@ -1077,8 +1021,15 @@ class ActivityController extends Controller
                     'is_draft' => 1,
                 ]);
 
-                if (count($internalParticipants) > 0)
+                // Persist internal_participants explicitly so it is always written (avoids cast/dirty-check issues)
+                $internalParticipantsJson = json_encode($internalParticipants);
+                DB::table('activities')->where('id', $activity->id)->update(['internal_participants' => $internalParticipantsJson]);
+                $activity->setAttribute('internal_participants', $internalParticipants);
+                $activity->syncOriginalAttribute('internal_participants');
+
+                if (count($internalParticipants) > 0) {
                     $this->storeParticipantSchedules($internalParticipants, $activity);
+                }
 
                 // Always call storeBudget to handle both updates and deletions
                 $this->storeBudget($budgetCodes, $budgetItems, $activity);
@@ -1388,6 +1339,11 @@ class ActivityController extends Controller
 
             foreach ($schedules as $participantId => $details) {
                 $participant = Staff::where('staff_id', $participantId)->first();
+                if (!$participant) {
+                    Log::warning('storeParticipantSchedules: staff not found', ['staff_id' => $participantId, 'activity_id' => $activity->id]);
+                    continue;
+                }
+                $internationalTravel = isset($details['international_travel']) ? (int) $details['international_travel'] : 0;
                 ParticipantSchedule::create([
                     'participant_id' => $participantId,
                     'activity_id' => $activity->id,
@@ -1399,11 +1355,15 @@ class ActivityController extends Controller
                     'participant_start' => $details['participant_start'],
                     'participant_end' => $details['participant_end'],
                     'participant_days' => $details['participant_days'],
-                    'international_travel' => $details['international_travel'] ?? 1,
+                    'international_travel' => $internationalTravel,
                 ]);
             }
         } catch (Exception $exception) {
-            Log::error("Error occurred saving participant schedule " . $exception->getMessage());
+            Log::error("Error occurred saving participant schedule " . $exception->getMessage(), [
+                'activity_id' => $activity->id,
+                'trace' => $exception->getTraceAsString(),
+            ]);
+            throw $exception;
         }
     }
 
@@ -1500,13 +1460,6 @@ class ActivityController extends Controller
             // Note: Approval trail entry is already created in update_activity_status() 
             // No need to create a duplicate entry here
 
-            Log::info('Activity converted to single memo', [
-                'activity_id' => $activity->id,
-                'matrix_id' => $activity->matrix_id,
-                'converted_by' => user_session('staff_id'),
-                'comment' => $comment
-            ]);
-
         } catch (\Exception $e) {
             Log::error('Error converting activity to single memo', [
                 'activity_id' => $activity->id,
@@ -1523,7 +1476,6 @@ class ActivityController extends Controller
         $activities = $request->input('activity_ids', []);
         //explode the activities into an array
         $activities = count($activities) > 0 ? explode(',', $activities[0]) : [];
-        //dd($activities);
         $matrix = Matrix::find($request->input('matrix_id'));
 
         foreach ($activities as $activity) {
@@ -1809,46 +1761,44 @@ class ActivityController extends Controller
             ->orderBy('division_name')
             ->get();
         
-        // Prepare years and quarters for the view
-        $years = range(now()->year - 2, now()->year + 2);
+        // Prepare years and quarters: years from current down to 2025 (system start)
+        $currentYear = (int) now()->year;
+        $minYear = max(2025, $currentYear - 10);
+        $years = range($currentYear, $minYear);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
     
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
-            \Log::info('AJAX request received in singlememos', [
-                'tab' => $request->get('tab'),
-                'all_params' => $request->all(),
-                'has_session' => session()->has('user'),
-                'session_id' => session()->getId()
-            ]);
-            
             $tab = $request->get('tab', '');
             $html = '';
-            
+            $countMyDivision = $myMemos->total();
+            $countAllMemos = $allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allMemos->total() : 0;
+            $countSharedMemos = $sharedMemos->total();
+
             switch($tab) {
                 case 'mySubmitted':
-                    \Log::info('Rendering mySubmitted tab', ['myMemos_count' => $myMemos->count()]);
                     $html = view('activities.single-memos.partials.my-division-memos-tab', compact(
                         'myMemos', 'searchTerm', 'selectedYear', 'selectedQuarter'
                     ))->render();
                     break;
                 case 'allMemos':
-                    \Log::info('Rendering allMemos tab', ['allMemos_count' => $allMemos ? $allMemos->count() : 0]);
                     $html = view('activities.single-memos.partials.all-memos-tab', compact(
                         'allMemos', 'searchTerm', 'selectedYear', 'selectedQuarter'
                     ))->render();
                     break;
                 case 'sharedMemos':
-                    \Log::info('Rendering sharedMemos tab', ['sharedMemos_count' => $sharedMemos->count()]);
                     $html = view('activities.single-memos.partials.shared-memos-tab', compact(
                         'sharedMemos', 'searchTerm', 'selectedYear', 'selectedQuarter'
                     ))->render();
                     break;
             }
-            
-            \Log::info('Generated HTML length', ['html_length' => strlen($html)]);
-            
-            return response()->json(['html' => $html]);
+
+            return response()->json([
+                'html' => $html,
+                'count_my_division' => $countMyDivision,
+                'count_all_memos' => $countAllMemos,
+                'count_shared_memos' => $countSharedMemos,
+            ]);
         }
         
         return view('activities.single-memos.index', compact('myMemos', 'allMemos', 'sharedMemos', 'staff', 'divisions', 'searchTerm', 'years', 'quarters', 'selectedYear', 'selectedQuarter'));
@@ -1859,8 +1809,6 @@ class ActivityController extends Controller
      */
 public function submitSingleMemoForApproval(Activity $activity): RedirectResponse
     {
-
-       // dd($activity->overall_status);
         // Only allow submission if status is 'draft' OR 'returned'
         if (!in_array(trim($activity->overall_status), ['draft', 'returned'])) {
             return redirect()->back()->with([
@@ -2216,14 +2164,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ->where('quarter', $selectedQuarter)
             ->where('overall_status', 'approved')
             ->get(['id', 'division_id', 'overall_status', 'forward_workflow_id']);
-            
-        Log::info('Debug: Found approved matrices for activities', [
-            'year' => $selectedYear,
-            'quarter' => $selectedQuarter,
-            'matrices_count' => $debugMatrices->count(),
-            'matrices' => $debugMatrices->toArray()
-        ]);
-        
+
         // Tab 1: All Activities (visible to users with permission 87)
         $allActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if (in_array(87, user_session('permissions', []))) {
@@ -2249,20 +2190,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 ->select('activities.*'); // Select only activity columns to avoid conflicts
             
             $allActivities = $allActivitiesQuery->paginate(20);
-            
-            // Debug: Log activities before filtering
-            Log::info('All Activities Before Final Approval Filter', [
-                'originalCount' => $allActivitiesQuery->count(),
-                'activities' => $allActivities->getCollection()->map(function ($activity) {
-                    return [
-                        'id' => $activity->id,
-                        'title' => $activity->activity_title,
-                        'matrix_id' => $activity->matrix_id,
-                        'matrix_status' => $activity->matrix->overall_status ?? 'N/A'
-                    ];
-                })->toArray()
-            ]);
-            
+
             // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
             // This is causing issues - let's see what activities we get without filtering
             /*
@@ -2274,15 +2202,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             });
             $allActivities->setCollection($allActivities->getCollection()->filter()->values());
             */
-            
-            // Debug logging for final approval filtering
-            Log::info('All Activities Final Approval Filter', [
-                'originalCount' => $allActivitiesQuery->count(),
-                'afterFilterCount' => $allActivities->count(),
-                'activities' => $allActivities->getCollection()->pluck('id')->toArray()
-            ]);
         }
-        
+
         // Tab 2: My Division Activities
         $myDivisionActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if ($userDivisionId) {
@@ -2364,48 +2285,23 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         // Get divisions for filter
         $divisions = \App\Models\Division::orderBy('division_name')->get();
         
-        // Get years and quarters for filter
-        $years = range($currentYear - 2, $currentYear + 2);
+        // Get years and quarters for filter (lowest year 2025 - system start)
+        $minYear = max(2025, $currentYear - 10);
+        $years = range($currentYear, $minYear);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         
         // Get staff data for filter (exclude Expired and Separated)
         $staff = \App\Models\Staff::whereNotIn('status', ['Expired', 'Separated'])
             ->orderBy('fname')->orderBy('lname')->get();
-        
-        // Debug logging
-        Log::info('Activities Index Debug', [
-            'selectedYear' => $selectedYear,
-            'selectedQuarter' => $selectedQuarter,
-            'selectedDivisionId' => $selectedDivisionId,
-            'userStaffId' => $userStaffId,
-            'userDivisionId' => $userDivisionId,
-            'allActivitiesCount' => $allActivities->count(),
-            'myDivisionActivitiesCount' => $myDivisionActivities->count(),
-            'sharedActivitiesCount' => $sharedActivities->count(),
-            'baseQuerySQL' => $baseQuery->toSql(),
-            'baseQueryBindings' => $baseQuery->getBindings(),
-            'myDivisionActivities' => $myDivisionActivities->getCollection()->map(function ($activity) {
-                return [
-                    'id' => $activity->id,
-                    'title' => $activity->activity_title,
-                    'matrix_id' => $activity->matrix_id,
-                    'staff_id' => $activity->staff_id,
-                    'responsible_person_id' => $activity->responsible_person_id,
-                    'matrix_division_id' => $activity->matrix->division_id ?? 'N/A'
-                ];
-            })->toArray()
-        ]);
-        
+
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
-            \Log::info('AJAX request received in activitiesIndex', [
-                'tab' => $request->get('tab'),
-                'all_params' => $request->all()
-            ]);
-            
             $tab = $request->get('tab', '');
             $html = '';
-            
+            $countAll = $allActivities->total();
+            $countMyDivision = $myDivisionActivities->total();
+            $countShared = $sharedActivities->total();
+
             switch($tab) {
                 case 'all-activities':
                     $html = view('activities.partials.all-activities-tab', compact(
@@ -2441,8 +2337,13 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                     ))->render();
                     break;
             }
-            
-            return response()->json(['html' => $html]);
+
+            return response()->json([
+                'html' => $html,
+                'count_all_activities' => $countAll,
+                'count_my_division' => $countMyDivision,
+                'count_shared_activities' => $countShared,
+            ]);
         }
         
         return view('activities.index', compact(
@@ -2471,11 +2372,6 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         // Get the matrix's workflow
         $matrix = $activity->matrix;
         if (!$matrix || !$matrix->forward_workflow_id) {
-            Log::info('Activity not fully approved: No matrix or workflow', [
-                'activity_id' => $activity->id,
-                'matrix_id' => $activity->matrix_id,
-                'forward_workflow_id' => $matrix?->forward_workflow_id
-            ]);
             return false;
         }
 
@@ -2485,10 +2381,6 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ->max('approval_order');
 
         if (!$maxApprovalOrder) {
-            Log::info('Activity not fully approved: No max approval order', [
-                'activity_id' => $activity->id,
-                'workflow_id' => $matrix->forward_workflow_id
-            ]);
             return false;
         }
 
@@ -2498,39 +2390,15 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ->where('is_archived', 0) // Only consider non-archived trails
             ->get();
 
-        Log::info('Activity approval check', [
-            'activity_id' => $activity->id,
-            'matrix_id' => $matrix->id,
-            'matrix_status' => $matrix->overall_status,
-            'workflow_id' => $matrix->forward_workflow_id,
-            'max_approval_order' => $maxApprovalOrder,
-            'passed_approvals_count' => $activityApprovals->count(),
-            'passed_approvals' => $activityApprovals->pluck('action', 'staff_id')->toArray()
-        ]);
-
         // Simplified logic: If matrix is approved and activity has at least one passed approval, consider it fully approved
         if ($matrix->overall_status === 'approved' && $activityApprovals->count() > 0) {
-            Log::info('Activity fully approved: Matrix approved + has passed approvals', [
-                'activity_id' => $activity->id
-            ]);
             return true;
         }
 
         // Alternative: Check if we have enough passed approvals to match the workflow
         if ($activityApprovals->count() >= $maxApprovalOrder) {
-            Log::info('Activity fully approved: Has enough passed approvals', [
-                'activity_id' => $activity->id,
-                'passed_count' => $activityApprovals->count(),
-                'required_count' => $maxApprovalOrder
-            ]);
             return true;
         }
-
-        Log::info('Activity not fully approved: Insufficient approvals', [
-            'activity_id' => $activity->id,
-            'passed_count' => $activityApprovals->count(),
-            'required_count' => $maxApprovalOrder
-        ]);
 
         return false;
     }
@@ -3030,11 +2898,6 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
 
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
-            \Log::info('AJAX request received in singleMemoPendingApprovals', [
-                'tab' => $request->get('tab'),
-                'all_params' => $request->all()
-            ]);
-            
             $tab = $request->get('tab', '');
             $html = '';
             
@@ -3085,9 +2948,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                     ))->render();
                     break;
             }
-            
-            \Log::info('Generated HTML length for pending approvals', ['html_length' => strlen($html)]);
-            
+
             return response()->json(['html' => $html]);
         }
 
@@ -3302,16 +3163,6 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 'responsible_person_id' => $request->input('responsible_person_id'),
             ]);
 
-            // Log the admin action
-            Log::info('Admin updated activity creator/responsible person', [
-                'admin_user_id' => session('user.user_id') ?? session('user.id'),
-                'activity_id' => $activity->id,
-                'old_staff_id' => $oldStaffId,
-                'new_staff_id' => $request->input('staff_id'),
-                'old_responsible_person_id' => $oldResponsiblePersonId,
-                'new_responsible_person_id' => $request->input('responsible_person_id'),
-            ]);
-
             return response()->json([
                 'success' => true,
                 'message' => 'Creator and Responsible Person updated successfully.'
@@ -3363,16 +3214,6 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             $activity->update([
                 'staff_id' => $request->input('staff_id'),
                 'responsible_person_id' => $request->input('responsible_person_id'),
-            ]);
-
-            // Log the admin action
-            Log::info('Admin updated single memo creator/responsible person', [
-                'admin_user_id' => $user['user_id'] ?? $user['id'] ?? null,
-                'activity_id' => $activity->id,
-                'old_staff_id' => $oldStaffId,
-                'new_staff_id' => $request->input('staff_id'),
-                'old_responsible_person_id' => $oldResponsiblePersonId,
-                'new_responsible_person_id' => $request->input('responsible_person_id'),
             ]);
 
             return response()->json([

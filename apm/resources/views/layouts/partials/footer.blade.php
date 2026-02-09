@@ -98,7 +98,7 @@
 <script src="{{ asset('assets/plugins/datatable/js/dataTables.bootstrap5.min.js') }}"></script>
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.js"></script>
 
 <script src="{{ asset('assets/plugins/smart-wizard/js/jquery.smartWizard.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -323,95 +323,87 @@
 </script>
 
 <script>
-  // Initialize Summernote on the textarea
+  // Initialize Summernote (single init for all .summernote textareas) - https://summernote.org/getting-started/
   $(document).ready(function() {
+    if ($('.summernote').length === 0) return;
     $('.summernote').summernote({
-    placeholder: 'Type here…',
-    height: 300,
-    minHeight: 200,
-    maxHeight: null,
-    dialogsInBody: true,        // prevents z-index issues
-    styleWithSpan: true,        // cleaner markup for font/size
-    disableDragAndDrop: false,
+      placeholder: 'Type here…',
+      height: 300,
+      minHeight: 200,
+      maxHeight: null,
+      focus: false,
+      dialogsInBody: true,
+      styleWithSpan: true,
+      disableDragAndDrop: false,
 
-    // Fonts (shows dropdown only if fonts exist on client)
-    fontNames: ['Arial', 'Calibri', 'Tahoma', 'Verdana', 'Times New Roman', 'Courier New'],
-    fontNamesIgnoreCheck: ['Arial','Calibri','Tahoma','Verdana','Times New Roman','Courier New'],
+      fontNames: ['Arial', 'Arial Black', 'Calibri', 'Comic Sans MS', 'Courier New', 'Helvetica', 'Impact', 'Tahoma', 'Times New Roman', 'Verdana'],
+      fontNamesIgnoreCheck: ['Arial', 'Arial Black', 'Calibri', 'Comic Sans MS', 'Courier New', 'Helvetica', 'Impact', 'Tahoma', 'Times New Roman', 'Verdana'],
 
-    // Font sizes (Summernote expects strings)
-    fontSizes: ['8','9','10','11','12','14','16','18','20','24','28','32','36','48'],
-    fontSizeUnits: ['px','pt'], // lets users pick px or pt in recent Summernote versions
+      fontSizes: ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '32', '36', '48', '64'],
+      fontSizeUnits: ['px', 'pt'],
 
-    // Helpful line-height options
-    lineHeights: ['0.9','1.0','1.15','1.3','1.5','1.75','2.0'],
+      lineHeights: ['0.9', '1.0', '1.15', '1.3', '1.5', '1.75', '2.0', '2.5', '3.0'],
 
-    // Give new tables readable, compact Bootstrap-like styling
-    tableClassName: 'table table-bordered table-sm',
+      tableClassName: 'table table-bordered table-sm',
 
-    toolbar: [
-      ['style', ['style']],
-      ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
-      ['fontname', ['fontname']],
-      ['fontsize', ['fontsize']],
-      ['color', ['color']],
-      ['para', ['ul', 'ol', 'paragraph']],
-      ['height', ['lineheight']],
-      ['table', ['table']],
-      ['insert', ['link', 'picture', 'video', 'hr']],
-      ['view', ['fullscreen', 'codeview', 'help']]
-    ],
-
-    popover: {
-      table: [
-        ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
-        ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+      toolbar: [
+        ['style', ['style']],
+        ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
+        ['fontname', ['fontname']],
+        ['fontsize', ['fontsize']],
+        ['color', ['color']],
+        ['para', ['ul', 'ol', 'paragraph']],
+        ['height', ['lineheight']],
+        ['table', ['table']],
+        ['insert', ['link', 'picture', 'video', 'hr']],
+        ['view', ['fullscreen', 'codeview', 'help']]
       ],
-      image: [
-        ['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
-        ['float', ['floatLeft', 'floatRight', 'floatNone']],
-        ['remove', ['removeMedia']]
-      ]
-    },
 
-    callbacks: {
-      onInit: function () {
-        // Ensure editor content defaults are readable
-        $(this).next('.note-editor').find('.note-editable').css({
-          'font-family': 'Arial, Calibri, Tahoma, Verdana, "Times New Roman", "Courier New", sans-serif',
-          'font-size': '12pt',
-          'line-height': '1.3'
-        });
+      popover: {
+        table: [
+          ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+          ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+        ],
+        image: [
+          ['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+          ['float', ['floatLeft', 'floatRight', 'floatNone']],
+          ['remove', ['removeMedia']]
+        ]
       },
-      onCreateLink: function (link) {
-        // open links in new tab by default
-        return link.replace(/^<a /, '<a target="_blank" rel="noopener" ');
-      },
-      onImageUpload: function (files) {
-        // keep your original uploader if you have one
-        for (var i = 0; i < files.length; i++) {
-          if (typeof uploadImage === 'function') {
-            uploadImage(files[i], this);
+
+      callbacks: {
+        onInit: function () {
+          $(this).next('.note-editor').find('.note-editable').css({
+            'font-family': 'Arial, Calibri, Tahoma, Verdana, "Times New Roman", "Courier New", sans-serif',
+            'font-size': '12pt',
+            'line-height': '1.3'
+          });
+        },
+        onCreateLink: function (link) {
+          return link.replace(/^<a /, '<a target="_blank" rel="noopener" ');
+        },
+        onImageUpload: function (files) {
+          for (var i = 0; i < files.length; i++) {
+            if (typeof uploadImage === 'function') {
+              uploadImage(files[i], this);
+            }
           }
-        }
-      },
-      onPaste: function (e) {
-        // Optional: normalize pasted Office/HTML table content
-        // (Keeps tables clean and usable)
-        const clipboardData = (e.originalEvent || e).clipboardData;
-        if (clipboardData && clipboardData.getData) {
-          let html = clipboardData.getData('text/html');
-          if (html) {
-            // light cleanup of table borders from Word/Excel
-            html = html
-              .replace(/border="[^"]*"/gi, '')
-              .replace(/style="[^"]*border[^"]*"/gi, '');
-            document.execCommand('insertHTML', false, html);
-            e.preventDefault();
+        },
+        onPaste: function (e) {
+          var clipboardData = (e.originalEvent || e).clipboardData;
+          if (clipboardData && clipboardData.getData) {
+            var html = clipboardData.getData('text/html');
+            if (html) {
+              html = html
+                .replace(/border="[^"]*"/gi, '')
+                .replace(/style="[^"]*border[^"]*"/gi, '');
+              document.execCommand('insertHTML', false, html);
+              e.preventDefault();
+            }
           }
         }
       }
-    }
-  });
+    });
   });
 
   function uploadImage(file, editor) {

@@ -307,6 +307,41 @@ $(document).ready(function () {
     const today = new Date().setHours(0, 0, 0, 0);
     const divisionId = {{ $specialMemo->division_id }};
 
+    // Activity Title: max 200 characters – real-time validation and counter
+    const ACTIVITY_TITLE_MAX = 200;
+    const $activityTitleInput = $('#activity_title');
+    const $activityTitleError = $('#activity-title-length-error');
+    const $activityTitleCount = $('#activity-title-char-count');
+
+    function validateActivityTitleField() {
+        if (!$activityTitleInput.length) return true;
+        const len = $activityTitleInput.val().length;
+        $activityTitleCount.text(len);
+        if (len > ACTIVITY_TITLE_MAX) {
+            $activityTitleInput.addClass('is-invalid');
+            $activityTitleError.show();
+            $('#activity-title-char-counter').addClass('text-danger');
+            return false;
+        }
+        $activityTitleInput.removeClass('is-invalid');
+        $activityTitleError.hide();
+        $('#activity-title-char-counter').removeClass('text-danger');
+        return true;
+    }
+
+    $activityTitleInput.on('input paste', function () {
+        validateActivityTitleField();
+    });
+    validateActivityTitleField();
+
+    $('#activityForm').on('submit', function (e) {
+        if (!validateActivityTitleField()) {
+            e.preventDefault();
+            $activityTitleInput.focus();
+            return false;
+        }
+    });
+
     // Initialize fund type change handler
     $('#fund_type_id').change(function(event){
         let selectedText = $('#fund_type_id option:selected').text();
@@ -1406,29 +1441,7 @@ $(document).ready(function () {
     });
 });
 
-// Initialize Summernote
-$(document).ready(function() {
-    // Initialize Summernote only for fields with summernote class
-    if ($('.summernote').length > 0) {
-        $('.summernote').summernote({
-            height: 150,
-            fontNames: ['Arial'],
-            fontsizes: ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '36', '48'],
-            fontNamesIgnoreCheck: ['Arial'],
-            defaultFontName: 'Arial',
-            toolbar: [
-                ['style', ['style']],
-                ['font', ['bold', 'italic', 'underline', 'clear']],
-                ['fontname', ['fontname']],
-                ['color', ['color']],
-                ['para', ['ul', 'ol', 'paragraph']],
-                ['table', ['table']], // Table group (default table button)
-                ['insert', ['link', 'table']], // Add table button to insert group as well
-                ['view', ['fullscreen', 'codeview', 'help']]
-            ]
-        });
-    }
-});
+// Summernote is initialized once in layout (footer) with full toolbar (fontsize, fontname, etc.)
 
 // Initialize attachment UI state
 $(document).ready(function() {

@@ -113,9 +113,17 @@
                                 </label>
                                 <textarea name="title" id="title" 
                                           class="form-control @error('title') is-invalid @enderror" 
-                                          rows="2" required>{{ old('title') }}</textarea>
+                                          rows="2" required maxlength="200" 
+                                          data-max-length="200" 
+                                          placeholder="Maximum 200 characters">{{ old('title') }}</textarea>
+                                <div class="mt-1">
+                                    <div id="title-length-error" class="invalid-feedback d-block mb-0" style="display: none;">
+                                        Title of Activity must not exceed 200 characters.
+                                    </div>
+                                    <div class="small text-muted" id="title-char-counter"><span id="title-char-count">0</span>/200 characters</div>
+                                </div>
                                 @error('title')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -315,8 +323,32 @@
             width: '100%'
         });
 
+        // Title of Activity: max 200 characters – real-time validation and counter
+        const TITLE_MAX = 200;
+        const $titleInput = $('#title');
+        const $titleError = $('#title-length-error');
+        const $titleCount = $('#title-char-count');
 
+        function validateTitleField() {
+            const len = $titleInput.val().length;
+            $titleCount.text(len);
+            if (len > TITLE_MAX) {
+                $titleInput.addClass('is-invalid');
+                $titleError.show();
+                $('#title-char-counter').addClass('text-danger');
+                return false;
+            }
+            $titleInput.removeClass('is-invalid');
+            $titleError.hide();
+            $('#title-char-counter').removeClass('text-danger');
+            return true;
+        }
 
+        $titleInput.on('input paste', function() {
+            validateTitleField();
+        });
+        // Initial count (e.g. from old() or pre-filled)
+        validateTitleField();
 
         // Fund type change handler
         $('#fund_type').change(function(event) {
@@ -561,6 +593,12 @@
         // AJAX form submission
         $('#nonTravelForm').on('submit', function(e) {
             e.preventDefault();
+
+            // Block submit if Title of Activity exceeds 200 characters
+            if (!validateTitleField()) {
+                $titleInput.focus();
+                return;
+            }
             
             const form = $(this);
             const submitBtn = form.find('button[type="submit"]:focus');

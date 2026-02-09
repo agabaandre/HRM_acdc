@@ -151,21 +151,21 @@
                 <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="mySubmitted-tab" data-bs-toggle="tab" data-bs-target="#mySubmitted" type="button" role="tab" aria-controls="mySubmitted" aria-selected="true">
                     <i class="bx bx-file-doc me-2"></i> My Division Single Memos
-                    <span class="badge bg-success text-white ms-2">{{ $myMemos->total() }}</span>
+                    <span class="badge bg-success text-white ms-2" id="badge-mySubmitted">{{ $myMemos->total() }}</span>
                     </button>
                 </li>
                 @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                 <button class="nav-link" id="allMemos-tab" data-bs-toggle="tab" data-bs-target="#allMemos" type="button" role="tab" aria-controls="allMemos" aria-selected="false">
                     <i class="bx bx-grid me-2"></i> All Single Memos
-                    <span class="badge bg-primary text-white ms-2">{{ $allMemos ? $allMemos->total() : 0 }}</span>
+                    <span class="badge bg-primary text-white ms-2" id="badge-allMemos">{{ $allMemos ? $allMemos->total() : 0 }}</span>
                     </button>
                 </li>
                 @endif
                 <li class="nav-item" role="presentation">
                 <button class="nav-link" id="sharedMemos-tab" data-bs-toggle="tab" data-bs-target="#sharedMemos" type="button" role="tab" aria-controls="sharedMemos" aria-selected="false">
                     <i class="bx bx-share me-2"></i> Shared Single Memos
-                    <span class="badge bg-info text-white ms-2">{{ $sharedMemos->total() }}</span>
+                    <span class="badge bg-info text-white ms-2" id="badge-sharedMemos">{{ $sharedMemos->total() }}</span>
                     </button>
                 </li>
             </ul>
@@ -318,8 +318,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to load tab data via AJAX
     function loadTabData(tabId, page = 1) {
-        console.log('Loading single memo tab data for:', tabId, 'page:', page);
-        
         const currentUrl = new URL(window.location);
         currentUrl.searchParams.set('page', page);
         currentUrl.searchParams.set('tab', tabId);
@@ -340,15 +338,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (search) currentUrl.searchParams.set('search', search);
         if (year) currentUrl.searchParams.set('year', year);
         if (quarter) currentUrl.searchParams.set('quarter', quarter);
-        
-        console.log('Single memo request URL:', currentUrl.toString());
-        
+
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
         if (tabContent) {
             tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        } else {
-            console.error('Single memo tab content element not found:', tabId);
         }
         
         // Make AJAX request
@@ -359,29 +353,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Accept': 'application/json'
             }
         })
-        .then(response => {
-            console.log('Single memo response status:', response.status);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Single memo response data:', data);
             if (data.html) {
-                // Replace tab content with new data
                 if (tabContent) {
                     tabContent.innerHTML = data.html;
-                    
-                    // Re-attach pagination click handlers
                     attachPaginationHandlers(tabId);
                 }
             } else {
-                console.error('No HTML data received for single memos');
                 if (tabContent) {
                     tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
                 }
             }
+            if (data.count_my_division !== undefined) {
+                const b = document.getElementById('badge-mySubmitted');
+                if (b) b.textContent = data.count_my_division;
+            }
+            if (data.count_all_memos !== undefined) {
+                const b = document.getElementById('badge-allMemos');
+                if (b) b.textContent = data.count_all_memos;
+            }
+            if (data.count_shared_memos !== undefined) {
+                const b = document.getElementById('badge-sharedMemos');
+                if (b) b.textContent = data.count_shared_memos;
+            }
         })
         .catch(error => {
-            console.error('Error loading single memo tab data:', error);
             if (tabContent) {
                 tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
             }

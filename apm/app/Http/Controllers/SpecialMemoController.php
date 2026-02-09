@@ -41,14 +41,18 @@ class SpecialMemoController extends Controller
         $currentStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
 
-        // Year filter: default to current year when missing, empty, or invalid (e.g. 0); use created_at
+        // Year filter: default to current year when missing; filter by created_at; results ordered by created_at desc (recent first)
+        $currentYear = (int) date('Y');
         $year = $request->get('year');
-        if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
-            $year = (string) date('Y');
+        if ($year === null || $year === '') {
+            $year = (string) $currentYear;
         }
         $year = (string) $year;
+        if ($year !== 'all' && is_numeric($year) && (int) $year === 0) {
+            $year = (string) $currentYear;
+        }
 
-        // Tab 1: My Submitted Special Memos (memos created by current user)
+        // Tab 1: My Submitted Special Memos (memos where current user is creator OR responsible person)
         $mySubmittedQuery = SpecialMemo::with([
             'staff',
             'division',
@@ -56,10 +60,13 @@ class SpecialMemoController extends Controller
             'fundType',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
-            ->where('staff_id', $currentStaffId);
+            ->where(function ($q) use ($currentStaffId) {
+                $q->where('staff_id', $currentStaffId)
+                  ->orWhere('responsible_person_id', $currentStaffId);
+            });
 
         if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-            $mySubmittedQuery->whereYear('created_at', $year);
+            $mySubmittedQuery->whereYear('created_at', (int) $year);
         }
 
         // Apply filters to my submitted memos
@@ -93,7 +100,7 @@ class SpecialMemoController extends Controller
             ]);
 
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-                $allMemosQuery->whereYear('created_at', $year);
+                $allMemosQuery->whereYear('created_at', (int) $year);
             }
 
             // Apply filters to all memos
@@ -131,7 +138,7 @@ class SpecialMemoController extends Controller
             ->whereJsonContains('internal_participants', $currentStaffId);
 
         if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-            $sharedMemosQuery->whereYear('created_at', $year);
+            $sharedMemosQuery->whereYear('created_at', (int) $year);
         }
 
         // Apply filters to shared memos
@@ -158,25 +165,27 @@ class SpecialMemoController extends Controller
 
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
-            \Log::info('AJAX request received in SpecialMemoController index', [
-                'tab' => $request->get('tab'),
-                'all_params' => $request->all()
-            ]);
-            
             $tab = $request->get('tab', '');
             $html = '';
-            $year = $request->get('year');
-            if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
-                $year = (string) date('Y');
+
+            $year = $request->query('year');
+            if ($year === null || $year === '') {
+                $year = (string) (int) date('Y');
             }
             $year = (string) $year;
+            if ($year !== 'all' && is_numeric($year) && (int) $year === 0) {
+                $year = (string) (int) date('Y');
+            }
 
             $mySubmittedQueryAjax = SpecialMemo::with([
                 'staff', 'division', 'requestType', 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
-            ])->where('staff_id', $currentStaffId);
+            ])->where(function ($q) use ($currentStaffId) {
+                $q->where('staff_id', $currentStaffId)
+                  ->orWhere('responsible_person_id', $currentStaffId);
+            });
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-                $mySubmittedQueryAjax->whereYear('created_at', $year);
+                $mySubmittedQueryAjax->whereYear('created_at', (int) $year);
             }
             if ($request->filled('request_type_id')) {
                 $mySubmittedQueryAjax->where('request_type_id', $request->request_type_id);
@@ -202,7 +211,7 @@ class SpecialMemoController extends Controller
                     'forwardWorkflow.workflowDefinitions.approvers.staff'
                 ]);
                 if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-                    $allMemosQueryAjax->whereYear('created_at', $year);
+                    $allMemosQueryAjax->whereYear('created_at', (int) $year);
                 }
                 if ($request->filled('staff_id')) {
                     $allMemosQueryAjax->where('staff_id', $request->staff_id);
@@ -230,7 +239,7 @@ class SpecialMemoController extends Controller
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ])->where('staff_id', '!=', $currentStaffId)->whereJsonContains('internal_participants', $currentStaffId);
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
-                $sharedMemosQueryAjax->whereYear('created_at', $year);
+                $sharedMemosQueryAjax->whereYear('created_at', (int) $year);
             }
             if ($request->filled('request_type_id')) {
                 $sharedMemosQueryAjax->where('request_type_id', $request->request_type_id);
@@ -252,6 +261,10 @@ class SpecialMemoController extends Controller
             }
             $sharedMemos = $sharedMemosQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
 
+            $countMySubmitted = $mySubmittedMemos->total();
+            $countAllMemos = $allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allMemos->total() : $allMemos->count();
+            $countSharedMemos = $sharedMemos->total();
+
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('special-memo.partials.my-submitted-tab', compact(
@@ -269,17 +282,20 @@ class SpecialMemoController extends Controller
                     ))->render();
                     break;
             }
-            
-            \Log::info('Generated HTML length for special memo', ['html_length' => strlen($html)]);
-            
-            return response()->json(['html' => $html]);
+
+            return response()->json([
+                'html' => $html,
+                'count_my_submitted' => $countMySubmitted,
+                'count_all_memos' => $countAllMemos,
+                'count_shared_memos' => $countSharedMemos,
+            ]);
         }
 
+        // Preserve year keys; lowest year is 2025 (system start)
         $currentYear = (int) date('Y');
-        $years = array_merge(['all' => 'All years'], array_combine(
-            range($currentYear, $currentYear - 10),
-            range($currentYear, $currentYear - 10)
-        ));
+        $minYear = max(2025, $currentYear - 10);
+        $yearRange = range($currentYear, $minYear);
+        $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
 
         return view('special-memo.index', compact(
             'mySubmittedMemos',
@@ -359,7 +375,7 @@ class SpecialMemoController extends Controller
         $userDivisionId = session('user.division_id');
     
         $validated = $request->validate([
-            'activity_title' => 'required|string|max:255',
+            'activity_title' => 'required|string|max:200',
             'date_from' => 'required|date',
             'date_to' => 'required|date|after_or_equal:date_from',
             'background' => 'required|string',
@@ -857,7 +873,7 @@ class SpecialMemoController extends Controller
         ]);
         
         $validated = $request->validate([
-            'activity_title' => 'required|string|max:255',
+            'activity_title' => 'required|string|max:200',
             'date_from' => 'required|date',
             'date_to' => 'required|date|after_or_equal:date_from',
             'background' => 'required|string',
