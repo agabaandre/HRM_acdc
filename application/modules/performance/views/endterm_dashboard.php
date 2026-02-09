@@ -224,30 +224,29 @@
     const funderId = $('#funderFilter').val();
     const periods = $('#periodFilter').val() || [];
     // Send periods as comma-separated string, or empty if none selected
-    const period = periods.length > 0 ? periods.join(',') : '';
+    const periodParam = periods.length > 0 ? periods.join(',') : '';
 
     $.getJSON(base_url + 'performance/endterm/fetch_ppa_dashboard_data', {
       division_id: divisionId,
       funder_id: funderId,
-      period: period
+      period: periodParam
     }, function (data) {
 
-      // Populate period filter with distinct periods
+      // Populate period filter with distinct periods; preserve the selection we just requested
       if (data.periods && data.periods.length > 0) {
         $('#periodFilter').html('');
         // Sort periods descending (newest first)
         const sortedPeriods = [...data.periods].sort().reverse();
-        
-        // Default to last two periods if none selected
-        const selectedPeriods = $('#periodFilter').val() || [];
+        // Use the period we sent in the request so chosen period (e.g. 2025) is preserved after rebuild
+        const selectedPeriods = periodParam ? periodParam.split(',') : [];
         const shouldSetDefault = selectedPeriods.length === 0;
         
-        sortedPeriods.forEach((period, index) => {
-          const periodDisplay = period.replace(/-/g, ' ');
-          // Select last two periods by default
+        sortedPeriods.forEach((p, index) => {
+          const periodDisplay = p.replace(/-/g, ' ');
+          // Default: select last two periods; otherwise preserve requested selection
           const isSelected = shouldSetDefault && index < 2 ? 'selected' : 
-                            selectedPeriods.includes(period) ? 'selected' : '';
-          $('#periodFilter').append(`<option value="${period}" ${isSelected}>${periodDisplay}</option>`);
+                            selectedPeriods.includes(p) ? 'selected' : '';
+          $('#periodFilter').append(`<option value="${p}" ${isSelected}>${periodDisplay}</option>`);
         });
         
         // Re-initialize select2 to update display

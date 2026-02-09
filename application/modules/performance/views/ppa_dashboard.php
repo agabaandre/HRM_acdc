@@ -203,14 +203,14 @@
     const divisionId = $('#divisionFilter').val();
     const periods = $('#periodFilter').val() || [];
     // Send periods as comma-separated string, or empty if none selected
-    const period = periods.length > 0 ? periods.join(',') : '';
+    const periodParam = periods.length > 0 ? periods.join(',') : '';
 
     $.getJSON(base_url + 'performance/fetch_ppa_dashboard_data', {
       division_id: divisionId,
-      period: period
+      period: periodParam
     }, function (data) {
 
-      // Populate period filter with distinct periods
+      // Populate period filter with distinct periods; preserve the selection we just requested (not the DOM, which we clear below)
       if (data.periods && data.periods.length > 0) {
         $('#periodFilter').html('');
         // Sort periods descending (newest first)
@@ -218,15 +218,15 @@
         const currentYear = new Date().getFullYear().toString();
         // Default: period that contains current year (e.g. January-2026-to-December-2026); else first in list
         const defaultPeriod = sortedPeriods.find(p => p.indexOf(currentYear) !== -1) || sortedPeriods[0];
-        
-        const selectedPeriods = $('#periodFilter').val() || [];
+        // Use the period we sent in the request so 2025 (or any chosen period) is preserved after rebuild
+        const selectedPeriods = periodParam ? periodParam.split(',') : [];
         const shouldSetDefault = selectedPeriods.length === 0;
         
-        sortedPeriods.forEach((period) => {
-          const periodDisplay = period.replace(/-/g, ' ');
-          const isSelected = shouldSetDefault && period === defaultPeriod ? 'selected' : 
-                            selectedPeriods.includes(period) ? 'selected' : '';
-          $('#periodFilter').append(`<option value="${period}" ${isSelected}>${periodDisplay}</option>`);
+        sortedPeriods.forEach((p) => {
+          const periodDisplay = p.replace(/-/g, ' ');
+          const isSelected = shouldSetDefault && p === defaultPeriod ? 'selected' : 
+                            selectedPeriods.includes(p) ? 'selected' : '';
+          $('#periodFilter').append(`<option value="${p}" ${isSelected}>${periodDisplay}</option>`);
         });
         
         // Re-initialize select2 to update display
