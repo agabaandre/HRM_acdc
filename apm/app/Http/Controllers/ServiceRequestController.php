@@ -607,28 +607,34 @@ class ServiceRequestController extends Controller
     }
 
     /**
-     * Extract cost items from budget breakdown
+     * Extract cost items from budget breakdown.
+     * Uses CostItem model cost_type (Individual Cost / Other Cost) when available so categories match the DB.
      */
     private function extractCostItemsFromBudget(array $budgetBreakdown): array
     {
         $costItems = [];
-        
+        $costItemTypes = CostItem::all()->mapWithKeys(function ($item) {
+            $type = $this->normalizeCostType($item->cost_type);
+            return [strtolower(trim($item->name)) => $type];
+        })->all();
+
         foreach ($budgetBreakdown as $key => $value) {
             if ($key === 'grand_total') {
                 continue;
             }
-            
+
             if (is_array($value)) {
                 foreach ($value as $item) {
                     if (isset($item['cost']) && !empty($item['cost'])) {
-                        // Create a unique key for this cost item
-                        $costKey = strtolower(str_replace(' ', '_', $item['cost']));
-                        
-                        // Determine cost type based on the cost item name
-                        $costType = $this->determineCostType($item['cost']);
-                        
+                        $costName = $item['cost'];
+                        $costKey = strtolower(str_replace(' ', '_', $costName));
+                        $lookupKey = strtolower(trim($costName));
+                        // Use CostItem cost_type (Individual Cost / Other Cost) from DB first; fallback to name-based guess
+                        $costType = $costItemTypes[$lookupKey] ?? $this->determineCostType($costName);
+                        $costType = $this->normalizeCostType($costType);
+
                         $costItems[$costKey] = [
-                            'name' => $item['cost'],
+                            'name' => $costName,
                             'description' => $item['description'] ?? '',
                             'unit_cost' => $item['unit_cost'] ?? 0,
                             'units' => $item['units'] ?? 0,
@@ -639,16 +645,33 @@ class ServiceRequestController extends Controller
                 }
             }
         }
-        
+
         return $costItems;
     }
 
     /**
-     * Determine cost type based on cost item name
+     * Normalize cost type string to canonical "Individual Cost" or "Other Cost" (case-insensitive).
+     */
+    private function normalizeCostType(?string $costType): string
+    {
+        if ($costType === null || $costType === '') {
+            return 'Individual Cost';
+        }
+        $lower = strtolower(trim($costType));
+        if ($lower === 'other cost') {
+            return 'Other Cost';
+        }
+        if ($lower === 'individual cost') {
+            return 'Individual Cost';
+        }
+        return 'Individual Cost';
+    }
+
+    /**
+     * Determine cost type based on cost item name (fallback when not in CostItem table).
      */
     private function determineCostType(string $costName): string
     {
-        // Map cost names to their types based on the database
         $costTypeMap = [
             'tickets' => 'Individual Cost',
             'dsa' => 'Individual Cost',
@@ -659,22 +682,16 @@ class ServiceRequestController extends Controller
             'printing of branded materials' => 'Other Cost',
             'honorarium' => 'Other Cost'
         ];
-        
+
         $normalizedName = strtolower(trim($costName));
-        
-        // Check for exact match first
         if (isset($costTypeMap[$normalizedName])) {
             return $costTypeMap[$normalizedName];
         }
-        
-        // Check for partial matches
         foreach ($costTypeMap as $key => $type) {
             if (strpos($normalizedName, $key) !== false || strpos($key, $normalizedName) !== false) {
                 return $type;
             }
         }
-        
-        // Default to Individual Cost if no match found
         return 'Individual Cost';
     }
 
