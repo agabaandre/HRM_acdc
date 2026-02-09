@@ -57,6 +57,22 @@
                         <h5>{{ $fundCode->division->division_name ?? 'N/A' }}</h5>
                     </div>
                 </div>
+                @if($fundCode->funder || $fundCode->partner_id)
+                <div class="row mb-4">
+                    @if($fundCode->funder)
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-1">Funder</h6>
+                        <h5>{{ $fundCode->funder->name ?? 'N/A' }}</h5>
+                    </div>
+                    @endif
+                    @if($fundCode->partner_id)
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-1">Partner</h6>
+                        <h5>{{ $fundCode->partner->name ?? 'N/A' }}</h5>
+                    </div>
+                    @endif
+                </div>
+                @endif
 
                 @if($fundCode->description)
                 <div class="mb-0">

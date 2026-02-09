@@ -6,6 +6,7 @@ use App\Models\FundCode;
 use App\Models\FundType;
 use App\Models\Division;
 use App\Models\Funder;
+use App\Models\Partner;
 use Illuminate\Http\Request;
 use App\Models\FundCodeTransaction;
 
@@ -78,8 +79,9 @@ class FundCodeController extends Controller
         $divisions = Division::orderBy('division_name')->get();
         $selectedFundType = $request->input('fund_type_id');
         $funders = Funder::orderBy('name')->get();
+        $partners = Partner::orderBy('name')->get();
         
-        return view('fund-codes.create', compact('fundTypes', 'divisions', 'selectedFundType', 'funders'));
+        return view('fund-codes.create', compact('fundTypes', 'divisions', 'selectedFundType', 'funders', 'partners'));
     }
 
     /**
@@ -87,8 +89,10 @@ class FundCodeController extends Controller
      */
     public function store(Request $request)
     {
+        $request->merge(['partner_id' => $request->input('partner_id') ?: null]);
         $validated = $request->validate([
             'funder_id' => 'nullable|exists:funders,id',
+            'partner_id' => 'nullable|exists:partners,id',
             'year' => 'required|integer|min:2000|max:2100',
             'code' => 'required|string|max:255|unique:fund_codes',
             'activity' => 'nullable|string',
@@ -128,7 +132,7 @@ class FundCodeController extends Controller
      */
     public function show(FundCode $fundCode)
     {
-        $fundCode->load(['fundType', 'division', 'funder']);
+        $fundCode->load(['fundType', 'division', 'funder', 'partner']);
         return view('fund-codes.show', compact('fundCode'));
     }
 
@@ -139,9 +143,10 @@ class FundCodeController extends Controller
     {
         $fundTypes = FundType::orderBy('name')->get();
         $divisions = Division::orderBy('division_name')->get();
-        $funders = \App\Models\Funder::orderBy('name')->get();
+        $funders = Funder::orderBy('name')->get();
+        $partners = Partner::orderBy('name')->get();
         
-        return view('fund-codes.edit', compact('fundCode', 'fundTypes', 'divisions', 'funders'));
+        return view('fund-codes.edit', compact('fundCode', 'fundTypes', 'divisions', 'funders', 'partners'));
     }
 
     /**
@@ -149,8 +154,10 @@ class FundCodeController extends Controller
      */
     public function update(Request $request, FundCode $fundCode)
     {
+        $request->merge(['partner_id' => $request->input('partner_id') ?: null]);
         $validated = $request->validate([
             'funder_id' => 'nullable|exists:funders,id',
+            'partner_id' => 'nullable|exists:partners,id',
             'year' => 'required|integer|min:2000|max:2100',
             'code' => 'required|string|max:255|unique:fund_codes,code,' . $fundCode->id,
             'activity' => 'nullable|string',
