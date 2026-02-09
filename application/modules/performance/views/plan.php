@@ -140,7 +140,7 @@ input[type="number"] {
     <td colspan="1">
       <?= staff_name(!empty($ppa->supervisor_id) ? $ppa->supervisor_id : $contract->first_supervisor) ?>
       <?php if (!empty($ppa) && isset($ppa->draft_status) && (int)$ppa->draft_status !== 2): ?>
-        <?php $this->load->view('performance/partials/change_supervisor_modal', ['ppa' => $ppa, 'type' => 'ppa']); ?>
+        <?php $this->load->view('performance/partials/change_supervisor_modal', ['ppa' => $ppa, 'type' => 'ppa', 'entry_id' => isset($entry_id) ? $entry_id : ($ppa->entry_id ?? '')]); ?>
       <?php endif; ?>
       <input type="hidden" name="supervisor_id"
         value="<?= !empty($ppa->supervisor_id) ? $ppa->supervisor_id : $contract->first_supervisor ?>">

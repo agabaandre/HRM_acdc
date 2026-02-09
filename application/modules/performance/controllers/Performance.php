@@ -154,8 +154,8 @@ class Performance extends MX_Controller
 	
 	public function view_ppa($entry_id)
 	{
-		// Extract staff_id from entry_id
-		$staff_id = explode('_', $entry_id)[0];
+		// Extract staff_id from entry_id (URL is view_ppa/<entry_id>/<staff_id>; entry_id is the hash)
+		$staff_id = $this->uri->segment(4) ?: (explode('_', $entry_id)[0] ?? null);
 	
 		// Load dependencies
 		$data['module'] = $this->module;
@@ -167,6 +167,9 @@ class Performance extends MX_Controller
 	
 		// Get approval logs if any
 		$data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
+	
+		// Pass entry_id so change-supervisor modal and other forms have it (e.g. when ppa row lacks it)
+		$data['entry_id'] = $entry_id;
 	
 		render('plan', $data);
 	}

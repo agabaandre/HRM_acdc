@@ -57,48 +57,48 @@ class ServiceRequestController extends Controller
         if ($selectedYear !== '' && $selectedYear !== 'all' && (int) $selectedYear > 0) {
             $baseQuery->whereYear('created_at', $selectedYear);
         }
-
+            
         // Apply filters
         if ($request->has('staff_id') && $request->staff_id) {
             $baseQuery->where('responsible_person_id', $request->staff_id);
         }
-
+        
         if ($request->has('division_id') && $request->division_id) {
             $baseQuery->where('division_id', $request->division_id);
         }
-
+        
         if ($request->has('service_type') && $request->service_type) {
             $baseQuery->where('service_type', $request->service_type);
         }
-
+        
         if ($request->has('status') && $request->status) {
             $baseQuery->where('overall_status', $request->status);
         }
-
+        
         if ($request->filled('search')) {
             $baseQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
-
+        
         // My Submitted Requests (current user's requests)
         $mySubmittedQuery = clone $baseQuery;
         $mySubmittedRequests = $mySubmittedQuery->where('staff_id', $currentStaffId)->paginate(20)->withQueryString();
-
+        
         // All Requests (for users with permission)
         $allRequests = null;
         if (in_array(87, user_session('permissions', []))) {
             $allRequests = $baseQuery->paginate(20)->withQueryString();
         }
-
+        
         $staff = Staff::all();
         $divisions = Division::all();
-
+        
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
             $tab = $request->get('tab', '');
             $html = '';
             $countMy = $mySubmittedRequests->total();
             $countAll = $allRequests ? $allRequests->total() : 0;
-
+            
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('service-requests.partials.my-submitted-tab', compact('mySubmittedRequests'))->render();
@@ -107,7 +107,7 @@ class ServiceRequestController extends Controller
                     $html = view('service-requests.partials.all-requests-tab', compact('allRequests'))->render();
                     break;
             }
-
+            
             return response()->json([
                 'html' => $html,
                 'count_my_submitted' => $countMy,
@@ -408,7 +408,7 @@ class ServiceRequestController extends Controller
         if (is_string($internalParticipants) && $internalParticipants !== '') {
             $internalParticipants = json_decode($internalParticipants, true) ?? [];
         } else {
-            $internalParticipants = $request->input('internal_participants', []);
+        $internalParticipants = $request->input('internal_participants', []);
         }
         $internalCosts = [];
         $internalTotal = 0;
@@ -450,7 +450,7 @@ class ServiceRequestController extends Controller
         if (is_string($externalParticipants) && $externalParticipants !== '') {
             $externalParticipants = json_decode($externalParticipants, true) ?? [];
         } else {
-            $externalParticipants = $request->input('external_participants', []);
+        $externalParticipants = $request->input('external_participants', []);
         }
         $externalCosts = [];
         $externalTotal = 0;
@@ -617,12 +617,12 @@ class ServiceRequestController extends Controller
             $type = $this->normalizeCostType($item->cost_type);
             return [strtolower(trim($item->name)) => $type];
         })->all();
-
+        
         foreach ($budgetBreakdown as $key => $value) {
             if ($key === 'grand_total') {
                 continue;
             }
-
+            
             if (is_array($value)) {
                 foreach ($value as $item) {
                     if (isset($item['cost']) && !empty($item['cost'])) {
@@ -632,7 +632,7 @@ class ServiceRequestController extends Controller
                         // Use CostItem cost_type (Individual Cost / Other Cost) from DB first; fallback to name-based guess
                         $costType = $costItemTypes[$lookupKey] ?? $this->determineCostType($costName);
                         $costType = $this->normalizeCostType($costType);
-
+                        
                         $costItems[$costKey] = [
                             'name' => $costName,
                             'description' => $item['description'] ?? '',
@@ -645,7 +645,7 @@ class ServiceRequestController extends Controller
                 }
             }
         }
-
+        
         return $costItems;
     }
 
@@ -682,7 +682,7 @@ class ServiceRequestController extends Controller
             'printing of branded materials' => 'Other Cost',
             'honorarium' => 'Other Cost'
         ];
-
+        
         $normalizedName = strtolower(trim($costName));
         if (isset($costTypeMap[$normalizedName])) {
             return $costTypeMap[$normalizedName];
