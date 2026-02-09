@@ -915,7 +915,7 @@ class ServiceRequestController extends Controller
             'source_id' => 'required|integer',
             'model_type' => 'required|string',
             'fund_type_id' => 'required|integer',
-            'responsible_person_id' => 'required|exists:staff,staff_id',
+            'responsible_person_id' => 'nullable|exists:staff,staff_id', // preserved from existing record on update
             'budget_id' => 'nullable|string',
             'original_total_budget' => 'required|numeric|min:0',
             'new_total_budget' => 'required|numeric|min:0',
@@ -931,11 +931,16 @@ class ServiceRequestController extends Controller
         ]);
 
         $validated['division_id'] = $request->input('division_id', $serviceRequest->division_id);
-        $validated['staff_id'] = user_session('staff_id');
+        // Preserve owners: do not change staff_id (creator) or responsible_person_id on edit
+        $validated['staff_id'] = $serviceRequest->staff_id;
+        $validated['responsible_person_id'] = $serviceRequest->responsible_person_id;
 
         // Process budget data (same as store)
         $budgetData = $this->processBudgetData($request);
         $validated = array_merge($validated, $budgetData);
+        // Re-apply preserved owners in case processBudgetData overwrote them
+        $validated['staff_id'] = $serviceRequest->staff_id;
+        $validated['responsible_person_id'] = $serviceRequest->responsible_person_id;
 
         $submitAction = $request->input('submit_action', 'draft');
 
