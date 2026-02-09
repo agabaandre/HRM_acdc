@@ -220,6 +220,7 @@ class FundCodeController extends Controller
      */
     public function edit(FundCode $fundCode)
     {
+        $fundCode->load(['fundType', 'division', 'funder', 'partner']);
         $fundTypes = FundType::orderBy('name')->get();
         $divisions = Division::orderBy('division_name')->get();
         $funders = Funder::orderBy('name')->get();
@@ -272,6 +273,7 @@ class FundCodeController extends Controller
 
     public function transactions(Request $request, FundCode $fundCode)
     {
+        $fundCode->load(['fundType', 'division', 'funder', 'partner']);
         $query = FundCodeTransaction::where('fund_code_id', $fundCode->id)
             ->with(['activity', 'matrix', 'createdBy']);
 

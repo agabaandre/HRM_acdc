@@ -763,8 +763,14 @@
                             $partners = [];
                             foreach ($fundCodeIds as $fundCodeId) {
                                 if (isset($fundCodes[$fundCodeId]) && $fundCodes[$fundCodeId]->funder) {
+
                                     $funderName = $fundCodes[$fundCodeId]->funder->name ?? null;
-                                    if ($funderName && !in_array($funderName, $partners)) {
+                                    if(isset($fundCodes[$fundCodeId]->partner) && $fundCodes[$fundCodeId]->partner->name && !in_array($fundCodes[$fundCodeId]->partner->name, $partners)){
+                                        $partnerName = $fundCodes[$fundCodeId]->partner->name ?? null;
+                                        if ($partnerName && !in_array($partnerName, $partners)) {
+                                            $partners[] = $partnerName;
+                                        }
+                                    }elseif ($funderName && !in_array($funderName, $partners)) {
                                         $partners[] = $funderName;
                                     }
                                 }
@@ -783,7 +789,7 @@
                     ?>
                 </td>
                 <td class="label">Code:</td>
-                <td class="content"><?php echo htmlspecialchars($requestARF->extramural_code ?? 'N/A'); ?></td>
+                <td class="content"><?php  echo (!empty($requestARF->extramural_code)) ? htmlspecialchars($requestARF->extramural_code) : htmlspecialchars($fundCodes[0]->code); ?></td>
             </tr>
             <tr>
                 <td class="label">Project Title:</td>
