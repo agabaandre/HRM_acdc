@@ -601,12 +601,10 @@
             }
             
             const form = $(this);
-            const submitBtn = form.find('button[type="submit"]:focus');
-            const originalText = submitBtn.html();
+            const submitBtn = form.find('button[type="submit"]:focus').length ? form.find('button[type="submit"]:focus') : form.find('button[type="submit"]').first();
+            const originalText = submitBtn.length ? submitBtn.html() : '';
             const loadingText = '<i class="bx bx-loader-alt bx-spin me-1"></i> Processing...';
-            
-            // Show loading state
-            submitBtn.prop('disabled', true).html(loadingText);
+            if (submitBtn.length) submitBtn.prop('disabled', true).html(loadingText);
             
             // Create FormData object
             const formData = new FormData(this);
@@ -617,15 +615,17 @@
                 data: formData,
                 processData: false,
                 contentType: false,
+                dataType: 'json',
                 headers: {
-                    'X-CSRF-TOKEN': $('input[name="_token"]').val()
+                    'X-CSRF-TOKEN': $('input[name="_token"]').val(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Show success notification
-                        show_notification(response.message, 'success');
-                        
-                        // For create form, redirect to the memo view
+                        // Show success Lobibox notification
+                        show_notification(response.message || 'Non-travel memo saved successfully.', 'success');
+                        // Redirect to the memo view after user sees the notification
                         setTimeout(function() {
                             window.location.href = response.memo.preview_url;
                         }, 1500);
@@ -633,38 +633,45 @@
                 },
                 error: function(xhr) {
                     let errorMessage = 'An error occurred while creating the memo.';
-                    
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
                         const errors = xhr.responseJSON.errors;
                         errorMessage = Object.values(errors).flat().join('\n');
-                        show_notification(errorMessage, 'error');
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
-                        show_notification(errorMessage, 'error');
                     } else if (xhr.status === 422) {
                         errorMessage = 'Validation failed. Please check your input and try again.';
-                        show_notification(errorMessage, 'error');
-                    } else {
-                        show_notification(errorMessage, 'error');
                     }
+                    // Show error alert for 15 seconds so user can read server errors
+                    show_notification(errorMessage, 'error');
                 },
                 complete: function() {
-                    // Reset button state
-                    submitBtn.prop('disabled', false).html(originalText);
+                    if (submitBtn.length) submitBtn.prop('disabled', false).html(originalText);
                 }
             });
         });
 
-        // Notification function (similar to activities form)
+        // Use Lobibox when available (success + error with 15s display for errors)
         function show_notification(message, type = 'info') {
-            const alertClass = type === 'success' ? 'alert-success' : 
-                              type === 'error' ? 'alert-danger' : 
-                              type === 'warning' ? 'alert-warning' : 'alert-info';
-            
-            const icon = type === 'success' ? 'bx-check-circle' : 
-                        type === 'error' ? 'bx-error-circle' : 
-                        type === 'warning' ? 'bx-error' : 'bx-info-circle';
-            
+            if (typeof Lobibox !== 'undefined') {
+                const opts = {
+                    pauseDelayOnHover: true,
+                    continueDelayOnInactiveTab: false,
+                    position: 'top right',
+                    icon: type === 'success' ? 'bx bx-check-circle' : type === 'error' ? 'bx bx-error-circle' : type === 'warning' ? 'bx bx-error' : 'bx bx-info-circle',
+                    sound: false,
+                    msg: message
+                };
+                if (type === 'error') {
+                    opts.delay = 15000;
+                    opts.delayIndicator = true;
+                }
+                Lobibox.notify(type, opts);
+                return;
+            }
+            // Fallback: Bootstrap alert (error stays 15s, others 5s)
+            const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-danger' : type === 'warning' ? 'alert-warning' : 'alert-info';
+            const icon = type === 'success' ? 'bx-check-circle' : type === 'error' ? 'bx-error-circle' : type === 'warning' ? 'bx-error' : 'bx-info-circle';
+            const duration = type === 'error' ? 15000 : 5000;
             const notification = $(`
                 <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
                     <i class="bx ${icon} me-2"></i>
@@ -672,14 +679,15 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             `);
-            
-            // Insert notification at the top of the form
             $('#nonTravelForm').prepend(notification);
-            
-            // Auto-dismiss after 5 seconds
             setTimeout(function() {
-                notification.alert('close');
-            }, 5000);
+                try {
+                    const alertInstance = bootstrap.Alert.getOrCreateInstance(notification[0]);
+                    if (alertInstance) alertInstance.close();
+                } catch (e) {
+                    notification.fadeOut(300, function() { $(this).remove(); });
+                }
+            }, duration);
         }
     });
 </script>

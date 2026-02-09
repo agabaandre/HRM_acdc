@@ -914,19 +914,49 @@
             }
         };
 
+        // Show server errors to user (Lobibox with 15s for errors so they are visible)
+        function show_notification(message, type) {
+            type = type || 'info';
+            if (typeof Lobibox !== 'undefined') {
+                const opts = {
+                    pauseDelayOnHover: true,
+                    continueDelayOnInactiveTab: false,
+                    position: 'top right',
+                    icon: type === 'success' ? 'bx bx-check-circle' : type === 'error' ? 'bx bx-error-circle' : type === 'warning' ? 'bx bx-error' : 'bx bx-info-circle',
+                    sound: false,
+                    msg: message
+                };
+                if (type === 'error') {
+                    opts.delay = 15000;
+                    opts.delayIndicator = true;
+                }
+                Lobibox.notify(type, opts);
+                return;
+            }
+            const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-danger' : type === 'warning' ? 'alert-warning' : 'alert-info';
+            const duration = type === 'error' ? 15000 : 5000;
+            const notification = $('<div class="alert ' + alertClass + ' alert-dismissible fade show" role="alert"><i class="bx bx-' + (type === 'error' ? 'error-circle' : 'check-circle') + ' me-2"></i>' + message + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+            $('#nonTravelForm').prepend(notification);
+            setTimeout(function() {
+                try {
+                    const alertInstance = bootstrap.Alert.getOrCreateInstance(notification[0]);
+                    if (alertInstance) alertInstance.close();
+                } catch (err) {
+                    notification.fadeOut(300, function() { $(this).remove(); });
+                }
+            }, duration);
+        }
+
         // AJAX form submission
         $('#nonTravelForm').on('submit', function(e) {
             e.preventDefault();
             
             const form = $(this);
-            const submitBtn = form.find('button[type="submit"]:focus');
-            const originalText = submitBtn.html();
+            const submitBtn = form.find('button[type="submit"]:focus').length ? form.find('button[type="submit"]:focus') : form.find('button[type="submit"]').first();
+            const originalText = submitBtn.length ? submitBtn.html() : '';
             const loadingText = '<i class="bx bx-loader-alt bx-spin me-1"></i> Processing...';
+            if (submitBtn.length) submitBtn.prop('disabled', true).html(loadingText);
             
-            // Show loading state
-            submitBtn.prop('disabled', true).html(loadingText);
-            
-            // Create FormData object
             const formData = new FormData(this);
             
             $.ajax({
@@ -935,15 +965,15 @@
                 data: formData,
                 processData: false,
                 contentType: false,
+                dataType: 'json',
                 headers: {
-                    'X-CSRF-TOKEN': $('input[name="_token"]').val()
+                    'X-CSRF-TOKEN': $('input[name="_token"]').val(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Show success notification
-                        show_notification(response.message, 'success');
-                        
-                        // For edit form, redirect to the memo view instead of showing modal
+                        show_notification(response.message || 'Non-travel memo updated successfully.', 'success');
                         setTimeout(function() {
                             window.location.href = response.memo.preview_url;
                         }, 1500);
@@ -951,24 +981,17 @@
                 },
                 error: function(xhr) {
                     let errorMessage = 'An error occurred while updating the memo.';
-                    
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
-                        const errors = xhr.responseJSON.errors;
-                        errorMessage = Object.values(errors).flat().join('\n');
-                        show_notification(errorMessage, 'error');
+                        errorMessage = Object.values(xhr.responseJSON.errors).flat().join('\n');
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
-                        show_notification(errorMessage, 'error');
                     } else if (xhr.status === 422) {
                         errorMessage = 'Validation failed. Please check your input and try again.';
-                        show_notification(errorMessage, 'error');
-                    } else {
-                        show_notification(errorMessage, 'error');
                     }
+                    show_notification(errorMessage, 'error');
                 },
                 complete: function() {
-                    // Reset button state
-                    submitBtn.prop('disabled', false).html(originalText);
+                    if (submitBtn.length) submitBtn.prop('disabled', false).html(originalText);
                 }
             });
 

@@ -624,6 +624,12 @@ class NonTravelMemoController extends Controller
         //dd($request);
         // Check if user has privileges to edit this memo using can_edit_memo()
         if (!can_edit_memo($nonTravel)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to edit this memo.'
+                ], 403);
+            }
             return redirect()
                 ->route('non-travel.show', $nonTravel)
                 ->with('error', 'You do not have permission to edit this memo.');
