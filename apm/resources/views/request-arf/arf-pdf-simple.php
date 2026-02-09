@@ -976,8 +976,8 @@
 
             <!-- Grand Total Display -->
             <?php if ($totalBudget > 0): ?>
-                <div style="margin-top: 20px; text-align: right; padding: 15px; background-color: #f8f9fa; border: 2px solid #007e33; border-radius: 5px;">
-                    <h3 style="margin: 0; color: #007e33; font-size: 18px; font-weight: bold;">
+                <div style="margin-top: 20px; text-align: right; padding: 15px; background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 0;">
+                    <h3 style="margin: 0; color: #333; font-size: 18px; font-weight: bold;">
                         Grand Total: $<?php echo number_format($totalBudget, 2); ?>
                     </h3>
                 </div>
