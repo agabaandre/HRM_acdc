@@ -410,58 +410,46 @@ class NonTravelMemoController extends Controller
 
         // Process fund code balance reductions and create transaction records
         if (!$isDraft && !empty($data['budget_codes']) && !empty($data['budget_breakdown'])) {
-            $budgetCodes = $data['budget_codes'];
-            $budgetItems = $data['budget_breakdown'];
-            
+            $breakdown = is_array($data['budget_breakdown']) ? $data['budget_breakdown'] : (is_string($data['budget_breakdown']) ? json_decode($data['budget_breakdown'], true) : []);
+            $breakdown = is_array($breakdown) ? $breakdown : [];
+            $totalsPerCode = $this->getBudgetTotalsPerCode($breakdown);
+            $budgetCodes = array_filter(array_map('intval', (array) $data['budget_codes']), fn ($id) => $id > 0);
             foreach ($budgetCodes as $codeId) {
-                $total = 0;
-                if (isset($budgetItems[$codeId]) && is_array($budgetItems[$codeId])) {
-                    foreach ($budgetItems[$codeId] as $item) {
-                        // Support both array and object
-                        $qty = isset($item['quantity']) ? $item['quantity'] : (isset($item->quantity) ? $item->quantity : 1);
-                        $unitCost = isset($item['unit_cost']) ? $item['unit_cost'] : (isset($item->unit_cost) ? $item->unit_cost : 0);
-                        $total += $qty * $unitCost;
-                    }
+                $codeId = (int) $codeId;
+                $total = (float) ($totalsPerCode[$codeId] ?? 0);
+                if ($total <= 0) {
+                    continue;
                 }
-                
-                if ($total > 0) {
-                    // Get current balance before reduction
-                    $fundCode = FundCode::find($codeId);
-                    if ($fundCode) {
-                        $balanceBefore = floatval($fundCode->budget_balance ?? 0);
-                        $balanceAfter = $balanceBefore - $total;
-                        
-                        // Reduce fund code balance using the helper
-                        reduce_fund_code_balance($codeId, $total);
-                        
-                        // Create transaction record for audit trail
-                        FundCodeTransaction::create([
-                            'fund_code_id' => $codeId,
-                            'amount' => $total,
-                            'description' => "Non-Travel Memo: {$data['title']} - Budget allocation",
-                            'activity_id' => $memo->id,
-                            'matrix_id' => null,
-                            'channel' => 'non_travel',
-                            'activity_budget_id' => null,
-                            'balance_before' => $balanceBefore,
-                            'balance_after' => $balanceAfter,
-                            'is_reversal' => false,
-                            'created_by' => user_session('staff_id'),
-                        ]);
-                        
-                        // Log the balance change
-                        Log::info('Fund code balance reduced for non-travel memo', [
-                            'fund_code_id' => $codeId,
-                            'fund_code' => $fundCode->code,
-                            'non_travel_memo_id' => $memo->id,
-                            'amount_reduced' => $total,
-                            'balance_before' => $balanceBefore,
-                            'balance_after' => $balanceAfter,
-                            'staff_id' => user_session('staff_id'),
-                            'activity_title' => clean_unicode($data['title'])
-                        ]);
-                    }
+                $fundCode = FundCode::find($codeId);
+                if (!$fundCode) {
+                    continue;
                 }
+                $balanceBefore = (float) ($fundCode->budget_balance ?? 0);
+                $balanceAfter = $balanceBefore - $total;
+                reduce_fund_code_balance($codeId, $total);
+                FundCodeTransaction::create([
+                    'fund_code_id' => $codeId,
+                    'amount' => $total,
+                    'description' => "Non-Travel Memo: " . clean_unicode($data['title']) . " - Budget allocation",
+                    'activity_id' => $memo->id,
+                    'matrix_id' => null,
+                    'channel' => 'non_travel',
+                    'activity_budget_id' => null,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceAfter,
+                    'is_reversal' => false,
+                    'created_by' => user_session('staff_id'),
+                ]);
+                Log::info('Fund code balance reduced for non-travel memo', [
+                    'fund_code_id' => $codeId,
+                    'fund_code' => $fundCode->code,
+                    'non_travel_memo_id' => $memo->id,
+                    'amount_reduced' => $total,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceAfter,
+                    'staff_id' => user_session('staff_id'),
+                    'activity_title' => clean_unicode($data['title'])
+                ]);
             }
         }
 
@@ -507,6 +495,38 @@ class NonTravelMemoController extends Controller
             }
         }
         return $total;
+    }
+
+    /**
+     * Get per-fund-code totals from budget breakdown. Keys normalized to int.
+     * Skips non-fund-code keys (e.g. grand_total) so only real fund code ids are included.
+     *
+     * @return array<int, float>
+     */
+    private function getBudgetTotalsPerCode(array $budgetBreakdown): array
+    {
+        $totals = [];
+        foreach ($budgetBreakdown as $codeKey => $items) {
+            // Only process numeric keys (real fund code ids); skip grand_total and any other non-numeric key
+            if (!is_numeric($codeKey)) {
+                continue;
+            }
+            $codeId = (int) $codeKey;
+            if (!is_array($items)) {
+                continue;
+            }
+            $sum = 0;
+            foreach ($items as $item) {
+                if (!is_array($item) && !is_object($item)) {
+                    continue;
+                }
+                $qty = isset($item['quantity']) ? floatval($item['quantity']) : (isset($item->quantity) ? floatval($item->quantity) : 1);
+                $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : (isset($item->unit_cost) ? floatval($item->unit_cost) : 0);
+                $sum += $qty * $unitCost;
+            }
+            $totals[$codeId] = round($sum, 2);
+        }
+        return $totals;
     }
 
     /** Show one memo */
@@ -743,9 +763,33 @@ class NonTravelMemoController extends Controller
             }
         }
 
+        // Capture old budget breakdown and status before update (for delta-only fund code adjustment)
+        $statusBeforeUpdate = $nonTravel->overall_status;
+        $oldBreakdown = is_array($nonTravel->budget_breakdown)
+            ? $nonTravel->budget_breakdown
+            : (is_string($nonTravel->budget_breakdown) ? json_decode($nonTravel->budget_breakdown, true) : []);
+        $oldBreakdown = is_array($oldBreakdown) ? $oldBreakdown : [];
+        $oldTotalsPerCode = $this->getBudgetTotalsPerCode($oldBreakdown);
+        // Ensure new breakdown is array (e.g. if sent as JSON string from AJAX)
+        $newBreakdown = $data['budget_breakdown'] ?? [];
+        if (is_string($newBreakdown)) {
+            $newBreakdown = json_decode($newBreakdown, true) ?: [];
+        }
+        $newBreakdown = is_array($newBreakdown) ? $newBreakdown : [];
+        $data['budget_breakdown'] = $newBreakdown;
+        $newTotalsPerCode = $this->getBudgetTotalsPerCode($newBreakdown);
+
+        // New budget codes: from request or from keys of breakdown (normalize to int); exclude 0
+        $newBudgetCodes = $request->input('budget_codes');
+        if (!is_array($newBudgetCodes) || empty($newBudgetCodes)) {
+            $newBudgetCodes = array_keys($newTotalsPerCode);
+        }
+        $newBudgetCodes = array_values(array_unique(array_filter(array_map('intval', (array) $newBudgetCodes), fn ($id) => $id > 0)));
+        $budgetIdJson = json_encode($newBudgetCodes);
+
         // Prepare JSON columns
         $locationJson = json_encode($data['location_id']);
-        $budgetBreakdownJson = json_encode($data['budget_breakdown']);
+        $budgetBreakdownJson = json_encode($newBreakdown);
         $attachmentsJson = json_encode($attachments);
 
         // Update the memo
@@ -759,70 +803,71 @@ class NonTravelMemoController extends Controller
             'background' => clean_unicode($data['background']),
             'justification' => clean_unicode($data['justification']),
             'budget_breakdown' => $budgetBreakdownJson,
+            'budget_id' => $budgetIdJson,
             'attachment' => $attachmentsJson,
         ]);
 
-        // Process fund code balance reductions and create transaction records (only for non-draft updates)
-        // if ($nonTravel->overall_status !== 'draft' && !empty($data['budget_breakdown'])) {
-        //     $budgetItems = $data['budget_breakdown'];
-            
-        //     // Get existing budget codes from the memo
-        //     $existingBudgetCodes = is_array($nonTravel->budget_id) 
-        //         ? $nonTravel->budget_id 
-        //         : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
-            
-        //     foreach ($existingBudgetCodes as $codeId) {
-        //         $total = 0;
-        //         if (isset($budgetItems[$codeId]) && is_array($budgetItems[$codeId])) {
-        //             foreach ($budgetItems[$codeId] as $item) {
-        //                 // Support both array and object
-        //                 $qty = isset($item['quantity']) ? $item['quantity'] : (isset($item->quantity) ? $item->quantity : 1);
-        //                 $unitCost = isset($item['unit_cost']) ? $item['unit_cost'] : (isset($item->unit_cost) ? $item->unit_cost : 0);
-        //                 $total += $qty * $unitCost;
-        //             }
-        //         }
-                
-        //         if ($total > 0) {
-        //             // Get current balance before reduction
-        //             $fundCode = FundCode::find($codeId);
-        //             if ($fundCode) {
-        //                 $balanceBefore = floatval($fundCode->budget_balance ?? 0);
-        //                 $balanceAfter = $balanceBefore - $total;
-                        
-        //                 // Reduce fund code balance using the helper
-        //                 //reduce_fund_code_balance($codeId, $total);
-                        
-        //                 // Create transaction record for audit trail
-        //                 FundCodeTransaction::updateOrCreate([
-        //                     'fund_code_id' => $codeId,
-        //                     'amount' => $total,
-        //                     'description' => "Non-Travel Memo Update: {$data['activity_title']} - Budget allocation",
-        //                     'activity_id' => $nonTravel->id,
-        //                     'matrix_id' => null,
-        //                     'channel' => 'non_travel',
-        //                     'activity_budget_id' => null,
-        //                     'balance_before' => $balanceBefore,
-        //                     'balance_after' => $balanceAfter,
-        //                     'is_reversal' => false,
-        //                     'created_by' => user_session('staff_id'),
-        //                 ]);
+        // Process fund code balance adjustments on edit: only apply the delta (restore old, then deduct new).
+        // When memo was draft, nothing was ever deducted — treat old totals as 0 so we only deduct new.
+        $wasDraft = ($statusBeforeUpdate === 'draft' || $nonTravel->overall_status === 'draft');
+        if ($wasDraft) {
+            $oldTotalsPerCode = [];
+        }
+        $runFundCodeAdjustment = ($nonTravel->overall_status !== 'draft' && $nonTravel->fund_type_id !== 3)
+            && (!empty($oldTotalsPerCode) || !empty($newTotalsPerCode));
 
-                        
-        //                 // Log the balance change
-        //                 // \Illuminate\Support\Facades\Log::info('Fund code balance reduced for non-travel memo update', [
-        //                 //     'fund_code_id' => $codeId,
-        //                 //     'fund_code' => $fundCode->code,
-        //                 //     'non_travel_memo_id' => $nonTravel->id,
-        //                 //     'amount_reduced' => $total,
-        //                 //     'balance_before' => $balanceBefore,
-        //                 //     'balance_after' => $balanceAfter,
-        //                 //     'staff_id' => user_session('staff_id'),
-        //                 //     'activity_title' => $data['activity_title']
-        //                 // ]);
-        //             }
-        //         }
-        //     }
-        // }
+        if ($runFundCodeAdjustment) {
+            $allCodeIds = array_unique(array_merge(
+                array_keys($oldTotalsPerCode),
+                array_keys($newTotalsPerCode)
+            ));
+            $allCodeIds = array_filter(array_map('intval', $allCodeIds), fn ($id) => $id > 0);
+            foreach ($allCodeIds as $codeId) {
+                $codeId = (int) $codeId;
+                $oldTotal = (float) ($oldTotalsPerCode[$codeId] ?? 0);
+                $newTotal = (float) ($newTotalsPerCode[$codeId] ?? 0);
+                $delta = round($oldTotal - $newTotal, 2);
+                if (abs($delta) < 0.005) {
+                    continue;
+                }
+                $fundCode = FundCode::find($codeId);
+                if (!$fundCode) {
+                    continue;
+                }
+                // Use fresh balance from DB in case of multiple fund codes
+                $fundCode->refresh();
+                $balanceBefore = (float) ($fundCode->budget_balance ?? 0);
+                if ($delta > 0) {
+                    // Restore: add back to fund code (positive amount + is_reversal for consistency)
+                    $fundCode->increment('budget_balance', $delta);
+                    $balanceAfter = $balanceBefore + $delta;
+                    $transactionAmount = (float) $delta;
+                    $description = "Non-Travel Memo Update: " . clean_unicode($data['activity_title']) . " - Budget reduced (restored to fund code)";
+                    $isReversal = true;
+                } else {
+                    // Deduct more
+                    $deduct = (float) abs($delta);
+                    reduce_fund_code_balance($codeId, $deduct);
+                    $balanceAfter = $balanceBefore - $deduct;
+                    $transactionAmount = $deduct;
+                    $description = "Non-Travel Memo Update: " . clean_unicode($data['activity_title']) . " - Budget allocation";
+                    $isReversal = false;
+                }
+                FundCodeTransaction::create([
+                    'fund_code_id' => $codeId,
+                    'amount' => $transactionAmount,
+                    'description' => $description,
+                    'activity_id' => $nonTravel->id,
+                    'matrix_id' => null,
+                    'channel' => 'non_travel',
+                    'activity_budget_id' => null,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceAfter,
+                    'is_reversal' => $isReversal,
+                    'created_by' => user_session('staff_id'),
+                ]);
+            }
+        }
 
         // If it's an AJAX request, return JSON response
         if ($request->ajax()) {

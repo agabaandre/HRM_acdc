@@ -23,11 +23,13 @@ class Funder extends Model
         'address',
         'website',
         'is_active',
+        'is_partners',
     ];
 
     protected $casts = [
         'id' => 'integer',
         'is_active' => 'boolean',
+        'is_partners' => 'boolean',
     ];
 
     /**
