@@ -138,6 +138,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::resource('partners', App\Http\Controllers\PartnerController::class)->except(['destroy']);
 
     // Fund Codes specific routes (must be before resource route)
+    Route::get('fund-codes/ajax', [App\Http\Controllers\FundCodeController::class, 'getFundCodesAjax'])->name('fund-codes.ajax');
     Route::get('fund-codes/download-template', [App\Http\Controllers\FundCodeController::class, 'downloadTemplate'])->name('fund-codes.download-template');
     Route::post('fund-codes/upload', [App\Http\Controllers\FundCodeController::class, 'upload'])->name('fund-codes.upload');
     Route::get('fund-codes/{fundCode}/transactions', [App\Http\Controllers\FundCodeController::class, 'transactions'])->name('fund-codes.transactions');
@@ -156,6 +157,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     // Staff resource routes
     Route::resource('staff', App\Http\Controllers\StaffController::class);
     Route::resource('request-types', App\Http\Controllers\RequestTypeController::class);
+    Route::get('locations/ajax', [App\Http\Controllers\LocationController::class, 'getLocationsAjax'])->name('locations.ajax');
     Route::resource('locations', App\Http\Controllers\LocationController::class)->except(['destroy']);
     Route::resource('cost-items', App\Http\Controllers\CostItemController::class)->except(['destroy']);
     Route::resource('non-travel-categories', App\Http\Controllers\NonTravelMemoCategoryController::class);

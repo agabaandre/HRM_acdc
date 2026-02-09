@@ -13,8 +13,42 @@ class LocationController extends Controller
      */
     public function index()
     {
-        $locations = Location::latest()->paginate(10);
-        return view('locations.index', compact('locations'));
+        return view('locations.index');
+    }
+
+    /**
+     * Get locations data for AJAX (server-side table with search and pagination).
+     */
+    public function getLocationsAjax(Request $request)
+    {
+        $search = $request->get('search', '');
+        $page = (int) $request->get('page', 1);
+        $pageSize = (int) $request->get('pageSize', 25);
+        $pageSize = max(1, min(100, $pageSize));
+        $skip = ($page - 1) * $pageSize;
+
+        $query = Location::query()->orderBy('name');
+
+        if ($search !== '') {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        $recordsTotal = $query->count();
+        $totalPages = $pageSize > 0 ? (int) ceil($recordsTotal / $pageSize) : 0;
+        $data = $query->skip($skip)->take($pageSize)->get();
+
+        $summary = [
+            'total_locations' => Location::count(),
+            'filtered_locations' => $recordsTotal,
+        ];
+
+        return response()->json([
+            'data' => $data,
+            'recordsTotal' => $recordsTotal,
+            'totalPages' => $totalPages,
+            'currentPage' => $page,
+            'summary' => $summary,
+        ]);
     }
 
     /**
@@ -73,10 +107,22 @@ class LocationController extends Controller
 
         try {
             $location->update($validated);
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'msg' => 'Location updated successfully.',
+                ]);
+            }
             return redirect()->route('locations.index')
                 ->with('msg', 'Location updated successfully.')
                 ->with('type', 'success');
         } catch (\Exception $e) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'msg' => 'Error updating location: ' . $e->getMessage(),
+                ], 422);
+            }
             return back()->withInput()
                 ->with('msg', 'Error updating location: ' . $e->getMessage())
                 ->with('type', 'error');

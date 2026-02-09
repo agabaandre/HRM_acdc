@@ -9,6 +9,7 @@ use App\Models\Funder;
 use App\Models\Partner;
 use Illuminate\Http\Request;
 use App\Models\FundCodeTransaction;
+use Illuminate\Support\Facades\DB;
 
 class FundCodeController extends Controller
 {
@@ -17,57 +18,135 @@ class FundCodeController extends Controller
      */
     public function index(Request $request)
     {
-        $query = FundCode::query()->with(['fundType', 'division', 'funder']);
-        
-        // Default to current year if no year filter is provided
-        $currentYear = date('Y');
-        $year = $request->input('year', $currentYear);
-        $query->where('year', $year);
-        
-        // Apply search filter if provided
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('activity', 'like', "%{$search}%")
-                  ->orWhere('cost_centre', 'like', "%{$search}%")
-                  ->orWhereHas('funder', function($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('fundType', function($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('division', function($q) use ($search) {
-                      $q->where('division_name', 'like', "%{$search}%");
-                  });
-            });
-        }
-        
-        // Apply fund type filter if provided
-        if ($request->has('fund_type_id') && !empty($request->fund_type_id)) {
-            $query->where('fund_type_id', $request->fund_type_id);
-        }
-        
-        // Apply division filter if provided
-        if ($request->has('division_id') && !empty($request->division_id)) {
-            $query->where('division_id', $request->division_id);
-        }
-        
-        // Apply status filter if provided
-        if ($request->has('status')) {
-            if ($request->status === 'active') {
-                $query->where('is_active', true);
-            } elseif ($request->status === 'inactive') {
-                $query->where('is_active', false);
-            }
-        }
-        
-        $fundCodes = $query->orderBy('code')->paginate(10);
         $fundTypes = FundType::orderBy('name')->get();
         $divisions = Division::orderBy('division_name')->get();
         $funders = Funder::orderBy('name')->get();
-        
-        return view('fund-codes.index', compact('fundCodes', 'fundTypes', 'divisions', 'funders', 'year'));
+        $initialYear = $request->input('year', date('Y'));
+        $initialSearch = $request->input('search', '');
+        $initialFundTypeId = $request->input('fund_type_id', '');
+        $initialDivisionId = $request->input('division_id', '');
+        $initialStatus = $request->input('status', '');
+        $initialPage = (int) $request->input('page', 1);
+
+        return view('fund-codes.index', compact('fundTypes', 'divisions', 'funders', 'initialYear', 'initialSearch', 'initialFundTypeId', 'initialDivisionId', 'initialStatus', 'initialPage'));
+    }
+
+    /**
+     * Get fund codes data for AJAX (server-side table with search, filters, pagination).
+     */
+    public function getFundCodesAjax(Request $request)
+    {
+        $search = trim((string) ($request->get('search') ?? ''));
+        $page = (int) $request->get('page', 1);
+        $pageSize = (int) $request->get('pageSize', 25);
+        $pageSize = max(1, min(100, $pageSize));
+        $yearInput = $request->get('year');
+        $year = (isset($yearInput) && $yearInput !== '' && $yearInput !== null) ? (int) $yearInput : (int) date('Y');
+        // Normalize so null/empty from query string don't become "where fund_type_id is null"
+        $fundTypeId = trim((string) ($request->get('fund_type_id') ?? ''));
+        $divisionId = trim((string) ($request->get('division_id') ?? ''));
+        $status = trim((string) ($request->get('status') ?? ''));
+        $skip = ($page - 1) * $pageSize;
+
+        $query = FundCode::withoutGlobalScopes()
+            ->with(['fundType', 'division', 'funder', 'partner'])
+            ->where('year', $year)
+            ->orderBy('code');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('code', 'like', '%' . $search . '%')
+                  ->orWhere('activity', 'like', '%' . $search . '%')
+                  ->orWhere('cost_centre', 'like', '%' . $search . '%')
+                  ->orWhereHas('funder', function ($q) use ($search) {
+                      $q->where('name', 'like', '%' . $search . '%');
+                  })
+                  ->orWhereHas('fundType', function ($q) use ($search) {
+                      $q->where('name', 'like', '%' . $search . '%');
+                  })
+                  ->orWhereHas('division', function ($q) use ($search) {
+                      $q->where('division_name', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+        if ($fundTypeId !== '') {
+            $query->where('fund_type_id', $fundTypeId);
+        }
+        if ($divisionId !== '') {
+            $query->where('division_id', $divisionId);
+        }
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        }
+
+        $recordsTotal = $query->count();
+        $totalPages = $pageSize > 0 ? (int) ceil($recordsTotal / $pageSize) : 0;
+        $data = $query->skip($skip)->take($pageSize)->get();
+
+        $rawCount = DB::table('fund_codes')->where('year', $year)->count();
+        if ($recordsTotal === 0 && $rawCount > 0) {
+            $baseQuery = DB::table('fund_codes')->where('year', $year);
+            if ($search !== '') {
+                $baseQuery->where(function ($q) use ($search) {
+                    $q->where('code', 'like', '%' . $search . '%')
+                      ->orWhere('activity', 'like', '%' . $search . '%')
+                      ->orWhere('cost_centre', 'like', '%' . $search . '%');
+                });
+            }
+            if ($fundTypeId !== '') {
+                $baseQuery->where('fund_type_id', $fundTypeId);
+            }
+            if ($divisionId !== '') {
+                $baseQuery->where('division_id', $divisionId);
+            }
+            if ($status === 'active') {
+                $baseQuery->where('is_active', true);
+            } elseif ($status === 'inactive') {
+                $baseQuery->where('is_active', false);
+            }
+            $recordsTotal = $baseQuery->count();
+            $totalPages = $pageSize > 0 ? (int) ceil($recordsTotal / $pageSize) : 0;
+            $rows = (clone $baseQuery)->orderBy('code')->skip($skip)->take($pageSize)->get();
+            $data = $this->hydrateFundCodesFromRows($rows);
+        }
+
+        return response()->json([
+            'data' => $data,
+            'recordsTotal' => $recordsTotal,
+            'totalPages' => $totalPages,
+            'currentPage' => $page,
+        ]);
+    }
+
+    /**
+     * Build JSON-friendly array from raw fund_codes rows (fallback when Eloquent returns 0).
+     */
+    private function hydrateFundCodesFromRows($rows): \Illuminate\Support\Collection
+    {
+        if ($rows->isEmpty()) {
+            return collect();
+        }
+        $ids = $rows->pluck('id');
+        $fundTypeIds = $rows->pluck('fund_type_id')->filter()->unique()->values();
+        $divisionIds = $rows->pluck('division_id')->filter()->unique()->values();
+        $funderIds = $rows->pluck('funder_id')->filter()->unique()->values();
+        $partnerIds = $rows->pluck('partner_id')->filter()->unique()->values();
+        $fundTypes = $fundTypeIds->isEmpty() ? collect() : FundType::whereIn('id', $fundTypeIds)->get()->keyBy('id');
+        $divisions = $divisionIds->isEmpty() ? collect() : Division::whereIn('id', $divisionIds)->get()->keyBy('id');
+        $funders = $funderIds->isEmpty() ? collect() : Funder::whereIn('id', $funderIds)->get()->keyBy('id');
+        $partners = $partnerIds->isEmpty() ? collect() : Partner::whereIn('id', $partnerIds)->get()->keyBy('id');
+        $result = [];
+        foreach ($rows as $row) {
+            $row = (array) $row;
+            $row['fund_type'] = $row['fundType'] = $fundTypes->get($row['fund_type_id'] ?? null);
+            $row['division'] = $divisions->get($row['division_id'] ?? null);
+            $row['funder'] = $funders->get($row['funder_id'] ?? null);
+            $row['partner'] = $partners->get($row['partner_id'] ?? null);
+            $result[] = $row;
+        }
+        return collect($result);
     }
 
     /**

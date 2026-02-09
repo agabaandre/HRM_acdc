@@ -33,7 +33,20 @@ class PartnerController extends Controller
             'name' => 'required|string|max:255|unique:partners,name',
         ]);
 
-        Partner::create($validated);
+        $partner = Partner::create($validated);
+        $partner->loadCount('fundCodes');
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Partner created successfully.',
+                'partner' => [
+                    'id' => $partner->id,
+                    'name' => $partner->name,
+                    'created_at' => $partner->created_at?->format('Y-m-d') ?? '—',
+                    'fund_codes_count' => $partner->fund_codes_count,
+                ],
+            ], 201);
+        }
 
         return redirect()->route('partners.index')
             ->with('msg', 'Partner created successfully.')
@@ -67,6 +80,19 @@ class PartnerController extends Controller
         ]);
 
         $partner->update($validated);
+        $partner->loadCount('fundCodes');
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Partner updated successfully.',
+                'partner' => [
+                    'id' => $partner->id,
+                    'name' => $partner->name,
+                    'created_at' => $partner->created_at?->format('Y-m-d') ?? '—',
+                    'fund_codes_count' => $partner->fund_codes_count,
+                ],
+            ]);
+        }
 
         return redirect()->route('partners.index')
             ->with('msg', 'Partner updated successfully.')

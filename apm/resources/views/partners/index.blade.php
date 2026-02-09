@@ -35,9 +35,9 @@
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="partnersTableBody">
                     @forelse($partners as $partner)
-                        <tr>
+                        <tr data-partner-id="{{ $partner->id }}">
                             <td>{{ $partner->id }}</td>
                             <td>{{ $partner->name }}</td>
                             <td>
@@ -146,7 +146,36 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Tooltips
+        var partnersBaseUrl = '{{ rtrim(route("partners.index"), "/") }}';
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text == null ? '' : text;
+            return div.innerHTML;
+        }
+
+        function buildPartnerRow(partner) {
+            var showUrl = partnersBaseUrl + '/' + partner.id;
+            var updateUrl = partnersBaseUrl + '/' + partner.id;
+            return '<tr data-partner-id="' + partner.id + '">' +
+                '<td>' + partner.id + '</td>' +
+                '<td>' + escapeHtml(partner.name) + '</td>' +
+                '<td><span class="badge bg-info">' + (partner.fund_codes_count || 0) + ' Codes</span></td>' +
+                '<td>' + escapeHtml(partner.created_at || '—') + '</td>' +
+                '<td class="text-end"><div class="btn-group" role="group">' +
+                '<a href="' + showUrl + '" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View"><i class="bx bx-show"></i></a> ' +
+                '<button type="button" class="btn btn-sm btn-outline-primary btn-edit-partner" data-bs-toggle="tooltip" title="Edit" ' +
+                'data-id="' + partner.id + '" data-name="' + escapeHtml(partner.name) + '" data-url="' + updateUrl + '"><i class="bx bx-edit"></i></button>' +
+                '</div></td></tr>';
+        }
+
+        function initTooltips($container) {
+            if ($container && $container.length) {
+                $container.find('[data-bs-toggle="tooltip"]').each(function() { new bootstrap.Tooltip(this); });
+            }
+        }
+
+        // Tooltips on load
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         tooltipTriggerList.forEach(function (el) { new bootstrap.Tooltip(el); });
 
@@ -165,10 +194,26 @@
                 method: 'POST',
                 data: $form.serialize(),
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-            }).done(function() {
+            }).done(function(res) {
                 $('#createPartnerModal').modal('hide');
                 $form[0].reset();
-                window.location.reload();
+                if (typeof Lobibox !== 'undefined') {
+                    Lobibox.notify('success', {
+                        pauseDelayOnHover: true,
+                        continueDelayOnInactiveTab: false,
+                        position: 'top right',
+                        icon: 'bx bx-check-circle',
+                        sound: false,
+                        msg: res.message || 'Partner created successfully.'
+                    });
+                }
+                if (res.partner) {
+                    var $tbody = $('#partnersTableBody');
+                    var $empty = $tbody.find('td[colspan="5"]').closest('tr');
+                    if ($empty.length) $empty.remove();
+                    $tbody.prepend(buildPartnerRow(res.partner));
+                    initTooltips($tbody.find('tr:first'));
+                }
             }).fail(function(xhr) {
                 $btn.prop('disabled', false);
                 if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
@@ -178,7 +223,12 @@
                         $err.text(err[0]);
                     }
                 } else {
-                    alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'An error occurred. Please try again.');
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'An error occurred. Please try again.';
+                    if (typeof Lobibox !== 'undefined') {
+                        Lobibox.notify('error', { sound: false, msg: msg });
+                    } else {
+                        alert(msg);
+                    }
                 }
             });
         });
@@ -209,15 +259,30 @@
             $name.removeClass('is-invalid');
             $err.text('');
             $btn.prop('disabled', true);
-            var data = $form.serialize() + '&_method=PUT';
             $.ajax({
                 url: $form.attr('action'),
                 method: 'POST',
-                data: data,
+                data: $form.serialize() + '&_method=PUT',
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-            }).done(function() {
+            }).done(function(res) {
                 $('#editPartnerModal').modal('hide');
-                window.location.reload();
+                if (typeof Lobibox !== 'undefined') {
+                    Lobibox.notify('success', {
+                        pauseDelayOnHover: true,
+                        continueDelayOnInactiveTab: false,
+                        position: 'top right',
+                        icon: 'bx bx-check-circle',
+                        sound: false,
+                        msg: res.message || 'Partner updated successfully.'
+                    });
+                }
+                if (res.partner) {
+                    var $row = $('#partnersTableBody tr[data-partner-id="' + res.partner.id + '"]');
+                    if ($row.length) {
+                        $row.find('td:eq(1)').text(res.partner.name);
+                        $row.find('.btn-edit-partner').data('name', res.partner.name);
+                    }
+                }
             }).fail(function(xhr) {
                 $btn.prop('disabled', false);
                 if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
@@ -227,7 +292,12 @@
                         $err.text(err[0]);
                     }
                 } else {
-                    alert(xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'An error occurred. Please try again.');
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'An error occurred. Please try again.';
+                    if (typeof Lobibox !== 'undefined') {
+                        Lobibox.notify('error', { sound: false, msg: msg });
+                    } else {
+                        alert(msg);
+                    }
                 }
             });
         });
