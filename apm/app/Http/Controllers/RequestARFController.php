@@ -782,7 +782,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     if ($sourceModel->budget_id) {
                         $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
                         if (is_array($budgetIds)) {
-                            $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType')->get()->keyBy('id');
+                            $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'partner')->get()->keyBy('id');
                         }
                     }
                     
@@ -809,7 +809,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     if ($sourceModel->budget_id) {
                         $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
                         if (is_array($budgetIds)) {
-                            $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder')->get()->keyBy('id');
+                            $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
                         }
                     }
                     
@@ -836,7 +836,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     if ($sourceModel->budget_id) {
                         $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
                         if (is_array($budgetIds)) {
-                            $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder')->get()->keyBy('id');
+                            $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
                         }
                     }
                     
@@ -1210,7 +1210,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                 if ($sourceModel->budget_id) {
                     $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
                     if (is_array($budgetIds)) {
-                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType')->get()->keyBy('id');
+                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'partner')->get()->keyBy('id');
                     }
                 }
                 
@@ -1243,7 +1243,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                 if ($sourceModel->budget_id) {
                     $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
                     if (is_array($budgetIds)) {
-                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder')->get()->keyBy('id');
+                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
                     }
                 }
                 
@@ -1273,7 +1273,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                 if ($sourceModel->budget_id) {
                     $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
                     if (is_array($budgetIds)) {
-                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder')->get()->keyBy('id');
+                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
                     }
                 }
                 
@@ -1303,7 +1303,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                 if ($sourceModel->budget_id) {
                     $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
                     if (is_array($budgetIds)) {
-                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder')->get()->keyBy('id');
+                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
                     }
                 }
                 
