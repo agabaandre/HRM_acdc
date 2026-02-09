@@ -47,6 +47,25 @@
                         </div>
                     </div>
 
+                    <!-- Partner (optional; for extramural codes) -->
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="partner_id" class="form-label fw-semibold">
+                                <i class="bx bx-user-pin me-1 text-success"></i> Partner
+                            </label>
+                            <select name="partner_id" id="partner_id" class="form-select select2 border-success @error('partner_id') is-invalid @enderror">
+                                <option value="">No partner</option>
+                                @foreach($partners as $partner)
+                                    <option value="{{ $partner->id }}" {{ old('partner_id') == $partner->id ? 'selected' : '' }}>{{ $partner->name }}</option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted mt-1 d-block">Optional; for extramural fund codes only</small>
+                            @error('partner_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+
                     <!-- Year -->
                     <div class="col-md-4">
                         <div class="form-group">
