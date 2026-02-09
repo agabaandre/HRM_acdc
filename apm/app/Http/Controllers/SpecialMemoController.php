@@ -650,9 +650,12 @@ class SpecialMemoController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             \Illuminate\Support\Facades\Log::error('Error creating special memo', ['exception' => $e]);
-    
+            $errorMsg = 'An error occurred while creating the special memo. Please try again.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errorMsg], 500);
+            }
             return redirect()->back()->withInput()->with([
-                'msg' => 'An error occurred while creating the special memo. Please try again.',
+                'msg' => $errorMsg,
                 'type' => 'error',
             ]);
         }

@@ -153,12 +153,99 @@ $(document).ready(function () {
     });
     validateActivityTitleField();
 
+    // Show server errors in an alert for ~15 seconds (Lobibox or Bootstrap fallback)
+    function show_notification_create(message, type) {
+        type = type || 'info';
+        if (typeof Lobibox !== 'undefined') {
+            var opts = {
+                pauseDelayOnHover: true,
+                continueDelayOnInactiveTab: false,
+                position: 'top right',
+                icon: type === 'success' ? 'bx bx-check-circle' : type === 'error' ? 'bx bx-error-circle' : type === 'warning' ? 'bx bx-error' : 'bx bx-info-circle',
+                sound: false,
+                msg: message
+            };
+            if (type === 'error') {
+                opts.delay = 15000;
+                opts.delayIndicator = true;
+            }
+            Lobibox.notify(type, opts);
+            return;
+        }
+        var alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-danger' : type === 'warning' ? 'alert-warning' : 'alert-info';
+        var duration = type === 'error' ? 15000 : 5000;
+        var notification = $('<div class="alert ' + alertClass + ' alert-dismissible fade show" role="alert"><i class="bx bx-' + (type === 'error' ? 'error-circle' : 'check-circle') + ' me-2"></i>' + message + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+        $('#activityForm').prepend(notification);
+        setTimeout(function() {
+            try {
+                var ai = bootstrap.Alert.getOrCreateInstance(notification[0]);
+                if (ai) ai.close();
+            } catch (err) {
+                notification.fadeOut(300, function() { $(this).remove(); });
+            }
+        }, duration);
+    }
+
     $('#activityForm').on('submit', function (e) {
+        e.preventDefault();
         if (!validateActivityTitleField()) {
-            e.preventDefault();
             $activityTitleInput.focus();
             return false;
         }
+        var form = $(this);
+        var submitBtn = form.find('button[type="submit"]:focus').length ? form.find('button[type="submit"]:focus') : form.find('button[type="submit"]').first();
+        var originalText = submitBtn.length ? submitBtn.html() : '';
+        var loadingText = '<i class="bx bx-loader-alt bx-spin me-1"></i> Processing...';
+        if (submitBtn.length) submitBtn.prop('disabled', true).html(loadingText);
+        if (typeof $ !== 'undefined' && $('.summernote').length && $.fn.summernote) {
+            try {
+                $('#activityForm .summernote').each(function() {
+                    var $el = $(this);
+                    if ($el.data('summernote')) $el.val($el.summernote('code'));
+                });
+            } catch (err) {}
+        }
+        var formData = new FormData(this);
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            headers: {
+                'X-CSRF-TOKEN': $('input[name="_token"]').val(),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            success: function(response) {
+                if (response.success) {
+                    show_notification_create(response.message || 'Special memo saved successfully.', 'success');
+                    setTimeout(function() {
+                        window.location.href = response.memo.preview_url;
+                    }, 1500);
+                } else {
+                    show_notification_create(response.message || 'An error occurred.', 'error');
+                    if (submitBtn.length) submitBtn.prop('disabled', false).html(originalText);
+                }
+            },
+            error: function(xhr) {
+                var errorMessage = 'An error occurred while saving the special memo.';
+                if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    errorMessage = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                } else if (xhr.status === 422) {
+                    errorMessage = 'Validation failed. Please check your input and try again.';
+                }
+                show_notification_create(errorMessage, 'error');
+                if (submitBtn.length) submitBtn.prop('disabled', false).html(originalText);
+            },
+            complete: function() {
+                if (submitBtn.length) submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+        return false;
     });
 
     $('#fund_type_id').change(function(event){
