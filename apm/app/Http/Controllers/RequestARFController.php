@@ -46,6 +46,7 @@ class RequestARFController extends Controller
         $mySubmittedArfsQuery = RequestARF::with([
             'staff',
             'division',
+            'source',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
             ->where('staff_id', $currentStaffId);
@@ -82,6 +83,7 @@ class RequestARFController extends Controller
             $allArfsQuery = RequestARF::with([
                 'staff',
                 'division',
+                'source',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ])
                 ->orderByDesc('created_at');
