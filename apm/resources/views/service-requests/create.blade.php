@@ -146,7 +146,7 @@
                 <input type="hidden" name="fund_type_id" value="{{ $isEdit ? ($serviceRequest->fund_type_id ?? 1) : ($sourceData->fund_type_id ?? 1) }}">
                 <input type="hidden" name="responsible_person_id"
                     value="{{ $isEdit ? ($serviceRequest->responsible_person_id ?? user_session('staff_id')) : user_session('staff_id') }}">
-                <input type="hidden" name="budget_id" value="{{ $isEdit ? ($serviceRequest->budget_id ?? '[]') : ($sourceData->budget_id ?? '[]') }}">
+                <input type="hidden" name="budget_id" value="{{ $isEdit ? (is_array($serviceRequest->budget_id ?? null) ? json_encode($serviceRequest->budget_id) : ($serviceRequest->budget_id ?? '[]')) : (is_array($sourceData->budget_id ?? null) ? json_encode($sourceData->budget_id) : ($sourceData->budget_id ?? '[]')) }}">
                 <input type="hidden" name="original_total_budget" id="originalTotalBudget"
                     value="{{ $totalOriginal ?? 0 }}">
             <input type="hidden" name="new_total_budget" id="newTotalBudget" 
