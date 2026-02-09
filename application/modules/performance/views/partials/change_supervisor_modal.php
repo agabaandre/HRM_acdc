@@ -4,9 +4,11 @@
  * 
  * @param $ppa - PPA entry object
  * @param $type - 'ppa', 'midterm', or 'endterm'
+ * @param $entry_id - Optional entry_id (e.g. from URL on view_ppa) so modal works when ppa->entry_id is missing
  * @param $current_supervisor_1 - Current first supervisor ID
  * @param $current_supervisor_2 - Current second supervisor ID (optional)
  */
+$modal_entry_id = isset($entry_id) && $entry_id !== '' ? $entry_id : ($ppa->entry_id ?? '');
 
 // Check if user has permission 83 (allow_return_ppa)
 $session = $this->session->userdata('user');
@@ -103,7 +105,7 @@ if ($has_permission) {
             </div>
             <form id="changeSupervisorForm_<?= $type ?>" method="post" onsubmit="return false;">
                 <div class="modal-body">
-                    <input type="hidden" name="entry_id" id="entry_id_<?= $type ?>" value="<?= htmlspecialchars($ppa->entry_id ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="entry_id" id="entry_id_<?= $type ?>" value="<?= htmlspecialchars($modal_entry_id, ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="type" id="type_<?= $type ?>" value="<?= htmlspecialchars($type, ENT_QUOTES, 'UTF-8') ?>">
                     
                     <div class="mb-3">
