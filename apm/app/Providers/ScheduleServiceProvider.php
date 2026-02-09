@@ -141,5 +141,14 @@ class ScheduleServiceProvider extends ServiceProvider
             ->onFailure(function () {
                 Log::error('Evening returned memos notification failed');
             });
+
+        // Deactivate fund codes from previous years on the first day of each new year
+        $schedule->command('fund-codes:deactivate-past-year')
+            ->yearlyOn(1, 1, '01:00')
+            ->description('Set is_active=0 for fund codes with year < current year')
+            ->withoutOverlapping()
+            ->onFailure(function () {
+                Log::error('fund-codes:deactivate-past-year failed at scheduled time');
+            });
     }
 }
