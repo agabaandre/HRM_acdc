@@ -608,6 +608,28 @@ class ActivityController extends Controller
         $selectedLocations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
 
+        // Current activity's budget total per fund code (from cost table) so "available" on edit is inclusive
+        $currentActivityBudgets = [];
+        if (!empty($budgetItems) && is_array($budgetItems)) {
+            foreach ($budgetItems as $codeId => $items) {
+                if ($codeId === 'grand_total') {
+                    continue;
+                }
+                $total = 0.0;
+                $list = is_array($items) ? $items : (is_object($items) ? (array) $items : []);
+                foreach ($list as $item) {
+                    if (!is_array($item) && !is_object($item)) {
+                        continue;
+                    }
+                    $item = (array) $item;
+                    $unitCost = (float) ($item['unit_cost'] ?? 0);
+                    $units = (float) ($item['units'] ?? 0);
+                    $days = (float) ($item['days'] ?? 0);
+                    $total += $unitCost * $units * $days;
+                }
+                $currentActivityBudgets[(string) $codeId] = round($total, 2);
+            }
+        }
 
         return view('activities.edit', [
             'matrix' => $matrix,
@@ -623,6 +645,8 @@ class ActivityController extends Controller
             'externalParticipants' => $externalParticipants,
             'budgetItems' => $budgetItems,
             'attachments' => $attachments,
+            'fundCodes' => $fundCodes,
+            'currentActivityBudgets' => $currentActivityBudgets,
             'title' => 'Edit Activity',
             'editing' => true
         ]);
@@ -1191,9 +1215,11 @@ class ActivityController extends Controller
                 $fundCodeId = is_object($fundCode) ? $fundCode->id : $fundCode;
                 $fundCodeString = is_object($fundCode) ? $fundCode->code : $fundCode;
                 $fundTypeId = is_object($fundCode) ? $fundCode->fund_type_id : null;
-                
-                $items = $budgetItems[$fundCodeString];
-               
+                // Request budget is keyed by fund code id; support both id and code for lookup
+                $items = $budgetItems[$fundCodeId] ?? $budgetItems[$fundCodeString] ?? [];
+                if (!is_array($items)) {
+                    continue;
+                }
                 foreach ($items as $index => $item) {
                     $item = (object) $item;
                     $total = ($item->unit_cost * $item->units) * $item->days;
@@ -1218,22 +1244,21 @@ class ActivityController extends Controller
                                 'total' => $total
                             ]);
                             
-                            // Update the fund code transaction if total changed
+                            // Update the fund code transaction if total changed — only adjust balance by the difference
                             if ($oldTotal != $total) {
                                 $transaction = FundCodeTransaction::where('activity_budget_id', $existingBudget->id)->first();
                                 if ($transaction) {
-                                    $fundCode = FundCode::find($fundCode);
-                                    $difference = $total - $oldTotal;
-                                    
-                                    // Update transaction
-                                    $transaction->update([
-                                        'amount' => $total,
-                                        'balance_after' => $transaction->balance_before - $total
-                                    ]);
-                                    
-                                    // Update fund code balance
-                                    $fundCode->budget_balance = $fundCode->budget_balance - $difference;
-                                    $fundCode->save();
+                                    $fundCodeModel = FundCode::find($fundCodeId);
+                                    if ($fundCodeModel) {
+                                        $difference = $total - $oldTotal;
+                                        // Only deduct the adjustment (delta), not the full new total
+                                        $fundCodeModel->budget_balance = (float) ($fundCodeModel->budget_balance ?? 0) - $difference;
+                                        $fundCodeModel->save();
+                                        $transaction->update([
+                                            'amount' => $total,
+                                            'balance_after' => (float) $fundCodeModel->budget_balance,
+                                        ]);
+                                    }
                                 }
                             }
                             
@@ -1253,7 +1278,7 @@ class ActivityController extends Controller
                                 'total' => $total
                             ]);
 
-                            $this->store_fund_code_transaction($fundCodeString, $total, $activity, $activityBudget);
+                            $this->store_fund_code_transaction($fundCodeId, $total, $activity, $activityBudget);
                         }
                         
                         DB::commit();
@@ -1268,10 +1293,12 @@ class ActivityController extends Controller
             // Remove any existing budget records that are no longer in the updated data
             $updatedBudgetIds = [];
             foreach ($budgetCodes as $fundCode) {
-                // Handle both FundCode objects and string codes
+                $fundCodeId = is_object($fundCode) ? $fundCode->id : $fundCode;
                 $fundCodeString = is_object($fundCode) ? $fundCode->code : $fundCode;
-                
-                $items = $budgetItems[$fundCodeString];
+                $items = $budgetItems[$fundCodeId] ?? $budgetItems[$fundCodeString] ?? [];
+                if (!is_array($items)) {
+                    continue;
+                }
                 foreach ($items as $item) {
                     $item = (object) $item;
                     $existingBudget = $existingBudgets->first(function ($budget) use ($fundCodeString, $item) {
@@ -1285,20 +1312,32 @@ class ActivityController extends Controller
                 }
             }
             
-            // Delete budget records that are no longer needed
+            // Delete budget records that are no longer needed — restore fund code balance (add back the deducted amount)
             $budgetsToDelete = $existingBudgets->whereNotIn('id', $updatedBudgetIds);
             foreach ($budgetsToDelete as $budgetToDelete) {
-                // First delete related transactions
+                $amountToRestore = (float) ($budgetToDelete->total ?? 0);
+                if ($amountToRestore > 0) {
+                    $fundCodeToRestore = FundCode::find($budgetToDelete->fund_code);
+                    if ($fundCodeToRestore) {
+                        $fundCodeToRestore->budget_balance = (float) ($fundCodeToRestore->budget_balance ?? 0) + $amountToRestore;
+                        $fundCodeToRestore->save();
+                    }
+                }
                 FundCodeTransaction::where('activity_budget_id', $budgetToDelete->id)->delete();
-                // Then delete the budget record
                 $budgetToDelete->delete();
             }
         } else {
-            // If no budget items, delete all existing budget records
+            // If no budget items, delete all existing budget records and restore fund code balances
             foreach ($existingBudgets as $budgetToDelete) {
-                // First delete related transactions
+                $amountToRestore = (float) ($budgetToDelete->total ?? 0);
+                if ($amountToRestore > 0) {
+                    $fundCodeToRestore = FundCode::find($budgetToDelete->fund_code);
+                    if ($fundCodeToRestore) {
+                        $fundCodeToRestore->budget_balance = (float) ($fundCodeToRestore->budget_balance ?? 0) + $amountToRestore;
+                        $fundCodeToRestore->save();
+                    }
+                }
                 FundCodeTransaction::where('activity_budget_id', $budgetToDelete->id)->delete();
-                // Then delete the budget record
                 $budgetToDelete->delete();
             }
         }

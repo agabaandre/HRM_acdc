@@ -15,6 +15,7 @@ class FundCode extends Model
 
     protected $fillable = [
         'funder_id',
+        'partner_id',
         'year',
         'code',
         'activity',
@@ -32,6 +33,7 @@ class FundCode extends Model
     protected $casts = [
         'id' => 'integer',
         'funder_id' => 'integer',
+        'partner_id' => 'integer',
         'year' => 'integer',
         'fund_type_id' => 'integer',
         'division_id' => 'integer',
@@ -53,7 +55,12 @@ class FundCode extends Model
         return $this->belongsTo(Division::class);
     }
     public function funder(): BelongsTo
-{
-    return $this->belongsTo(Funder::class, 'funder_id');
-}
+    {
+        return $this->belongsTo(Funder::class, 'funder_id');
+    }
+
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class);
+    }
 }

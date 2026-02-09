@@ -66,8 +66,11 @@
                         <label for="activity_code" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code <span class="text-danger" style="display: none;">*</span>
                         </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" />
+                        <input name="activity_code" id="activity_code" class="form-control border-success" placeholder="e.g. code1, code2" />
                         <small class="text-muted">Applicable to only World Bank Budget Codes</small>
+                        <small class="text-warning d-block mt-1" id="activity-code-multi-advisory" style="display: none;">
+                            <i class="fas fa-exclamation-triangle me-1"></i> You have selected more than 2 budget codes. Please enter the 2 codes separated by commas in the World Bank Activity Code field above.
+                        </small>
                     </div>
 
                     <div class="col-md-2">
@@ -797,7 +800,11 @@ $(document).on('change', '.participant-start, .participant-end', function () {
 });
 
     $('#budget_codes').on('change', function () {
-    const selected = $(this).find('option:selected');
+    const selected = $(this).find('option:selected').filter(function() {
+        const v = $(this).val();
+        return v && v !== '';
+    });
+    const selectedCount = selected.length;
     const container = $('#budgetGroupContainer');
     
     // Check if any selected budget code is World Bank (funder_id = 1)
@@ -813,9 +820,18 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     if (hasWorldBankCode) {
         $('#activity_code').prop('required', true);
         $('.activity_code label .text-danger').show();
+        // Advise user when more than 2 budget codes selected: enter 2 codes separated by commas
+        if (selectedCount > 2) {
+            $('#activity-code-multi-advisory').show();
+            $('#activity_code').attr('placeholder', 'e.g. code1, code2');
+        } else {
+            $('#activity-code-multi-advisory').hide();
+            $('#activity_code').attr('placeholder', 'e.g. code1, code2');
+        }
     } else {
         $('#activity_code').prop('required', false);
         $('.activity_code label .text-danger').hide();
+        $('#activity-code-multi-advisory').hide();
     }
     
     // Get currently existing budget cards
