@@ -43,7 +43,7 @@
                             <td>
                                 <span class="badge bg-info">{{ $partner->fund_codes_count }} Codes</span>
                             </td>
-                            <td>{{ $partner->created_at->format('Y-m-d') }}</td>
+                            <td>{{ $partner->created_at?->format('Y-m-d') ?? '—' }}</td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('partners.show', $partner) }}" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View">

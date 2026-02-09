@@ -34,11 +34,11 @@
                     </tr>
                     <tr>
                         <th>Created At:</th>
-                        <td>{{ $partner->created_at->format('Y-m-d H:i') }}</td>
+                        <td>{{ $partner->created_at?->format('Y-m-d H:i') ?? '—' }}</td>
                     </tr>
                     <tr>
                         <th>Last Updated:</th>
-                        <td>{{ $partner->updated_at->format('Y-m-d H:i') }}</td>
+                        <td>{{ $partner->updated_at?->format('Y-m-d H:i') ?? '—' }}</td>
                     </tr>
                 </table>
             </div>
