@@ -22,8 +22,8 @@
                             <span class="badge bg-info">{{ $arf->document_number ?? $arf->arf_number ?? 'N/A' }}</span>
                         </td>
                         <td style="width: 25%;">
-                            <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;" title="{{ $arf->activity_title ?? 'No activity title' }}">
-                                {{ $arf->activity_title ?? 'No activity title' }}
+                            <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;" title="{{ $arf->display_title }}">
+                                {{ $arf->display_title }}
                             </div>
                         </td>
                         <td>{{ $arf->staff->name ?? 'N/A' }}</td>

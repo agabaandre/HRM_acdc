@@ -1,6 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'View Activity Request - ' . ($requestARF->activity_title ?? 'Untitled'))
+@php
+    // For non-travel, use source document title to match the print (PDF)
+    $displayTitle = ($requestARF->model_type === 'App\\Models\\NonTravelMemo' && isset($sourceModel))
+        ? ($sourceModel->activity_title ?? $sourceData['title'] ?? $requestARF->activity_title ?? 'Untitled')
+        : ($requestARF->activity_title ?? 'Untitled');
+@endphp
+@section('title', 'View Activity Request - ' . $displayTitle)
 
 @section('styles')
     <style>
@@ -382,7 +388,7 @@
                             @if ($requestARF->document_number)
                                 <p class="text-muted mb-0">{{ $requestARF->document_number }}</p>
                             @endif
-                            <p class="text-dark mb-0 fw-medium text-break" style="word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ $requestARF->activity_title }}</p>
+                            <p class="text-dark mb-0 fw-medium text-break" style="word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ $displayTitle }}</p>
                         </div>
 
                            <div class="d-flex gap-3 col-md-2 justify-content-end">
@@ -429,7 +435,7 @@
                                         <td class="field-label">
                                             <i class="bx bx-text text-success me-2"></i>ARF Title
                                         </td>
-                                        <td class="field-value">{{ $requestARF->activity_title }}</td>
+                                        <td class="field-value">{{ $displayTitle }}</td>
                                     </tr>
                                     <tr>
                                         <td class="field-label">
@@ -473,28 +479,61 @@
                                             ${{ number_format($totalBudget ?? $requestARF->total_amount ?? ($sourceData['total_budget'] ?? 0), 2) }}
                                         </td>
                                     </tr>
+                                    @php
+                                        $fundCodes = $sourceData['fund_codes'] ?? collect();
+                                        $partnerDisplay = 'N/A';
+                                        if ($fundCodes && $fundCodes->isNotEmpty()) {
+                                            $partners = [];
+                                            foreach ($fundCodes as $fc) {
+                                                $name = optional($fc->partner)->name ?? null;
+                                                if ($name && !in_array($name, $partners)) {
+                                                    $partners[] = $name;
+                                                }
+                                            }
+                                            if (!empty($partners)) {
+                                                $partnerDisplay = implode(', ', $partners);
+                                            }
+                                        }
+                                        if ($partnerDisplay === 'N/A' && $requestARF->partner) {
+                                            $partnerDisplay = is_object($requestARF->partner) ? ($requestARF->partner->name ?? 'N/A') : $requestARF->partner;
+                                        }
+                                        $funderDisplay = optional($requestARF->funder)->name ?? null;
+                                        if (($funderDisplay === null || $funderDisplay === '') && $fundCodes && $fundCodes->isNotEmpty()) {
+                                            $first = $fundCodes->first();
+                                            $funderDisplay = optional($first->funder)->name ?? 'N/A';
+                                        }
+                                        $funderDisplay = $funderDisplay ?? 'N/A';
+                                        $codeDisplay = $requestARF->extramural_code ?? null;
+                                        if (($codeDisplay === null || $codeDisplay === '') && $fundCodes && $fundCodes->isNotEmpty()) {
+                                            $first = $fundCodes->first();
+                                            $codeDisplay = $first->code ?? 'N/A';
+                                        }
+                                        $codeDisplay = $codeDisplay ?? 'N/A';
+                                    @endphp
+                                    <tr>
+                                        <td class="field-label">
+                                            <i class="bx bx-handshake text-success me-2"></i>Partner
+                                        </td>
+                                        <td class="field-value">{{ $partnerDisplay }}</td>
+                                    </tr>
                                     <tr>
                                         <td class="field-label">
                                             <i class="bx bx-tag text-success me-2"></i>Fund Type
                                         </td>
                                         <td class="field-value">{{ $requestARF->fundType->name ?? 'N/A' }}</td>
                                     </tr>
-                                    @if ($requestARF->funder)
-                                        <tr>
-                                            <td class="field-label">
-                                                <i class="bx bx-building text-success me-2"></i>Funder
-                                            </td>
-                                            <td class="field-value">{{ $requestARF->funder->name }}</td>
-                                        </tr>
-                                    @endif
-                                    @if ($requestARF->extramural_code)
-                                        <tr>
-                                            <td class="field-label">
-                                                <i class="bx bx-hash text-success me-2"></i>Extramural Code
-                                            </td>
-                                            <td class="field-value">{{ $requestARF->extramural_code }}</td>
-                                        </tr>
-                                    @endif
+                                    <tr>
+                                        <td class="field-label">
+                                            <i class="bx bx-building text-success me-2"></i>Funder
+                                        </td>
+                                        <td class="field-value">{{ $funderDisplay }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">
+                                            <i class="bx bx-hash text-success me-2"></i>Extramural Code
+                                        </td>
+                                        <td class="field-value">{{ $codeDisplay }}</td>
+                                    </tr>
                                     <tr>
                                         <td class="field-label">
                                             <i class="bx bx-info-circle text-success me-2"></i>Status

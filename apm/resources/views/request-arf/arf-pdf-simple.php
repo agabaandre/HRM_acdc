@@ -793,7 +793,11 @@
             </tr>
             <tr>
                 <td class="label">Project Title:</td>
-                <td class="content" colspan="3"><?php echo htmlspecialchars(to_sentence_case($requestARF->activity_title)); if(empty($requestARF->source_model=='App\\Models\\NonTravelMemo')) echo htmlspecialchars($sourceModel->activity_title ?? 'N/A'); ?></td>
+                <td class="content" colspan="3"><?php
+                $isNonTravelForTitle = $requestARF->model_type === 'App\\Models\\NonTravelMemo';
+                $projectTitle = $isNonTravelForTitle ? ($sourceModel->activity_title ?? 'N/A') : $requestARF->activity_title;
+                echo htmlspecialchars(to_sentence_case($projectTitle));
+                ?></td>
             </tr>
         </table>
 

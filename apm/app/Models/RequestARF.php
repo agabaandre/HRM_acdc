@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
@@ -195,6 +196,28 @@ class RequestARF extends Model
 
         // For non-travel and special memos, they should have direct division_id
         return $this->division;
+    }
+
+    /**
+     * Polymorphic relation to the source document (Activity, NonTravelMemo, SpecialMemo, etc.).
+     */
+    public function source(): MorphTo
+    {
+        return $this->morphTo(__FUNCTION__, 'model_type', 'source_id');
+    }
+
+    /**
+     * Title for display in lists and headers. For non-travel (and special) memos uses the source document title.
+     */
+    public function getDisplayTitleAttribute(): string
+    {
+        if ($this->model_type === 'App\\Models\\NonTravelMemo' || $this->model_type === 'App\\Models\\SpecialMemo') {
+            $source = $this->relationLoaded('source') ? $this->source : $this->getSourceModel();
+            if ($source && !empty($source->activity_title)) {
+                return $source->activity_title;
+            }
+        }
+        return $this->activity_title ?? 'No activity title';
     }
 
     /**
