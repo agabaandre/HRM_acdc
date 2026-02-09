@@ -15,11 +15,11 @@ return new class extends Migration
     {
         if (!Schema::hasColumn('fund_codes', 'partner_id')) {
             Schema::table('fund_codes', function (Blueprint $table) {
-                $table->unsignedBigInteger('partner_id')->nullable()->after('funder_id');
+                $table->unsignedBigInteger('partner_id')->nullable()->default(null)->after('funder_id');
             });
         } else {
-            // Ensure existing column is nullable (only applies to extramural codes)
-            DB::statement('ALTER TABLE fund_codes MODIFY partner_id BIGINT UNSIGNED NULL');
+            // Ensure existing column is nullable with default NULL (only applies to extramural codes)
+            DB::statement('ALTER TABLE fund_codes MODIFY partner_id BIGINT UNSIGNED NULL DEFAULT NULL');
         }
     }
 
