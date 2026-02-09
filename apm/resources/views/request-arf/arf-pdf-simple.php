@@ -793,21 +793,10 @@
             </tr>
             <tr>
                 <td class="label">Project Title:</td>
-                <td class="content" colspan="3"><?php echo htmlspecialchars(to_sentence_case($requestARF->activity_title)); ?></td>
-            </tr>
-            <tr>
-                <td class="label">Currency:</td>
-                <td class="content">USD</td>
-                <td class="label">Amount:</td>
-                <td class="content">$<?php echo number_format($totalBudget ?? $requestARF->total_amount ?? 0, 2); ?></td>
+                <td class="content" colspan="3"><?php echo htmlspecialchars(to_sentence_case($requestARF->activity_title)); if(empty($requestARF->source_model=='App\\Models\\NonTravelMemo')) echo htmlspecialchars($sourceModel->activity_title ?? 'N/A'); ?></td>
             </tr>
         </table>
 
-        <div class="section-label">Activity Brief</div>
-    
-        <div class="background-text justify-text"><?php echo $sourceModel['background']; ?></div>
-
- 
     
     <?php
     // Process internal participants like the web view does
