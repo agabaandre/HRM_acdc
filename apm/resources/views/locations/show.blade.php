@@ -60,15 +60,6 @@
                     <a href="{{ route('locations.edit', $location->id) }}" class="btn btn-primary">
                         <i class="bx bx-edit"></i> Edit Location
                     </a>
-                    <form action="{{ route('locations.destroy', $location->id) }}" 
-                          method="POST" 
-                          onsubmit="return confirm('Are you sure you want to delete this location? This action cannot be undone.');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger w-100">
-                            <i class="bx bx-trash"></i> Delete Location
-                        </button>
-                    </form>
                     <a href="{{ route('locations.index') }}" class="btn btn-outline-secondary">
                         <i class="bx bx-list-ul"></i> View All Locations
                     </a>

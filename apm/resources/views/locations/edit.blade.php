@@ -5,21 +5,9 @@
 @section('header', 'Edit Location')
 
 @section('header-actions')
-    <div class="d-flex gap-2">
-        <a href="{{ route('locations.show', $location->id) }}" class="btn btn-outline-secondary">
-            <i class="bx bx-arrow-back"></i> Back to Details
-        </a>
-        <form action="{{ route('locations.destroy', $location->id) }}" 
-              method="POST" 
-              class="d-inline"
-              onsubmit="return confirm('Are you sure you want to delete this location? This action cannot be undone.');">
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="btn btn-danger">
-                <i class="bx bx-trash"></i> Delete
-            </button>
-        </form>
-    </div>
+    <a href="{{ route('locations.show', $location->id) }}" class="btn btn-outline-secondary">
+        <i class="bx bx-arrow-back"></i> Back to Details
+    </a>
 @endsection
 
 @section('content')
