@@ -134,8 +134,9 @@ Route::post('/image/upload', [App\Http\Controllers\ImageController::class, 'uplo
 
 Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function () {
     // Resource Routes
-    Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->except(['destroy']);
-    
+Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->except(['destroy']);
+    Route::resource('partners', App\Http\Controllers\PartnerController::class)->except(['destroy']);
+
     // Fund Codes specific routes (must be before resource route)
     Route::get('fund-codes/download-template', [App\Http\Controllers\FundCodeController::class, 'downloadTemplate'])->name('fund-codes.download-template');
     Route::post('fund-codes/upload', [App\Http\Controllers\FundCodeController::class, 'upload'])->name('fund-codes.upload');
