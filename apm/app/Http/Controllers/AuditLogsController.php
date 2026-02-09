@@ -460,6 +460,42 @@ class AuditLogsController extends Controller
     }
     
     /**
+     * Prepare decoded audit values for DB insert/update: encode arrays and objects to JSON,
+     * and normalize ISO date/datetime strings to MySQL format (Y-m-d or Y-m-d H:i:s).
+     */
+    private function prepareValuesForDb(array $values): array
+    {
+        $out = [];
+        foreach ($values as $key => $value) {
+            if (is_array($value) || is_object($value)) {
+                $out[$key] = json_encode($value);
+            } elseif (is_string($value) && $this->looksLikeIsoDate($value)) {
+                try {
+                    $parsed = Carbon::parse($value);
+                    $out[$key] = $parsed->format('Y-m-d H:i:s');
+                } catch (\Exception $e) {
+                    $out[$key] = $value;
+                }
+            } else {
+                $out[$key] = $value;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Whether a string looks like an ISO 8601 or common date/datetime value (MySQL rejects these raw).
+     */
+    private function looksLikeIsoDate(string $value): bool
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return false;
+        }
+        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}(T|\s|$)/', $value);
+    }
+
+    /**
      * Perform actual data reversal based on the selected action type
      */
     private function performDataReversal($log, $modelTable, $reason, $actionType)
@@ -529,6 +565,7 @@ class AuditLogsController extends Controller
                         'updated_at' => '',
                         'id' => ''
                     ]);
+                    $cleanValues = $this->prepareValuesForDb($cleanValues);
                     
                     $updated = DB::table($modelTable)
                         ->where('id', $entityId)
@@ -563,8 +600,11 @@ class AuditLogsController extends Controller
                         $restoreData['date_to'] = \Carbon\Carbon::parse($restoreData['date_to'])->format('Y-m-d');
                     }
                     
-                    $restoreData['updated_at'] = now();
-                    $restoreData['created_at'] = $restoreData['created_at'] ?? now();
+                    $restoreData = $this->prepareValuesForDb($restoreData);
+                    $restoreData['updated_at'] = now()->format('Y-m-d H:i:s');
+                    $restoreData['created_at'] = isset($valuesToUse['created_at']) && is_string($valuesToUse['created_at'])
+                        ? Carbon::parse($valuesToUse['created_at'])->format('Y-m-d H:i:s')
+                        : now()->format('Y-m-d H:i:s');
                     
                     $restoredId = DB::table($modelTable)->insertGetId($restoreData);
                     

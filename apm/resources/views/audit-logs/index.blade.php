@@ -822,6 +822,61 @@ document.getElementById('filterForm').addEventListener('change', function() {
     this.submit();
 });
 
+// Show reversal/restore error in a Lobibox that allows copying the whole error
+function show_reversal_error(message) {
+    var text = (message && String(message).trim()) ? String(message) : 'An error occurred. No details available.';
+    function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+    var id = 'reversal-error-' + Date.now();
+    var copyBtnId = 'copy-reversal-error-' + Date.now();
+    var html = '<div class="mb-2"><pre id="' + id + '" class="p-3 bg-light border rounded small mb-2" style="user-select: all; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow: auto;">' + escapeHtml(text) + '</pre></div>' +
+        '<button type="button" class="btn btn-sm btn-outline-primary" id="' + copyBtnId + '"><i class="bx bx-copy me-1"></i> Copy full error</button>';
+    if (typeof Lobibox !== 'undefined' && Lobibox.alert) {
+        Lobibox.alert('error', {
+            title: 'Restore / Reversal Error',
+            msg: html,
+            width: 520
+        });
+        setTimeout(function() {
+            var btn = document.getElementById(copyBtnId);
+            var pre = document.getElementById(id);
+            if (btn && pre) {
+                btn.onclick = function() {
+                    var toCopy = pre.textContent || text;
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(toCopy).then(function() {
+                            btn.innerHTML = '<i class="bx bx-check me-1"></i> Copied!';
+                            setTimeout(function() { btn.innerHTML = '<i class="bx bx-copy me-1"></i> Copy full error'; }, 2000);
+                        }).catch(function() {
+                            btn.innerHTML = '<i class="bx bx-x me-1"></i> Copy failed';
+                            setTimeout(function() { btn.innerHTML = '<i class="bx bx-copy me-1"></i> Copy full error'; }, 2000);
+                        });
+                    } else {
+                        var ta = document.createElement('textarea');
+                        ta.value = toCopy;
+                        ta.style.position = 'fixed'; ta.style.left = '-9999px';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try {
+                            document.execCommand('copy');
+                            btn.innerHTML = '<i class="bx bx-check me-1"></i> Copied!';
+                            setTimeout(function() { btn.innerHTML = '<i class="bx bx-copy me-1"></i> Copy full error'; }, 2000);
+                        } catch (e) {
+                            btn.innerHTML = '<i class="bx bx-x me-1"></i> Copy failed';
+                        }
+                        document.body.removeChild(ta);
+                    }
+                };
+            }
+        }, 350);
+    } else {
+        show_notification(text, 'error');
+    }
+}
+
 // Cleanup Modal Functionality
 document.getElementById('cleanupModal').addEventListener('show.bs.modal', function () {
     // Load cleanup statistics
@@ -1065,12 +1120,12 @@ document.getElementById('confirm-reversal-btn').addEventListener('click', functi
                 window.location.reload();
             }, 1500);
         } else {
-            show_notification(data.message, 'error');
+            show_reversal_error(data.message);
         }
     })
     .catch(error => {
         console.error('Error during reversal:', error);
-        show_notification('An error occurred during reversal', 'error');
+        show_reversal_error(error.message || 'An error occurred during reversal');
     })
     .finally(() => {
         // Reset button state
