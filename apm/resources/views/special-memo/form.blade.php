@@ -163,12 +163,7 @@
                 </label>
                 <textarea name="justification" id="justification" class="form-control summernote" rows="6" required>{{ old('justification', $specialMemo->justification ?? '') }}</textarea>
             </div>
-            <div class="col-md-12" style="display: none;">
-                <label for="supporting_reasons" class="form-label fw-semibold">
-                    <i class="fas fa-comment-alt me-1 text-success"></i> Supporting Reasons <span class="text-danger">*</span>
-                </label>
-                <textarea name="supporting_reasons" id="supporting_reasons" class="form-control summernote" rows="6" required>{{ old('supporting_reasons', $specialMemo->supporting_reasons ?? '') }}</textarea>
-            </div>
+           
             <div class="mt-5">
                 <h6 class="fw-bold text-success mb-3"><i class="fas fa-user-plus me-2"></i> Add Participants from Other Divisions</h6>
                 <div id="externalParticipantsWrapper"></div>
