@@ -958,7 +958,7 @@
                 : ($nonTravel->budget_id ?? []),
             'fundCodes' => \App\Models\FundCode::whereIn('id', is_string($nonTravel->budget_id) 
                 ? json_decode($nonTravel->budget_id, true) 
-                : ($nonTravel->budget_id ?? []))->with('fundType')->get()->keyBy('id'),
+                : ($nonTravel->budget_id ?? []))->with('fundType', 'funder', 'partner')->get()->keyBy('id'),
             'defaultTitle' => to_sentence_case('Activity Request - ' . $nonTravel->title),
             'sourceId' => $nonTravel->id,
             'modelType' => 'App\\Models\\NonTravelMemo'

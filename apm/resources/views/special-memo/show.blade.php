@@ -1583,7 +1583,7 @@
                     ? (json_decode($specialMemo->budget_id, true) ?? [])
                     : (is_array($specialMemo->budget_id) ? $specialMemo->budget_id : []);
                 if (!is_array($ids)) $ids = [];
-                return \App\Models\FundCode::whereIn('id', $ids)->with('fundType')->get()->keyBy('id');
+                return \App\Models\FundCode::whereIn('id', $ids)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
             })(),
             'defaultTitle' => to_sentence_case('Activity Request - ' . $specialMemo->title),
             'sourceId' => $specialMemo->id,
