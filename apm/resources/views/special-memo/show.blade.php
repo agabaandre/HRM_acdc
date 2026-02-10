@@ -873,6 +873,21 @@
                         </div>
         @endif
 
+        <!-- Justification Card -->
+        @if(!empty($specialMemo->justification))
+            <div class="card content-section border-0 mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                        <i class="bx bx-list-check"></i>
+                        Justification
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="html-content">{!! $specialMemo->justification !!}</div>
+                </div>
+            </div>
+        @endif
+
         <div class="row">
          
 

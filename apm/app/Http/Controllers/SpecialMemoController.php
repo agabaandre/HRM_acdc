@@ -380,7 +380,6 @@ class SpecialMemoController extends Controller
             'date_to' => 'required|date|after_or_equal:date_from',
             'background' => 'required|string',
             'justification' => 'required|string',
-            'supporting_reasons' => 'required|string',
             'location_id' => 'required|array|min:1',
             'location_id.*' => 'exists:locations,id',
             'participant_start' => 'required|array',

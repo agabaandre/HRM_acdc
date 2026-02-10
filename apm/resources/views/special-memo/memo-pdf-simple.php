@@ -601,6 +601,16 @@
    <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><p class="justify-text"><?=strip_tags($specialMemo->background);?></p></td>
   </tr>
  </table>
+
+ <!-- Background -->
+ <table class="mb-15 mt-neg20">
+  <tr>
+    <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Justification:</strong></td>
+  </tr>
+  <tr>
+   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><p class="justify-text"><?=strip_tags($specialMemo->justification);?></p></td>
+  </tr>
+ </table>
   
   <div>
     <div class="page-break"></div>
@@ -734,7 +744,7 @@
                                     <td class="text-right"><?php echo $item['units'] ?? 0; ?></td>
                                     <td class="text-right"><?php echo $item['days'] ?? 0; ?></td>
                                     <td class="text-right"><?php echo number_format($total, 2); ?></td>
-                                    <td><?php echo htmlspecialchars($item['description'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($item['description'] ?? ''); ?></td>
                                 </tr>
                             <?php endforeach; ?>
 
