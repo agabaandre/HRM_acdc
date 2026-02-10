@@ -163,7 +163,7 @@
                 </label>
                 <textarea name="justification" id="justification" class="form-control summernote" rows="6" required>{{ old('justification', $specialMemo->justification ?? '') }}</textarea>
             </div>
-            <div class="col-md-12">
+            <div class="col-md-12" style="display: none;">
                 <label for="supporting_reasons" class="form-label fw-semibold">
                     <i class="fas fa-comment-alt me-1 text-success"></i> Supporting Reasons <span class="text-danger">*</span>
                 </label>
