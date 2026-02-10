@@ -1622,13 +1622,13 @@ $(document).on('click', '.preview-attachment', function() {
                 $activity->matrix->division->head->fname . ' ' . $activity->matrix->division->head->lname : 'N/A',
             'focalPerson' => $activity->staff ? 
                 $activity->staff->fname . ' ' . $activity->staff->lname : 'N/A',
-            'budgetBreakdown' => $activity->activity_budget ?? [],
+            'budgetBreakdown' => is_string($activity->budget_breakdown) ? (json_decode($activity->budget_breakdown, true) ?? []) : ($activity->budget_breakdown ?? []),
             'budgetIds' => is_string($activity->budget_id) 
                 ? json_decode($activity->budget_id, true) 
                 : ($activity->budget_id ?? []),
             'fundCodes' => \App\Models\FundCode::whereIn('id', is_string($activity->budget_id) 
                 ? json_decode($activity->budget_id, true) 
-                : ($activity->budget_id ?? []))->with('fundType')->get()->keyBy('id'),
+                : ($activity->budget_id ?? []))->with('fundType', 'funder', 'partner')->get()->keyBy('id'),
             'defaultTitle' => to_sentence_case('Activity Request - ' . $activity->activity_title),
             'sourceId' => $activity->id,
             'modelType' => 'App\\Models\\Activity'

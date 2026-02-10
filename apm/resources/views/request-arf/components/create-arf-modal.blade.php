@@ -110,6 +110,17 @@
             max-width: 250px;
             min-width: 200px;
         }
+        /* Non-travel memo: Description column at 50% with proper wrapping (match show view) */
+        .budget-table.non-travel-memo td.cost-item,
+        .budget-table.non-travel-memo th.cost-item {
+            width: 50%;
+            max-width: none;
+        }
+        .budget-table.non-travel-memo td.cost-item > div {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
         
         /* Custom scrollbar for modal */
         .modal-body::-webkit-scrollbar {
@@ -211,161 +222,171 @@
                     </table>
                 </div>
 
-                <!-- Budget Codes Section -->
+                <!-- Budget Codes Section (matches request-arf show view structure) -->
                 <div class="mb-4">
                     <div class="section-header">
                         <h6 class="fw-bold mb-0 text-primary">
                             <i class="bx bx-money me-2"></i>Budget Codes & Allocations
                         </h6>
                     </div>
-                    
-                    @if(!empty($budgetBreakdown))
-                        @if($sourceType === 'Activity' && is_object($budgetBreakdown) && method_exists($budgetBreakdown, 'toArray'))
-                            {{-- Matrix Activity Budget (Collection of ActivityBudget models) --}}
-                            @foreach($fundCodes as $fundCode)
-                                <div class="mb-4">
-                                    <div class="fund-header">
-                                        <h6 class="fw-bold mb-0" style="color: var(--secondary-maroon);">
-                                            {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }})
-                                        </h6>
-                                    </div>
-                                    
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered budget-table">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th class="fw-bold" style="width: 40px;">#</th>
-                                                        <th class="fw-bold cost-item">Cost Item</th>
-                                                        <th class="fw-bold text-end" style="width: 100px;">Unit Cost</th>
-                                                        <th class="fw-bold text-end" style="width: 80px;">Units</th>
-                                                        <th class="fw-bold text-end" style="width: 80px;">Days</th>
-                                                        <th class="fw-bold text-end" style="width: 120px;">Total</th>
-                                                        <th class="fw-bold description">Description</th>
-                                                    </tr>
-                                                </thead>
-                                            <tbody>
-                                                @php
-                                                    $count = 1;
-                                                    $fundTotal = 0;
-                                                @endphp
-                                            
-                                                @foreach($budgetBreakdown as $item)
-                                                    @if($item->fund_code == $fundCode->id)
-                                                        @php
-                                                            $total = $item->unit_cost * $item->units;
-                                                            $fundTotal += $total;
-                                                        @endphp
-                                                        <tr>
-                                                            <td>{{ $count++ }}</td>
-                                                            <td class="cost-item">{{ $item->cost }}</td>
-                                                            <td class="text-end">${{ number_format($item->unit_cost, 2) }}</td>
-                                                            <td class="text-end">{{ $item->units }}</td>
-                                                            <td class="text-end">{{ $item->days }}</td>
-                                                            <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
-                                                            <td class="description">{{ $item->description }}</td>
-                                                        </tr>
-                                                    @endif
-                                                @endforeach
-                                            </tbody>
-                                            <tfoot class="table-light">
-                                                <tr>
-                                                    <th colspan="5" class="text-end">Fund Total:</th>
-                                                    <th class="text-end text-success">${{ number_format($fundTotal, 2) }}</th>
-                                                    <th></th>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
+                    @php
+                        $budgetArray = is_array($budgetBreakdown ?? []) ? $budgetBreakdown : [];
+                        $fundCodesCollection = $fundCodes ?? collect();
+                        $isNonTravelMemo = ($sourceType ?? '') === 'Non-Travel Memo';
+                        $grandTotal = 0;
+                    @endphp
+                    @if($sourceType === 'Activity' && $fundCodesCollection->isNotEmpty())
+                        {{-- Activity: same structure as request-arf show – by fund code, with Units/Days/Total --}}
+                        @foreach($fundCodesCollection as $fundCodeId => $fundCode)
+                            @php
+                                $items = $budgetArray[$fundCodeId] ?? [];
+                                $items = is_array($items) ? $items : [];
+                                $fundTotal = 0;
+                            @endphp
+                            <div class="mb-4">
+                                <div class="fund-header">
+                                    <h6 class="fw-bold mb-0" style="color: var(--secondary-maroon);">
+                                        {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name ?? 'N/A' }})
+                                    </h6>
                                 </div>
-                            @endforeach
-                            
-                            @php
-                                $grandTotal = 0;
-                                foreach($budgetBreakdown as $item) {
-                                    $grandTotal += $item->unit_cost * $item->units * $item->days;
-                                }
-                            @endphp
-                            
-                        @else
-                            {{-- Memo Budget (Array with fund code keys) --}}
-                            @php
-                                $grandTotal = 0;
-                                $budgetArray = is_array($budgetBreakdown) ? $budgetBreakdown : [];
-                            @endphp
-                            
-                            @foreach($budgetArray as $fundCodeId => $items)
-                                @if($fundCodeId !== 'grand_total' && is_array($items))
-                                    @php
-                                        $fundCode = $fundCodes[$fundCodeId] ?? null;
-                                        $fundTotal = 0;
-                                    @endphp
-                                    
-                                    <div class="mb-4">
-                                        <div class="fund-header">
-                                            <h6 class="fw-bold mb-0" style="color: var(--secondary-maroon);">
-                                                @if($fundCode)
-                                                    {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }}) - {{ $fundCode->funder->name ?? 'N/A' }}
-                                                @else
-                                                    Fund Code ID: {{ $fundCodeId }}
-                                                @endif
-                                            </h6>
-                                        </div>
-                                        
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered budget-table">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th class="fw-bold" style="width: 40px;">#</th>
-                                                        <th class="fw-bold cost-item">Cost Item</th>
-                                                        <th class="fw-bold text-end" style="width: 100px;">Unit Cost</th>
-                                                        <th class="fw-bold text-end" style="width: 80px;">Quantity</th>
-                                                        <th class="fw-bold text-end" style="width: 120px;">Total</th>
-                                                        <th class="fw-bold description">Description</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @php $count = 1; @endphp
-                                                    @foreach($items as $item)
-                                                        @php
-                                                            // Handle different field names: non-travel uses 'quantity', special memo uses 'units'
-                                                            $quantity = $item['quantity'] ?? $item['units'] ?? 1;
-                                                            $total = (float)$item['unit_cost'] * (float)$quantity;
-                                                            $fundTotal += $total;
-                                                            $grandTotal += $total;
-                                                        @endphp
-                                                        <tr>
-                                                            <td>{{ $count++ }}</td>
-                                                            <td class="cost-item">{{ $item['cost'] ?? $item['description'] ?? 'N/A' }}</td>
-                                                            <td class="text-end">${{ number_format($item['unit_cost'], 2) }}</td>
-                                                            <td class="text-end">{{ $quantity }}</td>
-                                                            <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
-                                                            <td class="description">{{ $item['description'] ?? 'N/A' }}</td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                                <tfoot class="table-light">
-                                                    <tr>
-                                                        <th colspan="4" class="text-end">Fund Total:</th>
-                                                        <th class="text-end text-success">${{ number_format($fundTotal, 2) }}</th>
-                                                        <th></th>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
-                                        </div>
-                                    </div>
-                                @endif
-                            @endforeach
-                            
-                            @if(isset($budgetArray['grand_total']))
-                                @php $grandTotal = (float)$budgetArray['grand_total']; @endphp
-                            @endif
-                        @endif
-                        
+                                <div class="table-responsive">
+                                    <table class="table table-bordered budget-table">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="fw-bold" style="width: 40px;">#</th>
+                                                <th class="fw-bold cost-item">Cost Item</th>
+                                                <th class="fw-bold text-end" style="width: 100px;">Unit Cost</th>
+                                                <th class="fw-bold text-end" style="width: 80px;">Units</th>
+                                                <th class="fw-bold text-end" style="width: 80px;">Days</th>
+                                                <th class="fw-bold text-end" style="width: 120px;">Total</th>
+                                                <th class="fw-bold description">Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php $count = 1; @endphp
+                                            @foreach($items as $item)
+                                                @php
+                                                    $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                    $units = floatval($item['units'] ?? 0);
+                                                    $days = floatval($item['days'] ?? 0);
+                                                    $total = $unitCost * $units * $days;
+                                                    $fundTotal += $total;
+                                                    $grandTotal += $total;
+                                                @endphp
+                                                <tr>
+                                                    <td>{{ $count++ }}</td>
+                                                    <td class="cost-item">{{ $item['cost'] ?? 'N/A' }}</td>
+                                                    <td class="text-end">${{ number_format($unitCost, 2) }}</td>
+                                                    <td class="text-end">{{ $units }}</td>
+                                                    <td class="text-end">{{ $days }}</td>
+                                                    <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
+                                                    <td class="description">{{ $item['description'] ?? ($item['cost'] ?? '') }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                        <tfoot class="table-light">
+                                            <tr>
+                                                <th colspan="5" class="text-end">Fund Total:</th>
+                                                <th class="text-end text-success">${{ number_format($fundTotal, 2) }}</th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        @endforeach
                         <div class="grand-total text-end">
                             <h5 class="fw-bold mb-0">
                                 <i class="bx bx-dollar me-2"></i>
                                 Grand Total: ${{ number_format($grandTotal, 2) }}
                             </h5>
+                        </div>
+                    @elseif($sourceType !== 'Activity' && !empty($budgetArray))
+                        {{-- Non-Travel Memo / Special Memo: fund-code keyed breakdown, Non-Travel uses Description column only --}}
+                        @foreach($budgetArray as $fundCodeId => $items)
+                            @if($fundCodeId !== 'grand_total' && is_array($items))
+                                @php
+                                    $fundCode = $fundCodesCollection[$fundCodeId] ?? null;
+                                    $fundTotal = 0;
+                                @endphp
+                                <div class="mb-4">
+                                    <div class="fund-header">
+                                        <h6 class="fw-bold mb-0" style="color: var(--secondary-maroon);">
+                                            @if($fundCode)
+                                                {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name ?? 'N/A' }})@if($fundCode->funder ?? null) - {{ $fundCode->funder->name }}@endif
+                                            @else
+                                                Fund Code ID: {{ $fundCodeId }}
+                                            @endif
+                                        </h6>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered budget-table {{ $isNonTravelMemo ? 'non-travel-memo' : '' }}">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="fw-bold" style="width: 40px;">#</th>
+                                                    <th class="fw-bold cost-item">{{ $isNonTravelMemo ? 'Description' : 'Cost Item' }}</th>
+                                                    <th class="fw-bold text-end" style="width: 100px;">Unit Cost</th>
+                                                    <th class="fw-bold text-end" style="width: 80px;">Quantity</th>
+                                                    <th class="fw-bold text-end" style="width: 120px;">Total</th>
+                                                    @if(!$isNonTravelMemo)
+                                                        <th class="fw-bold description">Description</th>
+                                                    @endif
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @php $count = 1; @endphp
+                                                @foreach($items as $item)
+                                                    @php
+                                                        $quantity = $item['quantity'] ?? $item['units'] ?? 1;
+                                                        $unitCost = (float)($item['unit_cost'] ?? 0);
+                                                        $total = $unitCost * (float)$quantity;
+                                                        $fundTotal += $total;
+                                                        $grandTotal += $total;
+                                                    @endphp
+                                                    <tr>
+                                                        <td>{{ $count++ }}</td>
+                                                        <td class="cost-item">
+                                                            @if($isNonTravelMemo)
+                                                                <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;">
+                                                                    {{ $item['cost'] ?? $item['description'] ?? 'N/A' }}
+                                                                </div>
+                                                            @else
+                                                                {{ $item['cost'] ?? $item['description'] ?? 'N/A' }}
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-end">${{ number_format($unitCost, 2) }}</td>
+                                                        <td class="text-end">{{ $quantity }}</td>
+                                                        <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
+                                                        @if(!$isNonTravelMemo)
+                                                            <td class="description">{{ $item['description'] ?? 'N/A' }}</td>
+                                                        @endif
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                            <tfoot class="table-light">
+                                                <tr>
+                                                    <th colspan="{{ $isNonTravelMemo ? '4' : '5' }}" class="text-end">Fund Total:</th>
+                                                    <th class="text-end text-success">${{ number_format($fundTotal, 2) }}</th>
+                                                    @if(!$isNonTravelMemo)<th></th>@endif
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            @endif
+                        @endforeach
+                        @if(isset($budgetArray['grand_total']))
+                            @php $grandTotal = (float)$budgetArray['grand_total']; @endphp
+                        @endif
+                        <div class="grand-total text-end">
+                            <h5 class="fw-bold mb-0">
+                                <i class="bx bx-dollar me-2"></i>
+                                Grand Total: ${{ number_format($grandTotal, 2) }}
+                            </h5>
+                        </div>
+                    @elseif($sourceType === 'Activity' && $fundCodesCollection->isEmpty())
+                        <div class="alert alert-warning">
+                            <i class="bx bx-info-circle me-2"></i>No budget codes selected for this activity.
                         </div>
                     @else
                         <div class="alert alert-warning">

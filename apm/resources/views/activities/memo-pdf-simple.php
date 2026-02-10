@@ -469,14 +469,32 @@
     
     if($hasBudgetSection): 
     ?>
-    <div class="page-break"></div>
-              <div class="section-label mb-15"><strong>Budget Details</strong></div>
-         
-             <?php foreach($fundCodes ?? [] as $fundCode): ?>
-
-           
-             
-                 <h5 style="font-weight: 600;"> <?php echo htmlspecialchars($fundCode->activity); ?> - <?php echo htmlspecialchars($fundCode->code); ?> - (<?php echo htmlspecialchars($fundCode->fundType->name); ?>) </h5>
+             <?php
+                            // Parse budget breakdown once (keyed by fund code id)
+                            $budgetBreakdown = null;
+                            if ($activity->budget_breakdown) {
+                                $budgetBreakdown = is_string($activity->budget_breakdown)
+                                    ? json_decode($activity->budget_breakdown, true)
+                                    : $activity->budget_breakdown;
+                            }
+                            $budgetBreakdown = is_array($budgetBreakdown ?? []) ? $budgetBreakdown : [];
+                            unset($budgetBreakdown['grand_total']);
+                            $grandTotal = 0; // For certification section (Estimated cost)
+                            $fundCodesList = $fundCodes ?? [];
+                            ?>
+             <?php foreach($fundCodesList as $fundCode): ?>
+                 <?php
+                            // New page for every fund code so each starts on its own page
+                            echo '<div class="page-break"></div>';
+                            // Only items for THIS fund code (support both int and string keys)
+                            $fundCodeId = $fundCode->id;
+                            $itemsForThisFund = $budgetBreakdown[$fundCodeId] ?? $budgetBreakdown[(string)$fundCodeId] ?? [];
+                            $itemsForThisFund = is_array($itemsForThisFund) ? $itemsForThisFund : [];
+                            $fundTotal = 0;
+                            $count = 1;
+                            ?>
+                 <div class="section-label mb-15"><strong>Budget Details</strong></div>
+                 <div class="section-label mb-15"><?php echo htmlspecialchars($fundCode->activity); ?> - <?php echo htmlspecialchars($fundCode->code); ?> - (<?php echo htmlspecialchars($fundCode->fundType->name ?? 'N/A'); ?>)</div>
 
                 <div>
                     <table class="bordered-table mb-15">
@@ -493,89 +511,64 @@
                         </thead>
                         <tbody>
                             <?php
-                              $count = 1;
-                              $grandTotal = 0;
-                            ?>
-                           
-                            <?php
-                            // Parse budget breakdown from activity
-                            $budgetBreakdown = null;
-                            if ($activity->budget_breakdown) {
-                                $budgetBreakdown = is_string($activity->budget_breakdown) 
-                                    ? json_decode($activity->budget_breakdown, true) 
-                                    : $activity->budget_breakdown;
-                            }
-                            
-                            // Display budget items from budget_breakdown
-                            if ($budgetBreakdown && is_array($budgetBreakdown)) {
-                                unset($budgetBreakdown['grand_total']); // Remove grand total from iteration
-                                
-                                foreach ($budgetBreakdown as $codeId => $items) {
-                                    if (is_array($items)) {
-                                        foreach ($items as $item) {
-                                            $unitCost = floatval($item['unit_cost'] ?? 0);
-                                            $units = floatval($item['units'] ?? 0);
-                                            $days = floatval($item['days'] ?? 1);
-                                            
-                                            // Use days when greater than 1, otherwise just unit_cost * units
-                                            if ($days > 1) {
-                                                $itemTotal = $unitCost * $units * $days;
-                                            } else {
-                                                $itemTotal = $unitCost * $units;
-                                            }
-                                            
-                                            $grandTotal += $itemTotal;
-                                            ?>
-                                            <tr>
-                                                <td><?php echo $count; ?></td>
-                                                <td class="text-right"><?php echo htmlspecialchars($item['cost'] ?? ''); ?></td>
-                                                <td class="text-right"><?php echo number_format($unitCost, 2); ?></td>
-                                                <td class="text-right"><?php echo $units; ?></td>
-                                                <td class="text-right"><?php echo $days; ?></td>
-                                                <td class="text-right"><?php echo number_format($itemTotal, 2); ?></td>
-                                                <td><?php echo htmlspecialchars($item['description'] ?? ''); ?></td>
-                                            </tr>
-                                            <?php
-                                            $count++;
-                                        }
+                            if (!empty($itemsForThisFund)) {
+                                foreach ($itemsForThisFund as $item) {
+                                    $unitCost = floatval($item['unit_cost'] ?? 0);
+                                    $units = floatval($item['units'] ?? 0);
+                                    $days = floatval($item['days'] ?? 1);
+                                    if ($days > 1) {
+                                        $itemTotal = $unitCost * $units * $days;
+                                    } else {
+                                        $itemTotal = $unitCost * $units;
                                     }
-                                }
-                            } else {
-                                // Fallback to activity_budget if budget_breakdown is not available
-                                foreach($activity->activity_budget as $item): ?>
-                                    <?php
-                                        $total = $item->unit_cost * $item->units*$item->days;
-                                        $grandTotal+=$total;
+                                    $fundTotal += $itemTotal;
                                     ?>
                                     <tr>
                                         <td><?php echo $count; ?></td>
-                                        <td class="text-right"><?php echo htmlspecialchars($item->cost); ?></td>
-                                        <td class="text-right"><?php echo number_format($item->unit_cost, 2); ?></td>
-                                        <td class="text-right"><?php echo $item->units; ?></td>
-                                        <td class="text-right"><?php echo $item->days; ?></td>
-                                        <td class="text-right"><?php echo number_format($item->total, 2); ?></td>
-                                        <td><?php echo htmlspecialchars($item->description); ?></td>
+                                        <td class="text-right"><?php echo htmlspecialchars($item['cost'] ?? ''); ?></td>
+                                        <td class="text-right"><?php echo number_format($unitCost, 2); ?></td>
+                                        <td class="text-right"><?php echo $units; ?></td>
+                                        <td class="text-right"><?php echo $days; ?></td>
+                                        <td class="text-right"><?php echo number_format($itemTotal, 2); ?></td>
+                                        <td><?php echo htmlspecialchars($item['description'] ?? ''); ?></td>
                                     </tr>
-                                <?php endforeach;
+                                    <?php
+                                    $count++;
+                                }
+                            } else {
+                                // Fallback: activity_budget filtered by this fund code
+                                foreach ($activity->activity_budget ?? [] as $item) {
+                                    $itemFundCodeId = $item->fund_code_id ?? $item->fund_code ?? null;
+                                    if ($itemFundCodeId == $fundCodeId || (string)$itemFundCodeId === (string)$fundCodeId) {
+                                        $total = $item->unit_cost * $item->units * ($item->days ?? 1);
+                                        $fundTotal += $total;
+                                        ?>
+                                        <tr>
+                                            <td><?php echo $count; ?></td>
+                                            <td class="text-right"><?php echo htmlspecialchars($item->cost ?? ''); ?></td>
+                                            <td class="text-right"><?php echo number_format($item->unit_cost, 2); ?></td>
+                                            <td class="text-right"><?php echo $item->units; ?></td>
+                                            <td class="text-right"><?php echo $item->days ?? 1; ?></td>
+                                            <td class="text-right"><?php echo number_format($total, 2); ?></td>
+                                            <td><?php echo htmlspecialchars($item->description ?? ''); ?></td>
+                                        </tr>
+                                        <?php
+                                        $count++;
+                                    }
+                                }
                             }
                             ?>
-
-                            <?php
-                                $count++;
-                            ?>
-                            
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th class="bg-highlight text-right" colspan="5">Grand Total</th>
-                                
-                                <th class="bg-highlight text-right"><?php echo number_format($grandTotal ?? 0, 2); ?></th>
+                                <th class="bg-highlight text-right" colspan="5">Fund Total:</th>
+                                <th class="bg-highlight text-right"><?php echo number_format($fundTotal, 2); ?></th>
                                 <th class="bg-highlight"></th>
                             </tr>
                         </tfoot>
                     </table>
-                   
                 </div>
+                 <?php $grandTotal += $fundTotal; ?>
      <div class="section-label"><strong>Request for Approval</strong></div>
      <div class="justify-text" style="padding: 2px;"><?php echo $activity->activity_request_remarks ?? 'N/A'; ?></div>
 
