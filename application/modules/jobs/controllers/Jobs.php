@@ -822,7 +822,8 @@ private function notify_staff_consent_pending_endterms($current_period, $deadlin
     $this->db->where('p.endterm_draft_status', 0);
     $this->db->where('p.endterm_sign_off', 1);
     $this->db->where('p.endterm_supervisor_1 IS NOT NULL', null, false);
-    $this->db->where('(p.endterm_staff_consent_at IS NULL OR p.endterm_staff_consent_at = "")', null, false);
+    // Staff not yet consented: consent timestamp is NULL (do not compare to '' - invalid for DATETIME)
+    $this->db->where('p.endterm_staff_consent_at IS NULL', null, false);
     
     // First supervisor has approved
     $this->db->where("EXISTS (
@@ -886,9 +887,9 @@ private function notify_second_supervisors_pending_endterms($current_period, $de
     $this->db->where('p.endterm_draft_status', 0);
     $this->db->where('p.endterm_sign_off', 1);
     $this->db->where('p.endterm_supervisor_2 IS NOT NULL', null, false);
+    // Staff has consented: consent timestamp is set (do not compare to '' - invalid for DATETIME)
     $this->db->where('p.endterm_staff_consent_at IS NOT NULL', null, false);
-    $this->db->where("p.endterm_staff_consent_at != ''", null, false);
-    
+
     // First supervisor has approved
     $this->db->where("EXISTS (
         SELECT 1 FROM ppa_approval_trail_end_term a1 
