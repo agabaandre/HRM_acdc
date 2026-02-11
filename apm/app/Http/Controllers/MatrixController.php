@@ -1323,13 +1323,20 @@ class MatrixController extends Controller
                     ->whereHas('activity', function($q) {
                         $q->where('overall_status', '!=', 'cancelled'); // Match staff activities filter
                     })
+                    ->with('activity')
                     ->get();
 
                 // Calculate division days (activities where participant is in their home division)
                 $division_days = $participantSchedules->where('is_home_division', true)->sum('participant_days');
-                
-                // Calculate other division days (activities where participant is in other divisions)
-                $other_days = $participantSchedules->where('is_home_division', false)->sum('participant_days');
+
+                // Other division days: only activities that are pending or approved (exclude draft, rejected)
+                $other_days = $participantSchedules
+                    ->where('is_home_division', false)
+                    ->filter(function ($ps) {
+                        $status = $ps->activity->overall_status ?? '';
+                        return in_array($status, ['pending', 'approved']);
+                    })
+                    ->sum('participant_days');
                 
                 $total_days = $division_days + $other_days;
                 $isOverLimit = $total_days > 21;
@@ -1360,10 +1367,18 @@ class MatrixController extends Controller
                         $q->where('matrix_id', $matrix->id)
                           ->where('overall_status', '!=', 'cancelled'); // Match staff activities filter
                     })
+                    ->with('activity')
                     ->get();
 
                 $division_days = $participantSchedules->where('is_home_division', true)->sum('participant_days');
-                $other_days = $participantSchedules->where('is_home_division', false)->sum('participant_days');
+                // Other division days: only pending or approved activities (exclude draft, rejected)
+                $other_days = $participantSchedules
+                    ->where('is_home_division', false)
+                    ->filter(function ($ps) {
+                        $status = $ps->activity->overall_status ?? '';
+                        return in_array($status, ['pending', 'approved']);
+                    })
+                    ->sum('participant_days');
                 $total_days = $division_days + $other_days;
 
                 $totalDivisionDays += $division_days;

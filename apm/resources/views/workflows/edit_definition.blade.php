@@ -27,7 +27,7 @@
             </div>
         @endif
         
-        <form action="{{ route('workflows.update-definition', [$workflow->id, $definition->id]) }}" method="POST">
+        <form action="{{ route('workflows.update-definition', [$workflow->id, $definition->id]) }}" method="POST" id="editDefinitionForm">
             @csrf
             @method('PUT')
 
@@ -270,6 +270,9 @@
             </div>
 
             <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <button type="button" class="btn btn-outline-warning me-auto" id="syncApprovalOrderBtn" title="Update existing approval trails to use the new approval order">
+                    <i class="bx bx-transfer me-1"></i>Sync approval order with existing trails
+                </button>
                 <a href="{{ route('workflows.show', $workflow->id) }}" class="btn btn-secondary me-2">
                     <i class="bx bx-x me-1"></i>Cancel
                 </a>
@@ -278,6 +281,52 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+{{-- Sync approval order modal: enter previous/new order, then sync with progress --}}
+<div class="modal fade" id="syncApprovalOrderModal" tabindex="-1" aria-labelledby="syncApprovalOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="syncApprovalOrderModalLabel">
+                    <i class="bx bx-transfer me-2"></i>Sync approval order with existing data
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="syncModalCloseBtn"></button>
+            </div>
+            <div class="modal-body">
+                <div id="syncApprovalOrderForm">
+                    <p class="text-muted small mb-3">Records in <strong>activity_approval_trails</strong> and <strong>approval_trails</strong> with <code>forward_workflow_id = {{ $workflow->id }}</code> will be updated from the previous order to the new order.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="syncPreviousOrder" class="form-label">Previous approval order</label>
+                            <input type="number" class="form-control" id="syncPreviousOrder" name="sync_previous_order" min="1" placeholder="e.g. 2">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="syncNewOrderInput" class="form-label">New approval order</label>
+                            <input type="number" class="form-control" id="syncNewOrderInput" name="sync_new_order" min="1" placeholder="e.g. 4">
+                        </div>
+                    </div>
+                    <div id="syncOrderValidation" class="text-danger small mt-1 d-none"></div>
+                </div>
+                <div id="syncApprovalOrderProgress" class="d-none mt-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span id="syncProgressLabel">Syncing...</span>
+                        <span id="syncProgressPct">0%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" id="syncProgressBar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                <div id="syncApprovalOrderResult" class="d-none mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="syncModalCancelBtn">Cancel</button>
+                <button type="button" class="btn btn-warning" id="syncApprovalOrderConfirmBtn">
+                    <i class="bx bx-transfer me-1"></i>Sync
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
@@ -299,6 +348,120 @@
             placeholder: 'Select options',
             allowClear: true,
             width: '100%'
+        });
+
+        var syncModal = new bootstrap.Modal(document.getElementById('syncApprovalOrderModal'));
+        var syncInProgress = false;
+
+        function resetSyncModal() {
+            $('#syncApprovalOrderForm').removeClass('d-none');
+            $('#syncPreviousOrder, #syncNewOrderInput').val('').prop('disabled', false);
+            $('#syncOrderValidation').addClass('d-none').text('');
+            $('#syncApprovalOrderProgress').addClass('d-none');
+            $('#syncProgressBar').css('width', '0%').attr('aria-valuenow', 0);
+            $('#syncProgressPct').text('0%');
+            $('#syncProgressLabel').text('Syncing...');
+            $('#syncApprovalOrderResult').addClass('d-none').empty();
+            $('#syncApprovalOrderConfirmBtn').prop('disabled', false).html('<i class="bx bx-transfer me-1"></i>Sync');
+            $('#syncModalCloseBtn, #syncModalCancelBtn').prop('disabled', false);
+            syncInProgress = false;
+        }
+
+        $('#syncApprovalOrderModal').on('show.bs.modal', function() {
+            resetSyncModal();
+        });
+
+        $('#syncApprovalOrderBtn').on('click', function() {
+            syncModal.show();
+        });
+
+        function setProgress(pct, label) {
+            pct = Math.min(100, Math.max(0, pct));
+            $('#syncProgressBar').css('width', pct + '%').attr('aria-valuenow', pct);
+            $('#syncProgressPct').text(pct + '%');
+            if (label) $('#syncProgressLabel').text(label);
+        }
+
+        $('#syncApprovalOrderConfirmBtn').on('click', function() {
+            var previousOrder = ($('#syncPreviousOrder').val() || '').trim();
+            var newOrder = ($('#syncNewOrderInput').val() || '').trim();
+            var $validation = $('#syncOrderValidation');
+
+            if (!previousOrder || !newOrder) {
+                $validation.removeClass('d-none').text('Please enter both previous and new approval order.');
+                $('#syncPreviousOrder, #syncNewOrderInput').addClass('is-invalid');
+                return;
+            }
+            var prev = parseInt(previousOrder, 10);
+            var n = parseInt(newOrder, 10);
+            if (isNaN(prev) || isNaN(n) || prev < 1 || n < 1) {
+                $validation.removeClass('d-none').text('Both values must be positive integers.');
+                $('#syncPreviousOrder, #syncNewOrderInput').addClass('is-invalid');
+                return;
+            }
+            if (prev === n) {
+                $validation.removeClass('d-none').text('Previous and new approval order must be different.');
+                $('#syncPreviousOrder, #syncNewOrderInput').addClass('is-invalid');
+                return;
+            }
+
+            $('#syncPreviousOrder, #syncNewOrderInput').removeClass('is-invalid');
+            $validation.addClass('d-none');
+
+            var btn = $('#syncApprovalOrderConfirmBtn');
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Syncing...');
+            $('#syncModalCloseBtn, #syncModalCancelBtn').prop('disabled', true);
+            syncInProgress = true;
+
+            $('#syncApprovalOrderForm').addClass('d-none');
+            $('#syncApprovalOrderProgress').removeClass('d-none');
+            $('#syncApprovalOrderResult').addClass('d-none').empty();
+            setProgress(10, 'Starting sync...');
+
+            // Animate progress while request is in flight (async)
+            var progressInterval = setInterval(function() {
+                var w = parseInt($('#syncProgressBar').attr('aria-valuenow') || 0, 10);
+                if (w < 70) setProgress(w + 8, 'Syncing approval trails...');
+            }, 200);
+
+            $.ajax({
+                url: '{{ route("workflows.sync-approval-order", [$workflow->id, $definition->id]) }}',
+                type: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    old_approval_order: previousOrder,
+                    new_approval_order: newOrder
+                },
+                success: function(res) {
+                    clearInterval(progressInterval);
+                    setProgress(100, 'Complete');
+                    $('#syncProgressBar').removeClass('progress-bar-animated');
+                    syncInProgress = false;
+                    $('#syncModalCloseBtn, #syncModalCancelBtn').prop('disabled', false);
+
+                    var $result = $('#syncApprovalOrderResult').removeClass('d-none');
+                    $result.html('<div class="alert alert-success mb-0"><i class="bx bx-check-circle me-2"></i>' + (res.message || 'Sync completed successfully.') + '</div>');
+                    if (typeof show_notification === 'function') {
+                        show_notification(res.message || 'Sync completed.', 'success');
+                    }
+                    btn.prop('disabled', true).html('<i class="bx bx-check me-1"></i>Done');
+                },
+                error: function(xhr) {
+                    clearInterval(progressInterval);
+                    setProgress(0, 'Error');
+                    $('#syncProgressBar').removeClass('progress-bar-animated').addClass('bg-danger');
+                    syncInProgress = false;
+                    $('#syncModalCloseBtn, #syncModalCancelBtn').prop('disabled', false);
+                    btn.prop('disabled', false).html('<i class="bx bx-transfer me-1"></i>Sync');
+
+                    var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Request failed. Please try again.';
+                    var $result = $('#syncApprovalOrderResult').removeClass('d-none');
+                    $result.html('<div class="alert alert-danger mb-0"><i class="bx bx-error-circle me-2"></i>' + msg + '</div>');
+                    if (typeof show_notification === 'function') {
+                        show_notification(msg, 'error');
+                    }
+                }
+            });
         });
     });
 </script>

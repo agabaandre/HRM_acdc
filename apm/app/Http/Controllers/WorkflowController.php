@@ -398,9 +398,70 @@ class WorkflowController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             
-            return redirect()->route('workflows.show', $workflow->id)
-                ->with('error', 'Failed to delete workflow definition. Please try again.');
+        return redirect()->route('workflows.show', $workflow->id)
+            ->with('error', 'Failed to delete workflow definition. Please try again.');
         }
+    }
+
+    /**
+     * Sync approval_order in activity_approval_trails and approval_trails to match the
+     * definition's newly assigned approval order (forward_workflow_id = workflow.id).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Workflow  $workflow
+     * @param  \App\Models\WorkflowDefinition  $definition
+     * @return \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+     */
+    public function syncApprovalOrder(Request $request, Workflow $workflow, WorkflowDefinition $definition)
+    {
+        $validated = $request->validate([
+            'old_approval_order' => 'required|integer|min:1',
+            'new_approval_order' => 'required|integer|min:1',
+        ]);
+
+        $oldOrder = (int) $validated['old_approval_order'];
+        $newOrder = (int) $validated['new_approval_order'];
+
+        // Definition must belong to this workflow
+        if ((int) $definition->workflow_id !== (int) $workflow->id) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Definition does not belong to this workflow.'], 422);
+            }
+            return redirect()->route('workflows.edit-definition', [$workflow->id, $definition->id])
+                ->with('error', 'Definition does not belong to this workflow.');
+        }
+
+        $workflowId = (int) $workflow->id;
+
+        $activityCount = DB::table('activity_approval_trails')
+            ->where('forward_workflow_id', $workflowId)
+            ->where('approval_order', $oldOrder)
+            ->update(['approval_order' => $newOrder]);
+
+        $approvalCount = DB::table('approval_trails')
+            ->where('forward_workflow_id', $workflowId)
+            ->where('approval_order', $oldOrder)
+            ->update(['approval_order' => $newOrder]);
+
+        $message = sprintf(
+            'Approval order synced: %d activity approval trail(s) and %d approval trail(s) updated from order %d to %d.',
+            $activityCount,
+            $approvalCount,
+            $oldOrder,
+            $newOrder
+        );
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'activity_trails_updated' => $activityCount,
+                'approval_trails_updated' => $approvalCount,
+            ]);
+        }
+
+        return redirect()->route('workflows.edit-definition', [$workflow->id, $definition->id])
+            ->with('success', $message);
     }
 
     /**
