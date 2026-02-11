@@ -411,7 +411,11 @@ class StaffController extends Controller
             if ($activity->matrix && $activity->matrix->division_id == $staff->division_id) {
                 $myDivisionActivities[] = $activityData;
             } else {
-                $otherDivisionsActivities[] = $activityData;
+                // Other divisions: only include activities that are pending or approved (exclude draft, rejected)
+                $status = $activity->overall_status ?? '';
+                if (in_array($status, ['pending', 'approved'])) {
+                    $otherDivisionsActivities[] = $activityData;
+                }
             }
             
             Log::info('Activity ' . $activity->id . ' - Division: ' . ($activity->matrix && $activity->matrix->division ? $activity->matrix->division->division_name : 'N/A') . ', Days: ' . $days);

@@ -88,6 +88,7 @@ Route::middleware([CheckSessionMiddleware::class])->group(function () {
     Route::post('workflows/{workflow}/store-definition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
     Route::get('workflows/{workflow}/edit-definition/{definition}', [WorkflowController::class, 'editDefinition'])->name('workflows.edit-definition');
     Route::put('workflows/{workflow}/update-definition/{definition}', [WorkflowController::class, 'updateDefinition'])->name('workflows.update-definition');
+    Route::post('workflows/{workflow}/sync-approval-order/{definition}', [WorkflowController::class, 'syncApprovalOrder'])->name('workflows.sync-approval-order');
     Route::delete('workflows/{workflow}/delete-definition/{definition}', [WorkflowController::class, 'deleteDefinition'])->name('workflows.delete-definition');
     Route::get('workflows/{workflow}/approvers', [WorkflowController::class, 'approvers'])->name('workflows.approvers');
     Route::put('workflows/{workflow}/approvers/{approver}', [WorkflowController::class, 'updateApprover'])->name('workflows.update-approver');
