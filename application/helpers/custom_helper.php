@@ -754,6 +754,33 @@ if (!function_exists('current_period')) {
     }
 }
 
+if (!function_exists('previous_period')) {
+
+    /**
+     * Returns the performance period for the previous year (same format as current_period).
+     * Used by jobs/reminders so notifications target the previous period, not the current one.
+     */
+    function previous_period()
+    {
+        $previousYear = (int) date('Y') - 1;
+        return 'January ' . $previousYear . ' to ' . 'December ' . $previousYear;
+    }
+}
+
+if (!function_exists('endterm_reminder_period')) {
+
+    /**
+     * Period to use for endterm reminders and approval notifications:
+     * - Before October (Jan–Sep): previous year's period (e.g. 2024 when current year is 2025).
+     * - October onwards (Oct–Dec): current year's period (e.g. 2025).
+     */
+    function endterm_reminder_period()
+    {
+        $month = (int) date('n');
+        return $month >= 10 ? current_period() : previous_period();
+    }
+}
+
 if (!function_exists('get_staff_name')) {
 
     function staff_name($id)

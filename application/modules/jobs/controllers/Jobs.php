@@ -466,7 +466,7 @@ public function cron_register(){
 
  public function notify_unsubmitted_ppas()
  {
-     $current_period = str_replace(' ', '-', current_period());
+     $current_period = str_replace(' ', '-', previous_period());
  
      $deadline = $this->db->select('ppa_deadline')->get('ppa_configs')->row()->ppa_deadline;
    
@@ -501,7 +501,7 @@ $days_remaining = days_to_ppa_deadline();
  //notify staff on midterms
  public function notify_unsubmitted_midterms()
  {
-     $current_period = str_replace(' ', '-', current_period());
+     $current_period = str_replace(' ', '-', previous_period());
      $deadline = $this->db->select('mid_term_deadline')->get('ppa_configs')->row()->mid_term_deadline;
 
      // Only notify if deadline is in 40 days or less
@@ -552,7 +552,7 @@ public function notify_supervisors_pending_ppas()
 {
 
 
-    $current_period = str_replace(' ', '-', current_period());
+    $current_period = str_replace(' ', '-', previous_period());
     $deadline = $this->db->get('ppa_configs')->row()->ppa_deadline;
 
     // Get supervisors with any pending PPA
@@ -599,7 +599,7 @@ public function notify_supervisors_pending_ppas()
 //reminder for midterm approval
 public function notify_supervisors_pending_midterms()
 {
-    $current_period = str_replace(' ', '-', current_period());
+    $current_period = str_replace(' ', '-', previous_period());
     $deadline = $this->db->get('ppa_configs')->row()->mid_term_deadline;
 
     // Get supervisors with any pending Midterm
@@ -650,21 +650,22 @@ public function notify_supervisors_pending_midterms()
     $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
 }
 
-//notify staff on endterms
+// Notify staff who have not submitted endterm (period: previous year before Oct, current year from Oct)
 public function notify_unsubmitted_endterms()
 {
     $this->load->model("performance/Endterm_mdl",'endterm_mdl');
-    $current_period = str_replace(' ', '-', current_period());
+    // Before October use previous year; from October use current year
+    $period = str_replace(' ', '-', endterm_reminder_period());
     $deadline = $this->db->select('end_term_deadline')->get('ppa_configs')->row()->end_term_deadline;
 
     // Only notify if deadline is in 40 days or less
     $days_remaining = days_to_endterm_deadline();
 
     if ($days_remaining !== null && $days_remaining <= 40) {
-        $staff_list = $this->endterm_mdl->get_staff_without_endterm($current_period);
+        $staff_list = $this->endterm_mdl->get_staff_without_endterm($period);
 
         foreach ($staff_list as $staff) {
-            $entry_log_id = md5($staff->staff_id . '-empENDTERMREM-' . date('Y-m-d'));
+            $entry_log_id = md5($staff->staff_id . '-empENDTERMREM-' . $period . '-' . date('Y-m-d'));
 
             // Check if a notification for this staff and period has already been logged today using only entry_id
             $exists = $this->db
@@ -678,10 +679,10 @@ public function notify_unsubmitted_endterms()
 
             $data = [
                 'name' => $staff->title . ' ' . $staff->fname . ' ' . $staff->lname,
-                'period' => $current_period,
+                'period' => $period,
                 'deadline' => $deadline,
                 'type' => 'Endterm Reminder',
-                'subject' => "Endterm Review Reminder: Submit your Endterm ($current_period)",
+                'subject' => "Endterm Review Reminder: Submit your Endterm ($period)",
                 'email_to' => $staff->work_email.';'.settings()->email,
             ];
 
@@ -701,20 +702,20 @@ public function notify_unsubmitted_endterms()
     }
 }
 
-//reminder for endterm approval - handles 3-stage approval flow
+// Reminder for endterm approval - handles 3-stage flow. Period: previous year before Oct, current year from Oct.
 public function notify_supervisors_pending_endterms()
 {
-    $current_period = str_replace(' ', '-', current_period());
+    $period = str_replace(' ', '-', endterm_reminder_period());
     $deadline = $this->db->get('ppa_configs')->row()->end_term_deadline;
 
     // STAGE 1: Notify first supervisors who need to approve
-    $this->notify_first_supervisors_pending_endterms($current_period, $deadline);
+    $this->notify_first_supervisors_pending_endterms($period, $deadline);
 
     // STAGE 2: Notify staff who need to consent after first supervisor approval
-    $this->notify_staff_consent_pending_endterms($current_period, $deadline);
+    $this->notify_staff_consent_pending_endterms($period, $deadline);
 
     // STAGE 3: Notify second supervisors who need to approve after staff consent
-    $this->notify_second_supervisors_pending_endterms($current_period, $deadline);
+    $this->notify_second_supervisors_pending_endterms($period, $deadline);
 
     // Now, call notify_unsubmitted_endterms() ONCE
     $this->notify_unsubmitted_endterms();
