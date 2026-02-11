@@ -1674,15 +1674,37 @@ class MatrixController extends Controller
 
     public function update_status(Request $request, Matrix $matrix): RedirectResponse
     {
-
-        $approvalservice = new ApprovalService();
-        $next_approval_point = $approvalservice->getNextApprover($matrix);
-
-       // dd($next_approval_point);
-        
         $request->validate(['action' => 'required']);
-//dd($request->all());
-        $this->saveMatrixTrail($matrix,$request->comment,$request->action);
+
+        $approvalService = new ApprovalService();
+        $userStaffId = user_session('staff_id');
+
+        // Guard: only the current approver for this level can take this action (prevents approving for wrong level)
+        if (!$approvalService->canTakeAction($matrix, (int) $userStaffId)) {
+            return redirect()
+                ->route('matrices.show', [$matrix])
+                ->with('error', 'You are not the current approver for this level, or this action is not allowed.');
+        }
+
+        // Guard: idempotency – avoid duplicate trail when same user submits same action for this level (e.g. double-click / poor network)
+        $recentDuplicate = ApprovalTrail::where('model_id', $matrix->id)
+            ->where('model_type', Matrix::class)
+            ->where('staff_id', $userStaffId)
+            ->where('approval_order', $matrix->approval_level)
+            ->where('action', $request->action)
+            ->where('is_archived', 0)
+            ->where('created_at', '>=', now()->subMinutes(2))
+            ->exists();
+
+        if ($recentDuplicate) {
+            return redirect()
+                ->route('matrices.show', [$matrix])
+                ->with('success', 'Your action was already recorded. No duplicate was created.');
+        }
+
+        $next_approval_point = $approvalService->getNextApprover($matrix);
+
+        $this->saveMatrixTrail($matrix, $request->comment, $request->action);
        // dd($request->action);
         $notification_type =null;
 
