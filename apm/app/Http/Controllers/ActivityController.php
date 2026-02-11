@@ -1894,10 +1894,14 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
     public function updateSingleMemoStatus(Request $request, Activity $activity): RedirectResponse
     {
         $request->validate([
-            'action' => 'required|in:approved,rejected,returned',
+            'action' => 'required|in:approved,rejected,returned,cancelled',
             'comment' => 'nullable|string|max:1000',
+            'remarks' => 'nullable|string|max:1000',
             'available_budget' => 'nullable|numeric|min:0'
         ]);
+
+        // Single memo form sends comments as "remarks"; accept both for compatibility
+        $comment = $request->filled('comment') ? $request->comment : ($request->filled('remarks') ? $request->remarks : null);
 
         $approvalService = app(ApprovalService::class);
         
@@ -1914,7 +1918,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             $additionalData['available_budget'] = $request->available_budget;
         }
 
-        $activity->updateApprovalStatus($request->action, $request->comment, $additionalData);
+        $activity->updateApprovalStatus($request->action, $comment, $additionalData);
 
         switch ($request->action) {
             case 'approved':
@@ -1925,6 +1929,9 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 break;
             case 'returned':
                 $message = 'Single memo returned for revision.';
+                break;
+            case 'cancelled':
+                $message = 'Single memo cancelled.';
                 break;
             default:
                 $message = 'Status updated successfully.';
