@@ -282,7 +282,7 @@
 @foreach($pendingApprovals as $categoryName => $items)
     @if(count($items) > 0)
         <div class="card mb-4">
-            <div class="card-header bg-success">
+            <div class="card-header" style="background-color: #a9b8af;">
                 <h5 class="mb-0 text-white">
                     <i class="fas fa-folder me-2 text-white"></i>
                     {{ $categoryName }}
