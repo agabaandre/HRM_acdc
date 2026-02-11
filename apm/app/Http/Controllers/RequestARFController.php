@@ -730,7 +730,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
     {
             Log::info('ARF Show Method Called', ['id' => $request_arf]);
         
-        $requestARF = RequestARF::with(['approvalTrails.staff', 'approvalTrails.approverRole', 'funder'])->find($request_arf);
+        $requestARF = RequestARF::with(['approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole', 'funder'])->find($request_arf);
         
         if (!$requestARF) {
             Log::error('ARF not found', ['id' => $request_arf]);
@@ -1154,7 +1154,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
     public function print(Request $request, RequestARF $requestARF)
     {
         // Load essential ARF relationships
-        $requestARF->load(['staff', 'fundType', 'responsiblePerson', 'funder', 'approvalTrails.staff', 'approvalTrails.approverRole']);
+        $requestARF->load(['staff', 'fundType', 'responsiblePerson', 'funder', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole']);
         
         // Get source data using model_type and source_id
         $sourceModel = null;
@@ -1238,7 +1238,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'updated_at' => $sourceModel->updated_at,
                 ];
             } elseif ($requestARF->model_type === 'App\\Models\\NonTravelMemo') {
-                $sourceModel->load(['division.divisionHead', 'staff', 'fundType', 'approvalTrails.staff', 'approvalTrails.approverRole']);
+                $sourceModel->load(['division.divisionHead', 'staff', 'fundType', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole']);
                 
                 // Get fund codes for budget display
                 $fundCodes = [];
@@ -1268,7 +1268,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'updated_at' => $sourceModel->updated_at,
                 ];
             } elseif ($requestARF->model_type === 'App\\Models\\SpecialMemo') {
-                $sourceModel->load(['division.divisionHead', 'staff', 'fundType', 'approvalTrails.staff', 'approvalTrails.approverRole']);
+                $sourceModel->load(['division.divisionHead', 'staff', 'fundType', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole']);
                 
                 // Get fund codes for budget display
                 $fundCodes = [];
@@ -1298,7 +1298,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'updated_at' => $sourceModel->updated_at,
                 ];
             } elseif ($requestARF->model_type === 'App\\Models\\ChangeRequest') {
-                $sourceModel->load(['division.divisionHead', 'staff', 'fundType', 'matrix.division.divisionHead', 'matrix.matrixApprovalTrails.staff', 'matrix.matrixApprovalTrails.approverRole', 'approvalTrails.staff', 'approvalTrails.approverRole']);
+                $sourceModel->load(['division.divisionHead', 'staff', 'fundType', 'matrix.division.divisionHead', 'matrix.matrixApprovalTrails.staff', 'matrix.matrixApprovalTrails.approverRole', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole']);
                 
                 // Get fund codes for budget display
                 $fundCodes = [];

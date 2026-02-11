@@ -438,7 +438,7 @@ class MatrixController extends Controller
         // Load primary relationships
         //(can_take_action($matrix));
 
-        $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails']);
+        $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails.staff','matrixApprovalTrails.oicStaff']);
     //dd($matrix);
         // Separate regular activities and single memos
         $activitiesQuery = $matrix->activities()->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);

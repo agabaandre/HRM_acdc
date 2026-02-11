@@ -136,7 +136,7 @@ class Activity extends Model
 
     public function activityApprovalTrails(): HasMany
     {
-        return $this->hasMany(ActivityApprovalTrail::class, 'activity_id');
+        return $this->hasMany(ActivityApprovalTrail::class, 'activity_id')->orderBy('created_at', 'desc');
     }
 
     public function locations()

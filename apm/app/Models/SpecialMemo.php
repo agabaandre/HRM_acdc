@@ -317,7 +317,7 @@ class SpecialMemo extends Model
      */
     public function approvalTrails()
     {
-        return $this->morphMany(ApprovalTrail::class, 'model', 'model_type', 'model_id');
+        return $this->morphMany(ApprovalTrail::class, 'model', 'model_type', 'model_id')->orderBy('created_at', 'desc');
     }
 
 

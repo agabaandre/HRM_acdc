@@ -742,7 +742,7 @@ class ServiceRequestController extends Controller
      */
     public function show(ServiceRequest $serviceRequest): View
     {
-        $serviceRequest->load(['staff', 'division', 'activity', 'forwardWorkflow', 'reverseWorkflow', 'serviceRequestApprovalTrails.staff', 'serviceRequestApprovalTrails.approverRole']);
+        $serviceRequest->load(['staff', 'division', 'activity', 'forwardWorkflow', 'reverseWorkflow', 'serviceRequestApprovalTrails.staff', 'serviceRequestApprovalTrails.approverRole', 'approvalTrails.staff', 'approvalTrails.oicStaff']);
         
         // Load source data if available
         $sourceData = null;

@@ -683,7 +683,7 @@ class SpecialMemoController extends Controller
      */
     public function show(SpecialMemo $specialMemo): View
     {
-        $specialMemo->load(['staff', 'division', 'staff.division', 'responsiblePerson']);
+        $specialMemo->load(['staff', 'division', 'staff.division', 'responsiblePerson', 'approvalTrails.staff', 'approvalTrails.oicStaff']);
         
         return view('special-memo.show', compact('specialMemo'));
     }
