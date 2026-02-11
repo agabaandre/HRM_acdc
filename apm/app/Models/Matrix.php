@@ -232,7 +232,9 @@ class Matrix extends Model
     }
 
     public function matrixApprovalTrails(){
-        return $this->hasMany(ApprovalTrail::class, 'model_id')->where('model_type', 'App\Models\Matrix');
+        return $this->hasMany(ApprovalTrail::class, 'model_id')
+            ->where('model_type', 'App\Models\Matrix')
+            ->orderBy('created_at', 'desc');
     }
 
     public function participant_schedules(){

@@ -729,7 +729,8 @@ class ChangeRequestController extends Controller
             'fundType',
             'parentMemo',
             'forwardWorkflow',
-            'approvalTrails.staff'
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff'
         ]);
 
         // Get the parent memo explicitly if not loaded
@@ -1611,6 +1612,7 @@ class ChangeRequestController extends Controller
             'parentMemo',
             'forwardWorkflow',
             'approvalTrails.staff',
+            'approvalTrails.oicStaff',
             'approvalTrails.workflowDefinition'
         ]);
 

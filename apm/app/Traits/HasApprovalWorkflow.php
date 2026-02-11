@@ -16,7 +16,7 @@ trait HasApprovalWorkflow
      */
     public function approvalTrails(): MorphMany
     {
-        return $this->morphMany(ApprovalTrail::class, 'model');
+        return $this->morphMany(ApprovalTrail::class, 'model')->orderBy('created_at', 'desc');
     }
 
     /**

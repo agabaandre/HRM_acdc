@@ -326,7 +326,7 @@ class RequestARF extends Model
      */
     public function approvalTrails()
     {
-        return $this->morphMany(ApprovalTrail::class, 'model');
+        return $this->morphMany(ApprovalTrail::class, 'model')->orderBy('created_at', 'desc');
     }
     
     /**

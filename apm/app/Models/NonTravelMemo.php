@@ -132,7 +132,7 @@ class NonTravelMemo extends Model
 
     public function approvalTrails()
     {
-        return $this->morphMany(\App\Models\ApprovalTrail::class, 'model', 'model_type', 'model_id');
+        return $this->morphMany(\App\Models\ApprovalTrail::class, 'model', 'model_type', 'model_id')->orderBy('created_at', 'desc');
     }
 
     /**

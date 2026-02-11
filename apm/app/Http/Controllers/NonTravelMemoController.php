@@ -533,7 +533,7 @@ class NonTravelMemoController extends Controller
     public function show(NonTravelMemo $nonTravel): View
     {
        
-        $nonTravel->load(['staff', 'nonTravelMemoCategory', 'fundType']);
+        $nonTravel->load(['staff', 'nonTravelMemoCategory', 'fundType', 'approvalTrails.staff', 'approvalTrails.oicStaff']);
         
         // Decode JSON fields
         $nonTravel->budget_breakdown = is_string($nonTravel->budget_breakdown) 

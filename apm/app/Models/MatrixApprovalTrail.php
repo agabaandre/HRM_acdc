@@ -16,8 +16,14 @@ class MatrixApprovalTrail extends Model
         'remarks',
     ];
 
-    public function staff(){
-        return $this->belongsTo(Staff::class,"staff_id","staff_id");
+    public function staff()
+    {
+        return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
+    }
+
+    public function oicStaff()
+    {
+        return $this->belongsTo(Staff::class, 'oic_staff_id', 'staff_id');
     }
 
     public function approver_role(){
