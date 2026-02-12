@@ -68,6 +68,10 @@ Route::get('/', function (Request $request) {
 // Logout route (should be accessible without middleware)
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Public FAQ and Help (no login required; place before session middleware so they are reachable from login page)
+Route::get('/faq', [App\Http\Controllers\FaqController::class, 'publicPage'])->name('faq.index');
+Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
+
 // Home route
 Route::get('/home', function () {
     return view('home', [
@@ -186,8 +190,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
     
-    // Help & Documentation Routes
-    Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
+    // Help & Documentation Routes (/help is public above; user-guide and approvers-guide require session)
     Route::get('/help/user-guide', [App\Http\Controllers\HelpController::class, 'userGuide'])->name('help.user-guide');
     Route::get('/help/approvers-guide', [App\Http\Controllers\HelpController::class, 'approversGuide'])->name('help.approvers-guide');
     Route::get('/documentation', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation');
@@ -382,6 +385,7 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     // Change Request Routes
     Route::get('change-requests/pending-approvals', [App\Http\Controllers\ChangeRequestController::class, 'pendingApprovals'])->name('change-requests.pending-approvals');
     Route::resource('change-requests', App\Http\Controllers\ChangeRequestController::class);
+    Route::resource('faqs', App\Http\Controllers\FaqController::class)->except(['show']);
     Route::post('change-requests/{changeRequest}/submit-for-approval', [App\Http\Controllers\ChangeRequestController::class, 'submitForApproval'])->name('change-requests.submit-for-approval');
     Route::post('change-requests/{changeRequest}/update-status', [App\Http\Controllers\ChangeRequestController::class, 'updateStatus'])->name('change-requests.update-status');
     Route::get('change-requests/{changeRequest}/print', [App\Http\Controllers\ChangeRequestController::class, 'print'])->name('change-requests.print');

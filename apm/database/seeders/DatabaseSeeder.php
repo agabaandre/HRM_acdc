@@ -29,7 +29,8 @@ class DatabaseSeeder extends Seeder
             MemoSeeder::class,            // Finally, seed memos
             CostItemSeeder::class, 
             FundTypesSeeder::class,     
-            FundCodesSeeder::class       // Then seed cost items
+            FundCodesSeeder::class,      // Then seed cost items
+            FaqSeeder::class,            // Seed default FAQs
         ]);
     }
 }
