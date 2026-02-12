@@ -41,6 +41,22 @@ $config["base_url"] = $root;
 
 /*
 |--------------------------------------------------------------------------
+| APM / CBP base URL (for FAQ and Help links on login page)
+|--------------------------------------------------------------------------
+| Set APM_BASE_URL in .env (e.g. http://localhost/staff/apm or localhost/staff/apm).
+| If only path/host (no http/https), scheme and host are added from current request.
+| If empty, derived from base_url by removing /staff so APM is at document root.
+*/
+$apm_base = getenv('APM_BASE_URL') ?: (isset($_ENV['APM_BASE_URL']) ? $_ENV['APM_BASE_URL'] : '');
+$apm_base = trim((string) $apm_base);
+if ($apm_base !== '' && strpos($apm_base, 'http://') !== 0 && strpos($apm_base, 'https://') !== 0) {
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'http';
+    $apm_base = $scheme . '://' . preg_replace('#^/+#', '', $apm_base);
+}
+$config['apm_base_url'] = $apm_base;
+
+/*
+|--------------------------------------------------------------------------
 | Index File
 |--------------------------------------------------------------------------
 |

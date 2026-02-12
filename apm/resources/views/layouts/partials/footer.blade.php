@@ -8,8 +8,12 @@
 <!--end overlay-->
 <!--Start Back To Top Button--> <a href="javaScript:;" class="back-to-top"><i class='bx bxs-up-arrow-alt'></i></a>
 <!--End Back To Top Button-->
-<footer class="page-footer">
-    <p class="mb-0">Copyright © Africa CDC {{ date('Y') }}. All right reserved.</p>
+<footer class="page-footer" style="padding-left: 4px;">
+    <p class="mb-0">
+        <a href="{{ route('faq.index') }}" class="text-decoration-none me-3">FAQs</a>
+        <a href="{{ route('help.index') }}" class="text-decoration-none me-3">Help</a>
+        <span class="text-muted">Copyright © Africa CDC {{ date('Y') }}. All right reserved.</span>
+    </p>
 </footer>
 </div>
 <!--end wrapper-->

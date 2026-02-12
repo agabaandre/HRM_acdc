@@ -304,6 +304,14 @@
             font-size: 0.9rem;
         }
 
+        .footer a {
+            color: var(--primary-color);
+        }
+
+        .footer a:hover {
+            color: var(--primary-dark);
+        }
+
         .form-toggle {
             display: none;
             animation: slideDown 0.3s ease;
@@ -624,6 +632,21 @@
 
                 <!-- Footer -->
                 <div class="footer">
+                    <?php
+                    $ci =& get_instance();
+                    $apm_base = $ci->config->item('apm_base_url');
+                    if (empty($apm_base)) {
+                        $apm_base = rtrim(preg_replace('#/staff/?$#', '', base_url()), '/');
+                    }
+                    $apm_base = rtrim($apm_base, '/');
+                    if (!empty($apm_base) && strpos($apm_base, 'http') !== 0) {
+                        $apm_base = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http') . '://' . ltrim($apm_base, '/');
+                    }
+                    ?>
+                    <p class="mb-2">
+                        <a href="<?php echo htmlspecialchars($apm_base); ?>/faq" target="_blank" rel="noopener" class="text-decoration-none me-3"><i class="fas fa-question-circle me-1"></i>FAQs</a>
+                        <a href="<?php echo htmlspecialchars($apm_base); ?>/help" target="_blank" rel="noopener" class="text-decoration-none"><i class="fas fa-book me-1"></i>Help</a>
+                    </p>
                     <p>&copy; <?php echo date('Y'); ?> Africa CDC. All rights reserved.</p>
                 </div>
             </div>

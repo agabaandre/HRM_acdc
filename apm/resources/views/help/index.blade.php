@@ -17,6 +17,33 @@
                     <p class="lead">Welcome to the APM Help Center. Select a guide to get started.</p>
                     
                     <div class="row g-4 mt-3">
+                        <!-- FAQs Card -->
+                        <div class="col-12">
+                            <div class="card h-100 border-success">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                                                <i class="fas fa-question-circle fa-2x text-success"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="card-title mb-1">Frequently Asked Questions</h5>
+                                            <p class="text-muted small mb-0">Quick answers to common questions</p>
+                                        </div>
+                                    </div>
+                                    <p class="card-text mb-0">
+                                        Searchable FAQs on special memos, travel matrices, change requests, access, and more.
+                                    </p>
+                                    <a href="{{ route('faq.index') }}" class="btn btn-success mt-3">
+                                        <i class="fas fa-list-ul me-2"></i>View FAQs
+                                    </a>
+                                    <a href="{{ route('faqs.index') }}" class="btn btn-outline-secondary mt-3 ms-2">
+                                        <i class="fas fa-cog me-2"></i>Manage FAQs
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                         <!-- User Guide Card -->
                         <div class="col-md-6">
                             <div class="card h-100 border-primary">

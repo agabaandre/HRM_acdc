@@ -351,6 +351,22 @@ body {
     </div>
     <?php endforeach; ?>
   </div>
+  <footer class="home-footer" style="margin-top: 2rem; padding: 1rem 0; border-top: 1px solid var(--border-color); margin-left: 4px;">
+    <?php
+    $apm_base = $this->config->item('apm_base_url');
+    if (empty($apm_base)) {
+      $apm_base = rtrim(preg_replace('#/staff/?$#', '', base_url()), '/');
+    }
+    $apm_base = rtrim($apm_base, '/');
+    if (!empty($apm_base) && strpos($apm_base, 'http') !== 0) {
+      $apm_base = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http') . '://' . ltrim($apm_base, '/');
+    }
+    ?>
+    <p class="mb-0">
+      <a href="<?= htmlspecialchars($apm_base) ?>/faq" target="_blank" rel="noopener" class="text-decoration-none me-3" style="color: var(--primary-color);">FAQs</a>
+      <a href="<?= htmlspecialchars($apm_base) ?>/help" target="_blank" rel="noopener" class="text-decoration-none me-3" style="color: var(--primary-color);">Help</a>
+    </p>
+  </footer>
 </div>
 
 <script>
