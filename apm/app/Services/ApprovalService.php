@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ApprovalTrail;
+use App\Models\FundCode;
 use App\Models\WorkflowDefinition;
 use App\Models\Approver;
 use App\Models\Staff;
@@ -362,7 +363,7 @@ class ApprovalService
             return $category_definition;
         }
     }
-   // dd($current_definition);
+   //dd($current_definition);
 
     $nextStepIncrement = 1;
 
@@ -371,6 +372,10 @@ class ApprovalService
         $nextStepIncrement = 2;
     else if($model->forward_workflow_id>0 && $current_definition && $current_definition->approval_order==1){
         $nextStepIncrement = 1;
+    }
+    // Skip to DG (12) when at Deputy Chief of Staff (10) – Chief of Staff (11) does not need to approve.
+    else if($model->forward_workflow_id==1 && $current_definition && $current_definition->approval_order==10){
+        $nextStepIncrement = 2;
     }
 
 
@@ -392,22 +397,55 @@ class ApprovalService
            ->orderBy('approval_order','asc')
            ->get();
     }
-    //dd($next_definition);
-        
-    //if matrix has_extramural is true and matrix->approval_level !==definition_approval_order, 
-    // get from $definition where fund_type=2, else where fund_type=2
-    //if one, just return the one available
-    if ($next_definition->count() > 1) {
 
-        if ($has_extramural && $model->approval_level !== $next_definition->first()->approval_order) {
-            return $next_definition->where('fund_type', 2);
-        } 
-        else {
-            return $next_definition->where('fund_type', 1);
+    // Level 9 → 11 when order 10 (Deputy Chief of Staff) is not allowed for this model's division
+    if ($model->approval_level == 9 && $next_definition->isNotEmpty() && $next_definition->first()->approval_order == 10) {
+        $definitionFor10 = $next_definition->count() > 1
+            ? $next_definition->where('fund_type', $has_extramural ? 2 : 1)->first() ?? $next_definition->first()
+            : $next_definition->first();
+        if ($definitionFor10 && !$this->isOnlyAllowedForDivisions($definitionFor10, $model)) {
+            $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 11) // Chief of Staff
+                ->first();
+            if ($nextApprover) {
+                return $nextApprover;
+            }
+            // Order 11 disabled: try 12 (DG); otherwise return null so we don't fall through to 10
+            $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 12)
+                ->first();
+            return $nextApprover;
         }
     }
 
+   // dd($next_definition);
+
+    // Multiple definitions for same order (e.g. fund_type 1 and 2): pick by fund_type, then apply division check for order >= 3
+    if ($next_definition->count() > 1) {
+        $picked = $has_extramural && $model->approval_level !== $next_definition->first()->approval_order
+            ? $next_definition->where('fund_type', 2)->first()
+            : $next_definition->where('fund_type', 1)->first();
+        $picked = $picked ?? $next_definition->first();
+        if ($picked && $picked->approval_order >= 3) {
+            $allowed = $this->skipToNextDefinitionAllowedForDivision($model, $picked, (int) $model->forward_workflow_id);
+            if ($allowed) {
+                return $allowed;
+            }
+            return null; // Picked doesn't apply to this division and no later definition does
+        }
+        if ($has_extramural && $model->approval_level !== $next_definition->first()->approval_order) {
+            return $next_definition->where('fund_type', 2);
+        } 
+            return $next_definition->where('fund_type', 1);
+    }
+
     $definition = ($next_definition->count()>0)?$next_definition[0]:null;
+    // For levels >= 3: if this definition has division restrictions and model's division is not allowed, skip to next that applies
+    if ($definition && $definition->approval_order >= 3) {
+        $definition = $this->skipToNextDefinitionAllowedForDivision($model, $definition, (int) $model->forward_workflow_id);
+    }
     //dd($definition);
     
     // Check if we're currently at Head of Operations (approval_level = 7) BEFORE other logic
@@ -434,6 +472,40 @@ class ApprovalService
         return $nextApprover;
     }
     
+
+
+    // Approvers with allowed_divisions above order 9: at level 10 with allowed divisions go to DG (12); at level 9 or 10 when next is 10 but division not allowed, go to Chief of Staff (11)
+    if ($definition) {
+        $allowed_divisions = $this->isOnlyAllowedForDivisions($definition, $model);
+        if ($model->approval_level == 10 && $allowed_divisions) {
+            $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 12) // DG
+                ->first();
+            // Return result even if null (order 12 disabled) so we don't fall through incorrectly
+            return $nextApprover;
+        } else if ($definition->approval_order == 10 && !$allowed_divisions) {
+            // Next would be 10 (Deputy Chief of Staff) but this division is not in allowed list – go to 11 (Chief of Staff)
+            $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 11)
+                ->first();
+            if ($nextApprover) {
+                return $nextApprover;
+            }
+            // Order 11 disabled: try 12 (DG); otherwise return null so we don't fall through to 10
+            $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 12)
+                ->first();
+            return $nextApprover;
+        }
+    }
+   
+
+
+
+    // if 
     //intramural only, skip extra mural role
     if($definition  && !$has_extramural &&  $definition->fund_type==2){
       return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
@@ -973,11 +1045,14 @@ class ApprovalService
 // }
     /**
      * Get category-specific approver based on division category
-     * 
+     *
      * @param Model $model
      * @param string $category
      * @return WorkflowDefinition|null
      */
+
+    
+
     private function getCategoryApprover(Model $model, string $category): ?WorkflowDefinition
     {
         // Map categories to their specific approval orders
@@ -1012,8 +1087,144 @@ class ApprovalService
                 ->where('approval_order', 9)
                 ->first();
         }
-        
+
         return $categoryDefinition;
+    }
+
+
+    /**
+     * Whether this workflow definition applies to the model's division.
+     * - When divisions is NULL or empty: no division limit, so returns true (applies to all).
+     * - When divisions is set: returns true only if the model's division is in the list.
+     */
+    private function isOnlyAllowedForDivisions(WorkflowDefinition $definition, Model $model): bool
+    {
+        $allowed = $definition->divisions;
+        if (is_string($allowed)) {
+            $allowed = json_decode($allowed, true);
+        }
+        if (is_string($allowed)) {
+            $allowed = json_decode($allowed, true);
+        }
+        // NULL or undefined or empty = no division limit; approver applies to all divisions
+        if (empty($allowed) || !is_array($allowed)) {
+            return true;
+        }
+
+        $divisionId = $model->division_id ?? null;
+        if ($divisionId === null && method_exists($model, 'division') && $model->division) {
+            $divisionId = $model->division->id ?? null;
+        }
+        if ($divisionId === null) {
+            return true; // Can't restrict if model has no division
+        }
+
+        $allowed = array_map('strval', $allowed);
+        return in_array((string) $divisionId, $allowed, true);
+    }
+
+    /**
+     * Collect unique funder IDs for the memo/model (from fund codes used in budget).
+     * Used for allowed_funders check from level 3.
+     */
+    private function getModelFunderIds(Model $model): array
+    {
+        $funderIds = [];
+
+        // Matrix: activities -> activity_budget -> fundcode -> funder_id
+        if (method_exists($model, 'activities') && $model->activities()->exists()) {
+            $budgets = $model->activities()->with('activity_budget.fundcode')->get()
+                ->flatMap->activity_budget;
+            foreach ($budgets as $budget) {
+                if ($budget->fundcode && $budget->fundcode->funder_id !== null) {
+                    $funderIds[] = (int) $budget->fundcode->funder_id;
+                }
+            }
+            return array_values(array_unique($funderIds));
+        }
+
+        // Activity: activity_budget -> fundcode -> funder_id
+        if (method_exists($model, 'activity_budget') && $model->activity_budget()->exists()) {
+            $model->load('activity_budget.fundcode');
+            foreach ($model->activity_budget as $budget) {
+                if ($budget->fundcode && $budget->fundcode->funder_id !== null) {
+                    $funderIds[] = (int) $budget->fundcode->funder_id;
+                }
+            }
+            return array_values(array_unique($funderIds));
+        }
+
+        // RequestARF: funder_id directly
+        if (isset($model->funder_id) && $model->funder_id !== null) {
+            return [(int) $model->funder_id];
+        }
+
+        // SpecialMemo / NonTravelMemo (and similar): budget_id array of fund code IDs
+        $budgetIds = $model->budget_id ?? null;
+        if (is_string($budgetIds)) {
+            $budgetIds = json_decode($budgetIds, true);
+        }
+        if (is_array($budgetIds) && !empty($budgetIds)) {
+            $funderIds = FundCode::whereIn('id', $budgetIds)
+                ->whereNotNull('funder_id')
+                ->pluck('funder_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+            return $funderIds;
+        }
+
+        return [];
+    }
+
+    /**
+     * Whether this workflow definition applies to the model's funders.
+     * - When allowed_funders is NULL or empty: no funder limit, so returns true (all funders).
+     * - When allowed_funders is set: returns true only if at least one of the model's fund codes
+     *   belongs to a funder in the allowed list (else skip to next eligible approver).
+     */
+    private function isOnlyAllowedForFunders(WorkflowDefinition $definition, Model $model): bool
+    {
+        $allowed = $definition->allowed_funders;
+        if (is_string($allowed)) {
+            $allowed = json_decode($allowed, true);
+        }
+        if (empty($allowed) || !is_array($allowed)) {
+            return true;
+        }
+
+        $modelFunderIds = $this->getModelFunderIds($model);
+        if (empty($modelFunderIds)) {
+            return true; // No funder info on model: do not restrict
+        }
+
+        $allowed = array_map('intval', array_filter($allowed, fn ($v) => $v !== null && $v !== ''));
+        return count(array_intersect($modelFunderIds, $allowed)) > 0;
+    }
+
+    /**
+     * For levels >= 3: if the candidate definition is restricted by divisions or funders and this
+     * model does not match, return the next enabled definition that applies (or null).
+     */
+    private function skipToNextDefinitionAllowedForDivision(Model $model, ?WorkflowDefinition $definition, int $workflowId): ?WorkflowDefinition
+    {
+        if (!$definition || $definition->approval_order < 3) {
+            return $definition;
+        }
+        $current = $definition;
+        while ($current && $current->approval_order >= 3) {
+            if ($this->isOnlyAllowedForDivisions($current, $model) && $this->isOnlyAllowedForFunders($current, $model)) {
+                return $current;
+            }
+            $next = WorkflowDefinition::where('workflow_id', $workflowId)
+                ->where('is_enabled', 1)
+                ->where('approval_order', '>', $current->approval_order)
+                ->orderBy('approval_order', 'asc')
+                ->first();
+            $current = $next;
+        }
+        return $current;
     }
 
     /**

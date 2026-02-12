@@ -24,12 +24,15 @@ class Funder extends Model
         'website',
         'is_active',
         'is_partners',
+        'show_activity_code',
+        'activity_code_label',
     ];
 
     protected $casts = [
         'id' => 'integer',
         'is_active' => 'boolean',
         'is_partners' => 'boolean',
+        'show_activity_code' => 'boolean',
     ];
 
     /**

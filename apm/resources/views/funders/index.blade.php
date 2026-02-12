@@ -87,6 +87,7 @@
                             <th>Email</th>
                             <th>Phone</th>
                             <th>Fund Codes</th>
+                            <th>Activity Code</th>
                             <th>Status</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -124,6 +125,15 @@
                                 <td>
                                     <span class="badge bg-info text-dark">
                                         <i class="bx bx-barcode me-1"></i>{{ $funder->fundCodes()->count() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    @php
+                                        $activityCodeBadge = $funder->show_activity_code ? 'bg-primary' : 'bg-secondary';
+                                        $activityCodeText = $funder->show_activity_code ? 'Yes' : 'No';
+                                    @endphp
+                                    <span class="badge {{ $activityCodeBadge }} text-white">
+                                        <i class="bx bx-{{ $funder->show_activity_code ? 'check' : 'minus' }}-circle me-1"></i>{{ $activityCodeText }}
                                     </span>
                                 </td>
                                 <td>

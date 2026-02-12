@@ -55,8 +55,8 @@
                         <td colspan="4" class="text-center py-4">
                             <i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i>
                             <div class="mt-2">Loading locations...</div>
-                        </td>
-                    </tr>
+                            </td>
+                        </tr>
                 </tbody>
             </table>
         </div>
@@ -77,7 +77,7 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
     var locationSearchEl = document.getElementById('locationSearch');
     var pageSizeSelectEl = document.getElementById('pageSizeSelect');
     var locationsTableBodyEl = document.getElementById('locationsTableBody');
@@ -196,6 +196,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.loadLocationsData = loadLocationsData;
     loadLocationsData(1);
-});
+    });
 </script>
 @endpush

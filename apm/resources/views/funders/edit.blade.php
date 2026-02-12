@@ -175,6 +175,25 @@
                             <small class="text-muted d-block">Inactive funders will not be available for selection</small>
                         </div>
                     </div>
+
+                    <!-- World Bank Activity Code -->
+                    <div class="col-md-12">
+                        <div class="form-group position-relative">
+                            <label for="show_activity_code" class="form-label fw-semibold">
+                                <i class="bx bx-code me-1 text-success"></i> Show World Bank Activity Code field
+                            </label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="show_activity_code" name="show_activity_code" value="1" {{ old('show_activity_code', $funder->show_activity_code) ? 'checked' : '' }}>
+                                <label class="form-check-label fw-semibold" for="show_activity_code">Enable</label>
+                            </div>
+                            <div class="mt-2">
+                                <label for="activity_code_label" class="form-label small text-muted">Field label (when enabled)</label>
+                                <input type="text" class="form-control form-control-sm" id="activity_code_label" name="activity_code_label" value="{{ old('activity_code_label', $funder->activity_code_label) }}" placeholder="Activity Code *">
+                                <small class="text-muted d-block">Leave empty to use default: &quot;Activity Code *&quot;</small>
+                            </div>
+                            <small class="text-muted d-block mt-1">When enabled, memos/activities using this funder's budget codes will show the Activity Code field.</small>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Address -->
