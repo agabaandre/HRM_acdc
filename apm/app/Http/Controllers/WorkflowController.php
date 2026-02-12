@@ -66,13 +66,13 @@ class WorkflowController extends Controller
     public function show(Workflow $workflow)
     {
         $workflowDefinitions = $workflow->workflowDefinitions()
-            ->orderBy('approval_order')
+            ->orderBy('approval_order', 'asc')
             ->get();
-        
-        // Load divisions for display
-        $divisions = \App\Models\Division::orderBy('division_name')->get()->keyBy('id');
 
-        return view('workflows.show', compact('workflow', 'workflowDefinitions', 'divisions'));
+        $divisions = \App\Models\Division::orderBy('division_name')->get()->keyBy('id');
+        $funders = \App\Models\Funder::orderBy('name')->get()->keyBy('id');
+
+        return view('workflows.show', compact('workflow', 'workflowDefinitions', 'divisions', 'funders'));
     }
 
     /**

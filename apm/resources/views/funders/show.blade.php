@@ -111,6 +111,27 @@
                         @endif
                     </div>
                 </div>
+
+                <div class="mb-3">
+                    <label class="fw-semibold text-muted">Activity Code field</label>
+                    <div>
+                        @if($funder->show_activity_code)
+                            <span class="badge bg-primary fs-6">
+                                <i class="bx bx-check-circle me-1"></i>Enabled
+                            </span>
+                            @if($funder->activity_code_label)
+                                <span class="d-block mt-1 small">Label: {{ $funder->activity_code_label }}</span>
+                            @else
+                                <span class="d-block mt-1 small text-muted">Label: Activity Code * (default)</span>
+                            @endif
+                        @else
+                            <span class="badge bg-secondary fs-6">
+                                <i class="bx bx-minus-circle me-1"></i>Disabled
+                            </span>
+                        @endif
+                    </div>
+                    <small class="text-muted">When enabled, memos using this funder's budget codes show the Activity Code field.</small>
+                </div>
                 
                 <div class="mb-3">
                     <label class="fw-semibold text-muted">Created</label>

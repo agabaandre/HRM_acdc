@@ -74,12 +74,15 @@ class FunderController extends Controller
             'address' => 'nullable|string',
             'website' => 'nullable|url|max:255',
             'is_active' => 'boolean',
+            'show_activity_code' => 'boolean',
+            'activity_code_label' => 'nullable|string|max:255',
         ]);
 
-        // Set is_active to true by default if not provided
         if (!isset($validated['is_active'])) {
             $validated['is_active'] = true;
         }
+        $validated['show_activity_code'] = $request->has('show_activity_code');
+        $validated['activity_code_label'] = $request->filled('activity_code_label') ? $request->activity_code_label : null;
 
         // Debug: Log session information
         \Log::info('Creating funder - Session data:', [
@@ -131,10 +134,13 @@ class FunderController extends Controller
             'address' => 'nullable|string',
             'website' => 'nullable|url|max:255',
             'is_active' => 'boolean',
+            'show_activity_code' => 'boolean',
+            'activity_code_label' => 'nullable|string|max:255',
         ]);
 
-        // Handle checkbox for is_active
         $validated['is_active'] = $request->has('is_active');
+        $validated['show_activity_code'] = $request->has('show_activity_code');
+        $validated['activity_code_label'] = $request->filled('activity_code_label') ? $request->activity_code_label : null;
 
         $funder->update($validated);
 

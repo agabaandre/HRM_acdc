@@ -459,11 +459,10 @@ class ActivityController extends Controller
         'division_id' => 'required|exists:divisions,id',
     ]);
 
-    $budgetCodes = FundCode::with('funder:id,name')
+    $budgetCodes = FundCode::with('funder:id,name,show_activity_code,activity_code_label')
         ->where('fund_type_id', $request->fund_type_id)
         ->where('is_active', true)
             ->where(function ($query) use ($request) {
-                // Include codes where division_id matches the request, or is NULL, or is empty string (universal)
                 $query->where('division_id', $request->division_id)
                       ->orWhereNull('division_id')
                       ->orWhere('division_id', '');
@@ -476,7 +475,10 @@ class ActivityController extends Controller
             'code' => $code->code,
             'activity' => $code->activity,
             'budget_balance' => $code->budget_balance,
+            'funder_id' => $code->funder_id,
             'funder_name' => optional($code->funder)->name,
+            'show_activity_code' => (bool) (optional($code->funder)->show_activity_code ?? false),
+            'activity_code_label' => optional($code->funder)->activity_code_label ?? 'Activity Code *',
         ];
     });
 

@@ -129,11 +129,11 @@
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>ID</th>
-                                <th>Role</th>
                                 <th>Approval Order</th>
+                                <th>Role</th>
                                 <th>Fund Type</th>
                                 <th>Divisions</th>
+                                <th>Allowed Funders</th>
                                 <th>Division Specific</th>
                                 <th>Print Order</th>
                                 <th>Status</th>
@@ -141,11 +141,10 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($workflowDefinitions as $definition)
+                            @forelse($workflowDefinitions->sortBy('approval_order') as $definition)
                                 <tr>
-                                    <td>{{ $definition->id }}</td>
-                                    <td>{{ $definition->role }}</td>
                                     <td>{{ $definition->approval_order }}</td>
+                                    <td>{{ $definition->role }}</td>
                                     <td>
                                         @if($definition->fund_type)
                                             @php
@@ -169,6 +168,22 @@
                                             @endforeach
                                         @else
                                             <span class="text-muted">All Divisions</span>
+                                        @endif
+                                    </td>
+                                    <td style="max-width: 200px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
+                                        @php
+                                            $definitionFunders = is_array($definition->allowed_funders) ? $definition->allowed_funders : (is_string($definition->allowed_funders) ? json_decode($definition->allowed_funders, true) : []);
+                                            $definitionFunders = $definitionFunders ?: [];
+                                        @endphp
+                                        @if(!empty($definitionFunders))
+                                            @foreach($definitionFunders as $funderId)
+                                                @php $funderId = (int) $funderId; @endphp
+                                                @if(isset($funders[$funderId]))
+                                                    <span class="badge bg-primary mb-1" style="display: inline-block; word-wrap: break-word; white-space: normal;">{{ $funders[$funderId]->name }}</span>
+                                                @endif
+                                            @endforeach
+                                        @else
+                                            <span class="text-muted">All Funders</span>
                                         @endif
                                     </td>
                                     <td>

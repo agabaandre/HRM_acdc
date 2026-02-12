@@ -45,14 +45,14 @@
                         <select name="budget_codes[]" id="budget_codes" class="form-select border-success" multiple disabled>
                             <option value="" selected disabled>Select a fund type first</option>
                         </select>
-                        <small class="text-muted">Select up to 2 codes</small>
+                        <small class="text-muted" id="budget_codes_help">Select a fund type first</small>
                     </div>
                        <div class="col-md-3 activity_code" style="display: none;">
                         <label for="activity_code" class="form-label fw-semibold">
-                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code <span class="text-danger">*</span>
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> <span class="activity-code-label">Activity Code *</span>
                         </label>
                         <input name="activity_code" id="activity_code" class="form-control border-success" />
-                        <small class="text-muted">Applicable to only World Bank Budget Codes</small>
+                        <small class="text-muted">Applicable when funder requires it</small>
                     </div>
 
 
@@ -249,22 +249,25 @@ $(document).ready(function () {
     });
 
     $('#fund_type_id').change(function(event){
-        let selectedText = $('#fund_type_id option:selected').text();
+        let selectedText = $('#fund_type_id option:selected').text().toLowerCase();
+        let selectedId = $('#fund_type_id').val();
 
-        if(selectedText.toLocaleLowerCase().indexOf("intramural")>-1){
-            $('.fund_type').removeClass('col-md-4');
-            $('.fund_type').addClass('col-md-2');
-            $('.activity_code').show();
-        }
-        else{
-            $('#activity_code').value=""
+        const isExternalSource = selectedId == 3 || selectedText.indexOf("external") > -1;
+        if (isExternalSource) {
+            $('#activity_code').val("").prop('required', false);
             $('.activity_code').hide();
-             $('.fund_type').removeClass('col-md-2');
-             $('.fund_type').ddClass('col-md-4');
+            $('#budget_codes').val("").prop('disabled', true).prop('required', false).closest('.col-md-4').hide();
+            $('.fund_type').removeClass('col-md-2').addClass('col-md-4');
+            return;
         }
-
-        console.log(event);
-        console.log(selectedText);
+        if (selectedText.indexOf("intramural") > -1) {
+            $('.fund_type').removeClass('col-md-4').addClass('col-md-2');
+        } else {
+            $('.fund_type').removeClass('col-md-2').addClass('col-md-4');
+        }
+        $('.activity_code').hide();
+        $('#activity_code').val("").prop('required', false);
+        $('#budget_codes').prop('disabled', false).prop('required', true).closest('.col-md-4').show();
     })
 
     function isValidActivityDates() {
@@ -581,12 +584,43 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         width: '100%'
     });
 
+    const budgetCodesSelect = $('#budget_codes');
+    const budgetCodesHelp = $('#budget_codes_help');
+    function applyBudgetCodesSelect2(isExtramural) {
+        if (budgetCodesSelect.hasClass('select2-hidden-accessible')) {
+            budgetCodesSelect.select2('destroy');
+        }
+        budgetCodesSelect.select2({
+            maximumSelectionLength: isExtramural ? 1 : 2,
+            width: '100%'
+        });
+        budgetCodesHelp.text(isExtramural ? 'Select one code (extramural)' : 'Select up to 2 codes (intramural)');
+    }
     $('#budget_codes').select2({ maximumSelectionLength: 2, width: '100%' });
+    budgetCodesHelp.text('Select a fund type first');
 
      $('#fund_type_id').on('change', function () {
     const fundTypeId = $(this).val();
-    const budgetCodesSelect = $('#budget_codes');
-    budgetCodesSelect.empty().prop('disabled', true).append('<option disabled selected>Loading...</option>');
+    const selectedText = $('#fund_type_id option:selected').text().toLowerCase();
+    const isExtramural = selectedText.indexOf('extramural') > -1;
+    const isExternalSource = fundTypeId == 3 || selectedText.indexOf('external') > -1;
+    const $wrapper = budgetCodesSelect.closest('[class*="col-md-"]');
+
+    if (budgetCodesSelect.hasClass('select2-hidden-accessible')) {
+        budgetCodesSelect.select2('destroy');
+    }
+
+    if (!fundTypeId) {
+        budgetCodesHelp.text('Select a fund type first');
+        return;
+    }
+    if (isExternalSource) {
+        budgetCodesSelect.empty().append('<option disabled selected>Not applicable for external source</option>');
+        return;
+    }
+
+    $wrapper.css({ opacity: 0.6, pointerEvents: 'none', transition: 'opacity 0.2s ease' });
+    budgetCodesSelect.prop('disabled', true);
 
     $.get('{{ route("budget-codes.by-fund-type") }}', {
         fund_type_id: fundTypeId,
@@ -597,13 +631,18 @@ $(document).on('change', '.participant-start, .participant-end', function () {
             data.forEach(code => {
                 const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
                 budgetCodesSelect.append(
-                    `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id}">${label}</option>`
+                    `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
                 );
             });
             budgetCodesSelect.prop('disabled', false);
+            applyBudgetCodesSelect2(isExtramural);
         } else {
             budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
+            budgetCodesHelp.text('No budget codes found');
         }
+        $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
+    }).fail(function() {
+        $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
     });
 });
 
@@ -612,21 +651,29 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     const container = $('#budgetGroupContainer');
     container.empty();
 
-    // Check if any selected budget code is World Bank (funder_id = 1)
+    // World Bank Activity Code: show when any selected code's funder has show_activity_code enabled (control from funders admin)
     let hasWorldBankCode = false;
     selected.each(function () {
-        const funderId = $(this).data('funder-id');
-        if (funderId == 1) { // World Bank funder_id
+        if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
             hasWorldBankCode = true;
         }
     });
 
-    // Make World Bank Activity Code required if World Bank budget code is selected
     if (hasWorldBankCode) {
+        var firstLabel = 'Activity Code *';
+        selected.each(function () {
+            if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
+                var l = $(this).data('activity-code-label') || $(this).data('activityCodeLabel');
+                if (l) { firstLabel = l; return false; }
+            }
+        });
+        $('.activity_code .activity-code-label').text(firstLabel);
+        $('.activity_code').show();
         $('#activity_code').prop('required', true);
         $('.activity_code label .text-danger').show();
     } else {
-        $('#activity_code').prop('required', false);
+        $('.activity_code').hide();
+        $('#activity_code').val('').prop('required', false);
         $('.activity_code label .text-danger').hide();
     }
 
