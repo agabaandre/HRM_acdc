@@ -221,7 +221,8 @@
                                             <button type="button" class="btn btn-sm btn-danger delete-definition-btn" 
                                                     data-bs-toggle="tooltip" title="Delete Definition"
                                                     data-definition-id="{{ $definition->id }}"
-                                                    data-definition-role="{{ $definition->role }}">
+                                                    data-definition-role="{{ $definition->role }}"
+                                                    data-definition-approval-order="{{ $definition->approval_order }}">
                                                 <i class="bx bx-trash"></i>
                                             </button>
                                         </div>
@@ -261,18 +262,26 @@
                     <strong>Warning!</strong> This action cannot be undone.
                 </div>
                 <p>Are you sure you want to delete the workflow definition <strong id="definition-role-name"></strong>?</p>
-                <p class="text-muted">This will also delete all associated approver assignments for this definition.</p>
+                <p class="text-muted mb-3">Approvers and approval conditions linked to this definition can be reassigned to another definition, or removed with it.</p>
+                <form id="delete-definition-form" method="POST" class="d-inline" action="">
+                    @csrf
+                    @method('DELETE')
+                    <div id="delete-map-to-wrapper" class="mb-0">
+                        <label for="delete-map-to-definition" class="form-label fw-semibold">Map existing data (approvers, conditions) to:</label>
+                        <select name="map_to_definition_id" id="delete-map-to-definition" class="form-select">
+                            <option value="">— Do not reassign (remove with definition) —</option>
+                            <!-- Options filled by JS when modal opens -->
+                        </select>
+                        <small class="text-muted d-block mt-1">By default, data is mapped to the next level above (order +1) if it exists, otherwise to the previous level (order −1). Change it to reassign elsewhere, or choose "Do not reassign" to remove approvers and conditions with this definition.</small>
+                    </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bx bx-x me-1"></i>Cancel
                 </button>
-                <form id="delete-definition-form" method="POST" class="d-inline" action="">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger" id="confirm-delete-btn">
-                        <i class="bx bx-trash me-1"></i>Delete Definition
-                    </button>
+                <button type="submit" class="btn btn-danger" id="confirm-delete-btn">
+                    <i class="bx bx-trash me-1"></i>Delete Definition
+                </button>
                 </form>
             </div>
         </div>
@@ -280,6 +289,9 @@
 </div>
 
 @push('scripts')
+<script>
+    window.workflowDefinitionsList = @json($workflowDefinitions->sortBy('approval_order')->map(function($d) { return ['id' => $d->id, 'role' => $d->role, 'approval_order' => $d->approval_order]; })->values());
+</script>
 <script>
     $(document).ready(function() {
         console.log('Workflow show page loaded');
@@ -295,11 +307,11 @@
             e.preventDefault();
             console.log('Delete definition button clicked');
             
-            var definitionId = $(this).data('definition-id');
+            var definitionId = parseInt($(this).data('definition-id'), 10);
             var definitionRole = $(this).data('definition-role');
-            
-            console.log('Definition ID:', definitionId);
-            console.log('Definition Role:', definitionRole);
+            var currentOrder = parseInt($(this).data('definition-approval-order'), 10) || 0;
+            var allDefs = window.workflowDefinitionsList || [];
+            var otherDefs = allDefs.filter(function(d) { return d.id !== definitionId; }).sort(function(a, b) { return a.approval_order - b.approval_order; });
             
             // Check if modal exists
             if ($('#deleteDefinitionModal').length === 0) {
@@ -312,14 +324,29 @@
             var actionUrl = '{{ route("workflows.delete-definition", [$workflow->id, ":id"]) }}'.replace(':id', definitionId);
             $('#delete-definition-form').attr('action', actionUrl);
             
-            console.log('Action URL:', actionUrl);
-            console.log('Form action after setting:', $('#delete-definition-form').attr('action'));
+            // Default: current level +1 (next higher) if exists, else current level -1 (previous lower)
+            var nextHigher = otherDefs.find(function(d) { return d.approval_order === currentOrder + 1; });
+            var prevLower = otherDefs.find(function(d) { return d.approval_order === currentOrder - 1; });
+            var defaultMapTo = (nextHigher ? nextHigher.id : (prevLower ? prevLower.id : (otherDefs[0] ? otherDefs[0].id : '')));
+            
+            // Populate "Map existing data to" dropdown (other definitions only, sorted by order)
+            var $select = $('#delete-map-to-definition');
+            $select.find('option:not(:first)').remove();
+            otherDefs.forEach(function(d) {
+                var label = 'Order ' + d.approval_order + ': ' + d.role;
+                var opt = $('<option></option>').val(d.id).text(label);
+                $select.append(opt);
+            });
+            if (otherDefs.length === 0) {
+                $select.prop('disabled', true);
+            } else {
+                $select.prop('disabled', false);
+                $select.val(defaultMapTo ? String(defaultMapTo) : '');
+            }
             
             // Initialize and show modal
             var modal = new bootstrap.Modal(document.getElementById('deleteDefinitionModal'));
             modal.show();
-            
-            console.log('Modal should be showing now');
         });
         
         // Handle form submission in the modal

@@ -355,51 +355,78 @@ class WorkflowController extends Controller
 
     /**
      * Remove the specified workflow definition from storage.
+     * Optionally reassign its approvers and approval conditions to another definition (map_to_definition_id).
      *
+     * @param  \Illuminate\Http\Request  $request
      * @param  \App\Models\Workflow  $workflow
      * @param  \App\Models\WorkflowDefinition  $definition
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function deleteDefinition(Workflow $workflow, WorkflowDefinition $definition)
+    public function deleteDefinition(Request $request, Workflow $workflow, WorkflowDefinition $definition)
     {
         try {
+            if ((int) $definition->workflow_id !== (int) $workflow->id) {
+                return redirect()->route('workflows.show', $workflow->id)
+                    ->with('error', 'Definition does not belong to this workflow.');
+            }
+
+            $mapToId = $request->input('map_to_definition_id');
+            $mapToDefinition = null;
+            if ($mapToId !== null && $mapToId !== '') {
+                $mapToId = (int) $mapToId;
+                $mapToDefinition = WorkflowDefinition::where('workflow_id', $workflow->id)
+                    ->where('id', $mapToId)
+                    ->where('id', '!=', $definition->id)
+                    ->first();
+                if (!$mapToDefinition) {
+                    return redirect()->route('workflows.show', $workflow->id)
+                        ->with('error', 'Invalid definition selected for mapping. Please try again.');
+                }
+            }
+
             Log::info('Attempting to delete workflow definition', [
                 'workflow_id' => $workflow->id,
                 'definition_id' => $definition->id,
-                'definition_role' => $definition->role
+                'definition_role' => $definition->role,
+                'map_to_definition_id' => $mapToDefinition ? $mapToDefinition->id : null,
             ]);
 
-            // Check if definition is being used by any approvers
-            $isUsed = \DB::table('approvers')
-                ->where('workflow_dfn_id', $definition->id)
-                ->exists();
+            DB::beginTransaction();
 
-            if ($isUsed) {
-                Log::info('Cannot delete definition - in use by approvers', [
-                    'definition_id' => $definition->id
-                ]);
-                return redirect()->route('workflows.show', $workflow->id)
-                    ->with('error', 'Cannot delete workflow definition. It is currently being used by approvers.');
+            if ($mapToDefinition) {
+                Approver::where('workflow_dfn_id', $definition->id)->update(['workflow_dfn_id' => $mapToDefinition->id]);
+                \App\Models\ApprovalCondition::where('workflow_definition_id', $definition->id)
+                    ->update(['workflow_definition_id' => $mapToDefinition->id]);
+            } else {
+                Approver::where('workflow_dfn_id', $definition->id)->delete();
+                \App\Models\ApprovalCondition::where('workflow_definition_id', $definition->id)->delete();
             }
 
             $definition->delete();
 
+            DB::commit();
+
             Log::info('Workflow definition deleted successfully', [
-                'definition_id' => $definition->id
+                'definition_id' => $definition->id,
+                'mapped_to' => $mapToDefinition ? $mapToDefinition->id : null,
             ]);
 
+            $message = 'Workflow definition deleted successfully.';
+            if ($mapToDefinition) {
+                $message .= ' Approvers and conditions were reassigned to "' . $mapToDefinition->role . '".';
+            }
             return redirect()->route('workflows.show', $workflow->id)
-                ->with('success', 'Workflow definition deleted successfully.');
+                ->with('success', $message);
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Workflow definition deletion failed', [
                 'workflow_id' => $workflow->id,
                 'definition_id' => $definition->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
-        return redirect()->route('workflows.show', $workflow->id)
-            ->with('error', 'Failed to delete workflow definition. Please try again.');
+            return redirect()->route('workflows.show', $workflow->id)
+                ->with('error', 'Failed to delete workflow definition. Please try again.');
         }
     }
 
