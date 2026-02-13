@@ -404,6 +404,78 @@ class WorkflowController extends Controller
     }
 
     /**
+     * Copy a workflow definition and save it as a new one (same workflow).
+     * Copies definition attributes, approvers, and approval conditions.
+     *
+     * @param  \App\Models\Workflow  $workflow
+     * @param  \App\Models\WorkflowDefinition  $definition
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function copyDefinition(Workflow $workflow, WorkflowDefinition $definition)
+    {
+        if ((int) $definition->workflow_id !== (int) $workflow->id) {
+            return redirect()->route('workflows.show', $workflow->id)
+                ->with('error', 'Definition does not belong to this workflow.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $maxOrder = WorkflowDefinition::where('workflow_id', $workflow->id)->max('approval_order') ?? 0;
+            $copyRole = preg_match('/\s*\(Copy(?:\s*\d*)?\)\s*$/i', $definition->role)
+                ? $definition->role
+                : $definition->role . ' (Copy)';
+
+            $attrs = $definition->only([
+                'workflow_id', 'is_enabled', 'is_division_specific', 'fund_type',
+                'memo_print_section', 'print_order', 'allowed_funders', 'category',
+                'division_reference_column', 'triggers_category_check', 'divisions',
+            ]);
+            $attrs['role'] = $copyRole;
+            $attrs['approval_order'] = $maxOrder + 1;
+
+            $newDefinition = WorkflowDefinition::create($attrs);
+
+            foreach ($definition->approvers as $approver) {
+                Approver::create([
+                    'workflow_dfn_id' => $newDefinition->id,
+                    'staff_id' => $approver->staff_id,
+                    'oic_staff_id' => $approver->oic_staff_id,
+                    'admin_assistant' => $approver->admin_assistant,
+                    'start_date' => $approver->start_date,
+                    'end_date' => $approver->end_date,
+                ]);
+            }
+
+            foreach ($definition->approvalConditions as $cond) {
+                \App\Models\ApprovalCondition::create([
+                    'workflow_id' => $cond->workflow_id,
+                    'column_name' => $cond->column_name,
+                    'operator' => $cond->operator,
+                    'value' => $cond->value,
+                    'workflow_definition_id' => $newDefinition->id,
+                    'flow_type' => $cond->flow_type,
+                    'is_enabled' => $cond->is_enabled,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('workflows.edit-definition', [$workflow->id, $newDefinition->id])
+                ->with('success', 'Workflow definition copied successfully. You can edit the new definition below.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Copy workflow definition failed', [
+                'workflow_id' => $workflow->id,
+                'definition_id' => $definition->id,
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->route('workflows.show', $workflow->id)
+                ->with('error', 'Failed to copy workflow definition. Please try again.');
+        }
+    }
+
+    /**
      * Sync approval_order in activity_approval_trails and approval_trails to match the
      * definition's newly assigned approval order (forward_workflow_id = workflow.id).
      *

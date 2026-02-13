@@ -23,6 +23,11 @@
                 {{ session('success') }}
             </div>
         @endif
+        @if(session('error'))
+            <div class="alert alert-danger">
+                {{ session('error') }}
+            </div>
+        @endif
 
         <div class="row mb-4">
             <div class="col-lg-8">
@@ -207,6 +212,12 @@
                                                class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit Definition">
                                                 <i class="bx bx-edit"></i>
                                             </a>
+                                            <form action="{{ route('workflows.copy-definition', [$workflow->id, $definition->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Copy this definition as a new one? Approvers and conditions will be copied.');">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Copy as new definition">
+                                                    <i class="bx bx-copy"></i>
+                                                </button>
+                                            </form>
                                             <button type="button" class="btn btn-sm btn-danger delete-definition-btn" 
                                                     data-bs-toggle="tooltip" title="Delete Definition"
                                                     data-definition-id="{{ $definition->id }}"
