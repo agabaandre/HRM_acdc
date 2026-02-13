@@ -412,12 +412,12 @@ class ApprovalService
                 return $nextApprover;
             }
             // Order 11 disabled: try 12 (DG); otherwise return null so we don't fall through to 10
-            $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
-                ->where('is_enabled', 1)
+        $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+            ->where('is_enabled', 1)
                 ->where('approval_order', 12)
-                ->first();
-            return $nextApprover;
-        }
+            ->first();
+        return $nextApprover;
+    }
     }
 
    // dd($next_definition);
