@@ -110,6 +110,17 @@
                 <i class="bx bx-edit me-1"></i> Edit Matrix
             </a>
         @endif
+        @if($matrix->overall_status === 'approved')
+            <div class="dropdown">
+                <button class="btn btn-primary btn-sm shadow-sm dropdown-toggle" type="button" id="matrixExportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bx bx-download me-1"></i> Export
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="matrixExportDropdown">
+                    <li><a class="dropdown-item" href="{{ route('matrices.export.pdf', $matrix) }}" target="_blank"><i class="bx bx-file me-2"></i>Export as PDF</a></li>
+                    <li><a class="dropdown-item" href="{{ route('matrices.export.excel', $matrix) }}"><i class="bx bx-spreadsheet me-2"></i>Export as Excel</a></li>
+                </ul>
+            </div>
+        @endif
        <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary btn-sm">
        <i class="bx bx-arrow-back me-1"></i> Back
     </a>

@@ -252,7 +252,9 @@ Route::get('/api/returned-memos/filter-options', [App\Http\Controllers\ReturnedM
     Route::get('/matrices/export/division-csv', [MatrixController::class, 'exportDivisionCsv'])->name('matrices.export.division-csv');
     Route::get('/matrices/export/pending-approvals-csv', [MatrixController::class, 'exportPendingApprovalsCsv'])->name('matrices.export.pending-approvals-csv');
     Route::get('/matrices/export/approved-by-me-csv', [MatrixController::class, 'exportApprovedByMeCsv'])->name('matrices.export.approved-by-me-csv');
-    
+    Route::get('/matrices/{matrix}/export/pdf', [MatrixController::class, 'exportPdf'])->name('matrices.export.pdf');
+    Route::get('/matrices/{matrix}/export/excel', [MatrixController::class, 'exportExcel'])->name('matrices.export.excel');
+
     Route::resource('matrices', MatrixController::class);
     
     Route::resource('matrices.activities', ActivityController::class);
