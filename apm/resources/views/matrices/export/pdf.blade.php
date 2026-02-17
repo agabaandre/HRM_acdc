@@ -37,9 +37,9 @@
     .trail-date { font-size: 9pt; color: #555; margin-bottom: 2px; }
     .trail-remarks { font-size: 9pt; margin-top: 4px; padding: 6px; background: #f5f5f5; border-radius: 4px; }
     .signature-cell { width: {{ $SIGNATURE_WIDTH_PX + 12 }}px; padding: 4px; vertical-align: middle; }
-    .signature-cell .sig-inner { width: {{ $SIGNATURE_WIDTH_PX }}px; border: 1px solid #ddd; background: #fafafa; }
-    .signature-cell .sig-inner td { width: {{ $SIGNATURE_WIDTH_PX }}px; height: {{ $SIGNATURE_HEIGHT_PX }}px; text-align: center; vertical-align: middle; border: none; padding: 0; }
-    .signature-cell .signature-image { width: {{ $SIGNATURE_WIDTH_PX - 2 }}px; height: {{ $SIGNATURE_HEIGHT_PX - 2 }}px; object-fit: contain; display: block; margin: 0 auto; }
+    .signature-cell .sig-inner { width: {{ $SIGNATURE_WIDTH_PX }}px; border: 1px solid #ddd; background: #fafafa; table-layout: fixed; }
+    .signature-cell .sig-inner td { width: {{ $SIGNATURE_WIDTH_PX }}px; height: {{ $SIGNATURE_HEIGHT_PX }}px; max-width: {{ $SIGNATURE_WIDTH_PX }}px; max-height: {{ $SIGNATURE_HEIGHT_PX }}px; text-align: center; vertical-align: middle; border: none; padding: 0; overflow: hidden; }
+    .signature-cell .signature-image { width: {{ $SIGNATURE_WIDTH_PX - 2 }}px !important; height: {{ $SIGNATURE_HEIGHT_PX - 2 }}px !important; max-width: {{ $SIGNATURE_WIDTH_PX - 2 }}px !important; max-height: {{ $SIGNATURE_HEIGHT_PX - 2 }}px !important; object-fit: contain; display: block; margin: 0 auto; }
     .signature-cell .signature-hash { color: #888; font-size: 6pt; margin-top: 3px; line-height: 1.2; text-align: center; }
     .trail-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9pt; font-weight: bold; }
     .trail-badge.approved, .trail-badge.passed { background: #28a745; color: #fff; }
@@ -172,9 +172,13 @@
             <tr>
                 <td>{{ $idx + 1 }}</td>
                 <td class="signature-cell">
-                    <table class="sig-inner" cellpadding="0" cellspacing="0"><tr><td>
+                    @php
+                        $imgW = $SIGNATURE_WIDTH_PX - 2;
+                        $imgH = $SIGNATURE_HEIGHT_PX - 2;
+                    @endphp
+                    <table class="sig-inner" cellpadding="0" cellspacing="0" style="width:{{ $SIGNATURE_WIDTH_PX }}px;"><tr><td style="width:{{ $SIGNATURE_WIDTH_PX }}px; height:{{ $SIGNATURE_HEIGHT_PX }}px;">
                         @if($signaturePath)
-                            <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" />
+                            <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" width="{{ $imgW }}" height="{{ $imgH }}" style="width:{{ $imgW }}px; height:{{ $imgH }}px; max-width:{{ $imgW }}px; max-height:{{ $imgH }}px;" />
                         @else
                             <span class="text-muted" style="font-size: 8pt;">—</span>
                         @endif
