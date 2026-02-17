@@ -387,6 +387,7 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     Route::get('change-requests/pending-approvals', [App\Http\Controllers\ChangeRequestController::class, 'pendingApprovals'])->name('change-requests.pending-approvals');
     Route::resource('change-requests', App\Http\Controllers\ChangeRequestController::class);
     Route::resource('faqs', App\Http\Controllers\FaqController::class)->except(['show']);
+    Route::resource('faq-categories', App\Http\Controllers\FaqCategoryController::class)->except(['show']);
     Route::post('change-requests/{changeRequest}/submit-for-approval', [App\Http\Controllers\ChangeRequestController::class, 'submitForApproval'])->name('change-requests.submit-for-approval');
     Route::post('change-requests/{changeRequest}/update-status', [App\Http\Controllers\ChangeRequestController::class, 'updateStatus'])->name('change-requests.update-status');
     Route::get('change-requests/{changeRequest}/print', [App\Http\Controllers\ChangeRequestController::class, 'print'])->name('change-requests.print');

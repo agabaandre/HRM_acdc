@@ -19,6 +19,19 @@
             @csrf
 
             <div class="mb-4">
+                <label for="faq_category_id" class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                <select name="faq_category_id" id="faq_category_id" class="form-select form-select-lg @error('faq_category_id') is-invalid @enderror" required>
+                    <option value="">Select category</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}" {{ old('faq_category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+                @error('faq_category_id')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="mb-4">
                 <label for="question" class="form-label fw-semibold">Question <span class="text-danger">*</span></label>
                 <input type="text" class="form-control form-control-lg @error('question') is-invalid @enderror" id="question"
                     name="question" value="{{ old('question') }}" placeholder="e.g. When should I use the special memos?" required maxlength="500">
@@ -33,7 +46,7 @@
                 @error('answer')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
-                <small class="text-muted">Use the toolbar for bold, lists, links, and formatting. This content is shown on the public FAQ page.</small>
+                <small class="text-muted">Use the toolbar for bold, lists, links, and formatting. For Staff Portal links use the placeholder <code>{{ '{{staff_portal_url}}' }}</code> so the URL adapts to production or demo.</small>
             </div>
 
             <div class="row">

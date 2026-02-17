@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Staff Portal Base URL
+    |--------------------------------------------------------------------------
+    |
+    | Base URL for the staff portal (e.g. https://cbp.africacdc.org or
+    | https://cbp.africacdc.org/demo_staff). Used in FAQ links so they work
+    | in both production and demo. Set STAFF_PORTAL_URL in .env if different.
+    |
+    */
+    'staff_portal_url' => env('STAFF_PORTAL_URL', env('APP_URL', 'http://localhost')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
