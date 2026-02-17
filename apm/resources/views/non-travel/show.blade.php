@@ -59,6 +59,17 @@
         border-radius: 0.5rem;
         padding: 0.75rem;
     }
+
+    /* Attachment Preview Modal (same as single-memos) */
+    #previewModal .modal-dialog { max-width: 90vw; margin: 1.75rem auto; }
+    #previewModal .modal-body { min-height: 500px; max-height: 80vh; overflow: hidden; }
+    #previewModal .modal-content { border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+    #previewModal .modal-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 0.75rem 0.75rem 0 0; border: none; }
+    #previewModal .btn-close { filter: invert(1); }
+    #previewModal iframe, #previewModal img { border-radius: 0.5rem; }
+    #previewModal img { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .preview-attachment { transition: all 0.2s ease; }
+    .preview-attachment:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); }
     
     /* Budget table styles for non-travel memo */
     .table.table-hover.border {
@@ -667,37 +678,63 @@
             <!-- Enhanced Sidebar -->
             <div class="col-lg-12">
   
-                <!-- Attachments Card -->
+                <!-- Attachments Card (same layout as single-memos) -->
                 @if(!empty($attachments) && count($attachments) > 0)
                     <div class="card sidebar-card border-0 mb-4">
-                        <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);">
-                            <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                                <i class="bx bx-paperclip" style="color: #8b5cf6;"></i>
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-paperclip"></i>
                                 Attachments
                             </h6>
                         </div>
                         <div class="card-body">
-                            <div class="d-flex flex-column gap-3">
-                                @foreach($attachments as $index => $attachment)
-                                    <div class="attachment-item">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <i class="bx bx-file" style="color: #8b5cf6;"></i>
-                                                <div>
-                                                    <p class="mb-1 fw-medium">{{ $attachment['type'] ?? 'File #'.($index+1) }}</p>
-                                                    <small class="text-muted">
-                                                        {{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}
-                                                    </small>
-                                                </div>
-                                            </div>
-                                            <a href="{{url('storage/'.$attachment['path']) }}" target="_blank" 
-                                               class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1">
-                                                <i class="bx bx-download"></i>
-                                                <span>Download</span>
-                                            </a>
-                                        </div>
-                                    </div>
-                                @endforeach
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Type</th>
+                                            <th>File Name</th>
+                                            <th>Size</th>
+                                            <th>Uploaded</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($attachments as $index => $attachment)
+                                            @php
+                                                $originalName = $attachment['original_name'] ?? ($attachment['filename'] ?? ($attachment['name'] ?? 'Unknown'));
+                                                $filePath = $attachment['path'] ?? ($attachment['file_path'] ?? '');
+                                                $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
+                                                $fileUrl = $filePath ? url('storage/' . $filePath) : '#';
+                                                $isOffice = in_array($ext, ['ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx']);
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td>{{ $attachment['type'] ?? 'Document' }}</td>
+                                                <td>{{ $originalName }}</td>
+                                                <td>{{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'N/A' }}</td>
+                                                <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
+                                                <td>
+                                                    @if($filePath)
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-success preview-attachment"
+                                                            data-file-url="{{ $fileUrl }}"
+                                                            data-file-ext="{{ $ext }}"
+                                                            data-file-office="{{ $isOffice ? '1' : '0' }}">
+                                                            <i class="bx bx-show"></i> Preview
+                                                        </button>
+                                                        <a href="{{ $fileUrl }}" target="_blank" class="btn btn-sm btn-success">
+                                                            <i class="bx bx-download"></i> Download
+                                                        </a>
+                                                    @else
+                                                        <span class="text-muted">File not found</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -1007,7 +1044,44 @@
     </div>
 </div>
 
+    <!-- Attachment Preview Modal (same as single-memos) -->
+    <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="previewModalLabel">Attachment Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="previewModalBody" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+                    <div class="text-center w-100">Loading preview...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @push('scripts')
+<script>
+    // Attachment preview (same as single-memos)
+    $(document).on('click', '.preview-attachment', function() {
+        var fileUrl = $(this).data('file-url');
+        var ext = $(this).data('file-ext');
+        var isOffice = $(this).data('file-office') == '1';
+        var modalBody = $('#previewModalBody');
+        var content = '';
+        if (['jpg', 'jpeg', 'png'].includes(ext)) {
+            content = '<img src="' + fileUrl + '" class="img-fluid" style="max-height:70vh;max-width:100%;margin:auto;display:block;">';
+        } else if (ext === 'pdf') {
+            content = '<iframe src="' + fileUrl + '#toolbar=1&navpanes=0&scrollbar=1" style="width:100%;height:70vh;border:none;"></iframe>';
+        } else if (isOffice) {
+            content = '<iframe src="https://docs.google.com/viewer?url=' + encodeURIComponent(fileUrl) + '&embedded=true" style="width:100%;height:70vh;border:none;"></iframe>';
+        } else {
+            content = '<div class="alert alert-info">Preview not available. <a href="' + fileUrl + '" target="_blank">Download/Open file</a></div>';
+        }
+        modalBody.html(content);
+        var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+        modal.show();
+    });
+</script>
 <script>
 (function() {
     var form = document.getElementById('approvalForm');
