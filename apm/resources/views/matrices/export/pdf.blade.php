@@ -1,5 +1,9 @@
 {{-- Matrix export PDF: division schedule, approval trail, approver signatures, activities, approved single memos --}}
 @php
+    // Signature dimensions: 100x30px (aligned with activities print: memo-pdf-simple uses height 30px, max-width 80px)
+    $SIGNATURE_WIDTH_PX = 100;
+    $SIGNATURE_HEIGHT_PX = 30;
+
     if (!function_exists('_matrix_export_budget_total')) {
         function _matrix_export_budget_total($breakdown) {
             if (!$breakdown) return 0;
@@ -32,10 +36,10 @@
     .approver-role { color: #555; font-size: 9pt; }
     .trail-date { font-size: 9pt; color: #555; margin-bottom: 2px; }
     .trail-remarks { font-size: 9pt; margin-top: 4px; padding: 6px; background: #f5f5f5; border-radius: 4px; }
-    .signature-cell { width: 110px; padding: 4px; vertical-align: middle; }
-    .signature-cell .sig-inner { width: 90px; border: 1px solid #ddd; background: #fafafa; }
-    .signature-cell .sig-inner td { width: 90px; height: 36px; text-align: center; vertical-align: middle; border: none; padding: 2px; }
-    .signature-cell .signature-image { width: 86px; height: 32px; object-fit: contain; }
+    .signature-cell { width: {{ $SIGNATURE_WIDTH_PX + 12 }}px; padding: 4px; vertical-align: middle; }
+    .signature-cell .sig-inner { width: {{ $SIGNATURE_WIDTH_PX }}px; border: 1px solid #ddd; background: #fafafa; }
+    .signature-cell .sig-inner td { width: {{ $SIGNATURE_WIDTH_PX }}px; height: {{ $SIGNATURE_HEIGHT_PX }}px; text-align: center; vertical-align: middle; border: none; padding: 0; }
+    .signature-cell .signature-image { width: {{ $SIGNATURE_WIDTH_PX - 2 }}px; height: {{ $SIGNATURE_HEIGHT_PX - 2 }}px; object-fit: contain; display: block; margin: 0 auto; }
     .signature-cell .signature-hash { color: #888; font-size: 6pt; margin-top: 3px; line-height: 1.2; text-align: center; }
     .trail-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9pt; font-weight: bold; }
     .trail-badge.approved, .trail-badge.passed { background: #28a745; color: #fff; }
@@ -144,7 +148,7 @@
     <thead>
         <tr>
             <th style="width: 32px;">#</th>
-            <th style="width: 110px;">Signature</th>
+            <th style="width: {{ $SIGNATURE_WIDTH_PX + 12 }}px;">Signature</th>
             <th style="width: 125px;">Date & Time</th>
             <th>Approver Name (Role)</th>
             <th style="width: 95px;">Action</th>
