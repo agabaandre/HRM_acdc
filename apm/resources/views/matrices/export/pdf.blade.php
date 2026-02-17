@@ -32,10 +32,11 @@
     .approver-role { color: #555; font-size: 9pt; }
     .trail-date { font-size: 9pt; color: #555; margin-bottom: 2px; }
     .trail-remarks { font-size: 9pt; margin-top: 4px; padding: 6px; background: #f5f5f5; border-radius: 4px; }
-    .signature-cell { width: 100px; vertical-align: top; }
-    .signature-cell .signature-image { height: 28px; max-width: 80px; object-fit: contain; display: block; margin: 0 0 4px 0; }
-    .signature-cell .signature-date { color: #666; font-size: 8pt; margin: 0; line-height: 1.2; }
-    .signature-cell .signature-hash { color: #999; font-size: 7pt; margin: 2px 0 0 0; line-height: 1.2; }
+    .signature-cell { width: 110px; padding: 4px; vertical-align: middle; }
+    .signature-cell .sig-inner { width: 90px; border: 1px solid #ddd; background: #fafafa; }
+    .signature-cell .sig-inner td { width: 90px; height: 36px; text-align: center; vertical-align: middle; border: none; padding: 2px; }
+    .signature-cell .signature-image { width: 86px; height: 32px; object-fit: contain; }
+    .signature-cell .signature-hash { color: #888; font-size: 6pt; margin-top: 3px; line-height: 1.2; text-align: center; }
     .trail-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9pt; font-weight: bold; }
     .trail-badge.approved, .trail-badge.passed { background: #28a745; color: #fff; }
     .trail-badge.submitted { background: #17a2b8; color: #fff; }
@@ -52,93 +53,7 @@
     <div class="meta">{{ $matrix->division->division_name ?? 'Division' }} | Exported {{ now()->format('d F Y H:i') }}</div>
 </div>
 
-{{-- Division Schedule --}}
-<div class="section-title">Division Schedule – {{ strtoupper($matrix->quarter) }} {{ $matrix->year }}</div>
-<table class="export-table">
-    <thead>
-        <tr>
-            <th style="width: 30px;">#</th>
-            <th>Staff Name</th>
-            <th>Position</th>
-            <th style="width: 80px; text-align: center;">Division Days</th>
-            <th style="width: 80px; text-align: center;">Other Divisions</th>
-            <th style="width: 70px; text-align: center;">Total Days</th>
-        </tr>
-    </thead>
-    <tbody>
-        @forelse($divisionStaff ?? [] as $idx => $staff)
-            @php
-                $divDays = (int) ($staff->division_days ?? 0);
-                $otherDays = (int) ($staff->other_days ?? 0);
-                $totalDays = $divDays + $otherDays;
-                $name = trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
-            @endphp
-            <tr>
-                <td>{{ $idx + 1 }}</td>
-                <td>{{ $name ?: 'N/A' }}</td>
-                <td>{{ $staff->job_name ?? $staff->title ?? 'N/A' }}</td>
-                <td style="text-align: center;">{{ $divDays }}</td>
-                <td style="text-align: center;">{{ $otherDays }}</td>
-                <td style="text-align: center;">{{ $totalDays }}</td>
-            </tr>
-        @empty
-            <tr><td colspan="6">No division schedule data.</td></tr>
-        @endforelse
-    </tbody>
-</table>
-
-{{-- Approval Trail (timeline style: date, name, role, status badge, remarks; signatures like activities print – no photos) --}}
-<div class="section-title">Approval Trail & Approver Signatures</div>
-<table class="export-table trail-table">
-    <thead>
-        <tr>
-            <th style="width: 32px;">#</th>
-            <th style="width: 100px;">Signature</th>
-            <th style="width: 125px;">Date & Time</th>
-            <th>Approver Name (Role)</th>
-            <th style="width: 95px;">Action</th>
-            <th>Remarks</th>
-        </tr>
-    </thead>
-    <tbody>
-        @php $trailsSorted = $trails ? $trails->sortByDesc('created_at') : collect(); @endphp
-        @forelse($trailsSorted as $idx => $trail)
-            @php
-                $approver = $trail->oicStaff ?? $trail->staff;
-                $approverName = $approver ? trim(($approver->title ?? '') . ' ' . ($approver->fname ?? '') . ' ' . ($approver->lname ?? '') . ' ' . ($approver->oname ?? '')) : 'N/A';
-                $roleName = $trail->approver_role_name ?? 'Focal Person';
-                $actionLower = strtolower($trail->action ?? '');
-                $badgeClass = in_array($actionLower, ['approved', 'passed']) ? 'approved' : (in_array($actionLower, ['rejected', 'flagged']) ? 'rejected' : ($actionLower === 'submitted' ? 'submitted' : 'returned'));
-                $staffIdForHash = $trail->oic_staff_id ?? $trail->staff_id;
-                $signaturePath = $approver && !empty(trim($approver->signature ?? '')) ? $baseUrl . '/uploads/staff/signature/' . $approver->signature : null;
-                $approvalDate = $trail->created_at ? $trail->created_at->format('j F Y g:i a') : '—';
-                $verifyHash = $matrix && $staffIdForHash ? \App\Helpers\PrintHelper::generateVerificationHash($matrix->id, $staffIdForHash, $trail->created_at) : 'N/A';
-            @endphp
-            <tr>
-                <td>{{ $idx + 1 }}</td>
-                <td class="signature-cell">
-                    @if($signaturePath)
-                        <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" />
-                    @else
-                        <span class="text-muted" style="font-size: 9pt;">Not Signed</span>
-                    @endif
-                    <div class="signature-hash">Verify Hash: {{ $verifyHash }}</div>
-                </td>
-                <td class="trail-date">{{ $approvalDate }}</td>
-                <td>
-                    <span class="approver-name">{{ $approverName }}</span>
-                    <span class="approver-role"> ({{ $roleName }})</span>
-                </td>
-                <td><span class="trail-badge {{ $badgeClass }}">{{ ucfirst($trail->action ?? '') }}</span></td>
-                <td class="trail-remarks">{{ $trail->remarks ?? '—' }}</td>
-            </tr>
-        @empty
-            <tr><td colspan="6">No approval trail.</td></tr>
-        @endforelse
-    </tbody>
-</table>
-
-{{-- Activities (tabular) --}}
+{{-- 1. Activities (first) --}}
 <div class="section-title">Activities</div>
 <table class="export-table">
     <thead>
@@ -181,7 +96,7 @@
     </tbody>
 </table>
 
-{{-- Approved Single Memos --}}
+{{-- 2. Single Memos --}}
 @if(isset($approvedSingleMemos) && $approvedSingleMemos->count() > 0)
 <div class="section-title">Approved Single Memos</div>
 <table class="export-table">
@@ -222,3 +137,91 @@
     </tbody>
 </table>
 @endif
+
+{{-- 3. Matrix Approval Trail --}}
+<div class="section-title">Approval Trail & Approver Signatures</div>
+<table class="export-table trail-table">
+    <thead>
+        <tr>
+            <th style="width: 32px;">#</th>
+            <th style="width: 110px;">Signature</th>
+            <th style="width: 125px;">Date & Time</th>
+            <th>Approver Name (Role)</th>
+            <th style="width: 95px;">Action</th>
+            <th>Remarks</th>
+        </tr>
+    </thead>
+    <tbody>
+        @php $trailsSorted = $trails ? $trails->sortByDesc('created_at') : collect(); @endphp
+        @forelse($trailsSorted as $idx => $trail)
+            @php
+                $approver = $trail->oicStaff ?? $trail->staff;
+                $approverName = $approver ? trim(($approver->title ?? '') . ' ' . ($approver->fname ?? '') . ' ' . ($approver->lname ?? '') . ' ' . ($approver->oname ?? '')) : 'N/A';
+                $roleName = $trail->approver_role_name ?? 'Focal Person';
+                $actionLower = strtolower($trail->action ?? '');
+                $badgeClass = in_array($actionLower, ['approved', 'passed']) ? 'approved' : (in_array($actionLower, ['rejected', 'flagged']) ? 'rejected' : ($actionLower === 'submitted' ? 'submitted' : 'returned'));
+                $staffIdForHash = $trail->oic_staff_id ?? $trail->staff_id;
+                $signaturePath = $approver && !empty(trim($approver->signature ?? '')) ? $baseUrl . '/uploads/staff/signature/' . $approver->signature : null;
+                $approvalDate = $trail->created_at ? $trail->created_at->format('j F Y g:i a') : '—';
+                $verifyHash = $matrix && $staffIdForHash ? \App\Helpers\PrintHelper::generateVerificationHash($matrix->id, $staffIdForHash, $trail->created_at) : 'N/A';
+            @endphp
+            <tr>
+                <td>{{ $idx + 1 }}</td>
+                <td class="signature-cell">
+                    <table class="sig-inner" cellpadding="0" cellspacing="0"><tr><td>
+                        @if($signaturePath)
+                            <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" />
+                        @else
+                            <span class="text-muted" style="font-size: 8pt;">—</span>
+                        @endif
+                    </td></tr></table>
+                    <div class="signature-hash">Verify: {{ $verifyHash }}</div>
+                </td>
+                <td class="trail-date">{{ $approvalDate }}</td>
+                <td>
+                    <span class="approver-name">{{ $approverName }}</span>
+                    <span class="approver-role"> ({{ $roleName }})</span>
+                </td>
+                <td><span class="trail-badge {{ $badgeClass }}">{{ ucfirst($trail->action ?? '') }}</span></td>
+                <td class="trail-remarks">{{ $trail->remarks ?? '—' }}</td>
+            </tr>
+        @empty
+            <tr><td colspan="6">No approval trail.</td></tr>
+        @endforelse
+    </tbody>
+</table>
+
+{{-- 4. Participants Schedule (last) --}}
+<div class="section-title">Participants Schedule – {{ strtoupper($matrix->quarter) }} {{ $matrix->year }}</div>
+<table class="export-table">
+    <thead>
+        <tr>
+            <th style="width: 30px;">#</th>
+            <th>Staff Name</th>
+            <th>Position</th>
+            <th style="width: 80px; text-align: center;">Division Days</th>
+            <th style="width: 80px; text-align: center;">Other Divisions</th>
+            <th style="width: 70px; text-align: center;">Total Days</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse($divisionStaff ?? [] as $idx => $staff)
+            @php
+                $divDays = (int) ($staff->division_days ?? 0);
+                $otherDays = (int) ($staff->other_days ?? 0);
+                $totalDays = $divDays + $otherDays;
+                $name = trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
+            @endphp
+            <tr>
+                <td>{{ $idx + 1 }}</td>
+                <td>{{ $name ?: 'N/A' }}</td>
+                <td>{{ $staff->job_name ?? $staff->title ?? 'N/A' }}</td>
+                <td style="text-align: center;">{{ $divDays }}</td>
+                <td style="text-align: center;">{{ $otherDays }}</td>
+                <td style="text-align: center;">{{ $totalDays }}</td>
+            </tr>
+        @empty
+            <tr><td colspan="6">No division schedule data.</td></tr>
+        @endforelse
+    </tbody>
+</table>
