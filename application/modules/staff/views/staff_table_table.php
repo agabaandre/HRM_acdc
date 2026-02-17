@@ -7,13 +7,13 @@ if ($offset != "") {
 
 if (empty($staffs)) : ?>
     <tr>
-        <td colspan="22" class="text-center">No data available</td>
+        <td colspan="24" class="text-center">No data available</td>
     </tr>
 <?php else :
 foreach ($staffs as $data) :
     $cont = Modules::run('staff/latest_staff_contract', $data->staff_id);
     if (!$cont) {
-        $cont = (object)['duty_station_name' => '', 'division_name' => '', 'job_acting' => '', 'first_supervisor' => '', 'second_supervisor' => '', 'funder' => '', 'end_date' => ''];
+        $cont = (object)['duty_station_name' => '', 'division_name' => '', 'job_acting' => '', 'first_supervisor' => '', 'second_supervisor' => '', 'funder' => '', 'start_date' => '', 'end_date' => ''];
     }
 ?>
     <tr>
@@ -43,6 +43,8 @@ foreach ($staffs as $data) :
         <td><?= @$cont->division_name; ?></td>
         <td><?= @$data->grade; ?></td>
         <td><?= @character_limiter($data->job_name, 30); ?></td>
+        <td><?= !empty($data->initiation_date) ? $data->initiation_date : 'N/A'; ?></td>
+        <td><?= !empty($cont->start_date) ? $cont->start_date : 'N/A'; ?></td>
         <td><?= !empty($cont->end_date) ? $cont->end_date : 'N/A'; ?></td>
         <td><?= !empty($data->initiation_date) ? years_of_tenure($data->initiation_date) : 'N/A'; ?></td>
         <td><?= @character_limiter($cont->job_acting, 30); ?></td>
