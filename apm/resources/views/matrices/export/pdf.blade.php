@@ -1,8 +1,10 @@
 {{-- Matrix export PDF: division schedule, approval trail, approver signatures, activities, approved single memos --}}
 @php
-    // Signature dimensions: 100x30px (aligned with activities print: memo-pdf-simple uses height 30px, max-width 80px)
+    // Signature dimensions: 100x30px (aligned with activities print). mPDF uses mm for reliable sizing.
     $SIGNATURE_WIDTH_PX = 100;
     $SIGNATURE_HEIGHT_PX = 30;
+    $SIG_W_MM = round(100 * 25.4 / 96, 1);  // 100px at 96dpi ≈ 26.5mm
+    $SIG_H_MM = round(30 * 25.4 / 96, 1);   // 30px at 96dpi ≈ 7.9mm
 
     if (!function_exists('_matrix_export_budget_total')) {
         function _matrix_export_budget_total($breakdown) {
@@ -173,12 +175,12 @@
                 <td>{{ $idx + 1 }}</td>
                 <td class="signature-cell">
                     @php
-                        $imgW = $SIGNATURE_WIDTH_PX - 2;
-                        $imgH = $SIGNATURE_HEIGHT_PX - 2;
+                        $imgWmm = round(($SIGNATURE_WIDTH_PX - 2) * 25.4 / 96, 1);
+                        $imgHmm = round(($SIGNATURE_HEIGHT_PX - 2) * 25.4 / 96, 1);
                     @endphp
-                    <table class="sig-inner" cellpadding="0" cellspacing="0" style="width:{{ $SIGNATURE_WIDTH_PX }}px;"><tr><td style="width:{{ $SIGNATURE_WIDTH_PX }}px; height:{{ $SIGNATURE_HEIGHT_PX }}px;">
+                    <table class="sig-inner" cellpadding="0" cellspacing="0" style="width:{{ $SIG_W_MM }}mm;"><tr><td style="width:{{ $SIG_W_MM }}mm; height:{{ $SIG_H_MM }}mm; overflow:hidden;">
                         @if($signaturePath)
-                            <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" width="{{ $imgW }}" height="{{ $imgH }}" style="width:{{ $imgW }}px; height:{{ $imgH }}px; max-width:{{ $imgW }}px; max-height:{{ $imgH }}px;" />
+                            <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" style="width:{{ $imgWmm }}mm !important; height:{{ $imgHmm }}mm !important; max-width:{{ $imgWmm }}mm !important; max-height:{{ $imgHmm }}mm !important; object-fit:contain;" />
                         @else
                             <span class="text-muted" style="font-size: 8pt;">—</span>
                         @endif
