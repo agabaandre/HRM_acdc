@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             CostItemSeeder::class, 
             FundTypesSeeder::class,     
             FundCodesSeeder::class,      // Then seed cost items
+            FaqCategorySeeder::class,    // FAQ categories (before FAQs)
             FaqSeeder::class,            // Seed default FAQs
         ]);
     }

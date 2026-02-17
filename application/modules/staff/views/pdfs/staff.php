@@ -46,6 +46,7 @@
                         <th>Funder</th>
                         <th>Current Contract Start Date</th>
                         <th>Current Contract End Date</th>
+                        <th>Years of Tenure</th>
                         <th>Email</th>
                     </tr>
                 </thead>
@@ -68,6 +69,7 @@
                             <td><?= $data->funder ?></td>
                             <td><?= $data->start_date ?></td>
                             <td><?= $data->end_date ?></td>
+                            <td><?= !empty($data->initiation_date) ? years_of_tenure($data->initiation_date) : 'N/A' ?></td>
                             <td><?= $data->work_email ?></td>
                         </tr>
                     <?php endforeach;

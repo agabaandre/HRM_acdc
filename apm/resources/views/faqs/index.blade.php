@@ -48,7 +48,7 @@
                 <thead class="table-light">
                     <tr>
                         <th style="width: 50px;">#</th>
-                        <th>Question</th>
+                        <th style="min-width: 200px; max-width: 400px;">Question</th>
                         <th style="width: 160px;">Category</th>
                         <th style="width: 80px;">Order</th>
                         <th style="width: 90px;">Status</th>
@@ -59,8 +59,8 @@
                     @forelse($faqs as $faq)
                         <tr>
                             <td>{{ $faq->id }}</td>
-                            <td>
-                                <span class="text-dark">{{ Str::limit($faq->question, 70) }}</span>
+                            <td class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; max-width: 400px;">
+                                <span class="text-dark">{{ $faq->question }}</span>
                                 @if($faq->search_keywords)
                                     <br><small class="text-muted">{{ Str::limit($faq->search_keywords, 50) }}</small>
                                 @endif
