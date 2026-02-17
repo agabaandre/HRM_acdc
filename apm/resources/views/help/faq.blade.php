@@ -23,6 +23,21 @@
         .no-results { display: none; padding: 2rem; text-align: center; color: #6c757d; }
         .badge-num { background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; margin-right: 0.5rem; }
         .platform-note { background: #e8f5e9; border-left: 4px solid var(--primary); padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.95rem; }
+
+        /* Print styles (borrowed from special-memo print: clean layout, expand all, hide nav) */
+        @media print {
+            body { background: #fff; }
+            .faq-header { background: #119a48 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .faq-header a[href]:not(.no-print-hide) { color: #fff !important; }
+            .search-box, #faqPrintPdfBtn, .no-results, .btn, .d-flex.gap-2 .btn { display: none !important; }
+            .faq-item-hidden { display: block !important; }
+            .collapse { display: block !important; visibility: visible !important; height: auto !important; }
+            .faq-card .card-header { cursor: default; border-bottom: 1px solid #dee2e6; }
+            .faq-card { box-shadow: none; border: 1px solid #dee2e6; margin-bottom: 0.75rem; break-inside: avoid; }
+            .container { max-width: 100%; }
+            a[href]:not(.no-print-hide)::after { content: none !important; }
+            .platform-note { break-inside: avoid; }
+        }
     </style>
 </head>
 <body>
@@ -32,10 +47,13 @@
                 <div>
                     <a href="{{ url('/') }}" class="d-inline-flex align-items-center mb-1"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
                     <h1 class="h4 mb-0 mt-2"><i class="fas fa-question-circle me-2"></i>Frequently Asked Questions</h1>
-                    <p class="mb-0 opacity-90 small">Central Business Platform (CBP) – Approvals &amp; Matrices</p>
+                    <p class="mb-0 opacity-90 small">Central Business Platform (CBP) – Approvals Management and Staff Portal</p>
                 </div>
-                <div>
-                    <a href="{{ url('/help') }}" class="btn btn-light btn-sm"><i class="fas fa-book me-1"></i>Help &amp; guides</a>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" id="faqPrintPdfBtn" class="btn btn-light btn-sm" title="Print or Save as PDF">
+                        <i class="fas fa-file-pdf me-1"></i>Print / Save as PDF
+                    </button>
+                    <a href="{{ url('/help') }}" class="btn btn-outline-success btn-sm"><i class="fas fa-book me-1"></i>Help &amp; guides</a>
                 </div>
             </div>
         </div>
@@ -88,8 +106,8 @@
         </div>
 
         <div class="text-center mt-4 pb-3">
-            <a href="{{ url('/help') }}" class="btn btn-success"><i class="fas fa-book me-1"></i>Help &amp; user guides</a>
-            <a href="{{ url('/') }}" class="btn btn-outline-secondary ms-2"><i class="fas fa-arrow-left me-1"></i>Back to login</a>
+            <a href="{{ url('/help') }}" class="btn btn-success w-100"><i class="fas fa-book"></i>Help &amp; user guides</a>
+            <a href="{{ url('/') }}" class="btn btn-outline-secondary w-100 mt-2"><i class="fas fa-arrow-left"></i>Back to login</a>
         </div>
     </div>
 
@@ -106,6 +124,24 @@
                 if (show) vis++;
             });
             document.getElementById('noResults').style.display = vis ? 'none' : 'block';
+        });
+
+        // Print / Save as PDF: expand all FAQs then open print dialog (like special memo print)
+        document.getElementById('faqPrintPdfBtn').addEventListener('click', function() {
+            var collapses = document.querySelectorAll('#faqAccordion .collapse');
+            var bsCollapse;
+            collapses.forEach(function(el) {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+                    bsCollapse = bootstrap.Collapse.getInstance(el);
+                    if (!bsCollapse) bsCollapse = new bootstrap.Collapse(el, { toggle: false });
+                    bsCollapse.show();
+                } else {
+                    el.classList.add('show');
+                    el.style.height = 'auto';
+                }
+            });
+            document.querySelectorAll('.faq-item-hidden').forEach(function(el) { el.classList.remove('faq-item-hidden'); });
+            setTimeout(function() { window.print(); }, 300);
         });
     </script>
 </body>
