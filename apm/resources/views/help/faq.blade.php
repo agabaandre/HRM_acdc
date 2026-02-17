@@ -74,27 +74,36 @@
         </div>
 
         <div id="faqAccordion">
-            @forelse($faqs as $index => $faq)
-                @php
-                    $searchText = trim(implode(' ', [
-                        $faq->search_keywords ?? '',
-                        $faq->question,
-                        strip_tags($faq->answer),
-                    ]));
-                    $collapseId = 'faq-' . $faq->id;
-                @endphp
-                <div class="faq-item" data-search="{{ Str::lower($searchText) }}">
-                    <div class="card faq-card">
-                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}">
-                            <span class="badge-num">{{ $index + 1 }}</span>{{ $faq->question }}
-                        </div>
-                        <div id="{{ $collapseId }}" class="collapse">
-                            <div class="card-body faq-answer">
-                                {!! $faq->answer !!}
+            @php $globalIndex = 0; @endphp
+            @forelse($categories as $category)
+                @if($category->faqs->isNotEmpty())
+                    <div class="faq-category-section mb-4">
+                        <h2 class="h5 text-primary border-bottom pb-2 mb-3"><i class="fas fa-folder me-2"></i>{{ $category->name }}</h2>
+                        @foreach($category->faqs as $faq)
+                            @php
+                                $globalIndex++;
+                                $searchText = trim(implode(' ', [
+                                    $faq->search_keywords ?? '',
+                                    $faq->question,
+                                    strip_tags($faq->answer),
+                                ]));
+                                $collapseId = 'faq-' . $faq->id;
+                            @endphp
+                            <div class="faq-item" data-search="{{ Str::lower($searchText) }}">
+                                <div class="card faq-card">
+                                    <div class="card-header" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}">
+                                        <span class="badge-num">{{ $globalIndex }}</span>{{ $faq->question }}
+                                    </div>
+                                    <div id="{{ $collapseId }}" class="collapse">
+                                        <div class="card-body faq-answer">
+                                            {!! $faq->resolved_answer !!}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        @endforeach
                     </div>
-                </div>
+                @endif
             @empty
                 <div class="card faq-card">
                     <div class="card-body text-center text-muted py-5">

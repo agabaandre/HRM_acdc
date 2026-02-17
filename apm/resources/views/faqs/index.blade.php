@@ -4,6 +4,9 @@
 @section('header', 'Manage FAQs')
 
 @section('header-actions')
+<a href="{{ route('faq-categories.index') }}" class="btn btn-outline-secondary">
+    <i class="bx bx-category"></i> Categories
+</a>
 <a href="{{ route('faqs.create') }}" class="btn btn-success">
     <i class="bx bx-plus"></i> Add FAQ
 </a>
@@ -24,6 +27,12 @@
     <div class="card-header bg-light d-flex flex-wrap gap-2 align-items-center">
         <h5 class="mb-0"><i class="bx bx-list-ul me-2 text-primary"></i>FAQs</h5>
         <form action="{{ route('faqs.index') }}" method="GET" class="d-flex flex-wrap gap-2 ms-auto">
+            <select name="category" class="form-select form-select-sm" style="max-width: 200px;">
+                <option value="">All categories</option>
+                @foreach($categories as $cat)
+                    <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                @endforeach
+            </select>
             <input type="text" name="search" class="form-control form-control-sm" style="max-width: 220px;" placeholder="Search question or answer..." value="{{ request('search') }}">
             <select name="active" class="form-select form-select-sm" style="max-width: 120px;">
                 <option value="">All</option>
@@ -40,6 +49,7 @@
                     <tr>
                         <th style="width: 50px;">#</th>
                         <th>Question</th>
+                        <th style="width: 160px;">Category</th>
                         <th style="width: 80px;">Order</th>
                         <th style="width: 90px;">Status</th>
                         <th class="text-end" style="width: 140px;">Actions</th>
@@ -55,6 +65,7 @@
                                     <br><small class="text-muted">{{ Str::limit($faq->search_keywords, 50) }}</small>
                                 @endif
                             </td>
+                            <td>{{ $faq->category?->name ?? '—' }}</td>
                             <td>{{ $faq->sort_order }}</td>
                             <td>
                                 @if($faq->is_active)
@@ -80,7 +91,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center py-5">
+                            <td colspan="6" class="text-center py-5">
                                 <div class="d-flex flex-column align-items-center">
                                     <i class="bx bx-help-circle text-muted mb-2" style="font-size: 2.5rem;"></i>
                                     <p class="text-muted mb-0">No FAQs found.</p>

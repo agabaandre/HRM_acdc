@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Faq;
+use App\Models\FaqCategory;
 use Illuminate\Http\Request;
 
 class FaqController extends Controller
@@ -12,8 +13,11 @@ class FaqController extends Controller
      */
     public function publicPage()
     {
-        $faqs = Faq::active()->ordered()->get();
-        return view('help.faq', compact('faqs'));
+        $categories = \App\Models\FaqCategory::active()->ordered()
+            ->with(['faqs' => fn ($q) => $q->active()->ordered()])
+            ->whereHas('faqs', fn ($q) => $q->active())
+            ->get();
+        return view('help.faq', compact('categories'));
     }
 
     /**
@@ -21,7 +25,7 @@ class FaqController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Faq::query()->ordered();
+        $query = Faq::query()->with('category')->ordered();
 
         if ($request->filled('search')) {
             $q = $request->search;
@@ -30,6 +34,10 @@ class FaqController extends Controller
                     ->orWhere('answer', 'like', "%{$q}%")
                     ->orWhere('search_keywords', 'like', "%{$q}%");
             });
+        }
+
+        if ($request->filled('category')) {
+            $query->where('faq_category_id', $request->category);
         }
 
         if ($request->filled('active')) {
@@ -41,7 +49,8 @@ class FaqController extends Controller
         }
 
         $faqs = $query->paginate(15)->withQueryString();
-        return view('faqs.index', compact('faqs'));
+        $categories = FaqCategory::ordered()->get();
+        return view('faqs.index', compact('faqs', 'categories'));
     }
 
     /**
@@ -49,7 +58,8 @@ class FaqController extends Controller
      */
     public function create()
     {
-        return view('faqs.create');
+        $categories = FaqCategory::active()->ordered()->get();
+        return view('faqs.create', compact('categories'));
     }
 
     /**
@@ -58,6 +68,7 @@ class FaqController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'faq_category_id' => 'required|exists:faq_categories,id',
             'question' => 'required|string|max:500',
             'answer' => 'required|string',
             'sort_order' => 'nullable|integer|min:0',
@@ -80,7 +91,8 @@ class FaqController extends Controller
      */
     public function edit(Faq $faq)
     {
-        return view('faqs.edit', compact('faq'));
+        $categories = FaqCategory::active()->ordered()->get();
+        return view('faqs.edit', compact('faq', 'categories'));
     }
 
     /**
@@ -89,6 +101,7 @@ class FaqController extends Controller
     public function update(Request $request, Faq $faq)
     {
         $validated = $request->validate([
+            'faq_category_id' => 'required|exists:faq_categories,id',
             'question' => 'required|string|max:500',
             'answer' => 'required|string',
             'sort_order' => 'nullable|integer|min:0',

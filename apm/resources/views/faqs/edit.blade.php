@@ -20,6 +20,18 @@
             @method('PUT')
 
             <div class="mb-4">
+                <label for="faq_category_id" class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                <select name="faq_category_id" id="faq_category_id" class="form-select form-select-lg @error('faq_category_id') is-invalid @enderror" required>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}" {{ old('faq_category_id', $faq->faq_category_id) == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+                @error('faq_category_id')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="mb-4">
                 <label for="question" class="form-label fw-semibold">Question <span class="text-danger">*</span></label>
                 <input type="text" class="form-control form-control-lg @error('question') is-invalid @enderror" id="question"
                     name="question" value="{{ old('question', $faq->question) }}" required maxlength="500">

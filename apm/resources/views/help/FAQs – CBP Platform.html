@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<!-- saved from url=(0044)https://cbp.africacdc.org/demo_staff/apm/faq -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQs – CBP Platform</title>
+    <link href="./FAQs – CBP Platform_files/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./FAQs – CBP Platform_files/all.min.css">
+    <style>
+        :root { --primary: #119a48; --primary-dark: #0d7a3a; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f8f9fa; }
+        .faq-header { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; padding: 2rem 0; }
+        .faq-header a { color: rgba(255,255,255,.9); text-decoration: none; }
+        .faq-header a:hover { color: white; }
+        .search-box { max-width: 480px; margin: 0 auto 1.5rem; }
+        .faq-card { border: none; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 0.75rem; overflow: hidden; }
+        .faq-card .card-header { background: #fff; border-bottom: 1px solid #eee; font-weight: 600; cursor: pointer; padding: 1rem 1.25rem; }
+        .faq-card .card-header:hover { background: #f8f9fa; }
+        .faq-card .card-body { padding: 1rem 1.25rem; color: #495057; line-height: 1.6; }
+        .faq-card .card-body ul { margin-bottom: 0; padding-left: 1.25rem; }
+        .faq-card .card-body a { color: var(--primary); }
+        .faq-item-hidden { display: none; }
+        .no-results { display: none; padding: 2rem; text-align: center; color: #6c757d; }
+        .badge-num { background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; margin-right: 0.5rem; }
+        .platform-note { background: #e8f5e9; border-left: 4px solid var(--primary); padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.95rem; }
+
+        /* Print styles (borrowed from special-memo print: clean layout, expand all, hide nav) */
+        @media print {
+            body { background: #fff; }
+            .faq-header { background: #119a48 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .faq-header a[href]:not(.no-print-hide) { color: #fff !important; }
+            .search-box, #faqPrintPdfBtn, .no-results, .btn, .d-flex.gap-2 .btn { display: none !important; }
+            .faq-item-hidden { display: block !important; }
+            .collapse { display: block !important; visibility: visible !important; height: auto !important; }
+            .faq-card .card-header { cursor: default; border-bottom: 1px solid #dee2e6; }
+            .faq-card { box-shadow: none; border: 1px solid #dee2e6; margin-bottom: 0.75rem; break-inside: avoid; }
+            .container { max-width: 100%; }
+            a[href]:not(.no-print-hide)::after { content: none !important; }
+            .platform-note { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="faq-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <a href="https://cbp.africacdc.org/demo_staff/apm" class="d-inline-flex align-items-center mb-1"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
+                    <h1 class="h4 mb-0 mt-2"><i class="fas fa-question-circle me-2"></i>Frequently Asked Questions</h1>
+                    <p class="mb-0 opacity-90 small">Central Business Platform (CBP) – Approvals Management and Staff Portal</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" id="faqPrintPdfBtn" class="btn btn-light btn-sm" title="Print or Save as PDF">
+                        <i class="fas fa-file-pdf me-1"></i>Print / Save as PDF
+                    </button>
+                    <a href="https://cbp.africacdc.org/demo_staff/apm/help" class="btn btn-outline-success btn-sm"><i class="fas fa-book me-1"></i>Help &amp; guides</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container py-4">
+        <div class="platform-note">
+            <strong><i class="fas fa-info-circle me-1"></i>Access:</strong> The CBP platform is available at <a href="https://cbp.africacdc.org/" target="_blank" rel="noopener">https://cbp.africacdc.org</a>. You must use an <strong>active Africa CDC email account</strong> to sign in.
+        </div>
+
+        <div class="search-box">
+            <label class="form-label small text-muted mb-1">Search FAQs</label>
+            <input type="text" id="faqSearch" class="form-control form-control-lg border-2" placeholder="Type to search questions or answers...">
+        </div>
+
+        <div id="noResults" class="no-results card">
+            <div class="card-body">No matching questions found. Try different keywords.</div>
+        </div>
+
+        <div id="faqAccordion">
+                                            <div class="faq-item" data-search="special memos when use travel request when should i use the special memos? use special memos for&amp;nbsp;travel requests a) that span multiple quarters orb) whose preparations have to be done very early prior to execution&amp;nbsp; e.g cphia orc) an urgent activity that may have come up and has to be approved, e.g outbreak response deployment&amp;nbsp;&amp;nbsp;note: special memos must be supported by a justification.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-1" aria-expanded="true">
+                            <span class="badge-num">1</span>When should I use the special memos?
+                        </div>
+                        <div id="faq-1" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Use <strong>Special Memos</strong> for<strong>&nbsp;travel requests </strong></p><p><strong>a) that span multiple quarters or</strong></p><p><b>b) whose preparations have to be done very early prior to execution<span style="font-size: 12pt;">&nbsp; e.g CPHIA or</span><span style="font-size: 12pt;"><br></span></b></p><p><span style="font-size: 12pt;"><b>c) an urgent activity that may have come up and has to be approved, e.g outbreak response deployment</b></span></p><p><b><span style="font-size: 12pt;">&nbsp;</span><span style="font-size: 12pt;">&nbsp;NOTE: Special memos must be supported by a justification.</span></b></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="new activity after matrix submitted approved single memo what should i use when a new activity occurs after the matrix is submitted or approved? use a single memo. when a matrix is already submitted or approved, you can add new activities to it as single memos from the matrix detail page (via add single memo). single memos follow their own approval workflow and do not change the matrix&#39;s approval status.&amp;nbsp;note: the single memo option will only appear after a matrix has either been submited or has been approved">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-2" aria-expanded="true">
+                            <span class="badge-num">2</span>What should I use when a new activity occurs after the matrix is submitted or approved?
+                        </div>
+                        <div id="faq-2" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Use a <strong>Single Memo</strong>. When a matrix is already submitted or approved, you can add new activities to it as Single Memos from the matrix detail page (via <strong>Add Single Memo</strong>). Single Memos follow their own approval workflow and do not change the matrix's approval status.&nbsp;</p><p><b>NOTE: The Single memo option will only appear after a matrix has either been submited or has been approved</b></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="create new travel matrix how do i create a new travel matrix? first, only the division focal person can create a new matrix. at the top of the landing page, you will see the division name, head, and focal person. if you are not the focal person, then you cannot create the matrixonce you confirm you are the focal person or locate the focal person, then proceed as followsgo to apm home → quarterly travel matrix (qm)&amp;nbsp;and click open.click on the button create new matrixselect the year and quarter add at least one key result area under description. if you want to add more, click &quot;add key result area.&quot;a key result area (kra)&amp;nbsp;is a broad, critical area of responsibility where you are expected to consistently deliver important outcomes.then click on &quot;create matrix.&quot;the quarterly travel matrix has now been created, and staff within the division can now add their activitiesnote: at creation of the matrix, all staff in the division will receive a notification email">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-3" aria-expanded="true">
+                            <span class="badge-num">3</span>How do I create a new travel matrix?
+                        </div>
+                        <div id="faq-3" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <div>First, only the division focal person can create a new Matrix. At the top of the landing page, you will see the division name, Head, and Focal person. If you are not the focal person, then you cannot create the matrix</div><div>Once you confirm you are the focal person or locate the focal person, then proceed as follows</div><ul><li>Go to <strong>APM Home → Quarterly Travel Matrix (QM)</strong>&nbsp;and click <strong>Open</strong>.</li><li>Click on the button <b>Create New Matrix</b></li><li>Select the year and quarter </li><li>Add at least one key result area under description. If you want to add more, click "<b>Add Key Result Area.</b>"</li><li><b>A key result area (KRA)</b>&nbsp;is a broad, critical area of responsibility where you are expected to consistently deliver important outcomes.</li><li>Then Click on "<b>Create Matrix.</b>"</li><li>The Quarterly Travel Matrix has now been created, and staff within the division can now add their activities</li><li>NOTE: At creation of the Matrix, all staff in the division will receive a notification email</li></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="procurements consultants travel matrix should i add procurements and consultants hiring under the quarterly travel matrix? no, the quarterly&amp;nbsp;travel matrix is for planning travel-related activities (missions, workshops, meetings, etc.) and their budgets. independent procurements and consultants hiring are to be handled using the non travel memo option, except if they are costs that will be incurred during a travel activity, then they can be included">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-4" aria-expanded="true">
+                            <span class="badge-num">4</span>Should I add procurements and consultants hiring under the quarterly travel matrix?
+                        </div>
+                        <div id="faq-4" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p><b>No, </b>the <b>quarterly</b>&nbsp;<strong>travel matrix</strong> is for planning <strong>travel-related activities</strong> (missions, workshops, meetings, etc.) and their budgets. </p><p>Independent Procurements and consultants hiring are to be handled using the Non Travel Memo Option, except if they are costs that will be incurred during a travel activity, then they can be included</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="change request where find where do i find the change request? change requests (addenda) are created from an already approved document. open the approved matrix, single memo, special memo, or non-travel memo; on its detail page, you will see a change request (or similar) button. you can also go to change requests from the main menu to list and manage your change requests. change requests can only be created for fully approved documents.note: change requests can only be submitted by the activity&#39;s responsible person.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-5" aria-expanded="true">
+                            <span class="badge-num">5</span>Where do I find the change request?
+                        </div>
+                        <div id="faq-5" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p><strong>Change Requests</strong> (addenda) are created from an <strong>already approved</strong> document. Open the approved Matrix, Single Memo, Special Memo, or Non-Travel Memo; on its detail page, you will see a <strong>Change Request</strong> (or similar) button. You can also go to <strong>Change Requests</strong> from the main menu to list and manage your change requests. Change requests can only be created for fully approved documents.</p><p><b>NOTE: Change requests can only be submitted by the activity's Responsible Person.</b></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="staff name change executive office approval does the change of staff name require approval from the executive office? yes, changes to staff names (e.g., staff replacements or additions) on any activity will need to be resubmitted to the executive office for approval.only changes of dates within the same quarter will go to the director admin">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-6" aria-expanded="true">
+                            <span class="badge-num">6</span>Does the change of staff name require approval from the executive office?
+                        </div>
+                        <div id="faq-6" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Yes, Changes to staff names (e.g., staff replacements or additions) on any activity will need to be resubmitted to the executive office for approval.</p><p><span style="font-size: 12pt;">Only changes of dates within the same quarter will go to the Director Admin</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="quarterly travel matrix when submit when should we submit the quarterly travel matrix? submit the quarterly travel matrix in line with your division&#39;s planning cycle by the 15th of the preceding month to the quarter&amp;nbsp;however, the system allows you to create matrices for any quarter at any time. submit once the content is complete and reviewed so approvals can be completed in time for the planned activities.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-7" aria-expanded="true">
+                            <span class="badge-num">7</span>When should we submit the quarterly travel matrix?
+                        </div>
+                        <div id="faq-7" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Submit the <strong>quarterly travel matrix</strong> in line with your division's planning cycle by the 15th of the preceding month to the quarter&nbsp;</p><p>However, the system allows you to create matrices for any quarter at any time. Submit once the content is complete and reviewed so approvals can be completed in time for the planned activities.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="assigned mission how know how do i know if i have been assigned to a mission? you are assigned to a mission (activity) when you are set as the responsible person or as an internal participant on that activity. under quarterly travel&amp;nbsp;matrix, click open. click on view on any matrix and scroll to the bottom, you will see all division members and the number of days they have been assigned. click on the name to see which activity they have been assigned toactivities / single memos where you are listed as the responsible person or participant. you will also receive email notifications when documents are assigned to you or when you are added to an activity.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-8" aria-expanded="true">
+                            <span class="badge-num">8</span>How do I know if I have been assigned to a mission?
+                        </div>
+                        <div id="faq-8" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>You are assigned to a mission (activity) when you are set as the <strong>Responsible Person</strong> or as an <strong>internal participant</strong> on that activity. </p><p>Under <b>Quarterly Travel&nbsp;Matrix, click Open</b>. Click on View on any matrix and scroll to the bottom, you will see all division members and the number of days they have been assigned. Click on the name to see which activity they have been assigned to</p><p><strong>Activities</strong> / <strong>Single Memos</strong> where you are listed as the responsible person or participant. You will also receive <strong>email notifications</strong> when documents are assigned to you or when you are added to an activity.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="stop daily reminders email how do i stop daily reminders from coming to my email? daily reminders are sent to approvers with pending approvals (e.g., at 9:00 am and 4:00 pm) or staff with returned memos to reduce or stop them: (1) process your pending approvals — once there are no pending items for you, you will not receive reminders. (2) for returned memos, either edit and resubmit or delete them completely, then the reminders will stopnote: only the responsible person can edit or delete a returned memo">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-9" aria-expanded="true">
+                            <span class="badge-num">9</span>How do I stop daily reminders from coming to my email?
+                        </div>
+                        <div id="faq-9" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Daily reminders are sent to <strong>approvers with pending approvals</strong> (e.g., at 9:00 AM and 4:00 PM) or staff with returned memos </p><p>To reduce or stop them: </p><p>(1) <strong>Process your pending approvals</strong> — once there are no pending items for you, you will not receive reminders. </p><p>(2) For <b>Returned Memos</b>, either edit and resubmit or delete them completely, then the reminders will stop</p><p><b>NOTE: Only the responsible person can edit or delete a returned memo</b></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="focal person responsible person difference what&#39;s the difference between a focal person and a responsible person? a focal person is the staff member assigned to create a matrix on behalf of the division and to submit it once all activities for the quarter have been added. a responsible person&amp;nbsp;is a staff member who oversees an activity from start to finish. once approval is given, this person will be the one to request dsa, ticket, imprest, as well as submit the accountability and report once it&#39;s completenote: the focal person for a division can be changed, but only when the division head sends an email to mis">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-10" aria-expanded="true">
+                            <span class="badge-num">10</span>What's the difference between a focal person and a responsible person?
+                        </div>
+                        <div id="faq-10" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p><b>A focal person is the staff member assigned to create a matrix on behalf of the division and to s</b>ubmit it once all activities for the quarter have been added. </p><p><strong>A responsible person</strong>&nbsp;is a staff member who oversees an activity from start to finish. Once approval is given, this person will be the one to request DSA, ticket, imprest, as well as submit the accountability and report once it's complete</p><p><b>NOTE: The focal person for a division can be changed, but only when the division Head sends an email to MIS</b></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="cannot log in cbp platform login what do i do if i cannot log into the cbp platform? ensure you are using an active africa cdc email account and the correct login page (cbp.africacdc.org). use sign in with staff email (microsoft sso) when available. if access still fails: (1) confirm your record is active with hr. (2) try a different browser or clear the cache. (3) contact your it support or the cbp administrator to verify your account and permissions.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-11" aria-expanded="true">
+                            <span class="badge-num">11</span>What do I do if I cannot log into the CBP platform?
+                        </div>
+                        <div id="faq-11" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Ensure you are using an <strong>active Africa CDC email account</strong> and the correct login page (cbp.africacdc.org). </p><p>Use <strong>Sign in with Staff Email</strong> (Microsoft SSO) when available. If access still fails: </p><p>(1) Confirm your record is active with HR. </p><p>(2) Try a different browser or clear the cache. </p><p>(3) Contact your <strong>IT support</strong> or the CBP administrator to verify your account and permissions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="update profile supervisor how do i update my profile information like 1st or 2nd supervisor? profile and organisational data (e.g., 1st or 2nd supervisor) are usually maintained in the central staff portal&amp;nbsp;system that feeds the cbp. contact hr&amp;nbsp; to update the supervisor or profile information. changes will sync to the cbp. if you do not see a &quot;profile&quot; or &quot;my account&quot; section in the cbp, contact it or hr for instructions on updating these details.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-13" aria-expanded="true">
+                            <span class="badge-num">12</span>How do I update my profile information like 1st or 2nd supervisor?
+                        </div>
+                        <div id="faq-13" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Profile and organisational data (e.g., 1st or 2nd supervisor) are usually maintained in the <strong>central staff portal</strong>&nbsp;system that feeds the CBP. </p><p>Contact HR&nbsp; to update the supervisor or profile information. Changes will sync to the CBP. If you do not see a "Profile" or "My account" section in the CBP, contact IT or HR for instructions on updating these details.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="recall submitted matrix memo how do i recall a submitted matrix or memo? once a matrix or memo is submitted, it is in the approval workflow and generally cannot be &quot;recalled&quot; by the creator without an approver action. if you need to withdraw a submitted document before it is returned or approved, contact the current approver&amp;nbsp;to return it.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-14" aria-expanded="true">
+                            <span class="badge-num">13</span>How do I recall a submitted matrix or memo?
+                        </div>
+                        <div id="faq-14" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Once a matrix or memo is <strong>submitted</strong>, it is in the approval workflow and generally cannot be "recalled" by the creator without an approver action. </p><p>If you need to withdraw a submitted document before it is returned or approved, contact the <strong>current approver</strong>&nbsp;to return it.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="single memo special memo difference what is the difference between a single memo and a special memo? a single memo is an activity added to an existing matrix that is already submitted or approved,&amp;nbsp; use it when a new activity comes up after the matrix is in progress. a special memo is an activity created in scenarios where it will&amp;nbsp;a) span multiple quarters or&amp;nbsp;b) whose preparations have to be done very early, prior to execution&amp;nbsp; e.g cphia or&amp;nbsp;c) an urgent activity that may have come up and has to be approved, e.g outbreak response deployment">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-15" aria-expanded="true">
+                            <span class="badge-num">14</span>What is the difference between a Single Memo and a Special Memo?
+                        </div>
+                        <div id="faq-15" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>A <strong>Single Memo</strong> is an activity added to an <strong>existing matrix</strong> that is already submitted or approved,&nbsp; Use it when a new activity comes up after the matrix is in progress. </p><p>A <strong>Special Memo</strong> is an activity created in scenarios where it will&nbsp;<strong style="font-size: 12pt;">a) span multiple quarters or&nbsp;</strong><b style="font-size: 12pt;">b) whose preparations have to be done very early, prior to execution&nbsp; e.g CPHIA or&nbsp;</b><b style="font-size: 12pt;">c) an urgent activity that may have come up and has to be approved, e.g outbreak response deployment</b></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="draft submitted returned approved status what do draft, submitted, returned, and approved mean? draft: you are still editing; the document is not in the approval chain. submitted: you have sent it for approval; it is with the first (or next) approver and you normally cannot edit until it is returned or approved. returned: an approver sent it back to you for changes or clarification; you can edit and resubmit. approved: the document has completed the workflow and is approved. for changes after approval, use a change request (addendum).">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-16" aria-expanded="true">
+                            <span class="badge-num">15</span>What do draft, submitted, returned, and approved mean?
+                        </div>
+                        <div id="faq-16" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p><strong>Draft</strong>: You are still editing; the document is not in the approval chain. </p><p><strong>Submitted</strong>: You have sent it for approval; it is with the first (or next) approver and you normally cannot edit until it is returned or approved. </p><p><strong>Returned</strong>: An approver sent it back to you for changes or clarification; you can edit and resubmit. </p><p><strong>Approved</strong>: The document has completed the workflow and is approved. For changes after approval, use a <strong>Change Request</strong> (addendum).</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="returned matrix memo what happens edit resubmit what happens when my matrix or memo is returned? when an approver returns your document, it goes back to the respective hod. you will see it in your returns or similar list. the hod will have 2 options;a) either to add a comment and send it back to the level it came from, orb) send it back to the draft to make the requested changes. it will re-enter the approval workflow. the approval trail keeps a record of who returned it and when.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-17" aria-expanded="true">
+                            <span class="badge-num">16</span>What happens when my matrix or memo is returned?
+                        </div>
+                        <div id="faq-17" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>When an approver <strong>returns</strong> your document, it goes back to the respective HOD. You will see it in your <strong>Returns</strong> or similar list. </p><p>The HOD will have 2 options;</p><p>a) Either to add a comment and send it back to the level it came from, or</p><p><span style="font-size: 12pt;">b) send it back to the draft to make the requested changes</span><span style="font-size: 12pt;">. It will re-enter the approval workflow. The approval trail keeps a record of who returned it and when.</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="pending approvals approver dashboard where where do i see my pending approvals (as an approver)? use the dashboard or pending approvals (or similar) link in the main menu. there you will find matrices, memos, and other documents awaiting your action. you can approve, return, or reject each item. you will also receive email notifications when items are assigned to you, and daily reminder emails list your pending approvals.note: there is an approvers dashboard that shows the average time each approver takes to action on a given memo">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-18" aria-expanded="true">
+                            <span class="badge-num">17</span>Where do I see my pending approvals (as an approver)?
+                        </div>
+                        <div id="faq-18" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Use the <strong>Dashboard</strong> or <strong>Pending Approvals</strong> (or similar) link in the main menu. </p><p>There you will find matrices, memos, and other documents awaiting your action. You can approve, return, or reject each item. </p><p>You will also receive <strong>email notifications</strong> when items are assigned to you, and daily reminder emails list your pending approvals.</p><p><br></p><p><b>NOTE: There is an approvers dashboard that shows the average time each approver takes to Action on a given memo</b></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="non travel memo when use what is a non-travel memo and when do i use it? a non-travel memo is for activities that do not involve travel—e.g., local workshops, procurement, consultancy, or other non-travel work. use it when you need approval and tracking for any activity that does not involve travel.&amp;nbsp;">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-19" aria-expanded="true">
+                            <span class="badge-num">18</span>What is a Non-Travel Memo and when do I use it?
+                        </div>
+                        <div id="faq-19" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>A <strong>Non-Travel Memo</strong> is for activities that do <strong>not</strong> involve travel—e.g., local workshops, procurement, consultancy, or other non-travel work. </p><p>Use it when you need approval and tracking for any activity that does not involve travel.&nbsp;</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="arf advance request funds what is an arf (activity request form)? an arf (activity request form) is a memo generated by the system to request extramural funds from the implementing partner.note: arf can only be generated after the activity has been approved, and there exists an approval memo">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-20" aria-expanded="true">
+                            <span class="badge-num">19</span>What is an ARF (Activity Request Form)?
+                        </div>
+                        <div id="faq-20" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>An <strong>ARF</strong> (Activity Request Form) is a memo generated by the system to request extramural funds from the implementing partner.</p><p><b>NOTE: ARF can only be generated after the activity has been approved, and there exists an approval memo</b></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="service request transport venue when use what is a service request and when do i use it? a service request is a memo used to request&amp;nbsp;services such as dsa, ticket, imprest, transport, venue, or other support needed for an activity from the finance and administration offices. used when the activity uses intramural funding and an approval memo already exists.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-21" aria-expanded="true">
+                            <span class="badge-num">20</span>What is a Service Request and when do I use it?
+                        </div>
+                        <div id="faq-21" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>A <strong>Service Request</strong> is a memo used to request&nbsp;<strong>services</strong> such as DSA, ticket, imprest, transport, venue, or other support needed for an activity from the finance and administration offices. </p><p>Used when the activity uses intramural funding and an approval memo already exists.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="edit after submit matrix memo can i edit my matrix or memo after i submit it? once submitted, you cannot edit until an approver returns it to you. after it is returned, you can edit and resubmit. if the document is approved and you need to make a change, you must create a change request (addendum) based on that document; the change request then&amp;nbsp;goes through the approval workflow. draft documents can be edited freely until you submit.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-22" aria-expanded="true">
+                            <span class="badge-num">21</span>Can I edit my matrix or memo after I submit it?
+                        </div>
+                        <div id="faq-22" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Once <strong>submitted</strong>, you cannot edit until an approver <strong>returns</strong> it to you. After it is returned, you can edit and resubmit. </p><p>If the document is <strong>approved</strong> and you need to make a change, you must create a Change Request (addendum) based on that document; the change request then&nbsp;goes through the approval workflow. </p><p>Draft documents can be edited freely until you submit.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="approval trail history status what is the approval trail and where do i see it? the approval trail is the history of who approved, returned, or rejected your document and when. on the document’s detail page (matrix, memo, etc.) look for a section or tab such as approval trail, history, or approval status. there you can see each step, the approver’s name, action (approved/returned/rejected), date, and any comments.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-23" aria-expanded="true">
+                            <span class="badge-num">22</span>What is the approval trail and where do I see it?
+                        </div>
+                        <div id="faq-23" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>The <strong>approval trail</strong> is the history of who approved, returned, or rejected your document and when. On the document’s detail page (matrix, memo, etc.) look for a section or tab such as <strong>Approval Trail</strong>, <strong>History</strong>, or <strong>Approval Status</strong>. There you can see each step, the approver’s name, action (approved/returned/rejected), date, and any comments.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="key result areas kra matrix what are key result areas (kras) in the matrix? key result areas (kras) are the main result areas or objectives for your division’s plan in that matrix (e.g. by quarter or year). you add kras and their descriptions when creating the matrix so approvers can see what the matrix aims to achieve. they help align activities with division goals and make the matrix easier to review and approve.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-24" aria-expanded="true">
+                            <span class="badge-num">23</span>What are Key Result Areas (KRAs) in the matrix?
+                        </div>
+                        <div id="faq-24" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p><strong>Key Result Areas (KRAs)</strong> are the main result areas or objectives for your division’s plan in that matrix (e.g. by quarter or year). </p><p>You add KRAs and their descriptions when creating the matrix so approvers can see what the matrix aims to achieve. </p><p>They help align activities with division goals and make the matrix easier to review and approve.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="who approves workflow division head who approves my matrix or memo? approval is determined by workflows assigned to your division and document type. typically, the workflow includes steps such as the division head, the director, and possibly the executive office. the system routes the document to each approver in order. you can see who is next in the approval trail or on the document’s status page.&amp;nbsp;note: approval workflows are managed by the systems administrator and only change when there is a fully approved review and memo">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-25" aria-expanded="true">
+                            <span class="badge-num">24</span>Who approves my matrix or memo?
+                        </div>
+                        <div id="faq-25" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Approval is determined by <strong>workflows</strong> assigned to your division and document type. </p><p>Typically, the workflow includes steps such as the Division Head, the Director, and possibly the Executive Office. The system routes the document to each approver in order. </p><p>You can see who is next in the <strong>approval trail</strong> or on the document’s status page.&nbsp;</p><p><b>NOTE: Approval workflows are managed by the systems administrator and only change when there is a fully approved review and memo</b></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="add activities matrix how do i add activities to my matrix? under quarterly travel matrix, click on open, and click the add activity&amp;nbsp;button. fill in the details for each activity: title, dates, location, participants, responsible person, and budget breakdown. you can add multiple activities. save the matrix; when ready, submit for approval. for a matrix that is already submitted or approved, add new activities by selecting add single memo on&amp;nbsp;the matrix detail page incase the matrix has already been submitted">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-26" aria-expanded="true">
+                            <span class="badge-num">25</span>How do I add activities to my matrix?
+                        </div>
+                        <div id="faq-26" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Under <b>Quarterly Travel Matrix,</b> click on <b>Open</b>, and click the <strong>Add Activity</strong>&nbsp;button. Fill in the details for each activity: title, dates, location, participants, responsible person, and budget breakdown. </p><p>You can add multiple activities. Save the matrix; when ready, submit for approval. For a matrix that is already submitted or approved, add new activities by selecting Add Single Memo on&nbsp;the matrix detail page incase the matrix has already been submitted</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="find my matrices memos submitted where do i find my submitted matrices and memos? go to apm home and open quarterly travel&amp;nbsp;matrix, special memos, single memos, or non-travel as needed. use the tabs or filters (e.g., “my division”, “all”, “draft”, “pending”, “approved”, “returned”) to find your documents. returned items often appear under returns in the menu. you can also use the list or search to find a specific matrix or memo by status or date.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-27" aria-expanded="true">
+                            <span class="badge-num">26</span>Where do I find my submitted matrices and memos?
+                        </div>
+                        <div id="faq-27" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Go to <strong>APM Home</strong> and open <b>Quarterly Travel&nbsp;</b><strong>Matrix</strong>, <strong>Special Memos</strong>, <strong>Single Memos</strong>, or <strong>Non-Travel</strong> as needed. Use the tabs or filters (e.g., “My division”, “All”, “Draft”, “Pending”, “Approved”, “Returned”) to find your documents. Returned items often appear under <strong>Returns</strong> in the menu. You can also use the list or search to find a specific matrix or memo by status or date.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="attach documents files memo upload can i attach documents or files to my memo? yes. when creating or editing a special memo, non-travel memo, or similar form, look for an attach or upload section. you can attach supporting documents (e.g. pdf, word, excel, images) to strengthen your request. keep file sizes reasonable and use allowed formats as indicated on the form. attachments are visible to approvers when they review the memo.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-28" aria-expanded="true">
+                            <span class="badge-num">27</span>Can I attach documents or files to my memo?
+                        </div>
+                        <div id="faq-28" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Yes. When creating or editing a Special Memo, Non-Travel Memo, or similar form, look for an <strong>Attach</strong> or <strong>Upload</strong> section. You can attach supporting documents (e.g. PDF, Word, Excel, images) to strengthen your request. Keep file sizes reasonable and use allowed formats as indicated on the form. Attachments are visible to approvers when they review the memo.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="document number matrix memo what does document number on the matrix or memo mean? the system assigns a document number to matrices and memos (and to change requests), and this acts as a reference number for the memo. the format and rules are configured by registry (e.g., by division, type, and year). it is used for reference and filing.">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-29" aria-expanded="true">
+                            <span class="badge-num">28</span>What does document number on the matrix or memo mean?
+                        </div>
+                        <div id="faq-29" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>The system assigns a <strong>document number</strong> to matrices and memos (and to change requests), and this acts as a reference number for the memo. </p><p>The format and rules are configured by registry (e.g., by division, type, and year). It is used for reference and filing.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="intramural extramural budget what is the difference between intramural, extramural budget and external source? intramural budget usually refers to funds from internal sources (africa cdc’s own budget). extramural budget refers to funds from external sources (e.g., grants, partners, donors).&amp;nbsp;external source refers to funding from an external partner; africa cdc does not contribute any funding to this source">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-30" aria-expanded="true">
+                            <span class="badge-num">29</span>What is the difference between intramural, extramural budget and External Source?
+                        </div>
+                        <div id="faq-30" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p><strong>Intramural</strong> budget usually refers to funds from internal sources (Africa CDC’s own budget). </p><p><strong>Extramural</strong> budget refers to funds from external sources (e.g., grants, partners, donors).&nbsp;</p><p><b>External Source</b> refers to funding from an external partner; Africa CDC does not contribute any funding to this source</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                            <div class="faq-item" data-search="where do i put activity dates and travel dates? under the activity details, indicate only the activity date, i.e., start date and end dateindicate the travel dates under the request for approval field at the bottom of the form">
+                    <div class="card faq-card">
+                        <div class="card-header" data-bs-toggle="collapse" data-bs-target="#faq-31" aria-expanded="true">
+                            <span class="badge-num">30</span>Where do i put Activity Dates and travel Dates?
+                        </div>
+                        <div id="faq-31" class="collapse show" style="">
+                            <div class="card-body faq-answer">
+                                <p>Under the activity details, indicate only the activity date, i.e., Start Date and End Date</p><p>Indicate the travel dates under the Request for Approval Field at the bottom of the Form</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                    </div>
+
+        <div class="text-center mt-4 pb-3">
+            <a href="https://cbp.africacdc.org/demo_staff/apm/help" class="btn btn-success w-100"><i class="fas fa-book"></i>Help &amp; user guides</a>
+            <a href="https://cbp.africacdc.org/demo_staff/apm" class="btn btn-outline-secondary w-100 mt-2"><i class="fas fa-arrow-left"></i>Back to login</a>
+        </div>
+    </div>
+
+    <script src="./FAQs – CBP Platform_files/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('faqSearch').addEventListener('input', function() {
+            var q = this.value.trim().toLowerCase();
+            var items = document.querySelectorAll('.faq-item');
+            var vis = 0;
+            items.forEach(function(el) {
+                var text = (el.getAttribute('data-search') || '') + ' ' + (el.textContent || '').toLowerCase();
+                var show = !q || text.indexOf(q) !== -1;
+                el.classList.toggle('faq-item-hidden', !show);
+                if (show) vis++;
+            });
+            document.getElementById('noResults').style.display = vis ? 'none' : 'block';
+        });
+
+        // Print / Save as PDF: expand all FAQs then open print dialog (like special memo print)
+        document.getElementById('faqPrintPdfBtn').addEventListener('click', function() {
+            var collapses = document.querySelectorAll('#faqAccordion .collapse');
+            var bsCollapse;
+            collapses.forEach(function(el) {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+                    bsCollapse = bootstrap.Collapse.getInstance(el);
+                    if (!bsCollapse) bsCollapse = new bootstrap.Collapse(el, { toggle: false });
+                    bsCollapse.show();
+                } else {
+                    el.classList.add('show');
+                    el.style.height = 'auto';
+                }
+            });
+            document.querySelectorAll('.faq-item-hidden').forEach(function(el) { el.classList.remove('faq-item-hidden'); });
+            setTimeout(function() { window.print(); }, 300);
+        });
+    </script>
+
+
+<scribe-shadow id="crxjs-ext" data-crx="okfkdaglfjjjfefdcppliegebpoegaii" style="position: fixed; width: 0px; height: 0px; top: 0px; left: 0px; z-index: 2147483647; overflow: visible; visibility: visible;"><template shadowrootmode="open"><div id="root-scribe-elem" style="position: fixed; width: 0px; height: 0px; top: 0px; left: 0px; overflow: visible; color: rgb(21, 24, 30);"><div role="region" aria-label="Notifications (F8)" tabindex="-1" style="pointer-events: none;"><ol tabindex="-1" class="fixed bottom-auto right-0 top-0 z-[999999] flex max-h-screen w-[400px] max-w-full p-4"></ol></div></div><link rel="stylesheet" href="chrome-extension://okfkdaglfjjjfefdcppliegebpoegaii/assets/style.css"></template></scribe-shadow></body></html>
