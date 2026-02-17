@@ -27,12 +27,20 @@
     table.export-table th, table.export-table td { border: 1px solid #999; padding: 5px 6px; text-align: left; }
     table.export-table th { background: #f0f0f0; font-weight: bold; }
     table.export-table td { vertical-align: top; }
-    .trail-table td { vertical-align: middle; }
-    .approver-name { font-weight: bold; }
-    .trail-date { font-size: 9pt; color: #555; }
-    .trail-remarks { font-size: 9pt; margin-top: 4px; }
-    .signature-cell { width: 80px; text-align: center; }
-    .signature-cell img { max-width: 70px; max-height: 40px; }
+    .trail-table td { vertical-align: top; }
+    .approver-name { font-weight: bold; font-size: 10pt; }
+    .approver-role { color: #555; font-size: 9pt; }
+    .trail-date { font-size: 9pt; color: #555; margin-bottom: 2px; }
+    .trail-remarks { font-size: 9pt; margin-top: 4px; padding: 6px; background: #f5f5f5; border-radius: 4px; }
+    .signature-cell { width: 100px; vertical-align: top; }
+    .signature-cell .signature-image { height: 28px; max-width: 80px; object-fit: contain; display: block; margin: 0 0 4px 0; }
+    .signature-cell .signature-date { color: #666; font-size: 8pt; margin: 0; line-height: 1.2; }
+    .signature-cell .signature-hash { color: #999; font-size: 7pt; margin: 2px 0 0 0; line-height: 1.2; }
+    .trail-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9pt; font-weight: bold; }
+    .trail-badge.approved, .trail-badge.passed { background: #28a745; color: #fff; }
+    .trail-badge.submitted { background: #17a2b8; color: #fff; }
+    .trail-badge.returned { background: #fd7e14; color: #fff; }
+    .trail-badge.rejected, .trail-badge.flagged { background: #dc3545; color: #fff; }
     .text-muted { color: #666; }
     .matrix-header { margin-bottom: 16px; }
     .matrix-header h1 { font-size: 14pt; margin: 0 0 4px 0; }
@@ -79,17 +87,16 @@
     </tbody>
 </table>
 
-{{-- Approval Trail & Approver Signatures --}}
+{{-- Approval Trail (timeline style: date, name, role, status badge, remarks; signatures like activities print – no photos) --}}
 <div class="section-title">Approval Trail & Approver Signatures</div>
 <table class="export-table trail-table">
     <thead>
         <tr>
-            <th style="width: 40px;">#</th>
-            <th style="width: 90px;">Signature / Photo</th>
-            <th>Approver Name</th>
-            <th>Role</th>
-            <th>Action</th>
-            <th style="width: 120px;">Date & Time</th>
+            <th style="width: 32px;">#</th>
+            <th style="width: 100px;">Signature</th>
+            <th style="width: 125px;">Date & Time</th>
+            <th>Approver Name (Role)</th>
+            <th style="width: 95px;">Action</th>
             <th>Remarks</th>
         </tr>
     </thead>
@@ -100,28 +107,33 @@
                 $approver = $trail->oicStaff ?? $trail->staff;
                 $approverName = $approver ? trim(($approver->title ?? '') . ' ' . ($approver->fname ?? '') . ' ' . ($approver->lname ?? '') . ' ' . ($approver->oname ?? '')) : 'N/A';
                 $roleName = $trail->approver_role_name ?? 'Focal Person';
-                $photoUrl = $approver && !empty(trim($approver->photo ?? '')) ? $baseUrl . '/uploads/staff/' . $approver->photo : null;
-                $signatureUrl = $approver && !empty(trim($approver->signature ?? '')) ? $baseUrl . '/uploads/staff/' . $approver->signature : null;
+                $actionLower = strtolower($trail->action ?? '');
+                $badgeClass = in_array($actionLower, ['approved', 'passed']) ? 'approved' : (in_array($actionLower, ['rejected', 'flagged']) ? 'rejected' : ($actionLower === 'submitted' ? 'submitted' : 'returned'));
+                $staffIdForHash = $trail->oic_staff_id ?? $trail->staff_id;
+                $signaturePath = $approver && !empty(trim($approver->signature ?? '')) ? $baseUrl . '/uploads/staff/signature/' . $approver->signature : null;
+                $approvalDate = $trail->created_at ? $trail->created_at->format('j F Y g:i a') : '—';
+                $verifyHash = $matrix && $staffIdForHash ? \App\Helpers\PrintHelper::generateVerificationHash($matrix->id, $staffIdForHash, $trail->created_at) : 'N/A';
             @endphp
             <tr>
                 <td>{{ $idx + 1 }}</td>
                 <td class="signature-cell">
-                    @if($signatureUrl)
-                        <img src="{{ $signatureUrl }}" alt="Signature" />
-                    @elseif($photoUrl)
-                        <img src="{{ $photoUrl }}" alt="Photo" />
+                    @if($signaturePath)
+                        <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" />
                     @else
-                        <span class="text-muted">—</span>
+                        <span class="text-muted" style="font-size: 9pt;">Not Signed</span>
                     @endif
+                    <div class="signature-hash">Verify Hash: {{ $verifyHash }}</div>
                 </td>
-                <td class="approver-name">{{ $approverName }}</td>
-                <td>{{ $roleName }}</td>
-                <td>{{ ucfirst($trail->action ?? '') }}</td>
-                <td class="trail-date">{{ $trail->created_at ? $trail->created_at->format('d M Y, H:i') : '—' }}</td>
+                <td class="trail-date">{{ $approvalDate }}</td>
+                <td>
+                    <span class="approver-name">{{ $approverName }}</span>
+                    <span class="approver-role"> ({{ $roleName }})</span>
+                </td>
+                <td><span class="trail-badge {{ $badgeClass }}">{{ ucfirst($trail->action ?? '') }}</span></td>
                 <td class="trail-remarks">{{ $trail->remarks ?? '—' }}</td>
             </tr>
         @empty
-            <tr><td colspan="7">No approval trail.</td></tr>
+            <tr><td colspan="6">No approval trail.</td></tr>
         @endforelse
     </tbody>
 </table>
