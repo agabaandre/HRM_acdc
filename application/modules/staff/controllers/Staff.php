@@ -361,7 +361,7 @@ class Staff extends MX_Controller
 	}
 
 	/**
-	 * Reorder CSV/Excel row keys: 'age' after 'date_of_birth', 'years_of_tenure' after 'job_name'.
+	 * Reorder CSV/Excel row keys: 'age' after 'date_of_birth', 'years_of_tenure' after 'end_date' (Current Contract End Date).
 	 */
 	private function reorder_staff_export_columns($staff) {
 		if (empty($staff)) {
@@ -378,14 +378,14 @@ class Staff extends MX_Controller
 				$pos_dob = array_search('date_of_birth', $keys);
 				array_splice($keys, $pos_dob + 1, 0, ['age']);
 			}
-			// Years of tenure immediately after job_name
-			$pos_job = array_search('job_name', $keys);
+			// Years of tenure immediately after end_date (Current Contract End Date)
+			$pos_end = array_search('end_date', $keys);
 			$pos_tenure = array_search('years_of_tenure', $keys);
-			if ($pos_job !== false && $pos_tenure !== false) {
+			if ($pos_end !== false && $pos_tenure !== false) {
 				unset($keys[$pos_tenure]);
 				$keys = array_values($keys);
-				$pos_job = array_search('job_name', $keys);
-				array_splice($keys, $pos_job + 1, 0, ['years_of_tenure']);
+				$pos_end = array_search('end_date', $keys);
+				array_splice($keys, $pos_end + 1, 0, ['years_of_tenure']);
 			}
 			$ordered = [];
 			foreach ($keys as $k) {
