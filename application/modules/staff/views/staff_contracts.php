@@ -51,7 +51,15 @@
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="row align-items-center">
-                <div class="col-md-8">
+                <div class="col-auto me-3">
+                    <?php
+                    $surname = $this_staff->lname ?? '';
+                    $other_name = $this_staff->fname ?? '';
+                    $image_path = base_url() . 'uploads/staff/' . @$this_staff->photo;
+                    echo generate_user_avatar($surname, $other_name, $image_path, $this_staff->photo ?? null);
+                    ?>
+                </div>
+                <div class="col">
                     <h3 class="mb-2">
                         <?= ($this_staff->title ?? '') . ' ' . ($this_staff->fname ?? '') . ' ' . ($this_staff->lname ?? '') . ' ' . ($this_staff->oname ?? '') ?>
                     </h3>
@@ -90,6 +98,21 @@
                     </a>
         </div>
     </div>
+        </div>
+    </div>
+
+    <!-- Passport Photo Modal (same as contract_status) -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalLabel">Employee Passport Photo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modalImage" src="" style="width:150px; height:auto; border-radius:10px;">
+                </div>
+            </div>
         </div>
     </div>
  
@@ -478,6 +501,12 @@
   </div>
 
 <script>
+function openImageModal(imageSrc) {
+    document.getElementById("modalImage").src = imageSrc;
+    var myModal = new bootstrap.Modal(document.getElementById("imageModal"), {});
+    myModal.show();
+}
+
 $(document).ready(function() {
     const staffId = <?= $staff_id ?? 0 ?>;
     let currentPage = 0;

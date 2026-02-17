@@ -44,6 +44,7 @@
                         <th>First Supervisor</th>
                         <th>Second Supervisor</th>
                         <th>Funder</th>
+                        <th>Initiation Date</th>
                         <th>Current Contract Start Date</th>
                         <th>Current Contract End Date</th>
                         <th>Years of Tenure</th>
@@ -67,6 +68,7 @@
                             <td><?= staff_name($data->first_supervisor) ?></td>
                             <td><?= staff_name(@$data->second_supervisor) ?></td>
                             <td><?= $data->funder ?></td>
+                            <td><?= !empty($data->initiation_date) ? $data->initiation_date : 'N/A' ?></td>
                             <td><?= $data->start_date ?></td>
                             <td><?= $data->end_date ?></td>
                             <td><?= !empty($data->initiation_date) ? years_of_tenure($data->initiation_date) : 'N/A' ?></td>
