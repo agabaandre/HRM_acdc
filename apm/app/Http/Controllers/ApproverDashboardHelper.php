@@ -856,43 +856,44 @@ trait ApproverDashboardHelper
      * Calculate average approval time for a specific approver.
      * Returns the average time in hours between when a document reaches this approver's level
      * and when they approve/reject it.
-     * Uses updated_at: for level 1, received = submitted trail updated_at; for level >= 2, received = previous level's updated_at (when they approved/rejected).
+     * Received time: for level 1 = last submission before this approval (handles return/resubmit);
+     * for level >= 2 = last approval action of the previous level that occurred before this approval.
      */
     protected function getAverageApprovalTime($approverId, $levelNo, $workflowId, $docType = null)
     {
         try {
             // No date filtering needed for approval time calculation
 
-            // Get approval times for this approver at this level
-            // For level 1: received = submitted trail updated_at; approval_time = at.updated_at
-            // For other levels: received = previous level's updated_at (approved/rejected); approval_time = at.updated_at
+            // Get approval times for this approver at this level.
+            // Received = when they actually received the document: for level 1 the most recent submission
+            // before this approval; for level >= 2 the previous level's last approval action before this approval.
             if ($levelNo == 1) {
                 $sql = "
                     SELECT 
                         at.model_id,
                         at.model_type,
                         at.updated_at as approval_time,
-                        submitted_at.updated_at as submitted_time
+                        (SELECT MAX(sub_at.updated_at)
+                         FROM approval_trails sub_at
+                         WHERE sub_at.model_type = at.model_type
+                           AND sub_at.model_id = at.model_id
+                           AND (
+                               sub_at.forward_workflow_id = at.forward_workflow_id
+                               OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                               OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                               OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
+                           )
+                           AND sub_at.approval_order = 0
+                           AND sub_at.action = 'submitted'
+                           AND sub_at.is_archived = 0
+                           AND sub_at.updated_at <= at.updated_at
+                        ) as submitted_time
                     FROM approval_trails at
-                    INNER JOIN approval_trails submitted_at ON (
-                        submitted_at.model_type = at.model_type
-                        AND submitted_at.model_id = at.model_id
-                        AND (
-                            submitted_at.forward_workflow_id = at.forward_workflow_id
-                            OR (submitted_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                            OR (submitted_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                            OR (submitted_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
-                        )
-                        AND submitted_at.approval_order = 0
-                        AND submitted_at.action = 'submitted'
-                        AND submitted_at.is_archived = 0
-                    )
                     WHERE at.forward_workflow_id = ?
                     AND at.approval_order = ?
                     AND at.staff_id = ?
                     AND at.action IN ('approved', 'rejected')
                     AND at.is_archived = 0
-                    AND at.updated_at >= submitted_at.updated_at
                 ";
                 $params = [$workflowId, $levelNo, $approverId];
             } else {
@@ -901,22 +902,22 @@ trait ApproverDashboardHelper
                         at.model_id,
                         at.model_type,
                         at.updated_at as approval_time,
-                        prev_at.updated_at as submitted_time
+                        (SELECT MAX(prev_at.updated_at)
+                         FROM approval_trails prev_at
+                         WHERE prev_at.model_type = at.model_type
+                           AND prev_at.model_id = at.model_id
+                           AND prev_at.forward_workflow_id = at.forward_workflow_id
+                           AND prev_at.approval_order = ?
+                           AND prev_at.action IN ('approved', 'rejected')
+                           AND prev_at.is_archived = 0
+                           AND prev_at.updated_at <= at.updated_at
+                        ) as submitted_time
                     FROM approval_trails at
-                    INNER JOIN approval_trails prev_at ON (
-                        prev_at.model_type = at.model_type 
-                        AND prev_at.model_id = at.model_id 
-                        AND prev_at.forward_workflow_id = at.forward_workflow_id
-                        AND prev_at.approval_order = ?
-                        AND prev_at.action IN ('approved', 'rejected')
-                        AND prev_at.is_archived = 0
-                    )
                     WHERE at.forward_workflow_id = ?
                     AND at.approval_order = ?
                     AND at.staff_id = ?
                     AND at.action IN ('approved', 'rejected')
                     AND at.is_archived = 0
-                    AND at.updated_at >= prev_at.updated_at
                 ";
                 $params = [$levelNo - 1, $workflowId, $levelNo, $approverId];
             }
@@ -1664,8 +1665,9 @@ trait ApproverDashboardHelper
                            AND prev_at.forward_workflow_id = at.forward_workflow_id
                            AND prev_at.approval_order = at.approval_order - 1
                            AND prev_at.action IN ('approved', 'rejected')
-                           AND prev_at.is_archived = 0),
-                        (SELECT MIN(sub_at.updated_at)
+                           AND prev_at.is_archived = 0
+                           AND prev_at.updated_at <= at.updated_at),
+                        (SELECT MAX(sub_at.updated_at)
                          FROM approval_trails sub_at
                          WHERE sub_at.model_type = at.model_type
                            AND sub_at.model_id = at.model_id
@@ -1677,7 +1679,8 @@ trait ApproverDashboardHelper
                            )
                            AND sub_at.approval_order = 0
                            AND sub_at.action = 'submitted'
-                           AND sub_at.is_archived = 0)
+                           AND sub_at.is_archived = 0
+                           AND sub_at.updated_at <= at.updated_at)
                     ) as received_time
                 FROM approval_trails at
                 WHERE at.staff_id = ?
