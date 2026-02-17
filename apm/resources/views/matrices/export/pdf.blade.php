@@ -39,9 +39,10 @@
     .trail-date { font-size: 9pt; color: #555; margin-bottom: 2px; }
     .trail-remarks { font-size: 9pt; margin-top: 4px; padding: 6px; background: #f5f5f5; border-radius: 4px; }
     .signature-cell { width: {{ $SIGNATURE_WIDTH_PX + 12 }}px; padding: 4px; vertical-align: middle; }
-    .signature-cell .sig-inner { width: {{ $SIGNATURE_WIDTH_PX }}px; border: 1px solid #ddd; background: #fafafa; table-layout: fixed; }
+    .signature-cell .sig-inner { width: {{ $SIGNATURE_WIDTH_PX }}px; border: none; background: transparent; table-layout: fixed; }
     .signature-cell .sig-inner td { width: {{ $SIGNATURE_WIDTH_PX }}px; height: {{ $SIGNATURE_HEIGHT_PX }}px; max-width: {{ $SIGNATURE_WIDTH_PX }}px; max-height: {{ $SIGNATURE_HEIGHT_PX }}px; text-align: center; vertical-align: middle; border: none; padding: 0; overflow: hidden; }
-    .signature-cell .signature-image { width: {{ $SIGNATURE_WIDTH_PX - 2 }}px !important; height: {{ $SIGNATURE_HEIGHT_PX - 2 }}px !important; max-width: {{ $SIGNATURE_WIDTH_PX - 2 }}px !important; max-height: {{ $SIGNATURE_HEIGHT_PX - 2 }}px !important; object-fit: contain; display: block; margin: 0 auto; }
+    .signature-cell .signature-image { width: {{ $SIGNATURE_WIDTH_PX - 2 }}px !important; height: {{ $SIGNATURE_HEIGHT_PX - 2 }}px !important; max-width: {{ $SIGNATURE_WIDTH_PX - 2 }}px !important; max-height: {{ $SIGNATURE_HEIGHT_PX - 2 }}px !important; object-fit: contain; display: block; margin: 0 auto; border: none; }
+    .signature-cell .sig-email { font-size: 7pt; color: #555; word-break: break-all; line-height: 1.2; }
     .signature-cell .signature-hash { color: #888; font-size: 6pt; margin-top: 3px; line-height: 1.2; text-align: center; }
     .trail-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9pt; font-weight: bold; }
     .trail-badge.approved, .trail-badge.passed { background: #28a745; color: #fff; }
@@ -168,6 +169,7 @@
                 $badgeClass = in_array($actionLower, ['approved', 'passed']) ? 'approved' : (in_array($actionLower, ['rejected', 'flagged']) ? 'rejected' : ($actionLower === 'submitted' ? 'submitted' : 'returned'));
                 $staffIdForHash = $trail->oic_staff_id ?? $trail->staff_id;
                 $signaturePath = $approver && !empty(trim($approver->signature ?? '')) ? $baseUrl . '/uploads/staff/signature/' . $approver->signature : null;
+                $approverEmail = $approver && !empty(trim($approver->work_email ?? $approver->email ?? '')) ? trim($approver->work_email ?? $approver->email ?? '') : null;
                 $approvalDate = $trail->created_at ? $trail->created_at->format('j F Y g:i a') : '—';
                 $verifyHash = $matrix && $staffIdForHash ? \App\Helpers\PrintHelper::generateVerificationHash($matrix->id, $staffIdForHash, $trail->created_at) : 'N/A';
             @endphp
@@ -178,11 +180,11 @@
                         $imgWmm = round(($SIGNATURE_WIDTH_PX - 2) * 25.4 / 96, 1);
                         $imgHmm = round(($SIGNATURE_HEIGHT_PX - 2) * 25.4 / 96, 1);
                     @endphp
-                    <table class="sig-inner" cellpadding="0" cellspacing="0" style="width:{{ $SIG_W_MM }}mm;"><tr><td style="width:{{ $SIG_W_MM }}mm; height:{{ $SIG_H_MM }}mm; overflow:hidden;">
+                    <table class="sig-inner" cellpadding="0" cellspacing="0" style="width:{{ $SIG_W_MM }}mm; border:none;"><tr><td style="width:{{ $SIG_W_MM }}mm; height:{{ $SIG_H_MM }}mm; overflow:hidden; border:none;">
                         @if($signaturePath)
-                            <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" style="width:{{ $imgWmm }}mm !important; height:{{ $imgHmm }}mm !important; max-width:{{ $imgWmm }}mm !important; max-height:{{ $imgHmm }}mm !important; object-fit:contain;" />
+                            <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" width="{{ $imgWmm }}" height="{{ $imgHmm }}" style="width:{{ $imgWmm }}mm !important; height:{{ $imgHmm }}mm !important; max-width:{{ $imgWmm }}mm !important; max-height:{{ $imgHmm }}mm !important; border:none;" />
                         @else
-                            <span class="text-muted" style="font-size: 8pt;">—</span>
+                            <span class="sig-email">{{ $approverEmail ? e($approverEmail) : '—' }}</span>
                         @endif
                     </td></tr></table>
                     <div class="signature-hash">Verify: {{ $verifyHash }}</div>
