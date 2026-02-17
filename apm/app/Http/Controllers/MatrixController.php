@@ -3029,4 +3029,120 @@ class MatrixController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Export approved matrix as PDF (division schedule, approval trail, approver signatures, activities, approved single memos).
+     */
+    public function exportPdf(Matrix $matrix)
+    {
+        if ($matrix->overall_status !== 'approved') {
+            abort(403, 'Only approved matrices can be exported.');
+        }
+
+        $matrix->load([
+            'division',
+            'matrixApprovalTrails.staff',
+            'matrixApprovalTrails.oicStaff',
+        ]);
+
+        $divisionStaff = $matrix->division_staff;
+
+        $activities = $matrix->activities()
+            ->where('is_single_memo', 0)
+            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode', 'activity_budget.fundcode.funder'])
+            ->orderBy('created_at')
+            ->get();
+
+        $approvedSingleMemos = $matrix->activities()
+            ->where('is_single_memo', 1)
+            ->where('overall_status', 'approved')
+            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode', 'activity_budget.fundcode.funder'])
+            ->orderBy('created_at')
+            ->get();
+
+        foreach ($activities as $activity) {
+            $locationIds = is_array($activity->location_id) ? $activity->location_id : json_decode($activity->location_id ?? '[]', true);
+            $internalRaw = is_string($activity->internal_participants) ? json_decode($activity->internal_participants ?? '[]', true) : ($activity->internal_participants ?? []);
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+            $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+        }
+
+        foreach ($approvedSingleMemos as $memo) {
+            $locationIds = is_array($memo->location_id) ? $memo->location_id : json_decode($memo->location_id ?? '[]', true);
+            $internalRaw = is_string($memo->internal_participants) ? json_decode($memo->internal_participants ?? '[]', true) : ($memo->internal_participants ?? []);
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+            $memo->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+        }
+
+        $trails = $matrix->matrixApprovalTrails->sortByDesc('created_at');
+        $baseUrl = rtrim(user_session('base_url') ?? config('app.url'), '/');
+
+        $pdf = mpdf_print('matrices.export.pdf', [
+            'matrix' => $matrix,
+            'divisionStaff' => $divisionStaff,
+            'trails' => $trails,
+            'activities' => $activities,
+            'approvedSingleMemos' => $approvedSingleMemos,
+            'baseUrl' => $baseUrl,
+        ]);
+
+        $filename = 'matrix_' . $matrix->id . '_' . strtoupper($matrix->quarter) . '_' . $matrix->year . '_' . now()->format('Y-m-d') . '.pdf';
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * Export approved matrix as Excel (division schedule, approval trail, approver signatures, activities, approved single memos).
+     */
+    public function exportExcel(Matrix $matrix)
+    {
+        if ($matrix->overall_status !== 'approved') {
+            abort(403, 'Only approved matrices can be exported.');
+        }
+
+        $matrix->load([
+            'division',
+            'matrixApprovalTrails.staff',
+            'matrixApprovalTrails.oicStaff',
+        ]);
+
+        $divisionStaff = $matrix->division_staff;
+
+        $activities = $matrix->activities()
+            ->where('is_single_memo', 0)
+            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode', 'activity_budget.fundcode.funder'])
+            ->orderBy('created_at')
+            ->get();
+
+        $approvedSingleMemos = $matrix->activities()
+            ->where('is_single_memo', 1)
+            ->where('overall_status', 'approved')
+            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode', 'activity_budget.fundcode.funder'])
+            ->orderBy('created_at')
+            ->get();
+
+        foreach ($activities as $activity) {
+            $locationIds = is_array($activity->location_id) ? $activity->location_id : json_decode($activity->location_id ?? '[]', true);
+            $internalRaw = is_string($activity->internal_participants) ? json_decode($activity->internal_participants ?? '[]', true) : ($activity->internal_participants ?? []);
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+            $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+        }
+
+        foreach ($approvedSingleMemos as $memo) {
+            $locationIds = is_array($memo->location_id) ? $memo->location_id : json_decode($memo->location_id ?? '[]', true);
+            $internalRaw = is_string($memo->internal_participants) ? json_decode($memo->internal_participants ?? '[]', true) : ($memo->internal_participants ?? []);
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+            $memo->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+        }
+
+        $export = new \App\Exports\MatrixApprovedExport($matrix, $divisionStaff, $activities, $approvedSingleMemos);
+        $filename = 'matrix_' . $matrix->id . '_' . strtoupper($matrix->quarter) . '_' . $matrix->year . '_' . now()->format('Y-m-d') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
+    }
 }
