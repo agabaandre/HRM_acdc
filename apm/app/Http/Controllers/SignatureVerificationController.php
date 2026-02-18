@@ -617,6 +617,15 @@ class SignatureVerificationController extends Controller
         }
 
         $verificationAttempted = $hash !== null;
+        $options = [];
+        if ($hashMatched) {
+            $options['watermark_text']  = 'Verified';
+            $options['watermark_alpha'] = 0.2;
+        } elseif ($verificationAttempted) {
+            $options['watermark_text']  = 'Failed';
+            $options['watermark_alpha'] = 0.2;
+        }
+
         $data = [
             'document'                => $document,
             'doc_type'                => $docType,
@@ -626,16 +635,9 @@ class SignatureVerificationController extends Controller
             'matched_signatory'       => $matchedSignatory,
             'hash_matched'            => $hashMatched,
             'verification_attempted'  => $verificationAttempted,
+            'watermark_text'          => $options['watermark_text'] ?? null,
+            'watermark_alpha'         => $options['watermark_alpha'] ?? 0.2,
         ];
-
-        $options = [];
-        if ($hashMatched) {
-            $options['watermark_text']  = 'Verified';
-            $options['watermark_alpha'] = 0.12;
-        } elseif ($verificationAttempted) {
-            $options['watermark_text']  = 'Failed';
-            $options['watermark_alpha'] = 0.12;
-        }
 
         $mpdf = generate_pdf('signature-verify.print-pdf', $data, $options);
 
