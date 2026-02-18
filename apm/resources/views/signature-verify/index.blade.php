@@ -316,7 +316,12 @@
     }
 
     document.getElementById('verificationResultPrint').addEventListener('click', function() {
-        window.print();
+        var pdfLink = document.getElementById('verificationResultPdf');
+        if (pdfLink && pdfLink.href && pdfLink.href !== '#' && pdfLink.style.display !== 'none') {
+            window.open(pdfLink.href, '_blank', 'noopener');
+        } else {
+            window.print();
+        }
     });
 
     document.querySelectorAll('.verification-form').forEach(function(form) {
