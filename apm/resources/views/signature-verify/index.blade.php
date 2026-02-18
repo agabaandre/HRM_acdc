@@ -119,7 +119,7 @@
     </div>
 
     {{-- Result modal (unified layout for all methods) --}}
-    <div class="modal fade d-flex align-items-center justify-content-center" id="verificationResultModal" tabindex="-1" aria-labelledby="verificationResultModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade" id="verificationResultModal" tabindex="-1" aria-labelledby="verificationResultModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered mx-auto">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
@@ -139,8 +139,6 @@
 </div>
 
 <style>
-#verificationResultModal.modal { display: none; align-items: center; justify-content: center; }
-#verificationResultModal.modal.show { display: flex !important; }
 #verificationResultModal .modal-dialog { margin: 1.75rem auto; }
 @media print {
     body * { visibility: hidden; }
@@ -274,10 +272,26 @@
         return div.innerHTML;
     }
 
+    var verificationModalEl = document.getElementById('verificationResultModal');
+    var verificationModalInstance = verificationModalEl ? new bootstrap.Modal(verificationModalEl, { backdrop: 'static', keyboard: true }) : null;
+
+    if (verificationModalEl) {
+        verificationModalEl.addEventListener('shown.bs.modal', function() {
+            verificationModalEl.setAttribute('aria-hidden', 'false');
+        });
+        verificationModalEl.addEventListener('hidden.bs.modal', function() {
+            verificationModalEl.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('modal-open');
+            var backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(function(b) { b.remove(); });
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+        });
+    }
+
     function showModal(content) {
         document.getElementById('verificationResultContent').innerHTML = content;
-        const modal = new bootstrap.Modal(document.getElementById('verificationResultModal'));
-        modal.show();
+        if (verificationModalInstance) verificationModalInstance.show();
     }
 
     document.getElementById('verificationResultPrint').addEventListener('click', function() {
