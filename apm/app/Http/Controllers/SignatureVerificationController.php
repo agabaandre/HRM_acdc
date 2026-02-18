@@ -334,6 +334,7 @@ class SignatureVerificationController extends Controller
             'doc_type'                   => null,
             'signatories'                => [],
             'hash_validations'           => [], // [ ['hash' => '...', 'matched' => true|false, 'signatory' => ...|null ] ]
+            'valid'                      => false, // final state: true if there is at least one matching hash
         ];
 
         $year = $this->extractYearFromText($text);
@@ -374,6 +375,7 @@ class SignatureVerificationController extends Controller
                     'signatory' => $matched,
                 ];
             }
+            $results['valid'] = collect($results['hash_validations'])->contains('matched', true);
         }
 
         return view('signature-verify.index', [

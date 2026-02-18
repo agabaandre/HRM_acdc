@@ -139,6 +139,15 @@
                 <h5 class="mb-0 text-white"><i class="fas fa-file-alt me-2"></i>Upload validation result</h5>
             </div>
             <div class="card-body">
+                <p class="mb-3">
+                    @if (!empty($upload_validation_result['valid']))
+                        <span class="badge bg-success fs-6 px-3 py-2"><i class="fas fa-check-circle me-1"></i> Final state: Valid</span>
+                        <span class="text-muted small ms-2">At least one signature hash from the document matched the system.</span>
+                    @else
+                        <span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="fas fa-exclamation-triangle me-1"></i> Final state: Not valid</span>
+                        <span class="text-muted small ms-2">No matching signature hash found, or document not found in system.</span>
+                    @endif
+                </p>
                 <p class="text-muted small">Data extracted from the uploaded PDF (file was not saved).</p>
                 <dl class="row mb-3">
                     <dt class="col-sm-4">Document number(s) found</dt>
