@@ -54,11 +54,13 @@ class SignatureVerificationController extends Controller
         $signatories = $this->buildSignatoriesWithHashes($document);
         $metadata = $this->getDocumentMetadata($document);
 
+        $payload = $this->buildUnifiedPayload('lookup', $document, $metadata, $signatories, null, null, null, $year);
         if ($request->wantsJson() || $request->ajax()) {
-            return response()->json($this->buildUnifiedPayload('lookup', $document, $metadata, $signatories, null, null));
+            return response()->json($payload);
         }
 
         return view('signature-verify.index', [
+            'result_for_display' => $payload,
             'lookup_result' => [
                 'document'    => $document,
                 'doc_type'    => $this->getDocumentTypeLabel($document),
@@ -102,10 +104,12 @@ class SignatureVerificationController extends Controller
             foreach ($signatories as $s) {
                 if (isset($s['hash']) && $s['hash'] === $hash) {
                     $metadata = $this->getDocumentMetadata($document);
+                    $payload = $this->buildUnifiedPayload('verify', $document, $metadata, $signatories, $s, null, null, $year);
                     if ($request->wantsJson() || $request->ajax()) {
-                        return response()->json($this->buildUnifiedPayload('verify', $document, $metadata, $signatories, $s, null));
+                        return response()->json($payload);
                     }
                     return view('signature-verify.index', [
+                        'result_for_display' => $payload,
                         'verify_result' => [
                             'document'    => $document,
                             'doc_type'    => $this->getDocumentTypeLabel($document),
@@ -125,10 +129,12 @@ class SignatureVerificationController extends Controller
         $document = $documents->first();
         $signatories = $this->buildSignatoriesWithHashes($document);
         $metadata = $this->getDocumentMetadata($document);
+        $payload = $this->buildUnifiedPayload('verify', $document, $metadata, $signatories, null, 'The provided hash does not match any signatory for this document.', null, $year);
         if ($request->wantsJson() || $request->ajax()) {
-            return response()->json($this->buildUnifiedPayload('verify', $document, $metadata, $signatories, null, 'The provided hash does not match any signatory for this document.'));
+            return response()->json($payload);
         }
         return view('signature-verify.index', [
+            'result_for_display' => $payload,
             'verify_error' => 'The provided hash does not match any signatory for this document. Compare with the hashes below.',
             'lookup_result' => [
                 'document'    => $document,
@@ -347,7 +353,8 @@ class SignatureVerificationController extends Controller
         array $signatories,
         ?array $matchedSignatory,
         ?string $message,
-        ?array $uploadExtras = null
+        ?array $uploadExtras = null,
+        ?int $year = null
     ): array {
         $docNumber = $document ? ($document->document_number ?? 'N/A') : null;
         $docType = $document ? $this->getDocumentTypeLabel($document) : null;
@@ -363,6 +370,10 @@ class SignatureVerificationController extends Controller
             'signatories' => $signatories,
             'message'     => $message,
         ];
+
+        if ($year !== null) {
+            $payload['year'] = $year;
+        }
 
         if ($matchedSignatory !== null) {
             $payload['matched_signatory'] = $matchedSignatory;
@@ -537,29 +548,95 @@ class SignatureVerificationController extends Controller
             $results['documents'] = [];
         }
 
+        $document = $results['document'];
+        $metadata = $results['metadata'] ?? ['creator' => 'N/A', 'division' => 'N/A', 'date_created' => 'N/A'];
+        $uploadExtras = [
+            'valid'                      => $results['valid'],
+            'extracted_document_numbers' => $results['extracted_document_numbers'],
+            'extracted_hashes'           => $results['extracted_hashes'],
+            'hash_validations'           => $results['hash_validations'],
+            'documents'                  => $results['documents'] ?? [],
+        ];
+        $payload = $this->buildUnifiedPayload(
+            'upload_validation',
+            $document,
+            $metadata,
+            $results['signatories'],
+            null,
+            $results['document'] ? null : 'No matching document found in the system for the extracted document number(s).',
+            $uploadExtras
+        );
         if ($request->wantsJson() || $request->ajax()) {
-            $document = $results['document'];
-            $metadata = $results['metadata'] ?? ['creator' => 'N/A', 'division' => 'N/A', 'date_created' => 'N/A'];
-            $uploadExtras = [
-                'valid'                      => $results['valid'],
-                'extracted_document_numbers' => $results['extracted_document_numbers'],
-                'extracted_hashes'           => $results['extracted_hashes'],
-                'hash_validations'           => $results['hash_validations'],
-                'documents'                  => $results['documents'] ?? [],
-            ];
-            return response()->json($this->buildUnifiedPayload(
-                'upload_validation',
-                $document,
-                $metadata,
-                $results['signatories'],
-                null,
-                $results['document'] ? null : 'No matching document found in the system for the extracted document number(s).',
-                $uploadExtras
-            ));
+            return response()->json($payload);
         }
 
         return view('signature-verify.index', [
+            'result_for_display' => $payload,
             'upload_validation_result' => $results,
+        ]);
+    }
+
+    /**
+     * Generate a PDF of the verification result with optional "Verified" watermark when hash matches.
+     * GET params: document_number (required), year (required), hash (optional).
+     */
+    public function printPdf(Request $request)
+    {
+        $request->validate([
+            'document_number' => 'required|string|max:255',
+            'year'            => 'required|integer|min:2000|max:2100',
+            'hash'            => 'nullable|string|max:32',
+        ]);
+
+        $documentNumber = trim($request->input('document_number'));
+        $year           = (int) $request->input('year');
+        $hash           = $request->filled('hash') ? strtoupper(trim($request->input('hash'))) : null;
+
+        $document = $this->findDocumentByNumberAndYear($documentNumber, $year);
+
+        if (!$document) {
+            abort(404, 'No APM document found for the given document number and year.');
+        }
+
+        $signatories = $this->buildSignatoriesWithHashes($document);
+        $metadata = $this->getDocumentMetadata($document);
+        $docType = $this->getDocumentTypeLabel($document);
+        $matchedSignatory = null;
+        $hashMatched = false;
+
+        if ($hash !== null) {
+            foreach ($signatories as $s) {
+                if (isset($s['hash']) && $s['hash'] === $hash) {
+                    $matchedSignatory = $s;
+                    $hashMatched = true;
+                    break;
+                }
+            }
+        }
+
+        $data = [
+            'document'           => $document,
+            'doc_type'           => $docType,
+            'document_number'    => $document->document_number ?? 'N/A',
+            'metadata'           => $metadata,
+            'signatories'        => $signatories,
+            'matched_signatory'  => $matchedSignatory,
+            'hash_matched'       => $hashMatched,
+        ];
+
+        $options = [];
+        if ($hashMatched) {
+            $options['watermark_text']  = 'Verified';
+            $options['watermark_alpha'] = 0.12;
+        }
+
+        $mpdf = generate_pdf('signature-verify.print-pdf', $data, $options);
+
+        $filename = 'signature-verification-' . preg_replace('/[^a-zA-Z0-9\-]/', '-', $documentNumber) . '.pdf';
+
+        return response($mpdf->Output('', 'S'), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ]);
     }
 

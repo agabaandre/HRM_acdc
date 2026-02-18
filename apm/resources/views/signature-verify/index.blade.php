@@ -130,6 +130,7 @@
                     {{-- Filled by JS from JSON response --}}
                 </div>
                 <div class="modal-footer">
+                    <a href="#" id="verificationResultPdf" class="btn btn-outline-primary me-2" style="display: none;" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i> Download PDF</a>
                     <button type="button" class="btn btn-outline-secondary" id="verificationResultPrint"><i class="fas fa-print me-1"></i> Print</button>
                     <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
                 </div>
@@ -289,8 +290,28 @@
         });
     }
 
-    function showModal(content) {
+    var pdfBaseUrl = '{{ route("signature-verify.print", [], false) }}';
+
+    function setPdfLink(data) {
+        var btn = document.getElementById('verificationResultPdf');
+        if (!btn) return;
+        var doc = data && data.document;
+        var docNum = doc && doc.document_number;
+        var year = data && data.year;
+        if (docNum && year) {
+            var params = new URLSearchParams({ document_number: docNum, year: year });
+            if (data.matched_signatory && data.matched_signatory.hash) params.set('hash', data.matched_signatory.hash);
+            btn.href = pdfBaseUrl + '?' + params.toString();
+            btn.style.display = 'inline-block';
+        } else {
+            btn.href = '#';
+            btn.style.display = 'none';
+        }
+    }
+
+    function showModal(content, data) {
         document.getElementById('verificationResultContent').innerHTML = content;
+        if (data) setPdfLink(data);
         if (verificationModalInstance) verificationModalInstance.show();
     }
 
@@ -334,7 +355,7 @@
                             for (const k in data.errors) { msg += ' ' + (Array.isArray(data.errors[k]) ? data.errors[k].join(' ') : data.errors[k]); }
                             showModal('<div class="alert alert-danger">' + escapeHtml(msg) + '</div>');
                         } else if (data.success !== false) {
-                            showModal(renderResult(data));
+                            showModal(renderResult(data), data);
                         } else {
                             showModal('<div class="alert alert-danger">' + escapeHtml(data.message || 'An error occurred.') + '</div>');
                         }
@@ -368,7 +389,7 @@
                         for (const k in data.errors) { msg += ' ' + (Array.isArray(data.errors[k]) ? data.errors[k].join(' ') : data.errors[k]); }
                         showModal('<div class="alert alert-danger">' + escapeHtml(msg) + '</div>');
                     } else if (data.success !== false) {
-                        showModal(renderResult(data));
+                        showModal(renderResult(data), data);
                     } else {
                         showModal('<div class="alert alert-danger">' + escapeHtml(data.message || 'An error occurred.') + '</div>');
                     }
@@ -381,6 +402,10 @@
             }
         });
     });
+
+    @if(isset($result_for_display))
+    showModal(renderResult(@json($result_for_display)), @json($result_for_display));
+    @endif
 })();
 </script>
 @endpush
