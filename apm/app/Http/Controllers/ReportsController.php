@@ -95,8 +95,9 @@ class ReportsController extends Controller
                 'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as approved_count, ' .
                 'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as pending_count, ' .
                 'SUM(CASE WHEN ' . $activitiesTable . '.overall_status IN (?, ?) THEN 1 ELSE 0 END) as returned_count, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as draft_count, ' .
                 'COUNT(*) as total_count',
-                ['approved', 'pending', 'returned', 'rejected']
+                ['approved', 'pending', 'returned', 'rejected', 'draft']
             )
             ->groupBy(DB::raw($divisionIdRaw));
 
@@ -176,5 +177,122 @@ class ReportsController extends Controller
             'last_page' => $memoList->lastPage(),
             'total' => $memoList->total(),
         ]);
+    }
+
+    /**
+     * Export division counts report to Excel (CSV).
+     */
+    public function exportDivisionCountsExcel(Request $request)
+    {
+        $activitiesTable = (new Activity())->getTable();
+        $matricesTable = (new Matrix())->getTable();
+        $divisionIdRaw = 'COALESCE(' . $activitiesTable . '.division_id, ' . $matricesTable . '.division_id)';
+
+        $countsQuery = Activity::query()
+            ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id');
+        $this->applyFilters($countsQuery, $request, $activitiesTable, $matricesTable);
+        $countsQuery
+            ->selectRaw(
+                $divisionIdRaw . ' as division_id, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as approved_count, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as pending_count, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status IN (?, ?) THEN 1 ELSE 0 END) as returned_count, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as draft_count, ' .
+                'COUNT(*) as total_count',
+                ['approved', 'pending', 'returned', 'rejected', 'draft']
+            )
+            ->groupBy(DB::raw($divisionIdRaw));
+
+        $counts = $countsQuery->get();
+        $divisionIds = $counts->pluck('division_id')->filter()->unique()->toArray();
+        $divisions = Division::whereIn('id', $divisionIds)->get()->keyBy('id');
+
+        $filename = 'division_memo_counts_' . date('Y-m-d_H-i-s') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($counts, $divisions) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($file, ['Division', 'Approved', 'Pending', 'Returned', 'Draft', 'Total']);
+            foreach ($counts as $row) {
+                $division = $divisions->get($row->division_id);
+                $name = $division ? $division->division_name : ('Division #' . $row->division_id);
+                fputcsv($file, [
+                    $name,
+                    (int) ($row->approved_count ?? 0),
+                    (int) ($row->pending_count ?? 0),
+                    (int) ($row->returned_count ?? 0),
+                    (int) ($row->draft_count ?? 0),
+                    (int) ($row->total_count ?? 0),
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export memo list report to Excel (CSV).
+     */
+    public function exportMemoListExcel(Request $request)
+    {
+        $activitiesTable = (new Activity())->getTable();
+        $matricesTable = (new Matrix())->getTable();
+
+        $baseQuery = Activity::query()
+            ->select([$activitiesTable . '.*', $matricesTable . '.year as matrix_year', $matricesTable . '.quarter as matrix_quarter'])
+            ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id');
+        $this->applyFilters($baseQuery, $request, $activitiesTable, $matricesTable);
+
+        $memos = $baseQuery
+            ->with(['requestType', 'responsiblePerson', 'matrix'])
+            ->orderBy('matrix_year', 'desc')
+            ->orderByRaw("FIELD(matrix_quarter, 'Q1','Q2','Q3','Q4')")
+            ->orderBy($activitiesTable . '.created_at', 'desc')
+            ->get();
+
+        $divisions = Division::orderBy('division_name')->get();
+
+        $filename = 'memo_list_' . date('Y-m-d_H-i-s') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($memos, $divisions) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($file, ['#', 'Document #', 'Title', 'Division', 'Type', 'Year', 'Quarter', 'Status', 'Date From', 'Date To', 'Responsible Person']);
+            $idx = 0;
+            foreach ($memos as $memo) {
+                $idx++;
+                $divisionId = $memo->division_id ?? $memo->matrix->division_id ?? null;
+                $divisionName = $divisionId ? ($divisions->firstWhere('id', $divisionId)->division_name ?? 'N/A') : 'N/A';
+                $resp = $memo->responsiblePerson;
+                $respName = $resp ? trim(($resp->fname ?? '') . ' ' . ($resp->lname ?? '')) : 'N/A';
+                $dateFrom = $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('Y-m-d') : '';
+                $dateTo = $memo->date_to ? \Carbon\Carbon::parse($memo->date_to)->format('Y-m-d') : '';
+                fputcsv($file, [
+                    $idx,
+                    $memo->document_number ?? '',
+                    $memo->activity_title ?? '',
+                    $divisionName,
+                    $memo->requestType->name ?? '',
+                    $memo->matrix_year ?? '',
+                    $memo->matrix_quarter ?? '',
+                    $memo->overall_status ?? '',
+                    $dateFrom,
+                    $dateTo,
+                    $respName,
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
