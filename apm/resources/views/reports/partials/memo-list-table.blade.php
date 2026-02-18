@@ -5,7 +5,7 @@
 			<tr>
 				<th>#</th>
 				<th>Document #</th>
-				<th style="width: 25%; min-width: 25%;">Title</th>
+				<th style="width: 20%;">Title</th>
 				<th>Division</th>
 				<th>Type</th>
 				<th>Year / Quarter</th>
@@ -15,38 +15,52 @@
 			</tr>
 		</thead>
 		<tbody>
-			@forelse($memoList as $idx => $memo)
+			@forelse($memoList as $idx => $row)
 				@php
-					$divisionId = $memo->division_id ?? $memo->matrix->division_id ?? null;
+					$divisionId = $row->division_id ?? null;
 					$divisionName = $divisionId ? ($divisions->firstWhere('id', $divisionId)->division_name ?? 'N/A') : 'N/A';
-					$resp = $memo->responsiblePerson;
-					$respName = $resp ? trim(($resp->fname ?? '') . ' ' . ($resp->lname ?? '')) : 'N/A';
-					$dateFrom = $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('d M Y') : '—';
-					$dateTo = $memo->date_to ? \Carbon\Carbon::parse($memo->date_to)->format('d M Y') : '—';
-					$memoUrl = $memo->is_single_memo
-						? route('activities.single-memos.show', $memo)
-						: route('matrices.activities.show', [$memo->matrix, $memo]);
+					$dateFrom = $row->date_from ? \Carbon\Carbon::parse($row->date_from)->format('d M Y') : '—';
+					$dateTo = $row->date_to ? \Carbon\Carbon::parse($row->date_to)->format('d M Y') : '—';
+					$typeLabel = isset($memoTypeLabels) && isset($memoTypeLabels[$row->document_type]) ? $memoTypeLabels[$row->document_type] : $row->document_type;
+					// Build show URL from document type and id
+					if ($row->document_type === 'QM' && !empty($row->matrix_id)) {
+						$showUrl = route('matrices.activities.show', [$row->matrix_id, $row->id]);
+					} elseif ($row->document_type === 'SM') {
+						$showUrl = route('activities.single-memos.show', $row->id);
+					} elseif ($row->document_type === 'SPM') {
+						$showUrl = route('special-memo.show', $row->id);
+					} elseif ($row->document_type === 'NT') {
+						$showUrl = route('non-travel.show', $row->id);
+					} elseif ($row->document_type === 'CR') {
+						$showUrl = route('change-requests.show', $row->id);
+					} elseif ($row->document_type === 'SR') {
+						$showUrl = route('service-requests.show', $row->id);
+					} elseif ($row->document_type === 'ARF') {
+						$showUrl = route('request-arf.show', $row->id);
+					} else {
+						$showUrl = '#';
+					}
 				@endphp
 				<tr>
 					<td>{{ $memoList->firstItem() + $idx }}</td>
-					<td><a href="{{ $memoUrl }}" class="text-decoration-none"><code>{{ $memo->document_number ?? '—' }}</code></a></td>
-					<td class="reports-memo-title" style="width: 25%; min-width: 25%;"><a href="{{ $memoUrl }}" class="text-decoration-none">{{ $memo->activity_title ?? '—' }}</a></td>
+					<td><a href="{{ $showUrl }}" class="text-decoration-none"><code>{{ $row->document_number ?? '—' }}</code></a></td>
+					<td class="reports-memo-title" style="width: 20%; max-width: 20%;"><a href="{{ $showUrl }}" class="text-decoration-none">{{ $row->title ?? '—' }}</a></td>
 					<td>{{ $divisionName }}</td>
-					<td>{{ $memo->requestType->name ?? '—' }} @if($memo->is_single_memo)<span class="badge bg-secondary">Single</span>@endif</td>
-					<td>{{ $memo->matrix_year ?? '—' }} {{ $memo->matrix_quarter ?? '' }}</td>
+					<td>{{ $typeLabel }}</td>
+					<td>{{ $row->year ?? '—' }} {{ $row->quarter ?? '' }}</td>
 					<td class="text-center">
-						@if(($memo->overall_status ?? '') === 'approved')
+						@if(($row->overall_status ?? '') === 'approved')
 							<span class="badge bg-success">Approved</span>
-						@elseif(($memo->overall_status ?? '') === 'pending')
+						@elseif(($row->overall_status ?? '') === 'pending')
 							<span class="badge bg-warning text-dark">Pending</span>
-						@elseif(in_array($memo->overall_status ?? '', ['returned', 'rejected']))
+						@elseif(in_array($row->overall_status ?? '', ['returned', 'rejected']))
 							<span class="badge bg-danger">Returned</span>
 						@else
-							<span class="badge bg-secondary">{{ ucfirst($memo->overall_status ?? '—') }}</span>
+							<span class="badge bg-secondary">{{ ucfirst($row->overall_status ?? '—') }}</span>
 						@endif
 					</td>
 					<td>{{ $dateFrom }} – {{ $dateTo }}</td>
-					<td>{{ $respName }}</td>
+					<td>{{ $row->responsible_person_name ?? 'N/A' }}</td>
 				</tr>
 			@empty
 				<tr><td colspan="9" class="text-muted text-center py-4">No memos for the selected filters.</td></tr>

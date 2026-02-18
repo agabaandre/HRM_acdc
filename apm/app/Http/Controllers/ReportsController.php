@@ -13,6 +13,7 @@ use App\Models\RequestType;
 use App\Models\ServiceRequest;
 use App\Models\SpecialMemo;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
@@ -174,6 +175,148 @@ class ReportsController extends Controller
         return $query->get();
     }
 
+    /** Memo list filters: division, year, quarter, status. Year/quarter for non-Activity use created_at. */
+    private function memoListFilters(Request $request): array
+    {
+        $filterDivision = $request->filled('division') ? (int) $request->division : null;
+        $year = $this->defaultYear($request);
+        $filterYear = ($year !== '' && $year !== 'all' && is_numeric($year)) ? (int) $year : null;
+        $filterQuarter = $request->filled('quarter') ? $request->quarter : null;
+        $filterStatus = $request->filled('status') ? $request->status : null;
+        return [$filterDivision, $filterYear, $filterQuarter, $filterStatus];
+    }
+
+    /**
+     * Get memo list rows for one document type (unified format: document_type, id, matrix_id?, document_number, title, division_id, year, quarter, overall_status, date_from, date_to, responsible_person_name, created_at).
+     */
+    private function getMemoListRowsForType(string $documentType, Request $request): \Illuminate\Support\Collection
+    {
+        [$filterDivision, $filterYear, $filterQuarter, $filterStatus] = $this->memoListFilters($request);
+        $rows = collect();
+
+        if ($documentType === DocumentCounter::TYPE_QUARTERLY_MATRIX || $documentType === DocumentCounter::TYPE_SINGLE_MEMO) {
+            $activitiesTable = (new Activity())->getTable();
+            $matricesTable = (new Matrix())->getTable();
+            $q = Activity::query()
+                ->select([
+                    $activitiesTable . '.id',
+                    $activitiesTable . '.matrix_id',
+                    $activitiesTable . '.document_number',
+                    $activitiesTable . '.activity_title',
+                    $activitiesTable . '.division_id',
+                    $activitiesTable . '.overall_status',
+                    $activitiesTable . '.date_from',
+                    $activitiesTable . '.date_to',
+                    $activitiesTable . '.responsible_person_id',
+                    $activitiesTable . '.created_at',
+                    $matricesTable . '.year as matrix_year',
+                    $matricesTable . '.quarter as matrix_quarter',
+                    $matricesTable . '.division_id as matrix_division_id',
+                    'staff.fname as resp_fname',
+                    'staff.lname as resp_lname',
+                ])
+                ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id')
+                ->leftJoin('staff', $activitiesTable . '.responsible_person_id', '=', 'staff.staff_id')
+                ->where($activitiesTable . '.is_single_memo', $documentType === DocumentCounter::TYPE_SINGLE_MEMO ? 1 : 0);
+            if ($filterDivision !== null) {
+                $q->where(function ($q2) use ($activitiesTable, $matricesTable, $filterDivision) {
+                    $q2->where($activitiesTable . '.division_id', $filterDivision)
+                        ->orWhere(function ($q3) use ($activitiesTable, $matricesTable, $filterDivision) {
+                            $q3->whereNull($activitiesTable . '.division_id')->where($matricesTable . '.division_id', $filterDivision);
+                        });
+                });
+            }
+            if ($filterYear !== null) {
+                $q->where($matricesTable . '.year', $filterYear);
+            }
+            if ($filterQuarter !== null) {
+                $q->where($matricesTable . '.quarter', $filterQuarter);
+            }
+            if ($filterStatus !== null) {
+                $q->where($activitiesTable . '.overall_status', $filterStatus);
+            }
+            $list = $q->orderBy($matricesTable . '.year', 'desc')
+                ->orderByRaw("FIELD(" . $matricesTable . ".quarter, 'Q4','Q3','Q2','Q1')")
+                ->orderBy($activitiesTable . '.created_at', 'desc')
+                ->get();
+            foreach ($list as $a) {
+                $divisionId = $a->division_id ?? Matrix::find($a->matrix_id)?->division_id;
+                $respName = trim(($a->resp_fname ?? '') . ' ' . ($a->resp_lname ?? ''));
+                if ($respName === '' && $a->responsible_person_id) {
+                    $s = \App\Models\Staff::find($a->responsible_person_id);
+                    $respName = $s ? trim(($s->fname ?? '') . ' ' . ($s->lname ?? '')) : 'N/A';
+                }
+                if ($respName === '') {
+                    $respName = 'N/A';
+                }
+                $rows->push((object) [
+                    'document_type' => $documentType,
+                    'id' => $a->id,
+                    'matrix_id' => $a->matrix_id,
+                    'document_number' => $a->document_number,
+                    'title' => $a->activity_title,
+                    'division_id' => $divisionId,
+                    'year' => $a->matrix_year,
+                    'quarter' => $a->matrix_quarter,
+                    'overall_status' => $a->overall_status,
+                    'date_from' => $a->date_from,
+                    'date_to' => $a->date_to,
+                    'responsible_person_name' => $respName,
+                    'created_at' => $a->created_at,
+                ]);
+            }
+            return $rows;
+        }
+
+        $model = match ($documentType) {
+            DocumentCounter::TYPE_SPECIAL_MEMO => SpecialMemo::class,
+            DocumentCounter::TYPE_NON_TRAVEL_MEMO => NonTravelMemo::class,
+            DocumentCounter::TYPE_CHANGE_REQUEST => ChangeRequest::class,
+            DocumentCounter::TYPE_SERVICE_REQUEST => ServiceRequest::class,
+            DocumentCounter::TYPE_ARF => RequestARF::class,
+            default => null,
+        };
+        if (!$model) {
+            return $rows;
+        }
+
+        $q = $model::query()->with(['responsiblePerson', 'staff'])->orderBy('created_at', 'desc');
+        if ($filterDivision !== null) {
+            $q->where('division_id', $filterDivision);
+        }
+        if ($filterYear !== null) {
+            $q->whereYear('created_at', $filterYear);
+        }
+        if ($filterQuarter !== null) {
+            $quarterNum = (int) str_replace('Q', '', $filterQuarter);
+            $q->whereRaw('QUARTER(created_at) = ?', [$quarterNum]);
+        }
+        if ($filterStatus !== null) {
+            $q->where('overall_status', $filterStatus);
+        }
+
+        foreach ($q->get() as $m) {
+            $resp = $m->responsiblePerson ?? $m->staff ?? null;
+            $respName = $resp ? trim(($resp->fname ?? '') . ' ' . ($resp->lname ?? '')) : 'N/A';
+            $rows->push((object) [
+                'document_type' => $documentType,
+                'id' => $m->id,
+                'matrix_id' => null,
+                'document_number' => $m->document_number ?? null,
+                'title' => $m->activity_title ?? '—',
+                'division_id' => $m->division_id,
+                'year' => $m->created_at ? (int) $m->created_at->format('Y') : null,
+                'quarter' => $m->created_at ? 'Q' . $m->created_at->quarter : null,
+                'overall_status' => $m->overall_status ?? $m->status ?? null,
+                'date_from' => $m->date_from ?? null,
+                'date_to' => $m->date_to ?? null,
+                'responsible_person_name' => $respName,
+                'created_at' => $m->created_at,
+            ]);
+        }
+        return $rows;
+    }
+
     /**
      * Reports index: list all reports (links to division counts, memo list, etc.).
      */
@@ -227,12 +370,12 @@ class ReportsController extends Controller
 
     /**
      * Memo list (details) report page (data loaded via AJAX with pagination).
-     * Query params (division, year, quarter, memo_type, status) pre-fill filters when linked from counts report.
+     * Includes all memo types: QM, SM, SPM, NT, CR, SR, ARF. memo_type filter = document type code.
      */
     public function memoList(Request $request)
     {
         $divisions = Division::orderBy('division_name')->get();
-        $requestTypes = RequestType::orderBy('name')->get();
+        $memoTypes = DocumentCounter::getDocumentTypes();
         $years = Matrix::distinct()->pluck('year')->filter()->sortDesc()->values();
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $currentYear = (string) (int) date('Y');
@@ -240,7 +383,7 @@ class ReportsController extends Controller
 
         return view('reports.memo-list', [
             'divisions' => $divisions,
-            'requestTypes' => $requestTypes,
+            'memoTypes' => $memoTypes,
             'years' => $years,
             'quarters' => $quarters,
             'currentYear' => $currentYear,
@@ -252,39 +395,66 @@ class ReportsController extends Controller
         ]);
     }
 
+    /** Valid document type codes for memo list. */
+    private const MEMO_LIST_DOC_TYPES = [
+        DocumentCounter::TYPE_QUARTERLY_MATRIX,
+        DocumentCounter::TYPE_SINGLE_MEMO,
+        DocumentCounter::TYPE_SPECIAL_MEMO,
+        DocumentCounter::TYPE_NON_TRAVEL_MEMO,
+        DocumentCounter::TYPE_CHANGE_REQUEST,
+        DocumentCounter::TYPE_SERVICE_REQUEST,
+        DocumentCounter::TYPE_ARF,
+    ];
+
     /**
-     * AJAX: memo list table HTML (body + pagination).
+     * AJAX: memo list table HTML (body + pagination). Uses unified rows from one or all document types.
      */
     public function memoListData(Request $request)
     {
-        $activitiesTable = (new Activity())->getTable();
-        $matricesTable = (new Matrix())->getTable();
+        $memoType = $request->filled('memo_type') ? $request->memo_type : null;
+        $perPage = 20;
+        $page = (int) $request->get('page', 1);
 
-        $baseQuery = Activity::query()
-            ->select([$activitiesTable . '.*', $matricesTable . '.year as matrix_year', $matricesTable . '.quarter as matrix_quarter'])
-            ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id');
-        $this->applyFilters($baseQuery, $request, $activitiesTable, $matricesTable);
+        if ($memoType && in_array($memoType, self::MEMO_LIST_DOC_TYPES, true)) {
+            $allRows = $this->getMemoListRowsForType($memoType, $request);
+        } else {
+            $allRows = collect();
+            foreach (self::MEMO_LIST_DOC_TYPES as $type) {
+                $allRows = $allRows->concat($this->getMemoListRowsForType($type, $request));
+            }
+            $allRows = $allRows->sortByDesc(function ($r) {
+                $y = $r->year ?? 0;
+                $q = $r->quarter ?? '';
+                $oq = ['Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4][$q] ?? 0;
+                $ts = $r->created_at ? (\Carbon\Carbon::parse($r->created_at)->timestamp ?? 0) : 0;
+                return sprintf('%04d-%02d-%010d', $y, $oq, $ts);
+            })->values();
+        }
 
-        $memoList = $baseQuery
-            ->with(['requestType', 'responsiblePerson', 'matrix'])
-            ->orderBy('matrix_year', 'desc')
-            ->orderByRaw("FIELD(matrix_quarter, 'Q1','Q2','Q3','Q4')")
-            ->orderBy($activitiesTable . '.created_at', 'desc')
-            ->paginate(20)
-            ->withQueryString();
+        $total = $allRows->count();
+        $slice = $allRows->slice(($page - 1) * $perPage, $perPage)->values();
+        $paginator = new LengthAwarePaginator(
+            $slice,
+            $total,
+            $perPage,
+            $page,
+            ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $request->query()]
+        );
 
         $divisions = Division::orderBy('division_name')->get();
+        $memoTypeLabels = DocumentCounter::getDocumentTypes();
 
         $html = view('reports.partials.memo-list-table', [
-            'memoList' => $memoList,
+            'memoList' => $paginator,
             'divisions' => $divisions,
+            'memoTypeLabels' => $memoTypeLabels,
         ])->render();
 
         return response()->json([
             'html' => $html,
-            'current_page' => $memoList->currentPage(),
-            'last_page' => $memoList->lastPage(),
-            'total' => $memoList->total(),
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'total' => $paginator->total(),
         ]);
     }
 
@@ -328,26 +498,29 @@ class ReportsController extends Controller
     }
 
     /**
-     * Export memo list report to Excel (CSV).
+     * Export memo list report to Excel (CSV). Uses unified rows; memo_type filter = document type code or all.
      */
     public function exportMemoListExcel(Request $request)
     {
-        $activitiesTable = (new Activity())->getTable();
-        $matricesTable = (new Matrix())->getTable();
-
-        $baseQuery = Activity::query()
-            ->select([$activitiesTable . '.*', $matricesTable . '.year as matrix_year', $matricesTable . '.quarter as matrix_quarter'])
-            ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id');
-        $this->applyFilters($baseQuery, $request, $activitiesTable, $matricesTable);
-
-        $memos = $baseQuery
-            ->with(['requestType', 'responsiblePerson', 'matrix'])
-            ->orderBy('matrix_year', 'desc')
-            ->orderByRaw("FIELD(matrix_quarter, 'Q1','Q2','Q3','Q4')")
-            ->orderBy($activitiesTable . '.created_at', 'desc')
-            ->get();
+        $memoType = $request->filled('memo_type') ? $request->memo_type : null;
+        if ($memoType && in_array($memoType, self::MEMO_LIST_DOC_TYPES, true)) {
+            $rows = $this->getMemoListRowsForType($memoType, $request);
+        } else {
+            $rows = collect();
+            foreach (self::MEMO_LIST_DOC_TYPES as $type) {
+                $rows = $rows->concat($this->getMemoListRowsForType($type, $request));
+            }
+            $rows = $rows->sortByDesc(function ($r) {
+                $y = $r->year ?? 0;
+                $q = $r->quarter ?? '';
+                $oq = ['Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4][$q] ?? 0;
+                $ts = $r->created_at ? (\Carbon\Carbon::parse($r->created_at)->timestamp ?? 0) : 0;
+                return sprintf('%04d-%02d-%010d', $y, $oq, $ts);
+            })->values();
+        }
 
         $divisions = Division::orderBy('division_name')->get();
+        $memoTypeLabels = DocumentCounter::getDocumentTypes();
 
         $filename = 'memo_list_' . date('Y-m-d_H-i-s') . '.csv';
         $headers = [
@@ -355,31 +528,28 @@ class ReportsController extends Controller
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
 
-        $callback = function () use ($memos, $divisions) {
+        $callback = function () use ($rows, $divisions, $memoTypeLabels) {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($file, ['#', 'Document #', 'Title', 'Division', 'Type', 'Year', 'Quarter', 'Status', 'Date From', 'Date To', 'Responsible Person']);
             $idx = 0;
-            foreach ($memos as $memo) {
+            foreach ($rows as $row) {
                 $idx++;
-                $divisionId = $memo->division_id ?? $memo->matrix->division_id ?? null;
-                $divisionName = $divisionId ? ($divisions->firstWhere('id', $divisionId)->division_name ?? 'N/A') : 'N/A';
-                $resp = $memo->responsiblePerson;
-                $respName = $resp ? trim(($resp->fname ?? '') . ' ' . ($resp->lname ?? '')) : 'N/A';
-                $dateFrom = $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('Y-m-d') : '';
-                $dateTo = $memo->date_to ? \Carbon\Carbon::parse($memo->date_to)->format('Y-m-d') : '';
+                $divisionName = $row->division_id ? ($divisions->firstWhere('id', $row->division_id)->division_name ?? 'N/A') : 'N/A';
+                $dateFrom = $row->date_from ? \Carbon\Carbon::parse($row->date_from)->format('Y-m-d') : '';
+                $dateTo = $row->date_to ? \Carbon\Carbon::parse($row->date_to)->format('Y-m-d') : '';
                 fputcsv($file, [
                     $idx,
-                    $memo->document_number ?? '',
-                    $memo->activity_title ?? '',
+                    $row->document_number ?? '',
+                    $row->title ?? '',
                     $divisionName,
-                    $memo->requestType->name ?? '',
-                    $memo->matrix_year ?? '',
-                    $memo->matrix_quarter ?? '',
-                    $memo->overall_status ?? '',
+                    $memoTypeLabels[$row->document_type] ?? $row->document_type,
+                    $row->year ?? '',
+                    $row->quarter ?? '',
+                    $row->overall_status ?? '',
                     $dateFrom,
                     $dateTo,
-                    $respName,
+                    $row->responsible_person_name ?? '',
                 ]);
             }
             fclose($file);
