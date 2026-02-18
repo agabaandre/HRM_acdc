@@ -24,8 +24,16 @@
         </div>
     @endif
 
+    {{-- Progress bar (shown during AJAX submit) --}}
+    <div id="verificationProgressWrap" class="mb-3" style="display: none;">
+        <div class="progress" style="height: 6px;">
+            <div id="verificationProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+        </div>
+        <p id="verificationProgressText" class="small text-muted mt-1 mb-0">Processing…</p>
+    </div>
+
     <div class="row">
-        {{-- Validate uploaded document (no storage) - first option --}}
+        {{-- Validate uploaded document --}}
         <div class="col-12 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-info text-white">
@@ -33,18 +41,14 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted small">Upload an APM PDF. The document number and signature hashes will be read from the file and validated against the system. The file is not stored on the server.</p>
-                    <form action="{{ route('signature-verify.validate-upload') }}" method="POST" enctype="multipart/form-data" class="row g-3">
+                    <form id="form-upload" action="{{ route('signature-verify.validate-upload') }}" method="POST" enctype="multipart/form-data" class="row g-3 verification-form">
                         @csrf
                         <div class="col-12">
                             <label for="upload_document" class="form-label">PDF document</label>
-                            <input type="file" class="form-control @error('document') is-invalid @enderror"
-                                   id="upload_document" name="document" accept=".pdf,application/pdf" required>
-                            @error('document')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <input type="file" class="form-control" id="upload_document" name="document" accept=".pdf,application/pdf" required>
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-info text-white">
+                            <button type="submit" class="btn btn-info text-white btn-submit">
                                 <i class="fas fa-check-circle me-1"></i> Validate document
                             </button>
                         </div>
@@ -61,28 +65,18 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted small">Enter the document number and year of creation to view the document and all signatories with their verification hashes.</p>
-                    <form action="{{ route('signature-verify.lookup') }}" method="POST" class="row g-3">
+                    <form id="form-lookup" action="{{ route('signature-verify.lookup') }}" method="POST" class="row g-3 verification-form">
                         @csrf
                         <div class="col-12">
                             <label for="lookup_document_number" class="form-label">Document number</label>
-                            <input type="text" class="form-control @error('document_number') is-invalid @enderror"
-                                   id="lookup_document_number" name="document_number"
-                                   value="{{ old('document_number', $document_number ?? '') }}" placeholder="e.g. AU/CDC/DHIS/IM/STM/001" required>
-                            @error('document_number')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <input type="text" class="form-control" id="lookup_document_number" name="document_number" placeholder="e.g. AU/CDC/DHIS/IM/SM/001" required>
                         </div>
                         <div class="col-12">
                             <label for="lookup_year" class="form-label">Year of creation</label>
-                            <input type="number" class="form-control @error('year') is-invalid @enderror"
-                                   id="lookup_year" name="year" min="2000" max="2100" step="1"
-                                   value="{{ old('year', $year ?? date('Y')) }}" required>
-                            @error('year')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <input type="number" class="form-control" id="lookup_year" name="year" min="2000" max="2100" value="{{ date('Y') }}" required>
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary btn-submit">
                                 <i class="fas fa-search me-1"></i> Look up
                             </button>
                         </div>
@@ -99,30 +93,22 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted small">Enter a verification hash and document number to see which signatory and action it corresponds to.</p>
-                    <form action="{{ route('signature-verify.verify') }}" method="POST" class="row g-3">
+                    <form id="form-verify" action="{{ route('signature-verify.verify') }}" method="POST" class="row g-3 verification-form">
                         @csrf
                         <div class="col-12">
                             <label for="verify_hash" class="form-label">Verification hash</label>
-                            <input type="text" class="form-control font-monospace @error('hash') is-invalid @enderror"
-                                   id="verify_hash" name="hash" maxlength="32"
-                                   value="{{ old('hash', $hash ?? '') }}" placeholder="16-character hash (e.g. A1B2C3D4E5F67890)" required>
-                            @error('hash')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <input type="text" class="form-control font-monospace" id="verify_hash" name="hash" maxlength="32" placeholder="16-character hash" required>
                         </div>
                         <div class="col-12">
                             <label for="verify_document_number" class="form-label">Document number</label>
-                            <input type="text" class="form-control @error('document_number') is-invalid @enderror"
-                                   id="verify_document_number" name="document_number"
-                                   value="{{ old('document_number', $document_number ?? '') }}" required>
+                            <input type="text" class="form-control" id="verify_document_number" name="document_number" required>
                         </div>
                         <div class="col-12">
                             <label for="verify_year" class="form-label">Year (optional)</label>
-                            <input type="number" class="form-control" id="verify_year" name="year"
-                                   min="2000" max="2100" step="1" value="{{ old('year', $year ?? '') }}" placeholder="Leave blank to search all years">
+                            <input type="number" class="form-control" id="verify_year" name="year" min="2000" max="2100" placeholder="Leave blank to search all years">
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-success">
+                            <button type="submit" class="btn btn-success btn-submit">
                                 <i class="fas fa-check-double me-1"></i> Verify hash
                             </button>
                         </div>
@@ -132,217 +118,229 @@
         </div>
     </div>
 
-    {{-- Upload validation result --}}
-    @if (!empty($upload_validation_result))
-        <div class="card shadow-sm mb-4 border-info">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0 text-white"><i class="fas fa-file-alt me-2"></i>Upload validation result</h5>
-            </div>
-            <div class="card-body">
-                <p class="mb-3">
-                    @if (!empty($upload_validation_result['valid']))
-                        <span class="badge bg-success fs-6 px-3 py-2"><i class="fas fa-check-circle me-1"></i> Final state: Valid</span>
-                        <span class="text-muted small ms-2">At least one signature hash from the document matched the system.</span>
-                    @else
-                        <span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="fas fa-exclamation-triangle me-1"></i> Final state: Not valid</span>
-                        <span class="text-muted small ms-2">No matching signature hash found, or document not found in system.</span>
-                    @endif
-                </p>
-                <p class="text-muted small">Data extracted from the uploaded PDF (file was not saved).</p>
-                <dl class="row mb-3">
-                    <dt class="col-sm-4">Document number(s) found</dt>
-                    <dd class="col-sm-8">
-                        @if (count($upload_validation_result['extracted_document_numbers']) > 0)
-                            @foreach ($upload_validation_result['extracted_document_numbers'] as $dn)
-                                <code class="me-1">{{ $dn }}</code>
-                            @endforeach
-                        @else
-                            <span class="text-muted">None</span>
-                        @endif
-                    </dd>
-                    <dt class="col-sm-4">Hash(es) found</dt>
-                    <dd class="col-sm-8">
-                        @if (count($upload_validation_result['extracted_hashes']) > 0)
-                            @foreach ($upload_validation_result['extracted_hashes'] as $h)
-                                <code class="user-select-all me-1">{{ $h }}</code>
-                            @endforeach
-                        @else
-                            <span class="text-muted">None</span>
-                        @endif
-                    </dd>
-                </dl>
-                @if ($upload_validation_result['document'])
-                    <hr>
-                    <h6 class="mb-2">Document in system</h6>
-                    <p class="mb-2"><strong>{{ $upload_validation_result['doc_type'] }}</strong> — <code>{{ $upload_validation_result['document']->document_number ?? 'N/A' }}</code></p>
-                    @if (!empty($upload_validation_result['metadata']))
-                        <dl class="row mb-3 small">
-                            <dt class="col-sm-3 text-muted">Creator</dt>
-                            <dd class="col-sm-9">{{ $upload_validation_result['metadata']['creator'] ?? 'N/A' }}</dd>
-                            <dt class="col-sm-3 text-muted">Division</dt>
-                            <dd class="col-sm-9">{{ $upload_validation_result['metadata']['division'] ?? 'N/A' }}</dd>
-                            <dt class="col-sm-3 text-muted">Date created</dt>
-                            <dd class="col-sm-9">{{ $upload_validation_result['metadata']['date_created'] ?? 'N/A' }}</dd>
-                        </dl>
-                    @endif
-                    <h6 class="mb-2">Hash validation</h6>
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Hash from PDF</th>
-                                    <th>Status</th>
-                                    <th>Signatory (if matched)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($upload_validation_result['hash_validations'] as $hv)
-                                    <tr>
-                                        <td><code class="user-select-all">{{ $hv['hash'] }}</code></td>
-                                        <td>
-                                            @if ($hv['matched'])
-                                                <span class="badge bg-success">Valid</span>
-                                            @else
-                                                <span class="badge bg-warning text-dark">No match</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if ($hv['signatory'])
-                                                {{ $hv['signatory']['name'] }} — {{ $hv['signatory']['role'] }} ({{ $hv['signatory']['action'] }})
-                                            @else
-                                                —
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    @if (count($upload_validation_result['signatories']) > 0)
-                        <h6 class="mb-2 mt-3">All signatories on this document</h6>
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Role</th>
-                                        <th>Name</th>
-                                        <th>Action</th>
-                                        <th>Verify hash</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($upload_validation_result['signatories'] as $s)
-                                        <tr>
-                                            <td>{{ $s['role'] }}</td>
-                                            <td>{{ $s['name'] }}</td>
-                                            <td><span class="badge bg-secondary">{{ $s['action'] }}</span></td>
-                                            <td><code class="user-select-all">{{ $s['hash'] }}</code></td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                @else
-                    <p class="text-warning mb-0">No matching document found in the system for the extracted document number(s).</p>
-                @endif
+    {{-- Result modal (unified layout for all methods) --}}
+    <div class="modal fade" id="verificationResultModal" tabindex="-1" aria-labelledby="verificationResultModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title text-white" id="verificationResultModalLabel"><i class="fas fa-file-alt me-2"></i>Verification result</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div id="verificationResultContent" class="modal-body verification-print-content">
+                    {{-- Filled by JS from JSON response --}}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" id="verificationResultPrint"><i class="fas fa-print me-1"></i> Print</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
-    @endif
-
-    {{-- Lookup result: document + signatories with hashes --}}
-    @if (!empty($lookup_result))
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0 text-white"><i class="fas fa-file-alt me-2"></i>Document & signatory hashes</h5>
-            </div>
-            <div class="card-body">
-                <dl class="row mb-4">
-                    <dt class="col-sm-3">Document type</dt>
-                    <dd class="col-sm-9">{{ $lookup_result['doc_type'] }}</dd>
-                    <dt class="col-sm-3">Document number</dt>
-                    <dd class="col-sm-9"><code>{{ $lookup_result['document']->document_number ?? 'N/A' }}</code></dd>
-                    @if (!empty($lookup_result['metadata']))
-                        <dt class="col-sm-3">Creator</dt>
-                        <dd class="col-sm-9">{{ $lookup_result['metadata']['creator'] ?? 'N/A' }}</dd>
-                        <dt class="col-sm-3">Division</dt>
-                        <dd class="col-sm-9">{{ $lookup_result['metadata']['division'] ?? 'N/A' }}</dd>
-                        <dt class="col-sm-3">Date created</dt>
-                        <dd class="col-sm-9">{{ $lookup_result['metadata']['date_created'] ?? 'N/A' }}</dd>
-                    @else
-                        <dt class="col-sm-3">Created</dt>
-                        <dd class="col-sm-9">{{ isset($lookup_result['document']->created_at) ? \Carbon\Carbon::parse($lookup_result['document']->created_at)->format('j F Y H:i') : 'N/A' }}</dd>
-                    @endif
-                </dl>
-                <h6 class="mb-3">Signatories and verification hashes</h6>
-                @if (count($lookup_result['signatories']) > 0)
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Role</th>
-                                    <th>Name</th>
-                                    <th>Action</th>
-                                    <th>Date / time</th>
-                                    <th>Verify hash</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($lookup_result['signatories'] as $s)
-                                    <tr>
-                                        <td>{{ $s['role'] }}</td>
-                                        <td>{{ $s['name'] }}</td>
-                                        <td><span class="badge bg-secondary">{{ $s['action'] }}</span></td>
-                                        <td>{{ $s['date'] }}</td>
-                                        <td><code class="user-select-all">{{ $s['hash'] }}</code></td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <p class="text-muted mb-0">No signatories found for this document (no approval actions recorded).</p>
-                @endif
-            </div>
-        </div>
-    @endif
-
-    {{-- Verify result: single signatory match --}}
-    @if (!empty($verify_result))
-        <div class="card shadow-sm border-success mb-4">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0 text-white"><i class="fas fa-check-circle me-2"></i>Hash verified</h5>
-            </div>
-            <div class="card-body">
-                <p class="mb-3">The provided hash matches the following signatory on this document.</p>
-                <dl class="row mb-3">
-                    <dt class="col-sm-3">Document type</dt>
-                    <dd class="col-sm-9">{{ $verify_result['doc_type'] }}</dd>
-                    <dt class="col-sm-3">Document number</dt>
-                    <dd class="col-sm-9"><code>{{ $verify_result['document']->document_number ?? 'N/A' }}</code></dd>
-                    @if (!empty($verify_result['metadata']))
-                        <dt class="col-sm-3">Creator</dt>
-                        <dd class="col-sm-9">{{ $verify_result['metadata']['creator'] ?? 'N/A' }}</dd>
-                        <dt class="col-sm-3">Division</dt>
-                        <dd class="col-sm-9">{{ $verify_result['metadata']['division'] ?? 'N/A' }}</dd>
-                        <dt class="col-sm-3">Date created</dt>
-                        <dd class="col-sm-9">{{ $verify_result['metadata']['date_created'] ?? 'N/A' }}</dd>
-                    @endif
-                </dl>
-                <dl class="row mb-0">
-                    <dt class="col-sm-3">Role</dt>
-                    <dd class="col-sm-9">{{ $verify_result['signatory']['role'] }}</dd>
-                    <dt class="col-sm-3">Name</dt>
-                    <dd class="col-sm-9">{{ $verify_result['signatory']['name'] }}</dd>
-                    <dt class="col-sm-3">Action</dt>
-                    <dd class="col-sm-9"><span class="badge bg-secondary">{{ $verify_result['signatory']['action'] }}</span></dd>
-                    <dt class="col-sm-3">Date / time</dt>
-                    <dd class="col-sm-9">{{ $verify_result['signatory']['date'] }}</dd>
-                    <dt class="col-sm-3">Verify hash</dt>
-                    <dd class="col-sm-9"><code class="user-select-all">{{ $verify_result['signatory']['hash'] }}</code></dd>
-                </dl>
-            </div>
-        </div>
-    @endif
+    </div>
 </div>
+
+<style>
+@media print {
+    body * { visibility: hidden; }
+    .verification-print-content, .verification-print-content * { visibility: visible; }
+    .verification-print-content { position: absolute; left: 0; top: 0; width: 100%; }
+    .modal-footer, .btn-close { display: none !important; }
+}
+</style>
 @endsection
+
+@push('scripts')
+<script>
+(function() {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    function showProgress(show, text) {
+        const wrap = document.getElementById('verificationProgressWrap');
+        const bar = document.getElementById('verificationProgressBar');
+        const txt = document.getElementById('verificationProgressText');
+        wrap.style.display = show ? 'block' : 'none';
+        if (bar) bar.style.width = show ? '30%' : '0%';
+        if (txt) txt.textContent = text || 'Processing…';
+    }
+
+    function setProgressPercent(pct) {
+        const bar = document.getElementById('verificationProgressBar');
+        if (bar) bar.style.width = pct + '%';
+    }
+
+    function renderResult(data) {
+        const doc = data.document || {};
+        const meta = doc.metadata || {};
+        const signatories = data.signatories || [];
+        const hashValidations = data.hash_validations || [];
+        const matchedSignatory = data.matched_signatory || null;
+        const resultType = data.result_type || '';
+
+        let html = '';
+
+        if (data.message) {
+            html += '<div class="alert alert-warning mb-3">' + escapeHtml(data.message) + '</div>';
+        }
+
+        if (data.result_type === 'upload_validation') {
+            if (data.valid) {
+                html += '<p class="mb-3"><span class="badge bg-success fs-6 px-3 py-2"><i class="fas fa-check-circle me-1"></i> Final state: Valid</span></p>';
+            } else {
+                html += '<p class="mb-3"><span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="fas fa-exclamation-triangle me-1"></i> Final state: Not valid</span></p>';
+            }
+            if ((data.extracted_document_numbers || []).length) {
+                html += '<p class="mb-1"><strong>Document number(s) from PDF:</strong></p><p class="mb-2">' + (data.extracted_document_numbers.map(function(d) { return '<code class="me-1">' + escapeHtml(d) + '</code>'; }).join('')) + '</p>';
+            }
+            if ((data.extracted_hashes || []).length) {
+                html += '<p class="mb-1"><strong>Hash(es) from PDF:</strong></p><p class="mb-3">' + (data.extracted_hashes.map(function(h) { return '<code class="user-select-all me-1">' + escapeHtml(h) + '</code>'; }).join('')) + '</p>';
+            }
+        }
+
+        if (doc.document_number || doc.doc_type) {
+            html += '<h6 class="mb-2">Document</h6>';
+            html += '<dl class="row mb-3 small">';
+            html += '<dt class="col-sm-3 text-muted">Document type</dt><dd class="col-sm-9">' + escapeHtml(doc.doc_type || 'N/A') + '</dd>';
+            html += '<dt class="col-sm-3 text-muted">Document number</dt><dd class="col-sm-9"><code>' + escapeHtml(doc.document_number || 'N/A') + '</code></dd>';
+            html += '<dt class="col-sm-3 text-muted">Creator</dt><dd class="col-sm-9">' + escapeHtml(meta.creator || 'N/A') + '</dd>';
+            html += '<dt class="col-sm-3 text-muted">Division</dt><dd class="col-sm-9">' + escapeHtml(meta.division || 'N/A') + '</dd>';
+            html += '<dt class="col-sm-3 text-muted">Date created</dt><dd class="col-sm-9">' + escapeHtml(meta.date_created || 'N/A') + '</dd>';
+            html += '</dl>';
+        }
+
+        if (matchedSignatory && data.hash_matched) {
+            html += '<h6 class="mb-2">Matched signatory (hash verified)</h6>';
+            html += '<dl class="row mb-3 small">';
+            html += '<dt class="col-sm-3 text-muted">Role</dt><dd class="col-sm-9">' + escapeHtml(matchedSignatory.role || '') + '</dd>';
+            html += '<dt class="col-sm-3 text-muted">Name</dt><dd class="col-sm-9">' + escapeHtml(matchedSignatory.name || '') + '</dd>';
+            html += '<dt class="col-sm-3 text-muted">Action</dt><dd class="col-sm-9"><span class="badge bg-secondary">' + escapeHtml(matchedSignatory.action || '') + '</span></dd>';
+            html += '<dt class="col-sm-3 text-muted">Date / time</dt><dd class="col-sm-9">' + escapeHtml(matchedSignatory.date || '') + '</dd>';
+            html += '<dt class="col-sm-3 text-muted">Verify hash</dt><dd class="col-sm-9"><code class="user-select-all">' + escapeHtml(matchedSignatory.hash || '') + '</code></dd>';
+            html += '</dl>';
+        }
+
+        if (hashValidations.length > 0) {
+            html += '<h6 class="mb-2">Hash validation (from PDF)</h6>';
+            html += '<div class="table-responsive"><table class="table table-bordered table-sm"><thead class="table-light"><tr><th>Hash</th><th>Status</th><th>Signatory</th></tr></thead><tbody>';
+            hashValidations.forEach(function(hv) {
+                html += '<tr><td><code class="user-select-all">' + escapeHtml(hv.hash) + '</code></td>';
+                html += '<td>' + (hv.matched ? '<span class="badge bg-success">Valid</span>' : '<span class="badge bg-warning text-dark">No match</span>') + '</td>';
+                html += '<td>' + (hv.signatory ? escapeHtml(hv.signatory.name + ' — ' + hv.signatory.role + ' (' + hv.signatory.action + ')') : '—') + '</td></tr>';
+            });
+            html += '</tbody></table></div>';
+        }
+
+        if (signatories.length > 0) {
+            html += '<h6 class="mb-2 mt-3">Signatories and verification hashes</h6>';
+            html += '<div class="table-responsive"><table class="table table-bordered table-sm"><thead class="table-light"><tr><th>Role</th><th>Name</th><th>Action</th><th>Date / time</th><th>Verify hash</th></tr></thead><tbody>';
+            signatories.forEach(function(s) {
+                html += '<tr><td>' + escapeHtml(s.role) + '</td><td>' + escapeHtml(s.name) + '</td><td><span class="badge bg-secondary">' + escapeHtml(s.action) + '</span></td><td>' + escapeHtml(s.date) + '</td><td><code class="user-select-all">' + escapeHtml(s.hash) + '</code></td></tr>';
+            });
+            html += '</tbody></table></div>';
+        }
+
+        if (!html) html = '<p class="text-muted mb-0">No data to display.</p>';
+        return html;
+    }
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    function showModal(content) {
+        document.getElementById('verificationResultContent').innerHTML = content;
+        const modal = new bootstrap.Modal(document.getElementById('verificationResultModal'));
+        modal.show();
+    }
+
+    document.getElementById('verificationResultPrint').addEventListener('click', function() {
+        window.print();
+    });
+
+    document.querySelectorAll('.verification-form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const isUpload = form.id === 'form-upload';
+            const url = form.action;
+            const submitBtn = form.querySelector('.btn-submit');
+
+            showProgress(true, isUpload ? 'Uploading and validating…' : 'Verifying…');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+            }
+
+            function done() {
+                showProgress(false);
+                if (submitBtn) submitBtn.disabled = false;
+            }
+
+            if (isUpload) {
+                const fd = new FormData(form);
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', url);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.setRequestHeader('X-CSRF-TOKEN', csrf);
+                xhr.upload.addEventListener('progress', function(ev) {
+                    if (ev.lengthComputable) setProgressPercent(30 + Math.round(70 * ev.loaded / ev.total));
+                });
+                xhr.onload = function() {
+                    setProgressPercent(100);
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        if (xhr.status === 422 && data.errors) {
+                            let msg = data.message || 'Validation failed.';
+                            for (const k in data.errors) { msg += ' ' + (Array.isArray(data.errors[k]) ? data.errors[k].join(' ') : data.errors[k]); }
+                            showModal('<div class="alert alert-danger">' + escapeHtml(msg) + '</div>');
+                        } else if (data.success !== false) {
+                            showModal(renderResult(data));
+                        } else {
+                            showModal('<div class="alert alert-danger">' + escapeHtml(data.message || 'An error occurred.') + '</div>');
+                        }
+                    } catch (err) {
+                        showModal('<div class="alert alert-danger">Invalid response from server.</div>');
+                    }
+                    done();
+                };
+                xhr.onerror = function() {
+                    showModal('<div class="alert alert-danger">Network error. Please try again.</div>');
+                    done();
+                };
+                xhr.send(fd);
+            } else {
+                const fd = new FormData(form);
+                fetch(url, {
+                    method: 'POST',
+                    body: fd,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf
+                    }
+                }).then(function(r) {
+                    return r.json().then(function(data) { return { status: r.status, data: data }; });
+                }).then(function(res) {
+                    setProgressPercent(100);
+                    const data = res.data;
+                    if (res.status === 422 && data.errors) {
+                        let msg = data.message || 'Validation failed.';
+                        for (const k in data.errors) { msg += ' ' + (Array.isArray(data.errors[k]) ? data.errors[k].join(' ') : data.errors[k]); }
+                        showModal('<div class="alert alert-danger">' + escapeHtml(msg) + '</div>');
+                    } else if (data.success !== false) {
+                        showModal(renderResult(data));
+                    } else {
+                        showModal('<div class="alert alert-danger">' + escapeHtml(data.message || 'An error occurred.') + '</div>');
+                    }
+                    done();
+                }).catch(function() {
+                    showModal('<div class="alert alert-danger">Network error. Please try again.</div>');
+                    done();
+                });
+                setProgressPercent(50);
+            }
+        });
+    });
+})();
+</script>
+@endpush
