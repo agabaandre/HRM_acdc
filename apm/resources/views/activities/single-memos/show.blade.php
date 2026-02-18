@@ -581,12 +581,12 @@
                                 <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
                                    class="btn btn-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                     <i class="fas fa-tools"></i>
-                                    <span>Create RQS</span>
+                                    <span>Create Service Request</span>
                                 </a>
                             @else
                                 <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                     <i class="fas fa-eye"></i>
-                                    <span>View RQS</span>
+                                    <span>View Service Request</span>
                                 </a>
                             @endif
                         @endif
