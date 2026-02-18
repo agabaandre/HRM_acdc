@@ -175,6 +175,16 @@
                     <hr>
                     <h6 class="mb-2">Document in system</h6>
                     <p class="mb-2"><strong>{{ $upload_validation_result['doc_type'] }}</strong> — <code>{{ $upload_validation_result['document']->document_number ?? 'N/A' }}</code></p>
+                    @if (!empty($upload_validation_result['metadata']))
+                        <dl class="row mb-3 small">
+                            <dt class="col-sm-3 text-muted">Creator</dt>
+                            <dd class="col-sm-9">{{ $upload_validation_result['metadata']['creator'] ?? 'N/A' }}</dd>
+                            <dt class="col-sm-3 text-muted">Division</dt>
+                            <dd class="col-sm-9">{{ $upload_validation_result['metadata']['division'] ?? 'N/A' }}</dd>
+                            <dt class="col-sm-3 text-muted">Date created</dt>
+                            <dd class="col-sm-9">{{ $upload_validation_result['metadata']['date_created'] ?? 'N/A' }}</dd>
+                        </dl>
+                    @endif
                     <h6 class="mb-2">Hash validation</h6>
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm">
@@ -252,8 +262,17 @@
                     <dd class="col-sm-9">{{ $lookup_result['doc_type'] }}</dd>
                     <dt class="col-sm-3">Document number</dt>
                     <dd class="col-sm-9"><code>{{ $lookup_result['document']->document_number ?? 'N/A' }}</code></dd>
-                    <dt class="col-sm-3">Created</dt>
-                    <dd class="col-sm-9">{{ isset($lookup_result['document']->created_at) ? \Carbon\Carbon::parse($lookup_result['document']->created_at)->format('j F Y') : 'N/A' }}</dd>
+                    @if (!empty($lookup_result['metadata']))
+                        <dt class="col-sm-3">Creator</dt>
+                        <dd class="col-sm-9">{{ $lookup_result['metadata']['creator'] ?? 'N/A' }}</dd>
+                        <dt class="col-sm-3">Division</dt>
+                        <dd class="col-sm-9">{{ $lookup_result['metadata']['division'] ?? 'N/A' }}</dd>
+                        <dt class="col-sm-3">Date created</dt>
+                        <dd class="col-sm-9">{{ $lookup_result['metadata']['date_created'] ?? 'N/A' }}</dd>
+                    @else
+                        <dt class="col-sm-3">Created</dt>
+                        <dd class="col-sm-9">{{ isset($lookup_result['document']->created_at) ? \Carbon\Carbon::parse($lookup_result['document']->created_at)->format('j F Y H:i') : 'N/A' }}</dd>
+                    @endif
                 </dl>
                 <h6 class="mb-3">Signatories and verification hashes</h6>
                 @if (count($lookup_result['signatories']) > 0)
@@ -296,11 +315,21 @@
             </div>
             <div class="card-body">
                 <p class="mb-3">The provided hash matches the following signatory on this document.</p>
-                <dl class="row mb-0">
+                <dl class="row mb-3">
                     <dt class="col-sm-3">Document type</dt>
                     <dd class="col-sm-9">{{ $verify_result['doc_type'] }}</dd>
                     <dt class="col-sm-3">Document number</dt>
                     <dd class="col-sm-9"><code>{{ $verify_result['document']->document_number ?? 'N/A' }}</code></dd>
+                    @if (!empty($verify_result['metadata']))
+                        <dt class="col-sm-3">Creator</dt>
+                        <dd class="col-sm-9">{{ $verify_result['metadata']['creator'] ?? 'N/A' }}</dd>
+                        <dt class="col-sm-3">Division</dt>
+                        <dd class="col-sm-9">{{ $verify_result['metadata']['division'] ?? 'N/A' }}</dd>
+                        <dt class="col-sm-3">Date created</dt>
+                        <dd class="col-sm-9">{{ $verify_result['metadata']['date_created'] ?? 'N/A' }}</dd>
+                    @endif
+                </dl>
+                <dl class="row mb-0">
                     <dt class="col-sm-3">Role</dt>
                     <dd class="col-sm-9">{{ $verify_result['signatory']['role'] }}</dd>
                     <dt class="col-sm-3">Name</dt>

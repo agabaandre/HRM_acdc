@@ -55,6 +55,7 @@ class SignatureVerificationController extends Controller
                 'document'    => $document,
                 'doc_type'    => $this->getDocumentTypeLabel($document),
                 'signatories' => $signatories,
+                'metadata'    => $this->getDocumentMetadata($document),
             ],
             'document_number' => $documentNumber,
             'year'            => $year,
@@ -95,6 +96,7 @@ class SignatureVerificationController extends Controller
                             'doc_type'    => $this->getDocumentTypeLabel($document),
                             'signatory'   => $s,
                             'hash_matched' => true,
+                            'metadata'    => $this->getDocumentMetadata($document),
                         ],
                         'hash'           => $hash,
                         'document_number' => $documentNumber,
@@ -113,6 +115,7 @@ class SignatureVerificationController extends Controller
                 'document'    => $document,
                 'doc_type'    => $this->getDocumentTypeLabel($document),
                 'signatories' => $signatories,
+                'metadata'    => $this->getDocumentMetadata($document),
             ],
             'document_number' => $documentNumber,
             'year'            => $year,
@@ -305,6 +308,48 @@ class SignatureVerificationController extends Controller
     }
 
     /**
+     * Get document metadata (creator, division, date created) for display.
+     */
+    private function getDocumentMetadata($document): array
+    {
+        $creator = 'N/A';
+        $division = 'N/A';
+        $dateCreated = isset($document->created_at)
+            ? (\Carbon\Carbon::parse($document->created_at)->format('j F Y H:i'))
+            : 'N/A';
+
+        if ($document instanceof Activity) {
+            $staff = $document->staff ?? $document->staff()->first();
+            if ($staff) {
+                $creator = trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
+            }
+            $div = $document->division ?? $document->division()->first();
+            if (!$div && $document->matrix_id) {
+                $matrix = $document->matrix ?? $document->matrix()->first();
+                $div = $matrix->division ?? ($matrix ? $matrix->division()->first() : null);
+            }
+            if ($div) {
+                $division = $div->division_name ?? $div->division_short_name ?? 'N/A';
+            }
+        } else {
+            $staff = $document->staff ?? (method_exists($document, 'staff') ? $document->staff()->first() : null);
+            if ($staff) {
+                $creator = trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
+            }
+            $div = $document->division ?? (method_exists($document, 'division') ? $document->division()->first() : null);
+            if ($div) {
+                $division = $div->division_name ?? $div->division_short_name ?? 'N/A';
+            }
+        }
+
+        return [
+            'creator'      => $creator ?: 'N/A',
+            'division'     => $division ?: 'N/A',
+            'date_created' => $dateCreated,
+        ];
+    }
+
+    /**
      * Validate an uploaded APM document (PDF): extract document number and hashes, verify against system.
      * File is not stored on the server; only read in memory / from temp and discarded.
      */
@@ -359,6 +404,7 @@ class SignatureVerificationController extends Controller
             $results['document']    = $document;
             $results['doc_type']    = $this->getDocumentTypeLabel($document);
             $results['signatories'] = $this->buildSignatoriesWithHashes($document);
+            $results['metadata']    = $this->getDocumentMetadata($document);
 
             foreach ($results['extracted_hashes'] as $hash) {
                 $hashUpper = strtoupper(trim($hash));
