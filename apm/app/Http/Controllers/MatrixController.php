@@ -3095,7 +3095,7 @@ class MatrixController extends Controller
             'approvedSingleMemos' => $approvedSingleMemos,
             'baseUrl' => $baseUrl,
             'matrixShowUrl' => $matrixShowUrl,
-        ]);
+        ], ['watermark_text' => 'APPROVED']);
 
         $filename = 'matrix_' . $matrix->id . '_' . strtoupper($matrix->quarter) . '_' . $matrix->year . '_' . now()->format('Y-m-d') . '.pdf';
         return response($pdf->Output($filename, 'I'), 200, [
