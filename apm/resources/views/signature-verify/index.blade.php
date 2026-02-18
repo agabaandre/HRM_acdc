@@ -309,16 +309,33 @@
         }
     }
 
+    var lastVerificationResult = null;
+
     function showModal(content, data) {
         document.getElementById('verificationResultContent').innerHTML = content;
+        lastVerificationResult = data || null;
         if (data) setPdfLink(data);
         if (verificationModalInstance) verificationModalInstance.show();
     }
 
-    document.getElementById('verificationResultPrint').addEventListener('click', function() {
+    function getPdfUrl() {
         var pdfLink = document.getElementById('verificationResultPdf');
-        if (pdfLink && pdfLink.href && pdfLink.href !== '#' && pdfLink.style.display !== 'none') {
-            window.open(pdfLink.href, '_blank', 'noopener');
+        if (pdfLink && pdfLink.href && pdfLink.href !== '#' && pdfLink.href.indexOf('signature-verify/print') !== -1) {
+            return pdfLink.href;
+        }
+        var data = lastVerificationResult;
+        if (data && data.document && data.document.document_number && data.year != null) {
+            var params = new URLSearchParams({ document_number: data.document.document_number, year: String(data.year) });
+            if (data.matched_signatory && data.matched_signatory.hash) params.set('hash', data.matched_signatory.hash);
+            return pdfBaseUrl + '?' + params.toString();
+        }
+        return null;
+    }
+
+    document.getElementById('verificationResultPrint').addEventListener('click', function() {
+        var url = getPdfUrl();
+        if (url) {
+            window.open(url, '_blank', 'noopener');
         } else {
             window.print();
         }
