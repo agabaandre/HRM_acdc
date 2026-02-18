@@ -1404,10 +1404,41 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Form submission handler - strip commas from numeric inputs and validate budget
     document.getElementById('serviceRequestForm').addEventListener('submit', function(e) {
-        // Strip commas from cost inputs first so JSON payload has clean numbers
+        // Strip commas from cost inputs first so totals and JSON payload have clean numbers
         document.querySelectorAll('.cost-input').forEach(input => {
             if (input.value) input.value = input.value.replace(/,/g, '');
         });
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            if (input.value && input.value.includes(',')) input.value = input.value.replace(/,/g, '');
+        });
+
+        // Budget validation MUST run before we remove name attributes from participant rows,
+        // so updateTotals() can read input[name*="[costs]"] and compute correct Total Requested Funds.
+        if (sourceType !== 'non_travel_memo') {
+            updateTotals();
+            const originalBudget = parseFloat(document.getElementById('originalTotalBudget').value) || 0;
+            const newBudget = parseFloat(document.getElementById('newTotalBudget').value) || 0;
+            console.log('Budget validation:', { sourceType, originalBudget, newBudget, difference: newBudget - originalBudget });
+            const originalBudgetFormatted = originalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const newBudgetFormatted = newBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (newBudget > originalBudget) {
+                const differenceFormatted = (newBudget - originalBudget).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                e.preventDefault();
+                show_notification(
+                    'Total Requested Funds ($' + newBudgetFormatted + ') exceeds the Original Memo Budget ($' + originalBudgetFormatted + ') by $' + differenceFormatted + '. Please adjust your request to stay within the original allocation before submitting or saving as draft.',
+                    'error'
+                );
+                return false;
+            }
+            if (newBudget < originalBudget && newBudget > 0) {
+                const shortfallFormatted = (originalBudget - newBudget).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                show_notification(
+                    'Total Requested Funds ($' + newBudgetFormatted + ') is less than the Original Memo Budget ($' + originalBudgetFormatted + ') by $' + shortfallFormatted + '. Please check that all costs from the original memo are included in your request.',
+                    'warning'
+                );
+            }
+        }
+
         // Build participant data as JSON and submit via hidden inputs to avoid PHP max_input_vars truncation (e.g. 92 rows)
         const internalRows = document.querySelectorAll('#internalParticipants tr');
         const internalData = [];
@@ -1505,41 +1536,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Validate budget - check if requested funds exceed original budget (skip for non-travel memos)
-        if (sourceType !== 'non_travel_memo') {
-            // Update totals before validation to ensure values are current
-            updateTotals();
-            
-            const originalBudget = parseFloat(document.getElementById('originalTotalBudget').value) || 0;
-            const newBudget = parseFloat(document.getElementById('newTotalBudget').value) || 0;
-            
-            console.log('Budget validation:', { sourceType, originalBudget, newBudget, difference: newBudget - originalBudget });
-            
-            if (newBudget > originalBudget) {
-            e.preventDefault(); // Prevent form submission
-            
-            const difference = newBudget - originalBudget;
-            const originalBudgetFormatted = originalBudget.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-            const newBudgetFormatted = newBudget.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-            const differenceFormatted = difference.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-            
-            show_notification(
-                `Requested funds ($${newBudgetFormatted}) exceed the original budget ($${originalBudgetFormatted}) by $${differenceFormatted}. Please adjust your budget to stay within the original allocation.`,
-                'error'
-            );
-            
-            return false;
-            }
-        }
+        // Budget validation already ran above (before removing names) so updateTotals() could read participant costs.
     });
     
     // Update participants summary
