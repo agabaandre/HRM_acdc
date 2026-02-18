@@ -779,13 +779,20 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                 if ($requestARF->model_type === 'App\\Models\\Activity') {
                     $sourceModel->load(['matrix.division.divisionHead', 'staff', 'activity_budget']);
                     
-                    // Get fund codes for budget display
+                    // Get fund codes for budget display (from source budget_id or from ARF budget_breakdown keys)
                     $fundCodes = [];
+                    $budgetIds = [];
                     if ($sourceModel->budget_id) {
                         $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
-                        if (is_array($budgetIds)) {
-                            $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'partner')->get()->keyBy('id');
+                    }
+                    if (empty($budgetIds) && $requestARF->budget_breakdown) {
+                        $bb = is_string($requestARF->budget_breakdown) ? json_decode($requestARF->budget_breakdown, true) : $requestARF->budget_breakdown;
+                        if (is_array($bb)) {
+                            $budgetIds = array_filter(array_keys($bb), 'is_numeric');
                         }
+                    }
+                    if (!empty($budgetIds) && is_array($budgetIds)) {
+                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'partner', 'funder')->get()->keyBy('id');
                     }
                     
                     $sourceData = [
@@ -806,13 +813,20 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                 } elseif ($requestARF->model_type === 'App\\Models\\NonTravelMemo') {
                     $sourceModel->load(['division.divisionHead', 'staff', 'fundType']);
                     
-                    // Get fund codes for budget display
+                    // Get fund codes for budget display (from source budget_id or from ARF budget_breakdown keys)
                     $fundCodes = [];
+                    $budgetIds = [];
                     if ($sourceModel->budget_id) {
                         $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
-                        if (is_array($budgetIds)) {
-                            $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
+                    }
+                    if (empty($budgetIds) && $requestARF->budget_breakdown) {
+                        $bb = is_string($requestARF->budget_breakdown) ? json_decode($requestARF->budget_breakdown, true) : $requestARF->budget_breakdown;
+                        if (is_array($bb)) {
+                            $budgetIds = array_filter(array_keys($bb), 'is_numeric');
                         }
+                    }
+                    if (!empty($budgetIds) && is_array($budgetIds)) {
+                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
                     }
                     
                     $sourceData = [
@@ -833,13 +847,20 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                 } elseif ($requestARF->model_type === 'App\\Models\\SpecialMemo') {
                     $sourceModel->load(['division.divisionHead', 'staff', 'fundType']);
                     
-                    // Get fund codes for budget display
+                    // Get fund codes for budget display (from source budget_id or from ARF budget_breakdown keys)
                     $fundCodes = [];
+                    $budgetIds = [];
                     if ($sourceModel->budget_id) {
                         $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
-                        if (is_array($budgetIds)) {
-                            $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
+                    }
+                    if (empty($budgetIds) && $requestARF->budget_breakdown) {
+                        $bb = is_string($requestARF->budget_breakdown) ? json_decode($requestARF->budget_breakdown, true) : $requestARF->budget_breakdown;
+                        if (is_array($bb)) {
+                            $budgetIds = array_filter(array_keys($bb), 'is_numeric');
                         }
+                    }
+                    if (!empty($budgetIds) && is_array($budgetIds)) {
+                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
                     }
                     
                     $sourceData = [

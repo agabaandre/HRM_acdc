@@ -497,6 +497,7 @@
                                         if ($partnerDisplay === 'N/A' && $requestARF->partner) {
                                             $partnerDisplay = is_object($requestARF->partner) ? ($requestARF->partner->name ?? 'N/A') : $requestARF->partner;
                                         }
+                                        // Partner comes from fund code partner_id only (not funder)
                                         $funderDisplay = optional($requestARF->funder)->name ?? null;
                                         if (($funderDisplay === null || $funderDisplay === '') && $fundCodes && $fundCodes->isNotEmpty()) {
                                             $first = $fundCodes->first();
@@ -506,9 +507,9 @@
                                         $codeDisplay = $requestARF->extramural_code ?? null;
                                         if (($codeDisplay === null || $codeDisplay === '') && $fundCodes && $fundCodes->isNotEmpty()) {
                                             $first = $fundCodes->first();
-                                            $codeDisplay = $first->code ?? 'N/A';
+                                            $codeDisplay = $first->code ?? null;
                                         }
-                                        $codeDisplay = $codeDisplay ?? 'N/A';
+                                        $hasExtramuralCode = !empty(trim((string) $codeDisplay)) && (string) $codeDisplay !== 'N/A';
                                     @endphp
                                     <tr>
                                         <td class="field-label">
@@ -528,12 +529,14 @@
                                         </td>
                                         <td class="field-value">{{ $funderDisplay }}</td>
                                     </tr>
+                                    @if($hasExtramuralCode)
                                     <tr>
                                         <td class="field-label">
                                             <i class="bx bx-hash text-success me-2"></i>Extramural Code
                                         </td>
                                         <td class="field-value">{{ $codeDisplay }}</td>
                                     </tr>
+                                    @endif
                                     <tr>
                                         <td class="field-label">
                                             <i class="bx bx-info-circle text-success me-2"></i>Status
@@ -1267,37 +1270,55 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                         aria-label="Close"></button>
                 </div>
+                @php
+                    $fcForModal = $sourceData['fund_codes'] ?? collect();
+                    $modalPartners = $fcForModal->pluck('partner')->filter()->unique('id')->values();
+                    $defaultFunderId = $requestARF->funder_id ?? ($fcForModal->isNotEmpty() ? optional($fcForModal->first())->funder_id : null);
+                    $defaultExtramuralCode = $requestARF->extramural_code ?? ($fcForModal->isNotEmpty() ? optional($fcForModal->first())->code : '');
+                @endphp
                 <form action="{{ route('request-arf.approve', $requestARF) }}" method="POST" id="approvalModalForm">
                     @csrf
                     <div class="modal-body">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="modal_funder_id" class="form-label">
-                                        <i class="bx bx-building text-success me-1"></i>Funder <span
-                                            class="text-danger">*</span>
+                                    <label for="modal_partner_display" class="form-label">
+                                        <i class="bx bx-handshake text-success me-1"></i>Partner
                                     </label>
-                                    <select class="form-select select2 w-100" id="modal_funder_id" name="funder_id" required
-                                        data-placeholder="Select Funder" style="width: 100%;">
-                                        <option value="">Select Funder</option>
+                                    <select class="form-select w-100 bg-light" id="modal_partner_display" style="width: 100%;" disabled>
+                                        <option value="">—</option>
+                                        @foreach ($modalPartners as $p)
+                                            <option value="{{ $p->id }}" {{ $loop->first ? 'selected' : '' }}>{{ $p->name ?? 'N/A' }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">From budget / fund code (display only)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="modal_funder_id" class="form-label">
+                                        <i class="bx bx-building text-success me-1"></i>Funder <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="hidden" name="funder_id" value="{{ $defaultFunderId }}">
+                                    <select class="form-select w-100 bg-light" id="modal_funder_id" disabled style="width: 100%;">
+                                        <option value="">—</option>
                                         @foreach (\App\Models\Funder::where('is_active', true)->orderBy('name', 'asc')->get() as $funder)
-                                            <option value="{{ $funder->id }}"
-                                                {{ $requestARF->funder_id == $funder->id ? 'selected' : '' }}>
-                                                {{ $funder->name }}
-                                            </option>
+                                            <option value="{{ $funder->id }}" {{ (int) $defaultFunderId === (int) $funder->id ? 'selected' : '' }}>{{ $funder->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
                                 <div class="mb-3">
                                     <label for="modal_extramural_code" class="form-label">
                                         <i class="bx bx-hash text-success me-1"></i>Extramural Code <span
                                             class="text-danger">*</span>
                                     </label>
-                                    <input type="text" class="form-control" id="modal_extramural_code"
-                                        name="extramural_code" value="{{ $requestARF->extramural_code }}"
-                                        placeholder="Enter extramural code" required>
+                                    <input type="text" class="form-control bg-light" id="modal_extramural_code"
+                                        name="extramural_code" value="{{ old('extramural_code', $defaultExtramuralCode) }}"
+                                        placeholder="Enter extramural code" required readonly>
                                 </div>
                             </div>
                         </div>
@@ -1326,16 +1347,7 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
-            // Select2 for funder in approval modal (dropdown inside modal)
-            if ($.fn.select2) {
-                $('#modal_funder_id').select2({
-                    theme: 'bootstrap4',
-                    width: '100%',
-                    placeholder: 'Select Funder',
-                    allowClear: true,
-                    dropdownParent: $('#approvalModal')
-                });
-            }
+            // Funder and Partner are readonly in approval modal (no Select2 needed)
 
             // Copy comment from main form to modal when opening
             $('#approvalModal').on('show.bs.modal', function() {
