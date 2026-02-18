@@ -236,6 +236,13 @@
                         <a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}"
                             href="{{ url('request-arf') }}">Request for ARF</a>
                     </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('signature-verify*') ? 'active' : '' }}"
+                            href="{{ route('signature-verify.index') }}">
+                            <i class="fas fa-fingerprint me-1"></i> Validate APM Document Signature Hashes
+                        </a>
+                    </li>
                 </ul>
             </li>
 

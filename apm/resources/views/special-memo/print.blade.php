@@ -117,13 +117,17 @@
                 <th class="w-25">Title</th>
                 <td colspan="3">{{ $specialMemo->activity_title ?? $specialMemo->title ?? 'N/A' }}</td>
             </tr>
+            @php
+                $printBackground = trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->background ?? '')));
+                $printJustification = trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->justification ?? $specialMemo->activity_request_remarks ?? '')));
+            @endphp
             <tr>
                 <th>Background</th>
-                <td colspan="3">{!! $specialMemo->background ?? '' !!}</td>
+                <td colspan="3">{{ $printBackground }}</td>
             </tr>
             <tr>
                 <th>Justification</th>
-                <td colspan="3">{!! $specialMemo->justification ?? $specialMemo->activity_request_remarks ?? '' !!}</td>
+                <td colspan="3">{{ $printJustification }}</td>
             </tr>
             @if (!empty($locations) && count($locations))
             <tr>
@@ -218,7 +222,7 @@
                 @endforeach
                 <tr>
                     <td colspan="4" class="text-right"><strong>Grand Total</strong></td>
-                    <td class="text-right"><strong>{{ number_format($grand, 2) }}</strong></td>
+                    <td class="text-right"><strong>USD {{ number_format($grand, 2) }}</strong></td>
                 </tr>
             </tbody>
         </table>

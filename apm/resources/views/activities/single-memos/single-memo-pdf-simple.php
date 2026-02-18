@@ -382,7 +382,7 @@
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Background:</strong></td>
   </tr>
   <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><div class="justify-text"><?=$activity->background;?></div></td>
+   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><div class="justify-text"><?=trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($activity->background ?? '')));?></div></td>
   </tr>
  </table>
   
@@ -569,7 +569,7 @@
                             <tr>
                                 <th class="bg-highlight text-right" colspan="5">Grand Total</th>
                                 
-                                <th class="bg-highlight text-right"><?php echo number_format($grandTotal ?? 0, 2); ?></th>
+                                <th class="bg-highlight text-right">USD <?php echo number_format($grandTotal ?? 0, 2); ?></th>
                                 <th class="bg-highlight"></th>
                             </tr>
                         </tfoot>
@@ -577,7 +577,7 @@
                    
                 </div>
      <div class="section-label"><strong>Request for Approval</strong></div>
-     <div class="justify-text" style="padding: 2px;"><?php echo $activity->activity_request_remarks ?? 'N/A'; ?></div>
+     <div class="justify-text" style="padding: 2px;"><?php echo trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($activity->activity_request_remarks ?? 'N/A'))); ?></div>
 
     <?php if($fundCode->fundType->id == 1): ?>
     <div class="page-break"></div>
