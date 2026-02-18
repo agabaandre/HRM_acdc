@@ -25,11 +25,39 @@
     @endif
 
     <div class="row">
+        {{-- Validate uploaded document (no storage) - first option --}}
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0 text-white"><i class="fas fa-file-upload me-2"></i>Validate uploaded document</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">Upload an APM PDF. The document number and signature hashes will be read from the file and validated against the system. The file is not stored on the server.</p>
+                    <form action="{{ route('signature-verify.validate-upload') }}" method="POST" enctype="multipart/form-data" class="row g-3">
+                        @csrf
+                        <div class="col-12">
+                            <label for="upload_document" class="form-label">PDF document</label>
+                            <input type="file" class="form-control @error('document') is-invalid @enderror"
+                                   id="upload_document" name="document" accept=".pdf,application/pdf" required>
+                            @error('document')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-info text-white">
+                                <i class="fas fa-check-circle me-1"></i> Validate document
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         {{-- Lookup by document number + year --}}
         <div class="col-lg-6 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-search me-2"></i>Look up document & signatory hashes</h5>
+                    <h5 class="mb-0 text-white"><i class="fas fa-search me-2"></i>Look up document & signatory hashes</h5>
                 </div>
                 <div class="card-body">
                     <p class="text-muted small">Enter the document number and year of creation to view the document and all signatories with their verification hashes.</p>
@@ -67,7 +95,7 @@
         <div class="col-lg-6 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="fas fa-fingerprint me-2"></i>Verify a signature hash</h5>
+                    <h5 class="mb-0 text-white"><i class="fas fa-fingerprint me-2"></i>Verify a signature hash</h5>
                 </div>
                 <div class="card-body">
                     <p class="text-muted small">Enter a verification hash and document number to see which signatory and action it corresponds to.</p>
@@ -102,41 +130,13 @@
                 </div>
             </div>
         </div>
-
-        {{-- Validate uploaded document (no storage) --}}
-        <div class="col-12 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0"><i class="fas fa-file-upload me-2"></i>Validate uploaded document</h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted small">Upload an APM PDF. The document number and signature hashes will be read from the file and validated against the system. The file is not stored on the server.</p>
-                    <form action="{{ route('signature-verify.validate-upload') }}" method="POST" enctype="multipart/form-data" class="row g-3">
-                        @csrf
-                        <div class="col-12">
-                            <label for="upload_document" class="form-label">PDF document</label>
-                            <input type="file" class="form-control @error('document') is-invalid @enderror"
-                                   id="upload_document" name="document" accept=".pdf,application/pdf" required>
-                            @error('document')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-info text-white">
-                                <i class="fas fa-check-circle me-1"></i> Validate document
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
     </div>
 
     {{-- Upload validation result --}}
     @if (!empty($upload_validation_result))
         <div class="card shadow-sm mb-4 border-info">
-            <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Upload validation result</h5>
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0 text-white"><i class="fas fa-file-alt me-2"></i>Upload validation result</h5>
             </div>
             <div class="card-body">
                 <p class="text-muted small">Data extracted from the uploaded PDF (file was not saved).</p>
@@ -234,8 +234,8 @@
     {{-- Lookup result: document + signatories with hashes --}}
     @if (!empty($lookup_result))
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Document & signatory hashes</h5>
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white"><i class="fas fa-file-alt me-2"></i>Document & signatory hashes</h5>
             </div>
             <div class="card-body">
                 <dl class="row mb-4">
@@ -283,7 +283,7 @@
     @if (!empty($verify_result))
         <div class="card shadow-sm border-success mb-4">
             <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Hash verified</h5>
+                <h5 class="mb-0 text-white"><i class="fas fa-check-circle me-2"></i>Hash verified</h5>
             </div>
             <div class="card-body">
                 <p class="mb-3">The provided hash matches the following signatory on this document.</p>
