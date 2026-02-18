@@ -43,18 +43,22 @@
                                     'returned' => 'bg-info',
                                 ];
                                 $statusClass = $statusBadgeClass[$arf->overall_status] ?? 'bg-secondary';
+                                $approvalLevel = $arf->approval_level ?? 'N/A';
+                                $workflowRole = $arf->workflow_definition ? ($arf->workflow_definition->role ?? 'N/A') : 'N/A';
+                                $actorName = $arf->current_actor ? ($arf->current_actor->fname . ' ' . $arf->current_actor->lname) : 'N/A';
                             @endphp
-                            
                             @if($arf->overall_status === 'pending')
                                 <div class="text-center">
-                                    <span class="badge {{ $statusClass }} mb-1">
-                                        {{ strtoupper($arf->overall_status) }}
-                                    </span>
+                                    <span class="badge {{ $statusClass }} text-dark mb-1">{{ strtoupper($arf->overall_status) }}</span>
+                                    <br>
+                                    <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                    <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                    @if($actorName !== 'N/A')
+                                        <small class="text-muted d-block">{{ $actorName }}</small>
+                                    @endif
                                 </div>
                             @else
-                                <span class="badge {{ $statusClass }}">
-                                    {{ strtoupper($arf->overall_status ?? 'draft') }}
-                                </span>
+                                <span class="badge {{ $statusClass }}">{{ strtoupper($arf->overall_status ?? 'draft') }}</span>
                             @endif
                         </td>
                         <td class="text-center">

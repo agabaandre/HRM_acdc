@@ -5,7 +5,7 @@
 			<tr>
 				<th>#</th>
 				<th>Document #</th>
-				<th style="width: 20%;">Title</th>
+				<th style="width: 25%;">Title</th>
 				<th>Division</th>
 				<th>Type</th>
 				<th>Year / Quarter</th>
@@ -44,7 +44,11 @@
 				<tr>
 					<td>{{ $memoList->firstItem() + $idx }}</td>
 					<td><a href="{{ $showUrl }}" class="text-decoration-none"><code>{{ $row->document_number ?? '—' }}</code></a></td>
-					<td class="reports-memo-title" style="width: 20%; max-width: 20%;"><a href="{{ $showUrl }}" class="text-decoration-none">{{ $row->title ?? '—' }}</a></td>
+					<td style="width: 25%;">
+						<div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;" title="{{ $row->title ?? '—' }}">
+							<a href="{{ $showUrl }}" class="text-decoration-none">{{ $row->title ?? '—' }}</a>
+						</div>
+					</td>
 					<td>{{ $divisionName }}</td>
 					<td>{{ $typeLabel }}</td>
 					<td>{{ $row->year ?? '—' }} {{ $row->quarter ?? '' }}</td>
@@ -52,7 +56,10 @@
 						@if(($row->overall_status ?? '') === 'approved')
 							<span class="badge bg-success">Approved</span>
 						@elseif(($row->overall_status ?? '') === 'pending')
-							<span class="badge bg-warning text-dark">Pending</span>
+							@php
+								$pendingLevel = $row->next_approval_level ?? $row->approval_level ?? null;
+							@endphp
+							<span class="badge bg-warning text-dark">{{ $pendingLevel ? "Pending (Level {$pendingLevel})" : 'Pending' }}</span>
 						@elseif(in_array($row->overall_status ?? '', ['returned', 'rejected']))
 							<span class="badge bg-danger">Returned</span>
 						@else

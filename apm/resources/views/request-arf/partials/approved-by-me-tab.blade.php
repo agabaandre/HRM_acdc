@@ -33,7 +33,7 @@
                         </td>
                         <td>{{ $arf->division->division_name ?? 'N/A' }}</td>
                         <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
-                        <td>
+                        <td class="text-center">
                             @php
                                 $statusBadgeClass = [
                                     'draft' => 'bg-secondary',
@@ -43,18 +43,26 @@
                                     'returned' => 'bg-info',
                                 ];
                                 $statusClass = $statusBadgeClass[$arf->overall_status] ?? 'bg-secondary';
+                                $approvalLevel = $arf->approval_level ?? 'N/A';
+                                $workflowRole = $arf->workflow_definition ? ($arf->workflow_definition->role ?? 'N/A') : 'N/A';
+                                $actorName = $arf->current_actor ? ($arf->current_actor->fname . ' ' . $arf->current_actor->lname) : 'N/A';
                             @endphp
-                            
-                            @if($arf->overall_status === 'approved')
+                            @if($arf->overall_status === 'pending')
                                 <div class="text-center">
-                                    <span class="badge {{ $statusClass }} mb-1">
-                                        {{ strtoupper($arf->overall_status) }}
-                                    </span>
+                                    <span class="badge {{ $statusClass }} text-dark mb-1">{{ strtoupper($arf->overall_status) }}</span>
+                                    <br>
+                                    <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                    <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                    @if($actorName !== 'N/A')
+                                        <small class="text-muted d-block">{{ $actorName }}</small>
+                                    @endif
+                                </div>
+                            @elseif($arf->overall_status === 'approved')
+                                <div class="text-center">
+                                    <span class="badge {{ $statusClass }} mb-1">{{ strtoupper($arf->overall_status) }}</span>
                                 </div>
                             @else
-                                <span class="badge {{ $statusClass }}">
-                                    {{ strtoupper($arf->overall_status ?? 'approved') }}
-                                </span>
+                                <span class="badge {{ $statusClass }}">{{ strtoupper($arf->overall_status ?? 'approved') }}</span>
                             @endif
                         </td>
                         <td class="text-center">
