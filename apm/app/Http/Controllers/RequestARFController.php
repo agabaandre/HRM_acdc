@@ -1228,15 +1228,25 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     $approvalTrails = $sourceModel->activityApprovalTrails;
                 }
                 
-                // Get fund codes for budget display
+                // Get fund codes for budget display (from source budget_id or from ARF budget_breakdown keys)
                 $fundCodes = [];
+                $budgetIds = [];
                 if ($sourceModel->budget_id) {
                     $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
-                    if (is_array($budgetIds)) {
-                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'partner')->get()->keyBy('id');
+                }
+                if (empty($budgetIds) && $requestARF->budget_breakdown) {
+                    $bb = is_string($requestARF->budget_breakdown) ? json_decode($requestARF->budget_breakdown, true) : $requestARF->budget_breakdown;
+                    if (is_array($bb)) {
+                        $budgetIds = array_filter(array_keys($bb), 'is_numeric');
                     }
                 }
-                
+                if (!empty($budgetIds) && is_array($budgetIds)) {
+                    $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'partner', 'funder')->get()->keyBy('id');
+                }
+                $sourceDataBudgetBreakdown = is_string($sourceModel->budget_breakdown) ? json_decode($sourceModel->budget_breakdown, true) ?? [] : ($sourceModel->budget_breakdown ?? []);
+                if (empty($sourceDataBudgetBreakdown) && $requestARF->budget_breakdown) {
+                    $sourceDataBudgetBreakdown = is_string($requestARF->budget_breakdown) ? json_decode($requestARF->budget_breakdown, true) ?? [] : ($requestARF->budget_breakdown ?? []);
+                }
                 $sourceData = [
                     'title' => $sourceModel->activity_title ?? 'N/A',
                     'start_date' => $sourceModel->date_from ?? null,
@@ -1245,7 +1255,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'division' => $sourceModel->matrix_id ? ($sourceModel->matrix->division ?? null) : null,
                     'division_head' => $sourceModel->matrix_id ? ($sourceModel->matrix->division->divisionHead ?? null) : null,
                     'responsible_person' => $sourceModel->staff ?? null,
-                    'budget_breakdown' => is_string($sourceModel->budget_breakdown) ? json_decode($sourceModel->budget_breakdown, true) ?? [] : ($sourceModel->budget_breakdown ?? []),
+                    'budget_breakdown' => $sourceDataBudgetBreakdown,
                     'fund_codes' => $fundCodes,
                     'internal_participants' => is_string($sourceModel->internal_participants) ? json_decode($sourceModel->internal_participants, true) ?? [] : ($sourceModel->internal_participants ?? []),
                     'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
