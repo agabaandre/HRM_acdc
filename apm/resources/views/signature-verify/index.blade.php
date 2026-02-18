@@ -195,7 +195,18 @@
             }
         }
 
-        if (doc.document_number || doc.doc_type) {
+        var documentsList = data.documents || [];
+        if (documentsList.length > 1) {
+            html += '<h6 class="mb-2">Documents matched (' + documentsList.length + ')</h6>';
+            documentsList.forEach(function(d, i) {
+                var m = d.metadata || {};
+                html += '<div class="border rounded p-2 mb-2 small">';
+                html += '<strong>' + escapeHtml(d.doc_type || 'Document') + '</strong> — <code>' + escapeHtml(d.document_number || 'N/A') + '</code>';
+                html += '<br><span class="text-muted">Creator: ' + escapeHtml(m.creator || 'N/A') + ' | Division: ' + escapeHtml(m.division || 'N/A') + ' | Created: ' + escapeHtml(m.date_created || 'N/A') + '</span>';
+                html += '</div>';
+            });
+            html += '<p class="text-muted small mb-3">Hashes below may belong to any of these documents (e.g. parent memo and ARF).</p>';
+        } else if (doc.document_number || doc.doc_type) {
             html += '<h6 class="mb-2">Document</h6>';
             html += '<dl class="row mb-3 small">';
             html += '<dt class="col-sm-3 text-muted">Document type</dt><dd class="col-sm-9">' + escapeHtml(doc.doc_type || 'N/A') + '</dd>';
@@ -221,18 +232,26 @@
             html += '<h6 class="mb-2">Hash validation (from PDF)</h6>';
             html += '<div class="table-responsive"><table class="table table-bordered table-sm"><thead class="table-light"><tr><th>Hash</th><th>Status</th><th>Signatory</th></tr></thead><tbody>';
             hashValidations.forEach(function(hv) {
+                var signatoryText = '—';
+                if (hv.signatory) {
+                    signatoryText = escapeHtml(hv.signatory.name + ' — ' + hv.signatory.role + ' (' + hv.signatory.action + ')');
+                    if (hv.signatory.document_number && documentsList.length > 1) signatoryText += ' <span class="text-muted small">[' + escapeHtml(hv.signatory.document_number) + ']</span>';
+                }
                 html += '<tr><td><code class="user-select-all">' + escapeHtml(hv.hash) + '</code></td>';
                 html += '<td>' + (hv.matched ? '<span class="badge bg-success">Valid</span>' : '<span class="badge bg-warning text-dark">No match</span>') + '</td>';
-                html += '<td>' + (hv.signatory ? escapeHtml(hv.signatory.name + ' — ' + hv.signatory.role + ' (' + hv.signatory.action + ')') : '—') + '</td></tr>';
+                html += '<td>' + signatoryText + '</td></tr>';
             });
             html += '</tbody></table></div>';
         }
 
         if (signatories.length > 0) {
             html += '<h6 class="mb-2 mt-3">Signatories and verification hashes</h6>';
-            html += '<div class="table-responsive"><table class="table table-bordered table-sm"><thead class="table-light"><tr><th>Role</th><th>Name</th><th>Action</th><th>Date / time</th><th>Verify hash</th></tr></thead><tbody>';
+            var showDocCol = signatories.some(function(s) { return s.document_number || s.doc_type; });
+            html += '<div class="table-responsive"><table class="table table-bordered table-sm"><thead class="table-light"><tr><th>Role</th><th>Name</th><th>Action</th><th>Date / time</th>' + (showDocCol ? '<th>Document</th>' : '') + '<th>Verify hash</th></tr></thead><tbody>';
             signatories.forEach(function(s) {
-                html += '<tr><td>' + escapeHtml(s.role) + '</td><td>' + escapeHtml(s.name) + '</td><td><span class="badge bg-secondary">' + escapeHtml(s.action) + '</span></td><td>' + escapeHtml(s.date) + '</td><td><code class="user-select-all">' + escapeHtml(s.hash) + '</code></td></tr>';
+                html += '<tr><td>' + escapeHtml(s.role) + '</td><td>' + escapeHtml(s.name) + '</td><td><span class="badge bg-secondary">' + escapeHtml(s.action) + '</span></td><td>' + escapeHtml(s.date) + '</td>';
+                if (showDocCol) html += '<td class="small">' + (s.doc_type ? escapeHtml(s.doc_type) : '') + (s.document_number ? ' <code>' + escapeHtml(s.document_number) + '</code>' : '') + '</td>';
+                html += '<td><code class="user-select-all">' + escapeHtml(s.hash) + '</code></td></tr>';
             });
             html += '</tbody></table></div>';
         }
