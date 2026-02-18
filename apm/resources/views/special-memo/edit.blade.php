@@ -298,6 +298,7 @@ const staffData = @json($allStaffGroupedByDivision ?? []);
 const existingParticipants = @json($internalParticipants ?? []);
 const existingExternalParticipants = @json($externalParticipants ?? []);
 const existingBudgetItems = @json($budgetItems ?? []);
+const initialActivityCode = @json($specialMemo->workplan_activity_code ?? '');
 
 console.log('Staff data for external participants:', staffData);
 console.log('Available divisions:', Object.keys(staffData));
@@ -1013,6 +1014,9 @@ $(document).ready(function () {
             $('.activity_code').show();
             $('#activity_code').prop('required', true);
             $('.activity_code label .text-danger').show();
+            if (typeof initialActivityCode !== 'undefined' && initialActivityCode) {
+                $('#activity_code').val(initialActivityCode);
+            }
         } else {
             $('.activity_code').hide();
             $('#activity_code').val('').prop('required', false);
@@ -1429,6 +1433,9 @@ $(document).ready(function () {
                                 console.warn(`Tbody not found or no items for code ${codeId}`);
                             }
                         });
+                        if (typeof initialActivityCode !== 'undefined' && initialActivityCode) {
+                            $('#activity_code').val(initialActivityCode);
+                        }
                     }, 500);
                 }, 1500);
             } else {
