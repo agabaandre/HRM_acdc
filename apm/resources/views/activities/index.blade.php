@@ -111,7 +111,6 @@
                                             <td class="text-center">
                                                 @php
                                                     $statusClass = $activity->status === 'PASSED' ? 'bg-success' : ($activity->status === 'pending' ? 'bg-warning' : 'bg-secondary');
-                                                    $approvalLevel = $activity->approval_level ?? $matrix->approval_level ?? 'N/A';
                                                     $workflowRole = $matrix->workflow_definition ? ($matrix->workflow_definition->role ?? 'N/A') : 'N/A';
                                                     $actorName = $matrix->current_actor ? ($matrix->current_actor->fname . ' ' . $matrix->current_actor->lname) : 'N/A';
                                                 @endphp
@@ -119,7 +118,7 @@
                                                     <div class="text-center">
                                                         <span class="badge {{ $statusClass }} text-dark mb-1">{{ strtoupper($activity->status ?? 'pending') }}</span>
                                                         <br>
-                                                        <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                                        <small class="text-muted d-block">Approver pending</small>
                                                         <small class="text-muted d-block">{{ $workflowRole }}</small>
                                                         @if($actorName !== 'N/A')
                                                             <small class="text-muted d-block">{{ $actorName }}</small>
