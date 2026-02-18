@@ -417,10 +417,16 @@ class SignatureVerificationController extends Controller
             }
         }
 
+        $activityTitle = null;
+        if (isset($document->activity_title) && (string) $document->activity_title !== '') {
+            $activityTitle = $document->activity_title;
+        }
+
         return [
-            'creator'      => $creator ?: 'N/A',
-            'division'     => $division ?: 'N/A',
-            'date_created' => $dateCreated,
+            'creator'        => $creator ?: 'N/A',
+            'division'       => $division ?: 'N/A',
+            'date_created'   => $dateCreated,
+            'activity_title' => $activityTitle,
         ];
     }
 

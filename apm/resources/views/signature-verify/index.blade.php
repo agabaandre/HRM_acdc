@@ -119,8 +119,8 @@
     </div>
 
     {{-- Result modal (unified layout for all methods) --}}
-    <div class="modal fade" id="verificationResultModal" tabindex="-1" aria-labelledby="verificationResultModalLabel" aria-hidden="true" data-bs-backdrop="static">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal fade d-flex align-items-center justify-content-center" id="verificationResultModal" tabindex="-1" aria-labelledby="verificationResultModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered mx-auto">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title text-white" id="verificationResultModalLabel"><i class="fas fa-file-alt me-2"></i>Verification result</h5>
@@ -139,6 +139,9 @@
 </div>
 
 <style>
+#verificationResultModal.modal { display: none; align-items: center; justify-content: center; }
+#verificationResultModal.modal.show { display: flex !important; }
+#verificationResultModal .modal-dialog { margin: 1.75rem auto; }
 @media print {
     body * { visibility: hidden; }
     .verification-print-content, .verification-print-content * { visibility: visible; }
@@ -202,6 +205,7 @@
                 var m = d.metadata || {};
                 html += '<div class="border rounded p-2 mb-2 small">';
                 html += '<strong>' + escapeHtml(d.doc_type || 'Document') + '</strong> — <code>' + escapeHtml(d.document_number || 'N/A') + '</code>';
+                if (m.activity_title) html += '<br><span class="d-block mt-1">' + escapeHtml(m.activity_title) + '</span>';
                 html += '<br><span class="text-muted">Creator: ' + escapeHtml(m.creator || 'N/A') + ' | Division: ' + escapeHtml(m.division || 'N/A') + ' | Created: ' + escapeHtml(m.date_created || 'N/A') + '</span>';
                 html += '</div>';
             });
@@ -211,6 +215,9 @@
             html += '<dl class="row mb-3 small">';
             html += '<dt class="col-sm-3 text-muted">Document type</dt><dd class="col-sm-9">' + escapeHtml(doc.doc_type || 'N/A') + '</dd>';
             html += '<dt class="col-sm-3 text-muted">Document number</dt><dd class="col-sm-9"><code>' + escapeHtml(doc.document_number || 'N/A') + '</code></dd>';
+            if (meta.activity_title) {
+                html += '<dt class="col-sm-3 text-muted">Activity title</dt><dd class="col-sm-9">' + escapeHtml(meta.activity_title) + '</dd>';
+            }
             html += '<dt class="col-sm-3 text-muted">Creator</dt><dd class="col-sm-9">' + escapeHtml(meta.creator || 'N/A') + '</dd>';
             html += '<dt class="col-sm-3 text-muted">Division</dt><dd class="col-sm-9">' + escapeHtml(meta.division || 'N/A') + '</dd>';
             html += '<dt class="col-sm-3 text-muted">Date created</dt><dd class="col-sm-9">' + escapeHtml(meta.date_created || 'N/A') + '</dd>';
