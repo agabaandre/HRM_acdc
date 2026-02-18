@@ -177,7 +177,7 @@
                 @endforeach
                 <tr>
                     <td colspan="4" class="text-right"><strong>Grand Total</strong></td>
-                    <td class="text-right"><strong>{{ number_format($grand, 2) }}</strong></td>
+                    <td class="text-right"><strong>USD {{ number_format($grand, 2) }}</strong></td>
                 </tr>
             </tbody>
         </table>
