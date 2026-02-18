@@ -303,4 +303,136 @@ class SignatureVerificationController extends Controller
         }
         return 'APM Document';
     }
+
+    /**
+     * Validate an uploaded APM document (PDF): extract document number and hashes, verify against system.
+     * File is not stored on the server; only read in memory / from temp and discarded.
+     */
+    public function validateUpload(Request $request)
+    {
+        $request->validate([
+            'document' => 'required|file|mimes:pdf|max:10240', // 10MB, PDF only
+        ]);
+
+        $file = $request->file('document');
+        $path = $file->getRealPath();
+
+        $text = $this->extractTextFromPdf($path);
+        if ($text === null) {
+            return redirect()
+                ->route('signature-verify.index')
+                ->with('upload_error', 'Could not read the PDF. Ensure it is a valid, unencrypted PDF. If the problem persists, run: composer require smalot/pdfparser');
+        }
+
+        $documentNumbers = $this->extractDocumentNumbersFromText($text);
+        $hashes = $this->extractHashesFromText($text);
+
+        $results = [
+            'extracted_document_numbers' => array_values(array_unique($documentNumbers)),
+            'extracted_hashes'           => array_values(array_unique($hashes)),
+            'document'                   => null,
+            'doc_type'                   => null,
+            'signatories'                => [],
+            'hash_validations'           => [], // [ ['hash' => '...', 'matched' => true|false, 'signatory' => ...|null ] ]
+        ];
+
+        $year = $this->extractYearFromText($text);
+        $documents = collect();
+
+        foreach ($results['extracted_document_numbers'] as $docNum) {
+            $found = $this->findDocumentsByNumber($docNum, $year);
+            if ($found->isNotEmpty()) {
+                $documents = $documents->merge($found);
+            }
+            if ($year === null) {
+                $foundAny = $this->findDocumentsByNumber($docNum, null);
+                if ($foundAny->isNotEmpty()) {
+                    $documents = $documents->merge($foundAny);
+                }
+            }
+        }
+        $documents = $documents->unique('id');
+
+        if ($documents->isNotEmpty()) {
+            $document = $documents->first();
+            $results['document']    = $document;
+            $results['doc_type']    = $this->getDocumentTypeLabel($document);
+            $results['signatories'] = $this->buildSignatoriesWithHashes($document);
+
+            foreach ($results['extracted_hashes'] as $hash) {
+                $hashUpper = strtoupper(trim($hash));
+                $matched = null;
+                foreach ($results['signatories'] as $s) {
+                    if (isset($s['hash']) && $s['hash'] === $hashUpper) {
+                        $matched = $s;
+                        break;
+                    }
+                }
+                $results['hash_validations'][] = [
+                    'hash'     => $hashUpper,
+                    'matched'  => $matched !== null,
+                    'signatory' => $matched,
+                ];
+            }
+        }
+
+        return view('signature-verify.index', [
+            'upload_validation_result' => $results,
+        ]);
+    }
+
+    /**
+     * Extract text from PDF using temp path. Returns null if parser unavailable or parse fails.
+     */
+    private function extractTextFromPdf(string $path): ?string
+    {
+        if (!class_exists(\Smalot\PdfParser\Parser::class)) {
+            return null;
+        }
+        try {
+            $parser = new \Smalot\PdfParser\Parser();
+            $pdf    = $parser->parseFile($path);
+            return $pdf->getText() ?: '';
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Extract APM document numbers from text (e.g. AU/CDC/SDI/IM/SM/011).
+     */
+    private function extractDocumentNumbersFromText(string $text): array
+    {
+        $matches = [];
+        if (preg_match_all('/AU\/CDC\/[A-Za-z0-9]+\/IM\/(?:QM|NT|SPM|SM|CR|SR|ARF)\/\d{3}/', $text, $m)) {
+            $matches = $m[0];
+        }
+        return array_map('trim', $matches);
+    }
+
+    /**
+     * Extract 16-char verification hashes from text (e.g. "Verify Hash: XXXXX" or "Hash: XXXXX").
+     */
+    private function extractHashesFromText(string $text): array
+    {
+        $matches = [];
+        if (preg_match_all('/(?:Verify\s+Hash\s*:\s*|Hash\s*:\s*)([A-Fa-f0-9]{16})/u', $text, $m)) {
+            $matches = $m[1];
+        }
+        return array_values(array_unique(array_map('trim', $matches)));
+    }
+
+    /**
+     * Try to extract a 4-digit year from text (e.g. 2026) for lookup.
+     */
+    private function extractYearFromText(string $text): ?int
+    {
+        if (preg_match('/\b(20[0-3][0-9])\b/', $text, $m)) {
+            $y = (int) $m[1];
+            if ($y >= 2000 && $y <= 2039) {
+                return $y;
+            }
+        }
+        return null;
+    }
 }
