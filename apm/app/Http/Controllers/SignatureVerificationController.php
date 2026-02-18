@@ -230,22 +230,33 @@ class SignatureVerificationController extends Controller
         $itemId = $document->id;
 
         if ($document instanceof Activity) {
-            // Activity can have trails in activity_approval_trails OR in approval_trails (morph).
-            // Prefer approvalTrails() (morph) so we include budget-section signatories; fall back to ActivityApprovalTrail.
-            $trails = $document->approvalTrails()->with(['staff', 'oicStaff'])->orderBy('created_at')->get();
-            if ($trails->isEmpty()) {
-                $trails = ActivityApprovalTrail::where('activity_id', $document->id)
-                    ->with(['staff', 'oicStaff'])
-                    ->orderBy('created_at')
-                    ->get();
-            }
-            foreach ($trails as $trail) {
-                if ($this->isSigningAction($trail->action ?? '')) {
+            // Matrix/Activity documents can have hashes from both approval_trails (morph, budget section)
+            // and activity_approval_trails (main signature section). Include both so all PDF hashes can be matched.
+            $seenHashes = [];
+            $addFromTrails = function ($trails, $isActivityTrail) use ($itemId, &$signatories, &$seenHashes) {
+                foreach ($trails as $trail) {
+                    if (!$this->isSigningAction($trail->action ?? '')) {
+                        continue;
+                    }
                     $staffId = !empty($trail->oic_staff_id) ? $trail->oic_staff_id : $trail->staff_id;
                     $hash = PrintHelper::generateVerificationHash($itemId, $staffId, $this->normalizeDateTime($trail->created_at));
-                    $signatories[] = $this->signatoryRow($trail, $hash, $trail instanceof ActivityApprovalTrail);
+                    if (isset($seenHashes[$hash])) {
+                        continue;
+                    }
+                    $seenHashes[$hash] = true;
+                    $signatories[] = $this->signatoryRow($trail, $hash, $isActivityTrail);
                 }
-            }
+            };
+
+            $morphTrails = $document->approvalTrails()->with(['staff', 'oicStaff'])->orderBy('created_at')->get();
+            $addFromTrails($morphTrails, false);
+
+            $activityTrails = ActivityApprovalTrail::where('activity_id', $document->id)
+                ->with(['staff', 'oicStaff'])
+                ->orderBy('created_at')
+                ->get();
+            $addFromTrails($activityTrails, true);
+
             return $signatories;
         }
 
@@ -365,6 +376,7 @@ class SignatureVerificationController extends Controller
             $payload['extracted_document_numbers'] = $uploadExtras['extracted_document_numbers'] ?? [];
             $payload['extracted_hashes']           = $uploadExtras['extracted_hashes'] ?? [];
             $payload['hash_validations']           = $uploadExtras['hash_validations'] ?? [];
+            $payload['documents']                  = $uploadExtras['documents'] ?? [];
         }
 
         return $payload;
@@ -466,11 +478,37 @@ class SignatureVerificationController extends Controller
         $documents = $documents->unique('id');
 
         if ($documents->isNotEmpty()) {
-            $document = $documents->first();
-            $results['document']    = $document;
-            $results['doc_type']    = $this->getDocumentTypeLabel($document);
-            $results['signatories'] = $this->buildSignatoriesWithHashes($document);
-            $results['metadata']    = $this->getDocumentMetadata($document);
+            // Support multiple document numbers (e.g. ARF + parent memo, service request + parent).
+            // Build signatories from ALL found documents and validate hashes against any of them.
+            $seenHashes = [];
+            $allSignatories = [];
+            $documentsList = [];
+
+            foreach ($documents as $doc) {
+                $docType = $this->getDocumentTypeLabel($doc);
+                $docNumber = $doc->document_number ?? 'N/A';
+                $documentsList[] = [
+                    'document_number' => $docNumber,
+                    'doc_type'        => $docType,
+                    'metadata'        => $this->getDocumentMetadata($doc),
+                ];
+
+                foreach ($this->buildSignatoriesWithHashes($doc) as $s) {
+                    $h = $s['hash'] ?? null;
+                    if ($h && !isset($seenHashes[$h])) {
+                        $seenHashes[$h] = true;
+                        $s['document_number'] = $docNumber;
+                        $s['doc_type']        = $docType;
+                        $allSignatories[] = $s;
+                    }
+                }
+            }
+
+            $results['document']     = $documents->first();
+            $results['doc_type']    = $this->getDocumentTypeLabel($documents->first());
+            $results['metadata']    = $this->getDocumentMetadata($documents->first());
+            $results['signatories'] = $allSignatories;
+            $results['documents']   = $documentsList;
 
             foreach ($results['extracted_hashes'] as $hash) {
                 $hashUpper = strtoupper(trim($hash));
@@ -482,19 +520,27 @@ class SignatureVerificationController extends Controller
                     }
                 }
                 $results['hash_validations'][] = [
-                    'hash'     => $hashUpper,
-                    'matched'  => $matched !== null,
+                    'hash'      => $hashUpper,
+                    'matched'   => $matched !== null,
                     'signatory' => $matched,
                 ];
             }
             $results['valid'] = collect($results['hash_validations'])->contains('matched', true);
         } else {
-            $results['metadata'] = ['creator' => 'N/A', 'division' => 'N/A', 'date_created' => 'N/A'];
+            $results['metadata']  = ['creator' => 'N/A', 'division' => 'N/A', 'date_created' => 'N/A'];
+            $results['documents'] = [];
         }
 
         if ($request->wantsJson() || $request->ajax()) {
             $document = $results['document'];
             $metadata = $results['metadata'] ?? ['creator' => 'N/A', 'division' => 'N/A', 'date_created' => 'N/A'];
+            $uploadExtras = [
+                'valid'                      => $results['valid'],
+                'extracted_document_numbers' => $results['extracted_document_numbers'],
+                'extracted_hashes'           => $results['extracted_hashes'],
+                'hash_validations'           => $results['hash_validations'],
+                'documents'                  => $results['documents'] ?? [],
+            ];
             return response()->json($this->buildUnifiedPayload(
                 'upload_validation',
                 $document,
@@ -502,12 +548,7 @@ class SignatureVerificationController extends Controller
                 $results['signatories'],
                 null,
                 $results['document'] ? null : 'No matching document found in the system for the extracted document number(s).',
-                [
-                    'valid'                      => $results['valid'],
-                    'extracted_document_numbers' => $results['extracted_document_numbers'],
-                    'extracted_hashes'           => $results['extracted_hashes'],
-                    'hash_validations'           => $results['hash_validations'],
-                ]
+                $uploadExtras
             ));
         }
 
