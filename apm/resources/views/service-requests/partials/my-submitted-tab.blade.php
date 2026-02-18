@@ -28,7 +28,7 @@
                         </td>
                         <td>{{ $request->responsiblePerson ? ($request->responsiblePerson->fname . ' ' . $request->responsiblePerson->lname) : 'N/A' }}</td>
                         <td>{{ $request->division->division_name ?? 'N/A' }}</td>
-                        <td>
+                        <td class="text-center">
                             @php
                                 $statusClass = match($request->overall_status) {
                                     'draft' => 'bg-secondary',
@@ -38,8 +38,23 @@
                                     'returned' => 'bg-info',
                                     default => 'bg-secondary'
                                 };
+                                $approvalLevel = $request->approval_level ?? 'N/A';
+                                $workflowRole = $request->workflow_definition ? ($request->workflow_definition->role ?? 'N/A') : 'N/A';
+                                $actorName = $request->current_actor ? ($request->current_actor->fname . ' ' . $request->current_actor->lname) : 'N/A';
                             @endphp
-                            <span class="badge {{ $statusClass }}">{{ strtoupper($request->overall_status ?? 'draft') }}</span>
+                            @if($request->overall_status === 'pending')
+                                <div class="text-center">
+                                    <span class="badge {{ $statusClass }} text-dark mb-1">{{ strtoupper($request->overall_status) }}</span>
+                                    <br>
+                                    <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                    <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                    @if($actorName !== 'N/A')
+                                        <small class="text-muted d-block">{{ $actorName }}</small>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="badge {{ $statusClass }}">{{ strtoupper($request->overall_status ?? 'draft') }}</span>
+                            @endif
                         </td>
                         <td>{{ $request->created_at ? $request->created_at->format('M d, Y') : 'N/A' }}</td>
                         <td class="text-center">

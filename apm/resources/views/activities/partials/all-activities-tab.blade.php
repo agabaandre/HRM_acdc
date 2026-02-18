@@ -75,10 +75,26 @@
                                 {{ $activity->fundType->name ?? 'N/A' }}
                             </span>
                         </td>
-                        <td>
-                            <span class="badge {{ $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
-                                {{ strtoupper($activity->overall_status ?? 'draft') }}
-                            </span>
+                        <td class="text-center">
+                            @php
+                                $statusClass = $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary');
+                                $approvalLevel = $activity->approval_level ?? $activity->matrix?->approval_level ?? 'N/A';
+                                $workflowRole = $activity->matrix?->workflow_definition ? ($activity->matrix->workflow_definition->role ?? 'N/A') : 'N/A';
+                                $actorName = $activity->matrix?->current_actor ? ($activity->matrix->current_actor->fname . ' ' . $activity->matrix->current_actor->lname) : 'N/A';
+                            @endphp
+                            @if($activity->overall_status === 'pending')
+                                <div class="text-center">
+                                    <span class="badge {{ $statusClass }} text-dark mb-1">{{ strtoupper($activity->overall_status) }}</span>
+                                    <br>
+                                    <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                    <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                    @if($actorName !== 'N/A')
+                                        <small class="text-muted d-block">{{ $actorName }}</small>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="badge {{ $statusClass }}">{{ strtoupper($activity->overall_status ?? 'draft') }}</span>
+                            @endif
                         </td>
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center">

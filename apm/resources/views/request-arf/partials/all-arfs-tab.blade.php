@@ -28,7 +28,7 @@
                         </td>
                         <td>{{ $arf->staff->name ?? 'N/A' }}</td>
                         <td>{{ $arf->division->division_name ?? 'N/A' }}</td>
-                        <td>
+                        <td class="text-center">
                             @php
                                 $statusClass = match($arf->overall_status) {
                                     'draft' => 'bg-secondary',
@@ -38,8 +38,23 @@
                                     'returned' => 'bg-info',
                                     default => 'bg-secondary'
                                 };
+                                $approvalLevel = $arf->approval_level ?? 'N/A';
+                                $workflowRole = $arf->workflow_definition ? ($arf->workflow_definition->role ?? 'N/A') : 'N/A';
+                                $actorName = $arf->current_actor ? ($arf->current_actor->fname . ' ' . $arf->current_actor->lname) : 'N/A';
                             @endphp
-                            <span class="badge {{ $statusClass }}">{{ strtoupper($arf->overall_status ?? 'draft') }}</span>
+                            @if($arf->overall_status === 'pending')
+                                <div class="text-center">
+                                    <span class="badge {{ $statusClass }} text-dark mb-1">{{ strtoupper($arf->overall_status) }}</span>
+                                    <br>
+                                    <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                    <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                    @if($actorName !== 'N/A')
+                                        <small class="text-muted d-block">{{ $actorName }}</small>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="badge {{ $statusClass }}">{{ strtoupper($arf->overall_status ?? 'draft') }}</span>
+                            @endif
                         </td>
                         <td>{{ $arf->created_at ? $arf->created_at->format('M d, Y') : 'N/A' }}</td>
                         <td class="text-center">

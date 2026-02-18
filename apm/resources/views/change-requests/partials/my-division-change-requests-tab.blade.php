@@ -137,22 +137,47 @@
                         @endif
                     </td>
                     <td class="text-center">
-                        @switch($changeRequest->overall_status)
-                            @case('draft')
-                                <span class="badge bg-secondary">Draft</span>
-                                @break
-                            @case('submitted')
-                                <span class="badge bg-warning text-dark">Submitted</span>
-                                @break
-                            @case('approved')
-                                <span class="badge bg-success">Approved</span>
-                                @break
-                            @case('rejected')
-                                <span class="badge bg-danger">Rejected</span>
-                                @break
-                            @default
-                                <span class="badge bg-light text-dark">{{ ucfirst($changeRequest->overall_status) }}</span>
-                        @endswitch
+                        @php
+                            $statusBadgeClass = [
+                                'draft' => 'bg-secondary',
+                                'submitted' => 'bg-warning',
+                                'pending' => 'bg-warning',
+                                'approved' => 'bg-success',
+                                'rejected' => 'bg-danger',
+                                'returned' => 'bg-info',
+                            ];
+                            $statusClass = $statusBadgeClass[$changeRequest->overall_status] ?? 'bg-secondary';
+                            $approvalLevel = $changeRequest->approval_level ?? 'N/A';
+                            $workflowRole = $changeRequest->workflow_definition ? ($changeRequest->workflow_definition->role ?? 'N/A') : 'N/A';
+                            $actorName = $changeRequest->current_actor ? ($changeRequest->current_actor->fname . ' ' . $changeRequest->current_actor->lname) : 'N/A';
+                        @endphp
+                        @if(in_array($changeRequest->overall_status, ['submitted', 'pending']))
+                            <div class="text-center">
+                                <span class="badge {{ $statusClass }} text-dark mb-1">
+                                    {{ strtoupper($changeRequest->overall_status === 'submitted' ? 'Submitted' : $changeRequest->overall_status) }}
+                                </span>
+                                <br>
+                                <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                @if($actorName !== 'N/A')
+                                    <small class="text-muted d-block">{{ $actorName }}</small>
+                                @endif
+                            </div>
+                        @else
+                            @switch($changeRequest->overall_status)
+                                @case('draft')
+                                    <span class="badge bg-secondary">Draft</span>
+                                    @break
+                                @case('approved')
+                                    <span class="badge bg-success">Approved</span>
+                                    @break
+                                @case('rejected')
+                                    <span class="badge bg-danger">Rejected</span>
+                                    @break
+                                @default
+                                    <span class="badge {{ $statusClass }}">{{ ucfirst($changeRequest->overall_status ?? 'draft') }}</span>
+                            @endswitch
+                        @endif
                     </td>
                     <td class="text-center">
                         <div class="btn-group" role="group">
