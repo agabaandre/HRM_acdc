@@ -17,6 +17,9 @@
     </style>
 </head>
 <body>
+    @if(!empty($watermark_text))
+    <watermarktext content="{{ $watermark_text }}" alpha="{{ $watermark_alpha ?? 0.2 }}" />
+    @endif
     <h1>Signature Verification</h1>
     <p style="margin-bottom: 16px;">Africa CDC Central Business Platform — Document signature verification report</p>
 
