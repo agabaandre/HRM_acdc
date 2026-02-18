@@ -118,7 +118,6 @@
                                                     <div class="text-center">
                                                         <span class="badge {{ $statusClass }} text-dark mb-1">{{ strtoupper($activity->status ?? 'pending') }}</span>
                                                         <br>
-                                                        <small class="text-muted d-block">Approver pending</small>
                                                         <small class="text-muted d-block">{{ $workflowRole }}</small>
                                                         @if($actorName !== 'N/A')
                                                             <small class="text-muted d-block">{{ $actorName }}</small>
