@@ -486,6 +486,9 @@
                                             $partners = [];
                                             foreach ($fundCodes as $fc) {
                                                 $name = optional($fc->partner)->name ?? null;
+                                                if (!$name) {
+                                                    $name = optional($fc->funder)->name ?? null;
+                                                }
                                                 if ($name && !in_array($name, $partners)) {
                                                     $partners[] = $name;
                                                 }
@@ -497,7 +500,10 @@
                                         if ($partnerDisplay === 'N/A' && $requestARF->partner) {
                                             $partnerDisplay = is_object($requestARF->partner) ? ($requestARF->partner->name ?? 'N/A') : $requestARF->partner;
                                         }
-                                        // Partner comes from fund code partner_id only (not funder)
+                                        if ($partnerDisplay === 'N/A' && $requestARF->funder) {
+                                            $partnerDisplay = $requestARF->funder->name ?? 'N/A';
+                                        }
+                                        // Partner from fund code partner_id; fallback to fund code funder, then request_arfs.funder_id (backward compat)
                                         $funderDisplay = optional($requestARF->funder)->name ?? null;
                                         if (($funderDisplay === null || $funderDisplay === '') && $fundCodes && $fundCodes->isNotEmpty()) {
                                             $first = $fundCodes->first();

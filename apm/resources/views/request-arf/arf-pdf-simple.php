@@ -751,45 +751,52 @@
                 <td class="label">Partner:</td>
                 <td class="content">
                     <?php
-                    // Extract partner from budget breakdown
-                    $partner = 'N/A';
-                    if (!empty($budgetBreakdown) && is_array($budgetBreakdown)) {
-                        // Get all fund code IDs from budget breakdown (excluding grand_total)
-                        $fundCodeIds = array_filter(array_keys($budgetBreakdown), function($key) {
-                            return $key !== 'grand_total';
-                        });
-                        
-                        if (!empty($fundCodeIds)) {
-                            $partners = [];
-                            foreach ($fundCodeIds as $fundCodeId) {
-                                if (isset($fundCodes[$fundCodeId]) && $fundCodes[$fundCodeId]->funder) {
-
-                                    $funderName = $fundCodes[$fundCodeId]->funder->name ?? null;
-                                    if(isset($fundCodes[$fundCodeId]->partner) && $fundCodes[$fundCodeId]->partner->name && !in_array($fundCodes[$fundCodeId]->partner->name, $partners)){
-                                        $partnerName = $fundCodes[$fundCodeId]->partner->name ?? null;
-                                        if ($partnerName && !in_array($partnerName, $partners)) {
-                                            $partners[] = $partnerName;
-                                        }
-                                    }elseif ($funderName && !in_array($funderName, $partners)) {
-                                        $partners[] = $funderName;
-                                    }
-                                }
+                    // Extract partner from fund codes (by fund code id from budget_breakdown keys)
+                    $partnerDisplay = 'N/A';
+                    $bb = isset($budgetBreakdown) ? $budgetBreakdown : ($sourceData['budget_breakdown'] ?? []);
+                    if (is_string($bb)) {
+                        $bb = json_decode($bb, true) ?? [];
+                    }
+                    $fcList = isset($fundCodes) ? $fundCodes : ($sourceData['fund_codes'] ?? []);
+                    if (is_object($fcList) && method_exists($fcList, 'all')) {
+                        $fcList = $fcList->all();
+                    }
+                    if (!empty($bb) && is_array($bb) && !empty($fcList)) {
+                        $fundCodeIds = array_filter(array_keys($bb), function($k) { return $k !== 'grand_total' && is_numeric($k); });
+                        $partners = [];
+                        foreach ($fundCodeIds as $fundCodeId) {
+                            $fc = isset($fcList[$fundCodeId]) ? $fcList[$fundCodeId] : (isset($fcList[(int)$fundCodeId]) ? $fcList[(int)$fundCodeId] : null);
+                            if (!$fc) continue;
+                            $name = (isset($fc->partner) && $fc->partner && !empty($fc->partner->name)) ? $fc->partner->name : null;
+                            if (!$name && isset($fc->funder) && $fc->funder && !empty($fc->funder->name)) {
+                                $name = $fc->funder->name;
                             }
-                            
-                            if (!empty($partners)) {
-                                $partner = implode(', ', $partners);
+                            if ($name && !in_array($name, $partners)) {
+                                $partners[] = $name;
                             }
                         }
+                        if (!empty($partners)) {
+                            $partnerDisplay = implode(', ', $partners);
+                        }
                     }
-                    // Fallback to requestARF partner if budget breakdown doesn't have funder info
-                    if ($partner === 'N/A' && isset($requestARF->partner)) {
-                        $partner = $requestARF->partner;
+                    if ($partnerDisplay === 'N/A' && isset($requestARF->partner) && $requestARF->partner) {
+                        $partnerDisplay = is_object($requestARF->partner) ? ($requestARF->partner->name ?? 'N/A') : (string)$requestARF->partner;
                     }
-                    echo htmlspecialchars($partner);
+                    if ($partnerDisplay === 'N/A' && isset($requestARF->funder) && $requestARF->funder && !empty($requestARF->funder->name)) {
+                        $partnerDisplay = $requestARF->funder->name;
+                    }
+                    echo htmlspecialchars($partnerDisplay);
                     ?>
                 </td>
                 <td class="label">Code:</td>
-                <td class="content"><?php  echo (!empty($requestARF->extramural_code)) ? htmlspecialchars($requestARF->extramural_code) : htmlspecialchars($fundCodes[0]->code); ?></td>
+                <td class="content"><?php
+                    $codeDisplay = !empty($requestARF->extramural_code) ? $requestARF->extramural_code : null;
+                    if ($codeDisplay === null && !empty($fcList)) {
+                        $firstFc = is_array($fcList) ? reset($fcList) : $fcList->first();
+                        $codeDisplay = $firstFc && isset($firstFc->code) ? $firstFc->code : 'N/A';
+                    }
+                    echo htmlspecialchars($codeDisplay ?? 'N/A');
+                ?></td>
             </tr>
             <tr>
                 <td class="label">Project Title:</td>
