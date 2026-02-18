@@ -1,10 +1,11 @@
 {{-- Matrix export PDF: division schedule, approval trail, approver signatures, activities, approved single memos --}}
 @php
-    // Signature dimensions: 100x30px. Use pt for mPDF (1px ≈ 0.75pt) so images stay same size.
+    // Signature dimensions: width 100px, height 70px. Row height for approval trail 80px. Use pt for mPDF (1px ≈ 0.75pt).
     $SIGNATURE_WIDTH_PX = 100;
-    $SIGNATURE_HEIGHT_PX = 30;
+    $SIGNATURE_HEIGHT_PX = 70;
+    $TRAIL_ROW_HEIGHT_PX = 80;
     $SIG_W_PT = round($SIGNATURE_WIDTH_PX * 0.75, 0);   // 75pt
-    $SIG_H_PT = round($SIGNATURE_HEIGHT_PX * 0.75, 0);   // 22pt
+    $SIG_H_PT = round($SIGNATURE_HEIGHT_PX * 0.75, 0);  // 52pt
 
     if (!function_exists('_matrix_export_budget_total')) {
         function _matrix_export_budget_total($breakdown) {
@@ -34,6 +35,7 @@
     table.export-table th { background: #f0f0f0; font-weight: bold; }
     table.export-table td { vertical-align: top; }
     .trail-table td { vertical-align: top; }
+    .trail-table tbody tr { height: {{ $TRAIL_ROW_HEIGHT_PX }}px; max-height: {{ $TRAIL_ROW_HEIGHT_PX }}px; }
     .approver-name { font-weight: bold; font-size: 10pt; }
     .approver-role { color: #555; font-size: 9pt; }
     .trail-date { font-size: 9pt; color: #555; margin-bottom: 2px; }
@@ -55,9 +57,13 @@
     .matrix-header .meta { font-size: 9pt; color: #666; }
 </style>
 
+@php
+    $matrixDocNumber = $matrix->document_number ?? ('QM/' . ($matrix->year ?? '') . '/' . ($matrix->quarter ?? ''));
+    $matrixShowUrl = $matrixShowUrl ?? (rtrim($baseUrl ?? '', '/') . '/apm/matrices/' . $matrix->id);
+@endphp
 <div class="matrix-header">
-    <h1>{{ $matrix->title ?? 'Matrix' }} – {{ strtoupper($matrix->quarter ?? '') }} {{ $matrix->year ?? '' }}</h1>
-    <div class="meta">{{ $matrix->division->division_name ?? 'Division' }} | Exported {{ now()->format('d F Y H:i') }}</div>
+    <h1>@if(!empty($matrixShowUrl))<a href="{{ $matrixShowUrl }}" style="color: #000; text-decoration: none;">@endif{{ $matrix->title ?? 'Matrix' }} – {{ strtoupper($matrix->quarter ?? '') }} {{ $matrix->year ?? '' }}@if(!empty($matrixShowUrl))</a>@endif</h1>
+    <div class="meta">{{ $matrix->division->division_name ?? 'Division' }} | Matrix Document Number / File Number: {{ $matrixDocNumber }} | Exported {{ now()->format('d F Y H:i') }}</div>
 </div>
 
 {{-- 1. Activities (first) --}}
@@ -71,8 +77,7 @@
             <th style="width: 12%;">Date Range</th>
             <th style="width: 12%;">Responsible Person</th>
             <th style="width: 8%; text-align: center;">Participants</th>
-            <th style="width: 10%; text-align: center;">Funding</th>
-            <th style="width: 10%; text-align: center;">Budget (Est./Avail.)</th>
+            <th style="width: 18%; text-align: center;">Fund Type / Budget (Est./Avail.)</th>
             <th style="width: 8%; text-align: center;">Status</th>
         </tr>
     </thead>
@@ -85,6 +90,7 @@
                 $fundTypeName = $activity->fundType->name ?? 'N/A';
                 $dateFrom = $activity->date_from ? \Carbon\Carbon::parse($activity->date_from)->format('d M Y') : '—';
                 $dateTo = $activity->date_to ? \Carbon\Carbon::parse($activity->date_to)->format('d M Y') : '—';
+                $fundAndBudget = $fundTypeName . ' | ' . number_format($budget, 2) . ' USD' . (!empty($activity->available_budget) ? ' (Avail: ' . number_format($activity->available_budget, 2) . ')' : '');
             @endphp
             <tr>
                 <td>{{ $idx + 1 }}</td>
@@ -93,12 +99,11 @@
                 <td>{{ $dateFrom }} to {{ $dateTo }}</td>
                 <td>{{ $respName }}</td>
                 <td style="text-align: center;">{{ $activity->total_participants ?? 0 }}</td>
-                <td style="text-align: center;">{{ $fundTypeName }}</td>
-                <td style="text-align: center;">{{ number_format($budget, 2) }} USD @if(!empty($activity->available_budget))(Avail: {{ number_format($activity->available_budget, 2) }})@endif</td>
+                <td style="text-align: center;">{{ $fundAndBudget }}</td>
                 <td style="text-align: center;">{{ ucfirst($activity->overall_status ?? 'pending') }}</td>
             </tr>
         @empty
-            <tr><td colspan="9">No activities.</td></tr>
+            <tr><td colspan="8">No activities.</td></tr>
         @endforelse
     </tbody>
 </table>
@@ -115,8 +120,7 @@
             <th style="width: 12%;">Date Range</th>
             <th style="width: 14%;">Responsible Person</th>
             <th style="width: 8%; text-align: center;">Participants</th>
-            <th style="width: 10%; text-align: center;">Fund Type</th>
-            <th style="width: 10%; text-align: center;">Budget (Est./Avail.)</th>
+            <th style="width: 18%; text-align: center;">Fund Type / Budget (Est./Avail.)</th>
             <th style="width: 8%; text-align: center;">Status</th>
         </tr>
     </thead>
@@ -128,6 +132,7 @@
                 $respName = $resp ? trim(($resp->fname ?? '') . ' ' . ($resp->lname ?? '')) : 'N/A';
                 $dateFrom = $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('d M Y') : '—';
                 $dateTo = $memo->date_to ? \Carbon\Carbon::parse($memo->date_to)->format('d M Y') : '—';
+                $fundAndBudget = ($memo->fundType->name ?? 'N/A') . ' | ' . number_format($budget, 2) . ' USD' . (!empty($memo->available_budget) ? ' (Avail: ' . number_format($memo->available_budget, 2) . ')' : '');
             @endphp
             <tr>
                 <td>{{ $idx + 1 }}</td>
@@ -136,8 +141,7 @@
                 <td>{{ $dateFrom }} to {{ $dateTo }}</td>
                 <td>{{ $respName }}</td>
                 <td style="text-align: center;">{{ $memo->total_participants ?? 0 }}</td>
-                <td style="text-align: center;">{{ $memo->fundType->name ?? 'N/A' }}</td>
-                <td style="text-align: center;">{{ number_format($budget, 2) }} USD @if(!empty($memo->available_budget))(Avail: {{ number_format($memo->available_budget, 2) }})@endif</td>
+                <td style="text-align: center;">{{ $fundAndBudget }}</td>
                 <td style="text-align: center;">{{ ucfirst($memo->overall_status ?? 'approved') }}</td>
             </tr>
         @endforeach
