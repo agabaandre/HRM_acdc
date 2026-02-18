@@ -19,16 +19,29 @@ class Workplan extends MX_Controller {
     }
 
     public function get_workplan_ajax() {
-        $division_id = $this->session->userdata('user')->division_id;
         $query = $this->input->get('q');
         $year = $this->input->get('year') ?: $this->input->post('year') ?: date('Y');
-    
+        $division_param = $this->input->get('division') ?: $this->input->post('division');
+
+        $user = $this->session->userdata('user');
+        $division_id = $user->division_id;
+        $user_permissions = isset($user->permissions) ? $user->permissions : [];
+
+        // When user has permission 85, respect division filter (empty = all divisions)
+        if (in_array('85', $user_permissions)) {
+            if ($division_param !== null && $division_param !== '') {
+                $division_id = (int) $division_param;
+            } else {
+                $division_id = null; // all divisions
+            }
+        }
+
         if ($query) {
             $data = $this->workplan_mdl->search($query, $division_id, $year);
         } else {
             $data = $this->workplan_mdl->get_activities($division_id, $year);
         }
-    
+
         echo json_encode($data);
     }
     
@@ -154,12 +167,18 @@ class Workplan extends MX_Controller {
     public function get_statistics() {
         try {
             $year = $this->input->post('year') ?: date('Y');
-            $division_id = $this->input->post('division') ?: $this->session->userdata('user')->division_id;
-            
-            // If user doesn't have permission 85, force their division
-            $user_permissions = $this->session->userdata('user')->permissions;
-            if (!in_array('85', $user_permissions)) {
-                $division_id = $this->session->userdata('user')->division_id;
+            $division_param = $this->input->post('division');
+            $user = $this->session->userdata('user');
+            $division_id = $user->division_id;
+            $user_permissions = isset($user->permissions) ? $user->permissions : [];
+
+            // When user has permission 85, respect division filter (empty = all divisions)
+            if (in_array('85', $user_permissions)) {
+                if ($division_param !== null && $division_param !== '') {
+                    $division_id = (int) $division_param;
+                } else {
+                    $division_id = null; // all divisions
+                }
             }
 
             $stats = $this->workplan_mdl->get_workplan_statistics($division_id, $year);
@@ -180,14 +199,17 @@ class Workplan extends MX_Controller {
     public function get_execution_data() {
         try {
             $year = $this->input->post('year') ?: date('Y');
-            $division_id = $this->input->post('division') ?: $this->session->userdata('user')->division_id;
-            
-            // If user doesn't have permission 85, force their division
-            $user_permissions = $this->session->userdata('user')->permissions;
-            if (!in_array('85', $user_permissions)) {
-                $division_id = $this->session->userdata('user')->division_id;
+            $division_param = $this->input->post('division');
+            $user = $this->session->userdata('user');
+            $division_id = $user->division_id;
+            $user_permissions = isset($user->permissions) ? $user->permissions : [];
+            if (in_array('85', $user_permissions)) {
+                if ($division_param !== null && $division_param !== '') {
+                    $division_id = (int) $division_param;
+                } else {
+                    $division_id = null;
+                }
             }
-
             $data = $this->workplan_mdl->get_execution_tracking_data($division_id, $year);
             
             echo json_encode([
@@ -206,14 +228,17 @@ class Workplan extends MX_Controller {
     public function get_unit_scores() {
         try {
             $year = $this->input->post('year') ?: date('Y');
-            $division_id = $this->input->post('division') ?: $this->session->userdata('user')->division_id;
-            
-            // If user doesn't have permission 85, force their division
-            $user_permissions = $this->session->userdata('user')->permissions;
-            if (!in_array('85', $user_permissions)) {
-                $division_id = $this->session->userdata('user')->division_id;
+            $division_param = $this->input->post('division');
+            $user = $this->session->userdata('user');
+            $division_id = $user->division_id;
+            $user_permissions = isset($user->permissions) ? $user->permissions : [];
+            if (in_array('85', $user_permissions)) {
+                if ($division_param !== null && $division_param !== '') {
+                    $division_id = (int) $division_param;
+                } else {
+                    $division_id = null;
+                }
             }
-
             $data = $this->workplan_mdl->get_unit_score_breakdown($division_id, $year);
             
             echo json_encode([
