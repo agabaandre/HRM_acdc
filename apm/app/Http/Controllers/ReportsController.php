@@ -217,7 +217,15 @@ class ReportsController extends Controller
                 ])
                 ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id')
                 ->leftJoin('staff', $activitiesTable . '.responsible_person_id', '=', 'staff.staff_id')
-                ->where($activitiesTable . '.is_single_memo', $documentType === DocumentCounter::TYPE_SINGLE_MEMO ? 1 : 0);
+                ->where(function ($q) use ($activitiesTable, $documentType) {
+                    if ($documentType === DocumentCounter::TYPE_SINGLE_MEMO) {
+                        $q->where($activitiesTable . '.is_single_memo', 1);
+                    } else {
+                        $q->where(function ($q2) use ($activitiesTable) {
+                            $q2->where($activitiesTable . '.is_single_memo', 0)->orWhereNull($activitiesTable . '.is_single_memo');
+                        });
+                    }
+                });
             if ($filterDivision !== null) {
                 $q->where(function ($q2) use ($activitiesTable, $matricesTable, $filterDivision) {
                     $q2->where($activitiesTable . '.division_id', $filterDivision)
@@ -280,7 +288,14 @@ class ReportsController extends Controller
             return $rows;
         }
 
-        $q = $model::query()->with(['responsiblePerson', 'staff'])->orderBy('created_at', 'desc');
+        $with = [];
+        if (method_exists($model, 'responsiblePerson')) {
+            $with[] = 'responsiblePerson';
+        }
+        if (method_exists($model, 'staff')) {
+            $with[] = 'staff';
+        }
+        $q = $model::query()->when(!empty($with), fn ($q) => $q->with($with))->orderBy('created_at', 'desc');
         if ($filterDivision !== null) {
             $q->where('division_id', $filterDivision);
         }
@@ -296,7 +311,8 @@ class ReportsController extends Controller
         }
 
         foreach ($q->get() as $m) {
-            $resp = $m->responsiblePerson ?? $m->staff ?? null;
+            // NonTravelMemo uses staff_id (staff relation); others use responsible_person_id (responsiblePerson) when present
+            $resp = ($documentType === DocumentCounter::TYPE_NON_TRAVEL_MEMO) ? ($m->staff ?? null) : ($m->responsiblePerson ?? $m->staff ?? null);
             $respName = $resp ? trim(($resp->fname ?? '') . ' ' . ($resp->lname ?? '')) : 'N/A';
             $rows->push((object) [
                 'document_type' => $documentType,
@@ -371,6 +387,7 @@ class ReportsController extends Controller
     /**
      * Memo list (details) report page (data loaded via AJAX with pagination).
      * Includes all memo types: QM, SM, SPM, NT, CR, SR, ARF. memo_type filter = document type code.
+     * Defaults to "All years" when no year in request so the list shows data on first load.
      */
     public function memoList(Request $request)
     {
@@ -379,7 +396,8 @@ class ReportsController extends Controller
         $years = Matrix::distinct()->pluck('year')->filter()->sortDesc()->values();
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $currentYear = (string) (int) date('Y');
-        $year = $this->defaultYear($request);
+        // Default to "all" so first load and "no filters" show all years; otherwise use request year
+        $year = $request->filled('year') ? $this->defaultYear($request) : 'all';
 
         return view('reports.memo-list', [
             'divisions' => $divisions,
@@ -455,6 +473,10 @@ class ReportsController extends Controller
             'current_page' => $paginator->currentPage(),
             'last_page' => $paginator->lastPage(),
             'total' => $paginator->total(),
+            'debug' => $request->has('_debug') ? [
+                'received' => ['division' => $request->get('division'), 'year' => $request->get('year'), 'quarter' => $request->get('quarter')],
+                'total_rows' => $total,
+            ] : null,
         ]);
     }
 

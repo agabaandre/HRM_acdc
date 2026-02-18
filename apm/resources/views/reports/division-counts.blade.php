@@ -28,7 +28,7 @@
 			<div class="row g-3 align-items-end">
 				<div class="col-md-2">
 					<label class="form-label small">Division</label>
-					<select id="filter_division" class="form-select form-select-sm">
+					<select id="filter_division" class="form-select form-select-sm report-division-select" style="width: 100%;">
 						<option value="">All divisions</option>
 						@foreach($divisions as $d)
 							<option value="{{ $d->id }}">{{ $d->division_name }}</option>
@@ -91,12 +91,17 @@
 
 @push('scripts')
 <script>
+$(function() {
+	$('#filter_division').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'All divisions', allowClear: true });
+});
+</script>
+<script>
 (function() {
 	var detailsUrl = '{{ route('reports.memo-list') }}';
 	var dataUrl = '{{ route('reports.division-counts.data') }}';
 
 	function getQuery() {
-		var division = document.getElementById('filter_division').value;
+		var division = $('#filter_division').val() || '';
 		var year = document.getElementById('filter_year').value;
 		var quarter = document.getElementById('filter_quarter').value;
 		var memoType = document.getElementById('filter_memo_type').value;
@@ -132,7 +137,7 @@
 
 	document.getElementById('btn_apply_counts').addEventListener('click', loadCounts);
 	document.getElementById('btn_reset_counts').addEventListener('click', function() {
-		document.getElementById('filter_division').value = '';
+		$('#filter_division').val('').trigger('change');
 		document.getElementById('filter_year').value = '{{ $currentYear }}';
 		document.getElementById('filter_quarter').value = '';
 		document.getElementById('filter_memo_type').value = '';

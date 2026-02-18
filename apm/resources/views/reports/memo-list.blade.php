@@ -34,7 +34,7 @@
 			<div class="row g-3 align-items-end">
 				<div class="col-md-2">
 					<label class="form-label small">Division</label>
-					<select id="filter_division" class="form-select form-select-sm">
+					<select id="filter_division" class="form-select form-select-sm report-division-select" style="width: 100%;">
 						<option value="">All divisions</option>
 						@foreach($divisions as $d)
 							<option value="{{ $d->id }}" {{ request('division') == $d->id ? 'selected' : '' }}>{{ $d->division_name }}</option>
@@ -44,11 +44,11 @@
 				<div class="col-md-2">
 					<label class="form-label small">Year</label>
 					<select id="filter_year" class="form-select form-select-sm">
-						<option value="{{ $currentYear }}" {{ request('year', $currentYear) == $currentYear ? 'selected' : '' }}>{{ $currentYear }}</option>
-						<option value="all" {{ request('year') === 'all' ? 'selected' : '' }}>All years</option>
+						<option value="all" {{ ($filterYear ?? '') === 'all' ? 'selected' : '' }}>All years</option>
+						<option value="{{ $currentYear }}" {{ (string)($filterYear ?? '') === (string)$currentYear ? 'selected' : '' }}>{{ $currentYear }}</option>
 						@foreach($years as $y)
 							@if((string)$y !== (string)$currentYear)
-								<option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>{{ $y }}</option>
+								<option value="{{ $y }}" {{ (string)($filterYear ?? '') === (string)$y ? 'selected' : '' }}>{{ $y }}</option>
 							@endif
 						@endforeach
 					</select>
@@ -108,25 +108,41 @@
 
 @push('scripts')
 <script>
+$(function() {
+	$('#filter_division').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'All divisions', allowClear: true });
+});
+</script>
+<script>
 (function() {
 	var dataUrl = '{{ route('reports.memo-list.data') }}';
 	var exportUrl = '{{ route('reports.memo-list.export.excel') }}';
 	var currentYear = '{{ $currentYear }}';
+	var usedInitialUrl = false;
 
 	function getQuery(page) {
 		page = page || 1;
 		var params = new URLSearchParams();
 		params.set('page', page);
-		var division = document.getElementById('filter_division').value;
-		var year = document.getElementById('filter_year').value;
-		var quarter = document.getElementById('filter_quarter').value;
-		var memoType = document.getElementById('filter_memo_type').value;
-		var status = document.getElementById('filter_status').value;
+		var division = ($('#filter_division').length && $('#filter_division').val()) ? $('#filter_division').val() : '';
+		var year = document.getElementById('filter_year') ? document.getElementById('filter_year').value : '';
+		var quarter = document.getElementById('filter_quarter') ? document.getElementById('filter_quarter').value : '';
+		var memoType = document.getElementById('filter_memo_type') ? document.getElementById('filter_memo_type').value : '';
+		var status = document.getElementById('filter_status') ? document.getElementById('filter_status').value : '';
 		if (division) params.set('division', division);
 		if (year) params.set('year', year);
 		if (quarter) params.set('quarter', quarter);
 		if (memoType) params.set('memo_type', memoType);
 		if (status) params.set('status', status);
+		return params.toString();
+	}
+	function getQueryFromPageUrl(page) {
+		var urlParams = new URLSearchParams(window.location.search);
+		var params = new URLSearchParams();
+		params.set('page', String(page || 1));
+		['division','year','quarter','memo_type','status'].forEach(function(k) {
+			var v = urlParams.get(k);
+			if (v) params.set(k, v);
+		});
 		return params.toString();
 	}
 	function getQueryForExport() {
@@ -135,19 +151,34 @@
 	}
 
 	function loadList(page) {
+		page = page || 1;
 		var container = document.getElementById('memo_list_container');
 		container.innerHTML = '<div class="text-center py-5 text-muted"><div class="spinner-border" role="status"></div><p class="mt-2 mb-0">Loading…</p></div>';
-		fetch(dataUrl + '?' + getQuery(page), {
+		var query;
+		if (!usedInitialUrl && window.location.search) {
+			query = getQueryFromPageUrl(page);
+			usedInitialUrl = true;
+		} else {
+			query = getQuery(page);
+		}
+		if (!query) query = 'page=1';
+		else if (query === 'page=' + page && page === 1) query += '&year=all';
+		fetch(dataUrl + '?' + query, {
 			method: 'GET',
 			headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
 		})
-		.then(function(r) { return r.json(); })
+		.then(function(r) {
+			if (!r.ok) throw new Error('HTTP ' + r.status);
+			return r.json();
+		})
 		.then(function(data) {
-			container.innerHTML = data.html || '<div class="text-center py-4 text-muted">No memos found.</div>';
+			if (data && data.debug) console.log('Memo list server debug:', data.debug);
+			container.innerHTML = (data && data.html !== undefined) ? data.html : '<div class="text-center py-4 text-muted">No memos found.</div>';
 			attachPaginationHandlers();
 		})
-		.catch(function() {
-			container.innerHTML = '<div class="text-center py-4 text-danger">Error loading data.</div>';
+		.catch(function(err) {
+			container.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Check console.</div>';
+			console.error('Memo list fetch error:', err);
 		});
 	}
 
@@ -174,8 +205,8 @@
 
 	document.getElementById('btn_apply_list').addEventListener('click', function() { loadList(1); });
 	document.getElementById('btn_reset_list').addEventListener('click', function() {
-		document.getElementById('filter_division').value = '';
-		document.getElementById('filter_year').value = currentYear;
+		$('#filter_division').val('').trigger('change');
+		document.getElementById('filter_year').value = 'all';
 		document.getElementById('filter_quarter').value = '';
 		document.getElementById('filter_memo_type').value = '';
 		document.getElementById('filter_status').value = '';
