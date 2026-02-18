@@ -5,9 +5,11 @@
 
 @push('styles')
 <style>
-.reports-memo-title { word-wrap: break-word; word-break: break-word; white-space: normal; }
+.reports-memo-title { word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word; }
 .reports-table th, .reports-table td { padding: 0.5rem 0.4rem; vertical-align: middle; }
 .reports-table th { font-size: 0.8rem; white-space: nowrap; }
+.reports-page .card .card-header { padding: 0.4rem 0.75rem; font-size: 0.9rem; }
+.reports-page .card .card-body { padding: 0.5rem 0.75rem; }
 @media print {
 	.no-print { display: none !important; }
 	body * { visibility: hidden; }
@@ -18,13 +20,14 @@
 @endpush
 
 @section('content')
-<div class="container-fluid">
-	<div class="d-flex align-items-center gap-2 mb-3 no-print">
+<div class="container-fluid reports-page">
+	<div class="d-flex align-items-center gap-2 mb-2 no-print">
 		<a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bx bx-arrow-back me-1"></i> Reports</a>
 	</div>
 
-	<div class="card shadow-sm mb-4 no-print">
-		<div class="card-header bg-light py-2">
+	<div class="card shadow-sm mb-3 no-print">
+		<div class="card-header bg-light py-2 d-flex align-items-center gap-2">
+			<i class="bx bx-chart-bar text-success"></i>
 			<strong>Filters</strong>
 		</div>
 		<div class="card-body">
@@ -63,8 +66,8 @@
 					<label class="form-label small">Memo type</label>
 					<select id="filter_memo_type" class="form-select form-select-sm">
 						<option value="">All types</option>
-						@foreach($requestTypes as $rt)
-							<option value="{{ $rt->id }}" {{ request('memo_type') == $rt->id ? 'selected' : '' }}>{{ $rt->name }}</option>
+						@foreach($memoTypes as $code => $label)
+							<option value="{{ $code }}" {{ request('memo_type') == $code ? 'selected' : '' }}>{{ $label }}</option>
 						@endforeach
 					</select>
 				</div>
@@ -89,7 +92,7 @@
 
 	<div class="card shadow-sm">
 		<div class="card-header bg-light py-2 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2 no-print">
-			<strong class="text-success"><i class="bx bx-list-ul me-1"></i> List of memos</strong>
+			<strong class="text-success"><i class="bx bx-chart-bar me-1"></i> List of memos</strong>
 			<div class="d-flex gap-2">
 				<a href="#" id="memo_list_export_excel" class="btn btn-success btn-sm"><i class="bx bx-download me-1"></i> Export to Excel</a>
 				<button type="button" id="memo_list_print" class="btn btn-outline-success btn-sm"><i class="bx bx-printer me-1"></i> Print / PDF</button>

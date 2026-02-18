@@ -5,6 +5,8 @@
 
 @section('content')
 <style>
+.reports-page .card .card-header { padding: 0.4rem 0.75rem; font-size: 0.9rem; }
+.reports-page .card .card-body { padding: 0.5rem 0.75rem; }
 @media print {
 	.no-print { display: none !important; }
 	body * { visibility: hidden; }
@@ -12,13 +14,14 @@
 	#counts_table_container { position: absolute; left: 0; top: 0; width: 100%; }
 }
 </style>
-<div class="container-fluid">
-	<div class="d-flex align-items-center gap-2 mb-3 no-print">
+<div class="container-fluid reports-page">
+	<div class="d-flex align-items-center gap-2 mb-2 no-print">
 		<a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bx bx-arrow-back me-1"></i> Reports</a>
 	</div>
 
-	<div class="card shadow-sm mb-4 no-print">
-		<div class="card-header bg-light py-2">
+	<div class="card shadow-sm mb-3 no-print">
+		<div class="card-header bg-light py-2 d-flex align-items-center gap-2">
+			<i class="bx bx-chart-bar text-success"></i>
 			<strong>Filters</strong>
 		</div>
 		<div class="card-body">
@@ -72,7 +75,7 @@
 
 	<div class="card shadow-sm">
 		<div class="card-header bg-light py-2 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2 no-print">
-			<strong class="text-success"><i class="bx bx-pie-chart-alt me-1"></i> Division memo counts</strong> <span class="small text-muted">(Approved / Pending / Returned / Draft). Click division or total to open memo list.</span>
+			<strong class="text-success"><i class="bx bx-chart-bar me-1"></i> Division memo counts</strong> <span class="small text-muted">(Approved / Pending / Returned / Draft). Click division or total to open memo list.</span>
 			<div class="d-flex gap-2">
 				<a href="#" id="counts_export_excel" class="btn btn-success btn-sm"><i class="bx bx-download me-1"></i> Export to Excel</a>
 				<button type="button" id="counts_print" class="btn btn-outline-success btn-sm"><i class="bx bx-printer me-1"></i> Print / PDF</button>
