@@ -309,7 +309,7 @@ class PrintHelper
             $name .= ' (OIC)';
         }
 
-        echo '<div style="line-height: 1.8;">';
+        echo '<div style="line-height: 1.5;">';
         
         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
         
