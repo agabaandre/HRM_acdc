@@ -241,6 +241,7 @@ Route::get('/api/returned-memos/filter-options', [App\Http\Controllers\ReturnedM
 Route::get('/signature-verify', [App\Http\Controllers\SignatureVerificationController::class, 'index'])->name('signature-verify.index');
 Route::post('/signature-verify/lookup', [App\Http\Controllers\SignatureVerificationController::class, 'lookup'])->name('signature-verify.lookup');
 Route::post('/signature-verify/verify', [App\Http\Controllers\SignatureVerificationController::class, 'verify'])->name('signature-verify.verify');
+Route::post('/signature-verify/validate-upload', [App\Http\Controllers\SignatureVerificationController::class, 'validateUpload'])->name('signature-verify.validate-upload');
 
 
 

@@ -15,6 +15,7 @@
         "maatwebsite/excel": "^3.1",
         "mpdf/mpdf": "^8.2.0",
         "phpmailer/phpmailer": "^6.10",
+        "smalot/pdfparser": "^2.12",
         "staudenmeir/eloquent-json-relations": "^1.1",
         "yajra/laravel-datatables-oracle": "^12.4"
     },
