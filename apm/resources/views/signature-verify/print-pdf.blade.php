@@ -5,13 +5,14 @@
     <title>Signature Verification</title>
     <style>
         body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11pt; color: #333; margin: 20px; line-height: 1.4; }
-        h1 { font-size: 16pt; color: #0d6efd; border-bottom: 2px solid #0d6efd; padding-bottom: 6px; margin-top: 0; }
+        h1 { font-size: 16pt; color: #911C39; border-bottom: 2px solid #911C39; padding-bottom: 6px; margin-top: 0; }
         h2 { font-size: 12pt; margin-top: 16px; margin-bottom: 8px; }
         table { width: 100%; border-collapse: collapse; margin: 10px 0; }
         th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
         th { background: #f8f9fa; font-weight: bold; }
         .meta-table td:first-child { width: 28%; color: #6c757d; }
-        .verified-badge { background: #198754; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
+        .verified-badge { background: #911C39; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
+        .failed-badge { background: #6c757d; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
         .doc-number { font-family: monospace; }
     </style>
 </head>
@@ -21,6 +22,8 @@
 
     @if(!empty($hash_matched) && !empty($matched_signatory))
         <div class="verified-badge">✓ Verified</div>
+    @elseif(!empty($verification_attempted) && empty($hash_matched))
+        <div class="failed-badge">✗ Failed</div>
     @endif
 
     <h2>Document</h2>

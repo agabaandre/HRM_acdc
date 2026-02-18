@@ -130,9 +130,8 @@
                     {{-- Filled by JS from JSON response --}}
                 </div>
                 <div class="modal-footer">
-                    <a href="#" id="verificationResultPdf" class="btn btn-outline-primary me-2" style="display: none;" target="_blank" rel="noopener"><i class="fas fa-file-pdf me-1"></i> Download PDF</a>
-                    <button type="button" class="btn btn-outline-secondary" id="verificationResultPrint"><i class="fas fa-print me-1"></i> Print</button>
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary me-2" id="verificationResultPrint"><i class="fas fa-print me-1"></i> Print</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -290,7 +289,7 @@
         });
     }
 
-    var pdfBaseUrl = '{{ route("signature-verify.print", [], false) }}';
+    var pdfBaseUrl = '{{ url()->route("signature-verify.print") }}';
 
     function setPdfLink(data) {
         var btn = document.getElementById('verificationResultPdf');
