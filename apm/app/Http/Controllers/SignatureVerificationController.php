@@ -42,6 +42,9 @@ class SignatureVerificationController extends Controller
         $document = $this->findDocumentByNumberAndYear($documentNumber, $year);
 
         if (!$document) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'No APM document found for the given document number and year.']);
+            }
             return redirect()
                 ->route('signature-verify.index')
                 ->with('error', 'No APM document found for the given document number and year.')
@@ -49,13 +52,18 @@ class SignatureVerificationController extends Controller
         }
 
         $signatories = $this->buildSignatoriesWithHashes($document);
+        $metadata = $this->getDocumentMetadata($document);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($this->buildUnifiedPayload('lookup', $document, $metadata, $signatories, null, null));
+        }
 
         return view('signature-verify.index', [
             'lookup_result' => [
                 'document'    => $document,
                 'doc_type'    => $this->getDocumentTypeLabel($document),
                 'signatories' => $signatories,
-                'metadata'    => $this->getDocumentMetadata($document),
+                'metadata'    => $metadata,
             ],
             'document_number' => $documentNumber,
             'year'            => $year,
@@ -80,6 +88,9 @@ class SignatureVerificationController extends Controller
         $documents = $this->findDocumentsByNumber($documentNumber, $year);
 
         if ($documents->isEmpty()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'No APM document found for the given document number.']);
+            }
             return redirect()
                 ->route('signature-verify.index')
                 ->with('verify_error', 'No APM document found for the given document number.')
@@ -90,13 +101,17 @@ class SignatureVerificationController extends Controller
             $signatories = $this->buildSignatoriesWithHashes($document);
             foreach ($signatories as $s) {
                 if (isset($s['hash']) && $s['hash'] === $hash) {
+                    $metadata = $this->getDocumentMetadata($document);
+                    if ($request->wantsJson() || $request->ajax()) {
+                        return response()->json($this->buildUnifiedPayload('verify', $document, $metadata, $signatories, $s, null));
+                    }
                     return view('signature-verify.index', [
                         'verify_result' => [
                             'document'    => $document,
                             'doc_type'    => $this->getDocumentTypeLabel($document),
                             'signatory'   => $s,
                             'hash_matched' => true,
-                            'metadata'    => $this->getDocumentMetadata($document),
+                            'metadata'    => $metadata,
                         ],
                         'hash'           => $hash,
                         'document_number' => $documentNumber,
@@ -106,16 +121,20 @@ class SignatureVerificationController extends Controller
             }
         }
 
-        // No match: show error and the document's signatories so user can compare
+        // No match: show document and signatories so user can compare
         $document = $documents->first();
         $signatories = $this->buildSignatoriesWithHashes($document);
+        $metadata = $this->getDocumentMetadata($document);
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($this->buildUnifiedPayload('verify', $document, $metadata, $signatories, null, 'The provided hash does not match any signatory for this document.'));
+        }
         return view('signature-verify.index', [
             'verify_error' => 'The provided hash does not match any signatory for this document. Compare with the hashes below.',
             'lookup_result' => [
                 'document'    => $document,
                 'doc_type'    => $this->getDocumentTypeLabel($document),
                 'signatories' => $signatories,
-                'metadata'    => $this->getDocumentMetadata($document),
+                'metadata'    => $metadata,
             ],
             'document_number' => $documentNumber,
             'year'            => $year,
@@ -308,6 +327,50 @@ class SignatureVerificationController extends Controller
     }
 
     /**
+     * Build a unified JSON payload for all verification result types (lookup, verify, upload_validation).
+     */
+    private function buildUnifiedPayload(
+        string $resultType,
+        $document,
+        array $metadata,
+        array $signatories,
+        ?array $matchedSignatory,
+        ?string $message,
+        ?array $uploadExtras = null
+    ): array {
+        $docNumber = $document ? ($document->document_number ?? 'N/A') : null;
+        $docType = $document ? $this->getDocumentTypeLabel($document) : null;
+
+        $payload = [
+            'success'     => true,
+            'result_type' => $resultType,
+            'document'    => [
+                'document_number' => $docNumber,
+                'doc_type'        => $docType,
+                'metadata'        => $metadata,
+            ],
+            'signatories' => $signatories,
+            'message'     => $message,
+        ];
+
+        if ($matchedSignatory !== null) {
+            $payload['matched_signatory'] = $matchedSignatory;
+            $payload['hash_matched'] = true;
+        } else {
+            $payload['hash_matched'] = false;
+        }
+
+        if ($uploadExtras !== null) {
+            $payload['valid']                      = $uploadExtras['valid'] ?? false;
+            $payload['extracted_document_numbers'] = $uploadExtras['extracted_document_numbers'] ?? [];
+            $payload['extracted_hashes']           = $uploadExtras['extracted_hashes'] ?? [];
+            $payload['hash_validations']           = $uploadExtras['hash_validations'] ?? [];
+        }
+
+        return $payload;
+    }
+
+    /**
      * Get document metadata (creator, division, date created) for display.
      */
     private function getDocumentMetadata($document): array
@@ -364,6 +427,9 @@ class SignatureVerificationController extends Controller
 
         $text = $this->extractTextFromPdf($path);
         if ($text === null) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Could not read the PDF. Ensure it is a valid, unencrypted PDF. If the problem persists, run: composer require smalot/pdfparser']);
+            }
             return redirect()
                 ->route('signature-verify.index')
                 ->with('upload_error', 'Could not read the PDF. Ensure it is a valid, unencrypted PDF. If the problem persists, run: composer require smalot/pdfparser');
@@ -422,6 +488,27 @@ class SignatureVerificationController extends Controller
                 ];
             }
             $results['valid'] = collect($results['hash_validations'])->contains('matched', true);
+        } else {
+            $results['metadata'] = ['creator' => 'N/A', 'division' => 'N/A', 'date_created' => 'N/A'];
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            $document = $results['document'];
+            $metadata = $results['metadata'] ?? ['creator' => 'N/A', 'division' => 'N/A', 'date_created' => 'N/A'];
+            return response()->json($this->buildUnifiedPayload(
+                'upload_validation',
+                $document,
+                $metadata,
+                $results['signatories'],
+                null,
+                $results['document'] ? null : 'No matching document found in the system for the extracted document number(s).',
+                [
+                    'valid'                      => $results['valid'],
+                    'extracted_document_numbers' => $results['extracted_document_numbers'],
+                    'extracted_hashes'           => $results['extracted_hashes'],
+                    'hash_validations'           => $results['hash_validations'],
+                ]
+            ));
         }
 
         return view('signature-verify.index', [
