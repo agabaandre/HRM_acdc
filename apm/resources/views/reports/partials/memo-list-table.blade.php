@@ -1,3 +1,4 @@
+<p class="small text-muted mb-2 no-print">Showing {{ $memoList->firstItem() ?? 0 }}–{{ $memoList->lastItem() ?? 0 }} of <strong>{{ $memoList->total() }}</strong> memo(s)</p>
 <div class="table-responsive">
 	<table class="table table-bordered table-hover mb-0 reports-table">
 		<thead class="table-success">

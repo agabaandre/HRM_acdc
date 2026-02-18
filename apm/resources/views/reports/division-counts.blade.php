@@ -4,12 +4,20 @@
 @section('header', 'Division memo counts')
 
 @section('content')
+<style>
+@media print {
+	.no-print { display: none !important; }
+	body * { visibility: hidden; }
+	#counts_table_container, #counts_table_container * { visibility: visible; }
+	#counts_table_container { position: absolute; left: 0; top: 0; width: 100%; }
+}
+</style>
 <div class="container-fluid">
-	<div class="d-flex align-items-center gap-2 mb-3">
+	<div class="d-flex align-items-center gap-2 mb-3 no-print">
 		<a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bx bx-arrow-back me-1"></i> Reports</a>
 	</div>
 
-	<div class="card shadow-sm mb-4">
+	<div class="card shadow-sm mb-4 no-print">
 		<div class="card-header bg-light py-2">
 			<strong>Filters</strong>
 		</div>
@@ -63,8 +71,12 @@
 	</div>
 
 	<div class="card shadow-sm">
-		<div class="card-header bg-light py-2 border-bottom">
-			<strong class="text-success"><i class="bx bx-pie-chart-alt me-1"></i> Division memo counts</strong> <span class="small text-muted">(Approved / Pending / Returned). Click division or total to open memo list.</span>
+		<div class="card-header bg-light py-2 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2 no-print">
+			<strong class="text-success"><i class="bx bx-pie-chart-alt me-1"></i> Division memo counts</strong> <span class="small text-muted">(Approved / Pending / Returned / Draft). Click division or total to open memo list.</span>
+			<div class="d-flex gap-2">
+				<a href="#" id="counts_export_excel" class="btn btn-success btn-sm"><i class="bx bx-download me-1"></i> Export to Excel</a>
+				<button type="button" id="counts_print" class="btn btn-outline-success btn-sm"><i class="bx bx-printer me-1"></i> Print / PDF</button>
+			</div>
 		</div>
 		<div class="card-body p-0">
 			<div id="counts_table_container">
@@ -108,6 +120,12 @@
 			container.innerHTML = '<div class="text-center py-4 text-danger">Error loading data.</div>';
 		});
 	}
+
+	document.getElementById('counts_export_excel').addEventListener('click', function(e) {
+		e.preventDefault();
+		window.location.href = '{{ route('reports.division-counts.export.excel') }}?' + getQuery();
+	});
+	document.getElementById('counts_print').addEventListener('click', function() { window.print(); });
 
 	document.getElementById('btn_apply_counts').addEventListener('click', loadCounts);
 	document.getElementById('btn_reset_counts').addEventListener('click', function() {

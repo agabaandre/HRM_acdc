@@ -407,6 +407,8 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     Route::get('reports/division-counts/data', [App\Http\Controllers\ReportsController::class, 'divisionCountsData'])->name('reports.division-counts.data');
     Route::get('reports/memo-list', [App\Http\Controllers\ReportsController::class, 'memoList'])->name('reports.memo-list');
     Route::get('reports/memo-list/data', [App\Http\Controllers\ReportsController::class, 'memoListData'])->name('reports.memo-list.data');
+    Route::get('reports/division-counts/export/excel', [App\Http\Controllers\ReportsController::class, 'exportDivisionCountsExcel'])->name('reports.division-counts.export.excel');
+    Route::get('reports/memo-list/export/excel', [App\Http\Controllers\ReportsController::class, 'exportMemoListExcel'])->name('reports.memo-list.export.excel');
 
     // Generic Approval Routes
     Route::post('/approve/{model}/{id}', [GenericApprovalController::class, 'updateStatus'])->name('generic.approve');

@@ -8,16 +8,22 @@
 .reports-memo-title { word-wrap: break-word; word-break: break-word; white-space: normal; }
 .reports-table th, .reports-table td { padding: 0.5rem 0.4rem; vertical-align: middle; }
 .reports-table th { font-size: 0.8rem; white-space: nowrap; }
+@media print {
+	.no-print { display: none !important; }
+	body * { visibility: hidden; }
+	#memo_list_container, #memo_list_container * { visibility: visible; }
+	#memo_list_container { position: absolute; left: 0; top: 0; width: 100%; }
+}
 </style>
 @endpush
 
 @section('content')
 <div class="container-fluid">
-	<div class="d-flex align-items-center gap-2 mb-3">
+	<div class="d-flex align-items-center gap-2 mb-3 no-print">
 		<a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bx bx-arrow-back me-1"></i> Reports</a>
 	</div>
 
-	<div class="card shadow-sm mb-4">
+	<div class="card shadow-sm mb-4 no-print">
 		<div class="card-header bg-light py-2">
 			<strong>Filters</strong>
 		</div>
@@ -82,8 +88,12 @@
 	</div>
 
 	<div class="card shadow-sm">
-		<div class="card-header bg-light py-2 border-bottom">
+		<div class="card-header bg-light py-2 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2 no-print">
 			<strong class="text-success"><i class="bx bx-list-ul me-1"></i> List of memos</strong>
+			<div class="d-flex gap-2">
+				<a href="#" id="memo_list_export_excel" class="btn btn-success btn-sm"><i class="bx bx-download me-1"></i> Export to Excel</a>
+				<button type="button" id="memo_list_print" class="btn btn-outline-success btn-sm"><i class="bx bx-printer me-1"></i> Print / PDF</button>
+			</div>
 		</div>
 		<div class="card-body p-0">
 			<div id="memo_list_container">
@@ -97,6 +107,7 @@
 <script>
 (function() {
 	var dataUrl = '{{ route('reports.memo-list.data') }}';
+	var exportUrl = '{{ route('reports.memo-list.export.excel') }}';
 	var currentYear = '{{ $currentYear }}';
 
 	function getQuery(page) {
@@ -114,6 +125,10 @@
 		if (memoType) params.set('memo_type', memoType);
 		if (status) params.set('status', status);
 		return params.toString();
+	}
+	function getQueryForExport() {
+		var p = getQuery(1);
+		return p.replace(/^page=1&?/, '').replace(/&?page=1$/, '');
 	}
 
 	function loadList(page) {
@@ -147,6 +162,12 @@
 			});
 		});
 	}
+
+	document.getElementById('memo_list_export_excel').addEventListener('click', function(e) {
+		e.preventDefault();
+		window.location.href = exportUrl + (getQueryForExport() ? '?' + getQueryForExport() : '');
+	});
+	document.getElementById('memo_list_print').addEventListener('click', function() { window.print(); });
 
 	document.getElementById('btn_apply_list').addEventListener('click', function() { loadList(1); });
 	document.getElementById('btn_reset_list').addEventListener('click', function() {
