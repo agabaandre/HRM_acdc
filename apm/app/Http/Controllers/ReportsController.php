@@ -51,14 +51,30 @@ class ReportsController extends Controller
 
         $divisionIdRaw = 'COALESCE(' . $activitiesTable . '.division_id, ' . $matricesTable . '.division_id)';
 
-        $countsQuery = (clone $baseQuery)->selectRaw(
-            $divisionIdRaw . ' as division_id, ' .
-            'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as approved_count, ' .
-            'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as pending_count, ' .
-            'SUM(CASE WHEN ' . $activitiesTable . '.overall_status IN (?, ?) THEN 1 ELSE 0 END) as returned_count, ' .
-            'COUNT(*) as total_count',
-            ['approved', 'pending', 'returned', 'rejected']
-        )->groupBy(DB::raw($divisionIdRaw));
+        $countsQuery = Activity::query()
+            ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id')
+            ->when($filterDivision !== null, function ($q) use ($activitiesTable, $matricesTable, $filterDivision) {
+                $q->where(function ($q2) use ($activitiesTable, $matricesTable, $filterDivision) {
+                    $q2->where($activitiesTable . '.division_id', $filterDivision)
+                        ->orWhere(function ($q3) use ($activitiesTable, $matricesTable, $filterDivision) {
+                            $q3->whereNull($activitiesTable . '.division_id')
+                                ->where($matricesTable . '.division_id', $filterDivision);
+                        });
+                });
+            })
+            ->when($filterYear !== null, fn ($q) => $q->where($matricesTable . '.year', $filterYear))
+            ->when($filterQuarter !== null, fn ($q) => $q->where($matricesTable . '.quarter', $filterQuarter))
+            ->when($filterMemoType !== null, fn ($q) => $q->where($activitiesTable . '.request_type_id', $filterMemoType))
+            ->when($filterStatus !== null, fn ($q) => $q->where($activitiesTable . '.overall_status', $filterStatus))
+            ->selectRaw(
+                $divisionIdRaw . ' as division_id, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as approved_count, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as pending_count, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status IN (?, ?) THEN 1 ELSE 0 END) as returned_count, ' .
+                'COUNT(*) as total_count',
+                ['approved', 'pending', 'returned', 'rejected']
+            )
+            ->groupBy(DB::raw($divisionIdRaw));
 
         $counts = $countsQuery->get()->keyBy('division_id');
         $divisionIds = $counts->pluck('division_id')->filter()->unique()->toArray();
