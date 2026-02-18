@@ -74,9 +74,10 @@ class Workplan_mdl extends CI_Model {
      * @param int|null $division_id Division ID, or null for all divisions
      */
     public function get_workplan_statistics($division_id, $year) {
+        $year = (string) (int) $year; // ensure consistent type for DB comparison
         $div_where = ($division_id !== null && $division_id !== '');
         $this->db->from('workplan_tasks');
-        $this->db->where('year', $year);
+        $this->db->where('workplan_tasks.year', $year);
         if ($div_where) {
             $this->db->where('division_id', $division_id);
         }

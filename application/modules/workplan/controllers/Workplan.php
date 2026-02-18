@@ -20,7 +20,11 @@ class Workplan extends MX_Controller {
 
     public function get_workplan_ajax() {
         $query = $this->input->get('q');
-        $year = $this->input->get('year') ?: $this->input->post('year') ?: date('Y');
+        $year = $this->input->get('year') ?: $this->input->post('year');
+        if ($year === null || $year === '') {
+            $year = date('Y');
+        }
+        $year = (string) (int) $year;
         $division_param = $this->input->get('division') ?: $this->input->post('division');
 
         $user = $this->session->userdata('user');
@@ -166,7 +170,11 @@ class Workplan extends MX_Controller {
     // Get workplan statistics
     public function get_statistics() {
         try {
-            $year = $this->input->post('year') ?: date('Y');
+            $year = $this->input->post('year');
+            if ($year === null || $year === '') {
+                $year = date('Y');
+            }
+            $year = (string) (int) $year; // normalize to 4-digit year string
             $division_param = $this->input->post('division');
             $user = $this->session->userdata('user');
             $division_id = $user->division_id;

@@ -271,7 +271,7 @@
                 <!-- Create New -->
                 <div class="col-md-3">
                     <label class="form-label fw-semibold">Create New</label>
-                    <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#createModal">
+                    <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#createModal">
                         <i class="fa fa-plus-circle me-1"></i> New Activity
                     </button>
                 </div>
@@ -287,7 +287,7 @@
                 <!-- Export to CSV -->
                 <div class="col-md-3">
                     <label class="form-label fw-semibold">Export Data</label>
-                    <button id="exportCsvBtn" class="btn btn-outline-success w-100">
+                    <button type="button" id="exportCsvBtn" class="btn btn-outline-success w-100">
                         <i class="fa fa-file-csv me-1"></i> Export to CSV
                     </button>
                 </div>
@@ -306,9 +306,11 @@
                     <label class="form-label fw-semibold">Year</label>
                     <select id="yearSelect" class="form-select">
                         <?php
-                        $currentYear = date('Y');
+                        $currentYear = (int) date('Y');
+                        $defaultYear = 2025; // default to 2025 so stats show when data exists for that year
                         for ($y = $currentYear; $y >= 2025; $y--) {
-                            echo "<option value='$y'>$y</option>";
+                            $sel = ($y == $defaultYear) ? ' selected' : '';
+                            echo "<option value='$y'$sel>$y</option>";
                         }
                         ?>
                     </select>
@@ -1066,6 +1068,8 @@ function loadExecutionData() {
                     executionSearchTerm = ''; // Clear search when loading new data
                     $('#executionSearch').val(''); // Clear search input
                     renderExecutionTable(response.data);
+                    // Keep stats in sync with execution data (same year/division)
+                    loadStatistics();
                 } else {
                     console.error('Execution data load failed:', response ? response.message : 'No response data');
                     $('#executionTableBody').html('<tr><td colspan="7" class="text-center text-muted">Error loading execution data.</td></tr>');
@@ -1536,8 +1540,37 @@ $(document).ready(function() {
         console.error('Required DOM elements not found');
         return;
     }
-    
-    fetchTasks();
+
+    // New Activity modal: submit via AJAX to prevent page refresh
+    $(document).on('submit', '#createForm', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var csrfName = '<?= $this->security->get_csrf_token_name(); ?>';
+        var csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
+        var formData = form.serializeArray();
+        formData.push({ name: csrfName, value: csrfHash });
+        $.ajax({
+            url: '<?= site_url("workplan/create_task") ?>',
+            method: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(res) {
+                if (res.status === 'success') {
+                    $('#createModal').modal('hide');
+                    form[0].reset();
+                    show_notification('Workplan created successfully.', 'success');
+                    fetchTasks($('#searchBox').val() || '', $('#yearSelect').val() || '', $('#divisionSelect').length ? $('#divisionSelect').val() : '');
+                } else {
+                    show_notification(res.message || 'Failed to create workplan.', 'error');
+                }
+            },
+            error: function() {
+                show_notification('Server error occurred.', 'error');
+            }
+        });
+    });
+
+    fetchTasks($('#searchBox').val(), $('#yearSelect').val(), $('#divisionSelect').length ? $('#divisionSelect').val() : '');
 
     <?php if ($this->session->flashdata('msg')): ?>
         show_notification("<?= $this->session->flashdata('msg') ?>", "<?= $this->session->flashdata('type') ?>");
