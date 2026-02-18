@@ -3,9 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
+use App\Models\ChangeRequest;
 use App\Models\Division;
+use App\Models\DocumentCounter;
 use App\Models\Matrix;
+use App\Models\NonTravelMemo;
+use App\Models\RequestARF;
 use App\Models\RequestType;
+use App\Models\ServiceRequest;
+use App\Models\SpecialMemo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,14 +27,15 @@ class ReportsController extends Controller
         return (string) $y;
     }
 
-    /** Apply common filters to activity+matrix query (division, year, quarter, memo_type, status). */
+    /** Apply common filters to activity+matrix query (division, year, quarter, request_type_id, status). Used for memo list (activities only). memo_type = request_type id when numeric. */
     private function applyFilters($query, Request $request, $activitiesTable, $matricesTable)
     {
         $filterDivision = $request->filled('division') ? (int) $request->division : null;
         $filterQuarter = $request->filled('quarter') ? $request->quarter : null;
         $year = $this->defaultYear($request);
         $filterYear = ($year !== '' && $year !== 'all' && is_numeric($year)) ? (int) $year : null;
-        $filterMemoType = $request->filled('memo_type') ? (int) $request->memo_type : null;
+        $memoTypeParam = $request->get('memo_type');
+        $filterRequestType = ($memoTypeParam !== null && $memoTypeParam !== '' && is_numeric($memoTypeParam)) ? (int) $memoTypeParam : null;
         $filterStatus = $request->filled('status') ? $request->status : null;
 
         $query
@@ -43,10 +50,128 @@ class ReportsController extends Controller
             })
             ->when($filterYear !== null, fn ($q) => $q->where($matricesTable . '.year', $filterYear))
             ->when($filterQuarter !== null, fn ($q) => $q->where($matricesTable . '.quarter', $filterQuarter))
-            ->when($filterMemoType !== null, fn ($q) => $q->where($activitiesTable . '.request_type_id', $filterMemoType))
+            ->when($filterRequestType !== null, fn ($q) => $q->where($activitiesTable . '.request_type_id', $filterRequestType))
             ->when($filterStatus !== null, fn ($q) => $q->where($activitiesTable . '.overall_status', $filterStatus));
 
         return $query;
+    }
+
+    /**
+     * Get division counts for division counts report. memo_type = document type code (QM, SM, SPM, NT, CR, SR, ARF)
+     * or null for all types. Returns collection keyed by division_id with approved_count, pending_count, etc.
+     */
+    private function getDivisionCountsByMemoType(Request $request, ?string $memoType = null): \Illuminate\Support\Collection
+    {
+        $filterDivision = $request->filled('division') ? (int) $request->division : null;
+        $year = $this->defaultYear($request);
+        $filterYear = ($year !== '' && $year !== 'all' && is_numeric($year)) ? (int) $year : null;
+        $filterQuarter = $request->filled('quarter') ? $request->quarter : null;
+
+        $typesToQuery = $memoType
+            ? [$memoType]
+            : [DocumentCounter::TYPE_QUARTERLY_MATRIX, DocumentCounter::TYPE_SINGLE_MEMO, DocumentCounter::TYPE_SPECIAL_MEMO, DocumentCounter::TYPE_NON_TRAVEL_MEMO, DocumentCounter::TYPE_CHANGE_REQUEST, DocumentCounter::TYPE_SERVICE_REQUEST, DocumentCounter::TYPE_ARF];
+
+        $merged = collect();
+
+        foreach ($typesToQuery as $type) {
+            $counts = $this->getCountsForDocumentType($type, $filterDivision, $filterYear, $filterQuarter);
+            foreach ($counts as $row) {
+                $did = $row->division_id;
+                if (!$did) {
+                    continue;
+                }
+                $existing = $merged->get($did);
+                if (!$existing) {
+                    $merged->put($did, (object) [
+                        'division_id' => $did,
+                        'approved_count' => (int) ($row->approved_count ?? 0),
+                        'pending_count' => (int) ($row->pending_count ?? 0),
+                        'returned_count' => (int) ($row->returned_count ?? 0),
+                        'draft_count' => (int) ($row->draft_count ?? 0),
+                        'total_count' => (int) ($row->total_count ?? 0),
+                    ]);
+                } else {
+                    $existing->approved_count += (int) ($row->approved_count ?? 0);
+                    $existing->pending_count += (int) ($row->pending_count ?? 0);
+                    $existing->returned_count += (int) ($row->returned_count ?? 0);
+                    $existing->draft_count += (int) ($row->draft_count ?? 0);
+                    $existing->total_count += (int) ($row->total_count ?? 0);
+                }
+            }
+        }
+
+        return $merged;
+    }
+
+    /** Run a single division-count query for one document type. */
+    private function getCountsForDocumentType(string $documentType, ?int $filterDivision, ?int $filterYear, ?string $filterQuarter): \Illuminate\Support\Collection
+    {
+        $statusSelect = "division_id, " .
+            "SUM(CASE WHEN overall_status = 'approved' THEN 1 ELSE 0 END) as approved_count, " .
+            "SUM(CASE WHEN overall_status = 'pending' THEN 1 ELSE 0 END) as pending_count, " .
+            "SUM(CASE WHEN overall_status IN ('returned', 'rejected') THEN 1 ELSE 0 END) as returned_count, " .
+            "SUM(CASE WHEN overall_status = 'draft' THEN 1 ELSE 0 END) as draft_count, " .
+            "COUNT(*) as total_count";
+
+        if ($documentType === DocumentCounter::TYPE_QUARTERLY_MATRIX || $documentType === DocumentCounter::TYPE_SINGLE_MEMO) {
+            $activitiesTable = (new Activity())->getTable();
+            $matricesTable = (new Matrix())->getTable();
+            $divisionIdRaw = 'COALESCE(' . $activitiesTable . '.division_id, ' . $matricesTable . '.division_id)';
+            $query = Activity::query()
+                ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id')
+                ->where($activitiesTable . '.is_single_memo', $documentType === DocumentCounter::TYPE_SINGLE_MEMO ? 1 : 0);
+            if ($filterDivision !== null) {
+                $query->where(function ($q) use ($activitiesTable, $matricesTable, $filterDivision) {
+                    $q->where($activitiesTable . '.division_id', $filterDivision)
+                        ->orWhere(function ($q2) use ($activitiesTable, $matricesTable, $filterDivision) {
+                            $q2->whereNull($activitiesTable . '.division_id')->where($matricesTable . '.division_id', $filterDivision);
+                        });
+                });
+            }
+            if ($filterYear !== null) {
+                $query->where($matricesTable . '.year', $filterYear);
+            }
+            if ($filterQuarter !== null) {
+                $query->where($matricesTable . '.quarter', $filterQuarter);
+            }
+            return $query->selectRaw(
+                $divisionIdRaw . ' as division_id, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as approved_count, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as pending_count, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status IN (?, ?) THEN 1 ELSE 0 END) as returned_count, ' .
+                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as draft_count, ' .
+                'COUNT(*) as total_count',
+                ['approved', 'pending', 'returned', 'rejected', 'draft']
+            )->groupBy(DB::raw($divisionIdRaw))->get();
+        }
+
+        $table = match ($documentType) {
+            DocumentCounter::TYPE_SPECIAL_MEMO => (new SpecialMemo())->getTable(),
+            DocumentCounter::TYPE_NON_TRAVEL_MEMO => (new NonTravelMemo())->getTable(),
+            DocumentCounter::TYPE_CHANGE_REQUEST => (new ChangeRequest())->getTable(),
+            DocumentCounter::TYPE_SERVICE_REQUEST => (new ServiceRequest())->getTable(),
+            DocumentCounter::TYPE_ARF => (new RequestARF())->getTable(),
+            default => null,
+        };
+        if (!$table) {
+            return collect();
+        }
+
+        $query = DB::table($table)
+            ->selectRaw($statusSelect)
+            ->whereNotNull('division_id')
+            ->groupBy('division_id');
+        if ($filterDivision !== null) {
+            $query->where('division_id', $filterDivision);
+        }
+        if ($filterYear !== null) {
+            $query->whereYear('created_at', $filterYear);
+        }
+        if ($filterQuarter !== null) {
+            $quarterNum = (int) str_replace('Q', '', $filterQuarter);
+            $query->whereRaw('QUARTER(created_at) = ?', [$quarterNum]);
+        }
+        return $query->get();
     }
 
     /**
@@ -59,18 +184,19 @@ class ReportsController extends Controller
 
     /**
      * Division memo counts report page (data loaded via AJAX).
+     * Memo type = document type: Quarterly Matrix, Single Memo, Special Memo, Non Travel, Change Request, Service Request, ARF.
      */
     public function divisionCounts(Request $request)
     {
         $divisions = Division::orderBy('division_name')->get();
-        $requestTypes = RequestType::orderBy('name')->get();
+        $memoTypes = DocumentCounter::getDocumentTypes();
         $years = Matrix::distinct()->pluck('year')->filter()->sortDesc()->values();
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $currentYear = (string) (int) date('Y');
 
         return view('reports.division-counts', [
             'divisions' => $divisions,
-            'requestTypes' => $requestTypes,
+            'memoTypes' => $memoTypes,
             'years' => $years,
             'quarters' => $quarters,
             'currentYear' => $currentYear,
@@ -79,30 +205,13 @@ class ReportsController extends Controller
 
     /**
      * AJAX: division counts table HTML.
+     * memo_type = document type code (QM, SM, SPM, NT, CR, SR, ARF) or empty for all.
      */
     public function divisionCountsData(Request $request)
     {
-        $activitiesTable = (new Activity())->getTable();
-        $matricesTable = (new Matrix())->getTable();
-        $divisionIdRaw = 'COALESCE(' . $activitiesTable . '.division_id, ' . $matricesTable . '.division_id)';
-
-        $countsQuery = Activity::query()
-            ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id');
-        $this->applyFilters($countsQuery, $request, $activitiesTable, $matricesTable);
-        $countsQuery
-            ->selectRaw(
-                $divisionIdRaw . ' as division_id, ' .
-                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as approved_count, ' .
-                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as pending_count, ' .
-                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status IN (?, ?) THEN 1 ELSE 0 END) as returned_count, ' .
-                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as draft_count, ' .
-                'COUNT(*) as total_count',
-                ['approved', 'pending', 'returned', 'rejected', 'draft']
-            )
-            ->groupBy(DB::raw($divisionIdRaw));
-
-        $counts = $countsQuery->get()->keyBy('division_id');
-        $divisionIds = $counts->pluck('division_id')->filter()->unique()->toArray();
+        $memoType = $request->filled('memo_type') ? $request->memo_type : null;
+        $counts = $this->getDivisionCountsByMemoType($request, $memoType);
+        $divisionIds = $counts->keys()->filter()->unique()->values()->toArray();
         $divisionsForCounts = Division::whereIn('id', $divisionIds)->get()->keyBy('id');
 
         $detailsUrl = route('reports.memo-list');
@@ -181,29 +290,12 @@ class ReportsController extends Controller
 
     /**
      * Export division counts report to Excel (CSV).
+     * memo_type = document type code (QM, SM, SPM, NT, CR, SR, ARF) or empty for all.
      */
     public function exportDivisionCountsExcel(Request $request)
     {
-        $activitiesTable = (new Activity())->getTable();
-        $matricesTable = (new Matrix())->getTable();
-        $divisionIdRaw = 'COALESCE(' . $activitiesTable . '.division_id, ' . $matricesTable . '.division_id)';
-
-        $countsQuery = Activity::query()
-            ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id');
-        $this->applyFilters($countsQuery, $request, $activitiesTable, $matricesTable);
-        $countsQuery
-            ->selectRaw(
-                $divisionIdRaw . ' as division_id, ' .
-                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as approved_count, ' .
-                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as pending_count, ' .
-                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status IN (?, ?) THEN 1 ELSE 0 END) as returned_count, ' .
-                'SUM(CASE WHEN ' . $activitiesTable . '.overall_status = ? THEN 1 ELSE 0 END) as draft_count, ' .
-                'COUNT(*) as total_count',
-                ['approved', 'pending', 'returned', 'rejected', 'draft']
-            )
-            ->groupBy(DB::raw($divisionIdRaw));
-
-        $counts = $countsQuery->get();
+        $memoType = $request->filled('memo_type') ? $request->memo_type : null;
+        $counts = $this->getDivisionCountsByMemoType($request, $memoType)->values();
         $divisionIds = $counts->pluck('division_id')->filter()->unique()->toArray();
         $divisions = Division::whereIn('id', $divisionIds)->get()->keyBy('id');
 

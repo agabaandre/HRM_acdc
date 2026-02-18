@@ -57,8 +57,8 @@
 					<label class="form-label small">Memo type</label>
 					<select id="filter_memo_type" class="form-select form-select-sm">
 						<option value="">All types</option>
-						@foreach($requestTypes as $rt)
-							<option value="{{ $rt->id }}">{{ $rt->name }}</option>
+						@foreach($memoTypes as $code => $label)
+							<option value="{{ $code }}">{{ $label }}</option>
 						@endforeach
 					</select>
 				</div>
