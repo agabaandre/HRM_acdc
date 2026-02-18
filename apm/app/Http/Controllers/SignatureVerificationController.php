@@ -616,19 +616,24 @@ class SignatureVerificationController extends Controller
             }
         }
 
+        $verificationAttempted = $hash !== null;
         $data = [
-            'document'           => $document,
-            'doc_type'           => $docType,
-            'document_number'    => $document->document_number ?? 'N/A',
-            'metadata'           => $metadata,
-            'signatories'        => $signatories,
-            'matched_signatory'  => $matchedSignatory,
-            'hash_matched'       => $hashMatched,
+            'document'                => $document,
+            'doc_type'                => $docType,
+            'document_number'         => $document->document_number ?? 'N/A',
+            'metadata'                => $metadata,
+            'signatories'             => $signatories,
+            'matched_signatory'       => $matchedSignatory,
+            'hash_matched'            => $hashMatched,
+            'verification_attempted'  => $verificationAttempted,
         ];
 
         $options = [];
         if ($hashMatched) {
             $options['watermark_text']  = 'Verified';
+            $options['watermark_alpha'] = 0.12;
+        } elseif ($verificationAttempted) {
+            $options['watermark_text']  = 'Failed';
             $options['watermark_alpha'] = 0.12;
         }
 
