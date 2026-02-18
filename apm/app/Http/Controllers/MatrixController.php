@@ -2635,30 +2635,35 @@ class MatrixController extends Controller
         $matrices = $query->latest()->get();
 
         $filename = 'matrices_' . date('Y-m-d_H-i-s') . '.csv';
-        
+
         $headers = [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
 
         $callback = function() use ($matrices) {
             $file = fopen('php://output', 'w');
-            
+            // BOM for Excel UTF-8 recognition
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
             // CSV Headers
             fputcsv($file, [
-                'ID', 'Title', 'Year', 'Quarter', 'Division', 'Focal Person', 
+                'ID', 'Document Number', 'Title', 'Year', 'Quarter', 'Division', 'Focal Person',
                 'Status', 'Approval Level', 'Created Date', 'Updated Date'
             ]);
 
             // CSV Data
             foreach ($matrices as $matrix) {
+                $docNumber = $matrix->document_number ?? ('QM/' . $matrix->year . '/' . $matrix->quarter);
+                $focalName = $matrix->focalPerson ? trim(($matrix->focalPerson->fname ?? '') . ' ' . ($matrix->focalPerson->lname ?? '')) : 'N/A';
                 fputcsv($file, [
                     $matrix->id,
+                    $docNumber,
                     $matrix->title ?? 'N/A',
                     $matrix->year,
                     $matrix->quarter,
                     $matrix->division ? $matrix->division->division_name : 'N/A',
-                    $matrix->focalPerson ? ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 'N/A',
+                    $focalName,
                     $matrix->overall_status ?? 'N/A',
                     $matrix->approval_level ?? 'N/A',
                     $matrix->created_at ? $matrix->created_at->format('Y-m-d') : 'N/A',
@@ -2702,30 +2707,32 @@ class MatrixController extends Controller
         $matrices = $query->latest()->get();
 
         $filename = 'division_matrices_' . date('Y-m-d_H-i-s') . '.csv';
-        
+
         $headers = [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
 
         $callback = function() use ($matrices) {
             $file = fopen('php://output', 'w');
-            
-            // CSV Headers
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
             fputcsv($file, [
-                'ID', 'Title', 'Year', 'Quarter', 'Division', 'Focal Person', 
+                'ID', 'Document Number', 'Title', 'Year', 'Quarter', 'Division', 'Focal Person',
                 'Status', 'Approval Level', 'Created Date', 'Updated Date'
             ]);
 
-            // CSV Data
             foreach ($matrices as $matrix) {
+                $docNumber = $matrix->document_number ?? ('QM/' . $matrix->year . '/' . $matrix->quarter);
+                $focalName = $matrix->focalPerson ? trim(($matrix->focalPerson->fname ?? '') . ' ' . ($matrix->focalPerson->lname ?? '')) : 'N/A';
                 fputcsv($file, [
                     $matrix->id,
+                    $docNumber,
                     $matrix->title ?? 'N/A',
                     $matrix->year,
                     $matrix->quarter,
                     $matrix->division ? $matrix->division->division_name : 'N/A',
-                    $matrix->focalPerson ? ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 'N/A',
+                    $focalName,
                     $matrix->overall_status ?? 'N/A',
                     $matrix->approval_level ?? 'N/A',
                     $matrix->created_at ? $matrix->created_at->format('Y-m-d') : 'N/A',
@@ -3078,6 +3085,7 @@ class MatrixController extends Controller
 
         $trails = $matrix->matrixApprovalTrails->sortByDesc('created_at');
         $baseUrl = rtrim(user_session('base_url') ?? config('app.url'), '/');
+        $matrixShowUrl = url()->route('matrices.show', [$matrix]);
 
         $pdf = mpdf_print('matrices.export.pdf', [
             'matrix' => $matrix,
@@ -3086,6 +3094,7 @@ class MatrixController extends Controller
             'activities' => $activities,
             'approvedSingleMemos' => $approvedSingleMemos,
             'baseUrl' => $baseUrl,
+            'matrixShowUrl' => $matrixShowUrl,
         ]);
 
         $filename = 'matrix_' . $matrix->id . '_' . strtoupper($matrix->quarter) . '_' . $matrix->year . '_' . now()->format('Y-m-d') . '.pdf';
