@@ -417,6 +417,12 @@ $mpdf = new \Mpdf\Mpdf([
 
         $mpdf->SetHTMLFooter($footer);
 
+        // Optional watermark text (e.g. "APPROVED") on every page
+        if (!empty($options['watermark_text'])) {
+            $mpdf->SetWatermarkText($options['watermark_text'], $options['watermark_alpha'] ?? 0.12);
+            $mpdf->showWatermarkText = true;
+        }
+
         // Write HTML content exactly like CodeIgniter with error handling
         try {
             $mpdf->WriteHTML($html);
