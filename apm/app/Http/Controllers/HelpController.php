@@ -91,6 +91,8 @@ class HelpController extends Controller
             'SUPERVISOR_SETUP_DEMO.md' => 'documentation/SUPERVISOR_SETUP_DEMO.md',
             'SYSTEMD_QUEUE_GUIDE.md' => 'documentation/SYSTEMD_QUEUE_GUIDE.md',
             'SYNC_IMPROVEMENTS.md' => 'documentation/SYNC_IMPROVEMENTS.md',
+            'SIGNATURE_VERIFICATION.md' => 'documentation/SIGNATURE_VERIFICATION.md',
+            'SYSTEM_UPDATES.md' => 'documentation/SYSTEM_UPDATES.md',
         ];
 
         // Check if file is in the map

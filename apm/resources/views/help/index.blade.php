@@ -142,6 +142,12 @@
                                 <a href="{{ route('help.documentation.file', 'DOCUMENT_NUMBERING_SYSTEM.md') }}" class="list-group-item list-group-item-action">
                                     <i class="fas fa-hashtag me-2"></i>Document Numbering System
                                 </a>
+                                <a href="{{ route('help.documentation.file', 'SIGNATURE_VERIFICATION.md') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-signature me-2"></i>Signature Verification
+                                </a>
+                                <a href="{{ route('help.documentation.file', 'SYSTEM_UPDATES.md') }}" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-sync-alt me-2"></i>System Updates
+                                </a>
                             </div>
                         </div>
                     </div>

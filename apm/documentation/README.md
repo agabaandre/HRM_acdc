@@ -15,6 +15,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 - **[Approval Trail Archiving](./APPROVAL_TRAIL_ARCHIVING.md)** - How to archive old approval trails and manage storage
 - **[Document Numbering System](./DOCUMENT_NUMBERING_SYSTEM.md)** - Document number generation and management
 - **[Document Number Management](./DOCUMENT_NUMBER_MANAGEMENT.md)** - Advanced document numbering features
+- **[Signature Verification](./SIGNATURE_VERIFICATION.md)** - Validate APM document signature hashes (lookup, verify, upload PDF)
 - **[Change Tracking Feasibility](./CHANGE_TRACKING_FEASIBILITY.md)** - Change tracking implementation guide
 
 ### Infrastructure & Deployment
@@ -34,6 +35,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 ### System Improvements
 
 - **[Sync Improvements](./SYNC_IMPROVEMENTS.md)** - Data synchronization enhancements
+- **[System Updates](./SYSTEM_UPDATES.md)** - Changelog of new features and updates (signature verification, etc.)
 
 ## 🚀 Quick Commands
 
@@ -92,6 +94,7 @@ php artisan view:clear
 3. **System Maintenance**
    - Review [Approval Trail Archiving](./APPROVAL_TRAIL_ARCHIVING.md)
    - Check [Sync Improvements](./SYNC_IMPROVEMENTS.md)
+   - See [System Updates](./SYSTEM_UPDATES.md) for recent features
 
 ### For DevOps/System Administrators
 
