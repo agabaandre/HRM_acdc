@@ -285,5 +285,50 @@ class Workplan_mdl extends CI_Model {
 
         return $unit_scores;
     }
-    
+
+    /**
+     * Get execution summary by division for a given year (for chart).
+     * Returns each division with total activities, sub_activities_created, sub_activities_completed, execution_rate.
+     *
+     * @param string $year 4-digit year
+     * @return array
+     */
+    public function get_execution_by_division($year) {
+        $year = (string) (int) $year;
+        $rows = $this->db
+            ->select('
+                d.division_id,
+                d.division_name,
+                COUNT(DISTINCT wt.id) as total_activities,
+                COALESCE(SUM(COALESCE(CAST(wt.cumulative_target AS UNSIGNED), 0)), 0) as total_target,
+                COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as sub_created,
+                COALESCE(COUNT(DISTINCT CASE WHEN wwt.status = 2 THEN wpt.activity_id END), 0) as sub_completed
+            ')
+            ->from('workplan_tasks wt')
+            ->join('divisions d', 'd.division_id = wt.division_id')
+            ->join('work_planner_tasks wpt', 'wpt.workplan_id = wt.id', 'left')
+            ->join('work_plan_weekly_tasks wwt', 'wwt.work_planner_tasks_id = wpt.activity_id', 'left')
+            ->where('wt.year', $year)
+            ->group_by('d.division_id', 'd.division_name')
+            ->order_by('d.division_name', 'ASC')
+            ->get()
+            ->result();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $created = (int) $r->sub_created;
+            $completed = (int) $r->sub_completed;
+            $execution_rate = $created > 0 ? round(($completed / $created) * 100, 1) : 0.0;
+            $out[] = [
+                'division_id'   => (int) $r->division_id,
+                'division_name' => $r->division_name,
+                'total_activities' => (int) $r->total_activities,
+                'total_target'   => (int) $r->total_target,
+                'sub_created'   => $created,
+                'sub_completed'  => $completed,
+                'execution_rate' => $execution_rate,
+            ];
+        }
+        return $out;
+    }
 }

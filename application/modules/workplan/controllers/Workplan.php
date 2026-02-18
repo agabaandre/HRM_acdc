@@ -6,7 +6,21 @@ class Workplan extends MX_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->model('workplan_mdl', 'workplan_mdl');
-		
+    }
+
+    /**
+     * Normalize year from request: return 4-digit string 2000-2100 or current year.
+     */
+    private function normalize_workplan_year($year) {
+        if ($year === null || $year === '' || $year === 'undefined') {
+            return date('Y');
+        }
+        $year = trim((string) $year);
+        $yr = (int) $year;
+        if ($yr >= 2000 && $yr <= 2100) {
+            return (string) $yr;
+        }
+        return date('Y');
     }
 
     // Add Activity
@@ -20,11 +34,7 @@ class Workplan extends MX_Controller {
 
     public function get_workplan_ajax() {
         $query = $this->input->get('q');
-        $year = $this->input->get('year') ?: $this->input->post('year');
-        if ($year === null || $year === '') {
-            $year = date('Y');
-        }
-        $year = (string) (int) $year;
+        $year = $this->normalize_workplan_year($this->input->get('year') ?: $this->input->post('year'));
         $division_param = $this->input->get('division') ?: $this->input->post('division');
 
         $user = $this->session->userdata('user');
@@ -171,10 +181,7 @@ class Workplan extends MX_Controller {
     public function get_statistics() {
         try {
             $year = $this->input->post('year');
-            if ($year === null || $year === '') {
-                $year = date('Y');
-            }
-            $year = (string) (int) $year; // normalize to 4-digit year string
+            $year = $this->normalize_workplan_year($year);
             $division_param = $this->input->post('division');
             $user = $this->session->userdata('user');
             $division_id = $user->division_id;
@@ -206,7 +213,7 @@ class Workplan extends MX_Controller {
     // Get execution tracking data
     public function get_execution_data() {
         try {
-            $year = $this->input->post('year') ?: date('Y');
+            $year = $this->normalize_workplan_year($this->input->post('year'));
             $division_param = $this->input->post('division');
             $user = $this->session->userdata('user');
             $division_id = $user->division_id;
@@ -235,7 +242,7 @@ class Workplan extends MX_Controller {
     // Get unit score breakdown
     public function get_unit_scores() {
         try {
-            $year = $this->input->post('year') ?: date('Y');
+            $year = $this->normalize_workplan_year($this->input->post('year'));
             $division_param = $this->input->post('division');
             $user = $this->session->userdata('user');
             $division_id = $user->division_id;
@@ -260,9 +267,25 @@ class Workplan extends MX_Controller {
             ]);
         }
     }
-    
-    
-    
+
+    /**
+     * Get execution by division for chart (all divisions for selected year).
+     */
+    public function get_execution_by_division() {
+        try {
+            $year = $this->normalize_workplan_year($this->input->post('year') ?: $this->input->get('year'));
+            $data = $this->workplan_mdl->get_execution_by_division($year);
+            echo json_encode([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error loading execution by division: ' . $e->getMessage()
+            ]);
+        }
+    }
 }
     
 ?>

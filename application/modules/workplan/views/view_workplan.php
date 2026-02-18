@@ -457,6 +457,19 @@
         </div>
     </div>
 
+    <!-- Workplan Execution by Division (Chart) -->
+    <div class="card table-card mb-4">
+        <div class="card-header text-white">
+            <h5 class="mb-0 text-white">
+                <i class="fa fa-chart-bar me-2 text-white"></i>Workplan Execution by Division
+            </h5>
+        </div>
+        <div class="card-body">
+            <div id="executionByDivisionChart" style="min-height: 380px;"></div>
+            <p class="text-muted small mb-0 mt-2">Execution rate (%) by division for the selected year.</p>
+        </div>
+    </div>
+
     <!-- Tab Navigation -->
     <div class="card table-card mb-4">
         <div class="card-header text-white">
@@ -711,6 +724,16 @@ let executionSearchTerm = '';
 let workplanCurrentPage = 1;
 let workplanItemsPerPage = 15;
 let workplanTotalItems = 0;
+var workplanCurrentYear = '<?= date("Y") ?>';
+
+function getWorkplanYear() {
+    var y = $('#yearSelect').val();
+    if (y === undefined || y === null) return workplanCurrentYear;
+    y = String(y).trim();
+    var yr = parseInt(y, 10);
+    if (!isNaN(yr) && yr >= 2000 && yr <= 2100) return String(yr);
+    return workplanCurrentYear;
+}
 
 function show_notification(message, type) {
     Lobibox.notify(type, {
@@ -733,15 +756,17 @@ function hideLoading() {
 
 function fetchTasks(query = '', year = '', division = '') {
     showLoading();
+    var yearVal = (year !== undefined && year !== null && year !== '') ? String(year) : getWorkplanYear();
     $.ajax({
         url: "<?= site_url('workplan/get_workplan_ajax') ?>",
         method: "GET",
-        data: { q: query, year: year, division: division },
+        data: { q: query || '', year: yearVal, division: division !== undefined && division !== null ? division : '' },
         dataType: "json",
         success: function(data) {
             latestFetchedData = data;
             renderPaginatedTable(data);
             loadStatistics();
+            loadExecutionByDivisionChart();
             hideLoading();
         },
         error: function() {
@@ -751,9 +776,66 @@ function fetchTasks(query = '', year = '', division = '') {
     });
 }
 
+function loadExecutionByDivisionChart() {
+    var data = {
+        year: getWorkplanYear(),
+        '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
+    };
+    $.ajax({
+        url: "<?= site_url('workplan/get_execution_by_division') ?>",
+        method: "POST",
+        data: data,
+        dataType: "json",
+        success: function(response) {
+            if (!response || !response.success || !response.data) {
+                $('#executionByDivisionChart').html('<p class="text-muted text-center py-4">No data for this year.</p>');
+                return;
+            }
+            var divisions = response.data;
+            if (divisions.length === 0) {
+                $('#executionByDivisionChart').html('<p class="text-muted text-center py-4">No division data for this year.</p>');
+                return;
+            }
+            if (typeof Highcharts === 'undefined') {
+                $('#executionByDivisionChart').html('<p class="text-muted text-center py-4">Chart library loading...</p>');
+                return;
+            }
+            var categories = divisions.map(function(d) { return d.division_name; });
+            var rates = divisions.map(function(d) { return d.execution_rate; });
+            Highcharts.chart('executionByDivisionChart', {
+                chart: { type: 'bar', height: 380 },
+                title: { text: 'Execution Rate (%) by Division' },
+                xAxis: { categories: categories, title: { text: 'Division' } },
+                yAxis: {
+                    title: { text: 'Execution Rate (%)' },
+                    min: 0,
+                    max: 100,
+                    tickInterval: 20
+                },
+                legend: { enabled: false },
+                tooltip: {
+                    pointFormat: '<b>{point.y}%</b> execution rate'
+                },
+                plotOptions: {
+                    bar: {
+                        dataLabels: { enabled: true, format: '{y}%' },
+                        colorByPoint: true,
+                        colors: ['#348f41', '#17a2b8', '#6f42c1', '#fd7e14', '#20c997', '#e83e8c']
+                    }
+                },
+                series: [{ name: 'Execution Rate', data: rates }],
+                credits: { enabled: false }
+            });
+        },
+        error: function() {
+            $('#executionByDivisionChart').html('<p class="text-muted text-center py-4">Error loading chart data.</p>');
+        }
+    });
+}
+
 function loadStatistics() {
     const data = {
-        year: $('#yearSelect').val(),
+        year: getWorkplanYear(),
         '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
     };
     
@@ -1046,7 +1128,7 @@ function updateWorkplanSummary(data) {
 
 function loadExecutionData() {
     const data = {
-        year: $('#yearSelect').val(),
+        year: getWorkplanYear(),
         '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
     };
     
@@ -1273,7 +1355,7 @@ function updateExecutionSummary(data) {
 
 function loadUnitScores() {
     const data = {
-        year: $('#yearSelect').val(),
+        year: getWorkplanYear(),
         '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
     };
     

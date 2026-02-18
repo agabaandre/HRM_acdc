@@ -108,13 +108,17 @@
                 <th class="w-25">Title</th>
                 <td colspan="3">{{ $nonTravel->activity_title ?? $nonTravel->title ?? 'N/A' }}</td>
             </tr>
+            @php
+                $printBackground = preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($nonTravel->background ?? ''));
+                $printJustification = preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($nonTravel->justification ?? $nonTravel->activity_request_remarks ?? ''));
+            @endphp
             <tr>
                 <th>Background</th>
-                <td colspan="3">{!! $nonTravel->background ?? '' !!}</td>
+                <td colspan="3">{{ trim($printBackground) }}</td>
             </tr>
             <tr>
                 <th>Description / Justification</th>
-                <td colspan="3">{!! $nonTravel->justification ?? $nonTravel->activity_request_remarks ?? '' !!}</td>
+                <td colspan="3">{{ trim($printJustification) }}</td>
             </tr>
             @if (!empty($locations) && count($locations))
             <tr>
