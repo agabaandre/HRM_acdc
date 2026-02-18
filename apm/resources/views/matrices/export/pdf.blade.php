@@ -1,11 +1,11 @@
 {{-- Matrix export PDF: division schedule, approval trail, approver signatures, activities, approved single memos --}}
 @php
-    // Signature dimensions: width 100px, height 70px. Row height for approval trail 80px. Use pt for mPDF (1px ≈ 0.75pt).
-    $SIGNATURE_WIDTH_PX = 100;
-    $SIGNATURE_HEIGHT_PX = 70;
-    $TRAIL_ROW_HEIGHT_PX = 80;
-    $SIG_W_PT = round($SIGNATURE_WIDTH_PX * 0.75, 0);   // 75pt
-    $SIG_H_PT = round($SIGNATURE_HEIGHT_PX * 0.75, 0);  // 52pt
+    // Signature: same as activities print — fixed size so all approvers look even. Row height minimized and even for all.
+    $SIGNATURE_WIDTH_PX = 80;
+    $SIGNATURE_HEIGHT_PX = 30;
+    $TRAIL_ROW_HEIGHT_PX = 48;
+    $SIG_W_PT = round($SIGNATURE_WIDTH_PX * 0.75, 0);   // 60pt
+    $SIG_H_PT = round($SIGNATURE_HEIGHT_PX * 0.75, 0);  // 22pt
 
     if (!function_exists('_matrix_export_budget_total')) {
         function _matrix_export_budget_total($breakdown) {
@@ -40,12 +40,12 @@
     .approver-role { color: #555; font-size: 9pt; }
     .trail-date { font-size: 9pt; color: #555; margin-bottom: 2px; }
     .trail-remarks { font-size: 9pt; margin-top: 4px; padding: 6px; background: #f5f5f5; border-radius: 4px; }
-    .signature-cell { width: {{ $SIGNATURE_WIDTH_PX + 12 }}px; padding: 4px; vertical-align: middle; }
+    .signature-cell { width: {{ $SIGNATURE_WIDTH_PX + 12 }}px; padding: 2px; vertical-align: middle; height: {{ $TRAIL_ROW_HEIGHT_PX }}px; max-height: {{ $TRAIL_ROW_HEIGHT_PX }}px; }
     .signature-cell .sig-inner { width: {{ $SIG_W_PT }}pt; border: none; background: transparent; table-layout: fixed; }
     .signature-cell .sig-inner td { width: {{ $SIG_W_PT }}pt; height: {{ $SIG_H_PT }}pt; max-width: {{ $SIG_W_PT }}pt; max-height: {{ $SIG_H_PT }}pt; text-align: center; vertical-align: middle; border: none; padding: 0; overflow: hidden; }
-    .signature-cell .signature-image { width: {{ $SIG_W_PT - 2 }}pt !important; height: {{ $SIG_H_PT - 2 }}pt !important; max-width: {{ $SIG_W_PT - 2 }}pt !important; max-height: {{ $SIG_H_PT - 2 }}pt !important; display: block; margin: 0 auto; border: none; }
-    .signature-cell .sig-email { font-size: 7pt; color: #555; word-break: break-all; line-height: 1.2; }
-    .signature-cell .signature-hash { color: #888; font-size: 6pt; margin-top: 3px; line-height: 1.2; text-align: center; }
+    .signature-cell .signature-image { height: {{ $SIG_H_PT }}pt !important; max-width: {{ $SIG_W_PT }}pt !important; width: auto !important; object-fit: contain; display: block; margin: 0 auto; border: none; }
+    .signature-cell .sig-email { font-size: 7pt; color: #555; word-break: break-all; line-height: 1.1; }
+    .signature-cell .signature-hash { color: #888; font-size: 6pt; margin-top: 1px; line-height: 1.1; text-align: center; }
     .trail-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9pt; font-weight: bold; }
     .trail-badge.approved, .trail-badge.passed { background: #28a745; color: #fff; }
     .trail-badge.submitted { background: #17a2b8; color: #fff; }
@@ -73,12 +73,11 @@
         <tr>
             <th style="width: 28px;">#</th>
             <th style="width: 11%;">Document #</th>
-            <th style="width: 24%;">Title</th>
+            <th style="width: 26%;">Title</th>
             <th style="width: 12%;">Date Range</th>
-            <th style="width: 12%;">Responsible Person</th>
+            <th style="width: 14%;">Responsible Person</th>
             <th style="width: 8%; text-align: center;">Participants</th>
-            <th style="width: 18%; text-align: center;">Fund Type / Budget (Est./Avail.)</th>
-            <th style="width: 8%; text-align: center;">Status</th>
+            <th style="width: 21%; text-align: center;">Fund Type / Budget (Est./Avail.)</th>
         </tr>
     </thead>
     <tbody>
@@ -100,10 +99,9 @@
                 <td>{{ $respName }}</td>
                 <td style="text-align: center;">{{ $activity->total_participants ?? 0 }}</td>
                 <td style="text-align: center;">{{ $fundAndBudget }}</td>
-                <td style="text-align: center;">{{ ucfirst($activity->overall_status ?? 'pending') }}</td>
             </tr>
         @empty
-            <tr><td colspan="8">No activities.</td></tr>
+            <tr><td colspan="7">No activities.</td></tr>
         @endforelse
     </tbody>
 </table>
@@ -116,12 +114,11 @@
         <tr>
             <th style="width: 28px;">#</th>
             <th style="width: 11%;">Document #</th>
-            <th style="width: 24%;">Title</th>
+            <th style="width: 26%;">Title</th>
             <th style="width: 12%;">Date Range</th>
             <th style="width: 14%;">Responsible Person</th>
             <th style="width: 8%; text-align: center;">Participants</th>
-            <th style="width: 18%; text-align: center;">Fund Type / Budget (Est./Avail.)</th>
-            <th style="width: 8%; text-align: center;">Status</th>
+            <th style="width: 21%; text-align: center;">Fund Type / Budget (Est./Avail.)</th>
         </tr>
     </thead>
     <tbody>
@@ -142,7 +139,6 @@
                 <td>{{ $respName }}</td>
                 <td style="text-align: center;">{{ $memo->total_participants ?? 0 }}</td>
                 <td style="text-align: center;">{{ $fundAndBudget }}</td>
-                <td style="text-align: center;">{{ ucfirst($memo->overall_status ?? 'approved') }}</td>
             </tr>
         @endforeach
     </tbody>
@@ -181,15 +177,11 @@
             <tr>
                 <td>{{ $idx + 1 }}</td>
                 <td class="signature-cell">
-                    @php
-                        $imgWpt = $SIG_W_PT - 2;
-                        $imgHpt = $SIG_H_PT - 2;
-                    @endphp
-                    <table class="sig-inner" cellpadding="0" cellspacing="0" style="width:{{ $SIG_W_PT }}pt; border:none;"><tr><td style="width:{{ $SIG_W_PT }}pt; height:{{ $SIG_H_PT }}pt; overflow:hidden; border:none;">
+                    <table class="sig-inner" cellpadding="0" cellspacing="0" style="width:{{ $SIG_W_PT }}pt; border:none;"><tr><td style="width:{{ $SIG_W_PT }}pt; height:{{ $SIG_H_PT }}pt; overflow:hidden; border:none; text-align:center; vertical-align:middle;">
                         @if($isFocalOrSubmitter)
                             <span class="text-muted" style="font-size: 8pt;">—</span>
                         @elseif($signaturePath)
-                            <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" style="width:{{ $imgWpt }}pt !important; height:{{ $imgHpt }}pt !important; max-width:{{ $imgWpt }}pt !important; max-height:{{ $imgHpt }}pt !important; border:none;" />
+                            <img class="signature-image" src="{{ $signaturePath }}" alt="Signature" style="height:{{ $SIG_H_PT }}pt !important; max-width:{{ $SIG_W_PT }}pt !important; object-fit: contain; border:none;" />
                         @else
                             <span class="sig-email">{{ $approverEmail ? e($approverEmail) : '—' }}</span>
                         @endif
