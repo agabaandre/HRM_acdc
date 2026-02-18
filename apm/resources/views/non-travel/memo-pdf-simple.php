@@ -454,7 +454,7 @@
                             <tr>
                                 <th class="bg-highlight text-right" colspan="5">Grand Total</th>
                                 
-                                <th class="bg-highlight text-right"><?php echo number_format($grandTotal ?? 0, 2); ?></th>
+                                <th class="bg-highlight text-right">USD <?php echo number_format($grandTotal ?? 0, 2); ?></th>
                                 <th class="bg-highlight"></th>
                             </tr>
                         </tfoot>
