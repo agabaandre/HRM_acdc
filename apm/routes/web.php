@@ -403,6 +403,10 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
 
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
+    Route::get('reports/division-counts', [App\Http\Controllers\ReportsController::class, 'divisionCounts'])->name('reports.division-counts');
+    Route::get('reports/division-counts/data', [App\Http\Controllers\ReportsController::class, 'divisionCountsData'])->name('reports.division-counts.data');
+    Route::get('reports/memo-list', [App\Http\Controllers\ReportsController::class, 'memoList'])->name('reports.memo-list');
+    Route::get('reports/memo-list/data', [App\Http\Controllers\ReportsController::class, 'memoListData'])->name('reports.memo-list.data');
 
     // Generic Approval Routes
     Route::post('/approve/{model}/{id}', [GenericApprovalController::class, 'updateStatus'])->name('generic.approve');

@@ -255,6 +255,15 @@
                 </a>
             </li>
 
+            <!-- Reports -->
+            <li class="nav-item">
+                <a class="nav-link {{ Request::is('reports*') ? 'active' : '' }}"
+                    href="{{ route('reports.index') }}">
+                    <div class="parent-icon"><i class="fas fa-chart-bar"></i></div>
+                    <div class="menu-title">Reports</div>
+                </a>
+            </li>
+
             <!-- Workflow Management -->
             @if (in_array(89, user_session('permissions', [])))
                 <li class="nav-item dropdown">
