@@ -357,6 +357,71 @@ class PrintHelper
     }
 
     /**
+     * Resolve which Chief of Staff approval order (10 or 11) applies for this memo.
+     * Chief of Staff exists at both level 10 and 11; only one approves per memo depending on allowed divisions.
+     * Backward compatibility: old memos approved by 10 only.
+     *
+     * @param \Illuminate\Support\Collection $approvalTrails
+     * @param int $workflowId
+     * @param mixed $divisionContext Division model, or array with division_id and/or category
+     * @return int|null 10 or 11, or null if none found
+     */
+    public static function getChiefOfStaffApprovalOrder($approvalTrails, $workflowId, $divisionContext = null)
+    {
+        $workflowId = (int) $workflowId;
+        $definitions = \App\Models\WorkflowDefinition::where('workflow_id', $workflowId)
+            ->whereIn('approval_order', [10, 11])
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order')
+            ->get();
+
+        $divisionId = null;
+        $divisionCategory = null;
+        if ($divisionContext) {
+            if (is_object($divisionContext)) {
+                $divisionId = $divisionContext->id ?? null;
+                $divisionCategory = $divisionContext->category ?? null;
+            } elseif (is_array($divisionContext)) {
+                $divisionId = $divisionContext['division_id'] ?? $divisionContext['id'] ?? null;
+                $divisionCategory = $divisionContext['category'] ?? null;
+            }
+        }
+
+        // If we have division context, find the definition that allows this division
+        if ($divisionId !== null || $divisionCategory !== null) {
+            foreach ($definitions as $def) {
+                $divisions = $def->divisions ?? [];
+                $category = $def->category ?? null;
+                $allowsDivision = false;
+                if (is_array($divisions) && $divisionId !== null && in_array($divisionId, $divisions)) {
+                    $allowsDivision = true;
+                }
+                if ($category !== null && $divisionCategory !== null && (string) $category === (string) $divisionCategory) {
+                    $allowsDivision = true;
+                }
+                if ($allowsDivision) {
+                    $order = (int) $def->approval_order;
+                    $approval = self::getLatestApprovalForOrder($approvalTrails, $order);
+                    if ($approval) {
+                        return $order;
+                    }
+                }
+            }
+        }
+
+        // Backward compatibility: try order 10 first (old memos), then 11
+        $approval10 = self::getLatestApprovalForOrder($approvalTrails, 10);
+        if ($approval10) {
+            return 10;
+        }
+        $approval11 = self::getLatestApprovalForOrder($approvalTrails, 11);
+        if ($approval11) {
+            return 11;
+        }
+        return null;
+    }
+
+    /**
      * Generate short code from division name
      */
     public static function generateShortCodeFromDivision(string $name): string
@@ -632,7 +697,12 @@ class PrintHelper
         
         return $financialApprovers;
     }
-    public static function getARFApprovers($activityApprovalTrails, $workflowId = 1)
+    /**
+     * @param \Illuminate\Support\Collection|array $activityApprovalTrails
+     * @param int $workflowId
+     * @param mixed $divisionContext Optional. Division model or array with division_id/category for Chief of Staff resolution (levels 10 vs 11).
+     */
+    public static function getARFApprovers($activityApprovalTrails, $workflowId = 1, $divisionContext = null)
     {
         $ARFApprovers = [];
         
@@ -641,15 +711,22 @@ class PrintHelper
             $activityApprovalTrails = collect($activityApprovalTrails);
         }
         
-        // Define the financial approver roles and their expected approval orders
+        // Define the financial approver roles and their expected approval orders.
+        // Chief of Staff can be at 10 or 11 depending on allowed divisions; resolved below.
         $ARFRoles = [
-             
-            'Grants' => 3,       // Endorsed by (SFO)
-            'Chief of Staff' => 10,      // Endorsed by (Director Finance)
-            'Director General' => 11, // Approved by
+            'Grants' => 3,             // Endorsed by (SFO)
+            'Chief of Staff' => null,   // Resolved via getChiefOfStaffApprovalOrder (10 or 11)
+            'Director General' => 12,  // Approved by
         ];
         
         foreach ($ARFRoles as $role => $expectedOrder) {
+            if ($role === 'Chief of Staff') {
+                $resolvedOrder = self::getChiefOfStaffApprovalOrder($activityApprovalTrails, $workflowId, $divisionContext);
+                if ($resolvedOrder === null) {
+                    continue;
+                }
+                $expectedOrder = $resolvedOrder;
+            }
             $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
             if ($approval) {
                 // If it's an ApprovalTrail model, convert to structured array format
