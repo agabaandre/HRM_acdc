@@ -557,6 +557,7 @@ class SignatureVerificationController extends Controller
             'hash_validations'           => $results['hash_validations'],
             'documents'                  => $results['documents'] ?? [],
         ];
+        $yearForPayload = $year ?? ($document ? (int) (\Carbon\Carbon::parse($document->created_at)->format('Y')) : null);
         $payload = $this->buildUnifiedPayload(
             'upload_validation',
             $document,
@@ -564,7 +565,8 @@ class SignatureVerificationController extends Controller
             $results['signatories'],
             null,
             $results['document'] ? null : 'No matching document found in the system for the extracted document number(s).',
-            $uploadExtras
+            $uploadExtras,
+            $yearForPayload
         );
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json($payload);
