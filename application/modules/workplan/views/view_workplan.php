@@ -307,7 +307,7 @@
                     <select id="yearSelect" class="form-select">
                         <?php
                         $currentYear = (int) date('Y');
-                        $defaultYear = 2025; // default to 2025 so stats show when data exists for that year
+                        $defaultYear = $currentYear; // default to current year
                         for ($y = $currentYear; $y >= 2025; $y--) {
                             $sel = ($y == $defaultYear) ? ' selected' : '';
                             echo "<option value='$y'$sel>$y</option>";
