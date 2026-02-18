@@ -1073,8 +1073,10 @@
         $sourceApprovalTrails = collect($sourceApprovalTrails);
     }
     
+    // Division context for Chief of Staff resolution (level 10 vs 11 by allowed divisions)
+    $divisionContext = isset($sourceData['division']) ? $sourceData['division'] : null;
     // All approvers (Grants, Chief of Staff, Director General) come from the same source
-    $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
+    $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1, $divisionContext);
 
     //dd($memo_approvers);
     // Extract specific approvers for easier access
