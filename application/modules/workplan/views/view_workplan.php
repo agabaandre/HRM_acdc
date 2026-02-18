@@ -445,7 +445,7 @@
                 </div>
                 <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="stat-item execution-rate">
-                        <i class="fa fa-target stat-icon"></i>
+                        <i class="fa fa-percentage stat-icon"></i>
                         <span class="stat-number" id="targetAchievement">0%</span>
                         <span class="stat-label">Target Achievement</span>
                         <div class="stat-progress">
