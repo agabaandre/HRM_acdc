@@ -598,7 +598,7 @@
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Background:</strong></td>
   </tr>
   <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><p class="justify-text"><?=strip_tags($specialMemo->background);?></p></td>
+   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><p class="justify-text"><?=trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->background ?? '')));?></p></td>
   </tr>
  </table>
 
@@ -609,7 +609,7 @@
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Justification:</strong></td>
   </tr>
   <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><p class="justify-text"><?=strip_tags($specialMemo->justification);?></p></td>
+   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><p class="justify-text"><?=trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->justification ?? '')));?></p></td>
   </tr>
  </table>
   
@@ -758,7 +758,7 @@
                             <tr>
                                 <th class="bg-highlight text-right" colspan="5">Grand Total</th>
                                 
-                                <th class="bg-highlight text-right"><?php echo number_format($grandTotal ?? 0, 2); ?></th>
+                                <th class="bg-highlight text-right">USD <?php echo number_format($grandTotal ?? 0, 2); ?></th>
                                 <th class="bg-highlight"></th>
                             </tr>
                         </tfoot>
@@ -766,7 +766,7 @@
                    
                 </div>
      <div style="margin-bottom: 0; color: #006633; font-style: italic;"><strong>Request for Approval</strong></div>
-     <div class="justify-text" style="padding: 10px;"><?php echo strip_tags($specialMemo->activity_request_remarks ?? 'N/A'); ?></div>
+     <div class="justify-text" style="padding: 10px;"><?php echo trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->activity_request_remarks ?? $specialMemo->justification ?? 'N/A'))); ?></div>
 
     <?php if($fundCode->fundType->id == 1): ?>
     <div class="page-break"></div>

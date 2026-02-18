@@ -165,7 +165,8 @@ class DocumentNumberService
     }
 
     /**
-     * Parse document number to extract components
+     * Parse document number to extract components.
+     * Format: AU/CDC/{division}/IM/{type}/{counter} e.g. AU/CDC/SDI/IM/SM/011
      */
     public static function parseDocumentNumber(string $documentNumber): array
     {
@@ -183,6 +184,28 @@ class DocumentNumberService
             'counter' => (int) $parts[5],
             'year' => null // Would need to be stored separately or in the number
         ];
+    }
+
+    /**
+     * Get the database table and model class for a document type code.
+     * Used to resolve the correct base table from a document number (e.g. SM -> activities).
+     *
+     * @param string $documentType One of: QM, NT, SPM, SM, CR, SR, ARF
+     * @return array{table: string, model: string}|null
+     */
+    public static function getTableAndModelForDocumentType(string $documentType): ?array
+    {
+        $map = [
+            DocumentCounter::TYPE_QUARTERLY_MATRIX => ['table' => 'activities', 'model' => \App\Models\Activity::class],
+            DocumentCounter::TYPE_SINGLE_MEMO     => ['table' => 'activities', 'model' => \App\Models\Activity::class],
+            DocumentCounter::TYPE_NON_TRAVEL_MEMO => ['table' => 'non_travel_memos', 'model' => \App\Models\NonTravelMemo::class],
+            DocumentCounter::TYPE_SPECIAL_MEMO    => ['table' => 'special_memos', 'model' => \App\Models\SpecialMemo::class],
+            DocumentCounter::TYPE_CHANGE_REQUEST  => ['table' => 'change_request', 'model' => \App\Models\ChangeRequest::class],
+            DocumentCounter::TYPE_SERVICE_REQUEST => ['table' => 'service_requests', 'model' => \App\Models\ServiceRequest::class],
+            DocumentCounter::TYPE_ARF             => ['table' => 'request_arfs', 'model' => \App\Models\RequestARF::class],
+        ];
+
+        return $map[$documentType] ?? null;
     }
 
     /**

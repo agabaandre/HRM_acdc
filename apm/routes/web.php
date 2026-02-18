@@ -237,6 +237,11 @@ Route::get('/returned-memos', [App\Http\Controllers\ReturnedMemosController::cla
 Route::get('/api/returned-memos', [App\Http\Controllers\ReturnedMemosController::class, 'getReturnedMemosData'])->name('returned-memos.api');
 Route::get('/api/returned-memos/filter-options', [App\Http\Controllers\ReturnedMemosController::class, 'getFilterOptions'])->name('returned-memos.filter-options');
 
+// Signature verification (validate APM document signature hashes)
+Route::get('/signature-verify', [App\Http\Controllers\SignatureVerificationController::class, 'index'])->name('signature-verify.index');
+Route::post('/signature-verify/lookup', [App\Http\Controllers\SignatureVerificationController::class, 'lookup'])->name('signature-verify.lookup');
+Route::post('/signature-verify/verify', [App\Http\Controllers\SignatureVerificationController::class, 'verify'])->name('signature-verify.verify');
+
 
 
     
