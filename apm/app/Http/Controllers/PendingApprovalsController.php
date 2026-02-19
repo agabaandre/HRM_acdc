@@ -9,6 +9,8 @@ use Illuminate\Http\JsonResponse;
 
 class PendingApprovalsController extends Controller
 {
+    use ApproverDashboardHelper;
+
     protected $pendingApprovalsService;
 
     public function __construct()
@@ -119,6 +121,14 @@ class PendingApprovalsController extends Controller
             $this->pendingApprovalsService->resetStaffId();
         }
 
+        // Average approval time for the approver being viewed — use same year/month as approver dashboard so values match
+        $year = $request->filled('year') ? (int) $request->get('year') : null;
+        $month = $request->filled('month') ? (int) $request->get('month') : null;
+        $staffIdForAvg = $staffId ? (int) $staffId : (int) user_session('staff_id');
+        $divisionIdForAvg = $staffId ? (optional(\App\Models\Staff::where('staff_id', $staffIdForAvg)->first())->division_id) : user_session('division_id');
+        $avgApprovalTimeHours = $this->getAverageApprovalTimeAll($staffIdForAvg, $divisionIdForAvg, $year, $month);
+        $avgApprovalTimeDisplay = $this->formatApprovalTime($avgApprovalTimeHours);
+
         return view('pending-approvals.index', compact(
             'pendingApprovals',
             'summaryStats',
@@ -128,7 +138,11 @@ class PendingApprovalsController extends Controller
             'division',
             'isAdminAssistant',
             'staffId',
-            'approverInfo'
+            'approverInfo',
+            'avgApprovalTimeDisplay',
+            'avgApprovalTimeHours',
+            'year',
+            'month'
         ));
     }
 
