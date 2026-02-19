@@ -738,7 +738,7 @@
   <tr>
                                         <th class="bg-highlight">#</th>
                                         <th class="bg-highlight">Name</th>
-                                        <th class="bg-highlight">Unit Cost</th>
+                                        <th class="bg-highlight">Total Daily Cost</th>
                                         <th class="bg-highlight">Units</th>
                                         <th class="bg-highlight">Days</th>
                                         <th class="bg-highlight">Total</th>
@@ -959,7 +959,7 @@
       <tr>
                                         <th class="bg-highlight">#</th>
                                         <th class="bg-highlight">Name</th>
-                                        <th class="bg-highlight">Unit Cost</th>
+                                        <th class="bg-highlight">Total Daily Cost</th>
                                         <th class="bg-highlight">Units</th>
                                         <th class="bg-highlight">Days</th>
                                         <th class="bg-highlight">Total</th>
@@ -1026,7 +1026,7 @@
                                     <tr>
                                         <th class="bg-highlight">#</th>
                                         <th class="bg-highlight">Cost Item</th>
-                                        <th class="bg-highlight">Unit Cost</th>
+                                        <th class="bg-highlight">Total Daily Cost</th>
                                         <th class="bg-highlight">Quantity</th>
                                         <th class="bg-highlight">Total</th>
                                         <th class="bg-highlight">Description</th>
