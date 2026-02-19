@@ -462,11 +462,11 @@ class ActivityController extends Controller
     $budgetCodes = FundCode::with('funder:id,name,show_activity_code,activity_code_label')
         ->where('fund_type_id', $request->fund_type_id)
         ->where('is_active', true)
-            ->where(function ($query) use ($request) {
-                $query->where('division_id', $request->division_id)
-                      ->orWhereNull('division_id')
-                      ->orWhere('division_id', '');
-            })
+        ->where(function ($query) use ($request) {
+            $query->where('division_id', $request->division_id)
+                  ->orWhereNull('division_id')
+                  ->orWhere('division_id', '');
+        })
         ->get(['id', 'code', 'activity', 'budget_balance', 'funder_id']);
 
     $result = $budgetCodes->map(function ($code) {
