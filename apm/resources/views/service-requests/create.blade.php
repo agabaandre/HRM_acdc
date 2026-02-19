@@ -339,7 +339,7 @@
                                             <tr>
                                                 <th class="text-center">#</th>
                                                 <th>Cost Item</th>
-                                                <th class="text-end">Unit Cost</th>
+                                                <th class="text-end">Total Daily Cost</th>
                                                 <th class="text-end">Units</th>
                                                 <th class="text-end">Days</th>
                                                 <th class="text-end">Total</th>
@@ -745,7 +745,7 @@
                             <thead class="table-secondary">
                                 <tr>
                                 <th>Cost Type</th>
-                                <th>Unit Cost</th>
+                                <th>Total Daily Cost</th>
                                 <th>No. of Days</th>
                                 <th>Description</th>
                                 <th>Total</th>
