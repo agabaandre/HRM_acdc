@@ -343,10 +343,10 @@ class ReportsController extends Controller
     /**
      * Reports index: list all reports (links to division counts, memo list, etc.).
      */
-    public function index()
-    {
-        return view('reports.index');
-    }
+	public function index()
+	{
+		return view('reports.index');
+	}
 
     /**
      * Division memo counts report page (data loaded via AJAX).

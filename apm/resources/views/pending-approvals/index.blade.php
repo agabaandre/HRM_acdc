@@ -219,12 +219,13 @@
     <div class="col-12 col-md-8 col-lg-6">
         <div class="card shadow-sm">
             <div class="card-body text-center py-3">
-                <p class="text-muted mb-0 small">
+                <p class="mb-0" style="font-size: 1.05rem; color: #495057;">
                     @if(!empty($staffId))
                         This approver takes an average of <strong>{{ $avgApprovalTimeDisplay }}</strong> to approve.
                     @else
                         You take an average of <strong>{{ $avgApprovalTimeDisplay }}</strong> to approve.
                     @endif
+                    <i class="fas fa-info-circle ms-1 text-info" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="This average goes down when you approve incoming memos promptly. Approving items sooner reduces your average approval time." aria-label="Info"></i>
                 </p>
             </div>
         </div>
@@ -382,6 +383,10 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    // Initialize Bootstrap tooltips (e.g. average approval time info)
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function(el) { new bootstrap.Tooltip(el); });
+
     // Filter functionality
     $('#categoryFilter, #divisionFilter').on('change', function() {
         const category = $('#categoryFilter').val();
