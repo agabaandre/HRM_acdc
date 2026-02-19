@@ -214,6 +214,24 @@
     </div>
 </div>
 
+@if(isset($avgApprovalTimeDisplay) && (float)($avgApprovalTimeHours ?? 0) > 0)
+<div class="row mb-3 justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-3">
+                <p class="text-muted mb-0 small">
+                    @if(!empty($staffId))
+                        This approver takes an average of <strong>{{ $avgApprovalTimeDisplay }}</strong> to approve.
+                    @else
+                        You take an average of <strong>{{ $avgApprovalTimeDisplay }}</strong> to approve.
+                    @endif
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Filters -->
 <div class="card mb-4">
     <div class="card-body">

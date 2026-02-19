@@ -526,6 +526,11 @@ let filterOptions = {};
         let hasPermission88 = {{ $hasPermission88 ? 'true' : 'false' }};
 const baseUrl = '{{ user_session("base_url") ?? url("/") }}';
 const pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
+function pendingApprovalsFilterParams() {
+    const y = $('#filterYear').val();
+    const m = $('#filterMonth').val();
+    return (y ? '&year=' + encodeURIComponent(y) : '') + (m ? '&month=' + encodeURIComponent(m) : '');
+}
 
 $(document).ready(function() {
     // Load filter options first, then initialize DataTable
@@ -856,26 +861,27 @@ function initializeDataTable() {
                 searchable: false,
                 render: function(data, type, row) {
                     let html = '<div class="d-flex flex-wrap gap-1">';
+                    const filterParams = pendingApprovalsFilterParams();
                     if (row.pending_counts.matrix > 0) {
-                        html += `<a href="${pendingApprovalsBaseUrl}?category=Matrix&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Matrix">Matrix: ${row.pending_counts.matrix}</a>`;
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Matrix&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Matrix">Matrix: ${row.pending_counts.matrix}</a>`;
                     }
                     if (row.pending_counts.non_travel > 0) {
-                        html += `<a href="${pendingApprovalsBaseUrl}?category=Non-Travel Memo&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Non-Travel Memos">Non-Travel: ${row.pending_counts.non_travel}</a>`;
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Non-Travel Memo&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Non-Travel Memos">Non-Travel: ${row.pending_counts.non_travel}</a>`;
                     }
                     if (row.pending_counts.single_memos > 0) {
-                        html += `<a href="${pendingApprovalsBaseUrl}?category=Single Memo&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Single Memos">Single: ${row.pending_counts.single_memos}</a>`;
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Single Memo&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Single Memos">Single: ${row.pending_counts.single_memos}</a>`;
                     }
                     if (row.pending_counts.special > 0) {
-                        html += `<a href="${pendingApprovalsBaseUrl}?category=Special Memo&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Special Memos">Special: ${row.pending_counts.special}</a>`;
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Special Memo&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Special Memos">Special: ${row.pending_counts.special}</a>`;
                     }
                     if (row.pending_counts.arf > 0) {
-                        html += `<a href="${pendingApprovalsBaseUrl}?category=ARF&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="ARF Requests">ARF: ${row.pending_counts.arf}</a>`;
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=ARF&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="ARF Requests">ARF: ${row.pending_counts.arf}</a>`;
                     }
                     if (row.pending_counts.requests_for_service > 0) {
-                        html += `<a href="${pendingApprovalsBaseUrl}?category=Service Request&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Service Requests">Requests: ${row.pending_counts.requests_for_service}</a>`;
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Service Request&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Service Requests">Requests: ${row.pending_counts.requests_for_service}</a>`;
                     }
                     if ((row.pending_counts.change_requests || 0) > 0) {
-                        html += `<a href="${pendingApprovalsBaseUrl}?category=Change Request&staff_id=${row.staff_id}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Change Requests">Change: ${row.pending_counts.change_requests || 0}</a>`;
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Change Request&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Change Requests">Change: ${row.pending_counts.change_requests || 0}</a>`;
                     }
                     if (row.total_pending === 0) {
                         html += `<span class="badge bg-light text-dark">No pending items</span>`;
