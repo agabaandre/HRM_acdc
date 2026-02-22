@@ -410,6 +410,44 @@ public function get_current_staff(){
 }
 
 /**
+ * Get users (for API consumers e.g. APM sync).
+ * Returns user records with email from staff.work_email. Optional limit/start for pagination.
+ * GET /share/users?limit=100&start=0
+ */
+public function users()
+{
+	if ($this->api_login()) {
+		try {
+			$limit = (int) $this->input->get('limit');
+			$start = (int) $this->input->get('start');
+			$this->db->select('user.user_id, user.password, user.name, user.role, user.auth_staff_id, user.status, user.created_at, user.changed, user.isChanged, user.photo, user.signature, user.is_approved, user.is_verfied, user.langauge, staff.work_email AS email');
+			$this->db->from('user');
+			$this->db->join('staff', 'staff.staff_id = user.auth_staff_id', 'left');
+			$this->db->order_by('user.user_id', 'ASC');
+			if ($limit > 0) {
+				$this->db->limit($limit, $start);
+			}
+			$result = $this->db->get()->result_array();
+			if (!headers_sent()) {
+				header('Content-Type: application/json');
+				http_response_code(200);
+			}
+			echo json_encode($result);
+		} catch (Exception $e) {
+			if (!headers_sent()) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+			}
+			echo json_encode(array('success' => false, 'error' => 'Database error: ' . $e->getMessage()));
+		}
+	} else {
+		header('Content-Type: application/json');
+		http_response_code(401);
+		echo json_encode(array('success' => false, 'error' => 'Authentication Failed! Invalid Request'));
+	}
+}
+
+/**
  * Get signature for a specific staff member
  * Accepts staff_id as GET parameter
  */
@@ -1536,6 +1574,16 @@ public function validate_password($post_password,$dbpassword){
 						'start' => ['type' => 'integer', 'required' => false]
 					],
 					'example' => base_url('share/get_current_staff?limit=10&start=0')
+				],
+				'users' => [
+					'url' => base_url('share/users'),
+					'method' => 'GET',
+					'description' => 'Get users (with email from staff). For API consumers e.g. APM sync.',
+					'parameters' => [
+						'limit' => ['type' => 'integer', 'required' => false],
+						'start' => ['type' => 'integer', 'required' => false]
+					],
+					'example' => base_url('share/users?limit=100&start=0')
 				]
 			],
 			'response_format' => [
