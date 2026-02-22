@@ -81,6 +81,7 @@ curl -X POST 'http://localhost/staff/apm/api/apm/v1/auth/logout'
 | **Auth** | GET | `/auth/me` | Current user |
 | **Pending** | GET | `/pending-approvals` | Pending items **with approval_trails**, grouped by category |
 | **Pending** | GET | `/pending-approvals/summary` | Summary counts only |
+| **Documents** | GET | `/documents/{type}/{status}` | All documents of type with status (optional `?id=` for one) |
 | **Documents** | GET | `/documents/{type}/{id}` | Full document **with approval_trails** |
 | **Actions** | POST | `/actions` | Apply action (approve/reject/return/cancel) to one document |
 | **Approved by me** | GET | `/approved-by-me` | Documents approved/rejected by current user |
@@ -100,6 +101,8 @@ curl -X POST 'http://localhost/staff/apm/api/apm/v1/auth/logout'
 - **GET /documents/{type}/{id}** returns a single document with full detail and **`approval_trails`** in the same shape (id, action, remarks, approval_order, staff_id, staff_name, oic_staff_id, oic_staff_name, role, created_at, is_archived).
 
 **Document types:** `special_memo`, `matrix`, `activity`, `non_travel_memo`, `service_request`, `arf`, `change_request`.
+
+**List by type and status:** `GET /documents/{type}/{status}` returns all documents of that type with the given `overall_status` (e.g. `pending`, `approved`, `draft`, `rejected`, `returned`). Add `?id=32` to return a single document (must match type and status). Each document in the response includes `approval_trails` and `attachments` (with `url`). When listing (no `id`), results are **ordered latest first** (year desc, quarter desc, created_at desc) and support the same filters as the memo-list report: **year**, **quarter** (Q1–Q4), **title** (search in title/activity_title), **document_number** (search), **per_page** (1–100, default 20), **page** (default 1). The response includes `total`, `per_page`, `current_page`, `last_page`, and `filters` (echo of applied filter params).
 
 ---
 

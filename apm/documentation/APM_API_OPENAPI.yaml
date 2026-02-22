@@ -181,13 +181,109 @@ paths:
         '200':
           description: Summary stats
 
+  /documents/{type}/{status}:
+    get:
+      tags: [Documents]
+      summary: List documents by type and status
+      description: |
+        Returns all documents of the given type with the given overall_status (from mother models).
+        Optional query parameter **id** returns a single document when provided.
+        When listing (no id), results are ordered **latest first** (year desc, quarter desc, created_at desc)
+        and support memo-list style filters and pagination.
+        Each document includes approval_trails and attachments (with url for download).
+      operationId: listDocumentsByTypeAndStatus
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [special_memo, matrix, activity, non_travel_memo, service_request, arf, change_request]
+        - name: status
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [pending, approved, draft, rejected, returned]
+        - name: id
+          in: query
+          required: false
+          schema: { type: integer }
+          description: If provided, return only this document (must match type and status).
+        - name: year
+          in: query
+          required: false
+          schema: { type: string }
+          description: Filter by year (matrix/activity use matrix year; others use created_at year).
+        - name: quarter
+          in: query
+          required: false
+          schema: { type: string, enum: [Q1, Q2, Q3, Q4] }
+          description: Filter by quarter (matrix/activity use matrix quarter; others use QUARTER(created_at)).
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+          description: Search in title/activity_title (LIKE %value%). Service request uses title and service_title.
+        - name: document_number
+          in: query
+          required: false
+          schema: { type: string }
+          description: Search in document_number (LIKE %value%).
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+          description: Number of items per page (list only).
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1, minimum: 1 }
+          description: Page number (list only).
+      responses:
+        '200':
+          description: List of documents or single document (when id provided).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    description: Single document when id query param is provided.
+                    properties:
+                      success: { type: boolean }
+                      data:
+                        type: object
+                        description: One document with document_type, approval_trails, attachments.
+                  - type: object
+                    description: List when id is not provided (paginated, latest first).
+                    properties:
+                      success: { type: boolean }
+                      data: { type: array, items: { type: object } }
+                      count: { type: integer, description: Items in this page }
+                      total: { type: integer, description: Total items matching filters }
+                      per_page: { type: integer }
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                      filters:
+                        type: object
+                        description: Echo of applied filter query params (year, quarter, title, document_number).
+                        properties:
+                          year: { type: string, nullable: true }
+                          quarter: { type: string, nullable: true }
+                          title: { type: string, nullable: true }
+                          document_number: { type: string, nullable: true }
+        '404':
+          description: Document not found or status mismatch
+
   /documents/{type}/{id}:
     get:
       tags: [Documents]
-      summary: Get document
+      summary: Get document by id
       description: |
-        Document by type and id. Includes approval_trails and attachments.
+        Single document by type and id (regardless of status). Includes approval_trails and attachments.
         Each attachment has a url that can be used to download the file (GET with same Bearer token).
+        For listing by status use GET /documents/{type}/{status}.
       operationId: getDocument
       security: [{ bearerAuth: [] }]
       parameters:

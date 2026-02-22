@@ -64,6 +64,64 @@ class ApmDocumentController extends Controller
     }
 
     /**
+     * List documents by type and status (from mother models). Optional query param id returns single document.
+     * GET /documents/{type}/{status} or /documents/{type}/{status}?id=32
+     */
+    public function listByTypeAndStatus(Request $request, string $type, string $status): JsonResponse
+    {
+        if (!$request->attributes->get('api_user_session')) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $idParam = $request->query('id');
+        if ($idParam !== null && $idParam !== '') {
+            $id = (int) $idParam;
+            if ($id <= 0) {
+                return response()->json(['success' => false, 'message' => 'Invalid id parameter.'], 400);
+            }
+            $query = $this->queryByTypeAndStatus($type, $status);
+            if ($query === null) {
+                return response()->json(['success' => false, 'message' => 'Unknown document type.'], 400);
+            }
+            $model = $query->where('id', $id)->first();
+            if (!$model) {
+                return response()->json(['success' => false, 'message' => 'Document not found or does not have the requested status.'], 404);
+            }
+            $data = $this->modelToDocumentData($model, $type, $id);
+            return response()->json(['success' => true, 'data' => $data]);
+        }
+
+        $query = $this->queryByTypeAndStatus($type, $status);
+        if ($query === null) {
+            return response()->json(['success' => false, 'message' => 'Unknown document type.'], 400);
+        }
+
+        $this->applyDocumentFilters($query, $type, $request);
+        $this->applyDocumentOrder($query, $type);
+
+        $perPage = max(1, min(100, (int) $request->get('per_page', 20)));
+        $page = max(1, (int) $request->get('page', 1));
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+        $data = $paginator->getCollection()->map(fn ($model) => $this->modelToDocumentData($model, $type, (int) $model->id))->values()->toArray();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'count' => count($data),
+            'total' => $paginator->total(),
+            'per_page' => $perPage,
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'filters' => [
+                'year' => $request->get('year'),
+                'quarter' => $request->get('quarter'),
+                'title' => $request->get('title'),
+                'document_number' => $request->get('document_number'),
+            ],
+        ]);
+    }
+
+    /**
      * Get document data by type and id (API-shaped for approver app).
      */
     public function show(Request $request, string $type, int $id): JsonResponse
@@ -203,6 +261,159 @@ class ApmDocumentController extends Controller
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'change_request', $id);
         return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /**
+     * Build Eloquent query for document type filtered by overall_status.
+     */
+    private function queryByTypeAndStatus(string $type, string $status): \Illuminate\Database\Eloquent\Builder|null
+    {
+        $status = strtolower($status);
+        return match ($type) {
+            'special_memo' => SpecialMemo::with([
+                'staff', 'division', 'requestType', 'fundType', 'responsiblePerson',
+                'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
+            ])->where('overall_status', $status),
+            'matrix' => Matrix::with([
+                'division', 'staff', 'focalPerson', 'forwardWorkflow',
+                'matrixApprovalTrails.staff', 'matrixApprovalTrails.oicStaff',
+                'activities' => fn ($q) => $q->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson']),
+            ])->where('overall_status', $status),
+            'activity', 'single_memo' => Activity::with([
+                'staff', 'requestType', 'fundType', 'responsiblePerson', 'matrix.division',
+                'activity_budget.fundcode.funder',
+                'activityApprovalTrails.staff', 'activityApprovalTrails.oicStaff',
+                'approvalTrails.staff', 'approvalTrails.oicStaff',
+            ])->where('overall_status', $status),
+            'non_travel_memo' => NonTravelMemo::with([
+                'staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+            ])->where('overall_status', $status),
+            'service_request' => ServiceRequest::with([
+                'staff', 'division', 'activity', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+            ])->where('overall_status', $status),
+            'arf' => RequestARF::with([
+                'staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+            ])->where('overall_status', $status),
+            'change_request' => ChangeRequest::with([
+                'staff', 'division', 'matrix', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
+            ])->where('overall_status', $status),
+            default => null,
+        };
+    }
+
+    /**
+     * Apply memo-list style filters to the documents query (year, quarter, title, document_number).
+     */
+    private function applyDocumentFilters(\Illuminate\Database\Eloquent\Builder $query, string $type, Request $request): void
+    {
+        $year = $request->filled('year') ? (string) $request->get('year') : null;
+        $quarter = $request->filled('quarter') ? $request->get('quarter') : null;
+        $title = $request->filled('title') ? trim((string) $request->get('title')) : null;
+        $documentNumber = $request->filled('document_number') ? trim((string) $request->get('document_number')) : null;
+
+        if ($type === 'matrix') {
+            if ($year !== null) {
+                $query->where('year', $year);
+            }
+            if ($quarter !== null && in_array($quarter, ['Q1', 'Q2', 'Q3', 'Q4'], true)) {
+                $query->where('quarter', $quarter);
+            }
+            // Matrix has no activity_title / document_number in list view; skip title/document_number
+            return;
+        }
+
+        if ($type === 'activity' || $type === 'single_memo') {
+            if ($year !== null || $quarter !== null) {
+                $query->whereHas('matrix', function ($q) use ($year, $quarter) {
+                    if ($year !== null) {
+                        $q->where('year', $year);
+                    }
+                    if ($quarter !== null && in_array($quarter, ['Q1', 'Q2', 'Q3', 'Q4'], true)) {
+                        $q->where('quarter', $quarter);
+                    }
+                });
+            }
+            if ($title !== null) {
+                $query->where('activity_title', 'like', '%' . addcslashes($title, '%_\\') . '%');
+            }
+            if ($documentNumber !== null) {
+                $query->where('document_number', 'like', '%' . addcslashes($documentNumber, '%_\\') . '%');
+            }
+            return;
+        }
+
+        // special_memo, non_travel_memo, service_request, arf, change_request: year/quarter from created_at
+        if ($year !== null) {
+            $query->whereYear('created_at', $year);
+        }
+        if ($quarter !== null && in_array($quarter, ['Q1', 'Q2', 'Q3', 'Q4'], true)) {
+            $qNum = (int) substr($quarter, 1);
+            $query->whereRaw('QUARTER(created_at) = ?', [$qNum]);
+        }
+
+        if ($type === 'service_request') {
+            if ($title !== null) {
+                $esc = addcslashes($title, '%_\\');
+                $query->where(function ($q) use ($esc) {
+                    $q->where('title', 'like', '%' . $esc . '%')
+                        ->orWhere('service_title', 'like', '%' . $esc . '%');
+                });
+            }
+            if ($documentNumber !== null) {
+                $query->where('document_number', 'like', '%' . addcslashes($documentNumber, '%_\\') . '%');
+            }
+        } else {
+            // special_memo, non_travel_memo, arf, change_request: activity_title, document_number
+            if ($title !== null) {
+                $query->where('activity_title', 'like', '%' . addcslashes($title, '%_\\') . '%');
+            }
+            if ($documentNumber !== null) {
+                $query->where('document_number', 'like', '%' . addcslashes($documentNumber, '%_\\') . '%');
+            }
+        }
+    }
+
+    /**
+     * Order documents by latest first (memo-list style: year desc, quarter desc, created_at desc).
+     */
+    private function applyDocumentOrder(\Illuminate\Database\Eloquent\Builder $query, string $type): void
+    {
+        if ($type === 'matrix') {
+            $query->orderBy('year', 'desc')
+                ->orderByRaw("FIELD(quarter, 'Q4','Q3','Q2','Q1')")
+                ->orderBy('created_at', 'desc');
+            return;
+        }
+        if ($type === 'activity' || $type === 'single_memo') {
+            $query->leftJoin('matrices', 'activities.matrix_id', '=', 'matrices.id')
+                ->select('activities.*')
+                ->orderBy('matrices.year', 'desc')
+                ->orderByRaw("FIELD(matrices.quarter, 'Q4','Q3','Q2','Q1') DESC")
+                ->orderBy('activities.created_at', 'desc');
+            return;
+        }
+        $query->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Convert a loaded model to API document data (document_type, approval_trails, attachments).
+     */
+    private function modelToDocumentData(object $model, string $type, int $id): array
+    {
+        $data = $model->toArray();
+        $data['document_type'] = $type === 'activity' && isset($model->is_single_memo) && $model->is_single_memo ? 'single_memo' : $type;
+        if ($type === 'matrix') {
+            $data['approval_trails'] = $this->formatApprovalTrails($model->matrixApprovalTrails ?? collect());
+        } elseif ($type === 'activity' || $type === 'single_memo') {
+            $trails = isset($model->is_single_memo) && $model->is_single_memo
+                ? ($model->approvalTrails ?? collect())
+                : ($model->activityApprovalTrails ?? collect());
+            $data['approval_trails'] = $this->formatApprovalTrails($trails);
+        } else {
+            $data['approval_trails'] = $this->formatApprovalTrails($model->approvalTrails ?? collect());
+        }
+        $data['attachments'] = $this->buildAttachmentsWithUrls($model, $type, $id);
+        return $data;
     }
 
     /**
