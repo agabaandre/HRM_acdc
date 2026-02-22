@@ -38,7 +38,8 @@ Route::prefix('apm/v1')->group(function () {
         Route::get('pending-approvals', [ApmPendingController::class, 'index']);
         Route::get('pending-approvals/summary', [ApmPendingController::class, 'summary']);
 
-        Route::get('documents/{type}/{id}', [ApmDocumentController::class, 'show'])->where('type', 'special_memo|matrix|activity|non_travel_memo|service_request|arf|change_request');
+        Route::get('documents/{type}/{status}', [ApmDocumentController::class, 'listByTypeAndStatus'])->where('type', 'special_memo|matrix|activity|non_travel_memo|service_request|arf|change_request')->where('status', 'pending|approved|draft|rejected|returned');
+        Route::get('documents/{type}/{id}', [ApmDocumentController::class, 'show'])->where('type', 'special_memo|matrix|activity|non_travel_memo|service_request|arf|change_request')->where('id', '[0-9]+');
         Route::get('documents/attachments/{type}/{id}/{index}', [ApmDocumentController::class, 'attachment'])->where('type', 'special_memo|matrix|activity|non_travel_memo|service_request|arf|change_request')->where('index', '[0-9]+');
 
         Route::post('actions', [ApmApprovalController::class, 'action']);
