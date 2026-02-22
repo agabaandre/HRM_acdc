@@ -64,8 +64,9 @@ The platform consists of three integrated modules working seamlessly together:
 - ✅ Document processing & numbering
 - ✅ Budget approvals
 - ✅ Activity tracking
+- ✅ **REST API** (JWT) – pending approvals, documents with approval trails & attachment URLs, actions, memo list
 
-[📖 Documentation](./apm/documentation/) | [🚀 Quick Start](./apm/README.md)
+[📖 Documentation](./apm/documentation/) | [📡 API Docs](./apm/documentation/API_DOCUMENTATION.md) | [🚀 Quick Start](./apm/README.md)
 
 </td>
 <td align="center" width="33%">
@@ -157,11 +158,16 @@ npm run dev:all
 | [**📚 Main Documentation Hub**](./documentation/README.md) | Central documentation for the entire platform |
 | [**👥 Staff Portal Docs**](./assets/ENVIRONMENT_VARIABLES.md) | Configuration and setup guides |
 | [**📋 APM Documentation**](./apm/documentation/README.md) | Laravel Approvals Management System |
+| [**📡 APM API Documentation**](./apm/documentation/API_DOCUMENTATION.md) | REST API (JWT), endpoints, approval trails, attachments, Swagger at `/docs` |
 | [**💰 Finance Documentation**](./finance/documentation/README.md) | Node.js/React Finance Module |
 
 </div>
 
 ### 🔑 Key Guides
+
+**APM API (integrations & approver apps):**
+- [APM API Documentation](./apm/documentation/API_DOCUMENTATION.md) - Auth, endpoints, approval trails, attachments, examples
+- [OpenAPI/Swagger spec](./apm/documentation/APM_API_OPENAPI.yaml) - Full request/response schemas; interactive docs at `/docs` when APM is running
 
 **Infrastructure & Setup:**
 - [Environment Variables](./assets/ENVIRONMENT_VARIABLES.md) - Configuration guide
@@ -197,24 +203,39 @@ See [documentation/README.md](./documentation/README.md) for detailed integratio
 
 ```
 staff/
-├── 📄 README.md                    # This file
-├── 📚 documentation/               # Main documentation hub
-│   └── README.md                  # Central documentation index
-├── 👥 application/                 # CodeIgniter Staff Portal
-│   ├── modules/                   # Application modules
-│   └── config/                    # Configuration files
-├── 📋 apm/                        # Laravel APM module
-│   ├── app/                       # Laravel application
-│   ├── documentation/             # APM documentation
-│   └── README.md                  # APM main README
-├── 💰 finance/                    # Node.js/React Finance module
-│   ├── server/                    # Express.js backend
-│   ├── frontend/                  # React frontend
-│   ├── documentation/             # Finance documentation
-│   └── README.md                  # Finance main README
-├── 🎨 assets/                     # Shared assets
-│   └── images/                    # Images and graphics
-└── ⚙️ system/                     # CodeIgniter system files
+├── 📄 README.md                         # This file
+├── 📚 documentation/                    # Main documentation hub
+│   └── README.md                        # Central documentation index
+├── 👥 application/                      # CodeIgniter Staff Portal
+│   ├── modules/                         # Application modules (auth, share, staff, …)
+│   │   └── share/                       # Share API (users, divisions, directorates, get_current_staff)
+│   ├── config/                          # Database, routes, etc.
+│   └── ...
+├── 📋 apm/                              # Laravel APM module
+│   ├── app/
+│   │   ├── Http/Controllers/Api/        # APM API controllers (auth, documents, actions, …)
+│   │   ├── Models/                      # Eloquent models (ApmApiUser, SpecialMemo, …)
+│   │   ├── Services/                    # PendingApprovalsService, ApprovalService, …
+│   │   └── Console/Commands/             # users:sync, divisions:sync, …
+│   ├── routes/
+│   │   ├── api.php                      # APM API routes (/api/apm/v1/…)
+│   │   └── web.php                     # Web routes, /docs (Swagger UI)
+│   ├── documentation/                   # APM documentation
+│   │   ├── README.md                    # APM docs index
+│   │   ├── API_DOCUMENTATION.md         # REST API guide (auth, endpoints, attachments)
+│   │   ├── APM_API_OPENAPI.yaml         # OpenAPI 3.0 spec (Swagger)
+│   │   ├── DEPLOYMENT.md, CRON_SETUP.md # Operations
+│   │   └── ...                          # Approval trails, queues, etc.
+│   ├── public/                          # Web root (storage link for uploads)
+│   └── README.md                        # APM quick start
+├── 💰 finance/                          # Node.js/React Finance module
+│   ├── server/                          # Express.js backend
+│   ├── frontend/                        # React frontend
+│   ├── documentation/                   # Finance documentation
+│   └── README.md                        # Finance main README
+├── 🎨 assets/                            # Shared assets
+│   └── images/                          # Images and graphics
+└── ⚙️ system/                            # CodeIgniter system files
 ```
 
 ---
@@ -227,6 +248,7 @@ staff/
 |-----------|----------------|
 | 🔐 **Unified Authentication** | Single sign-on across all modules |
 | 📊 **Approval Workflows** | Multi-level approval processes |
+| 📡 **APM REST API** | JWT API for pending approvals, documents (with approval trails & attachment URLs), actions, memo list |
 | 💰 **Financial Management** | Advances, budgets, and tracking |
 | 👥 **Staff Management** | Profiles, contracts, and HR services |
 | 📈 **Performance Tracking** | Task monitoring and reporting |
@@ -264,7 +286,7 @@ For issues or questions:
 <div align="center">
 
 **Version**: 1.0.0  
-**Last Updated**: 2024
+**Last Updated**: 2026
 
 ---
 

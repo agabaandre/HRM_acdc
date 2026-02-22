@@ -559,7 +559,46 @@ curl -u "email:password" \
 
 ---
 
-### 12. Get Staff Signature
+### 12. Get Users
+
+Get users (for API consumers e.g. APM sync). Returns user records with `email` from staff `work_email`. Supports pagination.
+
+**Endpoint:** `GET /share/users`
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `limit` | integer | No | Limit number of results |
+| `start` | integer | No | Start offset for pagination |
+
+**Example Request:**
+
+```bash
+curl -u "email:password" \
+  "https://cbp.africacdc.org/staff/share/users?limit=100&start=0"
+```
+
+**Example Response:**
+
+```json
+[
+  {
+    "user_id": 1,
+    "name": "John Doe",
+    "role": "2",
+    "auth_staff_id": 123,
+    "status": "1",
+    "created_at": "2024-01-15 10:00:00",
+    "email": "john.doe@example.com",
+    ...
+  }
+]
+```
+
+---
+
+### 13. Get Staff Signature
 
 Get staff signature image as base64-encoded data.
 
@@ -592,7 +631,7 @@ curl -u "email:password" \
 
 ---
 
-### 13. Get Staff Photo
+### 14. Get Staff Photo
 
 Get staff photo image as base64-encoded data.
 
@@ -625,7 +664,7 @@ curl -u "email:password" \
 
 ---
 
-### 14. Validate Session
+### 15. Validate Session
 
 Validate a Bearer token session for Laravel app integration.
 
@@ -672,7 +711,7 @@ curl -X POST \
 
 ---
 
-### 15. Refresh Token
+### 16. Refresh Token
 
 Refresh a Bearer token for Laravel app integration. Extends token expiry by 2 hours.
 
@@ -705,7 +744,7 @@ curl -X POST \
 
 ---
 
-### 16. API Documentation
+### 17. API Documentation
 
 Get interactive API documentation.
 
