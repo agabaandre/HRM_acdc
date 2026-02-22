@@ -11,7 +11,8 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 
 ### API
 
-- **[APM API (OpenAPI/Swagger)](./APM_API_OPENAPI.yaml)** - OpenAPI 3.0 specification for the APM REST API (JWT auth, pending approvals, documents, actions, memo list). **Interactive docs:** open `/docs` in the browser (e.g. `http://localhost/staff/apm/docs`).
+- **[APM API Documentation](./API_DOCUMENTATION.md)** - REST API guide: auth, endpoints, pending approvals with approval trails, actions, memo list, and examples.
+- **[APM API (OpenAPI/Swagger)](./APM_API_OPENAPI.yaml)** - OpenAPI 3.0 specification (full request/response schemas). **Interactive docs:** open `/docs` in the browser (e.g. `http://localhost/staff/apm/docs`).
 
 ### Core Features
 
@@ -86,9 +87,10 @@ php artisan view:clear
 ### For Developers
 
 1. **APM API (approver apps / integrations)**
+   - **[API Documentation](./API_DOCUMENTATION.md)** - Auth, endpoints, approval trails, actions, and curl examples
    - OpenAPI spec: [APM_API_OPENAPI.yaml](./APM_API_OPENAPI.yaml)
    - Interactive Swagger UI: visit `/docs` when the app is running (e.g. `http://localhost/staff/apm/docs`)
-   - See [System Updates](./SYSTEM_UPDATES.md) for API summary (auth, pending, documents, actions, memo list, etc.)
+   - See [System Updates](./SYSTEM_UPDATES.md) for API summary and changelog
 
 2. **Understanding Approval System**
    - Start with [Approval Trail Management](./APPROVAL_TRAIL_MANAGEMENT.md)
