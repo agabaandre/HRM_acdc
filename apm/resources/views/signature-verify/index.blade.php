@@ -40,11 +40,11 @@
                     <h5 class="mb-0 text-white"><i class="fas fa-file-upload me-2"></i>Validate uploaded document</h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted small">Upload an APM PDF. The document number and signature hashes will be read from the file and validated against the system. The file is not stored on the server.</p>
+                    <p class="text-muted small">Upload an APM PDF. The document number and signature hashes will be read from the file and validated against the system. The file is not stored on the server. <strong>PDF only</strong>; max 10MB.</p>
                     <form id="form-upload" action="{{ route('signature-verify.validate-upload') }}" method="POST" enctype="multipart/form-data" class="row g-3 verification-form">
                         @csrf
                         <div class="col-12">
-                            <label for="upload_document" class="form-label">PDF document</label>
+                            <label for="upload_document" class="form-label">PDF document (PDF only)</label>
                             <input type="file" class="form-control" id="upload_document" name="document" accept=".pdf,application/pdf" required>
                         </div>
                         <div class="col-12">

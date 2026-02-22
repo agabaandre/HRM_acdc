@@ -71,9 +71,13 @@ Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 // APM API login at /auth/login (same handler as api/apm/v1/auth/login) so POST /auth/login works when base URL is e.g. /staff/apm
 Route::post('auth/login', [App\Http\Controllers\Api\ApmAuthController::class, 'login'])->name('apm.api.login');
 
-// Public FAQ and Help (no login required; place before session middleware so they are reachable from login page)
+// Public FAQ, Help and Documentation (no login required; no system menu)
 Route::get('/faq', [App\Http\Controllers\FaqController::class, 'publicPage'])->name('faq.index');
 Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
+Route::get('/help/user-guide', [App\Http\Controllers\HelpController::class, 'userGuide'])->name('help.user-guide');
+Route::get('/help/approvers-guide', [App\Http\Controllers\HelpController::class, 'approversGuide'])->name('help.approvers-guide');
+Route::get('/documentation', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation');
+Route::get('/documentation/{file}', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation.file')->where('file', '[a-zA-Z0-9_-]+\.md');
 
 // Home route
 Route::get('/home', function () {
@@ -194,12 +198,6 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
     
-    // Help & Documentation Routes (/help is public above; user-guide and approvers-guide require session)
-    Route::get('/help/user-guide', [App\Http\Controllers\HelpController::class, 'userGuide'])->name('help.user-guide');
-    Route::get('/help/approvers-guide', [App\Http\Controllers\HelpController::class, 'approversGuide'])->name('help.approvers-guide');
-    Route::get('/documentation', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation');
-    Route::get('/documentation/{file}', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation.file')->where('file', '[a-zA-Z0-9_-]+\.md');
-    
     // Systemd Monitor Routes
     Route::get('/systemd-monitor', [App\Http\Controllers\SystemdMonitorController::class, 'index'])->name('systemd-monitor.index');
     Route::post('/systemd-monitor/execute', [App\Http\Controllers\SystemdMonitorController::class, 'executeCommand'])->name('systemd-monitor.execute');
@@ -246,6 +244,8 @@ Route::post('/signature-verify/lookup', [App\Http\Controllers\SignatureVerificat
 Route::post('/signature-verify/verify', [App\Http\Controllers\SignatureVerificationController::class, 'verify'])->name('signature-verify.verify');
 Route::post('/signature-verify/validate-upload', [App\Http\Controllers\SignatureVerificationController::class, 'validateUpload'])->name('signature-verify.validate-upload');
 Route::get('/signature-verify/print', [App\Http\Controllers\SignatureVerificationController::class, 'printPdf'])->name('signature-verify.print');
+// API endpoint for document verification via upload (PDF only); same handler, returns JSON when Accept: application/json
+Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerificationController::class, 'validateUpload'])->name('api.documents.verify');
 
 
 

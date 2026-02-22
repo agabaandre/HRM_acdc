@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ApmApprovedByMeController;
 use App\Http\Controllers\Api\ApmMatrixController;
 use App\Http\Controllers\Api\ApmActivityController;
 use App\Http\Controllers\Api\ApmMemoListController;
+use App\Http\Controllers\Api\ApmReferenceDataController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -55,5 +56,7 @@ Route::prefix('apm/v1')->group(function () {
 
         Route::get('memo-list/pending', [ApmMemoListController::class, 'pending']);
         Route::get('memo-list/approved', [ApmMemoListController::class, 'approved']);
+
+        Route::get('reference-data', [ApmReferenceDataController::class, 'index']);
     });
 });

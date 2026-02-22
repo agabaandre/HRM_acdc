@@ -75,6 +75,7 @@ class HelpController extends Controller
         // Map common documentation files
         $fileMap = [
             'README.md' => 'documentation/README.md',
+            'API_DOCUMENTATION.md' => 'documentation/API_DOCUMENTATION.md',
             'USER_GUIDE.md' => 'documentation/USER_GUIDE.md',
             'APPROVERS_GUIDE.md' => 'documentation/APPROVERS_GUIDE.md',
             'DEPLOYMENT.md' => 'documentation/DEPLOYMENT.md',
@@ -116,6 +117,7 @@ class HelpController extends Controller
 
         $content = File::get($filePath);
         $html = $this->markdownToHtml($content);
+        $html = $this->rewriteDocumentationLinks($html);
 
         // Generate title from filename
         $title = str_replace(['.md', '_'], ['', ' '], $file);
@@ -129,126 +131,177 @@ class HelpController extends Controller
     }
 
     /**
+     * Rewrite relative .md links in documentation HTML to point to our /documentation/{file} routes.
+     */
+    protected function rewriteDocumentationLinks(string $html): string
+    {
+        $base = rtrim(url('/documentation'), '/');
+        // href="./Something.md" or href="Something.md" (same-dir only; do not rewrite ../)
+        $html = preg_replace_callback(
+            '/<a\s+href="((?:\.\/)?([^"]*?\.md))"[^>]*>/i',
+            function ($m) use ($base) {
+                $raw = $m[2];
+                if (strpos($raw, '..') !== false) {
+                    return $m[0]; // leave parent/other relative links as-is
+                }
+                $file = basename($raw);
+                if (preg_match('/^[a-zA-Z0-9_.-]+\.md$/', $file)) {
+                    return '<a href="' . $base . '/' . $file . '" class="doc-link">';
+                }
+                return $m[0];
+            },
+            $html
+        );
+        return $html;
+    }
+
+    /**
+     * Convert heading text to an id slug for anchor links (lowercase, hyphens).
+     */
+    protected function headingToId(string $text): string
+    {
+        $stripped = strip_tags($text);
+        $slug = strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', $stripped), '-'));
+        return $slug === '' ? 'section' : $slug;
+    }
+
+    /**
      * Convert markdown to HTML
      */
     protected function markdownToHtml($markdown)
     {
-        // Simple markdown to HTML converter
-        // Split into lines for processing
         $lines = explode("\n", $markdown);
         $html = '';
         $inList = false;
+        $inOrderedList = false;
         $inCodeBlock = false;
         $codeBlockContent = '';
-        
+        $usedIds = [];
+
+        $closeLists = function () use (&$html, &$inList, &$inOrderedList) {
+            if ($inList) {
+                $html .= '</ul>';
+                $inList = false;
+            }
+            if ($inOrderedList) {
+                $html .= '</ol>';
+                $inOrderedList = false;
+            }
+        };
+
+        $headingId = function (string $rawTitle) use (&$usedIds) {
+            $base = $this->headingToId($rawTitle);
+            $id = $base;
+            $n = 1;
+            while (isset($usedIds[$id])) {
+                $id = $base . '-' . (++$n);
+            }
+            $usedIds[$id] = true;
+            return $id;
+        };
+
+        $inlineAndLinks = function ($content) {
+            $content = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $content);
+            $content = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $content);
+            $content = preg_replace('/`([^`]+)`/', '<code>$1</code>', $content);
+            $content = preg_replace('/\[([^\]]+)\]\(([^\)]+)\)/', '<a href="$2">$1</a>', $content);
+            return $content;
+        };
+
         foreach ($lines as $line) {
-            // Code blocks
             if (preg_match('/^```/', $line)) {
                 if ($inCodeBlock) {
                     $html .= '<pre><code>' . htmlspecialchars($codeBlockContent) . '</code></pre>';
                     $codeBlockContent = '';
                     $inCodeBlock = false;
                 } else {
+                    $closeLists();
                     $inCodeBlock = true;
                 }
                 continue;
             }
-            
+
             if ($inCodeBlock) {
                 $codeBlockContent .= $line . "\n";
                 continue;
             }
-            
-            // Headers
+
             if (preg_match('/^#### (.*)$/', $line, $matches)) {
-                if ($inList) {
-                    $html .= '</ul>';
-                    $inList = false;
-                }
-                $html .= '<h4>' . htmlspecialchars($matches[1]) . '</h4>';
+                $closeLists();
+                $id = $headingId($matches[1]);
+                $html .= '<h4 id="' . htmlspecialchars($id) . '">' . htmlspecialchars($matches[1]) . '</h4>';
                 continue;
             }
             if (preg_match('/^### (.*)$/', $line, $matches)) {
-                if ($inList) {
-                    $html .= '</ul>';
-                    $inList = false;
-                }
-                $html .= '<h3>' . htmlspecialchars($matches[1]) . '</h3>';
+                $closeLists();
+                $id = $headingId($matches[1]);
+                $html .= '<h3 id="' . htmlspecialchars($id) . '">' . htmlspecialchars($matches[1]) . '</h3>';
                 continue;
             }
             if (preg_match('/^## (.*)$/', $line, $matches)) {
-                if ($inList) {
-                    $html .= '</ul>';
-                    $inList = false;
-                }
-                $html .= '<h2>' . htmlspecialchars($matches[1]) . '</h2>';
+                $closeLists();
+                $id = $headingId($matches[1]);
+                $html .= '<h2 id="' . htmlspecialchars($id) . '">' . htmlspecialchars($matches[1]) . '</h2>';
                 continue;
             }
             if (preg_match('/^# (.*)$/', $line, $matches)) {
-                if ($inList) {
-                    $html .= '</ul>';
-                    $inList = false;
-                }
-                $html .= '<h1>' . htmlspecialchars($matches[1]) . '</h1>';
+                $closeLists();
+                $id = $headingId($matches[1]);
+                $html .= '<h1 id="' . htmlspecialchars($id) . '">' . htmlspecialchars($matches[1]) . '</h1>';
                 continue;
             }
-            
-            // Horizontal rule
+
             if (preg_match('/^---$/', $line)) {
-                if ($inList) {
-                    $html .= '</ul>';
-                    $inList = false;
-                }
+                $closeLists();
                 $html .= '<hr>';
                 continue;
             }
-            
-            // Lists
+
+            // Unordered list
             if (preg_match('/^[-*] (.*)$/', $line, $matches)) {
+                if ($inOrderedList) {
+                    $html .= '</ol>';
+                    $inOrderedList = false;
+                }
                 if (!$inList) {
                     $html .= '<ul>';
                     $inList = true;
                 }
-                $content = $matches[1];
-                // Process inline formatting
-                $content = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $content);
-                $content = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $content);
-                $content = preg_replace('/`([^`]+)`/', '<code>$1</code>', $content);
-                $html .= '<li>' . $content . '</li>';
+                $html .= '<li>' . $inlineAndLinks($matches[1]) . '</li>';
                 continue;
             }
-            
-            // End list if needed
-            if ($inList && trim($line) === '') {
-                $html .= '</ul>';
-                $inList = false;
-                continue;
-            }
-            
-            // Paragraphs
-            if (trim($line) !== '') {
+
+            // Ordered list (e.g. "1. item" or "2. **Bold**")
+            if (preg_match('/^\d+\. (.*)$/', $line, $matches)) {
                 if ($inList) {
                     $html .= '</ul>';
                     $inList = false;
                 }
-                $content = htmlspecialchars($line);
-                // Process inline formatting
-                $content = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $content);
-                $content = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $content);
-                $content = preg_replace('/`([^`]+)`/', '<code>$1</code>', $content);
-                // Links
-                $content = preg_replace('/\[([^\]]+)\]\(([^\)]+)\)/', '<a href="$2">$1</a>', $content);
-                // Images (convert to placeholder)
-                $content = preg_replace('/!\[([^\]]*)\]\(([^\)]+)\)/', '<div class="screenshot-placeholder"><div class="placeholder-content"><i class="fas fa-image"></i><p>Screenshot Placeholder</p><small>$1</small></div></div>', $content);
-                $html .= '<p>' . $content . '</p>';
+                if (!$inOrderedList) {
+                    $html .= '<ol>';
+                    $inOrderedList = true;
+                }
+                $html .= '<li>' . $inlineAndLinks($matches[1]) . '</li>';
+                continue;
             }
+
+            if (trim($line) === '') {
+                $closeLists();
+                continue;
+            }
+
+            $closeLists();
+            $content = htmlspecialchars($line);
+            $content = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $content);
+            $content = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $content);
+            $content = preg_replace('/`([^`]+)`/', '<code>$1</code>', $content);
+            $content = preg_replace('/\[([^\]]+)\]\(([^\)]+)\)/', '<a href="$2">$1</a>', $content);
+            $content = preg_replace('/!\[([^\]]*)\]\(([^\)]+)\)/', '<div class="screenshot-placeholder"><div class="placeholder-content"><i class="fas fa-image"></i><p>Screenshot Placeholder</p><small>$1</small></div></div>', $content);
+            $html .= '<p>' . $content . '</p>';
         }
-        
-        // Close any open list
-        if ($inList) {
-            $html .= '</ul>';
-        }
-        
+
+        $closeLists();
+
         return $html;
     }
 }

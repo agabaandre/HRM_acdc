@@ -92,6 +92,8 @@ curl -X POST 'http://localhost/staff/apm/api/apm/v1/auth/logout'
 | **Activities** | POST | `/matrices/{matrixId}/activities/{activityId}` | Pass, return, or convert to single memo |
 | **Memo list** | GET | `/memo-list/pending` | Pending memos (division-scoped) |
 | **Memo list** | GET | `/memo-list/approved` | Approved memos (division-scoped) |
+| **Reference data** | GET | `/reference-data` | Divisions, directorates, fund types, fund codes, cost items, staff, funders, request types, non_travel_categories, partners, workflow_definitions (with approver id and name). Optional `?include=divisions,staff,...` to return only those datasets. |
+| **Document verification** | POST | `/api/documents/verify` | Verify APM document via PDF upload (PDF only; max 10MB). Request body `multipart/form-data` with field `document`. Uses **session (cookie)** auth; URL is relative to app root (e.g. `{app}/api/documents/verify`). Returns JSON with `valid`, `extracted_document_numbers`, `hash_validations`, etc. |
 
 ---
 
@@ -133,6 +135,28 @@ curl -X POST 'http://localhost/staff/apm/api/apm/v1/actions' \
 
 - **GET /memo-list/pending** and **GET /memo-list/approved** return memos for the **authenticated user’s division only**.
 - Query parameters: `year`, `quarter`, `memo_type` (QM, SM, SPM, NT, CR, SR, ARF), `title`, `document_number`, `per_page`, `page`.
+
+---
+
+## Document verification (upload)
+
+- **POST /api/documents/verify** – Upload an APM PDF to verify document number and signature hashes against the system. **PDF only**; max 10MB. The file is not stored.
+- **URL:** Relative to the **app root** (not the JWT API base). Example: `http://localhost/staff/apm/api/documents/verify`.
+- **Auth:** Session (cookie). Use when logged in via the web app, or send the app's session cookie with the request.
+- **Request:** `multipart/form-data` with a single file field named `document` (PDF).
+- **Response (200):** JSON with `success`, `result_type` (`upload_validation`), `valid` (true if at least one extracted hash matched a signatory), `extracted_document_numbers`, `extracted_hashes`, `hash_validations` (per-hash match result and signatory), `documents`, `signatories`, `document` (metadata).
+- **Response (422):** Validation error (e.g. "Only PDF files are accepted.").
+
+**Example:**
+
+```bash
+curl -X POST 'http://localhost/staff/apm/api/documents/verify' \
+  -H 'Accept: application/json' \
+  -F 'document=@/path/to/apm-document.pdf' \
+  -b 'your_session_cookie_if_calling_from_script'
+```
+
+In Swagger UI, use the **"Web app root"** server when trying this endpoint.
 
 ---
 

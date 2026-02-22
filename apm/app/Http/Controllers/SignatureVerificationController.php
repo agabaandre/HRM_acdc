@@ -442,16 +442,34 @@ class SignatureVerificationController extends Controller
     }
 
     /**
-     * Validate an uploaded APM document (PDF): extract document number and hashes, verify against system.
+     * Validate an uploaded APM document (PDF only): extract document number and hashes, verify against system.
      * File is not stored on the server; only read in memory / from temp and discarded.
+     * Endpoint: POST /signature-verify/validate-upload or POST /api/documents/verify (PDF only).
      */
     public function validateUpload(Request $request)
     {
         $request->validate([
-            'document' => 'required|file|mimes:pdf|max:10240', // 10MB, PDF only
+            'document' => [
+                'required',
+                'file',
+                'mimes:pdf',
+                'mimetypes:application/pdf',
+                'max:10240', // 10MB
+            ],
+        ], [
+            'document.mimes'     => 'Only PDF files are accepted.',
+            'document.mimetypes' => 'Only PDF files are accepted.',
         ]);
 
         $file = $request->file('document');
+        $mime = $file->getMimeType();
+        if ($mime && $mime !== 'application/pdf') {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Only PDF files are accepted.'], 422);
+            }
+            return redirect()->route('signature-verify.index')->with('upload_error', 'Only PDF files are accepted.');
+        }
+
         $path = $file->getRealPath();
 
         $text = $this->extractTextFromPdf($path);
@@ -568,7 +586,7 @@ class SignatureVerificationController extends Controller
             $uploadExtras,
             $yearForPayload
         );
-        if ($request->wantsJson() || $request->ajax()) {
+        if ($request->routeIs('api.documents.verify') || $request->wantsJson() || $request->ajax()) {
             return response()->json($payload);
         }
 

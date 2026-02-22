@@ -11,7 +11,8 @@ Welcome to the APM (Approvals Management) User Guide. This guide will help you c
 5. [Creating a Change Request](#creating-a-change-request)
 6. [Creating a Service Request](#creating-a-service-request)
 7. [Creating an ARF Request](#creating-an-arf-request)
-8. [Managing Your Documents](#managing-your-documents)
+8. [Reports](#reports)
+9. [Managing Your Documents](#managing-your-documents)
 
 ---
 
@@ -476,6 +477,33 @@ ARF (Advance Request Form) Requests are for requesting advances for **approved e
 - **Requested amount** is automatically set from the approved document's total budget
 - ARF Requests follow their own approval workflow separate from the source document
 - ARF Requests are linked to the source document for tracking and reference
+
+---
+
+## Reports
+
+The Reports section lets you view and export summary data on matrices, memos, and other APM documents.
+
+### How to Access Reports
+
+1. **Navigate to Reports**
+   - Click on **"APM Home"** in the main navigation
+   - Select **"Reports"** from the dropdown (or use the Reports card on the dashboard and click **"All Reports"**)
+
+2. **Available Reports**
+   - **Division counts** – Summary of documents by division (e.g. counts by type, status, year/quarter). Use filters and export to Excel if needed.
+   - **Memo list** – List of memos (and related documents) with filters by year, quarter, type, status, title, document number. Export to Excel for offline use.
+
+3. **Using the Reports**
+   - Apply **filters** (year, quarter, document type, status) to narrow the list
+   - Use **search** (title, document number) where available
+   - Use **Export to Excel** to download the current view for reporting or analysis
+
+### Tips
+
+- Reports are based on your access (e.g. division-scoped where applicable)
+- Use the memo list report to track approved or pending memos across the division
+- Export data before changing filters if you need to keep a snapshot
 
 ---
 
