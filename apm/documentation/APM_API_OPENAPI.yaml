@@ -185,7 +185,9 @@ paths:
     get:
       tags: [Documents]
       summary: Get document
-      description: Document by type and id. Includes approval_trails (same structure as web matrices/37 and special-memo/19).
+      description: |
+        Document by type and id. Includes approval_trails and attachments.
+        Each attachment has a url that can be used to download the file (GET with same Bearer token).
       operationId: getDocument
       security: [{ bearerAuth: [] }]
       parameters:
@@ -201,7 +203,7 @@ paths:
           schema: { type: integer }
       responses:
         '200':
-          description: Document with approval_trails
+          description: Document with approval_trails and attachments (each with url)
           content:
             application/json:
               schema:
@@ -215,8 +217,46 @@ paths:
                       approval_trails:
                         type: array
                         items: { $ref: '#/components/schemas/ApprovalTrailItem' }
+                      attachments:
+                        type: array
+                        description: Attachments with url for API download (GET /documents/attachments/{type}/{id}/{index})
+                        items: { $ref: '#/components/schemas/DocumentAttachmentItem' }
         '404':
           description: Document not found
+
+  /documents/attachments/{type}/{id}/{index}:
+    get:
+      tags: [Documents]
+      summary: Download document attachment
+      description: |
+        Stream a single attachment file by document type, id, and zero-based index.
+        Use the url from GET /documents/{type}/{id} response (attachments[].url).
+        Requires same Bearer token. Returns the file with Content-Disposition inline and original filename.
+      operationId: getDocumentAttachment
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [special_memo, matrix, activity, non_travel_memo, service_request, arf, change_request]
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: index
+          in: path
+          required: true
+          schema: { type: integer, minimum: 0 }
+          description: Zero-based index of the attachment (matches order in document data.attachments).
+      responses:
+        '200':
+          description: File stream (content-type and filename from attachment metadata).
+        '404':
+          description: Document or attachment not found
+        '400':
+          description: Invalid attachment path
 
   /actions:
     post:
@@ -538,6 +578,22 @@ components:
         role: { type: string, nullable: true }
         created_at: { type: string, format: date-time, nullable: true }
         is_archived: { type: boolean }
+
+    DocumentAttachmentItem:
+      type: object
+      description: One attachment with API download url.
+      properties:
+        type: { type: string, nullable: true, description: Attachment type label (e.g. Consultant TOR) }
+        filename: { type: string, description: Stored filename }
+        original_name: { type: string, description: Original upload filename }
+        path: { type: string, description: Internal path (storage) }
+        size: { type: integer, description: File size in bytes }
+        mime_type: { type: string, description: MIME type }
+        uploaded_at: { type: string, format: date-time, nullable: true }
+        url:
+          type: string
+          format: uri
+          description: API URL to download this file (GET with Bearer token). Same as GET /documents/attachments/{type}/{id}/{index}.
 
     PendingApprovalItem:
       type: object

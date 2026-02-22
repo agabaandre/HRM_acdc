@@ -13,9 +13,56 @@ use App\Models\ChangeRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ApmDocumentController extends Controller
 {
+    /**
+     * Stream a document attachment by type, id, and index. Requires auth.
+     */
+    public function attachment(Request $request, string $type, int $id, int $index): JsonResponse|StreamedResponse
+    {
+        if (!$request->attributes->get('api_user_session')) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $model = $this->resolveDocument($type, $id);
+        if (!$model) {
+            return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
+        }
+
+        $attachments = $this->getAttachmentList($model, $type);
+        if (!isset($attachments[$index])) {
+            return response()->json(['success' => false, 'message' => 'Attachment not found.'], 404);
+        }
+
+        $item = $attachments[$index];
+        $path = $item['path'] ?? null;
+        if (!$path || !is_string($path)) {
+            return response()->json(['success' => false, 'message' => 'Invalid attachment path.'], 400);
+        }
+
+        $path = str_replace('\\', '/', $path);
+        $basePath = realpath(storage_path('app/public')) ?: storage_path('app/public');
+        $fullPath = realpath($basePath . '/' . $path);
+        if ($fullPath === false || !str_starts_with($fullPath, $basePath) || !is_file($fullPath)) {
+            return response()->json(['success' => false, 'message' => 'File not found.'], 404);
+        }
+
+        $filename = $item['original_name'] ?? $item['filename'] ?? basename($path);
+        $mimeType = $item['mime_type'] ?? 'application/octet-stream';
+
+        return response()->streamDownload(function () use ($fullPath) {
+            $stream = fopen($fullPath, 'rb');
+            if ($stream) {
+                fpassthru($stream);
+                fclose($stream);
+            }
+        }, $filename, [
+            'Content-Type' => $mimeType,
+        ], 'inline');
+    }
+
     /**
      * Get document data by type and id (API-shaped for approver app).
      */
@@ -57,6 +104,7 @@ class ApmDocumentController extends Controller
         $data = $memo->toArray();
         $data['document_type'] = 'special_memo';
         $data['approval_trails'] = $this->formatApprovalTrails($memo->approvalTrails ?? collect());
+        $data['attachments'] = $this->buildAttachmentsWithUrls($memo, 'special_memo', $id);
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -93,6 +141,7 @@ class ApmDocumentController extends Controller
             ? ($activity->approvalTrails ?? collect())
             : ($activity->activityApprovalTrails ?? collect());
         $data['approval_trails'] = $this->formatApprovalTrails($trails);
+        $data['attachments'] = $this->buildAttachmentsWithUrls($activity, 'activity', $id);
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -107,6 +156,7 @@ class ApmDocumentController extends Controller
         $data = $memo->toArray();
         $data['document_type'] = 'non_travel_memo';
         $data['approval_trails'] = $this->formatApprovalTrails($memo->approvalTrails ?? collect());
+        $data['attachments'] = $this->buildAttachmentsWithUrls($memo, 'non_travel_memo', $id);
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -121,6 +171,7 @@ class ApmDocumentController extends Controller
         $data = $doc->toArray();
         $data['document_type'] = 'service_request';
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
+        $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'service_request', $id);
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -135,6 +186,7 @@ class ApmDocumentController extends Controller
         $data = $doc->toArray();
         $data['document_type'] = 'arf';
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
+        $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'arf', $id);
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -149,7 +201,54 @@ class ApmDocumentController extends Controller
         $data = $doc->toArray();
         $data['document_type'] = 'change_request';
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
+        $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'change_request', $id);
         return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /**
+     * Resolve document model by type and id.
+     */
+    private function resolveDocument(string $type, int $id): SpecialMemo|Matrix|Activity|NonTravelMemo|ServiceRequest|RequestARF|ChangeRequest|null
+    {
+        return match ($type) {
+            'special_memo' => SpecialMemo::find($id),
+            'matrix' => Matrix::find($id),
+            'activity', 'single_memo' => Activity::find($id),
+            'non_travel_memo' => NonTravelMemo::find($id),
+            'service_request' => ServiceRequest::find($id),
+            'arf' => RequestARF::find($id),
+            'change_request' => ChangeRequest::find($id),
+            default => null,
+        };
+    }
+
+    /**
+     * Get attachment list from model (handles both 'attachment' and 'attachments' keys).
+     */
+    private function getAttachmentList(object $model, string $type): array
+    {
+        $key = $type === 'service_request' ? 'attachments' : 'attachment';
+        $raw = $model->{$key} ?? null;
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return is_array($raw) ? $raw : [];
+    }
+
+    /**
+     * Build attachments array with url for each (API-accessible download link).
+     * Each item gets url: GET /api/apm/v1/documents/attachments/{type}/{id}/{index} (requires Bearer token).
+     */
+    private function buildAttachmentsWithUrls(object $model, string $type, int $id): array
+    {
+        $list = $this->getAttachmentList($model, $type);
+        $base = rtrim(url('/api/apm/v1/documents/attachments/' . $type . '/' . $id), '/');
+        return array_values(array_map(function ($item, $index) use ($base) {
+            $item = is_array($item) ? $item : [];
+            $item['url'] = $base . '/' . $index;
+            return $item;
+        }, $list, array_keys($list)));
     }
 
     /**
