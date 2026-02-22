@@ -21,6 +21,11 @@ if (!function_exists('user_session')) {
          */
         function user_session(?string $key = null, mixed $default = null): mixed
         {
+            // API context: use request attribute set by SetApmApiUserContext middleware (does not touch web session)
+            if (app()->runningInConsole() === false && request()->attributes->get('api_user_session') !== null) {
+                $user = request()->attributes->get('api_user_session');
+                return $key === null ? $user : data_get($user, $key, $default);
+            }
             $user = session('user', []);
             return $key == null ? $user : data_get($user, $key, $default);
         }

@@ -125,6 +125,8 @@ class PendingApprovalsService
             'staff',
             'focalPerson',
             'forwardWorkflow',
+            'matrixApprovalTrails.staff',
+            'matrixApprovalTrails.oicStaff',
             'activities' => function ($q) {
                 $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
                   ->whereNotNull('matrix_id');
@@ -196,7 +198,8 @@ class PendingApprovalsService
                 'approval_level' => $matrix->approval_level,
                 'workflow_role' => $this->getCurrentApproverRole($matrix),
                 'item_id' => $matrix->id,
-                'item_type' => 'Matrix'
+                'item_type' => 'Matrix',
+                'approval_trails' => $this->formatApprovalTrailsForApi($matrix->matrixApprovalTrails ?? collect()),
             ], $isAdminAssistantView);
         });
     }
@@ -281,7 +284,7 @@ class PendingApprovalsService
      */
     protected function getPendingSpecialMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
-        $query = SpecialMemo::with(['staff', 'division', 'approvalTrails.staff'])
+        $query = SpecialMemo::with(['staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition'])
             ->where('overall_status', 'pending');
 
         // Get all approval levels for this user (both division-specific and non-division-specific)
@@ -326,7 +329,8 @@ class PendingApprovalsService
                 'approval_level' => $memo->approval_level,
                 'workflow_role' => $this->getCurrentApproverRole($memo),
                 'item_id' => $memo->id,
-                'item_type' => 'SpecialMemo'
+                'item_type' => 'SpecialMemo',
+                'approval_trails' => $this->formatApprovalTrailsForApi($memo->approvalTrails ?? collect()),
             ], $isAdminAssistantView);
         });
     }
@@ -336,7 +340,7 @@ class PendingApprovalsService
      */
     protected function getPendingNonTravelMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
-        $query = NonTravelMemo::with(['staff', 'division', 'approvalTrails.staff'])
+        $query = NonTravelMemo::with(['staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff'])
             ->where('overall_status', 'pending')
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
@@ -399,7 +403,8 @@ class PendingApprovalsService
                 'approval_level' => $memo->approval_level,
                 'workflow_role' => $this->getCurrentApproverRole($memo),
                 'item_id' => $memo->id,
-                'item_type' => 'NonTravelMemo'
+                'item_type' => 'NonTravelMemo',
+                'approval_trails' => $this->formatApprovalTrailsForApi($memo->approvalTrails ?? collect()),
             ], $isAdminAssistantView);
         });
     }
@@ -409,7 +414,7 @@ class PendingApprovalsService
      */
     protected function getPendingSingleMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
-        $query = Activity::with(['staff', 'division', 'approvalTrails.staff'])
+        $query = Activity::with(['staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff'])
             ->where('is_single_memo', true)
             ->where('overall_status', 'pending');
 
@@ -471,7 +476,8 @@ class PendingApprovalsService
                 'approval_level' => $activity->approval_level,
                 'workflow_role' => $this->getCurrentApproverRole($activity),
                 'item_id' => $activity->id,
-                'item_type' => 'Activity'
+                'item_type' => 'Activity',
+                'approval_trails' => $this->formatApprovalTrailsForApi($activity->approvalTrails ?? collect()),
             ], $isAdminAssistantView);
         });
     }
@@ -481,7 +487,7 @@ class PendingApprovalsService
      */
     protected function getPendingServiceRequests(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
-        $query = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
+        $query = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
             ->where('overall_status', 'pending')
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
@@ -546,7 +552,8 @@ class PendingApprovalsService
                 'approval_level' => $serviceRequest->approval_level,
                 'workflow_role' => $this->getCurrentApproverRole($serviceRequest),
                 'item_id' => $serviceRequest->id,
-                'item_type' => 'ServiceRequest'
+                'item_type' => 'ServiceRequest',
+                'approval_trails' => $this->formatApprovalTrailsForApi($serviceRequest->approvalTrails ?? collect()),
             ], $isAdminAssistantView);
         });
     }
@@ -556,7 +563,7 @@ class PendingApprovalsService
      */
     protected function getPendingARFRequests(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
-        $query = RequestARF::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
+        $query = RequestARF::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
             ->where('overall_status', 'pending')
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
@@ -613,18 +620,19 @@ class PendingApprovalsService
             return $this->formatPendingItem($arfRequest, 'ARF', [
                 'title' => $arfRequest->activity_title ?? 'ARF Request',
                 'division' => $arfRequest->division->division_name ?? 'N/A',
-                'submitted_by' => $arfRequest->responsiblePerson ? 
-                    ($arfRequest->responsiblePerson->fname . ' ' . $arfRequest->responsiblePerson->lname) : 
+                'submitted_by' => $arfRequest->responsiblePerson ?
+                    ($arfRequest->responsiblePerson->fname . ' ' . $arfRequest->responsiblePerson->lname) :
                     ($arfRequest->staff->fname . ' ' . $arfRequest->staff->lname ?? 'N/A'),
                 'date_received' => $this->getDateReceivedToCurrentLevel($arfRequest),
                 'view_url' => url(route('request-arf.show', $arfRequest, false)),
                 'approval_level' => $arfRequest->approval_level,
                 'workflow_role' => $this->getCurrentApproverRole($arfRequest),
                 'item_id' => $arfRequest->id,
-                'item_type' => 'RequestARF'
+                'item_type' => 'RequestARF',
+                'approval_trails' => $this->formatApprovalTrailsForApi($arfRequest->approvalTrails ?? collect()),
             ], $isAdminAssistantView);
         });
-        
+
         return $results;
     }
 
@@ -894,6 +902,44 @@ class PendingApprovalsService
     }
 
     /**
+     * Format approval trail collection for API (same shape as documents endpoint).
+     * Returns array of { id, action, remarks, approval_order, staff_id, staff_name, oic_staff_id, oic_staff_name, role, created_at, is_archived }.
+     */
+    public function formatApprovalTrailsForApi(Collection $trails): array
+    {
+        if ($trails->isEmpty()) {
+            return [];
+        }
+        return $trails->map(function ($t) {
+            $staff = $t->relationLoaded('staff') ? $t->staff : null;
+            $oic = $t->relationLoaded('oicStaff') ? $t->oicStaff : null;
+            $staffName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
+            $oicName = $oic ? trim(($oic->title ?? '') . ' ' . ($oic->fname ?? '') . ' ' . ($oic->lname ?? '') . ' ' . ($oic->oname ?? '')) : null;
+            $role = null;
+            if ($t->relationLoaded('workflowDefinition') && $t->workflowDefinition) {
+                $role = $t->workflowDefinition->role ?? null;
+            } elseif (isset($t->approver_role)) {
+                $role = $t->approver_role;
+            } elseif (method_exists($t, 'getApproverRoleNameAttribute')) {
+                $role = $t->approver_role_name ?? null;
+            }
+            return [
+                'id' => $t->id,
+                'action' => $t->action ?? null,
+                'remarks' => $t->remarks ?? null,
+                'approval_order' => $t->approval_order ?? null,
+                'staff_id' => $t->staff_id ?? null,
+                'staff_name' => $staffName,
+                'oic_staff_id' => $t->oic_staff_id ?? null,
+                'oic_staff_name' => $oicName,
+                'role' => $role,
+                'created_at' => $t->created_at ? (Carbon::parse($t->created_at)->toIso8601String()) : null,
+                'is_archived' => (bool) ($t->is_archived ?? false),
+            ];
+        })->values()->toArray();
+    }
+
+    /**
      * Format a pending item with common structure
      */
     protected function formatPendingItem($item, string $category, array $data, bool $isAdminAssistant = false): array
@@ -1130,7 +1176,7 @@ class PendingApprovalsService
      */
     protected function getPendingChangeRequests(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
-        $query = ChangeRequest::with(['staff', 'division', 'approvalTrails.staff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
+        $query = ChangeRequest::with(['staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
             ->where('overall_status', 'pending')
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
@@ -1211,8 +1257,9 @@ class PendingApprovalsService
                 'approval_level' => $changeRequest->approval_level,
                 'workflow_role' => $this->getCurrentApproverRole($changeRequest),
                 'item_id' => $changeRequest->id,
-                'item_type' => 'ChangeRequest'
-            ]);
+                'item_type' => 'ChangeRequest',
+                'approval_trails' => $this->formatApprovalTrailsForApi($changeRequest->approvalTrails ?? collect()),
+            ], $isAdminAssistantView);
         });
     }
 

@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\CheckSessionExpiry::class,
         ]);
+        $middleware->alias([
+            'apm.api.context' => \App\Http\Middleware\SetApmApiUserContext::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
@@ -51,6 +54,12 @@ return Application::configure(basePath: dirname(__DIR__))
             
         $schedule->command('reminders:returned-memos')
             ->dailyAt('17:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Sync users from staff app user table into apm_api_users (hourly)
+        $schedule->command('users:sync')
+            ->hourly()
             ->withoutOverlapping()
             ->runInBackground();
     })->create();
