@@ -19,10 +19,25 @@ class CheckSessionExpiry
      * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
      * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
      */
+    /** Routes that do not require authentication (public docs and FAQ). Include both bare and apm-prefixed paths for when app is under /demo_staff/apm/. */
+    private const PUBLIC_PATHS = [
+        'docs', 'docs/*',
+        'faq', 'help', 'help/user-guide', 'help/approvers-guide',
+        'documentation', 'documentation/*',
+        'apm/docs', 'apm/docs/*',
+        'apm/faq', 'apm/help', 'apm/help/user-guide', 'apm/help/approvers-guide',
+        'apm/documentation', 'apm/documentation/*',
+    ];
+
     public function handle(Request $request, Closure $next)
     {
         // Skip session check for API routes and AJAX requests
         if ($request->is('api/*') || $request->ajax()) {
+            return $next($request);
+        }
+
+        // Skip session check for public docs and FAQ (no login required)
+        if ($request->is(self::PUBLIC_PATHS)) {
             return $next($request);
         }
 

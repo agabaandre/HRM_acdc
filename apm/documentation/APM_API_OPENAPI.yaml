@@ -13,6 +13,8 @@ info:
 servers:
   - url: "{{API_BASE_URL}}"
     description: API base URL for this server (injected from the host where the docs are loaded)
+  - url: "{{APP_BASE_URL}}"
+    description: Web app root (for document verification upload; use when calling POST /api/documents/verify)
 
 tags:
   - name: Auth
@@ -31,8 +33,73 @@ tags:
     description: Activity detail and pass/return/convert
   - name: Memo list
     description: Division memo list (pending or approved) with filters
+  - name: Reference data
+    description: Lookup data (divisions, staff, fund codes, workflow definitions, etc.)
+  - name: Document verification
+    description: Verify APM document signature hashes via PDF upload (PDF only; session auth)
 
 paths:
+  /api/documents/verify:
+    post:
+      tags: [Document verification]
+      summary: Verify document via PDF upload
+      description: |
+        Upload an APM-generated PDF to extract document number and signature hashes and validate them against the system.
+        **PDF only**; max 10MB. File is not stored. Uses session (cookie) authentication—call from the web app or send the app session cookie.
+        Use server "Web app root" (APP_BASE_URL) for this endpoint.
+      operationId: documentsVerifyUpload
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [document]
+              properties:
+                document:
+                  type: string
+                  format: binary
+                  description: APM PDF document (PDF only; max 10MB)
+      responses:
+        '200':
+          description: Verification result (extracted document numbers, hashes, and whether they matched system signatories)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  result_type: { type: string, example: upload_validation }
+                  document:
+                    type: object
+                    properties:
+                      document_number: { type: string, nullable: true }
+                      doc_type: { type: string, nullable: true }
+                      metadata: { type: object }
+                  signatories: { type: array, items: { type: object } }
+                  valid: { type: boolean, description: true if at least one extracted hash matched a signatory }
+                  extracted_document_numbers: { type: array, items: { type: string } }
+                  extracted_hashes: { type: array, items: { type: string } }
+                  hash_validations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        hash: { type: string }
+                        matched: { type: boolean }
+                        signatory: { type: object, nullable: true }
+                  documents: { type: array, description: List of matched documents with document_number, doc_type, metadata }
+        '422':
+          description: Validation error (e.g. file missing, not PDF, or too large)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Only PDF files are accepted." }
+                  errors: { type: object }
+
   /auth/login:
     post:
       tags: [Auth]
@@ -639,6 +706,73 @@ paths:
       responses:
         '200':
           description: Paginated approved memos
+
+  /reference-data:
+    get:
+      tags: [Reference data]
+      summary: Reference / lookup data
+      description: |
+        Returns divisions, directorates, fund_types, fund_codes, cost_items, staff,
+        funders, request_types, non_travel_categories, partners, and workflow_definitions.
+        Each workflow_definition includes approvers with id, staff_id, staff_name, oic_staff_id, oic_staff_name.
+        Optional query param `include`: comma-separated list of keys to return only those datasets;
+        if omitted, all are returned. Allowed keys: divisions, directorates, fund_types, fund_codes,
+        cost_items, staff, funders, request_types, non_travel_categories, partners, workflow_definitions.
+        Requires Bearer token.
+      operationId: referenceData
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: include
+          in: query
+          required: false
+          description: Comma-separated list of reference datasets to return (e.g. divisions,staff,fund_types). If omitted, all datasets are returned. Invalid keys are ignored.
+          schema:
+            type: string
+            example: "divisions,staff,fund_types"
+      responses:
+        '200':
+          description: Reference data object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      divisions: { type: array, items: { type: object, properties: { id: {}, name: {}, short_name: {}, directorate_id: {} } } }
+                      directorates: { type: array, items: { type: object, properties: { id: {}, name: {} } } }
+                      fund_types: { type: array, items: { type: object, properties: { id: {}, name: {} } } }
+                      fund_codes: { type: array, items: { type: object, description: id, code, activity, fund_type_id, funder_id, partner_id, division_id, year, fund_type_name, funder_name, partner_name } }
+                      cost_items: { type: array, items: { type: object, properties: { id: {}, name: {}, cost_type: {} } } }
+                      staff: { type: array, items: { type: object, properties: { id: {}, name: {}, title: {}, work_email: {}, division_id: {} } } }
+                      funders: { type: array, items: { type: object, properties: { id: {}, name: {} } } }
+                      request_types: { type: array, items: { type: object, properties: { id: {}, name: {} } } }
+                      non_travel_categories: { type: array, items: { type: object, properties: { id: {}, name: {} } } }
+                      partners: { type: array, items: { type: object, properties: { id: {}, name: {} } } }
+                      workflow_definitions:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer }
+                            workflow_id: { type: integer }
+                            workflow_name: { type: string, nullable: true }
+                            role: { type: string, nullable: true }
+                            approval_order: { type: integer, nullable: true }
+                            approvers:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id: { type: integer }
+                                  staff_id: { type: integer, nullable: true }
+                                  staff_name: { type: string, nullable: true }
+                                  oic_staff_id: { type: integer, nullable: true }
+                                  oic_staff_name: { type: string, nullable: true }
+        '401':
+          description: Unauthenticated
 
 components:
   securitySchemes:
