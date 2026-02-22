@@ -9,6 +9,10 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 - **[User Guide](./USER_GUIDE.md)** - Complete guide for creating and managing documents (Matrices, Memos, Requests)
 - **[Approvers Guide](./APPROVERS_GUIDE.md)** - Guide for approvers on how to approve, return, or reject documents
 
+### API
+
+- **[APM API (OpenAPI/Swagger)](./APM_API_OPENAPI.yaml)** - OpenAPI 3.0 specification for the APM REST API (JWT auth, pending approvals, documents, actions, memo list). **Interactive docs:** open `/docs` in the browser (e.g. `http://localhost/staff/apm/docs`).
+
 ### Core Features
 
 - **[Approval Trail Management](./APPROVAL_TRAIL_MANAGEMENT.md)** - Complete guide to approval trail tracking and management
@@ -81,20 +85,25 @@ php artisan view:clear
 
 ### For Developers
 
-1. **Understanding Approval System**
+1. **APM API (approver apps / integrations)**
+   - OpenAPI spec: [APM_API_OPENAPI.yaml](./APM_API_OPENAPI.yaml)
+   - Interactive Swagger UI: visit `/docs` when the app is running (e.g. `http://localhost/staff/apm/docs`)
+   - See [System Updates](./SYSTEM_UPDATES.md) for API summary (auth, pending, documents, actions, memo list, etc.)
+
+2. **Understanding Approval System**
    - Start with [Approval Trail Management](./APPROVAL_TRAIL_MANAGEMENT.md)
    - Review [Document Numbering System](./DOCUMENT_NUMBERING_SYSTEM.md)
    - Check [Change Tracking Feasibility](./CHANGE_TRACKING_FEASIBILITY.md)
 
-2. **Working with Queues**
+3. **Working with Queues**
    - Read [Queue Setup Guide](./QUEUE_SETUP_GUIDE.md)
    - Troubleshoot with [Queue Troubleshooting](./QUEUE_TROUBLESHOOTING.md)
    - Configure [Supervisor Setup](./SUPERVISOR_SETUP_DEMO.md)
 
-3. **System Maintenance**
+4. **System Maintenance**
    - Review [Approval Trail Archiving](./APPROVAL_TRAIL_ARCHIVING.md)
    - Check [Sync Improvements](./SYNC_IMPROVEMENTS.md)
-   - See [System Updates](./SYSTEM_UPDATES.md) for recent features
+   - See [System Updates](./SYSTEM_UPDATES.md) for recent features (including APM API and users sync)
 
 ### For DevOps/System Administrators
 
@@ -220,6 +229,6 @@ For issues or questions:
 
 ---
 
-**Last Updated**: 2024
-**Version**: 1.0.0
+**Last Updated**: 2025
+**Version**: 1.1.0
 

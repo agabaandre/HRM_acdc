@@ -1,0 +1,574 @@
+openapi: 3.0.3
+info:
+  title: APM (Approvals Management) API
+  description: |
+    REST API for the Approvals Management module. Used by approver apps to list pending approvals,
+    view documents, perform actions (approve/reject/return/cancel), and access memo lists.
+    Authentication is JWT (Bearer token). API users are synced from the staff app `user` table;
+    password verification supports Argon2i hashes.
+  version: 1.0.0
+  contact:
+    name: APM Support
+
+servers:
+  - url: "{{API_BASE_URL}}"
+    description: API base URL for this server (injected from the host where the docs are loaded)
+
+tags:
+  - name: Auth
+    description: JWT login, refresh, logout, me
+  - name: Pending
+    description: Pending approvals for current user
+  - name: Documents
+    description: Document detail by type and id (with approval trails)
+  - name: Actions
+    description: Approve, reject, return, cancel on documents
+  - name: Approved by me
+    description: List and average time for documents approved by current user
+  - name: Matrices
+    description: Matrix detail and approve/return
+  - name: Activities
+    description: Activity detail and pass/return/convert
+  - name: Memo list
+    description: Division memo list (pending or approved) with filters
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      description: Authenticate with email and password. Returns JWT and user data. Passwords use Argon2i (same as staff app).
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      access_token: { type: string }
+                      token_type: { type: string, example: bearer }
+                      expires_in: { type: integer, description: seconds }
+                      user:
+                        type: object
+                        properties:
+                          user_id: { type: integer }
+                          auth_staff_id: { type: integer }
+                          email: { type: string }
+                          name: { type: string }
+                          division_id: { type: integer, nullable: true }
+                          role: { type: string }
+                          status: { type: boolean }
+        '422':
+          description: Validation or invalid credentials
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh token
+      description: Return a new JWT. Requires valid Bearer token.
+      operationId: refresh
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: New token and user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      access_token: { type: string }
+                      token_type: { type: string }
+                      expires_in: { type: integer }
+                      user: { $ref: '#/components/schemas/UserData' }
+        '401':
+          description: Unauthorized
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      operationId: logout
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Success
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user
+      description: Returns authenticated user data (no token).
+      operationId: me
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: User data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/UserData' }
+        '401':
+          description: Unauthorized
+
+  /pending-approvals:
+    get:
+      tags: [Pending]
+      summary: Pending approvals (memos with approval trails)
+      description: |
+        List of documents pending the current user's action, grouped by category (Matrix, Special Memo, etc.).
+        Each item includes approval_trails: the full history of who approved/returned/rejected and when.
+        Use this to show pending memos with their approval trail; use GET /documents/{type}/{id} for full document detail.
+      operationId: pendingApprovals
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string, example: all }
+          description: Filter by category (e.g. Matrix, Special Memo) or "all"
+      responses:
+        '200':
+          description: Pending items (each with approval_trails) and summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      pending:
+                        type: object
+                        description: Keys are category names (e.g. "Special Memo", "Matrix"); values are arrays of pending items, each with approval_trails.
+                        additionalProperties:
+                          type: array
+                          items: { $ref: '#/components/schemas/PendingApprovalItem' }
+                      summary: { type: object, description: total_pending, by_category, by_division, oldest_pending, newest_pending }
+                      filters: { type: object }
+
+  /pending-approvals/summary:
+    get:
+      tags: [Pending]
+      summary: Pending summary
+      description: Summary counts only (no item list).
+      operationId: pendingSummary
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Summary stats
+
+  /documents/{type}/{id}:
+    get:
+      tags: [Documents]
+      summary: Get document
+      description: Document by type and id. Includes approval_trails (same structure as web matrices/37 and special-memo/19).
+      operationId: getDocument
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [special_memo, matrix, activity, non_travel_memo, service_request, arf, change_request]
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Document with approval_trails
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      document_type: { type: string }
+                      approval_trails:
+                        type: array
+                        items: { $ref: '#/components/schemas/ApprovalTrailItem' }
+        '404':
+          description: Document not found
+
+  /actions:
+    post:
+      tags: [Actions]
+      summary: Apply action to one document
+      description: |
+        Submit an approval action for a **single** document (memo, matrix, activity, etc.).
+        Does not return the document or approval trails; use GET /documents/{type}/{id} to fetch the updated document with approval_trails after applying an action.
+        **Actions:** approved, rejected, returned, cancelled (cancelled = HOD return for special memo only; for other types use "returned").
+      operationId: action
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, id, action]
+              properties:
+                type:
+                  type: string
+                  enum: [special_memo, non_travel_memo, single_memo, matrix, service_request, arf, change_request]
+                  description: Document type (use same as in pending-approvals item_type or documents path).
+                id: { type: integer, description: Document ID }
+                action:
+                  type: string
+                  enum: [approved, rejected, returned, cancelled]
+                  description: approved, rejected, returned, or cancelled (special memo HOD only).
+                comment: { type: string, maxLength: 1000, description: Optional remarks }
+                available_budget: { type: number, minimum: 0, description: Optional; for activities with budget }
+            example:
+              type: special_memo
+              id: 19
+              action: approved
+              comment: "Approved as requested."
+      responses:
+        '200':
+          description: Action applied successfully (fetch document with GET /documents/{type}/{id} for updated approval_trails).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Action applied successfully." }
+                  data:
+                    type: object
+                    properties:
+                      action: { type: string, example: approved }
+                      document_type: { type: string }
+                      document_id: { type: integer }
+        '403':
+          description: Not authorized to perform this action
+        '404':
+          description: Document not found
+
+  /approved-by-me:
+    get:
+      tags: [Approved by me]
+      summary: Documents approved by me
+      description: List of documents the current user has approved/rejected, plus average approval time (same as dashboard).
+      operationId: approvedByMe
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: year
+          in: query
+          schema: { type: integer }
+        - name: month
+          in: query
+          schema: { type: integer }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: List and average time
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      documents: { type: array, items: { $ref: '#/components/schemas/ApprovedByMeItem' } }
+                      total: { type: integer }
+                      average_approval_time_hours: { type: number }
+                      average_approval_time_display: { type: string }
+
+  /approved-by-me/average-time:
+    get:
+      tags: [Approved by me]
+      summary: Average approval time
+      operationId: averageTime
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: year
+          in: query
+          schema: { type: integer }
+        - name: month
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Average time only
+
+  /matrices/{matrixId}:
+    get:
+      tags: [Matrices]
+      summary: Matrix detail
+      description: Matrix with activities and metadata (passed vs pending for current approver).
+      operationId: matrixShow
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: matrixId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Matrix and activities
+        '404':
+          description: Not found
+    post:
+      tags: [Matrices]
+      summary: Matrix approve or return
+      operationId: matrixUpdateStatus
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: matrixId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [approved, returned] }
+                comment: { type: string }
+      responses:
+        '200':
+          description: Success
+        '403':
+          description: Not current approver
+
+  /matrices/{matrixId}/activities/{activityId}:
+    get:
+      tags: [Activities]
+      summary: Activity detail
+      description: Activity (matrix activity or single memo). Same data as matrices/24/activities/401.
+      operationId: activityShow
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: matrixId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: activityId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Activity data
+        '404':
+          description: Not found
+    post:
+      tags: [Activities]
+      summary: Activity action
+      description: Pass, return, or convert to single memo (matrix activities only).
+      operationId: activityUpdateStatus
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: matrixId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: activityId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [passed, returned, convert_to_single_memo] }
+                comment: { type: string }
+                available_budget: { type: number }
+      responses:
+        '200':
+          description: Success
+        '404':
+          description: Not found
+
+  /memo-list/pending:
+    get:
+      tags: [Memo list]
+      summary: Pending memos (division)
+      description: Pending memos for the authenticated user's division only. Same data shape as reports memo-list.
+      operationId: memoListPending
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: year
+          in: query
+          schema: { type: integer }
+        - name: quarter
+          in: query
+          schema: { type: string, enum: [Q1, Q2, Q3, Q4] }
+        - name: memo_type
+          in: query
+          schema: { type: string, enum: [QM, SM, SPM, NT, CR, SR, ARF] }
+          description: Document type code
+        - name: title
+          in: query
+          schema: { type: string }
+          description: Partial match on title
+        - name: document_number
+          in: query
+          schema: { type: string }
+          description: Partial match on document number
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+      responses:
+        '200':
+          description: Paginated pending memos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      memos: { type: array }
+                      division_id: { type: integer, nullable: true }
+                      status: { type: string, example: pending }
+                      filters: { type: object }
+                      total: { type: integer }
+                      per_page: { type: integer }
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+
+  /memo-list/approved:
+    get:
+      tags: [Memo list]
+      summary: Approved memos (division)
+      description: Approved memos for the authenticated user's division only. Same filters as pending.
+      operationId: memoListApproved
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: year
+          in: query
+          schema: { type: integer }
+        - name: quarter
+          in: query
+          schema: { type: string, enum: [Q1, Q2, Q3, Q4] }
+        - name: memo_type
+          in: query
+          schema: { type: string, enum: [QM, SM, SPM, NT, CR, SR, ARF] }
+        - name: title
+          in: query
+          schema: { type: string }
+        - name: document_number
+          in: query
+          schema: { type: string }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+      responses:
+        '200':
+          description: Paginated approved memos
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT from login or refresh
+
+  schemas:
+    UserData:
+      type: object
+      properties:
+        user_id: { type: integer }
+        auth_staff_id: { type: integer }
+        email: { type: string }
+        name: { type: string }
+        division_id: { type: integer, nullable: true }
+        role: { type: string }
+        status: { type: boolean }
+
+    ApprovalTrailItem:
+      type: object
+      properties:
+        id: { type: integer }
+        action: { type: string }
+        remarks: { type: string, nullable: true }
+        approval_order: { type: integer, nullable: true }
+        staff_id: { type: integer, nullable: true }
+        staff_name: { type: string, nullable: true }
+        oic_staff_id: { type: integer, nullable: true }
+        oic_staff_name: { type: string, nullable: true }
+        role: { type: string, nullable: true }
+        created_at: { type: string, format: date-time, nullable: true }
+        is_archived: { type: boolean }
+
+    PendingApprovalItem:
+      type: object
+      description: One pending document; includes approval_trails (history of actions).
+      properties:
+        id: { type: integer }
+        category: { type: string }
+        type: { type: string, description: "e.g. SpecialMemo, Matrix, Activity" }
+        status: { type: string }
+        title: { type: string }
+        division: { type: string }
+        submitted_by: { type: string }
+        date_received: { type: string, nullable: true }
+        view_url: { type: string }
+        approval_level: { type: integer }
+        workflow_role: { type: string, nullable: true }
+        item_id: { type: integer }
+        item_type: { type: string }
+        approval_trails:
+          type: array
+          items: { $ref: '#/components/schemas/ApprovalTrailItem' }
+          description: Full approval history for this memo/document.
+
+    ApprovedByMeItem:
+      type: object
+      properties:
+        document_type: { type: string }
+        document_id: { type: integer }
+        action: { type: string }
+        acted_at: { type: string, format: date-time }
+        title: { type: string, nullable: true }
+
+security:
+  - bearerAuth: []

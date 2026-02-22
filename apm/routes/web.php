@@ -68,6 +68,9 @@ Route::get('/', function (Request $request) {
 // Logout route (should be accessible without middleware)
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// APM API login at /auth/login (same handler as api/apm/v1/auth/login) so POST /auth/login works when base URL is e.g. /staff/apm
+Route::post('auth/login', [App\Http\Controllers\Api\ApmAuthController::class, 'login'])->name('apm.api.login');
+
 // Public FAQ and Help (no login required; place before session middleware so they are reachable from login page)
 Route::get('/faq', [App\Http\Controllers\FaqController::class, 'publicPage'])->name('faq.index');
 Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
@@ -440,5 +443,23 @@ Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'acti
 
 // General single memo route - must come last to avoid conflicts
 Route::get('/single-memos/{activity}', [ActivityController::class, 'show'])->name('activities.single-memos.show')->where('activity', '[0-9]+');
+
+// API documentation (Swagger / OpenAPI)
+Route::get('docs', function () {
+    return view('api-docs');
+})->name('api.docs');
+Route::get('docs/spec', function () {
+    $path = base_path('documentation/APM_API_OPENAPI.yaml');
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    // Use the same origin/path as this request so docs work on any install (e.g. /staff/apm or root)
+    $apiBaseUrl = rtrim(url('/'), '/') . '/api/apm/v1';
+    $yaml = str_replace('{{API_BASE_URL}}', $apiBaseUrl, file_get_contents($path));
+    return response($yaml, 200, [
+        'Content-Type' => 'application/x-yaml',
+        'Content-Disposition' => 'inline; filename="APM_API_OPENAPI.yaml"',
+    ]);
+})->name('api.docs.spec');
 
 

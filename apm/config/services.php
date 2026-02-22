@@ -44,6 +44,7 @@ return [
             'staff' => '/share/get_current_staff',
             'divisions' => '/share/divisions',
             'directorates' => '/share/directorates',
+            'users' => '/share/users',
         ],
     ],
 
