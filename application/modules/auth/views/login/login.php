@@ -632,6 +632,16 @@
 
                 <!-- Footer -->
                 <div class="footer">
+                    <?php
+                    $apm_base = isset($apm_base_url) ? rtrim($apm_base_url, '/') : (rtrim(base_url(), '/') . '/apm');
+                    if (!empty($apm_base)):
+                    ?>
+                    <p class="mb-2">
+                        <a href="<?php echo html_escape($apm_base); ?>/faq" target="_blank" rel="noopener">FAQ</a>
+                        <span class="mx-2">|</span>
+                        <a href="<?php echo html_escape($apm_base); ?>/help" target="_blank" rel="noopener">Help</a>
+                    </p>
+                    <?php endif; ?>
                     <p>&copy; <?php echo date('Y'); ?> Africa CDC. All rights reserved.</p>
                 </div>
             </div>
