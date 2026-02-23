@@ -21,6 +21,14 @@
         $app = $settings['app'] ?? [];
         $locale = $settings['locale'] ?? [];
         $ui = $settings['ui'] ?? [];
+        $brandingFixed = ['primary_color', 'secondary_color', 'primary_color_dark', 'logo', 'logo_dark', 'favicon'];
+        $appFixed = ['application_name', 'application_short_name', 'tagline', 'support_email', 'footer_text'];
+        $localeFixed = ['default_currency', 'currency_symbol', 'timezone', 'date_format', 'date_time_format', 'locale'];
+        $uiFixed = ['items_per_page', 'pagination_size', 'maintenance_mode'];
+        $brandingCustom = array_diff_key($branding, array_flip($brandingFixed));
+        $appCustom = array_diff_key($app, array_flip($appFixed));
+        $localeCustom = array_diff_key($locale, array_flip($localeFixed));
+        $uiCustom = array_diff_key($ui, array_flip($uiFixed));
     @endphp
 
     {{-- Branding --}}
@@ -35,6 +43,7 @@
                     <div class="input-group">
                         <input type="color" class="form-control form-control-color w-auto color-picker" data-target="primary_color" value="{{ $branding['primary_color'] ?? '#119a48' }}" title="Primary colour">
                         <input type="text" name="primary_color" id="primary_color" class="form-control" value="{{ $branding['primary_color'] ?? '#119a48' }}" maxlength="7">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="primary_color" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -42,6 +51,7 @@
                     <div class="input-group">
                         <input type="color" class="form-control form-control-color w-auto color-picker" data-target="secondary_color" value="{{ $branding['secondary_color'] ?? '#1bb85a' }}" title="Secondary colour">
                         <input type="text" name="secondary_color" id="secondary_color" class="form-control" value="{{ $branding['secondary_color'] ?? '#1bb85a' }}" maxlength="7">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="secondary_color" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -49,21 +59,51 @@
                     <div class="input-group">
                         <input type="color" class="form-control form-control-color w-auto color-picker" data-target="primary_color_dark" value="{{ $branding['primary_color_dark'] ?? '#0d7a3a' }}" title="Primary dark">
                         <input type="text" name="primary_color_dark" id="primary_color_dark" class="form-control" value="{{ $branding['primary_color_dark'] ?? '#0d7a3a' }}" maxlength="7">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="primary_color_dark" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Logo path</label>
-                    <input type="text" name="logo" class="form-control" value="{{ $branding['logo'] ?? '' }}" placeholder="/assets/images/logo.png">
+                    <div class="input-group">
+                        <input type="text" name="logo" class="form-control" value="{{ $branding['logo'] ?? '' }}" placeholder="/assets/images/logo.png">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="logo" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Logo (dark) path</label>
-                    <input type="text" name="logo_dark" class="form-control" value="{{ $branding['logo_dark'] ?? '' }}" placeholder="Optional">
+                    <div class="input-group">
+                        <input type="text" name="logo_dark" class="form-control" value="{{ $branding['logo_dark'] ?? '' }}" placeholder="Optional">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="logo_dark" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Favicon path</label>
-                    <input type="text" name="favicon" class="form-control" value="{{ $branding['favicon'] ?? '' }}" placeholder="/favicon.ico">
+                    <div class="input-group">
+                        <input type="text" name="favicon" class="form-control" value="{{ $branding['favicon'] ?? '' }}" placeholder="/favicon.ico">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="favicon" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
             </div>
+            @if(count($brandingCustom) > 0)
+            <hr class="my-3">
+            <h6 class="text-muted mb-2">Other branding settings</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>Key</th><th>Value</th><th class="text-end" style="width: 100px;">Remove</th></tr></thead>
+                    <tbody>
+                        @foreach($brandingCustom as $k => $v)
+                        <tr>
+                            <td class="align-middle"><code>{{ $k }}</code></td>
+                            <td class="align-middle"><input type="text" name="{{ $k }}" class="form-control form-control-sm" value="{{ $v }}" placeholder="Value"></td>
+                            <td class="align-middle text-end">
+                                <button type="button" class="btn btn-outline-danger btn-sm system-setting-delete" title="Remove setting" data-key="{{ $k }}" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -76,25 +116,60 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">Application name</label>
-                    <input type="text" name="application_name" class="form-control" value="{{ $app['application_name'] ?? '' }}" placeholder="Africa CDC APM">
+                    <div class="input-group">
+                        <input type="text" name="application_name" class="form-control" value="{{ $app['application_name'] ?? '' }}" placeholder="Africa CDC APM">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="application_name" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Short name</label>
-                    <input type="text" name="application_short_name" class="form-control" value="{{ $app['application_short_name'] ?? '' }}" placeholder="APM">
+                    <div class="input-group">
+                        <input type="text" name="application_short_name" class="form-control" value="{{ $app['application_short_name'] ?? '' }}" placeholder="APM">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="application_short_name" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-12">
                     <label class="form-label">Tagline</label>
-                    <input type="text" name="tagline" class="form-control" value="{{ $app['tagline'] ?? '' }}" placeholder="Approval & Programme Management">
+                    <div class="input-group">
+                        <input type="text" name="tagline" class="form-control" value="{{ $app['tagline'] ?? '' }}" placeholder="Approval & Programme Management">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="tagline" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Support email</label>
-                    <input type="email" name="support_email" class="form-control" value="{{ $app['support_email'] ?? '' }}" placeholder="support@africacdc.org">
+                    <div class="input-group">
+                        <input type="email" name="support_email" class="form-control" value="{{ $app['support_email'] ?? '' }}" placeholder="support@africacdc.org">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="support_email" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-12">
                     <label class="form-label">Footer text</label>
-                    <input type="text" name="footer_text" class="form-control" value="{{ $app['footer_text'] ?? '' }}" placeholder="© {{ date('Y') }} Africa CDC. All rights reserved.">
+                    <div class="input-group">
+                        <input type="text" name="footer_text" class="form-control" value="{{ $app['footer_text'] ?? '' }}" placeholder="© {{ date('Y') }} Africa CDC. All rights reserved.">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="footer_text" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
             </div>
+            @if(count($appCustom) > 0)
+            <hr class="my-3">
+            <h6 class="text-muted mb-2">Other application settings</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>Key</th><th>Value</th><th class="text-end" style="width: 100px;">Remove</th></tr></thead>
+                    <tbody>
+                        @foreach($appCustom as $k => $v)
+                        <tr>
+                            <td class="align-middle"><code>{{ $k }}</code></td>
+                            <td class="align-middle"><input type="text" name="{{ $k }}" class="form-control form-control-sm" value="{{ $v }}" placeholder="Value"></td>
+                            <td class="align-middle text-end">
+                                <button type="button" class="btn btn-outline-danger btn-sm system-setting-delete" title="Remove setting" data-key="{{ $k }}" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -107,29 +182,67 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Default currency</label>
-                    <input type="text" name="default_currency" class="form-control" value="{{ $locale['default_currency'] ?? 'USD' }}" placeholder="USD" maxlength="10">
+                    <div class="input-group">
+                        <input type="text" name="default_currency" class="form-control" value="{{ $locale['default_currency'] ?? 'USD' }}" placeholder="USD" maxlength="10">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="default_currency" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Currency symbol</label>
-                    <input type="text" name="currency_symbol" class="form-control" value="{{ $locale['currency_symbol'] ?? '$' }}" placeholder="$" maxlength="5">
+                    <div class="input-group">
+                        <input type="text" name="currency_symbol" class="form-control" value="{{ $locale['currency_symbol'] ?? '$' }}" placeholder="$" maxlength="5">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="currency_symbol" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Timezone</label>
-                    <input type="text" name="timezone" class="form-control" value="{{ $locale['timezone'] ?? 'Africa/Nairobi' }}" placeholder="Africa/Nairobi">
+                    <div class="input-group">
+                        <input type="text" name="timezone" class="form-control" value="{{ $locale['timezone'] ?? 'Africa/Nairobi' }}" placeholder="Africa/Nairobi">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="timezone" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Date format</label>
-                    <input type="text" name="date_format" class="form-control" value="{{ $locale['date_format'] ?? 'd M Y' }}" placeholder="d M Y">
+                    <div class="input-group">
+                        <input type="text" name="date_format" class="form-control" value="{{ $locale['date_format'] ?? 'd M Y' }}" placeholder="d M Y">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="date_format" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Date/time format</label>
-                    <input type="text" name="date_time_format" class="form-control" value="{{ $locale['date_time_format'] ?? 'd M Y H:i' }}" placeholder="d M Y H:i">
+                    <div class="input-group">
+                        <input type="text" name="date_time_format" class="form-control" value="{{ $locale['date_time_format'] ?? 'd M Y H:i' }}" placeholder="d M Y H:i">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="date_time_format" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Locale</label>
-                    <input type="text" name="locale" class="form-control" value="{{ $locale['locale'] ?? 'en' }}" placeholder="en" maxlength="10">
+                    <div class="input-group">
+                        <input type="text" name="locale" class="form-control" value="{{ $locale['locale'] ?? 'en' }}" placeholder="en" maxlength="10">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="locale" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
             </div>
+            @if(count($localeCustom) > 0)
+            <hr class="my-3">
+            <h6 class="text-muted mb-2">Other locale settings</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>Key</th><th>Value</th><th class="text-end" style="width: 100px;">Remove</th></tr></thead>
+                    <tbody>
+                        @foreach($localeCustom as $k => $v)
+                        <tr>
+                            <td class="align-middle"><code>{{ $k }}</code></td>
+                            <td class="align-middle"><input type="text" name="{{ $k }}" class="form-control form-control-sm" value="{{ $v }}" placeholder="Value"></td>
+                            <td class="align-middle text-end">
+                                <button type="button" class="btn btn-outline-danger btn-sm system-setting-delete" title="Remove setting" data-key="{{ $k }}" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -142,20 +255,49 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Items per page</label>
-                    <input type="number" name="items_per_page" class="form-control" value="{{ $ui['items_per_page'] ?? '15' }}" min="5" max="100" step="1">
+                    <div class="input-group">
+                        <input type="number" name="items_per_page" class="form-control" value="{{ $ui['items_per_page'] ?? '15' }}" min="5" max="100" step="1">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="items_per_page" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Pagination size</label>
-                    <input type="number" name="pagination_size" class="form-control" value="{{ $ui['pagination_size'] ?? '10' }}" min="5" max="50" step="1">
+                    <div class="input-group">
+                        <input type="number" name="pagination_size" class="form-control" value="{{ $ui['pagination_size'] ?? '10' }}" min="5" max="50" step="1">
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="pagination_size" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Maintenance mode</label>
-                    <select name="maintenance_mode" class="form-select">
-                        <option value="0" {{ ($ui['maintenance_mode'] ?? '0') == '0' ? 'selected' : '' }}>Off</option>
-                        <option value="1" {{ ($ui['maintenance_mode'] ?? '0') == '1' ? 'selected' : '' }}>On</option>
-                    </select>
+                    <div class="input-group">
+                        <select name="maintenance_mode" class="form-select">
+                            <option value="0" {{ ($ui['maintenance_mode'] ?? '0') == '0' ? 'selected' : '' }}>Off</option>
+                            <option value="1" {{ ($ui['maintenance_mode'] ?? '0') == '1' ? 'selected' : '' }}>On</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-danger system-setting-delete" title="Remove setting" data-key="maintenance_mode" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
             </div>
+            @if(count($uiCustom) > 0)
+            <hr class="my-3">
+            <h6 class="text-muted mb-2">Other UI settings</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>Key</th><th>Value</th><th class="text-end" style="width: 100px;">Remove</th></tr></thead>
+                    <tbody>
+                        @foreach($uiCustom as $k => $v)
+                        <tr>
+                            <td class="align-middle"><code>{{ $k }}</code></td>
+                            <td class="align-middle"><input type="text" name="{{ $k }}" class="form-control form-control-sm" value="{{ $v }}" placeholder="Value"></td>
+                            <td class="align-middle text-end">
+                                <button type="button" class="btn btn-outline-danger btn-sm system-setting-delete" title="Remove setting" data-key="{{ $k }}" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
         </div>
     </div>
 
