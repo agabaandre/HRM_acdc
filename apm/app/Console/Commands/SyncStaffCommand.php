@@ -172,6 +172,7 @@ class SyncStaffCommand extends Command
                         'nationality' => $data['nationality'] ?? '',
                         'division_name' => $data['division_name'] ?? '',
                         'division_id' => $data['division_id'] ?? null,
+                        'associated_divisions' => $this->normalizeAssociatedDivisions($data['associated_divisions'] ?? $data['other_associated_divisions'] ?? null),
                         'duty_station_id' => $data['duty_station_id'] ?? null,
                         'duty_station_name' => $data['duty_station_name'] ?? '',
                         'status' => $data['status'] ?? 'Active',
@@ -278,5 +279,28 @@ class SyncStaffCommand extends Command
             $this->error('Staff sync failed: ' . $e->getMessage());
             return 1;
         }
+    }
+
+    /**
+     * Normalize associated_divisions from API (array or JSON string) to array of division IDs.
+     *
+     * @param mixed $value
+     * @return array<int|string>
+     */
+    private function normalizeAssociatedDivisions($value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+        if (is_array($value)) {
+            return array_values(array_filter(array_map(function ($id) {
+                return is_numeric($id) ? (int) $id : (string) $id;
+            }, $value)));
+        }
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $this->normalizeAssociatedDivisions($decoded) : [];
+        }
+        return [];
     }
 }
