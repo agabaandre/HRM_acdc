@@ -222,8 +222,8 @@
     }
 
     .action-btn.text-primary:hover {
-        background-color: rgba(13, 110, 253, 0.1) !important;
-        color: #0d6efd !important;
+        background-color: rgba(17, 154, 72, 0.1) !important;
+        color: var(--primary-color, #119a48) !important;
     }
 
     .action-btn.text-success:hover {

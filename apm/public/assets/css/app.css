@@ -41,6 +41,18 @@ a {
     --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
     --transition: all 0.2s ease;
   }
+
+  /* Icons use theme primary instead of blue */
+  i.text-primary,
+  .fas.text-primary, .far.text-primary, .fab.text-primary, .fa.text-primary,
+  .bx.text-primary {
+    color: var(--primary-color) !important;
+  }
+  a:hover i.text-primary,
+  a:hover .fas.text-primary,
+  a:hover .bx.text-primary {
+    color: var(--primary-dark) !important;
+  }
   
   /* Search input box style */
   .au-search-input {
