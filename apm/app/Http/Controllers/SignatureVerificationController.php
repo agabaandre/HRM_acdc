@@ -586,7 +586,7 @@ class SignatureVerificationController extends Controller
             $uploadExtras,
             $yearForPayload
         );
-        if ($request->routeIs('api.documents.verify') || $request->wantsJson() || $request->ajax()) {
+        if ($request->routeIs('api.documents.verify', 'apm.documents.verify', 'apm.documents.verify.legacy') || $request->wantsJson() || $request->ajax()) {
             return response()->json($payload);
         }
 

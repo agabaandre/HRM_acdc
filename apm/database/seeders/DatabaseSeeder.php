@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
 
         // Call our custom seeders in the correct order to maintain relationships
         $this->call([
+            SystemSettingsSeeder::class,  // System branding & app settings first
             // DivisionSeeder::class,        // Seed divisions first
             WorkflowSeeder::class,        // Then seed workflows
             WorkflowDefinitionSeeder::class, // Then workflow definitions

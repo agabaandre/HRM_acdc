@@ -10,7 +10,9 @@ use App\Http\Controllers\Api\ApmMatrixController;
 use App\Http\Controllers\Api\ApmActivityController;
 use App\Http\Controllers\Api\ApmMemoListController;
 use App\Http\Controllers\Api\ApmReferenceDataController;
+use App\Http\Controllers\Api\ApmSettingsController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\SignatureVerificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +33,14 @@ Route::prefix('apm/v1')->group(function () {
     Route::post('auth/login', [ApmAuthController::class, 'login']);
     // Logout is outside auth middleware so it can be called with or without token (always returns 200)
     Route::post('auth/logout', [ApmAuthController::class, 'logout']);
+
+    // System settings (public; for branding/app name before login)
+    Route::get('settings', [ApmSettingsController::class, 'index']);
+
+    // Document signature verification (public; POST with PDF file)
+    Route::post('documents/verify', [SignatureVerificationController::class, 'validateUpload'])->name('apm.documents.verify');
+    // Also support path with duplicate "api": .../api/apm/v1/api/documents/verify
+    Route::post('api/documents/verify', [SignatureVerificationController::class, 'validateUpload'])->name('apm.documents.verify.legacy');
 
     Route::middleware(['auth:api', 'apm.api.context'])->group(function () {
         Route::post('auth/refresh', [ApmAuthController::class, 'refresh']);
