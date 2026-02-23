@@ -949,11 +949,12 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         $approvalLevels = $this->getApprovalLevels($requestARF);
         $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
         $disclaimerData = $emptyDisclaimer;
-        if (function_exists('parent_based_disclaimer_data') && \App\Models\ChangeRequest::where('request_arf_id', $requestARF->id)->exists()) {
+        $originatingChangeRequest = \App\Models\ChangeRequest::where('request_arf_id', $requestARF->id)->first();
+        if (function_exists('parent_based_disclaimer_data') && $originatingChangeRequest) {
             $disclaimerData = parent_based_disclaimer_data($requestARF->source_id, $requestARF->model_type, 'arf', $requestARF->id);
         }
 
-        return view('request-arf.show', compact('requestARF', 'sourceModel', 'sourceData', 'approvalLevels', 'disclaimerData'));
+        return view('request-arf.show', compact('requestARF', 'sourceModel', 'sourceData', 'approvalLevels', 'disclaimerData', 'originatingChangeRequest'));
     }
 
     /**

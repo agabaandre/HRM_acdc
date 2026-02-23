@@ -186,6 +186,64 @@
 @endsection
 
 @section('content')
+@php
+    // When this Service Request was created from a Change Request, display data as per CR changes (not parent memo)
+    $cr = $originatingChangeRequest ?? null;
+    $displayTitle = $sourceData ? ($sourceData->activity_title ?? $sourceData->title ?? 'Not specified') : 'Not specified';
+    $displayDateFrom = $sourceData ? ($sourceData->date_from ?? null) : null;
+    $displayDateTo = $sourceData ? ($sourceData->date_to ?? null) : null;
+    $displayMemoDate = $sourceData ? ($sourceData->memo_date ?? null) : null;
+    $displayTotalParticipants = $sourceData ? ($sourceData->total_participants ?? null) : null;
+    $displayTotalExternalParticipants = $sourceData ? ($sourceData->total_external_participants ?? null) : null;
+    $displayBackground = $sourceData ? ($sourceData->background ?? null) : null;
+    $displayRemarks = $serviceRequest->remarks ?? null;
+    if ($cr) {
+        if (!empty($cr->has_activity_title_changed) && $cr->activity_title) {
+            $displayTitle = $cr->activity_title;
+        }
+        if (!empty($cr->has_memo_date_changed) && $cr->memo_date) {
+            $displayMemoDate = $cr->memo_date;
+        }
+        if (!empty($cr->has_participant_days_changed)) {
+            if ($cr->date_from) {
+                $displayDateFrom = $cr->date_from;
+            }
+            if ($cr->date_to) {
+                $displayDateTo = $cr->date_to;
+            }
+        }
+        if (!empty($cr->has_number_of_participants_changed) && isset($cr->total_participants)) {
+            $displayTotalParticipants = $cr->total_participants;
+        }
+        if (!empty($cr->has_total_external_participants_changed) && isset($cr->total_external_participants)) {
+            $displayTotalExternalParticipants = $cr->total_external_participants;
+        }
+        if (!empty($cr->background)) {
+            $displayBackground = $cr->background;
+        }
+        if (!empty($cr->has_activity_request_remarks_changed) && $cr->activity_request_remarks) {
+            $displayRemarks = $cr->activity_request_remarks;
+        }
+    }
+    // Budget: use CR's changed budget when SR is from CR and CR has budget changes
+    $displayBudgetBreakdown = $serviceRequest->budget_breakdown;
+    $displayOriginalTotalBudget = $serviceRequest->original_total_budget ?? 0;
+    $displayNewTotalBudget = $serviceRequest->new_total_budget ?? 0;
+    if ($cr && (isset($cr->has_budget_breakdown_changed) && $cr->has_budget_breakdown_changed || isset($cr->has_budget_id_changed) && $cr->has_budget_id_changed)) {
+        if ($cr->budget_breakdown !== null && $cr->budget_breakdown !== '') {
+            $displayBudgetBreakdown = is_string($cr->budget_breakdown) ? $cr->budget_breakdown : json_encode($cr->budget_breakdown);
+        }
+        if (isset($cr->available_budget) && $cr->available_budget > 0) {
+            $displayOriginalTotalBudget = $cr->available_budget;
+        }
+        $crDecoded = is_string($cr->budget_breakdown ?? '') ? json_decode($cr->budget_breakdown, true) : ($cr->budget_breakdown ?? []);
+        if (is_array($crDecoded) && isset($crDecoded['grand_total'])) {
+            $displayNewTotalBudget = $crDecoded['grand_total'];
+        } elseif (isset($cr->available_budget)) {
+            $displayNewTotalBudget = $cr->available_budget;
+        }
+    }
+@endphp
 <div class="container-fluid">
     <!-- Header Section -->
     <div class="row mb-4">
@@ -237,11 +295,11 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    @if($sourceData)
+                    @if($sourceData || $cr)
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">Activity Title</label>
-                                <p class="mb-0 fw-semibold">{{ $sourceData->activity_title ?? $sourceData->title ?? 'Not specified' }}</p>
+                                <p class="mb-0 fw-semibold">{{ $displayTitle }}</p>
                                 @if($mainActivityUrl ?? null)
                                     <a href="{{ $mainActivityUrl }}" class="btn btn-sm btn-outline-primary mt-2" target="_blank" rel="noopener">
                                         <i class="fas fa-external-link-alt me-1"></i>View main activity
@@ -256,12 +314,12 @@
                                     @elseif($serviceRequest->source_type === 'non_travel_memo')
                                         Non-Travel Memo
                                     @elseif($serviceRequest->source_type === 'activity')
-                                        @if(isset($sourceData->is_single_memo) && $sourceData->is_single_memo)
+                                        @if($sourceData && isset($sourceData->is_single_memo) && $sourceData->is_single_memo)
                                             Single Memo
                                         @else
                                             Matrix Activity
                                         @endif
-                                    @elseif(isset($sourceData->fundType))
+                                    @elseif($sourceData && isset($sourceData->fundType))
                                         {{ $sourceData->fundType->name ?? 'Activity' }}
                                     @else
                                         Activity
@@ -271,46 +329,53 @@
                             @if($serviceRequest->source_type === 'non_travel_memo')
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label text-muted small fw-semibold">Memo Date</label>
-                                    <p class="mb-0">{{ $sourceData->memo_date ? \Carbon\Carbon::parse($sourceData->memo_date)->format('M d, Y') : 'Not specified' }}</p>
+                                    <p class="mb-0">{{ $displayMemoDate ? \Carbon\Carbon::parse($displayMemoDate)->format('M d, Y') : 'Not specified' }}</p>
                                 </div>
                             @else
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label text-muted small fw-semibold">Activity Start Date</label>
-                                    <p class="mb-0">{{ $sourceData->date_from ? \Carbon\Carbon::parse($sourceData->date_from)->format('M d, Y') : 'Not specified' }}</p>
+                                    <p class="mb-0">{{ $displayDateFrom ? \Carbon\Carbon::parse($displayDateFrom)->format('M d, Y') : 'Not specified' }}</p>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label text-muted small fw-semibold">Activity End Date</label>
-                                    <p class="mb-0">{{ $sourceData->date_to ? \Carbon\Carbon::parse($sourceData->date_to)->format('M d, Y') : 'Not specified' }}</p>
+                                    <p class="mb-0">{{ $displayDateTo ? \Carbon\Carbon::parse($displayDateTo)->format('M d, Y') : 'Not specified' }}</p>
                                 </div>
                             @endif
-                            @if(!isset($sourceData->fund_type_id) || $sourceData->fund_type_id != 1)
+                            @if(!$sourceData || !isset($sourceData->fund_type_id) || $sourceData->fund_type_id != 1)
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">Key Result Area</label>
-                                <p class="mb-0">{{ $sourceData->key_result_area ?? 'Not specified' }}</p>
+                                <p class="mb-0">{{ $sourceData ? ($sourceData->key_result_area ?? 'Not specified') : 'Not specified' }}</p>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">Total Participants</label>
-                                <p class="mb-0">{{ $sourceData->total_participants ?? 'Not specified' }}</p>
+                                <p class="mb-0">{{ $displayTotalParticipants ?? ($sourceData ? ($sourceData->total_participants ?? 'Not specified') : 'Not specified') }}</p>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">External Participants</label>
-                                <p class="mb-0">{{ $sourceData->total_external_participants ?? 'Not specified' }}</p>
+                                <p class="mb-0">{{ $displayTotalExternalParticipants ?? ($sourceData ? ($sourceData->total_external_participants ?? 'Not specified') : 'Not specified') }}</p>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">Location</label>
-                                <p class="mb-0">{{ $sourceData->location ?? 'Not specified' }}</p>
+                                <p class="mb-0">{{ $sourceData ? ($sourceData->location ?? 'Not specified') : 'Not specified' }}</p>
                             </div>
                             @endif
                         </div>
                         
-                        @if($sourceData->background)
+                        @if($displayBackground)
                         <div class="mt-3">
                             <label class="form-label text-muted small fw-semibold">Background</label>
-                            <p class="mb-0">{!! $sourceData->background !!}</p>
+                            <p class="mb-0">{!! $displayBackground !!}</p>
+                        </div>
+                        @endif
+
+                        @if($displayRemarks && ($cr || $serviceRequest->remarks))
+                        <div class="mt-3">
+                            <label class="form-label text-muted small fw-semibold">{{ $cr ? 'Remarks (as per Change Request)' : 'Remarks' }}</label>
+                            <p class="mb-0">{!! $displayRemarks !!}</p>
                         </div>
                         @endif
                         
-                        @if($sourceData->objectives)
+                        @if($sourceData && $sourceData->objectives)
                         <div class="mt-3">
                             <label class="form-label text-muted small fw-semibold">Objectives</label>
                             <p class="mb-0">{{ $sourceData->objectives }}</p>
@@ -325,7 +390,7 @@
             </div>
 
             <!-- Budget Information -->
-            @if($serviceRequest->budget_breakdown || $serviceRequest->internal_participants_cost || $serviceRequest->external_participants_cost || $serviceRequest->other_costs)
+            @if($displayBudgetBreakdown || $serviceRequest->budget_breakdown || $serviceRequest->internal_participants_cost || $serviceRequest->external_participants_cost || $serviceRequest->other_costs)
             <div class="card content-section bg-green">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h5 class="mb-0 text-success">
@@ -334,22 +399,23 @@
                 </div>
                 <div class="card-body">
                     @php
-                        // Parse the budget breakdown JSON from the service request
+                        // Parse the budget breakdown: use CR's changed budget when SR is from CR, otherwise service request's
                         $budgetData = null;
-                        if ($serviceRequest->budget_breakdown) {
-                            $budgetData = is_string($serviceRequest->budget_breakdown) 
-                                ? json_decode($serviceRequest->budget_breakdown, true) 
-                                : $serviceRequest->budget_breakdown;
+                        $rawBreakdown = $displayBudgetBreakdown ?? $serviceRequest->budget_breakdown;
+                        if ($rawBreakdown) {
+                            $budgetData = is_string($rawBreakdown)
+                                ? json_decode($rawBreakdown, true)
+                                : $rawBreakdown;
                         }
                     @endphp
                     
                     <!-- Budget Summary Cards -->
-                    @if($serviceRequest->original_total_budget || $serviceRequest->new_total_budget)
+                    @if($displayOriginalTotalBudget || $displayNewTotalBudget || $serviceRequest->original_total_budget || $serviceRequest->new_total_budget)
                     <div class="row mb-4">
                         <div class="col-md-3">
                             <div class="meta-card text-center">
                                 <label class="form-label text-muted small fw-semibold">Original Memo Budget</label>
-                                <p class="h4 mb-0 text-muted">${{ number_format($serviceRequest->original_total_budget ?? 0, 2) }}</p>
+                                <p class="h4 mb-0 text-muted">${{ number_format($displayOriginalTotalBudget ?? $serviceRequest->original_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
                         @if($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget)
@@ -363,18 +429,18 @@
                         <div class="col-md-3">
                             <div class="meta-card text-center">
                                 <label class="form-label text-muted small fw-semibold">Total Requested Funds</label>
-                                <p class="h4 mb-0 text-muted">${{ number_format($serviceRequest->new_total_budget ?? 0, 2) }}</p>
+                                <p class="h4 mb-0 text-muted">${{ number_format($displayNewTotalBudget ?? $serviceRequest->new_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="meta-card text-center">
                                 <label class="form-label text-muted small fw-semibold">Difference</label>
                                 @php
-                                    // Use allocated budget if available, otherwise fall back to original budget
-                                    $allocatedBudget = ($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget) 
-                                        ? $sourceData->available_budget 
-                                        : ($serviceRequest->original_total_budget ?? 0);
-                                    $difference = $allocatedBudget - ($serviceRequest->new_total_budget ?? 0);
+                                    $shownNewTotal = $displayNewTotalBudget ?? $serviceRequest->new_total_budget ?? 0;
+                                    $allocatedBudget = ($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget)
+                                        ? $sourceData->available_budget
+                                        : ($displayOriginalTotalBudget ?? $serviceRequest->original_total_budget ?? 0);
+                                    $difference = $allocatedBudget - $shownNewTotal;
                                 @endphp
                                 <p class="h4 mb-0 {{ $difference >= 0 ? 'text-muted' : 'text-danger' }}">
                                     {{ $difference >= 0 ? '+' : '' }}${{ number_format($difference, 2) }}
