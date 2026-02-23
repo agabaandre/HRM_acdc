@@ -355,7 +355,8 @@ body {
     <?php
     $apm_base = $this->config->item('apm_base_url');
     if (empty($apm_base)) {
-      $apm_base = rtrim(preg_replace('#/staff/?$#', '', base_url()), '/');
+      // Default: staff app base URL + /apm (e.g. https://cbp.africacdc.org/staff/apm)
+      $apm_base = rtrim(base_url(), '/') . '/apm';
     }
     $apm_base = rtrim($apm_base, '/');
     if (!empty($apm_base) && strpos($apm_base, 'http') !== 0) {
