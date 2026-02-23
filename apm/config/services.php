@@ -48,4 +48,15 @@ return [
         ],
     ],
 
+    /*
+    | Microsoft SSO (Azure AD / Entra) for ACDC staff - same app as CodeIgniter auth.
+    | Used by mobile app: validate access_token or exchange code for token, then issue APM JWT.
+    */
+    'microsoft' => [
+        'tenant_id' => env('MICROSOFT_TENANT_ID', env('TENANT_ID')),
+        'client_id' => env('MICROSOFT_CLIENT_ID', env('CLIENT_ID')),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET', env('CLIENT_SEC_VALUE')),
+        'redirect_uri' => env('MICROSOFT_REDIRECT_URI'), // Optional; mobile may send in request for code exchange
+    ],
+
 ];

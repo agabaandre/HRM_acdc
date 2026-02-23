@@ -46,7 +46,7 @@ paths:
       description: |
         Upload an APM-generated PDF to extract document number and signature hashes and validate them against the system.
         **PDF only**; max 10MB. File is not stored. Uses session (cookie) authentication—call from the web app or send the app session cookie.
-        Use server "Web app root" (APP_BASE_URL) for this endpoint.
+        Use server "Web app root" (APP_BASE_URL) for this path. Under API base (API_BASE_URL), **documents/verify** and **api/documents/verify** are also available (same behavior).
       operationId: documentsVerifyUpload
       security: []
       requestBody:
@@ -103,9 +103,11 @@ paths:
   /auth/login:
     post:
       tags: [Auth]
-      summary: Login
+      summary: Login (email + password)
       security: []
-      description: Authenticate with email and password. Returns JWT and user data. Passwords use Argon2i (same as staff app).
+      description: |
+        Authenticate with email and password. Returns JWT, user data, and divisions.
+        Passwords use Argon2i (same as staff app). User object includes role flags and associated_divisions.
       operationId: login
       requestBody:
         required: true
@@ -132,29 +134,42 @@ paths:
                       access_token: { type: string }
                       token_type: { type: string, example: bearer }
                       expires_in: { type: integer, description: seconds }
-                      user:
-                        type: object
-                        properties:
-                          user_id: { type: integer }
-                          auth_staff_id: { type: integer }
-                          email: { type: string }
-                          name: { type: string }
-                          division_id: { type: integer, nullable: true }
-                          role: { type: string }
-                          status: { type: boolean }
+                      user: { $ref: '#/components/schemas/UserData' }
+                      divisions:
+                        type: array
+                        description: Divisions the user can access (primary + associated)
+                        items: { $ref: '#/components/schemas/DivisionItem' }
         '422':
           description: Validation or invalid credentials
 
-  /auth/refresh:
+  /auth/microsoft:
     post:
       tags: [Auth]
-      summary: Refresh token
-      description: Return a new JWT. Requires valid Bearer token.
-      operationId: refresh
-      security: [{ bearerAuth: [] }]
+      summary: Login (Microsoft SSO)
+      security: []
+      description: |
+        Authenticate with Microsoft (Azure AD / Entra). For mobile app: send either the Microsoft **access_token**
+        (from MSAL) or **code** + **redirect_uri** (after Microsoft redirect). API validates token / exchanges code,
+        gets user email from Graph /me, finds APM user by email, and returns same payload as email login.
+      operationId: microsoftLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [access_token]
+                  properties:
+                    access_token: { type: string, description: Microsoft Graph access token from MSAL }
+                - type: object
+                  required: [code, redirect_uri]
+                  properties:
+                    code: { type: string, description: Authorization code from Microsoft redirect }
+                    redirect_uri: { type: string, format: uri, description: Same redirect_uri used in auth request }
       responses:
         '200':
-          description: New token and user
+          description: Success (same as login)
           content:
             application/json:
               schema:
@@ -168,6 +183,68 @@ paths:
                       token_type: { type: string }
                       expires_in: { type: integer }
                       user: { $ref: '#/components/schemas/UserData' }
+                      divisions: { type: array, items: { $ref: '#/components/schemas/DivisionItem' } }
+        '400':
+          description: Invalid/expired code or could not get user identity from Microsoft
+        '403':
+          description: Staff profile missing or inactive
+        '422':
+          description: Missing access_token or (code and redirect_uri)
+
+  /settings:
+    get:
+      tags: [Reference data]
+      summary: System settings (public)
+      security: []
+      description: |
+        App settings for branding, app name, default currency, etc. No auth required (for theme before login).
+        Optional query **group** returns only specified groups (e.g. branding, app, locale, ui).
+      operationId: settings
+      parameters:
+        - name: group
+          in: query
+          schema: { type: string, example: "branding,app" }
+          description: Comma-separated groups; if omitted, all are returned.
+      responses:
+        '200':
+          description: Settings keyed by group
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      additionalProperties: true
+                    description: Keys are group names (branding, app, locale, ui); values are key-value settings.
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh token
+      description: Return a new JWT and current user + divisions. Requires valid Bearer token.
+      operationId: refresh
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: New token, user, and divisions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      access_token: { type: string }
+                      token_type: { type: string }
+                      expires_in: { type: integer }
+                      user: { $ref: '#/components/schemas/UserData' }
+                      divisions: { type: array, items: { $ref: '#/components/schemas/DivisionItem' } }
         '401':
           description: Unauthorized
 
@@ -185,19 +262,23 @@ paths:
     get:
       tags: [Auth]
       summary: Current user
-      description: Returns authenticated user data (no token).
+      description: Returns authenticated user and divisions (same shape as login).
       operationId: me
       security: [{ bearerAuth: [] }]
       responses:
         '200':
-          description: User data
+          description: User and divisions
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   success: { type: boolean }
-                  data: { $ref: '#/components/schemas/UserData' }
+                  data:
+                    type: object
+                    properties:
+                      user: { $ref: '#/components/schemas/UserData' }
+                      divisions: { type: array, items: { $ref: '#/components/schemas/DivisionItem' } }
         '401':
           description: Unauthorized
 
@@ -531,7 +612,10 @@ paths:
     get:
       tags: [Matrices]
       summary: Matrix detail
-      description: Matrix with activities and metadata (passed vs pending for current approver).
+      description: |
+        Matrix with activities and metadata (passed vs pending for current approver).
+        **division_schedule** is an array of division-schedule participants (staff_id, name, participant_days, etc.).
+        Each **activity** has **internal_participants** as an array (not keyed by ID) with staff_id, name, participant_start, participant_end, participant_days, international_travel.
       operationId: matrixShow
       security: [{ bearerAuth: [] }]
       parameters:
@@ -625,7 +709,10 @@ paths:
     get:
       tags: [Memo list]
       summary: Pending memos (division)
-      description: Pending memos for the authenticated user's division only. Same data shape as reports memo-list.
+      description: |
+        Pending memos for the authenticated user's **divisions** (primary + associated_divisions).
+        Response includes division_id (primary) and division_ids (all division IDs used).
+        Same data shape as reports memo-list.
       operationId: memoListPending
       security: [{ bearerAuth: [] }]
       parameters:
@@ -666,7 +753,8 @@ paths:
                     type: object
                     properties:
                       memos: { type: array }
-                      division_id: { type: integer, nullable: true }
+                      division_id: { type: integer, nullable: true, description: Primary division ID }
+                      division_ids: { type: array, items: { type: integer }, description: All division IDs (primary + associated) }
                       status: { type: string, example: pending }
                       filters: { type: object }
                       total: { type: integer }
@@ -678,7 +766,9 @@ paths:
     get:
       tags: [Memo list]
       summary: Approved memos (division)
-      description: Approved memos for the authenticated user's division only. Same filters as pending.
+      description: |
+        Approved memos for the authenticated user's **divisions** (primary + associated_divisions).
+        Response includes division_ids. Same filters as pending.
       operationId: memoListApproved
       security: [{ bearerAuth: [] }]
       parameters:
@@ -705,7 +795,7 @@ paths:
           schema: { type: integer, default: 1 }
       responses:
         '200':
-          description: Paginated approved memos
+          description: Paginated approved memos (data shape includes division_id, division_ids, memos, total, per_page, current_page, last_page)
 
   /reference-data:
     get:
@@ -785,14 +875,38 @@ components:
   schemas:
     UserData:
       type: object
+      description: User payload returned by login, refresh, and me (and Microsoft SSO login).
       properties:
         user_id: { type: integer }
         auth_staff_id: { type: integer }
         email: { type: string }
         name: { type: string }
         division_id: { type: integer, nullable: true }
+        associated_divisions:
+          type: array
+          items: { type: integer }
+          description: Secondary division IDs the user can access (from staff profile).
         role: { type: string }
         status: { type: boolean }
+        is_division_head: { type: boolean }
+        is_admin_assistant: { type: boolean }
+        is_director: { type: boolean }
+        is_finance_officer: { type: boolean }
+
+    DivisionItem:
+      type: object
+      description: One division in login/me/refresh divisions list.
+      properties:
+        id: { type: integer }
+        division_name: { type: string, nullable: true }
+        division_short_name: { type: string, nullable: true }
+        division_head: { type: integer, nullable: true }
+        focal_person: { type: integer, nullable: true }
+        admin_assistant: { type: integer, nullable: true }
+        finance_officer: { type: integer, nullable: true }
+        director_id: { type: integer, nullable: true }
+        directorate_id: { type: integer, nullable: true }
+        category: { type: string, nullable: true }
 
     ApprovalTrailItem:
       type: object
