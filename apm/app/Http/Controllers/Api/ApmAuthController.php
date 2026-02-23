@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\ApmApiUser;
 use App\Models\Approver;
 use App\Models\Division;
+use App\Models\Staff;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
 class ApmAuthController extends Controller
@@ -47,6 +49,105 @@ class ApmAuthController extends Controller
         $token = auth('api')->refresh();
         $user = auth('api')->user();
         return $this->respondWithTokenAndUser($token, $user);
+    }
+
+    /**
+     * Microsoft SSO login for mobile app.
+     * Accepts either:
+     *   - access_token: Microsoft Graph access token (mobile gets from MSAL); we call Graph /me to get email and find APM user.
+     *   - code + redirect_uri: Authorization code from Microsoft redirect; we exchange for token then same as above.
+     * Returns same payload as email/password login (JWT + user + divisions).
+     * Uses same Azure app as CodeIgniter auth (CLIENT_ID, TENANT_ID, etc.).
+     */
+    public function microsoftLogin(Request $request): JsonResponse
+    {
+        $accessToken = null;
+
+        if ($request->filled('access_token')) {
+            $accessToken = trim($request->input('access_token'));
+        } elseif ($request->filled('code') && $request->filled('redirect_uri')) {
+            $accessToken = $this->exchangeMicrosoftCodeForToken(
+                $request->input('code'),
+                $request->input('redirect_uri')
+            );
+            if (!$accessToken) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid or expired authorization code.',
+                ], 400);
+            }
+        } else {
+            throw ValidationException::withMessages([
+                'access_token' => ['Either access_token or (code and redirect_uri) is required.'],
+            ]);
+        }
+
+        $graphUser = $this->getMicrosoftGraphUser($accessToken);
+        if (!$graphUser || empty($graphUser['mail'] ?? $graphUser['userPrincipalName'] ?? null)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not get user identity from Microsoft.',
+            ], 400);
+        }
+
+        $email = $graphUser['mail'] ?? $graphUser['userPrincipalName'];
+        $email = is_string($email) ? trim($email) : '';
+
+        $user = ApmApiUser::where('email', $email)->first();
+        if (!$user) {
+            $staff = Staff::where('work_email', $email)->first();
+            if ($staff) {
+                $user = ApmApiUser::where('auth_staff_id', $staff->staff_id)->first();
+            }
+        }
+
+        if (!$user || !$user->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Staff profile missing or inactive. Contact HR.',
+            ], 403);
+        }
+
+        $user->update(['last_used_at' => now()]);
+        $token = auth('api')->login($user);
+
+        return $this->respondWithTokenAndUser($token, $user);
+    }
+
+    private function exchangeMicrosoftCodeForToken(string $code, string $redirectUri): ?string
+    {
+        $tenantId = config('services.microsoft.tenant_id');
+        $clientId = config('services.microsoft.client_id');
+        $clientSecret = config('services.microsoft.client_secret');
+        if (empty($tenantId) || empty($clientId) || empty($clientSecret)) {
+            return null;
+        }
+
+        $url = "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/token";
+        $response = Http::asForm()->post($url, [
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'code' => $code,
+            'redirect_uri' => $redirectUri,
+            'grant_type' => 'authorization_code',
+        ]);
+
+        if (!$response->successful()) {
+            return null;
+        }
+        $data = $response->json();
+        return $data['access_token'] ?? null;
+    }
+
+    private function getMicrosoftGraphUser(string $accessToken): ?array
+    {
+        $response = Http::withToken($accessToken)
+            ->get('https://graph.microsoft.com/v1.0/me');
+
+        if (!$response->successful()) {
+            return null;
+        }
+        return $response->json();
     }
 
     /**

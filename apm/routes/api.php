@@ -31,6 +31,7 @@ Route::post('/logout', [AuthController::class, 'apiLogout'])
 // APM API v1 (JWT auth; does not affect CodeIgniter/web auth)
 Route::prefix('apm/v1')->group(function () {
     Route::post('auth/login', [ApmAuthController::class, 'login']);
+    Route::post('auth/microsoft', [ApmAuthController::class, 'microsoftLogin']);
     // Logout is outside auth middleware so it can be called with or without token (always returns 200)
     Route::post('auth/logout', [ApmAuthController::class, 'logout']);
 
