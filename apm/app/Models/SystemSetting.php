@@ -15,7 +15,12 @@ class SystemSetting extends Model
 
     protected $keyType = 'string';
 
-    protected $fillable = ['key', 'value', 'group'];
+    protected $fillable = ['key', 'value', 'group', 'type'];
+
+    /**
+     * Allowed field types for display/validation.
+     */
+    public const TYPES = ['text', 'password', 'number', 'boolean', 'color'];
 
     /**
      * Get a setting value by key. Uses cache for 1 hour.
@@ -32,11 +37,12 @@ class SystemSetting extends Model
     /**
      * Set a setting value and clear cache.
      */
-    public static function set(string $key, ?string $value, ?string $group = null): void
+    public static function set(string $key, ?string $value, ?string $group = null, ?string $type = 'text'): void
     {
+        $type = in_array($type, static::TYPES, true) ? $type : 'text';
         static::updateOrCreate(
             ['key' => $key],
-            ['value' => $value, 'group' => $group]
+            ['value' => $value, 'group' => $group, 'type' => $type]
         );
         Cache::forget('system_setting:' . $key);
     }
@@ -51,5 +57,31 @@ class SystemSetting extends Model
             $query->where('group', $group);
         }
         return $query->pluck('value', 'key')->toArray();
+    }
+
+    /**
+     * Get all settings grouped by group, with key, value, type. For password type, value is null in output (do not expose).
+     */
+    public static function getGroupedForEditing(): array
+    {
+        $rows = static::orderBy('group')->orderBy('key')->get();
+        $grouped = [];
+        foreach ($rows as $row) {
+            $group = $row->group ?? 'general';
+            if (!isset($grouped[$group])) {
+                $grouped[$group] = [];
+            }
+            $value = $row->value;
+            $type = $row->type ?? 'text';
+            if ($type === 'password' && $value !== null && $value !== '') {
+                $value = null; // never send password value to view
+            }
+            $grouped[$group][] = [
+                'key'   => $row->key,
+                'value' => $value,
+                'type'  => $type,
+            ];
+        }
+        return $grouped;
     }
 }
