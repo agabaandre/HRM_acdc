@@ -59,7 +59,14 @@ class Auth extends MX_Controller
       return;
     }
 
-    $this->load->view("login/login");
+    $apm_base = $this->config->item('apm_base_url');
+    if (empty($apm_base)) {
+      $apm_base = rtrim(base_url(), '/') . '/apm';
+    }
+    $apm_base = rtrim($apm_base, '/');
+    $this->load->view("login/login", [
+      'apm_base_url' => $apm_base,
+    ]);
   }
 
   public function login() {
