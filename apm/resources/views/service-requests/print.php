@@ -1138,17 +1138,15 @@ $dApprovedChanges = $disclaimer['approved_changes_list'] ?? [];
 <div class="page-break"></div>
 
 <?php if (!empty($changeRequestPdfHtml)): ?>
-  <!-- Change Request Memo (includes CR content + Original Approval Memo after it) -->
+  <!-- Change Request Memo (CR content only; Original Approval Memo follows below) -->
   <div class="section-label mb-15"><strong>Change Request Memo</strong></div>
   <?php echo $changeRequestPdfHtml; ?>
   <div class="page-break"></div>
 <?php endif; ?>
 
-<?php if ($sourcePdfHtml && empty($changeRequestPdfHtml)): ?>
-  <!-- Include the source memo HTML here (only when not already included in CR fragment above) -->
-  <div class="section-label mb-15"><strong>Approval Memo</strong></div>
-  
-  <!-- The source memo HTML will be embedded here -->
+<?php if ($sourcePdfHtml): ?>
+  <!-- Original / Approval Memo (parent memo - shown once after CR when SR is from CR) -->
+  <div class="section-label mb-15"><strong>Original Approval Memo</strong></div>
   <?php echo $sourcePdfHtml; ?>
 <?php endif; ?>
 
