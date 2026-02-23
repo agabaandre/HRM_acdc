@@ -404,6 +404,7 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     Route::post('change-requests/{changeRequest}/update-status', [App\Http\Controllers\ChangeRequestController::class, 'updateStatus'])->name('change-requests.update-status');
     Route::get('change-requests/{changeRequest}/print', [App\Http\Controllers\ChangeRequestController::class, 'print'])->name('change-requests.print');
     Route::post('change-requests/{changeRequest}/resubmit', [App\Http\Controllers\ChangeRequestController::class, 'resubmit'])->name('change-requests.resubmit');
+    Route::post('change-requests/{changeRequest}/admin-update', [App\Http\Controllers\ChangeRequestController::class, 'adminUpdate'])->name('change-requests.admin-update');
 
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');

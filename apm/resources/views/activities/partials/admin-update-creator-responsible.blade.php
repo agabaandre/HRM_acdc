@@ -23,6 +23,14 @@
         'isAdmin' => $isAdmin ?? false,
         'isSpecialMemo' => true
     ])
+    
+    Usage for change requests:
+    @include('activities.partials.admin-update-creator-responsible', [
+        'activity' => $changeRequest,
+        'matrix' => null,
+        'isAdmin' => $isAdmin ?? false,
+        'isChangeRequest' => true
+    ])
 --}}
 
 @if($isAdmin ?? false)
@@ -106,6 +114,8 @@ $(document).ready(function() {
         const updateUrl = '{{ route("special-memo.admin-update", $activity) }}';
         @elseif(isset($isSingleMemo) && $isSingleMemo)
         const updateUrl = '{{ route("activities.single-memos.admin-update", $activity) }}';
+        @elseif(isset($isChangeRequest) && $isChangeRequest)
+        const updateUrl = '{{ route("change-requests.admin-update", $activity) }}';
         @else
         const updateUrl = '{{ route("matrices.activities.admin-update", [$matrix, $activity]) }}';
         @endif

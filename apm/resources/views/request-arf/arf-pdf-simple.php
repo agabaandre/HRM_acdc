@@ -364,71 +364,76 @@
      * @param mixed $order
      * @return string
      */
-    function getApprovalDate($staffId, $matrixApprovalTrails, $order) {
-        // Try to find approval by staff_id and approval_order first
-      $approval = $matrixApprovalTrails
-        ->where('approval_order', $order)
-        ->where('staff_id', $staffId)
-        ->sortByDesc('created_at')
-        ->first();
+    if (!function_exists('getApprovalDate')) {
+        function getApprovalDate($staffId, $matrixApprovalTrails, $order) {
+            // Try to find approval by staff_id and approval_order first
+          $approval = $matrixApprovalTrails
+            ->where('approval_order', $order)
+            ->where('staff_id', $staffId)
+            ->sortByDesc('created_at')
+            ->first();
 
-        // If not found, try to find by oic_staff_id and approval_order
-        if (!$approval) {
-            $approval = $matrixApprovalTrails
-                ->where('approval_order', $order)
-                ->where('oic_staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
+            // If not found, try to find by oic_staff_id and approval_order
+            if (!$approval) {
+                $approval = $matrixApprovalTrails
+                    ->where('approval_order', $order)
+                    ->where('oic_staff_id', $staffId)
+                    ->sortByDesc('created_at')
+                    ->first();
+            }
+
+            // If still not found, try to find by staff_id only
+            if (!$approval) {
+                $approval = $matrixApprovalTrails
+                    ->where('staff_id', $staffId)
+                    ->sortByDesc('created_at')
+                    ->first();
+            }
+
+            // If still not found, try to find by oic_staff_id only
+            if (!$approval) {
+                $approval = $matrixApprovalTrails
+                    ->where('oic_staff_id', $staffId)
+                    ->sortByDesc('created_at')
+                    ->first();
+            }
+
+            $date = ($approval && isset($approval->created_at))
+                ? (is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at)))
+                : date('j F Y H:i');
+          return $date;
         }
-
-        // If still not found, try to find by staff_id only
-        if (!$approval) {
-            $approval = $matrixApprovalTrails
-                ->where('staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        // If still not found, try to find by oic_staff_id only
-        if (!$approval) {
-            $approval = $matrixApprovalTrails
-                ->where('oic_staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        $date = ($approval && isset($approval->created_at))
-            ? (is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at)))
-            : date('j F Y H:i');
-      return $date;
     }
 
     // Helper function to render approver info
-    function renderApproverInfo($approver, $role, $section, $matrix) {
-        $isOic = isset($approver['oic_staff']);
-        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        $name = $isOic ? $staff['name'] . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . ($staff['name'] ?? ''));
-        echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
-        echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+    if (!function_exists('renderApproverInfo')) {
+        function renderApproverInfo($approver, $role, $section, $matrix) {
+            $isOic = isset($approver['oic_staff']);
+            $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
+            $name = $isOic ? $staff['name'] . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . ($staff['name'] ?? ''));
+            echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+            echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
 
-        // Add OIC watermark if applicable
-        if ($isOic) {
-            echo '<div style="position: relative; display: inline-block;">';
-            echo '<span style="position: absolute; top: -5px; right: -10px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
-            echo '</div>';
-        }
+            // Add OIC watermark if applicable
+            if ($isOic) {
+                echo '<div style="position: relative; display: inline-block;">';
+                echo '<span style="position: absolute; top: -5px; right: -10px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
+                echo '</div>';
+            }
 
-        // Show division name for FROM section
-        if ($section === 'from') {
-            $divisionName = $matrix->division->division_name ?? '';
-            if (!empty($divisionName)) {
-                echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
+            // Show division name for FROM section
+            if ($section === 'from') {
+                $divisionName = $matrix->division->division_name ?? '';
+                if (!empty($divisionName)) {
+                    echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
+                }
             }
         }
     }
 
     // Helper function to render signature
-    function renderSignature($approver, $order, $matrix_approval_trails, $sourceModel) {
+    if (!function_exists('renderSignature')) {
+        function renderSignature($approver, $order, $matrix_approval_trails, $sourceModel) {
         $isOic = isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         $staffId = $staff['id'] ?? null;
@@ -447,17 +452,21 @@
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
         echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
         echo '</div>';
+        }
     }
 
     // Helper function to get latest approval for a specific order
-    function getLatestApprovalForOrder($activityApprovalTrails, $order) {
-        $approvals = $activityApprovalTrails->where('approval_order', $order);
-        return $approvals->sortByDesc('created_at')->first();
+    if (!function_exists('getLatestApprovalForOrder')) {
+        function getLatestApprovalForOrder($activityApprovalTrails, $order) {
+            $approvals = $activityApprovalTrails->where('approval_order', $order);
+            return $approvals->sortByDesc('created_at')->first();
+        }
     }
 
     // Helper function to render budget signature with OIC support
    // dd($sourceData);
-    function renderBudgetSignature($approval, $sourceModel, $responsible_person = false, $sourceData = []) {
+    if (!function_exists('renderBudgetSignature')) {
+        function renderBudgetSignature($approval, $sourceModel, $responsible_person = false, $sourceData = []) {
         // If responsible person is provided, get info from $sourceData['responsible_person']
         if ($responsible_person && is_array($sourceData) && isset($sourceData['responsible_person'])) {
             $person = $sourceData['responsible_person'];
@@ -538,10 +547,12 @@
         }
         
         echo '</div>';
+        }
     }
 
     // Helper function to render budget approver info from PrintHelper data
-    function renderBudgetApproverInfoFromPrintHelper($approver) {
+    if (!function_exists('renderBudgetApproverInfoFromPrintHelper')) {
+        function renderBudgetApproverInfoFromPrintHelper($approver) {
         $isOic = isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         
@@ -557,10 +568,12 @@
                 echo '<div class="approver-title">' . htmlspecialchars($title) . '</div>';
             }
         }
+        }
     }
     
     // Helper function to render budget signature from PrintHelper data
-    function renderBudgetSignatureFromPrintHelper($approver, $sourceModel) {
+    if (!function_exists('renderBudgetSignatureFromPrintHelper')) {
+        function renderBudgetSignatureFromPrintHelper($approver, $sourceModel) {
         $isOic = isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         
@@ -577,6 +590,7 @@
             } else {
                 echo '<div class="signature-placeholder">_________________</div>';
             }
+        }
         }
     }
 
@@ -988,6 +1002,63 @@
                     </h3>
                 </div>
             <?php endif; ?>
+
+<?php
+    // Parent-based disclaimer (ARF derived from parent memo)
+    $disclaimer = $disclaimerData ?? [];
+    $dParent = $disclaimer['parent'] ?? null;
+    $dPrevArfs = $disclaimer['previous_arfs'] ?? collect();
+    $dPrevSrs = $disclaimer['previous_service_requests'] ?? collect();
+    $dPrevCrs = $disclaimer['previous_change_requests'] ?? collect();
+    $dHasContent = $dParent || $dPrevArfs->isNotEmpty() || $dPrevSrs->isNotEmpty() || $dPrevCrs->isNotEmpty();
+?>
+<?php
+    $dApprovedChanges = $disclaimer['approved_changes_list'] ?? [];
+?>
+<?php if ($dHasContent): ?>
+<div style="page-break-before: always; margin-top: 20px; padding: 14px; border: 1px solid #dee2e6; background: #fff; font-size: 11px; line-height: 1.5; color: #212529;">
+    <div class="mb-0" style="color:#006633; font-size: 15px;"><strong>Based on parent memo — Activity Request (ARF)</strong></div>
+    <p style="margin: 8px 0 10px 0; color: #212529;">
+        This document is an <strong>Activity Request (ARF)</strong> prepared from an approved parent memo. The source document and any related Activity Requests, Service Requests, or Change Requests issued against the same parent are listed below for reference and audit trail.
+    </p>
+    <?php if (!empty($dApprovedChanges)): ?>
+    <p style="margin: 10px 0 4px 0;"><strong>Changes approved as per the CR memo:</strong></p>
+    <ul style="margin: 0 0 10px 0; padding-left: 20px;">
+        <?php foreach ($dApprovedChanges as $item): ?>
+        <li style="margin-bottom: 4px;"><?php echo htmlspecialchars($item); ?></li>
+        <?php endforeach; ?>
+    </ul>
+    <?php endif; ?>
+    <?php if ($dParent): ?>
+    <p style="margin: 6px 0;"><strong>Source document (parent memo):</strong> <?php echo htmlspecialchars($dParent['document_number'] ?: $dParent['title']); ?></p>
+    <?php endif; ?>
+    <?php if ($dPrevArfs->isNotEmpty()): ?>
+    <p style="margin: 10px 0 4px 0;"><strong>Related Activity Requests (ARF) for this parent:</strong></p>
+    <ul style="margin: 0 0 8px 0; padding-left: 20px;">
+        <?php foreach ($dPrevArfs as $a): ?>
+        <li style="margin-bottom: 4px;"><?php echo htmlspecialchars($a->document_number ?: $a->arf_number); ?> (<?php echo ucfirst($a->overall_status ?? 'N/A'); ?>)</li>
+        <?php endforeach; ?>
+    </ul>
+    <?php endif; ?>
+    <?php if ($dPrevSrs->isNotEmpty()): ?>
+    <p style="margin: 8px 0 4px 0;"><strong>Related Service Requests for this parent:</strong></p>
+    <ul style="margin: 0 0 8px 0; padding-left: 20px;">
+        <?php foreach ($dPrevSrs as $s): ?>
+        <li style="margin-bottom: 4px;"><?php echo htmlspecialchars($s->document_number ?: $s->request_number); ?> (<?php echo ucfirst($s->overall_status ?? 'N/A'); ?>)</li>
+        <?php endforeach; ?>
+    </ul>
+    <?php endif; ?>
+    <?php if ($dPrevCrs->isNotEmpty()): ?>
+    <p style="margin: 8px 0 4px 0;"><strong>Related Change Requests (resulting in ARF):</strong></p>
+    <?php foreach ($dPrevCrs as $c): ?>
+    <p style="margin: 4px 0 10px 0;">
+        <strong><?php echo htmlspecialchars($c->document_number ?: 'CR #' . $c->id); ?></strong> (<?php echo ucfirst($c->overall_status ?? 'N/A'); ?>)
+        <?php if (!empty($c->supporting_reasons)): ?><br/><span style="color: #495057;"><?php echo htmlspecialchars(html_entity_decode(strip_tags($c->supporting_reasons), ENT_QUOTES | ENT_HTML5, 'UTF-8')); ?></span><?php endif; ?>
+    </p>
+    <?php endforeach; ?>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <?php
     // Use PrintHelper for consistent approver display

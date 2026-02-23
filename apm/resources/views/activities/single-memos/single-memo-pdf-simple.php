@@ -212,33 +212,45 @@
     use App\Helpers\PrintHelper;
 
     // Use PrintHelper for getApprovalDate
-    function getApprovalDate($staffId, $matrixApprovalTrails, $order) {
-        return PrintHelper::getApprovalDate($staffId, $matrixApprovalTrails, $order);
+    if (!function_exists('getApprovalDate')) {
+        function getApprovalDate($staffId, $matrixApprovalTrails, $order) {
+            return PrintHelper::getApprovalDate($staffId, $matrixApprovalTrails, $order);
+        }
     }
 
     // Helper function to render approver info
-    function renderApproverInfo($approver, $role, $section, $matrix) {
-        PrintHelper::renderApproverInfo($approver, $role, $section, $matrix);
+    if (!function_exists('renderApproverInfo')) {
+        function renderApproverInfo($approver, $role, $section, $matrix) {
+            PrintHelper::renderApproverInfo($approver, $role, $section, $matrix);
+        }
     }
 
     // Helper function to render signature for single memos
-    function renderSignature($approver, $order, $activity_approval_trails, $activity) {
-        PrintHelper::renderSignature($approver, $order, $activity_approval_trails, $activity);
+    if (!function_exists('renderSignature')) {
+        function renderSignature($approver, $order, $activity_approval_trails, $activity) {
+            PrintHelper::renderSignature($approver, $order, $activity_approval_trails, $activity);
+        }
     }
 
     // Helper function to get latest approval for a specific order
-    function getLatestApprovalForOrder($activityApprovalTrails, $order) {
-        return PrintHelper::getLatestApprovalForOrder($activityApprovalTrails, $order);
+    if (!function_exists('getLatestApprovalForOrder')) {
+        function getLatestApprovalForOrder($activityApprovalTrails, $order) {
+            return PrintHelper::getLatestApprovalForOrder($activityApprovalTrails, $order);
+        }
     }
 
     // Helper function to render budget signature with OIC support
-    function renderBudgetSignature($approval, $activity, $label = '') {
-        PrintHelper::renderBudgetSignature($approval, $activity, $label);
+    if (!function_exists('renderBudgetSignature')) {
+        function renderBudgetSignature($approval, $activity, $label = '') {
+            PrintHelper::renderBudgetSignature($approval, $activity, $label);
+        }
     }
 
     // Helper function to render budget approver info with OIC support
-    function renderBudgetApproverInfo($approval, $label = '') {
-        PrintHelper::renderBudgetApproverInfo($approval, $label);
+    if (!function_exists('renderBudgetApproverInfo')) {
+        function renderBudgetApproverInfo($approval, $label = '') {
+            PrintHelper::renderBudgetApproverInfo($approval, $label);
+        }
     }
 
     // Get division category safely

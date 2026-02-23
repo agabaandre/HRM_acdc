@@ -1078,13 +1078,74 @@
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
-    
 
+<?php
+$disclaimer = $disclaimerData ?? [];
+$dParent = $disclaimer['parent'] ?? null;
+$dPrevArfs = $disclaimer['previous_arfs'] ?? collect();
+$dPrevSrs = $disclaimer['previous_service_requests'] ?? collect();
+$dPrevCrs = $disclaimer['previous_change_requests'] ?? collect();
+$dHasContent = $dParent || $dPrevArfs->isNotEmpty() || $dPrevSrs->isNotEmpty() || $dPrevCrs->isNotEmpty();
+?>
+<?php
+$dApprovedChanges = $disclaimer['approved_changes_list'] ?? [];
+?>
+<?php if ($dHasContent): ?>
+<div style="page-break-before: always; margin-top: 20px; padding: 14px; border: 1px solid #dee2e6; background: #fff; font-size: 11px; line-height: 1.5; color: #212529;">
+    <div class="mb-0" style="color:#006633; font-size: 15px;"><strong>Based on parent memo — Service Request</strong></div>
+    <p style="margin: 8px 0 10px 0; color: #212529;">
+        This document is a <strong>Service Request</strong> prepared from an approved parent memo. The source document and any related Activity Requests, Service Requests, or Change Requests issued against the same parent are listed below for reference and audit trail.
+    </p>
+    <?php if (!empty($dApprovedChanges)): ?>
+    <p style="margin: 10px 0 4px 0;"><strong>Changes approved as per the CR memo:</strong></p>
+    <ul style="margin: 0 0 10px 0; padding-left: 20px;">
+        <?php foreach ($dApprovedChanges as $item): ?>
+        <li style="margin-bottom: 4px;"><?php echo htmlspecialchars($item); ?></li>
+        <?php endforeach; ?>
+    </ul>
+    <?php endif; ?>
+    <?php if ($dParent): ?>
+    <p style="margin: 6px 0;"><strong>Source document (parent memo):</strong> <?php echo htmlspecialchars($dParent['document_number'] ?: $dParent['title']); ?></p>
+    <?php endif; ?>
+    <?php if ($dPrevArfs->isNotEmpty()): ?>
+    <p style="margin: 10px 0 4px 0;"><strong>Related Activity Requests (ARF) for this parent:</strong></p>
+    <ul style="margin: 0 0 8px 0; padding-left: 20px;">
+        <?php foreach ($dPrevArfs as $a): ?>
+        <li style="margin-bottom: 4px;"><?php echo htmlspecialchars($a->document_number ?: $a->arf_number); ?> (<?php echo ucfirst($a->overall_status ?? 'N/A'); ?>)</li>
+        <?php endforeach; ?>
+    </ul>
+    <?php endif; ?>
+    <?php if ($dPrevSrs->isNotEmpty()): ?>
+    <p style="margin: 8px 0 4px 0;"><strong>Related Service Requests for this parent:</strong></p>
+    <ul style="margin: 0 0 8px 0; padding-left: 20px;">
+        <?php foreach ($dPrevSrs as $s): ?>
+        <li style="margin-bottom: 4px;"><?php echo htmlspecialchars($s->document_number ?: $s->request_number); ?> (<?php echo ucfirst($s->overall_status ?? 'N/A'); ?>)</li>
+        <?php endforeach; ?>
+    </ul>
+    <?php endif; ?>
+    <?php if ($dPrevCrs->isNotEmpty()): ?>
+    <p style="margin: 8px 0 4px 0;"><strong>Related Change Requests (resulting in Service Request):</strong></p>
+    <?php foreach ($dPrevCrs as $c): ?>
+    <p style="margin: 4px 0 10px 0;">
+        <strong><?php echo htmlspecialchars($c->document_number ?: 'CR #' . $c->id); ?></strong> (<?php echo ucfirst($c->overall_status ?? 'N/A'); ?>)
+        <?php if (!empty($c->supporting_reasons)): ?><br/><span style="color: #495057;"><?php echo htmlspecialchars(html_entity_decode(strip_tags($c->supporting_reasons), ENT_QUOTES | ENT_HTML5, 'UTF-8')); ?></span><?php endif; ?>
+    </p>
+    <?php endforeach; ?>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <div class="page-break"></div>
 
-<?php if ($sourcePdfHtml): ?>
-  <!-- Include the source memo HTML here -->
+<?php if (!empty($changeRequestPdfHtml)): ?>
+  <!-- Change Request Memo (includes CR content + Original Approval Memo after it) -->
+  <div class="section-label mb-15"><strong>Change Request Memo</strong></div>
+  <?php echo $changeRequestPdfHtml; ?>
+  <div class="page-break"></div>
+<?php endif; ?>
+
+<?php if ($sourcePdfHtml && empty($changeRequestPdfHtml)): ?>
+  <!-- Include the source memo HTML here (only when not already included in CR fragment above) -->
   <div class="section-label mb-15"><strong>Approval Memo</strong></div>
   
   <!-- The source memo HTML will be embedded here -->
