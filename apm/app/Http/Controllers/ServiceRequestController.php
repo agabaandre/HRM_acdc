@@ -808,16 +808,19 @@ class ServiceRequestController extends Controller
         
         // Clean up stored budget data to remove "Unknown Cost" text
         $this->cleanupStoredBudgetData($serviceRequest);
+
+        // When this SR was created from a Change Request, use CR's changed data for display (participants, budget, remarks, etc.)
+        $originatingChangeRequest = \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->first();
         
         // Get approval levels for progress bar
         $approvalLevels = $this->getApprovalLevels($serviceRequest);
         $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
         $disclaimerData = $emptyDisclaimer;
-        if (function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type && \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->exists()) {
+        if (function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type && $originatingChangeRequest) {
             $disclaimerData = parent_based_disclaimer_data($serviceRequest->source_id, $serviceRequest->model_type, 'service_request', $serviceRequest->id);
         }
 
-        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels', 'mainActivityUrl', 'disclaimerData'));
+        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels', 'mainActivityUrl', 'disclaimerData', 'originatingChangeRequest'));
     }
 
     /**

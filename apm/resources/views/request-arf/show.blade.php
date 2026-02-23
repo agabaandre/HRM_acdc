@@ -5,6 +5,56 @@
     $displayTitle = ($requestARF->model_type === 'App\\Models\\NonTravelMemo' && isset($sourceModel))
         ? ($sourceModel->activity_title ?? $sourceData['title'] ?? $requestARF->activity_title ?? 'Untitled')
         : ($requestARF->activity_title ?? 'Untitled');
+    // When this ARF was created from a Change Request, overlay CR's changed data for display
+    $cr = $originatingChangeRequest ?? null;
+    if ($cr && is_array($sourceData)) {
+        if (!empty($cr->has_activity_title_changed) && $cr->activity_title) {
+            $sourceData['title'] = $cr->activity_title;
+            $sourceData['activity_title'] = $cr->activity_title;
+            $displayTitle = $cr->activity_title;
+        }
+        if (!empty($cr->has_memo_date_changed) && $cr->memo_date) {
+            $sourceData['memo_date'] = $cr->memo_date;
+        }
+        if (!empty($cr->has_participant_days_changed)) {
+            if ($cr->date_from) {
+                $sourceData['date_from'] = $cr->date_from;
+                $sourceData['start_date'] = $cr->date_from;
+            }
+            if ($cr->date_to) {
+                $sourceData['date_to'] = $cr->date_to;
+                $sourceData['end_date'] = $cr->date_to;
+            }
+        }
+        if (!empty($cr->has_number_of_participants_changed) && isset($cr->total_participants)) {
+            $sourceData['total_participants'] = $cr->total_participants;
+        }
+        if (!empty($cr->has_total_external_participants_changed) && isset($cr->total_external_participants)) {
+            $sourceData['total_external_participants'] = $cr->total_external_participants;
+        }
+        if (!empty($cr->has_activity_request_remarks_changed) && $cr->activity_request_remarks) {
+            $sourceData['activity_request_remarks'] = $cr->activity_request_remarks;
+        }
+        if (!empty($cr->has_internal_participants_changed) && $cr->internal_participants !== null) {
+            $sourceData['internal_participants'] = is_string($cr->internal_participants)
+                ? json_decode($cr->internal_participants, true) : $cr->internal_participants;
+        }
+        if (!empty($cr->has_budget_breakdown_changed) || !empty($cr->has_budget_id_changed)) {
+            if ($cr->budget_breakdown !== null && $cr->budget_breakdown !== '') {
+                $crBudget = is_string($cr->budget_breakdown) ? json_decode($cr->budget_breakdown, true) : $cr->budget_breakdown;
+                if (is_array($crBudget)) {
+                    $sourceData['budget_breakdown'] = $crBudget;
+                    $fundCodeIds = array_diff(array_keys($crBudget), ['grand_total']);
+                    if (!empty($fundCodeIds)) {
+                        $sourceData['fund_codes'] = \App\Models\FundCode::whereIn('id', $fundCodeIds)->with('fundType')->get()->keyBy('id');
+                    }
+                }
+            }
+            if (isset($cr->available_budget) && $cr->available_budget > 0) {
+                $sourceData['total_budget'] = $cr->available_budget;
+            }
+        }
+    }
 @endphp
 @section('title', 'View Activity Request - ' . $displayTitle)
 
