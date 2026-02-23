@@ -74,6 +74,11 @@
             'title' => 'Systemd Monitor',
         ],
         [
+            'route' => 'system-settings.index',
+            'icon' => 'fas fa-sliders-h',
+            'title' => 'App Settings',
+        ],
+        [
             'route' => 'audit-logs.index',
             'icon' => 'fas fa-clipboard-list',
             'title' => 'Audit Logs',
@@ -288,7 +293,7 @@
             <!-- Settings -->
             @if (in_array(89, user_session('permissions', [])))
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('jobs*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') ? 'active' : '' }}"
+                    <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') ? 'active' : '' }}"
                         href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                         <div class="menu-title">Settings</div>

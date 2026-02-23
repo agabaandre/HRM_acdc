@@ -202,6 +202,10 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::get('/systemd-monitor', [App\Http\Controllers\SystemdMonitorController::class, 'index'])->name('systemd-monitor.index');
     Route::post('/systemd-monitor/execute', [App\Http\Controllers\SystemdMonitorController::class, 'executeCommand'])->name('systemd-monitor.execute');
     Route::get('/jobs/system-info', [App\Http\Controllers\JobsController::class, 'getSystemInfo'])->name('jobs.system-info');
+
+    // App Settings (branding, app name, currency, etc.)
+    Route::get('/system-settings', [App\Http\Controllers\SystemSettingsController::class, 'index'])->name('system-settings.index');
+    Route::put('/system-settings', [App\Http\Controllers\SystemSettingsController::class, 'update'])->name('system-settings.update');
     
     // Document Counter Management
     Route::get('/jobs/document-counters', [App\Http\Controllers\JobsController::class, 'getDocumentCounters'])->name('jobs.document-counters');
