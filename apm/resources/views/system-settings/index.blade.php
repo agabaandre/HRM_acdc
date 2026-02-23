@@ -159,6 +159,43 @@
         </div>
     </div>
 
+    @php $general = $settings['general'] ?? []; @endphp
+    @if(count($general) > 0)
+    {{-- Other / custom settings (editable in main form, removable via delete) --}}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list me-2 text-primary"></i>Other settings</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr><th>Key</th><th>Value</th><th class="text-end" style="width: 100px;">Remove</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach($general as $k => $v)
+                        <tr>
+                            <td class="align-middle"><code>{{ $k }}</code></td>
+                            <td class="align-middle">
+                                <input type="text" name="{{ $k }}" class="form-control form-control-sm" value="{{ $v }}" placeholder="Value">
+                            </td>
+                            <td class="align-middle text-end">
+                                <form action="{{ route('system-settings.destroy') }}" method="POST" class="d-inline" onsubmit="return confirm('Remove this setting?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <input type="hidden" name="key" value="{{ $k }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove setting"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="d-flex justify-content-end gap-2">
         <a href="{{ route('system-settings.index') }}" class="btn btn-outline-secondary">Cancel</a>
         <button type="submit" class="btn btn-primary">
@@ -166,6 +203,43 @@
         </button>
     </div>
 </form>
+
+{{-- Add new setting (separate form) --}}
+<div class="card shadow-sm mb-4 border-primary">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="fas fa-plus me-2 text-primary"></i>Add new setting</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ route('system-settings.store') }}" method="POST" class="row g-3 align-items-end">
+            @csrf
+            <div class="col-md-3">
+                <label class="form-label">Key</label>
+                <input type="text" name="key" class="form-control {{ $errors->has('key') ? 'is-invalid' : '' }}" value="{{ old('key') }}" placeholder="e.g. custom_feature_flag" pattern="[a-zA-Z0-9_.\-]+" maxlength="100" title="Letters, numbers, underscores, dots, hyphens only">
+                @error('key')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Value</label>
+                <input type="text" name="value" class="form-control" value="{{ old('value') }}" placeholder="Optional value">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Group</label>
+                <select name="group" class="form-select">
+                    <option value="general" {{ old('group', 'general') === 'general' ? 'selected' : '' }}>General</option>
+                    <option value="branding" {{ old('group') === 'branding' ? 'selected' : '' }}>Branding</option>
+                    <option value="app" {{ old('group') === 'app' ? 'selected' : '' }}>Application</option>
+                    <option value="locale" {{ old('group') === 'locale' ? 'selected' : '' }}>Locale</option>
+                    <option value="ui" {{ old('group') === 'ui' ? 'selected' : '' }}>UI</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-plus me-1"></i> Add
+                </button>
+            </div>
+        </form>
+        <p class="text-muted small mb-0 mt-2">Key may only contain letters, numbers, underscores, dots and hyphens. Use group <strong>General</strong> to edit or remove the setting from this page; other groups store the key for API/organization.</p>
+    </div>
+</div>
 
 @push('scripts')
 <script>

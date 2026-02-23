@@ -206,6 +206,8 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     // App Settings (branding, app name, currency, etc.)
     Route::get('/system-settings', [App\Http\Controllers\SystemSettingsController::class, 'index'])->name('system-settings.index');
     Route::put('/system-settings', [App\Http\Controllers\SystemSettingsController::class, 'update'])->name('system-settings.update');
+    Route::post('/system-settings/store', [App\Http\Controllers\SystemSettingsController::class, 'store'])->name('system-settings.store');
+    Route::delete('/system-settings/delete', [App\Http\Controllers\SystemSettingsController::class, 'destroy'])->name('system-settings.destroy');
     
     // Document Counter Management
     Route::get('/jobs/document-counters', [App\Http\Controllers\JobsController::class, 'getDocumentCounters'])->name('jobs.document-counters');

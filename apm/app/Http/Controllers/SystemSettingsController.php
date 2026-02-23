@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\SystemSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
+use Illuminate\Validation\Rule;
 
 class SystemSettingsController extends Controller
 {
@@ -43,6 +45,47 @@ class SystemSettingsController extends Controller
         }
         return redirect()->route('system-settings.index')
             ->with('msg', 'App settings updated successfully.')
+            ->with('type', 'success');
+    }
+
+    /**
+     * Add a new setting (key, value, group).
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        if (!in_array(89, user_session('permissions', []))) {
+            abort(403, 'Unauthorized access to app settings');
+        }
+        $valid = $request->validate([
+            'key'   => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z0-9_\.\-]+$/', Rule::unique('system_settings', 'key')],
+            'value' => ['nullable', 'string'],
+            'group' => ['required', 'string', 'max:50', Rule::in(['branding', 'app', 'locale', 'ui', 'general'])],
+        ], [
+            'key.regex'   => 'Key may only contain letters, numbers, underscores, dots and hyphens.',
+            'key.unique'  => 'A setting with this key already exists. Edit it below or choose another key.',
+        ]);
+        SystemSetting::set($valid['key'], $valid['value'] === '' ? null : $valid['value'], $valid['group']);
+        return redirect()->route('system-settings.index')
+            ->with('msg', 'Setting "' . $valid['key'] . '" added successfully.')
+            ->with('type', 'success');
+    }
+
+    /**
+     * Delete a setting by key.
+     */
+    public function destroy(Request $request): RedirectResponse
+    {
+        if (!in_array(89, user_session('permissions', []))) {
+            abort(403, 'Unauthorized access to app settings');
+        }
+        $valid = $request->validate([
+            'key' => ['required', 'string', 'max:100', 'exists:system_settings,key'],
+        ]);
+        $key = $valid['key'];
+        SystemSetting::find($key)->delete();
+        Cache::forget('system_setting:' . $key);
+        return redirect()->route('system-settings.index')
+            ->with('msg', 'Setting "' . $key . '" removed.')
             ->with('type', 'success');
     }
 
