@@ -956,15 +956,15 @@ class PendingApprovalsService
     }
 
     /**
-     * Group pending items by category
+     * Group pending items by category. Returns each category as a list (array) for consistent JSON array output (mobile-friendly).
      */
     protected function groupByCategory(Collection $items): array
     {
         $grouped = $items->groupBy('category');
         
-        // Sort items within each category by date received
+        // Sort items within each category by date received, then return as sequential list (no numeric keys)
         $grouped = $grouped->map(function ($categoryItems) {
-            return $categoryItems->sortByDesc('date_received');
+            return $categoryItems->sortByDesc('date_received')->values()->all();
         });
 
         return $grouped->toArray();
