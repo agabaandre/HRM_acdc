@@ -374,6 +374,13 @@ public function get_current_staff(){
 			// Get staff data
 			$data = $this->staff_mdl->get_all_staff_data($filters, $limit, $start);
 
+			// Add associated_divisions (array) from staff_contracts.other_associated_divisions for API/sync consumers
+			foreach ($data as $row) {
+				$raw = isset($row->other_associated_divisions) ? $row->other_associated_divisions : '';
+				$decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+				$row->associated_divisions = is_array($decoded) ? $decoded : [];
+			}
+
 			// Set headers before any output
 			if (!headers_sent()) {
 				header('Content-Type: application/json');
