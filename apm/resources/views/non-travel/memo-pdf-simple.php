@@ -211,33 +211,45 @@
     use App\Helpers\PrintHelper;
 
     // Use PrintHelper for getApprovalDate
-    function getApprovalDate($staffId, $approvalTrails, $order) {
-        return PrintHelper::getApprovalDate($staffId, $approvalTrails, $order);
+    if (!function_exists('getApprovalDate')) {
+        function getApprovalDate($staffId, $approvalTrails, $order) {
+            return PrintHelper::getApprovalDate($staffId, $approvalTrails, $order);
+        }
     }
 
     // Helper function to render approver info
-    function renderApproverInfo($approver, $role, $section, $nonTravel) {
-        PrintHelper::renderApproverInfo($approver, $role, $section, $nonTravel);
+    if (!function_exists('renderApproverInfo')) {
+        function renderApproverInfo($approver, $role, $section, $nonTravel) {
+            PrintHelper::renderApproverInfo($approver, $role, $section, $nonTravel);
+        }
     }
 
     // Helper function to render signature
-    function renderSignature($approver, $order, $matrix_approval_trails, $nonTravel) {
-        PrintHelper::renderSignature($approver, $order, $matrix_approval_trails, $nonTravel);
+    if (!function_exists('renderSignature')) {
+        function renderSignature($approver, $order, $matrix_approval_trails, $nonTravel) {
+            PrintHelper::renderSignature($approver, $order, $matrix_approval_trails, $nonTravel);
+        }
     }
 
     // Helper function to get latest approval for a specific order
-    function getLatestApprovalForOrder($approvalTrails, $order) {
-        return PrintHelper::getLatestApprovalForOrder($approvalTrails, $order);
+    if (!function_exists('getLatestApprovalForOrder')) {
+        function getLatestApprovalForOrder($approvalTrails, $order) {
+            return PrintHelper::getLatestApprovalForOrder($approvalTrails, $order);
+        }
     }
 
     // Helper function to render budget signature with OIC support
-    function renderBudgetSignature($approval, $nonTravel, $label = '') {
-        PrintHelper::renderBudgetSignature($approval, $nonTravel, $label);
+    if (!function_exists('renderBudgetSignature')) {
+        function renderBudgetSignature($approval, $nonTravel, $label = '') {
+            PrintHelper::renderBudgetSignature($approval, $nonTravel, $label);
+        }
     }
 
     // Helper function to render budget approver info with OIC support
-    function renderBudgetApproverInfo($approval, $label = '') {
-        PrintHelper::renderBudgetApproverInfo($approval, $label);
+    if (!function_exists('renderBudgetApproverInfo')) {
+        function renderBudgetApproverInfo($approval, $label = '') {
+            PrintHelper::renderBudgetApproverInfo($approval, $label);
+        }
     }
 
     // Generate file reference once

@@ -337,8 +337,201 @@ if (!function_exists('user_session')) {
         }
      }
 
-    
- 
+    /**
+     * Whether the user can create/view ARF from a change request (extramural fund type, parent is memo).
+     */
+    if (!function_exists('can_request_arf_for_change_request')) {
+        function can_request_arf_for_change_request($changeRequest) {
+            $user = (object) session('user', []);
+            if (!$changeRequest || !isset($user->staff_id)) {
+                return false;
+            }
+            $isResponsible = (isset($changeRequest->staff_id) && $changeRequest->staff_id == $user->staff_id)
+                || (isset($changeRequest->responsible_person_id) && $changeRequest->responsible_person_id == $user->staff_id);
+            if (!$isResponsible) {
+                return false;
+            }
+            if (($changeRequest->overall_status ?? '') !== 'approved') {
+                return false;
+            }
+            $fundTypeId = $changeRequest->fund_type_id ?? $changeRequest->fundType->id ?? null;
+            if ($fundTypeId != 2) {
+                return false; // extramural only
+            }
+            $parentClass = $changeRequest->parent_memo_model ?? null;
+            $memoClasses = ['App\Models\Activity', 'App\Models\SpecialMemo', 'App\Models\NonTravelMemo'];
+            return $parentClass && in_array($parentClass, $memoClasses, true);
+        }
+    }
+
+    /**
+     * Whether the user can create/view service request from a change request (intramural fund type, parent is memo).
+     */
+    if (!function_exists('can_request_services_for_change_request')) {
+        function can_request_services_for_change_request($changeRequest) {
+            $user = (object) session('user', []);
+            if (!$changeRequest || !isset($user->staff_id)) {
+                return false;
+            }
+            $isResponsible = (isset($changeRequest->staff_id) && $changeRequest->staff_id == $user->staff_id)
+                || (isset($changeRequest->responsible_person_id) && $changeRequest->responsible_person_id == $user->staff_id);
+            if (!$isResponsible) {
+                return false;
+            }
+            if (($changeRequest->overall_status ?? '') !== 'approved') {
+                return false;
+            }
+            $fundTypeId = $changeRequest->fund_type_id ?? $changeRequest->fundType->id ?? null;
+            if ($fundTypeId != 1) {
+                return false; // intramural only
+            }
+            $parentClass = $changeRequest->parent_memo_model ?? null;
+            $memoClasses = ['App\Models\Activity', 'App\Models\SpecialMemo', 'App\Models\NonTravelMemo'];
+            return $parentClass && in_array($parentClass, $memoClasses, true);
+        }
+    }
+
+    /**
+     * Build a human-readable list of changes approved in a Change Request (for disclaimer display).
+     */
+    if (!function_exists('cr_approved_changes_list')) {
+        function cr_approved_changes_list($cr)
+        {
+            if (!$cr) {
+                return [];
+            }
+            $decode = function ($text) {
+                if (empty($text)) {
+                    return '';
+                }
+                return html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            };
+            $list = [];
+            if (!empty($cr->supporting_reasons)) {
+                $list[] = 'Supporting reasons: ' . $decode($cr->supporting_reasons);
+            }
+            if (!empty($cr->has_activity_title_changed) && !empty($cr->activity_title)) {
+                $list[] = 'Activity title: ' . $decode($cr->activity_title);
+            }
+            if (!empty($cr->has_budget_breakdown_changed)) {
+                $list[] = 'Budget breakdown: updated';
+            }
+            if (!empty($cr->has_budget_id_changed)) {
+                $list[] = 'Budget (cost items): updated';
+            }
+            if (!empty($cr->has_internal_participants_changed)) {
+                $list[] = 'Internal participants: updated';
+            }
+            if (!empty($cr->has_number_of_participants_changed) && isset($cr->total_participants)) {
+                $list[] = 'Number of participants: ' . $cr->total_participants;
+            }
+            if (!empty($cr->has_participant_days_changed) && ($cr->date_from || $cr->date_to)) {
+                $list[] = 'Participant days / dates: ' . ($cr->date_from ? $cr->date_from->format('Y-m-d') : '') . ($cr->date_to ? ' to ' . $cr->date_to->format('Y-m-d') : '');
+            }
+            if (!empty($cr->has_total_external_participants_changed) && isset($cr->total_external_participants)) {
+                $list[] = 'Total external participants: ' . $cr->total_external_participants;
+            }
+            if (!empty($cr->has_location_changed)) {
+                $list[] = 'Location: updated';
+            }
+            if (!empty($cr->has_memo_date_changed) && $cr->memo_date) {
+                $list[] = 'Memo date: ' . (\Carbon\Carbon::parse($cr->memo_date)->format('Y-m-d') ?? '');
+            }
+            if (!empty($cr->has_activity_request_remarks_changed) && !empty($cr->activity_request_remarks)) {
+                $list[] = 'Activity request remarks: ' . $decode($cr->activity_request_remarks);
+            }
+            if (!empty($cr->has_request_type_id_changed)) {
+                $list[] = 'Request type: updated';
+            }
+            if (!empty($cr->has_fund_type_id_changed)) {
+                $list[] = 'Fund type: updated';
+            }
+            if (!empty($cr->has_status_changed)) {
+                $list[] = 'Status: updated';
+            }
+            return $list;
+        }
+    }
+
+    /**
+     * Build data for "parent-based" disclaimer on ARF and Service Request show/print.
+     */
+    if (!function_exists('parent_based_disclaimer_data')) {
+        function parent_based_disclaimer_data($sourceId, $modelType, $currentType, $currentId)
+        {
+            $empty = [
+                'parent' => null,
+                'previous_arfs' => collect(),
+                'previous_service_requests' => collect(),
+                'previous_change_requests' => collect(),
+                'originating_change_request' => null,
+                'approved_changes_list' => [],
+            ];
+            if (!$sourceId || !$modelType || !class_exists($modelType)) {
+                return $empty;
+            }
+            try {
+                $parent = $modelType::find($sourceId);
+                $parentInfo = null;
+                if ($parent) {
+                    $docNum = $parent->document_number ?? null;
+                    $url = null;
+                    $base = class_basename($modelType);
+                    if ($base === 'Activity') {
+                        $url = route('activities.single-memos.show', $parent->id);
+                    } elseif ($base === 'NonTravelMemo') {
+                        $url = route('non-travel.show', $parent->id);
+                    } elseif ($base === 'SpecialMemo') {
+                        $url = route('special-memo.show', $parent->id);
+                    }
+                    $parentInfo = [
+                        'document_number' => $docNum,
+                        'url' => $url,
+                        'title' => $parent->activity_title ?? $parent->title ?? 'Parent memo',
+                    ];
+                }
+                $prevArfs = \App\Models\RequestARF::where('source_id', $sourceId)
+                    ->where('model_type', $modelType)
+                    ->when($currentType === 'arf' && $currentId, fn ($q) => $q->where('id', '!=', $currentId))
+                    ->orderByDesc('created_at')
+                    ->get(['id', 'document_number', 'arf_number', 'overall_status', 'created_at']);
+                $prevSrs = \App\Models\ServiceRequest::where('source_id', $sourceId)
+                    ->where('model_type', $modelType)
+                    ->when($currentType === 'service_request' && $currentId, fn ($q) => $q->where('id', '!=', $currentId))
+                    ->orderByDesc('created_at')
+                    ->get(['id', 'document_number', 'request_number', 'overall_status', 'created_at']);
+                $prevCrs = \App\Models\ChangeRequest::where('parent_memo_id', $sourceId)
+                    ->where('parent_memo_model', $modelType)
+                    ->where(function ($q) {
+                        $q->whereNotNull('request_arf_id')->orWhereNotNull('service_request_id');
+                    })
+                    ->orderByDesc('created_at')
+                    ->get(['id', 'document_number', 'supporting_reasons', 'activity_title', 'overall_status', 'request_arf_id', 'service_request_id']);
+                $originatingCr = null;
+                $approvedChangesList = [];
+                if ($currentId && $currentType) {
+                    $originatingCr = \App\Models\ChangeRequest::where('parent_memo_id', $sourceId)
+                        ->where('parent_memo_model', $modelType)
+                        ->when($currentType === 'arf', fn ($q) => $q->where('request_arf_id', $currentId))
+                        ->when($currentType === 'service_request', fn ($q) => $q->where('service_request_id', $currentId))
+                        ->first();
+                    if ($originatingCr && function_exists('cr_approved_changes_list')) {
+                        $approvedChangesList = cr_approved_changes_list($originatingCr);
+                    }
+                }
+                return [
+                    'parent' => $parentInfo,
+                    'previous_arfs' => $prevArfs,
+                    'previous_service_requests' => $prevSrs,
+                    'previous_change_requests' => $prevCrs,
+                    'originating_change_request' => $originatingCr,
+                    'approved_changes_list' => $approvedChangesList,
+                ];
+            } catch (\Throwable $e) {
+                return $empty;
+            }
+        }
+    }
 
      if (!function_exists('can_delete_memo')) {
         function can_delete_memo($memo, $user = null) {

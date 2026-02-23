@@ -244,90 +244,95 @@
      * @param mixed $order
      * @return string
      */
-    function getApprovalDate($staffId, $approvalTrails, $order) {
-        // Try to find approval by staff_id and approval_order first
-      $approval = $approvalTrails
-        ->where('approval_order', $order)
-        ->where('staff_id', $staffId)
-        ->sortByDesc('created_at')
-        ->first();
+    if (!function_exists('getApprovalDate')) {
+        function getApprovalDate($staffId, $approvalTrails, $order) {
+            // Try to find approval by staff_id and approval_order first
+          $approval = $approvalTrails
+            ->where('approval_order', $order)
+            ->where('staff_id', $staffId)
+            ->sortByDesc('created_at')
+            ->first();
 
-        // If not found, try to find by oic_staff_id and approval_order
-        if (!$approval) {
-            $approval = $approvalTrails
-                ->where('approval_order', $order)
-                ->where('oic_staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
+            // If not found, try to find by oic_staff_id and approval_order
+            if (!$approval) {
+                $approval = $approvalTrails
+                    ->where('approval_order', $order)
+                    ->where('oic_staff_id', $staffId)
+                    ->sortByDesc('created_at')
+                    ->first();
+            }
+
+            // If still not found, try to find by staff_id only
+            if (!$approval) {
+                $approval = $approvalTrails
+                    ->where('staff_id', $staffId)
+                    ->sortByDesc('created_at')
+                    ->first();
+            }
+
+            // If still not found, try to find by oic_staff_id only
+            if (!$approval) {
+                $approval = $approvalTrails
+                    ->where('oic_staff_id', $staffId)
+                    ->sortByDesc('created_at')
+                    ->first();
+            }
+
+            $date = ($approval && isset($approval->created_at))
+                ? (is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at)))
+                : date('j F Y H:i');
+          return $date;
         }
-
-        // If still not found, try to find by staff_id only
-        if (!$approval) {
-            $approval = $approvalTrails
-                ->where('staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        // If still not found, try to find by oic_staff_id only
-        if (!$approval) {
-            $approval = $approvalTrails
-                ->where('oic_staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        $date = ($approval && isset($approval->created_at))
-            ? (is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at)))
-            : date('j F Y H:i');
-      return $date;
     }
 
     // Helper function to render approver info
-    function renderApproverInfo($approver, $role, $section, $specialMemo) {
-        $isOic = isset($approver['oic_staff']) && !empty($approver['oic_staff']);
-        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        $staffName = '';
-        if ($staff) {
-            // Check if we have the new structure with 'name' field or old structure with fname/lname/oname
-            if (isset($staff['name'])) {
-                $staffName = trim($staff['name']);
-            } elseif (isset($staff['fname']) || isset($staff['lname'])) {
-                $staffName = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
-            } elseif (is_object($staff) && (isset($staff->fname) || isset($staff->lname))) {
-                $staffName = trim(($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
+    if (!function_exists('renderApproverInfo')) {
+        function renderApproverInfo($approver, $role, $section, $specialMemo) {
+            $isOic = isset($approver['oic_staff']) && !empty($approver['oic_staff']);
+            $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
+            $staffName = '';
+            if ($staff) {
+                // Check if we have the new structure with 'name' field or old structure with fname/lname/oname
+                if (isset($staff['name'])) {
+                    $staffName = trim($staff['name']);
+                } elseif (isset($staff['fname']) || isset($staff['lname'])) {
+                    $staffName = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+                } elseif (is_object($staff) && (isset($staff->fname) || isset($staff->lname))) {
+                    $staffName = trim(($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
+                }
             }
-        }
-        $title = '';
-        if ($staff) {
-            if (isset($staff['title'])) {
-                $title = $staff['title'];
-            } elseif (is_object($staff) && isset($staff->title)) {
-                $title = $staff->title;
+            $title = '';
+            if ($staff) {
+                if (isset($staff['title'])) {
+                    $title = $staff['title'];
+                } elseif (is_object($staff) && isset($staff->title)) {
+                    $title = $staff->title;
+                }
             }
-        }
-        $name = $isOic ? $staffName . ' (OIC)' : trim(($title ? $title . ' ' : '') . $staffName);
-        echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
-        echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+            $name = $isOic ? $staffName . ' (OIC)' : trim(($title ? $title . ' ' : '') . $staffName);
+            echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+            echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
 
-        // Add OIC watermark if applicable
-        if ($isOic) {
-            echo '<div style="position: relative; display: inline-block;">';
-            echo '<span style="position: absolute; top: -5px; right: -10px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
-            echo '</div>';
-        }
+            // Add OIC watermark if applicable
+            if ($isOic) {
+                echo '<div style="position: relative; display: inline-block;">';
+                echo '<span style="position: absolute; top: -5px; right: -10px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
+                echo '</div>';
+            }
 
-        // Show division name for FROM section
-        if ($section === 'from') {
-            $divisionName = $specialMemo->division->division_name ?? '';
-            if (!empty($divisionName)) {
-                echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
+            // Show division name for FROM section
+            if ($section === 'from') {
+                $divisionName = $specialMemo->division->division_name ?? '';
+                if (!empty($divisionName)) {
+                    echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
+                }
             }
         }
     }
 
     // Helper function to render signature
-    function renderSignature($approver, $order, $approval_trails, $specialMemo) {
+    if (!function_exists('renderSignature')) {
+        function renderSignature($approver, $order, $approval_trails, $specialMemo) {
         $isOic = isset($approver['oic_staff']) && !empty($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         
@@ -373,16 +378,20 @@
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
         echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($specialMemo->id, $staffId, $approvalDate)) . '</div>';
         echo '</div>';
+        }
     }
 
     // Helper function to get latest approval for a specific order
-    function getLatestApprovalForOrder($approvalTrails, $order) {
-        $approvals = $approvalTrails->where('approval_order', $order);
-        return $approvals->sortByDesc('created_at')->first();
+    if (!function_exists('getLatestApprovalForOrder')) {
+        function getLatestApprovalForOrder($approvalTrails, $order) {
+            $approvals = $approvalTrails->where('approval_order', $order);
+            return $approvals->sortByDesc('created_at')->first();
+        }
     }
 
     // Helper function to render budget signature with OIC support
-    function renderBudgetSignature($approval, $specialMemo, $label = '') {
+    if (!function_exists('renderBudgetSignature')) {
+        function renderBudgetSignature($approval, $specialMemo, $label = '') {
         if (!$approval) {
             echo '<span style="color:#aaa;">N/A</span>';
             return;
@@ -425,6 +434,7 @@
         }
         
         echo '</div>';
+        }
     }
 
     // Helper function to render budget approver info with OIC support

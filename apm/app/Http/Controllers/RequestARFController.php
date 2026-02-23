@@ -310,7 +310,8 @@ class RequestARFController extends Controller
                 'total_budget' => 'required|numeric|min:0',
                 'fund_type_id' => 'nullable|integer',
                 'model_type' => 'required|string',
-                'action' => 'required|in:submit'
+                'action' => 'required|in:submit',
+                'change_request_id' => 'nullable|integer|exists:change_request,id',
             ]);
             Log::info('Validation passed successfully');
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -368,10 +369,43 @@ class RequestARFController extends Controller
             // Generate ARF number with proper format
             $arfNumber = $this->generateARFNumber($sourceData, $request->model_type);
             
-            // Capture budget breakdown and internal participants
+            // Capture budget breakdown and internal participants (use Change Request data when creating from CR)
             $budgetBreakdown = $this->getBudgetBreakdown($sourceData, $request->model_type);
             $internalParticipants = $this->getInternalParticipants($sourceData, $request->model_type);
-            
+            $totalBudget = $request->total_budget;
+            $activityTitle = $request->title;
+
+            if ($request->filled('change_request_id')) {
+                $changeRequest = \App\Models\ChangeRequest::find($request->change_request_id);
+                if ($changeRequest) {
+                    if ($changeRequest->budget_breakdown !== null) {
+                        $crBudget = is_string($changeRequest->budget_breakdown)
+                            ? json_decode($changeRequest->budget_breakdown, true)
+                            : $changeRequest->budget_breakdown;
+                        if (is_array($crBudget) && !empty($crBudget)) {
+                            $budgetBreakdown = $crBudget;
+                            if (isset($crBudget['grand_total'])) {
+                                $totalBudget = (float) $crBudget['grand_total'];
+                            }
+                        }
+                    }
+                    if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
+                        $totalBudget = (float) $changeRequest->available_budget;
+                    }
+                    if ($changeRequest->internal_participants !== null) {
+                        $crParticipants = is_string($changeRequest->internal_participants)
+                            ? json_decode($changeRequest->internal_participants, true)
+                            : $changeRequest->internal_participants;
+                        if (is_array($crParticipants)) {
+                            $internalParticipants = $crParticipants;
+                        }
+                    }
+                    if (!empty($changeRequest->activity_title)) {
+                        $activityTitle = $changeRequest->activity_title;
+                    }
+                }
+            }
+
             // Encode internal participants as JSON (budget is already in correct format)
             $internalParticipantsJson = json_encode($internalParticipants);
 
@@ -422,12 +456,12 @@ class RequestARFController extends Controller
                 'arf_number' => $arfNumber,
                 'request_date' => now()->toDateString(),
                 'division_id' => $this->getDivisionId($sourceData, $request->model_type),
-                'activity_title' => clean_unicode($request->title),
+                'activity_title' => clean_unicode($activityTitle),
                 'purpose' => clean_unicode('ARF Request for ' . ucfirst(str_replace('_', ' ', $request->source_type)) . ' #' . $request->source_id),
                 'start_date' => now()->toDateString(), // Not important for approval
                 'end_date' => now()->toDateString(), // Not important for approval
-                'requested_amount' => $request->total_budget, // Total amount from source
-                'total_amount' => $request->total_budget, // Total amount for display
+                'requested_amount' => $totalBudget, // Total amount (from CR when creating from CR)
+                'total_amount' => $totalBudget, // Total amount for display
                 'accounting_code' => $request->source_type . '_' . $request->source_id, // Reference to source
                 'budget_breakdown' => $budgetBreakdown, // Budget breakdown from source (already in correct format)
                 'internal_participants' => $internalParticipantsJson, // Internal participants from source as JSON
@@ -443,7 +477,11 @@ class RequestARFController extends Controller
             Log::info('Creating ARF with data', ['arf_data' => $arfData]);
             
             $arf = RequestARF::create($arfData);
-            
+
+            if ($request->filled('change_request_id')) {
+                \App\Models\ChangeRequest::where('id', $request->change_request_id)->update(['request_arf_id' => $arf->id]);
+            }
+
             // Save approval trail for ARF creation and submission
             $arf->saveApprovalTrail('ARF request created and submitted for approval', 'submitted');
             
@@ -909,8 +947,13 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         
         // Get approval levels for progress bar
         $approvalLevels = $this->getApprovalLevels($requestARF);
-        
-        return view('request-arf.show', compact('requestARF', 'sourceModel', 'sourceData', 'approvalLevels'));
+        $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
+        $disclaimerData = $emptyDisclaimer;
+        if (function_exists('parent_based_disclaimer_data') && \App\Models\ChangeRequest::where('request_arf_id', $requestARF->id)->exists()) {
+            $disclaimerData = parent_based_disclaimer_data($requestARF->source_id, $requestARF->model_type, 'arf', $requestARF->id);
+        }
+
+        return view('request-arf.show', compact('requestARF', 'sourceModel', 'sourceData', 'approvalLevels', 'disclaimerData'));
     }
 
     /**
@@ -1362,6 +1405,12 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             }
         }
         
+        $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
+        $disclaimerData = $emptyDisclaimer;
+        if (function_exists('parent_based_disclaimer_data') && \App\Models\ChangeRequest::where('request_arf_id', $requestARF->id)->exists()) {
+            $disclaimerData = parent_based_disclaimer_data($requestARF->source_id, $requestARF->model_type, 'arf', $requestARF->id);
+        }
+
         // Prepare data for PDF
         $data = [
             'requestARF' => $requestARF,
@@ -1370,6 +1419,8 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             'fundCodes' => $sourceData['fund_codes'] ?? collect(),
             'internalParticipants' => $sourceData['internal_participants'] ?? [],
             'budgetBreakdown' => $sourceData['budget_breakdown'] ?? [],
+            'disclaimerData' => $disclaimerData,
+            'documentType' => 'arf',
         ];
         //dd($sourceData);
         // Generate PDF using the custom generate_pdf function

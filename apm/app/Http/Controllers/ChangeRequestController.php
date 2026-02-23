@@ -744,10 +744,229 @@ class ChangeRequestController extends Controller
             $parentMemo->load(['requestType', 'fundType']);
         }
 
+        $existingArf = $changeRequest->request_arf_id
+            ? RequestArf::find($changeRequest->request_arf_id)
+            : null;
+        $existingServiceRequest = $changeRequest->service_request_id
+            ? ServiceRequest::find($changeRequest->service_request_id)
+            : null;
+        $canCreateArf = function_exists('can_request_arf_for_change_request')
+            && can_request_arf_for_change_request($changeRequest)
+            && !$changeRequest->request_arf_id;
+        $canCreateServices = function_exists('can_request_services_for_change_request')
+            && can_request_services_for_change_request($changeRequest)
+            && !$changeRequest->service_request_id;
+
+        $arfModalData = null;
+        if ($canCreateArf && $parentMemo) {
+            $arfModalData = $this->buildArfModalDataFromParent($parentMemo, $changeRequest->id, $changeRequest);
+        }
+
+        $isAdmin = (function_exists('user_session') ? user_session('role') : null) == 10;
+
         return view('change-requests.show', [
             'changeRequest' => $changeRequest,
-            'parentMemo' => $parentMemo
+            'parentMemo' => $parentMemo,
+            'existingArf' => $existingArf,
+            'existingServiceRequest' => $existingServiceRequest,
+            'canCreateArf' => $canCreateArf,
+            'canCreateServices' => $canCreateServices,
+            'arfModalData' => $arfModalData,
+            'isAdmin' => $isAdmin,
         ]);
+    }
+
+    /**
+     * Admin-only: update creator (staff_id) and responsible person for a change request.
+     * Only accessible to users with role == 10 (system admin).
+     */
+    public function adminUpdate(Request $request, ChangeRequest $changeRequest): JsonResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+
+        if ($userRole != 10) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Only system administrators can perform this action.',
+            ], 403);
+        }
+
+        $request->validate([
+            'staff_id' => 'required|integer|exists:staff,staff_id',
+            'responsible_person_id' => 'required|integer|exists:staff,staff_id',
+        ]);
+
+        try {
+            $changeRequest->update([
+                'staff_id' => $request->input('staff_id'),
+                'responsible_person_id' => $request->input('responsible_person_id'),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Creator and Responsible Person updated successfully.',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update change request creator/responsible person', [
+                'change_request_id' => $changeRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Build create-arf-modal variables from parent memo (for use when creating ARF from change request).
+     * When $changeRequest is provided, uses the CR's changed data for title, budget, and participants in the modal.
+     */
+    private function buildArfModalDataFromParent($parentMemo, int $changeRequestId, ?ChangeRequest $changeRequest = null): array
+    {
+        $modelClass = get_class($parentMemo);
+        $sourceTypeDisplay = match ($modelClass) {
+            Activity::class => 'Activity',
+            NonTravelMemo::class => 'Non-Travel Memo',
+            SpecialMemo::class => 'Special Memo',
+            default => 'Memo',
+        };
+        $sourceTypeValue = match ($modelClass) {
+            Activity::class => 'activity',
+            NonTravelMemo::class => 'non_travel',
+            SpecialMemo::class => 'special_memo',
+            default => 'activity',
+        };
+        $modelType = str_replace('App\Models\\', 'App\\\\Models\\\\', $modelClass);
+
+        $budgetBreakdown = is_string($parentMemo->budget_breakdown ?? '')
+            ? (json_decode($parentMemo->budget_breakdown, true) ?? [])
+            : ($parentMemo->budget_breakdown ?? []);
+        $budgetIds = is_string($parentMemo->budget_id ?? '')
+            ? (json_decode($parentMemo->budget_id, true) ?? [])
+            : ($parentMemo->budget_id ?? []);
+        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds ?: [])
+            ->with('fundType', 'funder', 'partner')
+            ->get()
+            ->keyBy('id');
+
+        $title = $parentMemo->activity_title ?? $parentMemo->title ?? 'Activity';
+        $totalBudget = $parentMemo->total_budget ?? '0.00';
+
+        $divisionName = 'N/A';
+        if ($parentMemo instanceof Activity && $parentMemo->relationLoaded('matrix') && $parentMemo->matrix?->division) {
+            $divisionName = $parentMemo->matrix->division->division_name ?? 'N/A';
+        } elseif (isset($parentMemo->division) && $parentMemo->division) {
+            $divisionName = $parentMemo->division->division_name ?? 'N/A';
+        }
+        $dateFrom = $parentMemo->date_from ?? $parentMemo->start_date ?? null;
+        $dateTo = $parentMemo->date_to ?? $parentMemo->end_date ?? null;
+        $focalPerson = isset($parentMemo->staff_id) && $parentMemo->staff
+            ? $parentMemo->staff->fname . ' ' . $parentMemo->staff->lname
+            : 'N/A';
+        $headOfDivision = 'N/A';
+        if ($parentMemo instanceof Activity && $parentMemo->matrix?->division?->head) {
+            $headOfDivision = $parentMemo->matrix->division->head->fname . ' ' . $parentMemo->matrix->division->head->lname;
+        } elseif (isset($parentMemo->division->head) && $parentMemo->division->head) {
+            $headOfDivision = $parentMemo->division->head->fname . ' ' . $parentMemo->division->head->lname;
+        }
+        $location = 'N/A';
+        if (method_exists($parentMemo, 'locations') && $parentMemo->locations()) {
+            $location = $parentMemo->locations()->pluck('name')->join(', ');
+        }
+
+        if ($changeRequest) {
+            if ($changeRequest->activity_title !== null && $changeRequest->activity_title !== '') {
+                $title = $changeRequest->activity_title;
+            }
+            if ($changeRequest->budget_breakdown !== null) {
+                $crBudget = is_string($changeRequest->budget_breakdown)
+                    ? (json_decode($changeRequest->budget_breakdown, true) ?? [])
+                    : $changeRequest->budget_breakdown;
+                if (is_array($crBudget) && !empty($crBudget)) {
+                    $budgetBreakdown = $crBudget;
+                    if (isset($crBudget['grand_total'])) {
+                        $totalBudget = (string) $crBudget['grand_total'];
+                    }
+                }
+            }
+            if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
+                $totalBudget = (string) $changeRequest->available_budget;
+            }
+            if ($changeRequest->budget_id !== null) {
+                $crBudgetIds = is_string($changeRequest->budget_id) ? (json_decode($changeRequest->budget_id, true) ?? []) : $changeRequest->budget_id;
+                if (is_array($crBudgetIds) && !empty($crBudgetIds)) {
+                    $budgetIds = $crBudgetIds;
+                    $fundCodes = \App\Models\FundCode::whereIn('id', $crBudgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
+                }
+            }
+            if ($changeRequest->date_from !== null) {
+                $dateFrom = $changeRequest->date_from;
+            }
+            if ($changeRequest->date_to !== null) {
+                $dateTo = $changeRequest->date_to;
+            }
+            if ($changeRequest->location_id !== null) {
+                $locationIds = is_string($changeRequest->location_id) ? (json_decode($changeRequest->location_id, true) ?? []) : $changeRequest->location_id;
+                if (is_array($locationIds) && !empty($locationIds)) {
+                    $location = \App\Models\Location::whereIn('id', $locationIds)->pluck('name')->join(', ');
+                }
+            }
+        }
+
+        $numberOfDays = ($dateFrom && $dateTo)
+            ? \Carbon\Carbon::parse($dateFrom)->diffInDays(\Carbon\Carbon::parse($dateTo)) + 1
+            : 'N/A';
+
+        $background = $parentMemo->background ?? 'N/A';
+        $requestForApproval = $parentMemo->activity_request_remarks ?? 'N/A';
+        $internalParticipantsDisplay = $parentMemo->internal_participants
+            ? (is_array($parentMemo->internal_participants) ? count($parentMemo->internal_participants) : count(json_decode($parentMemo->internal_participants, true) ?? []))
+            : 'N/A';
+        if ($changeRequest) {
+            if ($changeRequest->background !== null && $changeRequest->background !== '') {
+                $background = $changeRequest->background;
+            }
+            if ($changeRequest->activity_request_remarks !== null && $changeRequest->activity_request_remarks !== '') {
+                $requestForApproval = $changeRequest->activity_request_remarks;
+            }
+            if ($changeRequest->internal_participants !== null) {
+                $crParts = is_string($changeRequest->internal_participants) ? (json_decode($changeRequest->internal_participants, true) ?? []) : $changeRequest->internal_participants;
+                $internalParticipantsDisplay = is_array($crParts) ? count($crParts) : 'N/A';
+            }
+        }
+
+        return [
+            'sourceType' => $sourceTypeDisplay,
+            'sourceTitle' => $title,
+            'fundTypeId' => $parentMemo->fundType->id ?? $parentMemo->fund_type_id ?? null,
+            'fundTypeName' => $parentMemo->fundType->name ?? 'N/A',
+            'divisionName' => $divisionName,
+            'dateFrom' => $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('M d, Y') : 'N/A',
+            'dateTo' => $dateTo ? \Carbon\Carbon::parse($dateTo)->format('M d, Y') : 'N/A',
+            'numberOfDays' => $numberOfDays,
+            'location' => $location,
+            'keyResultArea' => $parentMemo->key_result_area ?? ($parentMemo->matrix->key_result_area ?? 'N/A'),
+            'quarterlyLinkage' => $parentMemo->quarterly_linkage ?? 'N/A',
+            'totalParticipants' => $parentMemo->total_participants ?? 'N/A',
+            'internalParticipants' => $internalParticipantsDisplay,
+            'externalParticipants' => 'N/A',
+            'budgetCode' => $fundCodes->isNotEmpty() ? $fundCodes->pluck('code')->join(', ') : 'N/A',
+            'background' => $background,
+            'requestForApproval' => $requestForApproval,
+            'totalBudget' => $totalBudget,
+            'headOfDivision' => $headOfDivision,
+            'focalPerson' => $focalPerson,
+            'budgetBreakdown' => $budgetBreakdown,
+            'budgetIds' => $budgetIds ?: [],
+            'fundCodes' => $fundCodes,
+            'defaultTitle' => 'Activity Request - ' . $title,
+            'sourceId' => $parentMemo->id,
+            'modelType' => $modelType,
+            'changeRequestId' => $changeRequestId,
+        ];
     }
 
     /**
@@ -1653,6 +1872,56 @@ class ChangeRequestController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"'
         ]);
+    }
+
+    /**
+     * Return the Change Request print view as an HTML fragment for embedding (e.g. in Service Request print).
+     * Excludes the parent memo section (parentPdfHtml = null) to avoid duplication.
+     */
+    public function getPrintHtmlFragmentForEmbedding(ChangeRequest $changeRequest): ?string
+    {
+        $changeRequest->load([
+            'staff',
+            'responsiblePerson',
+            'division',
+            'requestType',
+            'fundType',
+            'parentMemo',
+            'forwardWorkflow',
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff',
+            'approvalTrails.workflowDefinition'
+        ]);
+
+        $parentMemo = $changeRequest->parentMemo ?? $this->getParentMemo(
+            $changeRequest->parent_memo_model,
+            $changeRequest->parent_memo_id
+        );
+
+        $parentPdfHtml = $parentMemo ? $this->generateParentMemoHtml($parentMemo, $changeRequest->parent_memo_model) : null;
+
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($changeRequest);
+        $organizedWorkflowSteps = \App\Helpers\PrintHelper::organizeWorkflowStepsBySection($workflowInfo['workflow_steps'] ?? []);
+        $changes = $this->getChangesList($changeRequest, $parentMemo);
+
+        $html = view('change-requests.print', [
+            'changeRequest' => $changeRequest,
+            'parentMemo' => $parentMemo,
+            'parentPdfHtml' => $parentPdfHtml,
+            'changes' => $changes,
+            'organized_workflow_steps' => $organizedWorkflowSteps,
+        ])->render();
+
+        if (preg_match('/<body[^>]*>(.*)<\/body>/is', $html, $bodyMatch)) {
+            $bodyContent = $bodyMatch[1];
+            $styleContent = '';
+            if (preg_match('/<style[^>]*>(.*)<\/style>/is', $html, $styleMatch)) {
+                $styleContent = '<style>' . $styleMatch[1] . '</style>';
+            }
+            return $styleContent . $bodyContent;
+        }
+
+        return null;
     }
 
     /**

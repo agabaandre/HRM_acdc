@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChangeRequest;
 use App\Models\ServiceRequest;
 use App\Models\Staff;
 use App\Models\Workflow;
@@ -148,19 +149,66 @@ class ServiceRequestController extends Controller
             $originalTotalBudget = 0;
             $internalParticipants = [];
             
+            $changeRequestId = $request->get('change_request_id');
+            $changeRequest = $changeRequestId ? ChangeRequest::find($changeRequestId) : null;
+
+            if ($changeRequest && (!$sourceType || !$sourceId)) {
+                $parentClass = $changeRequest->parent_memo_model ?? null;
+                $sourceType = match ($parentClass) {
+                    'App\Models\Activity' => 'activity',
+                    'App\Models\NonTravelMemo' => 'non_travel_memo',
+                    'App\Models\SpecialMemo' => 'special_memo',
+                    default => $sourceType,
+                };
+                $sourceId = $sourceId ?? $changeRequest->parent_memo_id;
+            }
+
             if ($sourceType && $sourceId) {
                 $sourceData = $this->getSourceDataForForm($sourceType, $sourceId);
-                
-                // Process budget breakdown from source data
+
+                // Process budget breakdown and participants from source data
                 if ($sourceData) {
                     $budgetBreakdown = $this->processBudgetDataFromSource($sourceData, $sourceType);
                     $originalTotalBudget = $budgetBreakdown['grand_total'] ?? 0;
-                    
-                    // Process internal participants from source data
                     $internalParticipants = $this->processInternalParticipantsFromSource($sourceData, $sourceType);
                 }
+
+                // When creating from a Change Request, use the CR's changed data (budget, participants, title, etc.)
+                if ($changeRequest && $sourceData) {
+                    if ($changeRequest->budget_breakdown !== null) {
+                        $crBudget = is_string($changeRequest->budget_breakdown)
+                            ? json_decode($changeRequest->budget_breakdown, true)
+                            : $changeRequest->budget_breakdown;
+                        if (is_array($crBudget) && !empty($crBudget)) {
+                            $budgetBreakdown = $crBudget;
+                            $originalTotalBudget = $budgetBreakdown['grand_total'] ?? $changeRequest->available_budget ?? 0;
+                        }
+                    }
+                    if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
+                        $originalTotalBudget = (float) $changeRequest->available_budget;
+                    }
+                    if ($changeRequest->internal_participants !== null) {
+                        $crParticipants = is_string($changeRequest->internal_participants)
+                            ? json_decode($changeRequest->internal_participants, true)
+                            : $changeRequest->internal_participants;
+                        if (is_array($crParticipants)) {
+                            $internalParticipants = $crParticipants;
+                        }
+                    }
+                    $sourceData->activity_title = $changeRequest->activity_title ?? $sourceData->activity_title ?? $sourceData->title ?? null;
+                    $sourceData->title = $sourceData->activity_title;
+                    if ($changeRequest->background !== null && $changeRequest->background !== '') {
+                        $sourceData->background = $changeRequest->background;
+                    }
+                    if ($changeRequest->activity_request_remarks !== null && $changeRequest->activity_request_remarks !== '') {
+                        $sourceData->activity_request_remarks = $changeRequest->activity_request_remarks;
+                    }
+                    if ($changeRequest->justification !== null && $changeRequest->justification !== '') {
+                        $sourceData->justification = $changeRequest->justification;
+                    }
+                }
             }
-            
+
             // For non-travel memos, we don't need cost items since we display descriptions directly
             $costItems = collect();
             $otherCostItems = collect();
@@ -248,8 +296,8 @@ class ServiceRequestController extends Controller
                     }
                 }
             }
-            
-            return view('service-requests.create', compact('staff', 'divisions', 'workflows', 'activities', 'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId', 'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames'));
+
+            return view('service-requests.create', compact('staff', 'divisions', 'workflows', 'activities', 'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId', 'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames', 'changeRequestId'));
         } catch (\Exception $e) {
             // Return a fallback view with minimal data
             return view('service-requests.create', [
@@ -266,7 +314,8 @@ class ServiceRequestController extends Controller
                 'budgetBreakdown' => null,
                 'originalTotalBudget' => 0,
                 'internalParticipants' => [],
-                'participantNames' => []
+                'participantNames' => [],
+                'changeRequestId' => null,
             ]);
         }
     }
@@ -302,6 +351,7 @@ class ServiceRequestController extends Controller
             'other_costs_comment' => 'nullable|string',
             'internal_participants' => 'nullable|array',
             'external_participants' => 'nullable|array',
+            'change_request_id' => 'nullable|integer|exists:change_request,id',
         ]);
         $validated['staff_id'] = user_session('staff_id');
         // Use division_id from request (source memo's division) instead of user's division
@@ -344,7 +394,11 @@ class ServiceRequestController extends Controller
         $validated = array_merge($validated, $budgetData);
         
         $serviceRequest = ServiceRequest::create($validated);
-        
+
+        if (!empty($validated['change_request_id'])) {
+            ChangeRequest::where('id', $validated['change_request_id'])->update(['service_request_id' => $serviceRequest->id]);
+        }
+
         if ($isDraft) {
             return redirect()
                 ->route('service-requests.show', $serviceRequest)
@@ -757,8 +811,13 @@ class ServiceRequestController extends Controller
         
         // Get approval levels for progress bar
         $approvalLevels = $this->getApprovalLevels($serviceRequest);
-        
-        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels', 'mainActivityUrl'));
+        $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
+        $disclaimerData = $emptyDisclaimer;
+        if (function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type && \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->exists()) {
+            $disclaimerData = parent_based_disclaimer_data($serviceRequest->source_id, $serviceRequest->model_type, 'service_request', $serviceRequest->id);
+        }
+
+        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels', 'mainActivityUrl', 'disclaimerData'));
     }
 
     /**
@@ -1436,6 +1495,7 @@ class ServiceRequestController extends Controller
                 'other_costs_comment' => 'nullable|string',
                 'original_total_budget' => 'required|numeric|min:0',
                 'new_total_budget' => 'required|numeric|min:0',
+                'change_request_id' => 'nullable|integer|exists:change_request,id',
             ]);
 
             // Get source data
@@ -1498,6 +1558,10 @@ class ServiceRequestController extends Controller
                 'approval_level' => 1,
                 'next_approval_level' => 2,
             ]);
+
+            if (!empty($validated['change_request_id'])) {
+                ChangeRequest::where('id', $validated['change_request_id'])->update(['service_request_id' => $serviceRequest->id]);
+            }
 
             // Save approval trail
             $this->approvalService->saveApprovalTrail(
@@ -1943,6 +2007,18 @@ class ServiceRequestController extends Controller
         $workflowInfo = $this->getComprehensiveWorkflowInfo($serviceRequest);
         $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
 
+        $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
+        $disclaimerData = $emptyDisclaimer;
+        if (function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type && \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->exists()) {
+            $disclaimerData = parent_based_disclaimer_data($serviceRequest->source_id, $serviceRequest->model_type, 'service_request', $serviceRequest->id);
+        }
+
+        $changeRequestPdfHtml = null;
+        $originatingCr = \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->first();
+        if ($originatingCr) {
+            $changeRequestPdfHtml = app(\App\Http\Controllers\ChangeRequestController::class)->getPrintHtmlFragmentForEmbedding($originatingCr);
+        }
+
         // Use mPDF helper function for service request
         $print = false;
         $pdf = mpdf_print('service-requests.print', [
@@ -1950,6 +2026,8 @@ class ServiceRequestController extends Controller
             'sourceData' => $sourceData,
             'sourcePdfHtml' => $sourcePdfHtml,
             'organized_workflow_steps' => $organizedWorkflowSteps,
+            'disclaimerData' => $disclaimerData,
+            'changeRequestPdfHtml' => $changeRequestPdfHtml,
         ], ['preview_html' => $print]);
 
         // Generate filename

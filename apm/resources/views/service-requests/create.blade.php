@@ -153,6 +153,9 @@
                 value="{{ $totalOriginal ?? 0 }}">
             <input type="hidden" name="budget_breakdown" id="budgetBreakdown" value="{{ $isEdit && $serviceRequest->budget_breakdown ? (is_string($serviceRequest->budget_breakdown) ? $serviceRequest->budget_breakdown : json_encode($serviceRequest->budget_breakdown)) : '' }}">
              <input type="hidden" name="division_id" id="divisionId" value="{{ $isEdit ? $serviceRequest->division_id : ($sourceData->division_id ?? ($sourceData->matrix->division_id ?? 0)) }}">
+            @if(!$isEdit && !empty($changeRequestId ?? null))
+            <input type="hidden" name="change_request_id" value="{{ $changeRequestId }}">
+            @endif
             <input type="hidden" name="internal_participants_cost" id="internalParticipantsCost" value="{{ $isEdit && $serviceRequest->internal_participants_cost ? (is_string($serviceRequest->internal_participants_cost) ? $serviceRequest->internal_participants_cost : json_encode($serviceRequest->internal_participants_cost)) : '' }}">
             <input type="hidden" name="external_participants_cost" id="externalParticipantsCost" value="{{ $isEdit && $serviceRequest->external_participants_cost ? (is_string($serviceRequest->external_participants_cost) ? $serviceRequest->external_participants_cost : json_encode($serviceRequest->external_participants_cost)) : '' }}">
             <input type="hidden" name="other_costs" id="otherCosts" value="{{ $isEdit && $serviceRequest->other_costs ? (is_string($serviceRequest->other_costs) ? $serviceRequest->other_costs : json_encode($serviceRequest->other_costs)) : '' }}">

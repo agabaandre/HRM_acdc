@@ -424,6 +424,9 @@
                         <input type="hidden" name="total_budget" value="{{ $totalBudget ?? '0.00' }}">
                         <input type="hidden" name="fund_type_id" value="{{ $fundTypeId ?? '' }}">
                         <input type="hidden" name="model_type" value="{{ $modelType ?? 'App\\Models\\Activity' }}">
+                        @if(!empty($changeRequestId))
+                        <input type="hidden" name="change_request_id" value="{{ $changeRequestId }}">
+                        @endif
                         
                         <div class="d-flex gap-2 justify-content-end pt-3 border-top">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">

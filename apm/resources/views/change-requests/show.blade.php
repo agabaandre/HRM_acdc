@@ -14,55 +14,88 @@
 <div class="min-h-screen bg-gray-50">
     <!-- Enhanced Header -->
     <div class="bg-white border-b border-gray-200 shadow-sm">
-        <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center py-4">
-                <div>
-                    <h1 class="h2 fw-bold text-dark mb-0">
-                        {{ $titlePrefix }}@if($changeRequest->document_number): {{ $changeRequest->document_number }}@endif
-                    </h1>
-                    <p class="text-muted mb-0">Review and manage change request details</p>
-                </div>
-                <div class="d-flex gap-3">
-                    @if(can_print_memo($changeRequest))
-                        <a href="{{ route('change-requests.print', $changeRequest) }}" target="_blank" class="btn btn-primary btn-sm d-flex align-items-center gap-2">
-                            <i class="bx bx-printer"></i>
-                            <span>Print PDF</span>
-                        </a>
-                    @endif
-                    
-                    @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
-                        <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2">
-                            <i class="fas fa-edit"></i>
-                            <span>Edit</span>
-                        </a>
-                        @if($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id'))
-                            <button type="button" 
-                                    class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2" 
-                                    onclick="deleteChangeRequest({{ $changeRequest->id }})">
-                                <i class="fas fa-trash"></i>
-                                <span>Delete</span>
-                            </button>
-                        @endif
-                    @endif
-                    
-                    @if($changeRequest->parent_memo_model && $changeRequest->parent_memo_id)
-                        @php
-                            $parentMemoDocNumber = $changeRequest->parent_memo_document_number;
-                            $parentMemoUrl = $changeRequest->parent_memo_url;
-                        @endphp
-                        @if($parentMemoUrl && $parentMemoDocNumber)
-                            <a href="{{ $parentMemoUrl }}" class="btn btn-secondary btn-sm d-flex align-items-center gap-2" title="View Parent Memo: {{ $parentMemoDocNumber }}">
-                                <i class="fas fa-eye"></i>
-                                <span>Parent Memo</span>
-                            </a>
-                        @endif
-                    @endif
-                    
-                    <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
-                        <i class="bx bx-arrow-back"></i>
-                        <span>Back to List</span>
+        <div class="container-fluid py-4">
+            <div class="mb-3">
+                <h1 class="h2 fw-bold text-dark mb-0">
+                    {{ $titlePrefix }}@if($changeRequest->document_number): {{ $changeRequest->document_number }}@endif
+                </h1>
+                <p class="text-muted mb-0">Review and manage change request details</p>
+            </div>
+            <div class="d-flex justify-content-end flex-wrap gap-2">
+                @if(can_print_memo($changeRequest))
+                    <a href="{{ route('change-requests.print', $changeRequest) }}" target="_blank" class="btn btn-primary btn-sm d-flex align-items-center gap-2">
+                        <i class="bx bx-printer"></i>
+                        <span>Print PDF</span>
                     </a>
-                </div>
+                @endif
+
+                @if($changeRequest->parent_memo_model && $changeRequest->parent_memo_id)
+                    @php
+                        $parentMemoDocNumber = $changeRequest->parent_memo_document_number;
+                        $parentMemoUrl = $changeRequest->parent_memo_url;
+                    @endphp
+                    @if($parentMemoUrl && $parentMemoDocNumber)
+                        <a href="{{ $parentMemoUrl }}" class="btn btn-secondary btn-sm d-flex align-items-center gap-2" title="View Parent Memo: {{ $parentMemoDocNumber }}">
+                            <i class="fas fa-eye"></i>
+                            <span>Parent Memo</span>
+                        </a>
+                    @endif
+                @endif
+
+                @if($isAdmin ?? false)
+                    <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#adminUpdateModal">
+                        <i class="bx bx-user-pin"></i>
+                        <span>Admin: Update Owners</span>
+                    </button>
+                @endif
+
+                @if($existingArf)
+                    <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-2">
+                        <i class="bx bx-show"></i>
+                        <span>View ARF</span>
+                    </a>
+                @elseif($canCreateArf)
+                    <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                        <i class="bx bx-file-plus"></i>
+                        <span>Create ARF</span>
+                    </button>
+                @endif
+
+                @if($existingServiceRequest)
+                    <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-2">
+                        <i class="fas fa-eye"></i>
+                        <span>View Service Request</span>
+                    </a>
+                @elseif($canCreateServices && $parentMemo)
+                    @php
+                        $srSourceType = $changeRequest->parent_memo_model === 'App\Models\NonTravelMemo' ? 'non_travel' : ($changeRequest->parent_memo_model === 'App\Models\SpecialMemo' ? 'special_memo' : 'activity');
+                        if ($srSourceType === 'non_travel') { $srSourceType = 'non_travel_memo'; }
+                    @endphp
+                    <a href="{{ route('service-requests.create') }}?source_type={{ $srSourceType }}&source_id={{ $parentMemo->id }}&change_request_id={{ $changeRequest->id }}" class="btn btn-info btn-sm d-flex align-items-center gap-2">
+                        <i class="fas fa-tools"></i>
+                        <span>Create Service Request</span>
+                    </a>
+                @endif
+
+                <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+                    <i class="bx bx-arrow-back"></i>
+                    <span>Back to List</span>
+                </a>
+
+                @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
+                    <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2">
+                        <i class="fas fa-edit"></i>
+                        <span>Edit</span>
+                    </a>
+                    @if($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id'))
+                        <button type="button"
+                                class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2"
+                                onclick="deleteChangeRequest({{ $changeRequest->id }})">
+                            <i class="fas fa-trash"></i>
+                            <span>Delete</span>
+                        </button>
+                    @endif
+                @endif
             </div>
         </div>
     </div>
@@ -1359,6 +1392,18 @@
     </div>
 </div>
 </div>
+
+@if(!empty($arfModalData))
+    @include('request-arf.components.create-arf-modal', array_merge($arfModalData, ['changeRequestId' => $arfModalData['changeRequestId'] ?? null]))
+@endif
+
+@include('activities.partials.admin-update-creator-responsible', [
+    'activity' => $changeRequest,
+    'matrix' => null,
+    'isAdmin' => $isAdmin ?? false,
+    'isChangeRequest' => true,
+])
+
 @endsection
 
 @push('scripts')

@@ -1103,6 +1103,8 @@
                                 </div>
                             </div>
                         @endif
+
+                        @include('partials.parent-based-disclaimer', ['disclaimerData' => $disclaimerData ?? [], 'documentType' => 'arf'])
                     </div>
 
                     <!-- Sidebar -->

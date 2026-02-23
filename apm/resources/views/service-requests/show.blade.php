@@ -677,6 +677,8 @@
             </div>
             @endif
 
+            @include('partials.parent-based-disclaimer', ['disclaimerData' => $disclaimerData ?? [], 'documentType' => 'service_request'])
+
             <!-- Specifications -->
             @if($serviceRequest->specifications && is_array($serviceRequest->specifications) && count($serviceRequest->specifications) > 0)
             <div class="card content-section bg-purple">
