@@ -1898,7 +1898,8 @@ class ChangeRequestController extends Controller
             $changeRequest->parent_memo_id
         );
 
-        $parentPdfHtml = $parentMemo ? $this->generateParentMemoHtml($parentMemo, $changeRequest->parent_memo_model) : null;
+        // Do not include parent memo in fragment when embedding in SR print (SR print will show it once after the CR)
+        $parentPdfHtml = null;
 
         $workflowInfo = $this->getComprehensiveWorkflowInfo($changeRequest);
         $organizedWorkflowSteps = \App\Helpers\PrintHelper::organizeWorkflowStepsBySection($workflowInfo['workflow_steps'] ?? []);
