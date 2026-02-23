@@ -50,38 +50,39 @@ class ApmReferenceDataController extends Controller
         $include = $this->parseInclude($request->query('include'));
         $data = [];
 
+        // All values as lists (arrays) for easy mobile consumption
         if ($include === null || in_array('divisions', $include)) {
-            $data['divisions'] = $this->getDivisions()->values();
+            $data['divisions'] = $this->getDivisions()->values()->all();
         }
         if ($include === null || in_array('directorates', $include)) {
-            $data['directorates'] = $this->getDirectorates()->values();
+            $data['directorates'] = $this->getDirectorates()->values()->all();
         }
         if ($include === null || in_array('fund_types', $include)) {
-            $data['fund_types'] = $this->getFundTypes()->values();
+            $data['fund_types'] = $this->getFundTypes()->values()->all();
         }
         if ($include === null || in_array('fund_codes', $include)) {
-            $data['fund_codes'] = $this->getFundCodes()->values();
+            $data['fund_codes'] = $this->getFundCodes()->values()->all();
         }
         if ($include === null || in_array('cost_items', $include)) {
-            $data['cost_items'] = $this->getCostItems()->values();
+            $data['cost_items'] = $this->getCostItems()->values()->all();
         }
         if ($include === null || in_array('staff', $include)) {
-            $data['staff'] = $this->getStaff()->values();
+            $data['staff'] = $this->getStaff()->values()->all();
         }
         if ($include === null || in_array('funders', $include)) {
-            $data['funders'] = $this->getFunders()->values();
+            $data['funders'] = $this->getFunders()->values()->all();
         }
         if ($include === null || in_array('request_types', $include)) {
-            $data['request_types'] = $this->getRequestTypes()->values();
+            $data['request_types'] = $this->getRequestTypes()->values()->all();
         }
         if ($include === null || in_array('non_travel_categories', $include)) {
-            $data['non_travel_categories'] = $this->getNonTravelCategories()->values();
+            $data['non_travel_categories'] = $this->getNonTravelCategories()->values()->all();
         }
         if ($include === null || in_array('partners', $include)) {
-            $data['partners'] = $this->getPartners()->values();
+            $data['partners'] = $this->getPartners()->values()->all();
         }
         if ($include === null || in_array('workflow_definitions', $include)) {
-            $data['workflow_definitions'] = $this->getWorkflowDefinitions()->values();
+            $data['workflow_definitions'] = $this->getWorkflowDefinitions()->values()->all();
         }
 
         return response()->json([
