@@ -10,6 +10,10 @@ use App\Models\NonTravelMemo;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
 use App\Models\ChangeRequest;
+use App\Models\FundCode;
+use App\Models\Location;
+use App\Models\NonTravelMemoCategory;
+use App\Models\RequestType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -163,6 +167,9 @@ class ApmDocumentController extends Controller
         $data['document_type'] = 'special_memo';
         $data['approval_trails'] = $this->formatApprovalTrails($memo->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($memo, 'special_memo', $id);
+        $data['print_url'] = $this->getPrintUrl('special_memo', $memo);
+        $data['budget_information'] = $this->buildBudgetInformation($memo, 'special_memo');
+        $data = array_merge($data, $this->enrichDocumentRelations($memo, 'special_memo'));
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -176,9 +183,10 @@ class ApmDocumentController extends Controller
         if (!$matrix) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
         }
-        $data = $matrix->toArray();
+        $data = $this->normalizeMemoJsonFields($matrix->toArray());
         $data['document_type'] = 'matrix';
         $data['approval_trails'] = $this->formatApprovalTrails($matrix->matrixApprovalTrails ?? collect());
+        $data['print_url'] = $this->getPrintUrl('matrix', $matrix);
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -200,13 +208,16 @@ class ApmDocumentController extends Controller
             : ($activity->activityApprovalTrails ?? collect());
         $data['approval_trails'] = $this->formatApprovalTrails($trails);
         $data['attachments'] = $this->buildAttachmentsWithUrls($activity, 'activity', $id);
+        $data['print_url'] = $this->getPrintUrl($activity->is_single_memo ? 'single_memo' : 'activity', $activity);
+        $data['budget_information'] = $this->buildBudgetInformation($activity, $activity->is_single_memo ? 'single_memo' : 'activity');
+        $data = array_merge($data, $this->enrichDocumentRelations($activity, $data['document_type']));
         return response()->json(['success' => true, 'data' => $data]);
     }
 
     private function nonTravelMemo(int $id): JsonResponse
     {
         $memo = NonTravelMemo::with([
-            'staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+            'staff', 'division', 'fundType', 'nonTravelMemoCategory', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
         ])->find($id);
         if (!$memo) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
@@ -215,13 +226,16 @@ class ApmDocumentController extends Controller
         $data['document_type'] = 'non_travel_memo';
         $data['approval_trails'] = $this->formatApprovalTrails($memo->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($memo, 'non_travel_memo', $id);
+        $data['print_url'] = $this->getPrintUrl('non_travel_memo', $memo);
+        $data['budget_information'] = $this->buildBudgetInformation($memo, 'non_travel_memo');
+        $data = array_merge($data, $this->enrichDocumentRelations($memo, 'non_travel_memo'));
         return response()->json(['success' => true, 'data' => $data]);
     }
 
     private function serviceRequest(int $id): JsonResponse
     {
         $doc = ServiceRequest::with([
-            'staff', 'division', 'activity', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+            'staff', 'division', 'fundType', 'activity', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
         ])->find($id);
         if (!$doc) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
@@ -230,13 +244,16 @@ class ApmDocumentController extends Controller
         $data['document_type'] = 'service_request';
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'service_request', $id);
+        $data['print_url'] = $this->getPrintUrl('service_request', $doc);
+        $data['budget_information'] = $this->buildBudgetInformation($doc, 'service_request');
+        $data = array_merge($data, $this->enrichDocumentRelations($doc, 'service_request'));
         return response()->json(['success' => true, 'data' => $data]);
     }
 
     private function arf(int $id): JsonResponse
     {
         $doc = RequestARF::with([
-            'staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+            'staff', 'division', 'fundType', 'funder', 'partner', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
         ])->find($id);
         if (!$doc) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
@@ -245,22 +262,57 @@ class ApmDocumentController extends Controller
         $data['document_type'] = 'arf';
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'arf', $id);
+        $data['print_url'] = $this->getPrintUrl('arf', $doc);
+        $data['budget_information'] = $this->buildBudgetInformation($doc, 'arf');
+        $data = array_merge($data, $this->enrichDocumentRelations($doc, 'arf'));
         return response()->json(['success' => true, 'data' => $data]);
     }
 
     private function changeRequest(int $id): JsonResponse
     {
         $doc = ChangeRequest::with([
-            'staff', 'division', 'matrix', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
+            'staff', 'division', 'matrix', 'fundType', 'requestType', 'nonTravelMemoCategory', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
         ])->find($id);
         if (!$doc) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
         }
-        $data = $doc->toArray();
+        $data = $this->normalizeMemoJsonFields($doc->toArray());
         $data['document_type'] = 'change_request';
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'change_request', $id);
+        $data['print_url'] = $this->getPrintUrl('change_request', $doc);
+        $data['budget_information'] = $this->buildBudgetInformation($doc, 'change_request');
+        $data = array_merge($data, $this->enrichDocumentRelations($doc, 'change_request'));
         return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /**
+     * Return the web print/PDF URL for an approved document, or null if not approved.
+     * Included in document detail payload when overall_status is approved.
+     */
+    private function getPrintUrl(string $documentType, object $model): ?string
+    {
+        $status = $model->overall_status ?? $model->status ?? null;
+        if (strtolower((string) $status) !== 'approved') {
+            return null;
+        }
+
+        try {
+            return match ($documentType) {
+                'special_memo' => route('special-memo.print', ['specialMemo' => $model->id]),
+                'matrix' => route('matrices.export.pdf', ['matrix' => $model->id]),
+                'activity', 'single_memo' => $model->is_single_memo
+                    ? route('activities.single-memos.print', ['activity' => $model->id])
+                    : (($matrixId = $model->matrix_id ?? $model->matrix?->id) ? route('matrices.export.pdf', ['matrix' => $matrixId]) : null),
+                'non_travel_memo' => route('non-travel.print', ['nonTravel' => $model->id]),
+                'service_request' => route('service-requests.print', ['serviceRequest' => $model->id]),
+                'arf' => route('request-arf.print', ['requestARF' => $model->id]),
+                'change_request' => route('change-requests.print', ['changeRequest' => $model->id]),
+                default => null,
+            };
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
@@ -400,8 +452,9 @@ class ApmDocumentController extends Controller
      */
     private function modelToDocumentData(object $model, string $type, int $id): array
     {
-        $data = $model->toArray();
-        $data['document_type'] = $type === 'activity' && isset($model->is_single_memo) && $model->is_single_memo ? 'single_memo' : $type;
+        $data = $this->normalizeMemoJsonFields($model->toArray());
+        $docType = $type === 'activity' && isset($model->is_single_memo) && $model->is_single_memo ? 'single_memo' : $type;
+        $data['document_type'] = $docType;
         if ($type === 'matrix') {
             $data['approval_trails'] = $this->formatApprovalTrails($model->matrixApprovalTrails ?? collect());
         } elseif ($type === 'activity' || $type === 'single_memo') {
@@ -413,6 +466,7 @@ class ApmDocumentController extends Controller
             $data['approval_trails'] = $this->formatApprovalTrails($model->approvalTrails ?? collect());
         }
         $data['attachments'] = $this->buildAttachmentsWithUrls($model, $type, $id);
+        $data['print_url'] = $this->getPrintUrl($docType, $model);
         return $data;
     }
 
@@ -445,6 +499,305 @@ class ApmDocumentController extends Controller
             return is_array($decoded) ? $decoded : [];
         }
         return is_array($raw) ? $raw : [];
+    }
+
+    /**
+     * Add resolved relation payloads for location_id, non_travel_memo_category_id, budget_id, request_type_id
+     * so the API returns text/object values (locations, non_travel_memo_category, fund_codes, request_type) where they exist.
+     */
+    private function enrichDocumentRelations(object $model, string $documentType): array
+    {
+        $out = [];
+
+        // request_type_id is valid only for special_memo, activity, single_memo, change_request
+        $hasRequestType = in_array($documentType, ['special_memo', 'activity', 'single_memo', 'change_request'], true);
+        if ($hasRequestType && isset($model->request_type_id) && $model->request_type_id) {
+            $rt = $model->relationLoaded('requestType') ? $model->requestType : RequestType::find($model->request_type_id);
+            if ($rt) {
+                $out['request_type'] = ['id' => $rt->id, 'name' => $rt->name];
+            }
+        }
+
+        // non_travel_memo_category_id is valid only for non_travel_memo and change_request
+        $hasNonTravelCategory = in_array($documentType, ['non_travel_memo', 'change_request'], true);
+        if ($hasNonTravelCategory && isset($model->non_travel_memo_category_id) && $model->non_travel_memo_category_id) {
+            $cat = $model->relationLoaded('nonTravelMemoCategory') ? $model->nonTravelMemoCategory : NonTravelMemoCategory::find($model->non_travel_memo_category_id);
+            if ($cat) {
+                $out['non_travel_memo_category'] = ['id' => $cat->id, 'name' => $cat->name];
+            }
+        }
+
+        // location_id (JSON array or array of ids) -> locations [ { id, name }, ... ]
+        $locationIds = $model->location_id ?? null;
+        if ($locationIds !== null) {
+            if (is_string($locationIds)) {
+                $locationIds = json_decode($locationIds, true);
+            }
+            if (is_array($locationIds) && !empty($locationIds)) {
+                $ids = array_values(array_map('intval', array_filter($locationIds, fn ($v) => is_numeric($v))));
+                if (!empty($ids)) {
+                    $locations = Location::whereIn('id', $ids)->get();
+                    $out['locations'] = $locations->map(fn ($loc) => ['id' => $loc->id, 'name' => $loc->name])->values()->toArray();
+                }
+            }
+        }
+
+        // budget_id (JSON array or array of ids) -> fund_codes [ { id, code, activity, fund_type_name, funder_name, partner_name }, ... ]
+        $budgetIds = $model->budget_id ?? null;
+        if ($budgetIds !== null) {
+            if (is_string($budgetIds)) {
+                $budgetIds = json_decode($budgetIds, true);
+            }
+            if (is_array($budgetIds) && !empty($budgetIds)) {
+                $ids = array_values(array_filter(array_map('intval', $budgetIds), fn ($id) => $id > 0));
+                if (!empty($ids)) {
+                    $codes = FundCode::with(['fundType', 'funder', 'partner'])->whereIn('id', $ids)->get();
+                    $out['fund_codes'] = $codes->map(fn ($fc) => [
+                        'id' => $fc->id,
+                        'code' => $fc->code,
+                        'activity' => $fc->activity ?? null,
+                        'fund_type_name' => $fc->fundType->name ?? null,
+                        'funder_name' => $fc->funder->name ?? null,
+                        'partner_name' => $fc->partner->name ?? null,
+                    ])->values()->toArray();
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Build processed budget information for API, following how each document type displays budget on show pages.
+     * Travel-style (special_memo, activity, single_memo): by_fund_code with items (cost, unit_cost, units, days, total, description).
+     * Non-travel style (non_travel_memo, service_request when source is non_travel): by_fund_code with items (description, quantity, unit_cost, total, notes).
+     * ARF: total_amount, fund_type, funder, partner, and parsed budget_breakdown.
+     */
+    private function buildBudgetInformation(object $model, string $documentType): array
+    {
+        return match ($documentType) {
+            'special_memo' => $this->buildBudgetTravelStyle($model, $model->fundType ?? null),
+            'activity', 'single_memo' => $this->buildBudgetTravelStyle($model, $model->fundType ?? null),
+            'non_travel_memo' => $this->buildBudgetNonTravelStyle($model, $model->fundType ?? null),
+            'service_request' => $this->buildBudgetServiceRequest($model),
+            'arf' => $this->buildBudgetArf($model),
+            'change_request' => $this->buildBudgetChangeRequest($model),
+            default => ['total' => 0, 'by_fund_code' => [], 'fund_codes' => [], 'fund_type' => null],
+        };
+    }
+
+    /** Travel-style: budget_breakdown keyed by fund_code_id, items have cost, unit_cost, units, days, description. */
+    private function buildBudgetTravelStyle(object $model, $fundType): array
+    {
+        $raw = $model->budget_breakdown ?? null;
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $byFundCode = [];
+        $total = 0;
+        foreach ($raw as $key => $item) {
+            if ($key === 'grand_total') {
+                $total = (float) $item;
+                continue;
+            }
+            if (!is_array($item)) {
+                continue;
+            }
+            $fundCodeId = is_numeric($key) ? (int) $key : $key;
+            $items = [];
+            $groupTotal = 0;
+            foreach ($item as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $unitCost = (float) ($row['unit_cost'] ?? 0);
+                $units = (float) ($row['units'] ?? 0);
+                $days = (float) ($row['days'] ?? 1);
+                $lineTotal = $days > 1 ? $unitCost * $units * $days : $unitCost * $units;
+                $groupTotal += $lineTotal;
+                $items[] = [
+                    'cost' => $row['cost'] ?? 'N/A',
+                    'unit_cost' => round($unitCost, 2),
+                    'units' => $units,
+                    'days' => $days,
+                    'total' => round($lineTotal, 2),
+                    'description' => $row['description'] ?? '',
+                ];
+            }
+            $total += $groupTotal;
+            $byFundCode[] = [
+                'fund_code_id' => $fundCodeId,
+                'items' => $items,
+                'group_total' => round($groupTotal, 2),
+            ];
+        }
+        if ($total == 0 && !empty($byFundCode)) {
+            $total = array_sum(array_column($byFundCode, 'group_total'));
+        }
+        $fundCodeIds = array_unique(array_column($byFundCode, 'fund_code_id'));
+        $fundCodes = FundCode::with(['fundType', 'funder', 'partner'])->whereIn('id', $fundCodeIds)->get()->keyBy('id');
+        $fundCodesList = [];
+        foreach ($byFundCode as &$group) {
+            $fc = $fundCodes->get($group['fund_code_id']);
+            $group['fund_code'] = $fc ? [
+                'id' => $fc->id,
+                'code' => $fc->code,
+                'activity' => $fc->activity ?? null,
+                'fund_type_name' => $fc->fundType->name ?? null,
+                'funder_name' => $fc->funder->name ?? null,
+                'partner_name' => $fc->partner->name ?? null,
+            ] : null;
+            if ($fc && !isset($fundCodesList[$fc->id])) {
+                $fundCodesList[$fc->id] = [
+                    'id' => $fc->id,
+                    'code' => $fc->code,
+                    'activity' => $fc->activity ?? null,
+                    'fund_type_name' => $fc->fundType->name ?? null,
+                    'funder_name' => $fc->funder->name ?? null,
+                    'partner_name' => $fc->partner->name ?? null,
+                ];
+            }
+        }
+        return [
+            'total' => round($total, 2),
+            'by_fund_code' => array_values($byFundCode),
+            'fund_codes' => array_values($fundCodesList),
+            'fund_type' => $fundType ? ['id' => $fundType->id, 'name' => $fundType->name] : null,
+        ];
+    }
+
+    /** Non-travel style: budget_breakdown keyed by fund_code_id, items have description, quantity, unit_cost, notes. */
+    private function buildBudgetNonTravelStyle(object $model, $fundType): array
+    {
+        $raw = $model->budget_breakdown ?? null;
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        unset($raw['grand_total']);
+        $budgetIds = $model->budget_id ?? [];
+        if (is_string($budgetIds)) {
+            $budgetIds = json_decode($budgetIds, true) ?? [];
+        }
+        $allCodeIds = array_unique(array_merge($budgetIds, array_map('intval', array_keys($raw))));
+        $allCodeIds = array_filter($allCodeIds, fn ($id) => $id > 0);
+        $fundCodes = FundCode::with(['fundType', 'funder', 'partner'])->whereIn('id', $allCodeIds)->get()->keyBy('id');
+        $byFundCode = [];
+        $total = 0;
+        foreach ($raw as $key => $items) {
+            if (!is_array($items)) {
+                continue;
+            }
+            $fundCodeId = is_numeric($key) ? (int) $key : $key;
+            $rows = [];
+            $groupTotal = 0;
+            foreach ($items as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $qty = (float) ($row['quantity'] ?? 1);
+                $unitCost = (float) ($row['unit_cost'] ?? 0);
+                $lineTotal = $qty * $unitCost;
+                $groupTotal += $lineTotal;
+                $rows[] = [
+                    'description' => $row['description'] ?? 'N/A',
+                    'quantity' => $qty,
+                    'unit_cost' => round($unitCost, 2),
+                    'total' => round($lineTotal, 2),
+                    'notes' => $row['notes'] ?? null,
+                ];
+            }
+            $total += $groupTotal;
+            $fc = $fundCodes->get($fundCodeId);
+            $byFundCode[] = [
+                'fund_code_id' => $fundCodeId,
+                'fund_code' => $fc ? [
+                    'id' => $fc->id,
+                    'code' => $fc->code,
+                    'activity' => $fc->activity ?? null,
+                    'fund_type_name' => $fc->fundType->name ?? null,
+                    'funder_name' => $fc->funder->name ?? null,
+                    'partner_name' => $fc->partner->name ?? null,
+                ] : null,
+                'items' => $rows,
+                'group_total' => round($groupTotal, 2),
+            ];
+        }
+        $fundCodesList = $fundCodes->map(fn ($fc) => [
+            'id' => $fc->id,
+            'code' => $fc->code,
+            'activity' => $fc->activity ?? null,
+            'fund_type_name' => $fc->fundType->name ?? null,
+            'funder_name' => $fc->funder->name ?? null,
+            'partner_name' => $fc->partner->name ?? null,
+        ])->values()->toArray();
+        return [
+            'total' => round($total, 2),
+            'by_fund_code' => array_values($byFundCode),
+            'fund_codes' => $fundCodesList,
+            'fund_type' => $fundType ? ['id' => $fundType->id, 'name' => $fundType->name] : null,
+        ];
+    }
+
+    /** Service request: same as non-travel when source is non_travel_memo; else travel-style. Plus original/new totals. */
+    private function buildBudgetServiceRequest(object $model): array
+    {
+        $base = $model->source_type === 'App\\Models\\NonTravelMemo' || $model->source_type === 'non_travel_memo'
+            ? $this->buildBudgetNonTravelStyle($model, $model->fundType ?? null)
+            : $this->buildBudgetTravelStyle($model, $model->fundType ?? null);
+        $base['original_total_budget'] = $model->original_total_budget !== null ? (float) $model->original_total_budget : null;
+        $base['new_total_budget'] = $model->new_total_budget !== null ? (float) $model->new_total_budget : null;
+        return $base;
+    }
+
+    /** ARF: total_amount, fund_type, funder, partner; budget_breakdown parsed (travel or non-travel by shape). */
+    private function buildBudgetArf(object $model): array
+    {
+        $raw = $model->budget_breakdown ?? null;
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+        $fundType = $model->relationLoaded('fundType') ? $model->fundType : null;
+        $funder = $model->relationLoaded('funder') ? $model->funder : null;
+        $partner = $model->relationLoaded('partner') ? $model->partner : null;
+        $base = [
+            'total_amount' => $model->total_amount !== null ? (float) $model->total_amount : null,
+            'fund_type' => $fundType ? ['id' => $fundType->id, 'name' => $fundType->name] : null,
+            'funder' => $funder ? ['id' => $funder->id, 'name' => $funder->name] : null,
+            'partner' => $partner ? ['id' => $partner->id, 'name' => $partner->name] : null,
+            'extramural_code' => $model->extramural_code ?? null,
+            'by_fund_code' => [],
+            'fund_codes' => [],
+        ];
+        if (!is_array($raw) || empty($raw)) {
+            return $base;
+        }
+        $firstKey = array_key_first($raw);
+        $firstVal = $raw[$firstKey];
+        $isNonTravel = is_array($firstVal) && isset($firstVal[0]) && is_array($firstVal[0])
+            && array_key_exists('quantity', $firstVal[0]) && array_key_exists('description', $firstVal[0])
+            && !array_key_exists('units', $firstVal[0]);
+        $base = array_merge($base, $isNonTravel
+            ? $this->buildBudgetNonTravelStyle($model, $fundType)
+            : $this->buildBudgetTravelStyle($model, $fundType));
+        $base['total_amount'] = $model->total_amount !== null ? (float) $model->total_amount : ($base['total'] ?? null);
+        return $base;
+    }
+
+    /** Change request: budget shape follows parent_memo_model (SpecialMemo/Activity -> travel, NonTravelMemo -> non-travel). */
+    private function buildBudgetChangeRequest(object $model): array
+    {
+        $parent = $model->parent_memo_model ?? '';
+        $isNonTravel = $parent === 'App\\Models\\NonTravelMemo' || $parent === 'NonTravelMemo';
+        $fundType = $model->relationLoaded('fundType') ? $model->fundType : null;
+        return $isNonTravel
+            ? $this->buildBudgetNonTravelStyle($model, $fundType)
+            : $this->buildBudgetTravelStyle($model, $fundType);
     }
 
     /**
