@@ -57,11 +57,40 @@ class ApmMemoListController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
-        $divisionId = (int) ($sessionData['division_id'] ?? 0);
-        if ($divisionId <= 0) {
+        $primaryDivisionId = (int) ($sessionData['division_id'] ?? 0);
+        $staffId = (int) ($sessionData['staff_id'] ?? 0);
+        $associatedDivisionIds = [];
+        if ($staffId) {
+            try {
+                $staff = Staff::find($staffId);
+                if ($staff) {
+                    $raw = $staff->associated_divisions ?? null;
+                    if (is_array($raw)) {
+                        $associatedDivisionIds = array_map('intval', array_filter($raw));
+                    } elseif (is_string($raw)) {
+                        $decoded = json_decode($raw, true);
+                        if (is_array($decoded)) {
+                            $associatedDivisionIds = array_map('intval', array_filter($decoded));
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // If staff or associated_divisions fails (e.g. column missing), use primary division only
+            }
+        }
+        $divisionIds = array_values(array_unique(array_filter(array_merge(
+            $primaryDivisionId > 0 ? [$primaryDivisionId] : [],
+            $associatedDivisionIds
+        ))));
+        if (empty($divisionIds)) {
             return response()->json([
                 'success' => true,
-                'data' => ['memos' => [], 'division_id' => null, 'status' => $status],
+                'data' => [
+                    'memos' => [],
+                    'division_id' => $primaryDivisionId ?: null,
+                    'division_ids' => [],
+                    'status' => $status,
+                ],
             ]);
         }
 
@@ -77,15 +106,19 @@ class ApmMemoListController extends Controller
         $allRows = collect();
         foreach ($typesToQuery as $documentType) {
             $allRows = $allRows->concat(
-                $this->getMemoListRowsForType($documentType, $divisionId, $status, $year, $quarter, $title, $documentNumber)
+                $this->getMemoListRowsForType($documentType, $divisionIds, $status, $year, $quarter, $title, $documentNumber)
             );
         }
 
         $allRows = $allRows->sortByDesc(function ($r) {
-            $y = $r['year'] ?? 0;
-            $q = $r['quarter'] ?? '';
+            $y = (int) ($r['year'] ?? 0);
+            $q = (string) ($r['quarter'] ?? '');
             $oq = ['Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4][$q] ?? 0;
-            $ts = isset($r['created_at']) ? (\Carbon\Carbon::parse($r['created_at'])->timestamp ?? 0) : 0;
+            try {
+                $ts = isset($r['created_at']) && $r['created_at'] ? \Carbon\Carbon::parse($r['created_at'])->timestamp : 0;
+            } catch (\Throwable $e) {
+                $ts = 0;
+            }
             return sprintf('%04d-%02d-%010d', $y, $oq, $ts);
         })->values();
 
@@ -93,10 +126,22 @@ class ApmMemoListController extends Controller
         $slice = $allRows->slice(($page - 1) * $perPage, $perPage)->values();
         $memoTypeLabels = DocumentCounter::getDocumentTypes();
         $list = $slice->map(function ($r) use ($memoTypeLabels) {
-            $r['type_label'] = $memoTypeLabels[$r['document_type']] ?? $r['document_type'];
-            $r['created_at'] = isset($r['created_at']) ? (\Carbon\Carbon::parse($r['created_at'])->toIso8601String()) : null;
-            $r['date_from'] = isset($r['date_from']) ? (\Carbon\Carbon::parse($r['date_from'])->format('Y-m-d')) : null;
-            $r['date_to'] = isset($r['date_to']) ? (\Carbon\Carbon::parse($r['date_to'])->format('Y-m-d')) : null;
+            $r['type_label'] = is_array($memoTypeLabels) ? ($memoTypeLabels[$r['document_type']] ?? $r['document_type']) : $r['document_type'];
+            try {
+                $r['created_at'] = isset($r['created_at']) && $r['created_at'] ? (\Carbon\Carbon::parse($r['created_at'])->toIso8601String()) : null;
+            } catch (\Throwable $e) {
+                $r['created_at'] = null;
+            }
+            try {
+                $r['date_from'] = isset($r['date_from']) && $r['date_from'] ? (\Carbon\Carbon::parse($r['date_from'])->format('Y-m-d')) : null;
+            } catch (\Throwable $e) {
+                $r['date_from'] = null;
+            }
+            try {
+                $r['date_to'] = isset($r['date_to']) && $r['date_to'] ? (\Carbon\Carbon::parse($r['date_to'])->format('Y-m-d')) : null;
+            } catch (\Throwable $e) {
+                $r['date_to'] = null;
+            }
             return $r;
         })->toArray();
 
@@ -104,7 +149,8 @@ class ApmMemoListController extends Controller
             'success' => true,
             'data' => [
                 'memos' => $list,
-                'division_id' => $divisionId,
+                'division_id' => $primaryDivisionId ?: null,
+                'division_ids' => $divisionIds,
                 'status' => $status,
                 'filters' => [
                     'year' => $year,
@@ -121,7 +167,10 @@ class ApmMemoListController extends Controller
         ]);
     }
 
-    private function getMemoListRowsForType(string $documentType, int $divisionId, string $status, ?int $year, ?string $quarter, ?string $title = null, ?string $documentNumber = null): Collection
+    /**
+     * @param list<int> $divisionIds Primary + associated division IDs the user can see.
+     */
+    private function getMemoListRowsForType(string $documentType, array $divisionIds, string $status, ?int $year, ?string $quarter, ?string $title = null, ?string $documentNumber = null): Collection
     {
         $rows = collect();
 
@@ -157,10 +206,10 @@ class ApmMemoListController extends Controller
                     }
                 })
                 ->where($activitiesTable . '.overall_status', $status)
-                ->where(function ($q) use ($activitiesTable, $matricesTable, $divisionId) {
-                    $q->where($activitiesTable . '.division_id', $divisionId)
-                        ->orWhere(function ($q2) use ($activitiesTable, $matricesTable, $divisionId) {
-                            $q2->whereNull($activitiesTable . '.division_id')->where($matricesTable . '.division_id', $divisionId);
+                ->where(function ($q) use ($activitiesTable, $matricesTable, $divisionIds) {
+                    $q->whereIn($activitiesTable . '.division_id', $divisionIds)
+                        ->orWhere(function ($q2) use ($activitiesTable, $matricesTable, $divisionIds) {
+                            $q2->whereNull($activitiesTable . '.division_id')->whereIn($matricesTable . '.division_id', $divisionIds);
                         });
                 });
             if ($year !== null) {
@@ -229,7 +278,7 @@ class ApmMemoListController extends Controller
             $with[] = 'staff';
         }
         $q = $model::query()->when(!empty($with), fn ($q) => $q->with($with))
-            ->where('division_id', $divisionId)
+            ->whereIn('division_id', $divisionIds)
             ->where('overall_status', $status)
             ->orderBy('created_at', 'desc');
         if ($year !== null) {
