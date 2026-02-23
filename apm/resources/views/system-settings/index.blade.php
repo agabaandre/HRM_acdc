@@ -180,12 +180,7 @@
                                 <input type="text" name="{{ $k }}" class="form-control form-control-sm" value="{{ $v }}" placeholder="Value">
                             </td>
                             <td class="align-middle text-end">
-                                <form action="{{ route('system-settings.destroy') }}" method="POST" class="d-inline" onsubmit="return confirm('Remove this setting?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <input type="hidden" name="key" value="{{ $k }}">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove setting"><i class="fas fa-trash-alt"></i></button>
-                                </form>
+                                <button type="button" class="btn btn-outline-danger btn-sm system-setting-delete" title="Remove setting" data-key="{{ $k }}" data-url="{{ route('system-settings.destroy') }}" data-csrf="{{ csrf_token() }}"><i class="fas fa-trash-alt"></i></button>
                             </td>
                         </tr>
                         @endforeach
@@ -249,6 +244,30 @@ document.querySelectorAll('.color-picker').forEach(function(colorInput) {
     if (!textInput) return;
     colorInput.addEventListener('input', function() { textInput.value = this.value; });
     textInput.addEventListener('input', function() { if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) colorInput.value = this.value; });
+});
+
+document.querySelectorAll('.system-setting-delete').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        if (!confirm('Remove this setting?')) return;
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = this.getAttribute('data-url');
+        form.style.display = 'none';
+        var method = document.createElement('input');
+        method.name = '_method';
+        method.value = 'DELETE';
+        form.appendChild(method);
+        var csrf = document.createElement('input');
+        csrf.name = '_token';
+        csrf.value = this.getAttribute('data-csrf');
+        form.appendChild(csrf);
+        var key = document.createElement('input');
+        key.name = 'key';
+        key.value = this.getAttribute('data-key');
+        form.appendChild(key);
+        document.body.appendChild(form);
+        form.submit();
+    });
 });
 </script>
 @endpush
