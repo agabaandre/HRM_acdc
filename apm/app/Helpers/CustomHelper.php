@@ -271,6 +271,8 @@ if (!function_exists('user_session')) {
          */
         function can_request_memo_action($memo, $type) {
             $user = (object) session('user', []);
+
+          //  dd($type,$memo);
             
             // Check if this is a single memo
             $isSingleMemo = isset($memo->is_single_memo) && $memo->is_single_memo;

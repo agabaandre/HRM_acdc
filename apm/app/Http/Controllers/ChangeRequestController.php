@@ -750,12 +750,23 @@ class ChangeRequestController extends Controller
         $existingServiceRequest = $changeRequest->service_request_id
             ? ServiceRequest::find($changeRequest->service_request_id)
             : null;
-        $canCreateArf = function_exists('can_request_arf_for_change_request')
-            && can_request_arf_for_change_request($changeRequest)
-            && !$changeRequest->request_arf_id;
-        $canCreateServices = function_exists('can_request_services_for_change_request')
-            && can_request_services_for_change_request($changeRequest)
-            && !$changeRequest->service_request_id;
+
+        // Show Create ARF / Create Service Request only when: approved + current user is owner or responsible_person
+        // ARF = extramural (fund_type_id 2); Service Request = intramural (fund_type_id 1)
+        $currentStaffId = $this->resolveCurrentStaffId();
+        $isApproved = strtolower(trim($changeRequest->overall_status ?? '')) === 'approved';
+        $isOwnerOrResponsible = $currentStaffId !== null
+            && ((int) $changeRequest->staff_id === (int) $currentStaffId
+                || (isset($changeRequest->responsible_person_id) && (int) $changeRequest->responsible_person_id === (int) $currentStaffId));
+        $ft = $changeRequest->fund_type_id ?? (isset($changeRequest->fundType) ? $changeRequest->fundType->id : null);
+        if ($ft === null && $parentMemo) {
+            $ft = $parentMemo->fund_type_id ?? (isset($parentMemo->fundType) ? $parentMemo->fundType->id : null);
+        }
+        $fundTypeId = (int) ($ft ?? 1);
+        $isIntramural = ($fundTypeId === 1);
+        $isExtramural = ($fundTypeId === 2);
+        $canCreateArf = $isApproved && $isOwnerOrResponsible && !$changeRequest->request_arf_id && $isExtramural;
+        $canCreateServices = $isApproved && $isOwnerOrResponsible && !$changeRequest->service_request_id && $isIntramural;
 
         $arfModalData = null;
         if ($canCreateArf && $parentMemo) {
@@ -773,6 +784,7 @@ class ChangeRequestController extends Controller
             'canCreateServices' => $canCreateServices,
             'arfModalData' => $arfModalData,
             'isAdmin' => $isAdmin,
+            'currentStaffId' => $currentStaffId,
         ]);
     }
 
@@ -967,6 +979,31 @@ class ChangeRequestController extends Controller
             'modelType' => $modelType,
             'changeRequestId' => $changeRequestId,
         ];
+    }
+
+    /**
+     * Resolve current user's staff ID from session (works with staff app and apm session keys).
+     */
+    private function resolveCurrentStaffId(): ?int
+    {
+        if (function_exists('user_session')) {
+            $id = user_session('staff_id') ?? user_session('auth_staff_id');
+            if ($id !== null && $id !== '') {
+                return (int) $id;
+            }
+        }
+        $user = session('user');
+        if (is_array($user)) {
+            $id = $user['staff_id'] ?? $user['auth_staff_id'] ?? null;
+        } elseif (is_object($user)) {
+            $id = $user->staff_id ?? $user->auth_staff_id ?? null;
+        } else {
+            $id = null;
+        }
+        if ($id === null || $id === '') {
+            return null;
+        }
+        return (int) $id;
     }
 
     /**
