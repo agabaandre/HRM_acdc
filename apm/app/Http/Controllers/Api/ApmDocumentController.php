@@ -357,6 +357,39 @@ class ApmDocumentController extends Controller
     }
 
     /**
+     * Format activity internal_participants (raw object keyed by staff_id) as a list with staff names,
+     * matching the shape used by the matrix endpoint for activities.
+     */
+    private function formatActivityInternalParticipants(Activity $activity): array
+    {
+        $raw = $activity->internal_participants ?? null;
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+        if (!is_array($raw) || empty($raw)) {
+            return [];
+        }
+        $staffIds = array_values(array_unique(array_filter(array_map('intval', array_keys($raw)))));
+        $staffById = $staffIds ? Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id') : collect();
+        $list = [];
+        foreach ($raw as $staffId => $participantData) {
+            $staffId = (int) $staffId;
+            $staff = $staffById->get($staffId);
+            $participantName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
+            $list[] = [
+                'staff_id' => $staffId,
+                'name' => $participantName,
+                'participant_name' => $participantName,
+                'participant_start' => $participantData['participant_start'] ?? null,
+                'participant_end' => $participantData['participant_end'] ?? null,
+                'participant_days' => isset($participantData['participant_days']) ? (int) $participantData['participant_days'] : null,
+                'international_travel' => (int) ($participantData['international_travel'] ?? 0),
+            ];
+        }
+        return $list;
+    }
+
+    /**
      * Apply memo-list style filters to the documents query (year, quarter, title, document_number).
      */
     private function applyDocumentFilters(\Illuminate\Database\Eloquent\Builder $query, string $type, Request $request): void
