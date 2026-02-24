@@ -179,7 +179,7 @@ All of these require the `Authorization: Bearer <token>` header.
 | GET | `/pending-approvals/summary` | Summary counts only |
 | GET | `/documents/{type}/{status}` | List documents by type and status (filters: year, quarter, title, document_number, per_page, page) |
 | GET | `/documents/{type}/{id}` | Single document with approval trails and attachments |
-| GET | `/documents/attachments/{type}/{id}/{index}` | Download one attachment (use `url` from document response) |
+| GET | `/documents/attachments/{type}/{id}/{index}` | Stream one attachment (Bearer token in header or `?token=` for browser) |
 | POST | `/actions` | Apply action (approved, rejected, returned, cancelled) to one document |
 | GET | `/approved-by-me` | Documents approved/rejected by current user |
 | GET | `/approved-by-me/average-time` | Average approval time |
@@ -265,6 +265,29 @@ curl -X POST 'http://localhost/staff/apm/api/apm/v1/documents/verify' \
   -H 'Accept: application/json' \
   -F 'document=@/path/to/document.pdf'
 ```
+
+---
+
+## Document attachments
+
+**GET** `/documents/attachments/{type}/{id}/{index}`  
+**Auth:** Bearer token (header or query).
+
+Stream a single attachment file (e.g. PDF) for a document. The **url** and **web_view_url** for each attachment are returned in **GET** `/documents/{type}/{id}` under `data.attachments[]`.
+
+**Authentication (use one):**
+
+- **Authorization header:** `Authorization: Bearer <access_token>` (recommended for API clients).
+- **Query parameter:** `?token=<access_token>` — use when opening the URL in a browser (e.g. `window.open(attachment.url + '?token=' + accessToken)`) so the file streams and displays inline without sending headers.
+
+**Response:** File stream with `Content-Disposition: inline` and the original filename (PDFs and images display in the browser).
+
+**Attachment fields in document response:**
+
+| Field | Description |
+|-------|-------------|
+| `url` | API URL to stream the file. Use with Bearer token (header or `?token=`). |
+| `web_view_url` | Web URL to stream when the user is logged in via the web app (session auth). Use in the browser from the web UI; no JWT needed. |
 
 ---
 
