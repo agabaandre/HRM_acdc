@@ -14,6 +14,7 @@ use App\Models\FundCode;
 use App\Models\Location;
 use App\Models\NonTravelMemoCategory;
 use App\Models\RequestType;
+use App\Models\Staff;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -203,6 +204,7 @@ class ApmDocumentController extends Controller
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
         }
         $data = $activity->toArray();
+        $data['internal_participants'] = $this->formatActivityInternalParticipants($activity);
         $data['document_type'] = $activity->is_single_memo ? 'single_memo' : 'activity';
         $trails = $activity->is_single_memo
             ? ($activity->approvalTrails ?? collect())
@@ -814,6 +816,40 @@ class ApmDocumentController extends Controller
             $item['url'] = $base . '/' . $index;
             return $item;
         }, $list, array_keys($list)));
+    }
+
+    /**
+     * Format activity internal_participants from raw JSON object (keyed by staff_id) to a list with staff names,
+     * matching the shape used on the matrix endpoint (documents/activity and matrices/{id}).
+     */
+    private function formatActivityInternalParticipants(Activity $activity): array
+    {
+        $raw = is_string($activity->internal_participants) ? json_decode($activity->internal_participants, true) : ($activity->internal_participants ?? []);
+        if (!is_array($raw) || empty($raw)) {
+            return [];
+        }
+        $staffIds = array_values(array_unique(array_map('intval', array_keys($raw))));
+        $staffIds = array_filter($staffIds, fn ($id) => $id > 0);
+        if (empty($staffIds)) {
+            return [];
+        }
+        $staffById = Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
+        $list = [];
+        foreach ($raw as $staffId => $participantData) {
+            $staffId = (int) $staffId;
+            $staff = $staffById->get($staffId);
+            $participantName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
+            $list[] = [
+                'staff_id' => $staffId,
+                'name' => $participantName,
+                'participant_name' => $participantName,
+                'participant_start' => $participantData['participant_start'] ?? null,
+                'participant_end' => $participantData['participant_end'] ?? null,
+                'participant_days' => isset($participantData['participant_days']) ? (int) $participantData['participant_days'] : null,
+                'international_travel' => (int) ($participantData['international_travel'] ?? 0),
+            ];
+        }
+        return $list;
     }
 
     /**
