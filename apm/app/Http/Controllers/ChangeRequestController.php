@@ -889,6 +889,10 @@ class ChangeRequestController extends Controller
             $location = $parentMemo->locations()->pluck('name')->join(', ');
         }
 
+        $crFundTypeId = null;
+        $crFundTypeName = null;
+        $crDivisionId = null;
+        // When change request is provided, use only CR data (not parent memo) for all fields.
         if ($changeRequest) {
             if ($changeRequest->activity_title !== null && $changeRequest->activity_title !== '') {
                 $title = $changeRequest->activity_title;
@@ -912,6 +916,18 @@ class ChangeRequestController extends Controller
                 if (is_array($crBudgetIds) && !empty($crBudgetIds)) {
                     $budgetIds = $crBudgetIds;
                     $fundCodes = \App\Models\FundCode::whereIn('id', $crBudgetIds)->with('fundType', 'funder', 'partner')->get()->keyBy('id');
+                }
+            }
+            if ($changeRequest->division_id !== null && $changeRequest->division_id !== '') {
+                $crDivisionId = (int) $changeRequest->division_id;
+                $crDivision = \App\Models\Division::find($crDivisionId);
+                $divisionName = $crDivision ? ($crDivision->division_name ?? 'N/A') : 'N/A';
+            }
+            if ($changeRequest->fund_type_id !== null && $changeRequest->fund_type_id !== '') {
+                $crFundType = \App\Models\FundType::find((int) $changeRequest->fund_type_id);
+                if ($crFundType) {
+                    $crFundTypeId = $crFundType->id;
+                    $crFundTypeName = $crFundType->name ?? 'N/A';
                 }
             }
             if ($changeRequest->date_from !== null) {
@@ -953,8 +969,9 @@ class ChangeRequestController extends Controller
         return [
             'sourceType' => $sourceTypeDisplay,
             'sourceTitle' => $title,
-            'fundTypeId' => $parentMemo->fundType->id ?? $parentMemo->fund_type_id ?? null,
-            'fundTypeName' => $parentMemo->fundType->name ?? 'N/A',
+            'fundTypeId' => $crFundTypeId ?? $parentMemo->fundType->id ?? $parentMemo->fund_type_id ?? null,
+            'fundTypeName' => $crFundTypeName ?? ($parentMemo->fundType->name ?? 'N/A'),
+            'divisionId' => $crDivisionId ?? null,
             'divisionName' => $divisionName,
             'dateFrom' => $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('M d, Y') : 'N/A',
             'dateTo' => $dateTo ? \Carbon\Carbon::parse($dateTo)->format('M d, Y') : 'N/A',

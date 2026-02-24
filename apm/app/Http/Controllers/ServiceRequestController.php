@@ -173,7 +173,7 @@ class ServiceRequestController extends Controller
                     $internalParticipants = $this->processInternalParticipantsFromSource($sourceData, $sourceType);
                 }
 
-                // When creating from a Change Request, use the CR's changed data (budget, participants, title, etc.)
+                // When creating from a Change Request, use only the CR's data (not parent memo) for budget, participants, title, division, fund type.
                 if ($changeRequest && $sourceData) {
                     if ($changeRequest->budget_breakdown !== null) {
                         $crBudget = is_string($changeRequest->budget_breakdown)
@@ -187,6 +187,12 @@ class ServiceRequestController extends Controller
                     if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
                         $originalTotalBudget = (float) $changeRequest->available_budget;
                     }
+                    if ($changeRequest->budget_id !== null) {
+                        $crBudgetIds = is_string($changeRequest->budget_id) ? (json_decode($changeRequest->budget_id, true) ?? []) : $changeRequest->budget_id;
+                        if (is_array($crBudgetIds)) {
+                            $sourceData->budget_id = $crBudgetIds;
+                        }
+                    }
                     if ($changeRequest->internal_participants !== null) {
                         $crParticipants = is_string($changeRequest->internal_participants)
                             ? json_decode($changeRequest->internal_participants, true)
@@ -197,6 +203,17 @@ class ServiceRequestController extends Controller
                     }
                     $sourceData->activity_title = $changeRequest->activity_title ?? $sourceData->activity_title ?? $sourceData->title ?? null;
                     $sourceData->title = $sourceData->activity_title;
+                    $sourceData->available_budget = $changeRequest->available_budget ?? $originalTotalBudget;
+                    if ($changeRequest->division_id !== null && $changeRequest->division_id !== '') {
+                        $sourceData->division_id = (int) $changeRequest->division_id;
+                        $crDivision = \App\Models\Division::find($sourceData->division_id);
+                        $sourceData->setRelation('division', $crDivision);
+                    }
+                    if ($changeRequest->fund_type_id !== null && $changeRequest->fund_type_id !== '') {
+                        $sourceData->fund_type_id = (int) $changeRequest->fund_type_id;
+                        $crFundType = \App\Models\FundType::find($sourceData->fund_type_id);
+                        $sourceData->setRelation('fundType', $crFundType);
+                    }
                     if ($changeRequest->background !== null && $changeRequest->background !== '') {
                         $sourceData->background = $changeRequest->background;
                     }
