@@ -67,11 +67,8 @@
                         <span>View Service Request</span>
                     </a>
                 @elseif($canCreateServices)
-                    @php
-                        $srSourceType = $changeRequest->parent_memo_model === 'App\Models\NonTravelMemo' ? 'non_travel_memo' : ($changeRequest->parent_memo_model === 'App\Models\SpecialMemo' ? 'special_memo' : 'activity');
-                        $srSourceId = $changeRequest->parent_memo_id ?? 0;
-                    @endphp
-                    <a href="{{ route('service-requests.create') }}?source_type={{ $srSourceType }}&source_id={{ $srSourceId }}&change_request_id={{ $changeRequest->id }}" class="btn btn-info btn-sm d-flex align-items-center gap-2">
+                    {{-- Use only change_request_id so create form loads data from the change request (not parent memo) --}}
+                    <a href="{{ route('service-requests.create', ['change_request_id' => $changeRequest->id]) }}" class="btn btn-info btn-sm d-flex align-items-center gap-2">
                         <i class="fas fa-tools"></i>
                         <span>Create Service Request</span>
                     </a>
