@@ -18,17 +18,22 @@
                 <h5 class="mb-0"><i class="bx bx-building-house me-2 text-primary"></i>All Divisions</h5>
             </div>
             <div class="col-md-6">
-                <form action="{{ route('divisions.index') }}" method="GET" class="d-flex gap-2">
-                    <input type="text" name="search" class="form-control" placeholder="Search divisions..." value="{{ request('search') }}">
-                    <button type="submit" class="btn btn-outline-primary">
-                        <i class="bx bx-search"></i>
-                    </button>
-                    @if(request('search'))
-                        <a href="{{ route('divisions.index') }}" class="btn btn-outline-secondary">
-                            <i class="bx bx-x"></i>
-                        </a>
-                    @endif
-                </form>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <form action="{{ route('divisions.index') }}" method="GET" class="d-flex gap-2">
+                        <input type="text" name="search" class="form-control" placeholder="Search divisions..." value="{{ request('search') }}">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bx bx-search"></i>
+                        </button>
+                        @if(request('search'))
+                            <a href="{{ route('divisions.index') }}" class="btn btn-outline-secondary">
+                                <i class="bx bx-x"></i>
+                            </a>
+                        @endif
+                    </form>
+                    <a href="{{ route('divisions.export.excel', request()->query()) }}" class="btn btn-outline-success" title="Export to Excel">
+                        <i class="bx bx-download me-1"></i> Export to Excel
+                    </a>
+                </div>
             </div>
         </div>
     </div>
