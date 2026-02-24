@@ -204,6 +204,10 @@ class ApmDocumentController extends Controller
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
         }
         $data = $activity->toArray();
+        // Remove matrix-related payload for activity/single_memo document (type is not matrix).
+        foreach (['matrix', 'division_schedule', 'division_staff', 'workflow_definition', 'current_actor', 'has_intramural', 'has_extramural', 'intramural_budget', 'extramural_budget'] as $key) {
+            unset($data[$key]);
+        }
         $data['internal_participants'] = $this->formatActivityInternalParticipants($activity);
         $data['document_type'] = $activity->is_single_memo ? 'single_memo' : 'activity';
         $trails = $activity->is_single_memo
