@@ -852,40 +852,6 @@ class ApmDocumentController extends Controller
     }
 
     /**
-     * Format activity internal_participants from raw JSON object (keyed by staff_id) to a list with staff names,
-     * matching the shape used on the matrix endpoint (documents/activity and matrices/{id}).
-     */
-    private function formatActivityInternalParticipants(Activity $activity): array
-    {
-        $raw = is_string($activity->internal_participants) ? json_decode($activity->internal_participants, true) : ($activity->internal_participants ?? []);
-        if (!is_array($raw) || empty($raw)) {
-            return [];
-        }
-        $staffIds = array_values(array_unique(array_map('intval', array_keys($raw))));
-        $staffIds = array_filter($staffIds, fn ($id) => $id > 0);
-        if (empty($staffIds)) {
-            return [];
-        }
-        $staffById = Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
-        $list = [];
-        foreach ($raw as $staffId => $participantData) {
-            $staffId = (int) $staffId;
-            $staff = $staffById->get($staffId);
-            $participantName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
-            $list[] = [
-                'staff_id' => $staffId,
-                'name' => $participantName,
-                'participant_name' => $participantName,
-                'participant_start' => $participantData['participant_start'] ?? null,
-                'participant_end' => $participantData['participant_end'] ?? null,
-                'participant_days' => isset($participantData['participant_days']) ? (int) $participantData['participant_days'] : null,
-                'international_travel' => (int) ($participantData['international_travel'] ?? 0),
-            ];
-        }
-        return $list;
-    }
-
-    /**
      * Format approval trail collection for API (works with ApprovalTrail or ActivityApprovalTrail).
      * Returns array of { id, action, remarks, approval_order, staff_id, staff_name, oic_staff_id, oic_staff_name, role, created_at, is_archived }.
      */
