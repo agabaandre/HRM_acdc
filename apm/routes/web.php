@@ -74,6 +74,13 @@ Route::post('auth/login', [App\Http\Controllers\Api\ApmAuthController::class, 'l
 // Microsoft OAuth callback: Azure redirects here after login. Exchanges code for token, finds APM user, sets web session, redirects to /home.
 Route::get('oauth/callback', [App\Http\Controllers\Api\ApmAuthController::class, 'microsoftCallback'])->name('apm.oauth.callback');
 
+// Document attachment stream for in-browser viewing (session auth; use this URL to open attachments in the browser).
+Route::get('documents/attachments/{type}/{id}/{index}', [App\Http\Controllers\Api\ApmDocumentController::class, 'streamAttachment'])
+    ->name('documents.attachments.stream')
+    ->where('type', 'special_memo|matrix|activity|non_travel_memo|service_request|arf|change_request')
+    ->where('index', '[0-9]+')
+    ->middleware(CheckSessionMiddleware::class);
+
 // Public FAQ, Help and Documentation (no login required; no system menu)
 Route::get('/faq', [App\Http\Controllers\FaqController::class, 'publicPage'])->name('faq.index');
 Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
