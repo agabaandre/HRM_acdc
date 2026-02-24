@@ -426,6 +426,9 @@
                         <input type="hidden" name="model_type" value="{{ $modelType ?? 'App\\Models\\Activity' }}">
                         @if(!empty($changeRequestId))
                         <input type="hidden" name="change_request_id" value="{{ $changeRequestId }}">
+                        @if(!empty($divisionId))
+                        <input type="hidden" name="division_id" value="{{ $divisionId }}">
+                        @endif
                         @endif
                         
                         <div class="d-flex gap-2 justify-content-end pt-3 border-top">

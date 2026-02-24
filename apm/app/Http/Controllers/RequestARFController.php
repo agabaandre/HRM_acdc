@@ -431,20 +431,31 @@ class RequestARFController extends Controller
                 'workflow_assignments' => WorkflowModel::where('model_name', 'RequestARF')->get()->toArray()
             ]);
 
-            // Get responsible person from source data
+            // Get responsible person: when creating from change request use CR's responsible person; otherwise from source
             $responsiblePersonId = null;
-            if ($request->model_type === 'App\\Models\\Activity') {
-                // For activities, use the focal person (staff_id)
-                $responsiblePersonId = $sourceData->staff_id ?? null;
-                Log::info('Activity responsible person set', ['staff_id' => $responsiblePersonId]);
-            } elseif ($request->model_type === 'App\\Models\\NonTravelMemo') {
-                // For non-travel memos, use the creator (staff_id) as responsible person
-                $responsiblePersonId = $sourceData->staff_id ?? null;
-                Log::info('Non-travel memo responsible person set', ['staff_id' => $responsiblePersonId, 'source_data' => $sourceData->toArray()]);
-            } elseif ($request->model_type === 'App\\Models\\SpecialMemo') {
-                // For special memos, use the focal person (staff_id)
-                $responsiblePersonId = $sourceData->staff_id ?? null;
-                Log::info('Special memo responsible person set', ['staff_id' => $responsiblePersonId]);
+            if ($request->filled('change_request_id')) {
+                $changeRequest = \App\Models\ChangeRequest::find($request->change_request_id);
+                if ($changeRequest) {
+                    $responsiblePersonId = $changeRequest->responsible_person_id ?? $changeRequest->staff_id ?? null;
+                }
+            }
+            if ($responsiblePersonId === null) {
+                if ($request->model_type === 'App\\Models\\Activity') {
+                    $responsiblePersonId = $sourceData->staff_id ?? null;
+                } elseif ($request->model_type === 'App\\Models\\NonTravelMemo') {
+                    $responsiblePersonId = $sourceData->staff_id ?? null;
+                } elseif ($request->model_type === 'App\\Models\\SpecialMemo') {
+                    $responsiblePersonId = $sourceData->staff_id ?? null;
+                }
+            }
+
+            // When creating from change request, use CR's division (and budget/participants/title already set above)
+            $divisionId = null;
+            if ($request->filled('change_request_id') && $request->filled('division_id')) {
+                $divisionId = (int) $request->division_id;
+            }
+            if ($divisionId === null) {
+                $divisionId = $this->getDivisionId($sourceData, $request->model_type);
             }
 
             // Create minimal ARF request - just for approval workflow
@@ -455,7 +466,7 @@ class RequestARFController extends Controller
                 'reverse_workflow_id' => $reverseWorkflowId,
                 'arf_number' => $arfNumber,
                 'request_date' => now()->toDateString(),
-                'division_id' => $this->getDivisionId($sourceData, $request->model_type),
+                'division_id' => $divisionId,
                 'activity_title' => clean_unicode($activityTitle),
                 'purpose' => clean_unicode('ARF Request for ' . ucfirst(str_replace('_', ' ', $request->source_type)) . ' #' . $request->source_id),
                 'start_date' => now()->toDateString(), // Not important for approval
