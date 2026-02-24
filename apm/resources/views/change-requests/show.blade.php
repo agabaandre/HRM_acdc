@@ -66,12 +66,12 @@
                         <i class="fas fa-eye"></i>
                         <span>View Service Request</span>
                     </a>
-                @elseif($canCreateServices && $parentMemo)
+                @elseif($canCreateServices)
                     @php
-                        $srSourceType = $changeRequest->parent_memo_model === 'App\Models\NonTravelMemo' ? 'non_travel' : ($changeRequest->parent_memo_model === 'App\Models\SpecialMemo' ? 'special_memo' : 'activity');
-                        if ($srSourceType === 'non_travel') { $srSourceType = 'non_travel_memo'; }
+                        $srSourceType = $changeRequest->parent_memo_model === 'App\Models\NonTravelMemo' ? 'non_travel_memo' : ($changeRequest->parent_memo_model === 'App\Models\SpecialMemo' ? 'special_memo' : 'activity');
+                        $srSourceId = $changeRequest->parent_memo_id ?? 0;
                     @endphp
-                    <a href="{{ route('service-requests.create') }}?source_type={{ $srSourceType }}&source_id={{ $parentMemo->id }}&change_request_id={{ $changeRequest->id }}" class="btn btn-info btn-sm d-flex align-items-center gap-2">
+                    <a href="{{ route('service-requests.create') }}?source_type={{ $srSourceType }}&source_id={{ $srSourceId }}&change_request_id={{ $changeRequest->id }}" class="btn btn-info btn-sm d-flex align-items-center gap-2">
                         <i class="fas fa-tools"></i>
                         <span>Create Service Request</span>
                     </a>
@@ -87,7 +87,7 @@
                         <i class="fas fa-edit"></i>
                         <span>Edit</span>
                     </a>
-                    @if($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id'))
+                    @if($currentStaffId !== null && ($changeRequest->staff_id == $currentStaffId || $changeRequest->responsible_person_id == $currentStaffId))
                         <button type="button"
                                 class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2"
                                 onclick="deleteChangeRequest({{ $changeRequest->id }})">
