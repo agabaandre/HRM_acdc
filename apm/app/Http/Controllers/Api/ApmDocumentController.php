@@ -192,8 +192,9 @@ class ApmDocumentController extends Controller
 
     private function activity(int $id): JsonResponse
     {
+        // Do not load matrix relation for activity document — only include matrix when document type is matrix.
         $activity = Activity::with([
-            'staff', 'requestType', 'fundType', 'responsiblePerson', 'matrix.division',
+            'staff', 'requestType', 'fundType', 'responsiblePerson',
             'activity_budget.fundcode.funder',
             'activityApprovalTrails.staff', 'activityApprovalTrails.oicStaff',
             'approvalTrails.staff', 'approvalTrails.oicStaff',
@@ -332,7 +333,7 @@ class ApmDocumentController extends Controller
                 'activities' => fn ($q) => $q->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson']),
             ])->where('overall_status', $status),
             'activity', 'single_memo' => Activity::with([
-                'staff', 'requestType', 'fundType', 'responsiblePerson', 'matrix.division',
+                'staff', 'requestType', 'fundType', 'responsiblePerson',
                 'activity_budget.fundcode.funder',
                 'activityApprovalTrails.staff', 'activityApprovalTrails.oicStaff',
                 'approvalTrails.staff', 'approvalTrails.oicStaff',

@@ -7,6 +7,7 @@ use App\Models\Matrix;
 use App\Models\Staff;
 use App\Models\ApprovalTrail;
 use App\Services\ApprovalService;
+use App\Services\PendingApprovalsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,6 +26,11 @@ class ApmMatrixController extends Controller
 
         $matrix = Matrix::with([
             'division', 'staff', 'focalPerson', 'forwardWorkflow',
+            'matrixApprovalTrails' => function ($q) {
+                $q->with(['staff', 'oicStaff', 'workflowDefinition'])
+                    ->where('is_archived', 0)
+                    ->orderBy('created_at', 'asc');
+            },
             'activities' => function ($q) {
                 $q->where('is_single_memo', 0)
                     ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget.fundcode.funder']);
@@ -71,6 +77,9 @@ class ApmMatrixController extends Controller
         })->values()->toArray();
 
         $matrixArray['document_type'] = 'matrix';
+        $trails = $matrix->matrixApprovalTrails ?? collect();
+        $matrixArray['approval_trail'] = app(PendingApprovalsService::class)->formatApprovalTrailsForApi($trails);
+
         $matrixArray['activities'] = $matrix->activities->map(function ($activity) use ($staffById) {
             $raw = is_string($activity->internal_participants) ? json_decode($activity->internal_participants, true) : ($activity->internal_participants ?? []);
             $internalParticipantsList = [];
