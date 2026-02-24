@@ -430,7 +430,8 @@ paths:
       summary: Get document by id
       description: |
         Single document by type and id (regardless of status). Includes approval_trails and attachments.
-        Each attachment has a url that can be used to download the file (GET with same Bearer token).
+        Each attachment has **url** (API; use with Bearer token or ?token= for in-browser) and **web_view_url**
+        (web session; use to open in browser when user is logged in via the web app).
         For listing by status use GET /documents/{type}/{status}.
       operationId: getDocument
       security: [{ bearerAuth: [] }]
@@ -463,7 +464,7 @@ paths:
                         items: { $ref: '#/components/schemas/ApprovalTrailItem' }
                       attachments:
                         type: array
-                        description: Attachments with url for API download (GET /documents/attachments/{type}/{id}/{index})
+                        description: Attachments with url (API + ?token= for browser) and web_view_url (session)
                         items: { $ref: '#/components/schemas/DocumentAttachmentItem' }
         '404':
           description: Document not found
@@ -471,11 +472,20 @@ paths:
   /documents/attachments/{type}/{id}/{index}:
     get:
       tags: [Documents]
-      summary: Download document attachment
+      summary: Stream or download document attachment
       description: |
         Stream a single attachment file by document type, id, and zero-based index.
-        Use the url from GET /documents/{type}/{id} response (attachments[].url).
-        Requires same Bearer token. Returns the file with Content-Disposition inline and original filename.
+        Use the **url** from GET /documents/{type}/{id} response (attachments[].url).
+
+        **Authentication (either):**
+        - **Authorization header:** `Authorization: Bearer <access_token>` (recommended for API clients).
+        - **Query parameter:** `?token=<access_token>` — use when opening the URL in a browser (e.g. new tab or iframe)
+          so the file can be displayed inline without sending headers. Append the token to the url, e.g.
+          `.../documents/attachments/activity/408/0?token=eyJ0eXAi...`.
+
+        Returns the file with **Content-Disposition: inline** and original filename so PDFs and images
+        display in the browser. For in-browser viewing with **web session** (no JWT), use **web_view_url**
+        from the document response instead (requires user to be logged in via the web app).
       operationId: getDocumentAttachment
       security: [{ bearerAuth: [] }]
       parameters:
@@ -494,9 +504,26 @@ paths:
           required: true
           schema: { type: integer, minimum: 0 }
           description: Zero-based index of the attachment (matches order in document data.attachments).
+        - name: token
+          in: query
+          required: false
+          schema: { type: string }
+          description: |
+            JWT access token. When provided, the server treats it as Bearer token (same as Authorization header).
+            Use this to open the attachment URL in a browser (e.g. window.open(url + '?token=' + accessToken))
+            so the document streams and displays inline. Only used when the request has no Authorization header.
       responses:
         '200':
-          description: File stream (content-type and filename from attachment metadata).
+          description: File stream (Content-Type and filename from attachment metadata; inline disposition).
+        '401':
+          description: Unauthenticated (missing or invalid token).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  message: { type: string, example: "Unauthenticated." }
         '404':
           description: Document or attachment not found
         '400':
@@ -925,7 +952,7 @@ components:
 
     DocumentAttachmentItem:
       type: object
-      description: One attachment with API download url.
+      description: One attachment with API download url and optional web-view url for in-browser display.
       properties:
         type: { type: string, nullable: true, description: Attachment type label (e.g. Consultant TOR) }
         filename: { type: string, description: Stored filename }
@@ -937,7 +964,15 @@ components:
         url:
           type: string
           format: uri
-          description: API URL to download this file (GET with Bearer token). Same as GET /documents/attachments/{type}/{id}/{index}.
+          description: |
+            API URL to stream this file. Use with Bearer token (header or query ?token=).
+            GET this URL with Authorization Bearer or append ?token=<access_token> to open in browser.
+        web_view_url:
+          type: string
+          format: uri
+          description: |
+            Web URL to stream the file when the user is logged in via the web app (session auth).
+            Use this in the browser when opening from the web UI; no JWT needed. Same path under app root (no /api/apm/v1).
 
     PendingApprovalItem:
       type: object
