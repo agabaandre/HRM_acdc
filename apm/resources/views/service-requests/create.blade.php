@@ -29,7 +29,7 @@
     $budgetByFundCode = [];
     $fundCodes = [];
 
-    // For "Original Budget Breakdown" section: in edit use source memo's budget (same as create); otherwise use service request or create source
+    // For "Budget breakdown" section: in edit use source memo's budget (same as create); otherwise use service request or create source
     $displayBudgetBreakdown = $budgetBreakdown ?? null;
     $displayBudgetByFundCode = [];
     $displayFundCodes = [];
@@ -63,57 +63,73 @@
             }
         }
     }
-    // Process source data if available (create mode)
-    if (!$isEdit && $sourceData && isset($sourceData->budget_breakdown)) {
-        $budgetBreakdown = is_string($sourceData->budget_breakdown) 
+    // Process source data if available (create mode). When creating from a change request, do NOT use parent memo budget - controller already passed CR budget in $budgetBreakdown.
+    if (!$isEdit && empty($changeRequestId ?? null) && $sourceData && isset($sourceData->budget_breakdown)) {
+        $budgetBreakdown = is_string($sourceData->budget_breakdown)
                 ? json_decode(stripslashes($sourceData->budget_breakdown), true)
             : $sourceData->budget_breakdown;
-            
-            // Handle double-encoded JSON (sometimes happens with form submissions)
-            if (is_string($budgetBreakdown) && !is_array($budgetBreakdown)) {
-                $budgetBreakdown = json_decode($budgetBreakdown, true);
-            }
-
+        if (is_string($budgetBreakdown) && !is_array($budgetBreakdown)) {
+            $budgetBreakdown = json_decode($budgetBreakdown, true);
+        }
         if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
-                // Parse budget structure and organize by fund codes (same logic as single memo show)
-                foreach ($budgetBreakdown as $key => $item) {
-                    if ($key === 'grand_total') {
-                        $totalOriginal = floatval($item);
-                    } elseif (is_array($item)) {
-                        // Handle array of budget items (like "29" => [{...}])
-                        $fundCodeId = $key;
-                        $budgetByFundCode[$fundCodeId] = $item;
-                    } elseif (is_numeric($item)) {
-                        $totalOriginal += floatval($item);
-                    }
+            foreach ($budgetBreakdown as $key => $item) {
+                if ($key === 'grand_total') {
+                    $totalOriginal = floatval($item);
+                } elseif (is_array($item)) {
+                    $fundCodeId = $key;
+                    $budgetByFundCode[$fundCodeId] = $item;
+                } elseif (is_numeric($item)) {
+                    $totalOriginal += floatval($item);
                 }
-
-                // Fetch fund code details for display
-                if (!empty($budgetByFundCode)) {
-                    $fundCodeIds = array_keys($budgetByFundCode);
-                    $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
-                }
-
-                // If no grand_total found, calculate from items with proper days logic
-                if ($totalOriginal == 0 && !empty($budgetByFundCode)) {
-                    foreach ($budgetByFundCode as $fundCodeId => $items) {
-                        foreach ($items as $item) {
-                            if (isset($item['unit_cost']) && isset($item['units'])) {
-                                $unitCost = floatval($item['unit_cost']);
-                                $units = floatval($item['units']);
-                                $days = floatval($item['days'] ?? 1);
-
-                                // Use days when greater than 1, otherwise just unit_cost * units
-                                if ($days > 1) {
-                                    $totalOriginal += $unitCost * $units * $days;
-                                } else {
-                                    $totalOriginal += $unitCost * $units;
-                                }
-                            }
+            }
+            if (!empty($budgetByFundCode)) {
+                $fundCodeIds = array_keys($budgetByFundCode);
+                $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
+            }
+            if ($totalOriginal == 0 && !empty($budgetByFundCode)) {
+                foreach ($budgetByFundCode as $fundCodeId => $items) {
+                    foreach ($items as $item) {
+                        if (isset($item['unit_cost']) && isset($item['units'])) {
+                            $unitCost = floatval($item['unit_cost']);
+                            $units = floatval($item['units']);
+                            $days = floatval($item['days'] ?? 1);
+                            $totalOriginal += ($days > 1) ? ($unitCost * $units * $days) : ($unitCost * $units);
                         }
                     }
+                }
             }
         }
+    }
+    // When creating from change request, parse controller-provided $budgetBreakdown (already CR data) for display
+    if (!$isEdit && !empty($changeRequestId ?? null) && !empty($budgetBreakdown) && is_array($budgetBreakdown)) {
+        foreach ($budgetBreakdown as $key => $item) {
+            if ($key === 'grand_total') {
+                $totalOriginal = floatval($item);
+            } elseif (is_array($item)) {
+                $budgetByFundCode[$key] = $item;
+            } elseif (is_numeric($item)) {
+                $totalOriginal += floatval($item);
+            }
+        }
+        if (!empty($budgetByFundCode)) {
+            $fundCodeIds = array_keys($budgetByFundCode);
+            $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
+        }
+        if ($totalOriginal == 0 && !empty($budgetByFundCode)) {
+            foreach ($budgetByFundCode as $fundCodeId => $items) {
+                foreach ($items as $item) {
+                    if (isset($item['unit_cost']) && isset($item['units'])) {
+                        $unitCost = floatval($item['unit_cost']);
+                        $units = floatval($item['units']);
+                        $days = floatval($item['days'] ?? 1);
+                        $totalOriginal += ($days > 1) ? ($unitCost * $units * $days) : ($unitCost * $units);
+                    }
+                }
+            }
+        }
+    }
+    if (!$isEdit && !empty($changeRequestId ?? null) && isset($originalTotalBudget) && (float)$originalTotalBudget > 0 && $totalOriginal == 0) {
+        $totalOriginal = (float) $originalTotalBudget;
     }
     // When display vars were not set from source (create mode or edit without source budget), use main budget vars
     if (empty($displayBudgetByFundCode)) {
@@ -302,10 +318,10 @@
                         </div>
                     </div>
                 </div>
-            <!-- Section 2: Original Budget Breakdown (create: from source; edit: from source memo, same as create) -->
+            <!-- Section 2: Budget breakdown (create: from source or change request; edit: from source memo) -->
             <div class="mb-5">
                 <h6 class="fw-bold text-dark mb-4 border-bottom pb-2">
-                    <i class="fas fa-file-invoice-dollar text-danger me-2"></i> Original Budget Breakdown
+                    <i class="fas fa-file-invoice-dollar text-danger me-2"></i> Budget breakdown
                 </h6>
                 
                     @if (!empty($displayBudgetBreakdown))
