@@ -46,7 +46,7 @@
                 @error('answer')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
-                <small class="text-muted">Use the toolbar for bold, lists, links, and formatting. For Staff Portal links use the placeholder <code>{{ '{{staff_portal_url}}' }}</code> so the URL adapts to production or demo.</small>
+                <small class="text-muted">Use the toolbar for bold, lists, links, and formatting. For Staff Portal links use the placeholder <code>{!! '{{staff_portal_url}}' !!}</code> so the URL adapts to production or demo.</small>
             </div>
 
             <div class="row">
