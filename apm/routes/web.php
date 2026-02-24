@@ -71,6 +71,9 @@ Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 // APM API login at /auth/login (same handler as api/apm/v1/auth/login) so POST /auth/login works when base URL is e.g. /staff/apm
 Route::post('auth/login', [App\Http\Controllers\Api\ApmAuthController::class, 'login'])->name('apm.api.login');
 
+// Microsoft OAuth callback: Azure redirects here after login. Exchanges code for token, finds APM user, sets web session, redirects to /home.
+Route::get('oauth/callback', [App\Http\Controllers\Api\ApmAuthController::class, 'microsoftCallback'])->name('apm.oauth.callback');
+
 // Public FAQ, Help and Documentation (no login required; no system menu)
 Route::get('/faq', [App\Http\Controllers\FaqController::class, 'publicPage'])->name('faq.index');
 Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');

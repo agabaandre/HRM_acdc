@@ -8,8 +8,10 @@ use App\Models\Approver;
 use App\Models\Division;
 use App\Models\Staff;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class ApmAuthController extends Controller
@@ -112,6 +114,77 @@ class ApmAuthController extends Controller
         $token = auth('api')->login($user);
 
         return $this->respondWithTokenAndUser($token, $user);
+    }
+
+    /**
+     * Web OAuth callback: Microsoft redirects the browser here with ?code=... (and optionally ?state=...).
+     * Exchanges the code for a token using the configured redirect_uri, finds the APM user, sets web session, redirects to /home.
+     * Configure MICROSOFT_REDIRECT_URI to the exact callback URL (e.g. https://cbp.africacdc.org/demo_staff/apm/oauth/callback).
+     */
+    public function microsoftCallback(Request $request): RedirectResponse
+    {
+        $baseUrl = rtrim(config('staff_api.base_url', env('BASE_URL', 'http://localhost/staff/')), '/');
+        $loginUrl = $baseUrl . '/auth/login';
+
+        if ($request->filled('error')) {
+            Log::warning('Microsoft OAuth callback error', [
+                'error' => $request->input('error'),
+                'description' => $request->input('error_description'),
+            ]);
+            $message = $request->input('error_description', $request->input('error', 'Login was cancelled or failed.'));
+            return redirect($loginUrl . '?error=' . urlencode($message));
+        }
+
+        $code = $request->query('code');
+        if (empty($code)) {
+            return redirect($loginUrl . '?error=' . urlencode('No authorization code received.'));
+        }
+
+        $redirectUri = config('services.microsoft.redirect_uri');
+        if (empty($redirectUri)) {
+            $redirectUri = $request->url();
+        }
+        $accessToken = $this->exchangeMicrosoftCodeForToken($code, $redirectUri);
+        if (!$accessToken) {
+            Log::warning('Microsoft OAuth code exchange failed');
+            return redirect($loginUrl . '?error=' . urlencode('Invalid or expired authorization code.'));
+        }
+
+        $graphUser = $this->getMicrosoftGraphUser($accessToken);
+        if (!$graphUser || empty($graphUser['mail'] ?? $graphUser['userPrincipalName'] ?? null)) {
+            Log::warning('Microsoft OAuth: could not get Graph user');
+            return redirect($loginUrl . '?error=' . urlencode('Could not get user identity from Microsoft.'));
+        }
+
+        $email = $graphUser['mail'] ?? $graphUser['userPrincipalName'];
+        $email = is_string($email) ? trim($email) : '';
+
+        $user = ApmApiUser::where('email', $email)->first();
+        if (!$user) {
+            $staff = Staff::where('work_email', $email)->first();
+            if ($staff) {
+                $user = ApmApiUser::where('auth_staff_id', $staff->staff_id)->first();
+            }
+        }
+
+        if (!$user || !$user->is_active) {
+            return redirect($loginUrl . '?error=' . urlencode('Staff profile missing or inactive. Contact HR.'));
+        }
+
+        $user->update(['last_used_at' => now()]);
+
+        $sessionUser = $user->toSessionArray();
+        $sessionUser['user_id'] = $user->auth_staff_id;
+
+        session([
+            'user' => $sessionUser,
+            'base_url' => $sessionUser['base_url'] ?? config('app.url'),
+            'permissions' => $sessionUser['permissions'] ?? [],
+            'last_activity' => now(),
+        ]);
+        session()->save();
+
+        return redirect('/home');
     }
 
     private function exchangeMicrosoftCodeForToken(string $code, string $redirectUri): ?string
