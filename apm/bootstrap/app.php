@@ -22,7 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->renderable(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            // API routes: return 401 JSON so we don't redirect to route('login') which may not exist.
+            if ($request->is('api/*') || $request->is('*/api/*')) {
+                return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+            }
+        });
     })
     ->withSchedule(function (Schedule $schedule) {
         // Schedule instant reminders at 9 AM and 4 PM

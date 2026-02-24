@@ -69,6 +69,53 @@ class ApmDocumentController extends Controller
     }
 
     /**
+     * Stream a document attachment for in-browser viewing (web session auth).
+     * Use this URL when opening attachments in the browser so the user is authorized via session.
+     */
+    public function streamAttachment(Request $request, string $type, int $id, int $index): JsonResponse|StreamedResponse
+    {
+        if (!session()->has('user')) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        $model = $this->resolveDocument($type, $id);
+        if (!$model) {
+            return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
+        }
+
+        $attachments = $this->getAttachmentList($model, $type);
+        if (!isset($attachments[$index])) {
+            return response()->json(['success' => false, 'message' => 'Attachment not found.'], 404);
+        }
+
+        $item = $attachments[$index];
+        $path = $item['path'] ?? null;
+        if (!$path || !is_string($path)) {
+            return response()->json(['success' => false, 'message' => 'Invalid attachment path.'], 400);
+        }
+
+        $path = str_replace('\\', '/', $path);
+        $basePath = realpath(storage_path('app/public')) ?: storage_path('app/public');
+        $fullPath = realpath($basePath . '/' . $path);
+        if ($fullPath === false || !str_starts_with($fullPath, $basePath) || !is_file($fullPath)) {
+            return response()->json(['success' => false, 'message' => 'File not found.'], 404);
+        }
+
+        $filename = $item['original_name'] ?? $item['filename'] ?? basename($path);
+        $mimeType = $item['mime_type'] ?? 'application/octet-stream';
+
+        return response()->streamDownload(function () use ($fullPath) {
+            $stream = fopen($fullPath, 'rb');
+            if ($stream) {
+                fpassthru($stream);
+                fclose($stream);
+            }
+        }, $filename, [
+            'Content-Type' => $mimeType,
+        ], 'inline');
+    }
+
+    /**
      * List documents by type and status (from mother models). Optional query param id returns single document.
      * GET /documents/{type}/{status} or /documents/{type}/{status}?id=32
      */
@@ -374,16 +421,19 @@ class ApmDocumentController extends Controller
             return [];
         }
         $staffIds = array_values(array_unique(array_filter(array_map('intval', array_keys($raw)))));
-        $staffById = $staffIds ? Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id') : collect();
+        $staffById = $staffIds ? Staff::with('division')->whereIn('staff_id', $staffIds)->get()->keyBy('staff_id') : collect();
         $list = [];
         foreach ($raw as $staffId => $participantData) {
             $staffId = (int) $staffId;
             $staff = $staffById->get($staffId);
             $participantName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
+            $division = $staff && $staff->relationLoaded('division') ? $staff->division : null;
             $list[] = [
                 'staff_id' => $staffId,
                 'name' => $participantName,
                 'participant_name' => $participantName,
+                'division_id' => $staff ? (int) $staff->division_id : null,
+                'division_name' => $division ? ($division->division_name ?? null) : null,
                 'participant_start' => $participantData['participant_start'] ?? null,
                 'participant_end' => $participantData['participant_end'] ?? null,
                 'participant_days' => isset($participantData['participant_days']) ? (int) $participantData['participant_days'] : null,
@@ -841,16 +891,22 @@ class ApmDocumentController extends Controller
     }
 
     /**
-     * Build attachments array with url for each (API-accessible download link).
-     * Each item gets url: GET /api/apm/v1/documents/attachments/{type}/{id}/{index} (requires Bearer token).
+     * Build attachments array with url for each (API-accessible) and web_view_url (for in-browser viewing with session).
+     * - url: GET /api/apm/v1/documents/attachments/{type}/{id}/{index} (requires Bearer token).
+     * - web_view_url: GET /documents/attachments/{type}/{id}/{index} (requires web session; use to open in browser).
      */
     private function buildAttachmentsWithUrls(object $model, string $type, int $id): array
     {
         $list = $this->getAttachmentList($model, $type);
-        $base = rtrim(url('/api/apm/v1/documents/attachments/' . $type . '/' . $id), '/');
-        return array_values(array_map(function ($item, $index) use ($base) {
+        $apiBase = rtrim(url('/api/apm/v1/documents/attachments/' . $type . '/' . $id), '/');
+        return array_values(array_map(function ($item, $index) use ($apiBase, $type, $id) {
             $item = is_array($item) ? $item : [];
-            $item['url'] = $base . '/' . $index;
+            $item['url'] = $apiBase . '/' . $index;
+            try {
+                $item['web_view_url'] = route('documents.attachments.stream', ['type' => $type, 'id' => $id, 'index' => $index]);
+            } catch (\Throwable $e) {
+                $item['web_view_url'] = url('/documents/attachments/' . $type . '/' . $id . '/' . $index);
+            }
             return $item;
         }, $list, array_keys($list)));
     }
