@@ -307,7 +307,7 @@ class ApmDocumentController extends Controller
     private function arf(int $id): JsonResponse
     {
         $doc = RequestARF::with([
-            'staff', 'division', 'fundType', 'funder', 'partner', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+            'staff', 'division', 'fundType', 'funder', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
         ])->find($id);
         if (!$doc) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
