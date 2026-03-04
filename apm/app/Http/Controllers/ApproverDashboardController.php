@@ -44,6 +44,7 @@ class ApproverDashboardController extends Controller
                 'month' => 'nullable|integer|min:1|max:12',
                 'year' => 'nullable|integer|min:2000|max:2100',
                 'export' => 'nullable|boolean',
+                'format' => 'nullable|string|in:pdf,csv',
             ]);
 
             $userSession = user_session();
@@ -155,9 +156,13 @@ class ApproverDashboardController extends Controller
             // Apply pagination after sorting
             $approversWithCounts = array_slice($allApproversWithCounts, ($page - 1) * $perPage, $perPage);
 
-            // Handle Excel export (use all combined approvers, not paginated)
+            // Handle export (PDF by default, CSV when format=csv)
             if ($request->get('export')) {
-                return $this->exportToExcel($allApproversWithCounts);
+                $format = $request->get('format', 'pdf');
+                if ($format === 'csv') {
+                    return $this->exportToCsv($allApproversWithCounts);
+                }
+                return $this->exportToPdf($request, $allApproversWithCounts);
             }
 
             // Get total number of workflows for display
@@ -372,11 +377,82 @@ class ApproverDashboardController extends Controller
     }
 
     /**
-     * Export dashboard data to Excel format.
-     * Exports all approvers with their pending counts, total handled, and average approval time.
-     * Matches the new table structure with row numbers and combined pending items.
+     * Export dashboard data to PDF using mPDF.
      */
-    private function exportToExcel($data)
+    private function exportToPdf(Request $request, array $data)
+    {
+        $approvers = array_map(function ($row, $index) {
+            $pendingItems = [];
+            $counts = $row['pending_counts'] ?? [];
+            if (($counts['matrix'] ?? 0) > 0) {
+                $pendingItems[] = 'Matrix: ' . $counts['matrix'];
+            }
+            if (($counts['non_travel'] ?? 0) > 0) {
+                $pendingItems[] = 'Non-Travel: ' . $counts['non_travel'];
+            }
+            if (($counts['single_memos'] ?? 0) > 0) {
+                $pendingItems[] = 'Single: ' . $counts['single_memos'];
+            }
+            if (($counts['special'] ?? 0) > 0) {
+                $pendingItems[] = 'Special: ' . $counts['special'];
+            }
+            if (($counts['arf'] ?? 0) > 0) {
+                $pendingItems[] = 'ARF: ' . $counts['arf'];
+            }
+            if (($counts['requests_for_service'] ?? 0) > 0) {
+                $pendingItems[] = 'Requests: ' . $counts['requests_for_service'];
+            }
+            if (($counts['change_requests'] ?? 0) > 0) {
+                $pendingItems[] = 'Change: ' . ($counts['change_requests'] ?? 0);
+            }
+            $row['pending_items_display'] = !empty($pendingItems) ? implode(', ', $pendingItems) : '—';
+            return $row;
+        }, $data, array_keys($data));
+
+        $filters = [];
+        if ($request->filled('division_id')) {
+            $div = \Illuminate\Support\Facades\DB::table('divisions')->where('id', $request->get('division_id'))->value('division_name');
+            $filters[] = 'Division: ' . ($div ?: $request->get('division_id'));
+        }
+        if ($request->filled('doc_type')) {
+            $filters[] = 'Doc type: ' . $request->get('doc_type');
+        }
+        if ($request->filled('approval_level')) {
+            $filters[] = 'Level: ' . $request->get('approval_level');
+        }
+        if ($request->filled('year')) {
+            $filters[] = 'Year: ' . $request->get('year');
+        }
+        if ($request->filled('month')) {
+            $filters[] = 'Month: ' . $request->get('month');
+        }
+        if ($request->filled('q')) {
+            $filters[] = 'Search: ' . $request->get('q');
+        }
+        $filtersSummary = empty($filters) ? 'None' : implode('; ', $filters);
+
+        $totalPending = array_sum(array_column($data, 'total_pending'));
+        $summary = count($data) . ' approver(s), ' . $totalPending . ' total pending item(s).';
+
+        $htmlData = [
+            'approvers' => $approvers,
+            'filters_summary' => $filtersSummary,
+            'summary' => $summary,
+        ];
+
+        $mpdf = generate_pdf('approver-dashboard.export-pdf', $htmlData);
+        $filename = 'approver_dashboard_' . date('Y-m-d_H-i-s') . '.pdf';
+        return response($mpdf->Output('', 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * Export dashboard data to CSV format.
+     * Exports all approvers with their pending counts, total handled, and average approval time.
+     */
+    private function exportToCsv($data)
     {
         $filename = 'approver_dashboard_' . date('Y-m-d_H-i-s') . '.csv';
         

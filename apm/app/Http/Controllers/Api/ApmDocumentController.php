@@ -341,6 +341,25 @@ class ApmDocumentController extends Controller
     }
 
     /**
+     * Normalize document array for API: decode any JSON string fields that are still raw strings.
+     */
+    private function normalizeMemoJsonFields(array $data): array
+    {
+        $jsonKeys = [
+            'budget_breakdown', 'budget_id', 'location_id', 'attachment', 'attachments',
+            'internal_participants', 'division_staff_request', 'key_result_area',
+            'approval_order_map',
+        ];
+        foreach ($jsonKeys as $key) {
+            if (array_key_exists($key, $data) && is_string($data[$key])) {
+                $decoded = json_decode($data[$key], true);
+                $data[$key] = is_array($decoded) ? $decoded : $data[$key];
+            }
+        }
+        return $data;
+    }
+
+    /**
      * Return the web print/PDF URL for an approved document, or null if not approved.
      * Included in document detail payload when overall_status is approved.
      */
