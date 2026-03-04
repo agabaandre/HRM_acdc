@@ -322,9 +322,14 @@
     <button type="button" class="btn btn-info btn-modern" onclick="refreshDashboard()">
         <i class="fa fa-sync-alt"></i> Refresh
     </button>
-    <button type="button" class="btn btn-success btn-modern" onclick="exportData()">
-        <i class="fa fa-download"></i> Export
-    </button>
+    <div class="btn-group">
+        <button type="button" class="btn btn-success btn-modern" onclick="exportData('pdf')" title="Export as PDF">
+            <i class="fa fa-file-pdf"></i> Export PDF
+        </button>
+        <button type="button" class="btn btn-outline-success btn-modern" onclick="exportData('csv')" title="Export as CSV">
+            <i class="fa fa-file-excel"></i> CSV
+        </button>
+    </div>
 </div>
 {{-- @dd(user_session()) --}}
 @endsection
@@ -956,8 +961,7 @@ function initializeDataTable() {
                     }
                 },
                 action: function(e, dt, button, config) {
-                    // For server-side processing, we need to fetch all data
-                    // Get current filters and sort order
+                    // Server-side export with current filters and sort
                     const filters = {
                         q: $('#searchApprover').val(),
                         division_id: $('#filterDivision').val(),
@@ -966,25 +970,18 @@ function initializeDataTable() {
                         month: $('#filterMonth').val(),
                         year: $('#filterYear').val(),
                         export: 1,
-                        per_page: 10000, // Get all records
+                        format: 'csv',
+                        per_page: 10000,
                         page: 1
                     };
-                    
-                    // Get current sort order
                     const order = dt.order();
-                    if (order.length > 0) {
-                        filters.order = JSON.stringify(order);
-                    }
-                    
-                    // Build URL with filters
+                    if (order.length > 0) filters.order = JSON.stringify(order);
                     const params = new URLSearchParams();
                     Object.keys(filters).forEach(key => {
                         if (filters[key] !== '' && filters[key] !== null && filters[key] !== undefined) {
                             params.append(key, filters[key]);
                         }
                     });
-                    
-                    // Open export URL in new window
                     window.open('{{ route("approver-dashboard.api") }}?' + params.toString(), '_blank');
                 }
             }
@@ -1015,9 +1012,12 @@ function refreshDashboard() {
     showSuccess('Dashboard refreshed successfully');
 }
 
-function exportData() {
+function exportData(format) {
+    format = format || 'pdf';
     const params = new URLSearchParams(currentFilters);
-    window.open(`{{ route('approver-dashboard.api') }}?export=1&${params.toString()}`, '_blank');
+    params.set('export', '1');
+    if (format === 'csv') params.set('format', 'csv');
+    window.open(`{{ route('approver-dashboard.api') }}?${params.toString()}`, '_blank');
 }
 
 function viewApproverDetails(approverId) {
