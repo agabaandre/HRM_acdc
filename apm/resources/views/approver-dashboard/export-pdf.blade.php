@@ -11,17 +11,17 @@
 
     <table cellpadding="4" cellspacing="0" border="1" style="width: 100%; border-collapse: collapse; font-size: 9pt;">
         <thead>
-            <tr style="background: #2c3e50; color: #fff;">
-                <th style="text-align: center; width: 28px;">#</th>
-                <th style="text-align: left;">Approver</th>
-                <th style="text-align: left;">Last approval</th>
-                <th style="text-align: left;">Email</th>
-                <th style="text-align: left;">Division</th>
-                <th style="text-align: left;">Roles</th>
-                <th style="text-align: center;">Pending</th>
-                <th style="text-align: center;">Total pending</th>
-                <th style="text-align: center;">Total handled</th>
-                <th style="text-align: center;">Avg. time</th>
+            <tr style="background: #119a48; color: #ffffff;">
+                <th style="text-align: center; width: 28px; color: #ffffff;">#</th>
+                <th style="text-align: left; color: #ffffff;">Approver</th>
+                <th style="text-align: left; color: #ffffff;">Last approval</th>
+                <th style="text-align: left; color: #ffffff;">Email</th>
+                <th style="text-align: left; color: #ffffff;">Division</th>
+                <th style="text-align: left; color: #ffffff;">Roles</th>
+                <th style="text-align: center; color: #ffffff;">Pending</th>
+                <th style="text-align: center; color: #ffffff;">Total pending</th>
+                <th style="text-align: center; color: #ffffff;">Total handled</th>
+                <th style="text-align: center; color: #ffffff;">Avg. time</th>
             </tr>
         </thead>
         <tbody>
