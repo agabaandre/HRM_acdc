@@ -488,9 +488,14 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bx bx-table me-2 text-primary"></i>Approver Dashboard</h6>
-                <button type="button" class="btn btn-success btn-sm" id="exportExcel">
-                    <i class="fa fa-file-excel me-1"></i>Export to Excel
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-danger btn-sm" id="exportPdfTable" title="Export current filters to PDF">
+                        <i class="fa fa-file-pdf me-1"></i>Export to PDF
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm" id="exportExcel">
+                        <i class="fa fa-file-excel me-1"></i>Export to Excel
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -591,6 +596,11 @@ $(document).ready(function() {
         if (approverTable) {
             approverTable.button('.buttons-excel').trigger();
         }
+    });
+
+    // Export to PDF (above table) - same as header Export PDF with current filters
+    $('#exportPdfTable').on('click', function() {
+        exportData('pdf');
     });
 });
 
