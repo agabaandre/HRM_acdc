@@ -454,7 +454,7 @@ class ApproverDashboardController extends Controller
         ];
 
         $mpdf = generate_pdf('approver-dashboard.export-pdf', $htmlData);
-        $filename = 'approver_dashboard_' . date('Y-m-d_H-i-s') . '.pdf';
+        $filename = 'approver_report_' . date('Y-m-d_H-i-s') . '.pdf';
         return response($mpdf->Output('', 'S'), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"',
@@ -467,7 +467,7 @@ class ApproverDashboardController extends Controller
      */
     private function exportToCsv($data)
     {
-        $filename = 'approver_dashboard_' . date('Y-m-d_H-i-s') . '.csv';
+        $filename = 'approver_report_' . date('Y-m-d_H-i-s') . '.csv';
         
         $headers = [
             'Content-Type' => 'text/csv',
@@ -480,7 +480,7 @@ class ApproverDashboardController extends Controller
             // Add BOM for UTF-8 to ensure proper encoding in Excel
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
             
-            // Add CSV headers matching the new table structure
+            // Add CSV headers (Pending Items column removed)
             fputcsv($file, [
                 '#',
                 'Approver Name',
@@ -489,7 +489,6 @@ class ApproverDashboardController extends Controller
                 'Division',
                 'Roles',
                 'Levels',
-                'Pending Items',
                 'Total Pending',
                 'Total Handled',
                 'Avg Approval Time (Hours)',
@@ -498,40 +497,14 @@ class ApproverDashboardController extends Controller
 
             // Add data rows
             foreach ($data as $index => $approver) {
-                // Build pending items summary (combined format like in the table)
-                $pendingItems = [];
-                if (($approver['pending_counts']['matrix'] ?? 0) > 0) {
-                    $pendingItems[] = 'Matrix: ' . $approver['pending_counts']['matrix'];
-                }
-                if (($approver['pending_counts']['non_travel'] ?? 0) > 0) {
-                    $pendingItems[] = 'Non-Travel: ' . $approver['pending_counts']['non_travel'];
-                }
-                if (($approver['pending_counts']['single_memos'] ?? 0) > 0) {
-                    $pendingItems[] = 'Single: ' . $approver['pending_counts']['single_memos'];
-                }
-                if (($approver['pending_counts']['special'] ?? 0) > 0) {
-                    $pendingItems[] = 'Special: ' . $approver['pending_counts']['special'];
-                }
-                if (($approver['pending_counts']['arf'] ?? 0) > 0) {
-                    $pendingItems[] = 'ARF: ' . $approver['pending_counts']['arf'];
-                }
-                if (($approver['pending_counts']['requests_for_service'] ?? 0) > 0) {
-                    $pendingItems[] = 'Requests: ' . $approver['pending_counts']['requests_for_service'];
-                }
-                if (($approver['pending_counts']['change_requests'] ?? 0) > 0) {
-                    $pendingItems[] = 'Change: ' . ($approver['pending_counts']['change_requests'] ?? 0);
-                }
-                $pendingItemsCombined = !empty($pendingItems) ? implode(', ', $pendingItems) : 'No pending items';
-                
                 fputcsv($file, [
-                    $index + 1, // Row number
+                    $index + 1,
                     $approver['approver_name'] ?? '',
                     $approver['last_approval_date_display'] ?? '',
                     $approver['approver_email'] ?? '',
                     $approver['division_name'] ?? 'N/A',
                     is_array($approver['roles'] ?? null) ? implode('; ', $approver['roles']) : ($approver['role'] ?? ''),
                     is_array($approver['levels'] ?? null) ? implode(', ', $approver['levels']) : ($approver['level_no'] ?? ''),
-                    $pendingItemsCombined, // Combined pending items
                     $approver['total_pending'] ?? 0,
                     $approver['total_handled'] ?? 0,
                     $approver['avg_approval_time_hours'] ?? 0,
