@@ -1,6 +1,6 @@
-{{-- Approver Dashboard PDF export - inline styles for mPDF --}}
+{{-- Approver Report PDF export - inline styles for mPDF --}}
 <div style="font-family: DejaVu Sans, sans-serif; font-size: 10pt;">
-    <h2 style="color: #2c3e50; margin-bottom: 4px;">Approver Dashboard</h2>
+    <h2 style="color: #2c3e50; margin-bottom: 4px;">Approver Report</h2>
     <p style="color: #6c757d; font-size: 9pt; margin: 0 0 12px 0;">Generated on {{ now()->format('d F Y \a\t H:i') }}</p>
 
     @if(!empty($filters_summary))
@@ -18,7 +18,6 @@
                 <th style="text-align: left; color: #ffffff;">Email</th>
                 <th style="text-align: left; color: #ffffff;">Division</th>
                 <th style="text-align: left; color: #ffffff;">Roles</th>
-                <th style="text-align: center; color: #ffffff;">Pending</th>
                 <th style="text-align: center; color: #ffffff;">Total pending</th>
                 <th style="text-align: center; color: #ffffff;">Total handled</th>
                 <th style="text-align: center; color: #ffffff;">Avg. time</th>
@@ -33,14 +32,13 @@
                 <td>{{ $row['approver_email'] ?? '—' }}</td>
                 <td>{{ $row['division_name'] ?? 'N/A' }}</td>
                 <td>{{ is_array($row['roles'] ?? null) ? implode(', ', $row['roles']) : ($row['role'] ?? '—') }}</td>
-                <td style="text-align: center;">{{ $row['pending_items_display'] ?? '—' }}</td>
                 <td style="text-align: center;">{{ $row['total_pending'] ?? 0 }}</td>
                 <td style="text-align: center;">{{ $row['total_handled'] ?? 0 }}</td>
                 <td style="text-align: center;">{{ $row['avg_approval_time_display'] ?? 'No data' }}</td>
             </tr>
             @empty
             <tr>
-                <td colspan="10" style="text-align: center; padding: 16px; color: #6c757d;">No approvers to display.</td>
+                <td colspan="9" style="text-align: center; padding: 16px; color: #6c757d;">No approvers to display.</td>
             </tr>
             @endforelse
         </tbody>

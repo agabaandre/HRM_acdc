@@ -954,7 +954,7 @@ function initializeDataTable() {
                 extend: 'excelHtml5',
                 text: '<i class="fa fa-file-excel me-1"></i>Export to Excel',
                 className: 'btn btn-success btn-sm',
-                title: 'Approver Dashboard Export',
+                title: 'Approver Report Export',
                 exportOptions: {
                     columns: [0, 1, 2, 3, 4, 5, 6, 7], // Export all columns including Last approval date
                     format: {
