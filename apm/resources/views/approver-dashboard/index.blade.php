@@ -1014,9 +1014,25 @@ function refreshDashboard() {
 
 function exportData(format) {
     format = format || 'pdf';
-    const params = new URLSearchParams(currentFilters);
+    const params = new URLSearchParams();
     params.set('export', '1');
-    if (format === 'csv') params.set('format', 'csv');
+    if (format === 'csv') {
+        params.set('format', 'csv');
+        params.set('per_page', '10000');
+    }
+    // Apply current dashboard filters
+    const q = $('#searchApprover').val();
+    if (q) params.set('q', q);
+    const divisionId = $('#filterDivision').val();
+    if (divisionId) params.set('division_id', divisionId);
+    const docType = $('#filterDocType').val();
+    if (docType) params.set('doc_type', docType);
+    const approvalLevel = $('#filterApprovalLevel').val();
+    if (approvalLevel) params.set('approval_level', approvalLevel);
+    const month = $('#filterMonth').val();
+    if (month) params.set('month', month);
+    const year = $('#filterYear').val();
+    if (year) params.set('year', year);
     window.open(`{{ route('approver-dashboard.api') }}?${params.toString()}`, '_blank');
 }
 

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Workflow;
 use Carbon\Carbon;
@@ -32,10 +33,16 @@ class ApproverDashboardController extends Controller
     public function getDashboardData(Request $request)
     {
         try {
-            // Validate request parameters (allow empty values)
+            // Validate request parameters (allow empty values). When exporting, allow higher per_page.
+            $isExport = $request->boolean('export');
             $request->validate([
                 'page' => 'nullable|integer|min:1',
-                'per_page' => 'nullable|integer|min:1|max:100',
+                'per_page' => [
+                    'nullable',
+                    'integer',
+                    'min:1',
+                    $isExport ? 'max:10000' : 'max:100',
+                ],
                 'q' => 'nullable|string|max:255',
                 'division_id' => 'nullable|integer|exists:divisions,id',
                 'doc_type' => 'nullable|string|in:matrix,non_travel,single_memos,special,memos,arf,requests_for_service,change_requests',
@@ -93,20 +100,26 @@ class ApproverDashboardController extends Controller
             $orderColumn = 7; // Default: Avg. Time (column index 7)
             $orderDirection = 'desc'; // Default: descending (highest days first)
             
-            // Check if this is a DataTables request with order parameter
-            if ($request->has('order') && is_array($request->get('order')) && !empty($request->get('order'))) {
-                $order = $request->get('order')[0];
-                $orderColumn = (int) $order['column'];
-                $orderDirection = $order['dir'] === 'asc' ? 'asc' : 'desc';
+            $orderFirst = null;
+            if ($request->has('order')) {
+                $orderParam = $request->get('order');
+                if (is_array($orderParam) && !empty($orderParam)) {
+                    $orderFirst = $orderParam[0];
+                } elseif (is_string($orderParam)) {
+                    $orderData = json_decode($orderParam, true);
+                    if (is_array($orderData) && !empty($orderData)) {
+                        $orderFirst = $orderData[0];
+                    }
+                }
             }
-            
-            // Also check for direct order parameter (from export)
-            if ($request->has('order') && is_string($request->get('order'))) {
-                $orderData = json_decode($request->get('order'), true);
-                if (is_array($orderData) && !empty($orderData)) {
-                    $order = $orderData[0];
-                    $orderColumn = (int) $order['column'];
-                    $orderDirection = $order['dir'] === 'asc' ? 'asc' : 'desc';
+            if ($orderFirst !== null) {
+                // Support both [{column: 7, dir: "desc"}] and [[7, "desc"]] formats
+                if (isset($orderFirst['column'])) {
+                    $orderColumn = (int) $orderFirst['column'];
+                    $orderDirection = (isset($orderFirst['dir']) && $orderFirst['dir'] === 'asc') ? 'asc' : 'desc';
+                } elseif (isset($orderFirst[0], $orderFirst[1])) {
+                    $orderColumn = (int) $orderFirst[0];
+                    $orderDirection = (strtolower((string) $orderFirst[1]) === 'asc') ? 'asc' : 'desc';
                 }
             }
             
