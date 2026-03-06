@@ -432,6 +432,12 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     Route::get('reports/division-counts/export/excel', [App\Http\Controllers\ReportsController::class, 'exportDivisionCountsExcel'])->name('reports.division-counts.export.excel');
     Route::get('reports/memo-list/export/excel', [App\Http\Controllers\ReportsController::class, 'exportMemoListExcel'])->name('reports.memo-list.export.excel');
 
+    // Staff Quarterly Travel Report
+    Route::get('reports/staff-quarterly-travel', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'index'])->name('reports.staff-quarterly-travel');
+    Route::get('reports/staff-quarterly-travel/data', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'data'])->name('reports.staff-quarterly-travel.data');
+    Route::get('reports/staff-quarterly-travel/export/excel', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'exportExcel'])->name('reports.staff-quarterly-travel.export.excel');
+    Route::get('reports/staff-quarterly-travel/export/pdf', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'exportPdf'])->name('reports.staff-quarterly-travel.export.pdf');
+
     // Generic Approval Routes
     Route::post('/approve/{model}/{id}', [GenericApprovalController::class, 'updateStatus'])->name('generic.approve');
     Route::post('/submit-for-approval/{model}/{id}', [GenericApprovalController::class, 'submitForApproval'])->name('generic.submit');
