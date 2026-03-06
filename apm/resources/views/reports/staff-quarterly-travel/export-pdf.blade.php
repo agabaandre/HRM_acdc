@@ -2,7 +2,7 @@
 <div style="font-family: DejaVu Sans, sans-serif; font-size: 10pt;">
     <h2 style="color: #2c3e50; margin-bottom: 4px;">Staff Quarterly Travel Days</h2>
     <p style="color: #6c757d; font-size: 9pt; margin: 0 0 12px 0;">Generated on {{ now()->format('d F Y \a\t H:i') }}</p>
-    <p style="font-size: 8pt; color: #6c757d; margin: 0 0 12px 0;">This report includes only approved matrices; approved change requests override activity participants; travel days are from internal_participants. Division shown is the staff member&apos;s division.</p>
+    <p style="font-size: 8pt; color: #6c757d; margin: 0 0 12px 0;">This report includes only approved matrices; approved change requests override activity participants; travel days are from internal participants. Division shown is the staff member&apos;s division.</p>
 
     @if(!empty($filters_summary))
     <div style="background: #f8f9fa; border: 1px solid #e9ecef; padding: 8px 12px; margin-bottom: 16px; font-size: 9pt;">

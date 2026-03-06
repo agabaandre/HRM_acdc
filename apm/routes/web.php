@@ -437,6 +437,7 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     Route::get('reports/staff-quarterly-travel/data', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'data'])->name('reports.staff-quarterly-travel.data');
     Route::get('reports/staff-quarterly-travel/export/excel', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'exportExcel'])->name('reports.staff-quarterly-travel.export.excel');
     Route::get('reports/staff-quarterly-travel/export/pdf', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'exportPdf'])->name('reports.staff-quarterly-travel.export.pdf');
+    Route::get('reports/staff-quarterly-travel/breakdown/{staffId}', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'activityBreakdown'])->name('reports.staff-quarterly-travel.breakdown');
 
     // Generic Approval Routes
     Route::post('/approve/{model}/{id}', [GenericApprovalController::class, 'updateStatus'])->name('generic.approve');
