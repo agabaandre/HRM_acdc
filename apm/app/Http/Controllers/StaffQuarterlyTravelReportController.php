@@ -161,12 +161,14 @@ class StaffQuarterlyTravelReportController extends Controller
 
     /**
      * Build aggregated report data: staff × year-quarter with activity count and approved travel days.
-     * Activities are from matrices with overall_status = 'approved' (matrix and single memos).
+     * Only activities whose own overall_status = 'approved' are included (single memos and matrix
+     * activities use their individual status, not the matrix). Matrices must also be approved.
      * If an activity has an approved change request, use the change request's internal_participants.
      */
     private function buildReportData(?int $divisionId, ?int $staffId, ?int $year, ?string $quarter): array
     {
         $activities = Activity::with('matrix')
+            ->where('overall_status', 'approved')
             ->whereHas('matrix', function ($q) use ($divisionId, $year, $quarter) {
                 $q->where('overall_status', 'approved');
                 if ($divisionId !== null) {
@@ -273,6 +275,7 @@ class StaffQuarterlyTravelReportController extends Controller
         $quarter = $request->get('quarter') ?: null;
 
         $activities = Activity::with('matrix')
+            ->where('overall_status', 'approved')
             ->whereHas('matrix', function ($q) use ($divisionId, $year, $quarter) {
                 $q->where('overall_status', 'approved');
                 if ($divisionId !== null) {
