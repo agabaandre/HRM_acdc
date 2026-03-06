@@ -212,8 +212,8 @@ class StaffQuarterlyTravelReportController extends Controller
             }
         }
 
-        // Flatten to rows and attach staff/division names
-        $staffIds = array_unique(array_keys($byStaff));
+        // Flatten to rows and attach staff/division names (only positive staff_ids)
+        $staffIds = array_values(array_unique(array_filter(array_map('intval', array_keys($byStaff)), fn ($id) => $id > 0)));
         $staffById = $staffIds ? Staff::with('division')->whereIn('staff_id', $staffIds)->get()->keyBy('staff_id') : collect();
         $rows = [];
 
@@ -334,7 +334,8 @@ class StaffQuarterlyTravelReportController extends Controller
     /**
      * Get effective internal_participants for an activity.
      * If there is an approved change request for this activity, use its internal_participants; else use activity's.
-     * Returns array keyed by staff_id with participant_days (int) as value.
+     * Returns array keyed by staff_id (int) with participant_days (int) as value.
+     * Handles both formats: object keyed by staff_id {"230":{...}} and array of objects [{staff_id:230,...}].
      */
     private function getEffectiveInternalParticipants(Activity $activity): array
     {
@@ -344,23 +345,51 @@ class StaffQuarterlyTravelReportController extends Controller
             ->first();
 
         $raw = $cr ? $cr->internal_participants : $activity->internal_participants;
+
+        // Ensure we have an array (handle string/double-encoded JSON)
         if (is_string($raw)) {
-            $raw = json_decode($raw, true);
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : [];
         }
         if (!is_array($raw)) {
             return [];
         }
 
         $out = [];
-        foreach ($raw as $staffId => $info) {
-            if (!is_array($info)) {
-                continue;
+        $isList = array_keys($raw) === range(0, count($raw) - 1);
+
+        if ($isList) {
+            // Array of objects: [{"staff_id": 230, "participant_days": "1", ...}, ...]
+            foreach ($raw as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $pid = isset($item['staff_id']) ? (int) $item['staff_id'] : (isset($item['id']) ? (int) $item['id'] : null);
+                if ($pid === null) {
+                    continue;
+                }
+                $days = isset($item['participant_days']) ? (int) $item['participant_days'] : 0;
+                if ($days > 0) {
+                    $out[$pid] = ($out[$pid] ?? 0) + $days;
+                }
             }
-            $days = isset($info['participant_days']) ? (int) $info['participant_days'] : 0;
-            if ($days > 0) {
-                $out[(string) $staffId] = $days;
+        } else {
+            // Object keyed by staff_id: {"230": {"participant_days": "1", ...}, "193": {...}}
+            foreach ($raw as $key => $info) {
+                if (!is_array($info)) {
+                    continue;
+                }
+                $pid = (int) $key;
+                if ($pid <= 0) {
+                    continue;
+                }
+                $days = isset($info['participant_days']) ? (int) $info['participant_days'] : 0;
+                if ($days > 0) {
+                    $out[$pid] = ($out[$pid] ?? 0) + $days;
+                }
             }
         }
+
         return $out;
     }
 }
