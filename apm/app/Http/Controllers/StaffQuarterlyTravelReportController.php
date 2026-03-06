@@ -255,6 +255,83 @@ class StaffQuarterlyTravelReportController extends Controller
     }
 
     /**
+     * Activity breakdown for a staff member (for modal). Uses same filters as report; considers
+     * most recent approved change request for each activity when present.
+     */
+    public function activityBreakdown(Request $request, int $staffId)
+    {
+        $this->authorizeRole10();
+
+        $request->validate([
+            'division_id' => 'nullable|integer|exists:divisions,id',
+            'year' => 'nullable|integer|min:2000|max:2100',
+            'quarter' => 'nullable|string|in:Q1,Q2,Q3,Q4',
+        ]);
+
+        $divisionId = $request->get('division_id') ? (int) $request->get('division_id') : null;
+        $year = $request->get('year') ? (int) $request->get('year') : null;
+        $quarter = $request->get('quarter') ?: null;
+
+        $activities = Activity::with('matrix')
+            ->whereHas('matrix', function ($q) use ($divisionId, $year, $quarter) {
+                $q->where('overall_status', 'approved');
+                if ($divisionId !== null) {
+                    $q->where('division_id', $divisionId);
+                }
+                if ($year !== null) {
+                    $q->where('year', $year);
+                }
+                if ($quarter !== null) {
+                    $q->where('quarter', $quarter);
+                }
+            })
+            ->get();
+
+        $breakdown = [];
+        foreach ($activities as $activity) {
+            $matrix = $activity->matrix;
+            if (!$matrix) {
+                continue;
+            }
+            $participants = $this->getEffectiveInternalParticipants($activity);
+            $staffIdStr = (string) $staffId;
+            if (!isset($participants[$staffIdStr])) {
+                continue;
+            }
+            $days = (int) $participants[$staffIdStr];
+            if ($divisionId !== null && $matrix->division_id != $divisionId) {
+                continue;
+            }
+            $showUrl = $activity->is_single_memo
+                ? route('activities.single-memos.show', $activity->id)
+                : route('matrices.activities.show', [$matrix->id, $activity->id]);
+
+            $breakdown[] = [
+                'activity_id' => $activity->id,
+                'activity_title' => $activity->activity_title ?? '—',
+                'year_quarter' => $matrix->year . ' ' . $matrix->quarter,
+                'matrix_id' => $matrix->id,
+                'travel_days' => $days,
+                'show_url' => $showUrl,
+            ];
+        }
+
+        usort($breakdown, function ($a, $b) {
+            $c = strcmp($a['year_quarter'], $b['year_quarter']);
+            return $c !== 0 ? $c : strcmp($a['activity_title'], $b['activity_title']);
+        });
+
+        $staff = Staff::find($staffId);
+        $staffName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '')) : 'Staff #' . $staffId;
+
+        return response()->json([
+            'success' => true,
+            'staff_name' => $staffName,
+            'activities' => $breakdown,
+        ]);
+    }
+
+    /**
      * Get effective internal_participants for an activity.
      * If there is an approved change request for this activity, use its internal_participants; else use activity's.
      * Returns array keyed by staff_id with participant_days (int) as value.
