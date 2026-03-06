@@ -50,6 +50,23 @@
                 </div>
             </div>
 
+            @if((int)(user_session('role') ?? user_session('user_role') ?? 0) === 10)
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow-sm h-100 border-0 bg-white report-card">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="rounded-circle bg-success bg-opacity-10 report-card-icon me-2">
+                                <i class="bx bx-trip text-success"></i>
+                            </div>
+                            <h5 class="mb-0 fw-bold text-success">Staff Quarterly Travel Days</h5>
+                        </div>
+                        <p class="text-muted small mb-2">Approved travel days by staff from matrix and single memo activities. Filter by division, staff, year, quarter. Export to Excel and PDF.</p>
+                        <a href="{{ route('reports.staff-quarterly-travel') }}" class="btn btn-success btn-sm"><i class="bx bx-right-arrow-circle me-1"></i> View report</a>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <div class="col-md-6 col-lg-4">
                 <div class="card shadow-sm h-100 border-0 bg-white border-dashed report-card" style="border-style: dashed !important;">
                     <div class="card-body py-2 px-3">
