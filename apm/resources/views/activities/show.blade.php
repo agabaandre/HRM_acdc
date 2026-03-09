@@ -829,6 +829,14 @@
                             </td>
                             <td class="field-value">
                                 <span class="badge bg-success">{{ optional($activity->fundType)->name ?? 'Not specified' }}</span>
+                                @php
+                                    $budgetCodeLabels = isset($fundCodes) && $fundCodes->isNotEmpty()
+                                        ? $fundCodes->pluck('code')->filter()->unique()->values()->all()
+                                        : [];
+                                @endphp
+                                @if(count($budgetCodeLabels) > 0)
+                                    <span class="text-muted ms-1">(Budget code{{ count($budgetCodeLabels) > 1 ? 's' : '' }}: {{ implode(', ', $budgetCodeLabels) }})</span>
+                                @endif
                             </td>
                         </tr>
                         
