@@ -14,11 +14,11 @@
                 <i class="fas fa-calendar-plus me-2"></i> Activity Details
             </h5>
             @if($activity->is_single_memo)
-                <a href="{{ route('activities.single-memos.show', $activity) }}" class="btn btn-outline-secondary btn-sm">
+                <a wire:navigate href="{{ route('activities.single-memos.show', $activity) }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bx bx-arrow-back"></i> Back to Single Memo
                 </a>
             @else
-                <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm">
+                <a wire:navigate href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bx bx-arrow-back"></i> Back to Matrix
                 </a>
             @endif
@@ -247,7 +247,7 @@
                 </div>
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
-                    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary px-4">
+                    <a wire:navigate href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary px-4">
                         <i class="bx bx-arrow-back me-1"></i> Cancel
                     </a>
                     <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">

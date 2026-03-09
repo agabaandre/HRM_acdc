@@ -13,7 +13,7 @@
 </style>
 <div class="container-fluid reports-page">
     <div class="d-flex align-items-center gap-2 mb-2">
-        <a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bx bx-arrow-back me-1"></i> Reports</a>
+        <a wire:navigate href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bx bx-arrow-back me-1"></i> Reports</a>
     </div>
 
     <div class="card shadow-sm mb-3">
@@ -187,7 +187,7 @@ $(function() {
                 res.activities.forEach(function(row, idx) {
                     var tr = document.createElement('tr');
                     var titleCell = row.show_url
-                        ? '<a href="' + escapeHtml(row.show_url) + '" class="text-primary text-decoration-none breakdown-activity-title" target="_blank">' + escapeHtml(row.activity_title || '') + '</a>'
+                        ? '<a href="' + escapeHtml(row.show_url) + '" class="text-primary text-decoration-none breakdown-activity-title">' + escapeHtml(row.activity_title || '') + '</a>'
                         : '<span class="breakdown-activity-title">' + escapeHtml(row.activity_title || '') + '</span>';
                     tr.innerHTML = '<td class="text-center">' + (idx + 1) + '</td><td class="breakdown-activity-title">' + titleCell + '</td><td>' + escapeHtml(row.year_quarter || '') + '</td><td class="text-center">' + (row.travel_days || 0) + '</td>';
                     tbody.appendChild(tr);

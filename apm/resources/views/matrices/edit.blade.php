@@ -4,7 +4,7 @@
 @section('header', 'Update Matrix')
 
 @section('header-actions')
-<a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
+<a wire:navigate href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-arrow-back text-dark"></i> Back to List
 </a>
 @endsection
@@ -77,7 +77,7 @@
             </div>
 
             <div class="d-flex justify-content-between border-top pt-4 mt-4">
-                <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary px-4">
+                <a wire:navigate href="{{ route('matrices.index') }}" class="btn btn-outline-secondary px-4">
                     <i class="bx bx-arrow-back me-1"></i> Cancel
                 </a>
                 

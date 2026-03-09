@@ -106,15 +106,15 @@
                         @endif
                     </td>
                     <td class="text-center">
-                        <div class="btn-group">
-                            <a href="{{ route('special-memo.show', $memo) }}" 
+                        <div class="btn-group-vertical btn-group-sm" role="group">
+                            <a wire:navigate href="{{ route('special-memo.show', $memo) }}" 
                                class="btn btn-sm btn-outline-info" title="View">
-                                <i class="bx bx-show"></i>
+                                <i class="bx bx-show me-1"></i>View
                             </a>
                             @if($memo->overall_status === 'approved')
                                 <a href="{{ route('special-memo.print', $memo) }}" 
                                    class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                    <i class="bx bx-printer"></i>
+                                    <i class="bx bx-printer me-1"></i>Print
                                 </a>
                             @endif
                         </div>

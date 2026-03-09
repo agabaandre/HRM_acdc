@@ -9,7 +9,7 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">Memos</h4>
-                        <a href="{{ route('memos.create') }}" class="btn btn-primary">Create New Memo</a>
+                        <a wire:navigate href="{{ route('memos.create') }}" class="btn btn-primary">Create New Memo</a>
                     </div>
                     <div class="card-body">
                         @if(session('success'))
@@ -45,9 +45,9 @@
                                             <td>{{ $memo->workflow->workflow_name }}</td>
                                             <td>{{ date('M d, Y H:i', strtotime($memo->created_at)) }}</td>
                                             <td>
-                                                <a href="{{ route('memos.show', $memo->id) }}"
+                                                <a wire:navigate href="{{ route('memos.show', $memo->id) }}"
                                                     class="btn btn-info btn-sm">View</a>
-                                                <a href="{{ route('memos.edit', $memo->id) }}"
+                                                <a wire:navigate href="{{ route('memos.edit', $memo->id) }}"
                                                     class="btn btn-warning btn-sm">Edit</a>
                                                 <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
                                                     data-bs-target="#deleteMemo{{ $memo->id }}">Delete</button>

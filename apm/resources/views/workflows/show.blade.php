@@ -13,6 +13,16 @@
 @endsection
 
 @section('content')
+<style>
+/* Smaller action buttons only on workflow show page */
+.workflow-show-definition-actions .btn {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+}
+.workflow-show-definition-actions .btn i {
+    font-size: 0.85rem;
+}
+</style>
 <div class="card shadow-sm">
     <div class="card-header bg-light">
         <h5 class="mb-0"><i class="bx bx-git-branch me-2 text-primary"></i>{{ $workflow->workflow_name }}</h5>
@@ -207,15 +217,15 @@
                                         @endif
                                     </td>
                                     <td class="text-end">
-                                        <div class="btn-group" role="group">
+                                        <div class="btn-group workflow-show-definition-actions" role="group">
                                             <a href="{{ route('workflows.edit-definition', [$workflow->id, $definition->id]) }}" 
                                                class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit Definition">
-                                                <i class="bx bx-edit"></i>
+                                                <i class="bx bx-edit me-1"></i>Edit
                                             </a>
                                             <form action="{{ route('workflows.copy-definition', [$workflow->id, $definition->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Copy this definition as a new one? Approvers and conditions will be copied.');">
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Copy as new definition">
-                                                    <i class="bx bx-copy"></i>
+                                                    <i class="bx bx-copy me-1"></i>Copy
                                                 </button>
                                             </form>
                                             <button type="button" class="btn btn-sm btn-danger delete-definition-btn" 
@@ -223,7 +233,7 @@
                                                     data-definition-id="{{ $definition->id }}"
                                                     data-definition-role="{{ $definition->role }}"
                                                     data-definition-approval-order="{{ $definition->approval_order }}">
-                                                <i class="bx bx-trash"></i>
+                                                <i class="bx bx-trash me-1"></i>Delete
                                             </button>
                                         </div>
                                     </td>

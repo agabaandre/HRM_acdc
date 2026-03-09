@@ -5,7 +5,7 @@
 @section('header', 'Request Types')
 
 @section('header-actions')
-    <a href="{{ route('request-types.create') }}" class="btn btn-primary">
+    <a wire:navigate href="{{ route('request-types.create') }}" class="btn btn-primary">
         <i class="bx bx-plus"></i> Add Request Type
     </a>
 @endsection
@@ -45,24 +45,24 @@
                             <td>{{ $requestType->created_at->format('M d, Y') }}</td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('request-types.show', $requestType) }}" 
+                                    <a wire:navigate href="{{ route('request-types.show', $requestType) }}" 
                                        class="btn btn-sm btn-outline-info"
                                        data-bs-toggle="tooltip" 
                                        title="View">
-                                        <i class="bx bx-show"></i>
+                                        <i class="bx bx-show me-1"></i>View
                                     </a>
-                                    <a href="{{ route('request-types.edit', $requestType) }}" 
+                                    <a wire:navigate href="{{ route('request-types.edit', $requestType) }}" 
                                        class="btn btn-sm btn-outline-primary"
                                        data-bs-toggle="tooltip" 
                                        title="Edit">
-                                        <i class="bx bx-edit"></i>
+                                        <i class="bx bx-edit me-1"></i>Edit
                                     </a>
                                     <button type="button" 
                                             class="btn btn-sm btn-outline-danger" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#deleteModal{{ $requestType->id }}"
                                             title="Delete">
-                                        <i class="bx bx-trash"></i>
+                                        <i class="bx bx-trash me-1"></i>Delete
                                     </button>
                                 </div>
 
@@ -102,7 +102,7 @@
                                     </div>
                                     <h5 class="text-muted mb-3">No request types found</h5>
                                     <p class="text-muted mb-4">Get started by adding your first request type</p>
-                                    <a href="{{ route('request-types.create') }}" class="btn btn-primary">
+                                    <a wire:navigate href="{{ route('request-types.create') }}" class="btn btn-primary">
                                         <i class="bx bx-plus"></i> Add Request Type
                                     </a>
                                 </div>

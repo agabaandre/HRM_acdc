@@ -67,10 +67,10 @@
         <div class="container">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                 <div>
-                    <a href="{{ url('/') }}" class="d-inline-flex align-items-center mb-2 opacity-90"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
+                    <a wire:navigate href="{{ url('/') }}" class="d-inline-flex align-items-center mb-2 opacity-90"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('help.index') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-book me-1"></i>Help &amp; Documentation</a>
+                    <a wire:navigate href="{{ route('help.index') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-book me-1"></i>Help &amp; Documentation</a>
                     <button type="button" id="faqPrintPdfBtn" class="btn btn-light btn-sm" title="Print or Save as PDF">
                         <i class="fas fa-file-pdf me-1"></i>Print / Save as PDF
                     </button>
@@ -85,7 +85,7 @@
 
     <div class="container py-4">
         <div class="platform-note">
-            <strong><i class="fas fa-info-circle me-1"></i>Access:</strong> The CBP platform is available at <a href="{{ rtrim(url('/'), '/') }}" target="_blank" rel="noopener">{{ rtrim(url('/'), '/') }}</a>. You must have a valid account to sign in.
+            <strong><i class="fas fa-info-circle me-1"></i>Access:</strong> The CBP platform is available at <a href="{{ rtrim(url('/'), '/') }}" rel="noopener">{{ rtrim(url('/'), '/') }}</a>. You must have a valid account to sign in.
         </div>
 
         <div class="search-box">
@@ -147,8 +147,8 @@
         </div>
 
         <div class="text-center mt-4 pb-3">
-            <a href="{{ route('help.index') }}" class="btn btn-success w-100"><i class="fas fa-book me-2"></i>Help &amp; Documentation</a>
-            <a href="{{ url('/') }}" class="btn btn-outline-secondary w-100 mt-2"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
+            <a wire:navigate href="{{ route('help.index') }}" class="btn btn-success w-100"><i class="fas fa-book me-2"></i>Help &amp; Documentation</a>
+            <a wire:navigate href="{{ url('/') }}" class="btn btn-outline-secondary w-100 mt-2"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
         </div>
     </div>
 

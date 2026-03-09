@@ -6,7 +6,7 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('divisions.index') }}" class="btn btn-secondary">
+    <a wire:navigate href="{{ route('divisions.index') }}" class="btn btn-secondary">
         <i class="bx bx-arrow-back"></i> Back to Divisions
     </a>
 </div>

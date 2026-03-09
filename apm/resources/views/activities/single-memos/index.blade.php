@@ -135,7 +135,7 @@
                     </button>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
+                    <a wire:navigate href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
@@ -211,8 +211,12 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // AJAX filtering - auto-update when filters change
+function initSingleMemosPage() {
+    if (!document.getElementById('memoTabs')) return;
+    try {
+        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+        $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
+    } catch (e) {}
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');
         if (activeTab) {
@@ -406,10 +410,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Attach initial pagination handlers for all tabs
     attachPaginationHandlers('mySubmitted');
     attachPaginationHandlers('allMemos');
     attachPaginationHandlers('sharedMemos');
+}
+document.addEventListener('DOMContentLoaded', initSingleMemosPage);
+document.addEventListener('livewire:navigated', function() {
+    if (document.getElementById('memoTabs')) initSingleMemosPage();
 });
 </script>
 @endsection

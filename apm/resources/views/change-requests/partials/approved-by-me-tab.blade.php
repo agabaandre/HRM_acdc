@@ -51,10 +51,10 @@
                             </span>
                         </td>
                         <td class="text-center">
-                            <div class="btn-group">
-                                <a href="{{ route('change-requests.show', $changeRequest) }}" 
+                            <div class="btn-group-vertical btn-group-sm" role="group">
+                                <a wire:navigate href="{{ route('change-requests.show', $changeRequest) }}" 
                                    class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show"></i>
+                                    <i class="bx bx-show me-1"></i>View
                                 </a>
                             </div>
                         </td>

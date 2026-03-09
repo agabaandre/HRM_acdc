@@ -303,7 +303,7 @@ function populateScheduleTable(data) {
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <a href="{{ url('/')}}/matrices/${item.matrix_id}/activities/${item.id}" class="btn btn-outline-info btn-sm" title="View Details">
+                                                    <a wire:navigate href="{{ url('/')}}/matrices/${item.matrix_id}/activities/${item.id}" class="btn btn-outline-info btn-sm" title="View Details">
                                                         <i class="bx bx-show"></i>
                                                     </a>
                                                 </td>

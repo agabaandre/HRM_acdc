@@ -4,7 +4,7 @@
 @section('header', 'Special Memo Pending Approvals')
 
 @section('header-actions')
-    <a href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Special Memos
     </a>
 @endsection
@@ -206,20 +206,20 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('special-memo.show', $memo) }}" 
+                                                        <a wire:navigate href="{{ route('special-memo.show', $memo) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
+                                                            <i class="bx bx-show me-1"></i>View
                                                         </a>
                                                         @if($memo->overall_status === 'draft' && $memo->staff_id === user_session('staff_id'))
-                                                            <a href="{{ route('special-memo.edit', $memo) }}" 
+                                                            <a wire:navigate href="{{ route('special-memo.edit', $memo) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                <i class="bx bx-edit"></i>
+                                                                <i class="bx bx-edit me-1"></i>Edit
                                                             </a>
                                                         @endif
                                                         @if($memo->overall_status === 'approved')
                                                             <a href="{{ route('special-memo.print', $memo) }}" 
                                                                class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                                <i class="bx bx-printer"></i>
+                                                                <i class="bx bx-printer me-1"></i>Print
                                                             </a>
                                                         @endif
                                                     </div>
@@ -336,20 +336,20 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('special-memo.show', $memo) }}" 
+                                                        <a wire:navigate href="{{ route('special-memo.show', $memo) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
+                                                            <i class="bx bx-show me-1"></i>View
                                                         </a>
                                                         @if($memo->overall_status === 'draft' && $memo->staff_id === user_session('staff_id'))
-                                                            <a href="{{ route('special-memo.edit', $memo) }}" 
+                                                            <a wire:navigate href="{{ route('special-memo.edit', $memo) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                <i class="bx bx-edit"></i>
+                                                                <i class="bx bx-edit me-1"></i>Edit
                                                             </a>
                                                         @endif
                                                         @if($memo->overall_status === 'approved')
                                                             <a href="{{ route('special-memo.print', $memo) }}" 
                                                                class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                                <i class="bx bx-printer"></i>
+                                                                <i class="bx bx-printer me-1"></i>Print
                                                             </a>
                                                         @endif
                                                     </div>

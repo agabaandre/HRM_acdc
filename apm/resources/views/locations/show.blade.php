@@ -6,10 +6,10 @@
 
 @section('header-actions')
     <div class="d-flex gap-2">
-        <a href="{{ route('locations.edit', $location->id) }}" class="btn btn-warning">
+        <a wire:navigate href="{{ route('locations.edit', $location->id) }}" class="btn btn-warning">
             <i class="bx bx-edit"></i> Edit
         </a>
-        <a href="{{ route('locations.index') }}" class="btn btn-outline-secondary">
+        <a wire:navigate href="{{ route('locations.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to List
         </a>
     </div>
@@ -57,10 +57,10 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('locations.edit', $location->id) }}" class="btn btn-primary">
+                    <a wire:navigate href="{{ route('locations.edit', $location->id) }}" class="btn btn-primary">
                         <i class="bx bx-edit"></i> Edit Location
                     </a>
-                    <a href="{{ route('locations.index') }}" class="btn btn-outline-secondary">
+                    <a wire:navigate href="{{ route('locations.index') }}" class="btn btn-outline-secondary">
                         <i class="bx bx-list-ul"></i> View All Locations
                     </a>
                 </div>

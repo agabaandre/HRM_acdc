@@ -5,7 +5,7 @@
 @section('header', 'Funders')
 
 @section('header-actions')
-<a href="{{ route('funders.create') }}" class="btn btn-success shadow-sm">
+<a wire:navigate href="{{ route('funders.create') }}" class="btn btn-success shadow-sm">
     <i class="bx bx-plus-circle me-1"></i> Add Funder
 </a>
 @endsection
@@ -18,7 +18,7 @@
         </div>
 
         <div class="row g-3 align-items-end" id="funderFilters" autocomplete="off">
-            <form action="{{ route('funders.index') }}" method="GET" class="row g-3 align-items-end w-100">
+            <form id="funders-filter-form" class="row g-3 align-items-end w-100" role="search">
                 <div class="col-md-3">
                     <label for="search" class="form-label fw-semibold mb-1"><i class="bx bx-search me-1 text-success"></i> Search</label>
                     <div class="input-group w-100">
@@ -55,11 +55,12 @@
                     </button>
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
-                    <a href="{{ route('funders.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
+                    <a wire:navigate href="{{ route('funders.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
             </form>
+            <a id="funders-filter-navigate" wire:navigate href="{{ route('funders.index') }}" class="d-none" aria-hidden="true"></a>
         </div>
     </div>
 </div>
@@ -147,11 +148,11 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
-                                        <a href="{{ route('funders.show', $funder) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
-                                            <i class="bx bx-show"></i>
+                                        <a wire:navigate href="{{ route('funders.show', $funder) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
+                                            <i class="bx bx-show me-1"></i>View
                                         </a>
-                                        <a href="{{ route('funders.edit', $funder) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit">
-                                            <i class="bx bx-edit"></i>
+                                        <a wire:navigate href="{{ route('funders.edit', $funder) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit">
+                                            <i class="bx bx-edit me-1"></i>Edit
                                         </a>
                                     </div>
                                 </td>
@@ -165,7 +166,7 @@
                     <div class="text-muted">
                         <i class="bx bx-building fs-1"></i>
                         <p class="mt-2">No funders found</p>
-                        <a href="{{ route('funders.create') }}" class="btn btn-success">
+                        <a wire:navigate href="{{ route('funders.create') }}" class="btn btn-success">
                             <i class="bx bx-plus me-1"></i> Add First Funder
                         </a>
                     </div>
@@ -183,12 +184,33 @@
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
+(function() {
+    function initFundersIndex() {
+        var form = document.getElementById('funders-filter-form');
+        var navLink = document.getElementById('funders-filter-navigate');
+        if (form && navLink) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var base = '{{ route('funders.index') }}';
+                var params = new URLSearchParams();
+                var search = (form.querySelector('[name="search"]') || {}).value;
+                var status = (form.querySelector('[name="status"]') || {}).value;
+                var year = (form.querySelector('[name="year"]') || {}).value;
+                if (search && search.trim()) params.set('search', search.trim());
+                if (status) params.set('status', status);
+                if (year) params.set('year', year);
+                navLink.href = params.toString() ? (base + '?' + params.toString()) : base;
+                navLink.click();
+            });
+        }
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (el) {
+            if (!el._tooltip) new bootstrap.Tooltip(el);
         });
-    });
+    }
+    if (document.readyState === 'complete') initFundersIndex();
+    else document.addEventListener('DOMContentLoaded', initFundersIndex);
+    document.addEventListener('livewire:navigated', initFundersIndex);
+})();
 </script>
 @endpush

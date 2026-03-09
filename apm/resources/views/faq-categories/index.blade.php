@@ -4,10 +4,10 @@
 @section('header', 'FAQ Categories')
 
 @section('header-actions')
-<a href="{{ route('faqs.index') }}" class="btn btn-outline-secondary">
+<a wire:navigate href="{{ route('faqs.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-list-ul"></i> FAQs
 </a>
-<a href="{{ route('faq-categories.create') }}" class="btn btn-success">
+<a wire:navigate href="{{ route('faq-categories.create') }}" class="btn btn-success">
     <i class="bx bx-plus"></i> Add category
 </a>
 @endsection
@@ -53,7 +53,7 @@
                             </td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('faq-categories.edit', $cat) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit">
+                                    <a wire:navigate href="{{ route('faq-categories.edit', $cat) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit">
                                         <i class="bx bx-edit"></i>
                                     </a>
                                     <form action="{{ route('faq-categories.destroy', $cat) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this category?');">
@@ -70,7 +70,7 @@
                         <tr>
                             <td colspan="6" class="text-center py-5">
                                 <p class="text-muted mb-0">No categories yet.</p>
-                                <a href="{{ route('faq-categories.create') }}" class="btn btn-primary mt-3"><i class="bx bx-plus me-1"></i>Add category</a>
+                                <a wire:navigate href="{{ route('faq-categories.create') }}" class="btn btn-primary mt-3"><i class="bx bx-plus me-1"></i>Add category</a>
                             </td>
                         </tr>
                     @endforelse

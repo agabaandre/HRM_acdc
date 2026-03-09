@@ -5,7 +5,7 @@
 @section('header', 'Directorates')
 
 @section('header-actions')
-<a href="{{ route('directorates.create') }}" class="btn btn-success">
+<a wire:navigate href="{{ route('directorates.create') }}" class="btn btn-success">
     <i class="bx bx-plus"></i> Add Directorate
 </a>
 @endsection
@@ -61,8 +61,8 @@
                             <td>{{ $directorate->created_at }}</td>
                             <td>{{ $directorate->updated_at }}</td>
                             <td class="text-end">
-                                <a href="{{ route('directorates.show', $directorate) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
-                                    <i class="bx bx-show"></i>
+                                <a wire:navigate href="{{ route('directorates.show', $directorate) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
+                                    <i class="bx bx-show me-1"></i>View
                                 </a>
                             </td>
                         </tr>

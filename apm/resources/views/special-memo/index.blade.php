@@ -6,13 +6,13 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('special-memo.pending-approvals') }}" class="btn btn-warning shadow-sm">
+    <a wire:navigate href="{{ route('special-memo.pending-approvals') }}" class="btn btn-warning shadow-sm">
         <i class="bx bx-time me-1"></i> Pending Approvals
         @if(get_staff_pending_action_count('special-memo') > 0)
             <span class="badge bg-danger ms-1">{{ get_staff_pending_action_count('special-memo') }}</span>
         @endif
     </a>
-    <a href="{{ route('special-memo.create') }}" class="btn btn-success shadow-sm">
+    <a wire:navigate href="{{ route('special-memo.create') }}" class="btn btn-success shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Create New Memo
     </a>
 </div>
@@ -42,7 +42,23 @@
 }
 .btn-group .btn {
     padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
+}
+/* Vertical action buttons: stack full width */
+.btn-group-vertical form.d-inline {
+    display: block !important;
+}
+.btn-group-vertical form .btn {
+    width: 100%;
+    border-radius: 0;
+}
+.btn-group-vertical .btn:first-child {
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 0.25rem;
+}
+.btn-group-vertical .btn:last-child,
+.btn-group-vertical form .btn {
+    border-bottom-left-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
 }
 </style>
 <div class="card shadow-sm mb-4 border-0">
@@ -135,7 +151,7 @@
                     </button>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
-                    <a href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold">
+                    <a wire:navigate href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold">
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
@@ -241,8 +257,12 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Defer so Select2 has updated the underlying select
+function initSpecialMemoPage() {
+    if (!document.getElementById('memoTabs')) return;
+    try {
+        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+        $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
+    } catch (e) {}
     function applyFilters() {
         setTimeout(function() {
             var activeTab = document.querySelector('.tab-pane.active');
@@ -383,11 +403,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Load data for the default active tab
     const activeTabButton = document.querySelector('#memoTabs .nav-link.active');
     if (activeTabButton) {
         loadTabData(activeTabButton.getAttribute('aria-controls'));
     }
+}
+document.addEventListener('DOMContentLoaded', initSpecialMemoPage);
+document.addEventListener('livewire:navigated', function() {
+    if (document.getElementById('memoTabs')) initSpecialMemoPage();
 });
 </script>
 @endsection

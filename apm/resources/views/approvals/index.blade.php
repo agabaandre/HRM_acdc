@@ -44,9 +44,9 @@
                                             <td>{{ $memo->workflow->workflow_name }}</td>
                                             <td>{{ date('M d, Y H:i', strtotime($memo->created_at)) }}</td>
                                             <td>
-                                                <a href="{{ route('approvals.show', $memo->id) }}"
+                                                <a wire:navigate href="{{ route('approvals.show', $memo->id) }}"
                                                     class="btn btn-primary btn-sm">Review</a>
-                                                <a href="{{ route('approvals.history', $memo->id) }}"
+                                                <a wire:navigate href="{{ route('approvals.history', $memo->id) }}"
                                                     class="btn btn-info btn-sm">History</a>
                                             </td>
                                         </tr>

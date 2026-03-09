@@ -1,7 +1,11 @@
 /**
  * Session Monitor
  * Monitors session expiry and shows warning dialogs
+ * Wrapped to avoid "already been declared" when script re-runs (e.g. Livewire wire:navigate).
  */
+(function() {
+if (window.SessionMonitor) return;
+
 class SessionMonitor {
     constructor() {
         try {
@@ -412,7 +416,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Check for CI-based login indicators
             const hasUserMeta = document.querySelector('meta[name="user-logged-in"]')?.getAttribute('content') === 'true';
             const hasLoggedInClass = document.body?.classList.contains('logged-in') || false;
-            const hasUserSession = document.cookie.includes('laravel_session') || document.cookie.includes('PHPSESSID');
+            let hasUserSession = false;
+            try {
+                hasUserSession = document.cookie.includes('laravel_session') || document.cookie.includes('PHPSESSID');
+            } catch (e) { /* Sandboxed document (e.g. iframe without allow-same-origin) cannot read cookie */ }
             
             // Check if required modal elements exist before initializing
             const sessionExpiryModal = document.getElementById('sessionExpiryModal');
@@ -432,5 +439,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100); // 100ms delay to ensure DOM is fully ready
 });
 
-// Export for potential external use
 window.SessionMonitor = SessionMonitor;
+})();

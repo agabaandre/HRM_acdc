@@ -58,7 +58,7 @@
                     </button>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
+                    <a wire:navigate href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
@@ -140,11 +140,11 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('request-arf.show', $arf) }}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                    <a wire:navigate href="{{ route('request-arf.show', $arf) }}" class="btn btn-outline-primary btn-sm" title="View Details">
                                         <i class="bx bx-show"></i>
                                     </a>
                                     @if($arf->overall_status === 'draft' || $arf->overall_status === 'returned')
-                                        <a href="{{ route('request-arf.edit', $arf) }}" class="btn btn-outline-warning btn-sm" title="Edit">
+                                        <a wire:navigate href="{{ route('request-arf.edit', $arf) }}" class="btn btn-outline-warning btn-sm" title="Edit">
                                             <i class="bx bx-edit"></i>
                                         </a>
                                     @endif
@@ -219,11 +219,11 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('request-arf.show', $arf) }}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                    <a wire:navigate href="{{ route('request-arf.show', $arf) }}" class="btn btn-outline-primary btn-sm" title="View Details">
                                         <i class="bx bx-show"></i>
                                     </a>
                                     @if($arf->overall_status === 'draft' || $arf->overall_status === 'returned')
-                                        <a href="{{ route('request-arf.edit', $arf) }}" class="btn btn-outline-warning btn-sm" title="Edit">
+                                        <a wire:navigate href="{{ route('request-arf.edit', $arf) }}" class="btn btn-outline-warning btn-sm" title="Edit">
                                             <i class="bx bx-edit"></i>
                                         </a>
                                     @endif

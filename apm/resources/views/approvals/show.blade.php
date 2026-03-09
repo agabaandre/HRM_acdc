@@ -9,7 +9,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="card-title">Review Memo</h4>
-                    <a href="{{ route('approvals.index') }}" class="btn btn-secondary">Back to Approvals</a>
+                    <a wire:navigate href="{{ route('approvals.index') }}" class="btn btn-secondary">Back to Approvals</a>
                 </div>
                 <div class="card-body">
                     @if(session('error'))

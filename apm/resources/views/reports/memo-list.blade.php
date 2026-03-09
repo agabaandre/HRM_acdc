@@ -22,7 +22,7 @@
 @section('content')
 <div class="container-fluid reports-page">
 	<div class="d-flex align-items-center gap-2 mb-2 no-print">
-		<a href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bx bx-arrow-back me-1"></i> Reports</a>
+		<a wire:navigate href="{{ route('reports.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bx bx-arrow-back me-1"></i> Reports</a>
 	</div>
 
 	<div class="card shadow-sm mb-3 no-print">

@@ -62,6 +62,14 @@
         font-size: 1rem;
         border-radius: 0.5rem;
     }
+    /* Smaller action button text on matrix show page only */
+    .matrix-show-page .btn {
+        font-size: 0.8rem;
+    }
+    .matrix-show-page .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
     
     .shadow-sm {
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
@@ -94,19 +102,19 @@
 <div class="d-flex gap-2">
     
         @if( $matrix->overall_status=='draft' || $matrix->overall_status=='returned')
-        <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
+        <a wire:navigate href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Activity
         </a>
         @endif
 
         @if( $matrix->overall_status=='approved'|| $matrix->overall_status=='pending')
-        <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
+        <a wire:navigate href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Single Memo 
         </a>
         @endif
 
         @if(still_with_creator($matrix))
-            <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm shadow-sm">
+            <a wire:navigate href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm shadow-sm">
                 <i class="bx bx-edit me-1"></i> Edit Matrix
             </a>
         @endif
@@ -121,14 +129,14 @@
                 </ul>
             </div>
         @endif
-       <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary btn-sm">
+       <a wire:navigate href="{{ route('matrices.index') }}" class="btn btn-outline-secondary btn-sm">
        <i class="bx bx-arrow-back me-1"></i> Back
     </a>
 </div>
 @endsection
 
 @section('content')
-
+<div class="matrix-show-page">
 @include('matrices.partials.matrix-metadata')
    
 <div class="col-md-12">
@@ -535,8 +543,8 @@
                                     </td>
                                     <td class="px-3 py-3 text-center">
                                         <div class="btn-group" role="group">
-                                            <a href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Single Memo">
-                                                <i class="bx bx-show"></i>
+                                            <a wire:navigate href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Single Memo">
+                                                <i class="bx bx-show me-1"></i>View
                                             </a>
                                             @if($memo->overall_status == 'draft' && 
                                                 ($memo->responsible_person_id == user_session('staff_id') || 
@@ -550,7 +558,7 @@
                                                             data-activity-id="{{ $memo->id }}"
                                                             data-activity-title="{{ $memo->activity_title }}"
                                                             data-bs-title="Copy Activity">
-                                                        <i class="bx bx-copy"></i> Copy
+                                                        <i class="bx bx-copy me-1"></i>Copy
                                                     </button>
                                                 @endif
                                                 <button type="button" class="btn btn-outline-danger btn-sm" 
@@ -559,7 +567,7 @@
                                                         data-memo-id="{{ $memo->id }}"
                                                         data-memo-title="{{ $memo->activity_title }}"
                                                         data-bs-title="Delete Single Memo">
-                                                    <i class="bx bx-trash"></i>
+                                                    <i class="bx bx-trash me-1"></i>Delete
                                                 </button>
                                             @endif
                                         </div>
@@ -583,17 +591,7 @@
 <!-- Division Schedule and Approval Trail Section -->
 <div class="row mt-4">
     <div class="col-lg-7">
-        @if(count($matrix->division_staff) > 0)
-            @include('matrices.partials.participants-schedule', ['divisionStaff' => $divisionStaff ?? $matrix->division_staff])
-        @else
-            <div class="card shadow-sm border-0">
-                <div class="card-body text-center py-5">
-                    <i class="bx bx-calendar-x fs-1 text-muted mb-3"></i>
-                    <h5 class="text-muted">No Division Schedule Available</h5>
-                    <p class="text-muted mb-0">Staff schedules for {{ $matrix->quarter }} {{ $matrix->year }} will appear here once they are added.</p>
-                </div>
-            </div>
-        @endif
+        @include('matrices.partials.participants-schedule', ['divisionStaff' => $divisionStaff ?? $matrix->division_staff ?? collect()])
     </div>
 
     <div class="col-lg-5">
@@ -720,7 +718,7 @@
                         <i class="fa fa-envelope"></i> Yes, Submit Matrix
                     </button>
                 @else
-                <a href="{{ route('matrices.request_approval', $matrix) }}" class="btn btn-success">
+                <a wire:navigate href="{{ route('matrices.request_approval', $matrix) }}" class="btn btn-success">
                         <i class="fa fa-envelope"></i> Yes, Submit Matrix
                 </a>
                 @endif
@@ -1243,7 +1241,7 @@ function renderActivities(activities) {
             html += '<td class="px-3 py-3 text-center">';
             html += '<div class="btn-group" role="group">';
             html += `<a href="${getActivityUrl(activity.id)}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Activity">`;
-            html += '<i class="bx bx-show"></i>';
+            html += '<i class="bx bx-show me-1"></i>View';
             html += '</a>';
             
             // Add copy button for draft activities
@@ -1252,7 +1250,7 @@ function renderActivities(activities) {
                 html += 'data-bs-toggle="modal" data-bs-target="#copyActivityModal" ';
                 html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}" `;
                 html += 'data-bs-title="Copy Activity">';
-                html += '<i class="bx bx-copy"></i>';
+                html += '<i class="bx bx-copy me-1"></i>Copy';
                 html += '</button>';
             }
             
@@ -1261,7 +1259,7 @@ function renderActivities(activities) {
                 html += 'data-bs-toggle="modal" data-bs-target="#deleteActivityModal" ';
                 html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}" `;
                 html += 'data-bs-title="Delete Activity">';
-                html += '<i class="bx bx-trash"></i>';
+                html += '<i class="bx bx-trash me-1"></i>Delete';
                 html += '</button>';
             }
             
@@ -1648,7 +1646,8 @@ function loadSingleMemos(page = 1, search = '', documentNumber = '') {
             updateSingleMemoShowingRange(data.pagination);
             
             // Update count
-            document.getElementById('single-memos-count').textContent = data.pagination.total;
+            const countEl = document.getElementById('single-memos-count');
+            if (countEl) countEl.textContent = data.pagination.total;
             
         })
         .catch(error => {
@@ -1754,7 +1753,7 @@ function renderSingleMemos(singleMemos) {
                     <td class="px-3 py-3 text-center">
                         <div class="btn-group" role="group">
                             <a href="${getSingleMemoUrl(memo.id)}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Single Memo">
-                                <i class="bx bx-show"></i>
+                                <i class="bx bx-show me-1"></i>View
                             </a>
                             ${canShowSingleMemoDeleteButton(memo) ? `
                                 <button type="button" class="btn btn-outline-danger btn-sm" 
@@ -1763,7 +1762,7 @@ function renderSingleMemos(singleMemos) {
                                         data-memo-id="${memo.id}"
                                         data-memo-title="${memo.activity_title}"
                                         data-bs-title="Delete Single Memo">
-                                    <i class="bx bx-trash"></i>
+                                    <i class="bx bx-trash me-1"></i>Delete
                                 </button>
                             ` : ''}
                         </div>
@@ -1826,8 +1825,9 @@ function canShowSingleMemoDeleteButton(memo) {
 function renderSingleMemoPagination(pagination, singleMemos) {
     const container = document.getElementById('single-memos-pagination');
     const topContainer = document.getElementById('single-memos-top-pagination');
+    if (!container) return; // Page may have changed (e.g. navigated away)
     let html = '';
-    
+
     if (pagination.last_page > 1) {
         html += '<div class="d-flex justify-content-center"><ul class="pagination">';
         
@@ -1868,10 +1868,12 @@ function renderSingleMemoPagination(pagination, singleMemos) {
 
 // Update single memo showing range
 function updateSingleMemoShowingRange(pagination) {
+    const el = document.getElementById('single-memo-showingRange');
+    if (!el) return; // page may have changed (e.g. navigated away)
     const start = pagination.total > 0 ? pagination.from : 0;
     const end = pagination.to || 0;
     const total = pagination.total || 0;
-    document.getElementById('single-memo-showingRange').textContent = `Showing ${start}-${end} of ${total} single memos`;
+    el.textContent = `Showing ${start}-${end} of ${total} single memos`;
 }
 
 // Single memo search functionality
@@ -1970,12 +1972,8 @@ function loadMatrixBudgets() {
         });
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Load activities on page load
+function initMatrixShowPage() {
     loadActivities(1, '{{ request("search") }}', '{{ request("document_number") }}');
-    
-    // Load single memos on page load
     loadSingleMemos(1, '{{ request("single_memo_search") }}', '{{ request("single_memo_document_number") }}');
     
     // Add event listeners for search functionality
@@ -2099,10 +2097,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Load matrix budgets after all other initialization is complete
     setTimeout(() => {
         loadMatrixBudgets();
     }, 500);
+}
+document.addEventListener('DOMContentLoaded', initMatrixShowPage);
+document.addEventListener('livewire:navigated', function() {
+    if (document.getElementById('activities-tbody')) {
+        initMatrixShowPage();
+        if (typeof initializeTooltips === 'function') initializeTooltips();
+    }
 });
 
 // Initialize Bootstrap tooltips
@@ -2532,5 +2536,6 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
     </div>
+</div>
 </div>
 @endsection

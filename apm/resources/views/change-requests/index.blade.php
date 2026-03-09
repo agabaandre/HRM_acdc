@@ -6,7 +6,7 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('change-requests.pending-approvals') }}" class="btn btn-warning shadow-sm">
+    <a wire:navigate href="{{ route('change-requests.pending-approvals') }}" class="btn btn-warning shadow-sm">
         <i class="bx bx-time me-1"></i> Pending Approvals
         @if(get_pending_change_request_count(user_session('staff_id')) > 0)
             <span class="badge bg-danger ms-1">{{ get_pending_change_request_count(user_session('staff_id')) }}</span>
@@ -41,6 +41,11 @@
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
 }
+/* Vertical action buttons */
+.btn-group-vertical form.d-inline { display: block !important; }
+.btn-group-vertical form .btn { width: 100%; border-radius: 0; }
+.btn-group-vertical .btn:first-child { border-top-left-radius: 0.25rem; border-top-right-radius: 0.25rem; }
+.btn-group-vertical .btn:last-child { border-bottom-left-radius: 0.25rem; border-bottom-right-radius: 0.25rem; }
 .table-title-cell {
     max-width: 300px;
     word-wrap: break-word;
@@ -153,12 +158,12 @@
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
+                    <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold">
+                    <a wire:navigate href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold">
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
@@ -274,13 +279,15 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Select2
+function initChangeRequestsPage() {
+    if (!document.getElementById('changeRequestTabs')) return;
+    try {
+        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+    } catch (e) {}
     $('.select2').select2({
         theme: 'bootstrap-5',
         width: '100%'
     });
-    // Year select: no placeholder/clear so no blank option and no duplicate-looking entry
     $('#year').select2('destroy').select2({
         theme: 'bootstrap-5',
         width: '100%',
@@ -475,11 +482,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Load data for the default active tab
     const activeTabButton = document.querySelector('#changeRequestTabs .nav-link.active');
     if (activeTabButton) {
         loadTabData(activeTabButton.getAttribute('aria-controls'));
     }
+}
+document.addEventListener('DOMContentLoaded', initChangeRequestsPage);
+document.addEventListener('livewire:navigated', function() {
+    if (document.getElementById('changeRequestTabs')) initChangeRequestsPage();
 });
 
 // Delete change request function

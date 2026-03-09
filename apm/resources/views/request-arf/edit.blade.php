@@ -5,7 +5,7 @@
 @section('header', 'Edit ARF Request')
 
 @section('header-actions')
-<a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary">
+<a wire:navigate href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-arrow-back me-1"></i> Back to List
 </a>
 @endsection
@@ -461,7 +461,7 @@
             </div>
 
             <div class="d-flex justify-content-between mt-4">
-                <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary px-4 btn-lg">
+                <a wire:navigate href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary px-4 btn-lg">
                     <i class="bx bx-arrow-back me-1"></i> Cancel
                 </a>
                 <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">

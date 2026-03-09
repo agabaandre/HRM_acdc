@@ -5,7 +5,7 @@
 @section('header', 'Create Directorate')
 
 @section('header-actions')
-    <a href="{{ route('directorates.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('directorates.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
 @endsection
@@ -78,7 +78,7 @@
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center border-top pt-4 mt-4">
-                    <a href="{{ route('directorates.index') }}" class="btn btn-outline-secondary px-4">
+                    <a wire:navigate href="{{ route('directorates.index') }}" class="btn btn-outline-secondary px-4">
                         <i class="bx bx-arrow-back me-1"></i> Cancel
                     </a>
                     <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">

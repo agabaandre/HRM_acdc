@@ -5,7 +5,7 @@
 @section('header', 'Cost Items Management')
 
 @section('header-actions')
-    <a href="{{ route('cost-items.create') }}" class="btn btn-success">
+    <a wire:navigate href="{{ route('cost-items.create') }}" class="btn btn-success">
         <i class="bx bx-plus"></i> Add New Cost Item
     </a>
 @endsection
@@ -45,17 +45,17 @@
                             <td>{{ $item->created_at->format('M d, Y') }}</td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('cost-items.show', $item->id) }}"
+                                    <a wire:navigate href="{{ route('cost-items.show', $item->id) }}"
                                        class="btn btn-sm btn-outline-info"
                                        data-bs-toggle="tooltip"
                                        title="View">
-                                        <i class="bx bx-show"></i>
+                                        <i class="bx bx-show me-1"></i>View
                                     </a>
-                                    <a href="{{ route('cost-items.edit', $item->id) }}"
+                                    <a wire:navigate href="{{ route('cost-items.edit', $item->id) }}"
                                        class="btn btn-sm btn-outline-primary"
                                        data-bs-toggle="tooltip"
                                        title="Edit">
-                                        <i class="bx bx-edit"></i>
+                                        <i class="bx bx-edit me-1"></i>Edit
                                     </a>
                                 </div>
                             </td>
@@ -69,7 +69,7 @@
                                     </div>
                                     <h5 class="text-muted mb-3">No cost items found</h5>
                                     <p class="text-muted mb-4">Get started by adding your first cost item</p>
-                                    <a href="{{ route('cost-items.create') }}" class="btn btn-primary">
+                                    <a wire:navigate href="{{ route('cost-items.create') }}" class="btn btn-primary">
                                         <i class="bx bx-plus"></i> Add Cost Item
                                     </a>
                                 </div>

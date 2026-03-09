@@ -9,7 +9,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="card-title">Create New Memo</h4>
-                    <a href="{{ route('memos.index') }}" class="btn btn-secondary">Back to Memos</a>
+                    <a wire:navigate href="{{ route('memos.index') }}" class="btn btn-secondary">Back to Memos</a>
                 </div>
                 <div class="card-body">
                     <form action="{{ route('memos.store') }}" method="POST">

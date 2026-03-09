@@ -9,7 +9,7 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">Edit Memo</h4>
-                        <a href="{{ route('memos.show', $memo->id) }}" class="btn btn-secondary">Back to Memo</a>
+                        <a wire:navigate href="{{ route('memos.show', $memo->id) }}" class="btn btn-secondary">Back to Memo</a>
                     </div>
                     <div class="card-body">
                         <form action="{{ route('memos.update', $memo->id) }}" method="POST">

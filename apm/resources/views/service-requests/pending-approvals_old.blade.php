@@ -4,7 +4,7 @@
 @section('header', 'Service Request Pending Approvals')
 
 @section('header-actions')
-    <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Service Requests
     </a>
 @endsection
@@ -157,12 +157,12 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('service-requests.show', $request) }}" 
+                                                        <a wire:navigate href="{{ route('service-requests.show', $request) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
                                                         @if($request->overall_status === 'pending')
-                                                            <a href="{{ route('service-requests.show', $request) }}" 
+                                                            <a wire:navigate href="{{ route('service-requests.show', $request) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="View Status">
                                                                 <i class="bx bx-info-circle"></i>
                                                             </a>
@@ -242,12 +242,12 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('service-requests.show', $request) }}" 
+                                                        <a wire:navigate href="{{ route('service-requests.show', $request) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
                                                         @if($request->overall_status === 'approved')
-                                                            <a href="{{ route('service-requests.show', $request) }}" 
+                                                            <a wire:navigate href="{{ route('service-requests.show', $request) }}" 
                                                                class="btn btn-sm btn-outline-success" title="Print" target="_blank">
                                                                 <i class="bx bx-printer"></i>
                                                             </a>

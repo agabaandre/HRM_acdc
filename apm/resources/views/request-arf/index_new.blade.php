@@ -57,7 +57,7 @@
                 </button>
             </div>
             <div class="col-md-2 d-flex align-items-end">
-                <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
+                <a wire:navigate href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
                     <i class="bx bx-reset me-1"></i> Reset
                 </a>
             </div>

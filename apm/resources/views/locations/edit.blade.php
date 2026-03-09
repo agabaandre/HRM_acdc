@@ -5,7 +5,7 @@
 @section('header', 'Edit Location')
 
 @section('header-actions')
-    <a href="{{ route('locations.show', $location->id) }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('locations.show', $location->id) }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Details
     </a>
 @endsection
@@ -47,7 +47,7 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2">
-                <a href="{{ route('locations.show', $location->id) }}" class="btn btn-light">
+                <a wire:navigate href="{{ route('locations.show', $location->id) }}" class="btn btn-light">
                     <i class="bx bx-x"></i> Cancel
                 </a>
                 <button type="submit" class="btn btn-primary">

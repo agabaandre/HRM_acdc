@@ -21,6 +21,11 @@
     max-width: 100% !important;
     line-height: 1.3 !important;
 }
+/* Vertical action buttons */
+.btn-group-vertical form.d-inline { display: block !important; }
+.btn-group-vertical form .btn { width: 100%; border-radius: 0; }
+.btn-group-vertical .btn:first-child { border-top-left-radius: 0.25rem; border-top-right-radius: 0.25rem; }
+.btn-group-vertical .btn:last-child { border-bottom-left-radius: 0.25rem; border-bottom-right-radius: 0.25rem; }
 </style>
 @endsection
 
@@ -110,7 +115,7 @@
                 </button>
             </div>
             <div class="col-md-1 d-flex align-items-end">
-                <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold" title="Reset Filters">
+                <a wire:navigate href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold" title="Reset Filters">
                     <i class="bx bx-reset me-1"></i> Reset
                 </a>
             </div>
@@ -188,17 +193,18 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Select2 for all select fields
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#year, #division_id, #staff_id, #service_type, #request_status').select2({
-            placeholder: 'Select an option',
-            allowClear: true,
-            width: '100%'
-        });
-    }
-    
-    // AJAX filtering - auto-update when filters change
+function initServiceRequestsPage() {
+    if (!document.getElementById('serviceTabs')) return;
+    try {
+        $('#year, #division_id, #staff_id, #service_type, #request_status').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('#year, #division_id, #staff_id, #service_type, #request_status').select2({
+                placeholder: 'Select an option',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+    } catch (e) {}
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');
         if (activeTab) {
@@ -308,16 +314,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Handle tab switching with AJAX
     document.querySelectorAll('#serviceTabs button[data-bs-toggle="tab"]').forEach(button => {
         button.addEventListener('shown.bs.tab', function (e) {
             const target = e.target.getAttribute('data-bs-target');
             const tabId = target.replace('#', '');
-            
-            // Load tab data via AJAX
             loadTabData(tabId);
         });
     });
+}
+document.addEventListener('DOMContentLoaded', initServiceRequestsPage);
+document.addEventListener('livewire:navigated', function() {
+    if (document.getElementById('serviceTabs')) initServiceRequestsPage();
 });
 </script>
 @endsection

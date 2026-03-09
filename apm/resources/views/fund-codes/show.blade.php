@@ -7,13 +7,13 @@
 @section('header-actions')
 <div class="d-flex gap-2">
 
-    <a href="{{ route('fund-codes.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('fund-codes.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
-    <a href="{{ route('fund-codes.edit', $fundCode) }}" class="btn btn-warning">
+    <a wire:navigate href="{{ route('fund-codes.edit', $fundCode) }}" class="btn btn-warning">
         <i class="bx bx-edit"></i> Edit
     </a>
-    <a href="{{ route('fund-codes.transactions', $fundCode) }}" class="btn btn-primary">
+    <a wire:navigate href="{{ route('fund-codes.transactions', $fundCode) }}" class="btn btn-primary">
         <i class="bx bx-history"></i> View Transactions
     </a>
 </div>
@@ -111,7 +111,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('fund-codes.edit', $fundCode) }}" class="btn btn-warning">
+                    <a wire:navigate href="{{ route('fund-codes.edit', $fundCode) }}" class="btn btn-warning">
                         <i class="bx bx-edit me-2"></i> Edit Fund Code
                     </a>
                 </div>

@@ -91,24 +91,24 @@
                             @endif
                         </td>
                         <td class="text-center">
-                            <div class="d-flex gap-2 justify-content-center">
-                                <a href="{{ route('activities.single-memos.show', $memo) }}" 
+                            <div class="d-flex gap-2 justify-content-center action-buttons-stacked">
+                                <a wire:navigate href="{{ route('activities.single-memos.show', $memo) }}" 
                                    class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show"></i>
+                                    <i class="bx bx-show me-1"></i>View
                                 </a>
                                 @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
                                     <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                            <i class="bx bx-trash"></i>
+                                            <i class="bx bx-trash me-1"></i>Delete
                                         </button>
                                     </form>
                                 @endif
                                 @if($memo->overall_status === 'approved')
-                                    <a href="{{ route('activities.single-memos.show', $memo) }}" 
+                                    <a wire:navigate href="{{ route('activities.single-memos.show', $memo) }}" 
                                        class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                        <i class="bx bx-printer"></i>
+                                        <i class="bx bx-printer me-1"></i>Print
                                     </a>
                                 @endif
                             </div>

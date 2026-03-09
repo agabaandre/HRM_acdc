@@ -348,7 +348,7 @@
                                         <span class="badge bg-warning" style="word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word; max-width: 100%; display: inline-block;">{{ $item['workflow_role'] }}</span>
                                     </td>
                                     <td>
-                                        <a href="{{ $item['view_url'] }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <a href="{{ $item['view_url'] }}" class="btn btn-sm btn-outline-primary" wire:navigate>
                                             <i class="fas fa-eye me-1"></i> View
                                         </a>
                                         @if(isset($isAdminAssistant) && $isAdminAssistant && isset($item['is_admin_assistant_view']) && $item['is_admin_assistant_view'])

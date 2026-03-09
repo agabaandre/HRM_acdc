@@ -25,7 +25,7 @@
                             <ul class="navbar-nav align-items-center">
                                 <!-- Help Link -->
                                 <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('help.index') }}" title="Help & Documentation">
+                                    <a class="nav-link" href="{{ route('help.index') }}" wire:navigate title="Help & Documentation">
                                         <i class="fas fa-question-circle fs-5"></i>
                                     </a>
                                 </li>
@@ -59,7 +59,6 @@
                                     <a 
                                         class="nav-link" 
                                         href="{{ $staffPortalUrl }}"
-                                        target="_blank"
                                         rel="noopener noreferrer"
                                         style="font-size: 0.875rem;"
                                     >
@@ -74,7 +73,6 @@
                                     <a 
                                         class="nav-link" 
                                         href="{{ $financeUrl }}"
-                                        target="_blank"
                                         rel="noopener noreferrer"
                                         style="font-size: 0.875rem;"
                                     >
@@ -145,7 +143,7 @@
                                         <div
                                             class="dropdown-header d-flex justify-content-between align-items-center px-3 pt-2">
                                             <span class="fw-semibold">Pending Approvals</span>
-                                            <a href="{{ route('pending-approvals.index') }}" class="small text-primary">View All</a>
+                                            <a wire:navigate href="{{ route('pending-approvals.index') }}" class="small text-primary">View All</a>
                                         </div>
 
                                         <!-- Pending Approvals List -->
@@ -162,7 +160,7 @@
 
                                         <!-- Footer -->
                                         <div class="dropdown-footer text-center border-top py-2">
-                                            <a href="{{ route('pending-approvals.index') }}"
+                                            <a wire:navigate href="{{ route('pending-approvals.index') }}"
                                                 class="text-decoration-none btn btn-primary btn-sm">View All Pending Approvals</a>
                                         </div>
                                     </div>
@@ -183,12 +181,12 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>
-                                    <a class="dropdown-item" href="{{ $staffPortalUrl }}" target="_blank" rel="noopener noreferrer">
+                                    <a class="dropdown-item" href="{{ $staffPortalUrl }}" rel="noopener noreferrer">
                                         <i class="fas fa-user"></i><span>Profile</span>
                                     </a>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item" href="{{ $staffBaseUrl }}/auth/users" target="_blank" rel="noopener noreferrer">
+                                    <a class="dropdown-item" href="{{ $staffBaseUrl }}/auth/users" rel="noopener noreferrer">
                                         <i class="fas fa-key"></i><span>Change Password</span>
                                     </a>
                                 </li>

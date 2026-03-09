@@ -5,7 +5,7 @@
 @section('header', 'Non-Travel Memo Categories')
 
 @section('header-actions')
-    <a href="{{ route('non-travel-categories.create') }}" class="btn btn-primary">
+    <a wire:navigate href="{{ route('non-travel-categories.create') }}" class="btn btn-primary">
         <i class="bx bx-plus"></i> Add Category
     </a>
 @endsection
@@ -43,21 +43,21 @@
                         <tr>
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $category->name }}</td>
-                            <td>{{ $category->created_at->format('M d, Y') }}</td>
-                            <td>{{ $category->updated_at->format('M d, Y') }}</td>
+                            <td>{{ $category->created_at?->format('M d, Y') ?? '—' }}</td>
+                            <td>{{ $category->updated_at?->format('M d, Y') ?? '—' }}</td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('non-travel-categories.show', $category->id) }}" 
+                                    <a wire:navigate href="{{ route('non-travel-categories.show', $category->id) }}" 
                                        class="btn btn-sm btn-outline-primary" 
                                        data-bs-toggle="tooltip" 
                                        title="View">
-                                        <i class="bx bx-show"></i>
+                                        <i class="bx bx-show me-1"></i>View
                                     </a>
-                                    <a href="{{ route('non-travel-categories.edit', $category->id) }}" 
+                                    <a wire:navigate href="{{ route('non-travel-categories.edit', $category->id) }}" 
                                        class="btn btn-sm btn-outline-secondary" 
                                        data-bs-toggle="tooltip" 
                                        title="Edit">
-                                        <i class="bx bx-edit"></i>
+                                        <i class="bx bx-edit me-1"></i>Edit
                                     </a>
                                     <form action="{{ route('non-travel-categories.destroy', $category->id) }}" 
                                           method="POST" 
@@ -69,7 +69,7 @@
                                                 class="btn btn-sm btn-outline-danger" 
                                                 data-bs-toggle="tooltip" 
                                                 title="Delete">
-                                            <i class="bx bx-trash"></i>
+                                            <i class="bx bx-trash me-1"></i>Delete
                                         </button>
                                     </form>
                                 </div>
@@ -84,7 +84,7 @@
                                     </div>
                                     <h5 class="text-muted mb-3">No categories found</h5>
                                     <p class="text-muted mb-4">Get started by creating a new category</p>
-                                    <a href="{{ route('non-travel-categories.create') }}" class="btn btn-primary">
+                                    <a wire:navigate href="{{ route('non-travel-categories.create') }}" class="btn btn-primary">
                                         <i class="bx bx-plus"></i> Add Category
                                     </a>
                                 </div>

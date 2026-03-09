@@ -16,7 +16,7 @@
                     <p class="text-muted mb-0">{{ $specialMemo->activity_title }}</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ route('special-memo.show', $specialMemo) }}" class="btn btn-outline-secondary">
+                    <a wire:navigate href="{{ route('special-memo.show', $specialMemo) }}" class="btn btn-outline-secondary">
                         <i class="bx bx-arrow-back me-1"></i>Back to Details
                     </a>
                     @if($specialMemo->overall_status === 'approved')

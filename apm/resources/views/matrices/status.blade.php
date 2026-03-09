@@ -5,16 +5,16 @@
 @section('header', 'Matrix Approval Status')
 
 @section('header-actions')
-    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back me-1"></i> Back to Matrix
     </a>
     @if($matrix->overall_status === 'approved')
-        <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-success">
+        <a wire:navigate href="{{ route('matrices.show', $matrix) }}" class="btn btn-success">
             <i class="bx bx-check-circle me-1"></i> View Approved Matrix
         </a>
     @endif
     @if(still_with_creator($matrix))
-        <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning">
+        <a wire:navigate href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning">
             <i class="bx bx-edit me-1"></i> Edit Matrix
         </a>
     @endif

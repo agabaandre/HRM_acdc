@@ -13,7 +13,7 @@
 
 
 @section('header-actions')
-    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Matrix
     </a>
 @endsection

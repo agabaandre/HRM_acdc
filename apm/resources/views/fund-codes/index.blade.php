@@ -9,7 +9,7 @@
     <button type="button" class="btn btn-outline-success shadow-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
         <i class="bx bx-upload me-1"></i> Upload CSV
     </button>
-    <a href="{{ route('fund-codes.create') }}" class="btn btn-success shadow-sm">
+    <a wire:navigate href="{{ route('fund-codes.create') }}" class="btn btn-success shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Add Fund Code
     </a>
 </div>
@@ -388,9 +388,9 @@
                 '<td><div class="text-truncate" style="max-width:200px" title="' + (activityRaw ? escapeHtml(activityRaw) : '') + '">' + activity + '</div></td>' +
                 '<td><span class="badge ' + statusClass + ' text-white"><i class="bx bx-' + statusIcon + ' me-1"></i>' + statusText + '</span></td>' +
                 '<td class="text-center"><div class="d-flex gap-2 justify-content-center">' +
-                '<a href="' + baseUrl + '/' + fc.id + '" class="btn btn-sm btn-light text-info" title="View Details"><i class="bx bx-show fs-6"></i></a> ' +
-                '<a href="' + baseUrl + '/' + fc.id + '/edit" class="btn btn-sm btn-light text-primary" title="Edit Fund Code"><i class="bx bx-edit fs-6"></i></a> ' +
-                '<a href="' + baseUrl + '/' + fc.id + '/transactions" class="btn btn-sm btn-light text-success" title="View Transactions"><i class="bx bx-history fs-6"></i></a>' +
+                '<a href="' + baseUrl + '/' + fc.id + '" class="btn btn-sm btn-light text-info" title="View Details" wire:navigate><i class="bx bx-show fs-6 me-1"></i>View</a> ' +
+                '<a href="' + baseUrl + '/' + fc.id + '/edit" class="btn btn-sm btn-light text-primary" title="Edit Fund Code" wire:navigate><i class="bx bx-edit fs-6 me-1"></i>Edit</a> ' +
+                '<a href="' + baseUrl + '/' + fc.id + '/transactions" class="btn btn-sm btn-light text-success" title="View Transactions" wire:navigate><i class="bx bx-history fs-6 me-1"></i>Transactions</a>' +
                 '</div></td></tr>';
         });
         fundCodesTableBodyEl.innerHTML = html;

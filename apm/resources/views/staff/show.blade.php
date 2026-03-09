@@ -6,10 +6,10 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('staff.edit', $staff) }}" class="btn btn-warning">
+    <a wire:navigate href="{{ route('staff.edit', $staff) }}" class="btn btn-warning">
         <i class="bx bx-edit"></i> Edit
     </a>
-    <a href="{{ route('staff.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('staff.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
 </div>
@@ -223,7 +223,7 @@
                             </span>
                         </td>
                         <td class="text-end">
-                            <a href="{{ route('activities.show', $activity) }}" class="btn btn-sm btn-info">
+                            <a wire:navigate href="{{ route('activities.show', $activity) }}" class="btn btn-sm btn-info">
                                 <i class="bx bx-show"></i> View
                             </a>
                         </td>

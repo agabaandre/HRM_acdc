@@ -6,10 +6,10 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('fund-codes.show', $fundCode) }}" class="btn btn-outline-info">
+    <a wire:navigate href="{{ route('fund-codes.show', $fundCode) }}" class="btn btn-outline-info">
         <i class="bx bx-show"></i> View Fund Code
     </a>
-    <a href="{{ route('fund-codes.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('fund-codes.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
 </div>
@@ -70,7 +70,7 @@
                 </button>
             </div>
             <div class="col-md-2">
-                <a href="{{ route('fund-codes.transactions', $fundCode) }}" class="btn btn-outline-secondary w-100 fw-bold">
+                <a wire:navigate href="{{ route('fund-codes.transactions', $fundCode) }}" class="btn btn-outline-secondary w-100 fw-bold">
                     <i class="bx bx-reset me-1"></i> Reset
                 </a>
             </div>
@@ -168,7 +168,7 @@
                                 </td>
                                 <td class="text-center">
                                     @if($transaction->activity && $transaction->matrix)
-                                        <a href="{{ route('matrices.activities.show', [$transaction->matrix, $transaction->activity]) }}" 
+                                        <a wire:navigate href="{{ route('matrices.activities.show', [$transaction->matrix, $transaction->activity]) }}" 
                                            class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="View Activity">
                                             <i class="bx bx-show"></i>
                                         </a>
@@ -195,7 +195,7 @@
                     </div>
                     <h5 class="text-muted mb-3">No transactions found</h5>
                     <p class="text-muted mb-4">No transactions match your current filters</p>
-                    <a href="{{ route('fund-codes.transactions', $fundCode) }}" class="btn btn-primary">
+                    <a wire:navigate href="{{ route('fund-codes.transactions', $fundCode) }}" class="btn btn-primary">
                         <i class="bx bx-refresh me-1"></i> Clear Filters
                     </a>
                 </div>

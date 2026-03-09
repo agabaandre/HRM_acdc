@@ -6,7 +6,7 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('request-arf.pending-approvals') }}" class="btn btn-warning shadow-sm">
+    <a wire:navigate href="{{ route('request-arf.pending-approvals') }}" class="btn btn-warning shadow-sm">
         <i class="bx bx-time me-1"></i> Pending Approvals
         @if(get_pending_arf_count(user_session('staff_id')) > 0)
             <span class="badge bg-danger ms-1">{{ get_pending_arf_count(user_session('staff_id')) }}</span>
@@ -88,7 +88,7 @@
                     </button>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
-                    <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold" title="Reset Filters">
+                    <a wire:navigate href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold" title="Reset Filters">
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
@@ -166,8 +166,12 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // AJAX filtering - auto-update when filters change
+function initRequestArfPage() {
+    if (!document.getElementById('arfTabs')) return;
+    try {
+        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+        $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
+    } catch (e) {}
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');
         if (activeTab) {
@@ -280,16 +284,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Handle tab switching with AJAX
     document.querySelectorAll('#arfTabs button[data-bs-toggle="tab"]').forEach(button => {
         button.addEventListener('shown.bs.tab', function (e) {
             const target = e.target.getAttribute('data-bs-target');
             const tabId = target.replace('#', '');
-            
-            // Load tab data via AJAX
             loadTabData(tabId);
         });
     });
+}
+document.addEventListener('DOMContentLoaded', initRequestArfPage);
+document.addEventListener('livewire:navigated', function() {
+    if (document.getElementById('arfTabs')) initRequestArfPage();
 });
 </script>
 @endsection

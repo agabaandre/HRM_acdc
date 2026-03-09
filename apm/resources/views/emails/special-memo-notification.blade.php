@@ -224,7 +224,7 @@
             </div>
 
             <div style="text-align: center;">
-                <a href="{{ route('special-memo.show', $resource) }}" class="btn">View Special Memo Details</a>
+                <a wire:navigate href="{{ route('special-memo.show', $resource) }}" class="btn">View Special Memo Details</a>
             </div>
 
         </div>

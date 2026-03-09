@@ -4,7 +4,7 @@
 @section('header', 'Service Request Pending Approvals')
 
 @section('header-actions')
-    <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Service Requests
     </a>
 @endsection
@@ -84,7 +84,7 @@
                     </button>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <a href="{{ route('service-requests.pending-approvals') }}" class="btn btn-outline-secondary w-100 fw-bold">
+                    <a wire:navigate href="{{ route('service-requests.pending-approvals') }}" class="btn btn-outline-secondary w-100 fw-bold">
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>

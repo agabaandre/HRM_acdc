@@ -10,11 +10,11 @@
 
 @section('header-actions')
     @if($isEdit)
-        <a href="{{ route('service-requests.show', $serviceRequest) }}" class="btn btn-outline-secondary">
+        <a wire:navigate href="{{ route('service-requests.show', $serviceRequest) }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back me-1 text-default"></i> Back to Request
         </a>
     @else
-        <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
+        <a wire:navigate href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back me-1 text-default"></i> Back to List
         </a>
     @endif
@@ -204,9 +204,9 @@
                                     <h6 class="text-muted mb-0 me-3">Activity Title:</h6>
                                     @if($isEdit && !empty($mainActivityUrl ?? null))
                                         <h5 class="fw-bold text-dark mb-0 me-2">
-                                            <a href="{{ $mainActivityUrl }}" target="_blank" class="text-success text-decoration-none">{{ $serviceRequest->service_title ?? $serviceRequest->title ?? 'Service Request' }}</a>
+                                            <a href="{{ $mainActivityUrl }}" class="text-success text-decoration-none" wire:navigate>{{ $serviceRequest->service_title ?? $serviceRequest->title ?? 'Service Request' }}</a>
                                         </h5>
-                                        <a href="{{ $mainActivityUrl }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                        <a href="{{ $mainActivityUrl }}" class="btn btn-sm btn-outline-success" wire:navigate>
                                             <i class="fas fa-external-link-alt me-1"></i> View Parent memo
                                         </a>
                                     @else

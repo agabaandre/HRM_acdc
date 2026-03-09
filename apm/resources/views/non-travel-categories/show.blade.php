@@ -6,10 +6,10 @@
 
 @section('header-actions')
     <div class="d-flex gap-2">
-        <a href="{{ route('non-travel-categories.edit', $category->id) }}" class="btn btn-warning">
+        <a wire:navigate href="{{ route('non-travel-categories.edit', $category->id) }}" class="btn btn-warning">
             <i class="bx bx-edit"></i> Edit
         </a>
-        <a href="{{ route('non-travel-categories.index') }}" class="btn btn-outline-secondary">
+        <a wire:navigate href="{{ route('non-travel-categories.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to List
         </a>
     </div>
@@ -57,7 +57,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('non-travel-categories.edit', $category->id) }}" class="btn btn-primary">
+                    <a wire:navigate href="{{ route('non-travel-categories.edit', $category->id) }}" class="btn btn-primary">
                         <i class="bx bx-edit"></i> Edit Category
                     </a>
                     <form action="{{ route('non-travel-categories.destroy', $category->id) }}" 
@@ -69,7 +69,7 @@
                             <i class="bx bx-trash"></i> Delete Category
                         </button>
                     </form>
-                    <a href="{{ route('non-travel-categories.index') }}" class="btn btn-outline-secondary">
+                    <a wire:navigate href="{{ route('non-travel-categories.index') }}" class="btn btn-outline-secondary">
                         <i class="bx bx-list-ul"></i> View All Categories
                     </a>
                 </div>

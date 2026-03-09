@@ -4,7 +4,7 @@
 @section('header', 'Single Memo Pending Approvals')
 
 @section('header-actions')
-    <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Single Memos
     </a>
 @endsection
@@ -32,7 +32,7 @@
                         <i class="bx bx-time me-1"></i>
                         {{ $pendingMemos->count() }} Pending
                     </div>
-                    <a href="{{ route('activities.single-memos.index', ['status' => 'pending']) }}" class="btn btn-outline-warning btn-sm">
+                    <a wire:navigate href="{{ route('activities.single-memos.index', ['status' => 'pending']) }}" class="btn btn-outline-warning btn-sm">
                         <i class="bx bx-list me-1"></i> View All Pending
                     </a>
                 </div>

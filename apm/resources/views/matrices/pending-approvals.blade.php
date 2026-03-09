@@ -4,7 +4,7 @@
 @section('header', 'Matrix Pending Approvals')
 
 @section('header-actions')
-    <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Matrices
     </a>
 @endsection
@@ -264,12 +264,12 @@
                                                 </td>
                                                 <td class="text-left">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('matrices.show', $matrix) }}"
+                                                        <a wire:navigate href="{{ route('matrices.show', $matrix) }}"
                                                             class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
                                                         @if (still_with_creator($matrix))   
-                                                            <a href="{{ route('matrices.edit', $matrix) }}"
+                                                            <a wire:navigate href="{{ route('matrices.edit', $matrix) }}"
                                                                 class="btn btn-sm btn-outline-warning" title="Edit">
                                                                 <i class="bx bx-edit"></i>
                                                             </a>
@@ -459,7 +459,7 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('matrices.show', $matrix) }}"
+                                                        <a wire:navigate href="{{ route('matrices.show', $matrix) }}"
                                                             class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>

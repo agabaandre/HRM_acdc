@@ -4,7 +4,7 @@
 @section('header', 'Edit Fund Code')
 
 @section('header-actions')
-<a href="{{ route('fund-codes.index') }}" class="btn btn-outline-secondary">
+<a wire:navigate href="{{ route('fund-codes.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-arrow-back me-1 text-success"></i> Back to List
 </a>
 @endsection
@@ -328,7 +328,7 @@
 
             <!-- Action Buttons -->
             <div class="d-flex justify-content-end gap-3 mt-5 pt-4 border-top">
-                <a href="{{ route('fund-codes.index') }}" class="btn btn-light px-4">
+                <a wire:navigate href="{{ route('fund-codes.index') }}" class="btn btn-light px-4">
                     <i class="bx bx-x me-1"></i> Cancel
                 </a>
                 <button type="submit" class="btn btn-success px-4">

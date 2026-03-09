@@ -5,7 +5,7 @@
 @section('header', 'Single Memo Approval Status')
 
 @section('header-actions')
-    <a href="{{ route('activities.single-memos.show', $singleMemo) }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('activities.single-memos.show', $singleMemo) }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back me-1"></i> Back to Memo
     </a>
     @if($singleMemo->overall_status === 'approved')
@@ -14,7 +14,7 @@
         </a>
     @endif
     @if(can_edit_memo($singleMemo))
-        <a href="{{ route('activities.single-memos.edit', [$singleMemo->matrix, $singleMemo]) }}" class="btn btn-warning">
+        <a wire:navigate href="{{ route('activities.single-memos.edit', [$singleMemo->matrix, $singleMemo]) }}" class="btn btn-warning">
             <i class="bx bx-edit me-1"></i> Edit Memo
         </a>
     @endif

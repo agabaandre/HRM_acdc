@@ -6,10 +6,10 @@
 
 @section('header-actions')
 <div class="btn-group" role="group">
-    <a href="{{ route('funders.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('funders.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
-    <a href="{{ route('funders.edit', $funder) }}" class="btn btn-warning">
+    <a wire:navigate href="{{ route('funders.edit', $funder) }}" class="btn btn-warning">
         <i class="bx bx-edit"></i> Edit
     </a>
 </div>
@@ -63,7 +63,7 @@
                             <label class="fw-semibold text-muted">Website</label>
                             <p class="mb-0">
                                 @if($funder->website)
-                                    <a href="{{ $funder->website }}" target="_blank" class="text-decoration-none">
+                                    <a href="{{ $funder->website }}" class="text-decoration-none" rel="noopener noreferrer">
                                         <i class="bx bx-link-external me-1"></i>Visit Website
                                     </a>
                                 @else
@@ -158,7 +158,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('funders.edit', $funder) }}" class="btn btn-warning">
+                    <a wire:navigate href="{{ route('funders.edit', $funder) }}" class="btn btn-warning">
                         <i class="bx bx-edit me-1"></i> Edit Funder
                     </a>
                 </div>
@@ -202,7 +202,7 @@
                                     @endif
                                 </td>
                                 <td class="text-end">
-                                    <a href="{{ route('fund-codes.show', $fundCode) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
+                                    <a wire:navigate href="{{ route('fund-codes.show', $fundCode) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
                                         <i class="bx bx-show"></i>
                                     </a>
                                 </td>

@@ -10,8 +10,8 @@
 <!--End Back To Top Button-->
 <footer class="page-footer" style="padding-left: 4px;">
     <p class="mb-0">
-        <a href="{{ route('faq.index') }}" class="text-decoration-none me-3">FAQs</a>
-        <a href="{{ route('help.index') }}" class="text-decoration-none me-3">Help</a>
+        <a href="{{ route('faq.index') }}" wire:navigate class="text-decoration-none me-3">FAQs</a>
+        <a href="{{ route('help.index') }}" wire:navigate class="text-decoration-none me-3">Help</a>
         <span class="text-muted">Copyright © Africa CDC {{ date('Y') }}. All right reserved.</span>
     </p>
 </footer>
@@ -110,12 +110,15 @@
 <!-- FullCalendar & Bootstrap JS Bundle -->
 <script>
     $(document).ready(function () {
-        $('.datepicker').flatpickr({
-            theme: "confetti",
-            altInput: true,
-            altFormat: "F j, Y",
-            dateFormat: "Y-m-d",
-            allowInput: true
+        $('.datepicker').each(function() {
+            if (this._flatpickr) return; // already initialized (e.g. assign-staff page)
+            flatpickr(this, {
+                theme: "confetti",
+                altInput: true,
+                altFormat: "F j, Y",
+                dateFormat: "Y-m-d",
+                allowInput: true
+            });
         });
     });
 </script>
@@ -174,19 +177,26 @@
 </script>
 
 <script>
-    $('.select2').select2({
-        theme: 'bootstrap4',
-        width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
-        placeholder: $(this).data('placeholder'),
-        allowClear: Boolean($(this).data('allow-clear')),
-    });
-
-    $('.multiple-select').select2({
-        theme: 'bootstrap4',
-        multiple: true,
-        width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
-        placeholder: $(this).data('placeholder'),
-        allowClear: Boolean($(this).data('allow-clear')),
+    $(document).ready(function() {
+        $('.select2').each(function() {
+            if ($(this).hasClass('select2-hidden-accessible')) return; // already initialized (e.g. assign-staff page)
+            $(this).select2({
+                theme: 'bootstrap4',
+                width: $(this).data('width') || ($(this).hasClass('w-100') ? '100%' : 'style'),
+                placeholder: $(this).data('placeholder'),
+                allowClear: Boolean($(this).data('allow-clear')),
+            });
+        });
+        $('.multiple-select').each(function() {
+            if ($(this).hasClass('select2-hidden-accessible')) return;
+            $(this).select2({
+                theme: 'bootstrap4',
+                multiple: true,
+                width: $(this).data('width') || ($(this).hasClass('w-100') ? '100%' : 'style'),
+                placeholder: $(this).data('placeholder'),
+                allowClear: Boolean($(this).data('allow-clear')),
+            });
+        });
     });
 </script>
 <script>
@@ -384,7 +394,7 @@
           });
         },
         onCreateLink: function (link) {
-          return link.replace(/^<a /, '<a target="_blank" rel="noopener" ');
+          return link; /* do not add target="_blank" - only prints open in new tab */
         },
         onImageUpload: function (files) {
           for (var i = 0; i < files.length; i++) {

@@ -5,7 +5,7 @@
 @section('header', 'Create Request Type')
 
 @section('header-actions')
-    <a href="{{ route('request-types.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('request-types.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
 @endsection
@@ -48,7 +48,7 @@
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                        <a href="{{ route('request-types.index') }}" class="btn btn-outline-secondary">
+                        <a wire:navigate href="{{ route('request-types.index') }}" class="btn btn-outline-secondary">
                             <i class="bx bx-arrow-back me-1"></i> Cancel
                         </a>
                         <button type="submit" class="btn btn-primary">

@@ -4,7 +4,7 @@
 @section('header', 'Non-Travel Memo Pending Approvals')
 
 @section('header-actions')
-    <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Non-Travel Memos
     </a>
 @endsection
@@ -218,14 +218,14 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('non-travel.show', $memo) }}" 
+                                                        <a wire:navigate href="{{ route('non-travel.show', $memo) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
+                                                            <i class="bx bx-show me-1"></i>View
                                                         </a>
                                                         @if($memo->overall_status === 'pending')
-                                                            <a href="{{ route('non-travel.status', $memo) }}" 
+                                                            <a wire:navigate href="{{ route('non-travel.status', $memo) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="View Status">
-                                                                <i class="bx bx-info-circle"></i>
+                                                                <i class="bx bx-info-circle me-1"></i>Status
                                                             </a>
                                                         @endif
                                                     </div>
@@ -347,14 +347,14 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('non-travel.show', $memo) }}" 
+                                                        <a wire:navigate href="{{ route('non-travel.show', $memo) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
+                                                            <i class="bx bx-show me-1"></i>View
                                                         </a>
                                                         @if($memo->overall_status === 'approved')
                                                             <a href="{{ route('non-travel.print', $memo) }}" 
                                                                class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                                <i class="bx bx-printer"></i>
+                                                                <i class="bx bx-printer me-1"></i>Print
                                                             </a>
                                                         @endif
                                                     </div>
