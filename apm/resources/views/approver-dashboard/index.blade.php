@@ -17,6 +17,14 @@
   --transition: all 0.2s ease;
 }
 
+  /* Role column: fixed width and wrap */
+  .approver-role-cell {
+    max-width: 350px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+  }
+
   /* Enhanced Approver Dashboard Styling */
   .filter-card {
     border: 1px solid var(--medium-grey);
@@ -335,7 +343,7 @@
 @endsection
 
 @section('content')
-@livewire('app-page', ['view' => 'pages.approver-dashboard-content', 'data' => compact('userDivisionId', 'hasPermission88')])
+@include('pages.approver-dashboard-content', compact('userDivisionId', 'hasPermission88'))
 @endsection
 
 @push('scripts')
@@ -753,6 +761,9 @@ function initializeDataTable() {
                     return `<span class="badge bg-info">${row.avg_approval_time_display || 'No data'}</span>`;
                 }
             }
+        ],
+        columnDefs: [
+            { targets: 3, className: 'approver-role-cell' }
         ],
         pageLength: 25,
         lengthMenu: [[25, 50, 100], [25, 50, 100]],
