@@ -90,6 +90,7 @@
 </div>
 
 @push('scripts')
+<script src="{{ asset('js/table-sort-helper.js') }}"></script>
 <script>
 $(function() {
 	$('#filter_division').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'All divisions', allowClear: true });
@@ -99,6 +100,8 @@ $(function() {
 (function() {
 	var detailsUrl = '{{ route('reports.memo-list') }}';
 	var dataUrl = '{{ route('reports.division-counts.data') }}';
+
+	TableSort.init({ defaultColumn: 'division', defaultDir: 'asc', readFromQuery: true });
 
 	function getQuery() {
 		var division = $('#filter_division').val() || '';
@@ -110,6 +113,7 @@ $(function() {
 		if (year) params.set('year', year);
 		if (quarter) params.set('quarter', quarter);
 		if (memoType) params.set('memo_type', memoType);
+		TableSort.addToParams(params);
 		return params.toString();
 	}
 
@@ -123,6 +127,7 @@ $(function() {
 		.then(function(r) { return r.json(); })
 		.then(function(data) {
 			container.innerHTML = data.html || '<div class="text-center py-4 text-muted">No data.</div>';
+			TableSort.attach(container, loadCounts);
 		})
 		.catch(function() {
 			container.innerHTML = '<div class="text-center py-4 text-danger">Error loading data.</div>';

@@ -123,6 +123,7 @@
 </div>
 
 @push('scripts')
+<script src="{{ asset('js/table-sort-helper.js') }}"></script>
 <script>
 $(function() {
     $('#filter_division').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'All divisions', allowClear: true });
@@ -136,6 +137,8 @@ $(function() {
     var pdfUrl = '{{ route('reports.staff-quarterly-travel.export.pdf') }}';
     var breakdownBaseUrl = '{{ route('reports.staff-quarterly-travel.breakdown', ['staffId' => '__STAFF_ID__']) }}';
 
+    TableSort.init({ defaultColumn: 'division_name', defaultDir: 'asc', readFromQuery: true });
+
     function getQuery() {
         var params = new URLSearchParams();
         var division = document.getElementById('filter_division').value;
@@ -146,6 +149,7 @@ $(function() {
         if (staff) params.set('staff_id', staff);
         if (year) params.set('year', year);
         if (quarter) params.set('quarter', quarter);
+        TableSort.addToParams(params);
         return params.toString();
     }
 
@@ -220,14 +224,22 @@ $(function() {
                 container.innerHTML = '<div class="text-center py-4 text-muted">No data for the selected filters.</div>';
                 return;
             }
+            var th = function(col, label, extraClass) {
+                extraClass = extraClass || '';
+                return '<th class="sortable-th ' + extraClass + '" data-sort-column="' + col + '" style="cursor: pointer; user-select: none;" title="Click to sort">' + label + TableSort.getSortIcon(col) + '</th>';
+            };
             var table = '<div class="table-responsive"><table class="table table-hover table-striped mb-0"><thead><tr class="table-success">' +
-                '<th class="text-center" style="width: 3rem;">#</th><th>Staff Name</th><th>Division</th><th>Year &amp; Quarter</th><th>Number of QM Activities</th><th>Approved Travel Days</th></tr></thead><tbody>';
+                '<th class="text-center" style="width: 3rem;">#</th>' +
+                th('staff_name', 'Staff Name') + th('division_name', 'Division') + th('year_quarter', 'Year &amp; Quarter') +
+                th('activity_count', 'Number of QM Activities', 'text-center') + th('approved_travel_days', 'Approved Travel Days', 'text-center') +
+                '</tr></thead><tbody>';
             rows.forEach(function(row, idx) {
                 var staffNameCell = '<a href="#" class="staff-breakdown-link text-primary text-decoration-none" data-staff-id="' + (row.staff_id || '') + '" data-staff-name="' + escapeHtml(row.staff_name || '') + '">' + escapeHtml(row.staff_name || '') + '</a>';
                 table += '<tr><td class="text-center">' + (idx + 1) + '</td><td>' + staffNameCell + '</td><td>' + escapeHtml(row.division_name || '') + '</td><td>' + escapeHtml(row.year_quarter || '') + '</td><td>' + (row.activity_count || 0) + '</td><td>' + (row.approved_travel_days || 0) + '</td></tr>';
             });
             table += '</tbody></table></div>';
             container.innerHTML = table;
+            TableSort.attach(container, loadData);
             container.querySelectorAll('.staff-breakdown-link').forEach(function(link) {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
