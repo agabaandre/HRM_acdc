@@ -11,6 +11,7 @@ use App\Traits\HasDocumentNumber;
 use Illuminate\Support\Str;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 use App\Models\ActivityApprovalTrail;
+use App\Models\ChangeRequest;
 
 class Activity extends Model
 {
@@ -263,6 +264,65 @@ class Activity extends Model
         return array_values(array_unique($ids));
     }
 
+    /**
+     * Get effective internal_participants for this activity.
+     * If there is an approved change request, use its internal_participants; else use activity's.
+     * Returns array keyed by staff_id (string) with participant_days (int) as value.
+     * Handles both formats: object keyed by staff_id {"230":{...}} and array of objects [{staff_id:230,...}].
+     * Used by staff-quarterly-travel report and division schedule (travel days from JSON).
+     */
+    public function getEffectiveInternalParticipants(): array
+    {
+        $cr = ChangeRequest::where('activity_id', $this->id)
+            ->where('overall_status', 'approved')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $raw = $cr ? $cr->internal_participants : $this->internal_participants;
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        $out = [];
+        $isList = array_keys($raw) === range(0, count($raw) - 1);
+
+        if ($isList) {
+            foreach ($raw as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $pid = isset($item['staff_id']) ? (int) $item['staff_id'] : (isset($item['id']) ? (int) $item['id'] : null);
+                if ($pid === null) {
+                    continue;
+                }
+                $days = isset($item['participant_days']) ? (int) $item['participant_days'] : 0;
+                if ($days > 0) {
+                    $out[(string) $pid] = ($out[(string) $pid] ?? 0) + $days;
+                }
+            }
+        } else {
+            foreach ($raw as $key => $info) {
+                if (!is_array($info)) {
+                    continue;
+                }
+                $pid = (int) $key;
+                if ($pid <= 0) {
+                    continue;
+                }
+                $days = isset($info['participant_days']) ? (int) $info['participant_days'] : 0;
+                if ($days > 0) {
+                    $out[(string) $pid] = ($out[(string) $pid] ?? 0) + $days;
+                }
+            }
+        }
+
+        return $out;
+    }
 
     // --- Accessors & Utility ---
 
