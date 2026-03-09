@@ -52,6 +52,13 @@
                             <i class="bx bx-money me-1"></i>
                             {{ $memo->fundType->name ?? 'N/A' }}
                         </span>
+                        @php
+                            $fundCodes = $memo->fundCodes ?? collect();
+                            $budgetCodeLabels = $fundCodes->isNotEmpty() ? $fundCodes->pluck('code')->filter()->unique()->values()->all() : [];
+                        @endphp
+                        @if(count($budgetCodeLabels) > 0)
+                            <span class="text-muted small ms-1">({{ implode(', ', $budgetCodeLabels) }})</span>
+                        @endif
                     </td>
                     <td>
                         @if($memo->date_from && $memo->date_to)
