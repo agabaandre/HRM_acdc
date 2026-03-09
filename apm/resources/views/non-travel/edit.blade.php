@@ -5,7 +5,7 @@
 @section('header', 'Edit Non-Travel Memo')
 
 @section('header-actions')
-<a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary">
+<a wire:navigate href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-arrow-back me-1"></i> Back to List
 </a>
 @endsection

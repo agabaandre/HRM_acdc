@@ -4,7 +4,7 @@
 @section('header', 'Change Request Pending Approvals')
 
 @section('header-actions')
-    <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Change Requests
     </a>
 @endsection
@@ -192,13 +192,13 @@
                                                     @endif
                                                 </td>
                                                 <td class="text-center">
-                                                    <div class="btn-group">
-                                                        <a href="{{ route('change-requests.show', $changeRequest) }}" 
+                                                    <div class="btn-group-vertical btn-group-sm" role="group">
+                                                        <a wire:navigate href="{{ route('change-requests.show', $changeRequest) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
                                                         @if($changeRequest->overall_status === 'draft' && $changeRequest->staff_id === user_session('staff_id'))
-                                                            <a href="{{ route('change-requests.edit', $changeRequest) }}" 
+                                                            <a wire:navigate href="{{ route('change-requests.edit', $changeRequest) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                                                 <i class="bx bx-edit"></i>
                                                             </a>
@@ -286,10 +286,10 @@
                                                     </span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <div class="btn-group">
-                                                        <a href="{{ route('change-requests.show', $changeRequest) }}" 
+                                                    <div class="btn-group-vertical btn-group-sm" role="group">
+                                                        <a wire:navigate href="{{ route('change-requests.show', $changeRequest) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
+                                                            <i class="bx bx-show me-1"></i>View
                                                         </a>
                                                     </div>
                                                 </td>

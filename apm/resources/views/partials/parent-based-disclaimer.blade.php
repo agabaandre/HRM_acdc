@@ -45,7 +45,7 @@
         <ul class="mb-2 ps-3">
             @foreach($previousArfs as $arf)
             <li>
-                <a href="{{ route('request-arf.show', $arf) }}">{{ $arf->document_number ?: $arf->arf_number }}</a>
+                <a wire:navigate href="{{ route('request-arf.show', $arf) }}">{{ $arf->document_number ?: $arf->arf_number }}</a>
                 <span class="text-muted">({{ ucfirst($arf->overall_status ?? 'N/A') }})</span>
             </li>
             @endforeach
@@ -56,7 +56,7 @@
         <ul class="mb-2 ps-3">
             @foreach($previousSrs as $sr)
             <li>
-                <a href="{{ route('service-requests.show', $sr) }}">{{ $sr->document_number ?: $sr->request_number }}</a>
+                <a wire:navigate href="{{ route('service-requests.show', $sr) }}">{{ $sr->document_number ?: $sr->request_number }}</a>
                 <span class="text-muted">({{ ucfirst($sr->overall_status ?? 'N/A') }})</span>
             </li>
             @endforeach
@@ -67,7 +67,7 @@
         <ul class="mb-0 ps-3">
             @foreach($previousCrs as $cr)
             <li class="mb-2">
-                <a href="{{ route('change-requests.show', $cr) }}">{{ $cr->document_number ?: 'CR #' . $cr->id }}</a>
+                <a wire:navigate href="{{ route('change-requests.show', $cr) }}">{{ $cr->document_number ?: 'CR #' . $cr->id }}</a>
                 <span class="text-muted">({{ ucfirst($cr->overall_status ?? 'N/A') }})</span>
                 @if($cr->supporting_reasons)
                     <span class="d-block text-muted small mt-1 ms-0">— {{ html_entity_decode(Str::limit(strip_tags($cr->supporting_reasons), 2000), ENT_QUOTES | ENT_HTML5, 'UTF-8') }}</span>

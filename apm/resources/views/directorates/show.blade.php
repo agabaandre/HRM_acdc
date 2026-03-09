@@ -5,7 +5,7 @@
 @section('header', 'Directorate Details')
 
 @section('header-actions')
-<a href="{{ route('directorates.index') }}" class="btn btn-outline-secondary">
+<a wire:navigate href="{{ route('directorates.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-arrow-back"></i> Back to List
 </a>
 @endsection
@@ -69,7 +69,7 @@
                                     @endif
                                 </td>
                                 <td class="text-end">
-                                    <a href="{{ route('divisions.show', $division) }}" class="btn btn-sm btn-info">
+                                    <a wire:navigate href="{{ route('divisions.show', $division) }}" class="btn btn-sm btn-info">
                                         <i class="bx bx-show"></i> View
                                     </a>
                                 </td>

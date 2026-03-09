@@ -50,7 +50,7 @@
                 @endif
 
                 @if($existingArf)
-                    <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-2">
+                    <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-2">
                         <i class="bx bx-show"></i>
                         <span>View ARF</span>
                     </a>
@@ -62,25 +62,25 @@
                 @endif
 
                 @if($existingServiceRequest)
-                    <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-2">
+                    <a wire:navigate href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-2">
                         <i class="fas fa-eye"></i>
                         <span>View Service Request</span>
                     </a>
                 @elseif($canCreateServices)
                     {{-- Use only change_request_id so create form loads data from the change request (not parent memo) --}}
-                    <a href="{{ route('service-requests.create', ['change_request_id' => $changeRequest->id]) }}" class="btn btn-info btn-sm d-flex align-items-center gap-2">
+                    <a wire:navigate href="{{ route('service-requests.create', ['change_request_id' => $changeRequest->id]) }}" class="btn btn-info btn-sm d-flex align-items-center gap-2">
                         <i class="fas fa-tools"></i>
                         <span>Create Service Request</span>
                     </a>
                 @endif
 
-                <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+                <a wire:navigate href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
                     <i class="bx bx-arrow-back"></i>
                     <span>Back to List</span>
                 </a>
 
                 @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
-                    <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2">
+                    <a wire:navigate href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2">
                         <i class="fas fa-edit"></i>
                         <span>Edit</span>
                     </a>

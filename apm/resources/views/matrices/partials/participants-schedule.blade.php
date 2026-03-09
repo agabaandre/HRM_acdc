@@ -102,18 +102,23 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if required elements exist
-    const staffSearchEl = document.getElementById('staffSearch');
-    const pageSizeSelectEl = document.getElementById('pageSizeSelect');
-    const staffTableBodyEl = document.getElementById('staffTableBody');
-    
-    if (!staffSearchEl || !pageSizeSelectEl || !staffTableBodyEl) {
-        console.error('Required elements not found for division staff table');
-        return;
-    }
+(function() {
+    function initDivisionStaffTable() {
+        // Check if required elements exist
+        const staffSearchEl = document.getElementById('staffSearch');
+        const pageSizeSelectEl = document.getElementById('pageSizeSelect');
+        const staffTableBodyEl = document.getElementById('staffTableBody');
+        
+        if (!staffSearchEl || !pageSizeSelectEl || !staffTableBodyEl) {
+            return;
+        }
+        // Avoid double-init (e.g. duplicate listeners)
+        if (staffTableBodyEl.dataset.divisionStaffInitialized === '1') {
+            return;
+        }
+        staffTableBodyEl.dataset.divisionStaffInitialized = '1';
 
-    let currentPage = 1;
+        let currentPage = 1;
     let pageSize = 25;
     let searchTerm = '';
     let totalRecords = 0;
@@ -203,8 +208,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td class="px-3 py-3">
                         <div class="fw-semibold text-wrap" style="max-width: 200px;">
-                            <a href="{{ url('staff') }}/${staff.staff_id}/activities/matrix/{{ $matrix->id }}" 
-                               class="text-decoration-none text-primary" target="_blank">
+                            <a wire:navigate href="{{ url('staff') }}/${staff.staff_id}/activities/matrix/{{ $matrix->id }}" 
+                               class="text-decoration-none text-primary">
                                 ${fullName}
                             </a>
                         </div>
@@ -328,5 +333,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initial load
     loadStaffData(1);
-});
+    }
+
+    function runInit() {
+        if (document.getElementById('divisionStaffTable')) {
+            initDivisionStaffTable();
+        }
+    }
+    if (document.readyState === 'complete') {
+        runInit();
+    } else {
+        document.addEventListener('DOMContentLoaded', runInit);
+    }
+    document.addEventListener('livewire:navigated', runInit);
+})();
 </script>

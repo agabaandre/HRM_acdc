@@ -217,16 +217,11 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if required elements exist
+function initStaffPage() {
     const staffSearchEl = document.getElementById('staffSearch');
     const pageSizeSelectEl = document.getElementById('pageSizeSelect');
     const staffTableBodyEl = document.getElementById('staffTableBody');
-    
-    if (!staffSearchEl || !pageSizeSelectEl || !staffTableBodyEl) {
-        console.error('Required elements not found for staff table');
-        return;
-    }
+    if (!staffSearchEl || !pageSizeSelectEl || !staffTableBodyEl) return;
 
     let currentPage = 1;
     let pageSize = 25;
@@ -437,11 +432,12 @@ document.addEventListener('DOMContentLoaded', function() {
         loadStaffData(1);
     });
 
-    // Make loadStaffData globally available
     window.loadStaffData = loadStaffData;
-
-    // Initial load
     loadStaffData(1);
+}
+document.addEventListener('DOMContentLoaded', initStaffPage);
+document.addEventListener('livewire:navigated', function() {
+    if (document.getElementById('staffTable')) initStaffPage();
 });
 
 // Delete confirmation function

@@ -49,11 +49,11 @@
                             </div>
                         </td>
                         <td class="text-center">
-                            <div class="btn-group" role="group">
-                                <a href="{{ route('service-requests.show', $request) }}" class="btn btn-outline-primary btn-sm" title="View Details">
-                                    <i class="bx bx-show"></i>
+                            <div class="btn-group-vertical btn-group-sm" role="group">
+                                <a wire:navigate href="{{ route('service-requests.show', $request) }}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                    <i class="bx bx-show me-1"></i>View
                                 </a>
-                                <a href="{{ route('service-requests.status', $request) }}" class="btn btn-outline-success btn-sm" title="Approve/Reject">
+                                <a wire:navigate href="{{ route('service-requests.status', $request) }}" class="btn btn-outline-success btn-sm" title="Approve/Reject">
                                     <i class="bx bx-check-circle"></i>
                                 </a>
                             </div>

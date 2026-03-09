@@ -4,13 +4,13 @@
 @section('header', 'Manage FAQs')
 
 @section('header-actions')
-<a href="{{ route('faq-categories.index') }}" class="btn btn-outline-secondary">
+<a wire:navigate href="{{ route('faq-categories.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-category"></i> Categories
 </a>
-<a href="{{ route('faqs.create') }}" class="btn btn-success">
+<a wire:navigate href="{{ route('faqs.create') }}" class="btn btn-success">
     <i class="bx bx-plus"></i> Add FAQ
 </a>
-<a href="{{ route('faq.index') }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
+<a href="{{ route('faq.index') }}" class="btn btn-outline-primary" wire:navigate rel="noopener">
     <i class="bx bx-show"></i> View public page
 </a>
 @endsection
@@ -76,7 +76,7 @@
                             </td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('faqs.edit', $faq) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit">
+                                    <a wire:navigate href="{{ route('faqs.edit', $faq) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit">
                                         <i class="bx bx-edit"></i>
                                     </a>
                                     <form action="{{ route('faqs.destroy', $faq) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this FAQ?');">
@@ -95,7 +95,7 @@
                                 <div class="d-flex flex-column align-items-center">
                                     <i class="bx bx-help-circle text-muted mb-2" style="font-size: 2.5rem;"></i>
                                     <p class="text-muted mb-0">No FAQs found.</p>
-                                    <a href="{{ route('faqs.create') }}" class="btn btn-primary mt-3"><i class="bx bx-plus me-1"></i>Add FAQ</a>
+                                    <a wire:navigate href="{{ route('faqs.create') }}" class="btn btn-primary mt-3"><i class="bx bx-plus me-1"></i>Add FAQ</a>
                                 </div>
                             </td>
                         </tr>

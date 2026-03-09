@@ -63,20 +63,20 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group">
-                                <a href="{{ route('request-arf.show', $arf) }}" 
+                                <a wire:navigate href="{{ route('request-arf.show', $arf) }}" 
                                    class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show"></i>
+                                    <i class="bx bx-show me-1"></i>View
                                 </a>
                                 @if($arf->overall_status === 'draft' && $arf->staff_id === user_session('staff_id'))
-                                    <a href="{{ route('request-arf.edit', $arf) }}" 
+                                    <a wire:navigate href="{{ route('request-arf.edit', $arf) }}" 
                                        class="btn btn-sm btn-outline-warning" title="Edit">
-                                        <i class="bx bx-edit"></i>
+                                        <i class="bx bx-edit me-1"></i>Edit
                                     </a>
                                 @endif
                                 @if($arf->overall_status === 'approved')
                                     <a href="{{ route('request-arf.print', $arf) }}" 
                                        class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                        <i class="bx bx-printer"></i>
+                                        <i class="bx bx-printer me-1"></i>Print
                                     </a>
                                 @endif
                             </div>

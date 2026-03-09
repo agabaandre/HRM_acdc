@@ -102,7 +102,7 @@
         </h6>
         <div class="d-flex gap-2">
             @if($matrix->overall_status === 'pending')
-                <a href="{{ route('matrices.view-status', $matrix) }}" class="btn btn-info btn-sm shadow-sm">
+                <a wire:navigate href="{{ route('matrices.view-status', $matrix) }}" class="btn btn-info btn-sm shadow-sm">
                     <i class="bx bx-info-circle me-1"></i> View Status
                 </a>
             @endif

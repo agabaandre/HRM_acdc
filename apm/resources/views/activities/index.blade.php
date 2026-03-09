@@ -30,7 +30,6 @@
 }
 .btn-group .btn {
     padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
 }
 </style>
     @if(isset($matrix))
@@ -43,11 +42,11 @@
                         Activities for {{ $matrix->division->division_name ?? 'Division' }} - {{ $matrix->year }} {{ $matrix->quarter }}
                     </h4>
                     <div>
-                        <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm">
+                        <a wire:navigate href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm">
                             <i class="bx bx-arrow-back me-1"></i> Back to Matrix
                         </a>
                         @if($matrix->overall_status !== 'approved')
-                            <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm">
+                            <a wire:navigate href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm">
                                 <i class="bx bx-plus me-1"></i> Add Activity
                             </a>
                         @endif
@@ -128,24 +127,24 @@
                                                 @endif
                                             </td>
                                             <td class="text-center">
-                                                <div class="d-flex gap-2 justify-content-center">
-                                                    <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}" 
-                                                       class="btn btn-sm btn-outline-info" title="View">
-                                                        <i class="bx bx-show"></i>
+                                                <div class="d-flex gap-2 justify-content-center flex-wrap activity-actions action-buttons-stacked">
+                                                    <a wire:navigate href="{{ route('matrices.activities.show', [$matrix, $activity]) }}" 
+                                                       class="btn btn-sm btn-outline-info activity-action-btn" title="View">
+                                                        <i class="bx bx-show me-1"></i>View
                                                     </a>
                                                     @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
                                                         <form action="{{ route('matrices.activities.destroy', [$matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">
                                                             @csrf
                                                             @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                <i class="bx bx-trash"></i>
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger activity-action-btn" title="Delete">
+                                                                <i class="bx bx-trash me-1"></i>Delete
                                                             </button>
                                                         </form>
                                                     @endif
                                                     @if($activity->status === 'PASSED' && $matrix->overall_status === 'approved')
-                                                        <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
-                                                           class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
-                                                            <i class="bx bx-printer"></i>
+                                                        <a wire:navigate href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
+                                                           class="btn btn-sm btn-outline-success activity-action-btn" title="Print PDF" target="_blank">
+                                                            <i class="bx bx-printer me-1"></i>Print
                                                         </a>
                                                     @endif
                                                 </div>
@@ -258,7 +257,7 @@
                         </button>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
-                        <a href="{{ route('activities.index') }}" class="btn btn-outline-secondary btn-sm w-100">
+                        <a wire:navigate href="{{ route('activities.index') }}" class="btn btn-outline-secondary btn-sm w-100">
                             <i class="bx bx-reset me-1"></i> Reset
                         </a>
                     </div>
@@ -324,8 +323,12 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // AJAX filtering - auto-update when filters change
+function initActivitiesIndexPage() {
+    if (!document.getElementById('activitiesTabs')) return;
+    try {
+        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+        $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
+    } catch (e) {}
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');
         if (activeTab) {
@@ -505,26 +508,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Function to attach pagination click handlers
     function attachPaginationHandlers(tabId) {
         const tabContent = document.getElementById(tabId);
         if (!tabContent) return;
         
-        // Find pagination links within this tab
         const paginationLinks = tabContent.querySelectorAll('.pagination a');
         paginationLinks.forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
-                
-                // Extract page number from URL
                 const url = new URL(this.href);
                 const page = url.searchParams.get('page') || 1;
-                
-                // Load tab data with new page
                 loadTabData(tabId, page);
             });
         });
     }
+}
+document.addEventListener('DOMContentLoaded', initActivitiesIndexPage);
+document.addEventListener('livewire:navigated', function() {
+    if (document.getElementById('activitiesTabs')) initActivitiesIndexPage();
 });
 </script>
 @endsection

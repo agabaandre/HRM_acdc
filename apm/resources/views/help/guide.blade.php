@@ -64,10 +64,10 @@
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     @if($guideType === 'documentation')
-                    <a href="{{ route('help.index') }}" class="d-inline-flex align-items-center mb-1"><i class="fas fa-arrow-left me-2"></i>Back to Help</a>
+                    <a wire:navigate href="{{ route('help.index') }}" class="d-inline-flex align-items-center mb-1"><i class="fas fa-arrow-left me-2"></i>Back to Help</a>
                     <span class="text-white opacity-75 mx-2">|</span>
                     @endif
-                    <a href="{{ url('/') }}" class="d-inline-flex align-items-center mb-1"><i class="fas fa-sign-in-alt me-2"></i>Back to login</a>
+                    <a wire:navigate href="{{ url('/') }}" class="d-inline-flex align-items-center mb-1"><i class="fas fa-sign-in-alt me-2"></i>Back to login</a>
                     <h1 class="h4 mb-0 mt-2">
                         <i class="fas fa-{{ $guideType === 'user' ? 'user' : ($guideType === 'approver' ? 'user-check' : 'book') }} me-2"></i>{{ $title }}
                     </h1>
@@ -75,18 +75,18 @@
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     @if($guideType === 'documentation')
-                    <a href="{{ route('help.index') }}" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Help</a>
+                    <a wire:navigate href="{{ route('help.index') }}" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back to Help</a>
                     @else
-                    <a href="{{ route('help.index') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-book me-1"></i>Help</a>
+                    <a wire:navigate href="{{ route('help.index') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-book me-1"></i>Help</a>
                     @endif
-                    <a href="{{ route('faq.index') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-question-circle me-1"></i>FAQs</a>
+                    <a wire:navigate href="{{ route('faq.index') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-question-circle me-1"></i>FAQs</a>
                     @if($guideType === 'user')
-                    <a href="{{ route('help.approvers-guide') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-user-check me-1"></i>Approvers Guide</a>
+                    <a wire:navigate href="{{ route('help.approvers-guide') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-user-check me-1"></i>Approvers Guide</a>
                     @elseif($guideType === 'approver')
-                    <a href="{{ route('help.user-guide') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-user me-1"></i>User Guide</a>
+                    <a wire:navigate href="{{ route('help.user-guide') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-user me-1"></i>User Guide</a>
                     @else
-                    <a href="{{ route('help.user-guide') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-user me-1"></i>User Guide</a>
-                    <a href="{{ route('help.approvers-guide') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-user-check me-1"></i>Approvers Guide</a>
+                    <a wire:navigate href="{{ route('help.user-guide') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-user me-1"></i>User Guide</a>
+                    <a wire:navigate href="{{ route('help.approvers-guide') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-user-check me-1"></i>Approvers Guide</a>
                     @endif
                 </div>
             </div>
@@ -95,7 +95,7 @@
 
     <div class="container py-4">
         <div class="platform-note">
-            <strong><i class="fas fa-info-circle me-1"></i>Access:</strong> The CBP platform is available at <a href="{{ rtrim(url('/'), '/') }}" target="_blank" rel="noopener" class="text-dark">{{ rtrim(url('/'), '/') }}</a>. You must have a valid account to sign in.
+            <strong><i class="fas fa-info-circle me-1"></i>Access:</strong> The CBP platform is available at <a href="{{ rtrim(url('/'), '/') }}" rel="noopener" class="text-dark">{{ rtrim(url('/'), '/') }}</a>. You must have a valid account to sign in.
         </div>
 
         <div class="search-box">
@@ -116,14 +116,14 @@
             <div class="card-footer bg-white">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <small class="text-muted"><i class="fas fa-info-circle me-1"></i>Last Updated: {{ now()->format('F Y') }}</small>
-                    <a href="{{ route('help.index') }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-home me-1"></i>Back to Help Center</a>
+                    <a wire:navigate href="{{ route('help.index') }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-home me-1"></i>Back to Help Center</a>
                 </div>
             </div>
         </div>
 
         <div class="text-center mt-4 pb-3">
-            <a href="{{ route('help.index') }}" class="btn btn-success w-100"><i class="fas fa-book"></i> Help Center</a>
-            <a href="{{ url('/') }}" class="btn btn-outline-secondary w-100 mt-2"><i class="fas fa-arrow-left"></i> Back to login</a>
+            <a wire:navigate href="{{ route('help.index') }}" class="btn btn-success w-100"><i class="fas fa-book"></i> Help Center</a>
+            <a wire:navigate href="{{ url('/') }}" class="btn btn-outline-secondary w-100 mt-2"><i class="fas fa-arrow-left"></i> Back to login</a>
         </div>
     </div>
 

@@ -6,6 +6,7 @@
     integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+<link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.4/css/responsive.bootstrap5.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
@@ -53,12 +54,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" integrity="sha512-nMNlpuaDPrqlEls3IX/Q56H36qvBASwb3ipuo3MxeWbsQB1881ox0cRv7UPTgBlriqoynt35KjEwgGUeUXIPnw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <!-- Global: Disable Highcharts Credits -->
-<script type="text/javascript">
-    $(window).on('load', function () {
-        $('#status').delay(900).fadeOut(1000); // will first fade out the loading animation
-        $('#preloader').delay(900).fadeOut(1000); // will fade out the white div
-    });
-</script>
 
 <!-- Global CSS Styles -->
 <style>
@@ -196,6 +191,44 @@
     .select2-container--bootstrap5 .select2-selection--single:focus {
         border-color: #198754 !important;
         box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25) !important;
+    }
+
+    /* Table action buttons: ensure proper button appearance (Activities, Settings, etc.) */
+    .table .btn.btn-sm,
+    .table .d-flex .btn.btn-sm {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0.25rem 0.5rem !important;
+        min-width: 2rem;
+        border-width: 1px !important;
+        border-style: solid !important;
+    }
+    .table .btn.btn-sm.btn-outline-info { border-color: #0dcaf0; color: #0dcaf0; background-color: transparent; }
+    .table .btn.btn-sm.btn-outline-info:hover { background-color: #0dcaf0; color: #fff; }
+    .table .btn.btn-sm.btn-outline-danger { border-color: #dc3545; color: #dc3545; background-color: transparent; }
+    .table .btn.btn-sm.btn-outline-danger:hover { background-color: #dc3545; color: #fff; }
+    .table .btn.btn-sm.btn-outline-success { border-color: #198754; color: #198754; background-color: transparent; }
+    .table .btn.btn-sm.btn-outline-success:hover { background-color: #198754; color: #fff; }
+
+    /* Stacked action buttons (Activities, Single Memos, Matrix show – not Quarterly Matrix list) */
+    .table .action-buttons-stacked,
+    .table .action-buttons-stacked.btn-group {
+        display: inline-flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 0.25rem !important;
+    }
+    .table .action-buttons-stacked.btn-group .btn {
+        border-radius: 0.25rem !important;
+    }
+    .table .action-buttons-stacked.btn-group .btn:not(:first-child) {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
+    .table .action-buttons-stacked.btn-group .btn:not(:last-child) {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
     }
 
     /* Enhanced Action Buttons Styling */

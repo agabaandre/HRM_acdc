@@ -224,7 +224,7 @@
             </div>
 
             <div style="text-align: center;">
-                <a href="{{ route('request-arf.show', $resource) }}" class="btn">View ARF Details</a>
+                <a wire:navigate href="{{ route('request-arf.show', $resource) }}" class="btn">View ARF Details</a>
             </div>
 
         </div>

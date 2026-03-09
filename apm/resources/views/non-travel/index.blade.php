@@ -6,7 +6,7 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('non-travel.create') }}" class="btn btn-success shadow-sm">
+    <a wire:navigate href="{{ route('non-travel.create') }}" class="btn btn-success shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Create New Memo
     </a>
 </div>
@@ -119,7 +119,7 @@
                     </button>
                 </div>
                 <div class="col-auto d-flex align-items-end">
-                    <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <a wire:navigate href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
@@ -198,8 +198,12 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Prevent any form submissions
+function initNonTravelPage() {
+    if (!document.getElementById('memoTabs')) return;
+    try {
+        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+        $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
+    } catch (e) {}
     const forms = document.querySelectorAll('form');
     forms.forEach(form => {
         form.addEventListener('submit', function(e) {
@@ -359,11 +363,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Load data for the default active tab
     const activeTabButton = document.querySelector('#memoTabs .nav-link.active');
     if (activeTabButton) {
         loadTabData(activeTabButton.getAttribute('aria-controls'));
     }
-    });
+}
+document.addEventListener('DOMContentLoaded', initNonTravelPage);
+document.addEventListener('livewire:navigated', function() {
+    if (document.getElementById('memoTabs')) initNonTravelPage();
+});
 </script>
 @endsection

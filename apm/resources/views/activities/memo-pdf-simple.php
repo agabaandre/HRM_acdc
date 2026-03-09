@@ -468,8 +468,7 @@
                             </tbody>
                         </table>
 
-
-    <?php 
+    <?php
     // Check if any fund code is intramural (1) or extramural (2)
     $hasBudgetSection = false;
     foreach($fundCodes ?? [] as $fundCode) {
@@ -478,7 +477,14 @@
             break;
         }
     }
-    
+    // Show Request for Approval even when no budget attached
+    if (!$hasBudgetSection):
+    ?>
+    <div class="section-label"><strong>Request for Approval</strong></div>
+    <div class="justify-text" style="padding: 2px;"><?php echo trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($activity->activity_request_remarks ?? 'N/A'))); ?></div>
+    <?php
+    endif;
+
     if($hasBudgetSection): 
     ?>
              <?php

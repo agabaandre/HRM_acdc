@@ -106,28 +106,28 @@
                         @endif
                     </td>
                     <td class="text-center">
-                        <div class="btn-group">
-                            <a href="{{ route('special-memo.show', $memo) }}" 
+                        <div class="btn-group-vertical btn-group-sm" role="group">
+                            <a wire:navigate href="{{ route('special-memo.show', $memo) }}" 
                                class="btn btn-sm btn-outline-info" title="View">
-                                <i class="bx bx-show"></i>
+                                <i class="bx bx-show me-1"></i>View
                             </a>
                             @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->responsible_person_id == user_session('staff_id'))
-                                <a href="{{ route('special-memo.edit', $memo) }}" 
+                                <a wire:navigate href="{{ route('special-memo.edit', $memo) }}" 
                                    class="btn btn-sm btn-outline-warning" title="Edit">
-                                    <i class="bx bx-edit"></i>
+                                    <i class="bx bx-edit me-1"></i>Edit
                                 </a>
                                 <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this memo? This action cannot be undone.');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                        <i class="bx bx-trash"></i>
+                                        <i class="bx bx-trash me-1"></i>Delete
                                     </button>
                                 </form>
                             @endif
                             @if($memo->overall_status === 'approved')
                                 <a href="{{ route('special-memo.print', $memo) }}" 
                                    class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                    <i class="bx bx-printer"></i>
+                                    <i class="bx bx-printer me-1"></i>Print
                                 </a>
                             @endif
                         </div>

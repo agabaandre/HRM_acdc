@@ -99,7 +99,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <a href="{{ route('generic.submit', ['model' => $modelType, 'id' => $modelId]) }}" class="btn btn-success">
+                    <a wire:navigate href="{{ route('generic.submit', ['model' => $modelType, 'id' => $modelId]) }}" class="btn btn-success">
                         <i class="bx bx-save me-1"></i> Yes, Submit
                     </a>
                 </div>

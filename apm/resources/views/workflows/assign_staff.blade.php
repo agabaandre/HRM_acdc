@@ -380,234 +380,181 @@
             }
         </script>
         <script type="text/javascript">
-            document.addEventListener('DOMContentLoaded', function () {
-                // Initialize Select2
-                $('.select2').select2({
-                    theme: 'bootstrap4',
-                    width: '100%',
-                    placeholder: 'Select an option',
-                    allowClear: true,
-                    dropdownParent: $('body')
-                });
-                
-                // Custom styling for Select2 to better match our UI
-                $('.select2-container--bootstrap4 .select2-selection--single').css('height', 'calc(1.5em + 1rem + 2px)');
-                $('.select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered').css('line-height', 'calc(1.5em + 1rem)');
+            (function() {
+                var workflowsBaseUrl = @json(rtrim(url('workflows'), '/'));
 
-                // Initialize datepickers
-                $('.datepicker').flatpickr({
-                    dateFormat: 'Y-m-d',
-                    allowInput: true,
-                    clickOpens: true,
-                    placeholder: 'Select date'
-                });
+                function initAssignStaffPage() {
+                    if (!document.querySelector('.assignment-form')) return;
 
-                // Get session from laravel
-                const baseUrl = @json(session('base_url', ''));
+                    // Destroy any existing Select2/Flatpickr on this page (footer may have inited first)
+                    $('.assignment-form .select2').each(function() {
+                        try {
+                            if ($(this).hasClass('select2-hidden-accessible')) $(this).select2('destroy');
+                        } catch (e) { /* ignore */ }
+                    });
+                    $('.assignment-form .datepicker').each(function() {
+                        try {
+                            if (this._flatpickr) this._flatpickr.destroy();
+                        } catch (e) { /* ignore */ }
+                    });
 
-                // Function to update date field requirements based on OIC selection
-                function updateDateFieldRequirements(definitionId, hasOIC) {
-                    const startDateField = $(`#start-date-${definitionId}`);
-                    const endDateField = $(`#end-date-${definitionId}`);
-                    const startDateLabel = startDateField.closest('.form-group').find('label .oic-required');
-                    const endDateLabel = endDateField.closest('.form-group').find('label .oic-required');
-                    
-                    if (hasOIC) {
-                        // OIC is selected, make date fields required
-                        startDateField.prop('required', true);
-                        endDateField.prop('required', true);
-                        startDateLabel.show();
-                        endDateLabel.show();
-                    } else {
-                        // No OIC selected, make date fields optional
-                        startDateField.prop('required', false);
-                        endDateField.prop('required', false);
-                        startDateLabel.hide();
-                        endDateLabel.hide();
+                    $('.assignment-form .select2').select2({
+                        theme: 'bootstrap4',
+                        width: '100%',
+                        placeholder: 'Select an option',
+                        allowClear: true,
+                        dropdownParent: $('body')
+                    });
+                    $('.select2-container--bootstrap4 .select2-selection--single').css('height', 'calc(1.5em + 1rem + 2px)');
+                    $('.select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered').css('line-height', 'calc(1.5em + 1rem)');
+                    $('.assignment-form .datepicker').flatpickr({
+                        dateFormat: 'Y-m-d',
+                        allowInput: true,
+                        clickOpens: true,
+                        placeholder: 'Select date'
+                    });
+
+                    function updateDateFieldRequirements(definitionId, hasOIC) {
+                        var startDateField = $('#start-date-' + definitionId);
+                        var endDateField = $('#end-date-' + definitionId);
+                        var startDateLabel = startDateField.closest('.form-group').find('label .oic-required');
+                        var endDateLabel = endDateField.closest('.form-group').find('label .oic-required');
+                        if (hasOIC) {
+                            startDateField.prop('required', true);
+                            endDateField.prop('required', true);
+                            startDateLabel.show();
+                            endDateLabel.show();
+                        } else {
+                            startDateField.prop('required', false);
+                            endDateField.prop('required', false);
+                            startDateLabel.hide();
+                            endDateLabel.hide();
+                        }
+                    }
+                    $('select[name="oic_staff_id"]').off('change.assignStaff').on('change.assignStaff', function() {
+                        var definitionId = $(this).closest('form').data('definition-id');
+                        updateDateFieldRequirements(definitionId, $(this).val() !== '');
+                    });
+                    $('select[name="oic_staff_id"]').each(function() {
+                        var definitionId = $(this).closest('form').data('definition-id');
+                        updateDateFieldRequirements(definitionId, $(this).val() !== '');
+                    });
+
+                    // Form submit: assign/replace approver (only attach to forms not yet bound)
+                    document.querySelectorAll('.assignment-form').forEach(function(form) {
+                        if (form._assignStaffSubmitBound) return;
+                        form._assignStaffSubmitBound = true;
+                        form.addEventListener('submit', async function(e) {
+                            e.preventDefault();
+                            var workflowId = this.dataset.workflowId;
+                            var definitionId = this.dataset.definitionId;
+                            var staffId = this.querySelector('select[name="staff_id"]').value;
+                            var oicStaffId = this.querySelector('select[name="oic_staff_id"]').value;
+                            var startDate = this.querySelector('input[name="start_date"]').value;
+                            var endDate = this.querySelector('input[name="end_date"]').value;
+                            if (!staffId) {
+                                show_notification('Please select a staff member', 'error');
+                                return;
+                            }
+                            if (oicStaffId) {
+                                if (!startDate) { show_notification('Start date is required when OIC is selected', 'error'); return; }
+                                if (!endDate) { show_notification('End date is required when OIC is selected', 'error'); return; }
+                                if (new Date(endDate) <= new Date(startDate)) {
+                                    show_notification('End date must be after start date', 'error');
+                                    return;
+                                }
+                            }
+                            var formData = new FormData(this);
+                            formData.append('workflow_dfn_id', definitionId);
+                            try {
+                                var response = await fetch(workflowsBaseUrl + '/' + workflowId + '/store-staff', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                        'Accept': 'application/json',
+                                    },
+                                    body: formData
+                                });
+                                if (!response.ok) {
+                                    show_notification('HTTP Error: ' + response.status, 'error');
+                                    return;
+                                }
+                                var result = await response.json();
+                                if (result.success && result.approver) {
+                                    form.reset();
+                                    $(form).find('select.select2').val('').trigger('change');
+                                    $(form).find('.datepicker').val('');
+                                    var approversList = document.getElementById('approvers-list-' + definitionId);
+                                    if (approversList) {
+                                        approversList.innerHTML = '';
+                                        var newRow = document.createElement('tr');
+                                        newRow.dataset.approverId = result.approver.id;
+                                        var staffName = result.approver.staff ? (result.approver.staff.fname + ' ' + result.approver.staff.lname) : 'N/A';
+                                        var oicName = result.approver.oic_staff ? (result.approver.oic_staff.fname + ' ' + result.approver.oic_staff.lname) : '';
+                                        var adminName = result.approver.admin_assistant ? (result.approver.admin_assistant.fname + ' ' + result.approver.admin_assistant.lname) : '';
+                                        if (typeof result.approver.admin_assistant === 'object' && result.approver.admin_assistant && result.approver.admin_assistant.fname) {
+                                            adminName = result.approver.admin_assistant.fname + ' ' + result.approver.admin_assistant.lname;
+                                        }
+                                        newRow.innerHTML = '<td>' + staffName + '</td><td>' + oicName + '</td><td>' + adminName + '</td><td>' + (result.approver.start_date || '') + '</td><td>' + (result.approver.end_date || '') + '</td><td><button type="button" class="btn btn-sm btn-outline-danger remove-approver" data-approver-id="' + result.approver.id + '" data-workflow-id="' + workflowId + '"><i class="bx bx-trash me-1"></i>Remove</button></td>';
+                                        approversList.appendChild(newRow);
+                                    }
+                                    show_notification('Staff assigned successfully - replaced existing approver', 'success');
+                                } else {
+                                    show_notification(result.message || 'Failed to assign staff', 'error');
+                                }
+                            } catch (err) {
+                                show_notification('An error occurred while assigning staff', 'error');
+                                console.error(err);
+                            }
+                        });
+                    });
+
+                    // Remove approver: one delegated listener on document (attach only once per page)
+                    if (!window._assignStaffRemoveBound) {
+                        window._assignStaffRemoveBound = true;
+                        document.addEventListener('click', async function(e) {
+                            var button = e.target.closest('.remove-approver');
+                            if (!button) return;
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!confirm('Are you sure you want to remove this approver?')) return;
+                            var workflowId = button.getAttribute('data-workflow-id');
+                            var approverId = button.getAttribute('data-approver-id');
+                            if (!workflowId || !approverId) return;
+                            try {
+                                var response = await fetch(workflowsBaseUrl + '/' + workflowId + '/remove-staff/' + approverId, {
+                                    method: 'GET',
+                                    headers: {
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                        'Accept': 'application/json',
+                                    }
+                                });
+                                if (!response.ok) {
+                                    show_notification('HTTP Error: ' + response.status, 'error');
+                                    return;
+                                }
+                                var result = await response.json();
+                                if (result.success) {
+                                    var tr = button.closest('tr');
+                                    if (tr) tr.remove();
+                                    show_notification('Staff removed successfully', 'success');
+                                } else {
+                                    show_notification(result.message || 'Remove failed', 'error');
+                                }
+                            } catch (err) {
+                                show_notification('An error occurred while removing staff', 'error');
+                                console.error(err);
+                            }
+                        }, true);
                     }
                 }
 
-                // Handle OIC selection to show/hide date field requirements
-                $('select[name="oic_staff_id"]').on('change', function() {
-                    const definitionId = $(this).closest('form').data('definition-id');
-                    const hasOIC = $(this).val() !== '';
-                    updateDateFieldRequirements(definitionId, hasOIC);
-                });
-
-                // Initialize date field requirements on page load
-                $('select[name="oic_staff_id"]').each(function() {
-                    const definitionId = $(this).closest('form').data('definition-id');
-                    const hasOIC = $(this).val() !== '';
-                    updateDateFieldRequirements(definitionId, hasOIC);
-                });
-
-                // Use show_notification from footer instead of custom showAlert
-
-                // Handle new approver assignment
-                document.querySelectorAll('.assignment-form').forEach(form => {
-                    form.addEventListener('submit', async function (e) {
-                        e.preventDefault();
-
-                        const workflowId = this.dataset.workflowId;
-                        const definitionId = this.dataset.definitionId;
-                        
-                        // Validate form - staff is always required, dates only when OIC is selected
-                        const staffId = this.querySelector('select[name="staff_id"]').value;
-                        const oicStaffId = this.querySelector('select[name="oic_staff_id"]').value;
-                        const adminAssistant = this.querySelector('select[name="admin_assistant"]').value;
-                        const startDate = this.querySelector('input[name="start_date"]').value;
-                        const endDate = this.querySelector('input[name="end_date"]').value;
-                        
-                        if (!staffId) {
-                            show_notification('Please select a staff member', 'error');
-                            return;
-                        }
-                        
-                        // Only require dates if OIC is selected
-                        if (oicStaffId) {
-                            if (!startDate) {
-                                show_notification('Start date is required when OIC is selected', 'error');
-                                return;
-                            }
-                            
-                            if (!endDate) {
-                                show_notification('End date is required when OIC is selected', 'error');
-                                return;
-                            }
-                            
-                            // Validate end date is after start date
-                            if (new Date(endDate) <= new Date(startDate)) {
-                                show_notification('End date must be after start date', 'error');
-                                return;
-                            }
-                        }
-                        
-                        const formData = new FormData(this);
-                        formData.append('workflow_dfn_id', definitionId);
-
-                        // Debug: Log the form data being sent
-                        console.log('Form data being sent:');
-                        for (let [key, value] of formData.entries()) {
-                            console.log(key + ': ' + value);
-                        }
-
-                        try {
-                            const response = await fetch(`{{ url('workflows/${workflowId}/store-staff') }}`, {
-                                method: 'POST',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                    'Accept': 'application/json',
-                                },
-                                body: formData
-                            });
-
-                            // Check if response is ok before parsing JSON
-                            if (!response.ok) {
-                                console.error('Response not ok:', response.status, response.statusText);
-                                const errorText = await response.text();
-                                console.error('Error response body:', errorText);
-                                show_notification(`HTTP Error: ${response.status} - ${response.statusText}`, 'error');
-                                return;
-                            }
-
-                            const result = await response.json();
-
-                            if (result.success && result.approver) {
-                                // Reset form
-                                form.reset();
-                                    
-                                // Reset Select2 instances
-                                $(form).find('select.select2').val('').trigger('change');
-                                
-                                // Reset datepicker instances
-                                $(form).find('.datepicker').val('');
-
-                                // Replace existing approvers with the new one (instead of adding)
-                                const approversList = document.getElementById(`approvers-list-${definitionId}`);
-                                
-                                // Clear existing approvers
-                                approversList.innerHTML = '';
-                                
-                                // Add the new approver
-                                const newRow = document.createElement('tr');
-                                newRow.dataset.approverId = result.approver.id;
-                                newRow.innerHTML = `
-                                <td>${result.approver.staff ? (result.approver.staff.fname + ' ' + result.approver.staff.lname) : 'N/A'}</td>
-                                <td>${result.approver.oic_staff ? (result.approver.oic_staff.fname + ' ' + result.approver.oic_staff.lname) : ''}</td>
-                                <td>${result.approver.admin_assistant ? (result.approver.admin_assistant.fname + ' ' + result.approver.admin_assistant.lname) : ''}</td>
-                                <td>${result.approver.start_date || ''}</td>
-                                <td>${result.approver.end_date || ''}</td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-approver"
-                                            data-approver-id="${result.approver.id}"
-                                            data-workflow-id="${workflowId}">
-                                        <i class="bx bx-trash me-1"></i>Remove
-                                    </button>
-                                </td>
-                            `;
-                                approversList.appendChild(newRow);
-
-                                show_notification('Staff assigned successfully - replaced existing approver', 'success');
-                            } else {
-                                // Debug: Log the error response
-                                console.error('Error response:', result);
-                                if (result.errors) {
-                                    console.error('Validation errors:', result.errors);
-                                }
-                                show_notification(result.message || 'Failed to assign staff', 'error');
-                            }
-                        } catch (error) {
-                            show_notification('An error occurred while assigning staff', 'error');
-                            console.error('Fetch error:', error);
-                        }
-                    });
-                });
-
-                // Handle approver removal using event delegation
-                document.addEventListener('click', async function (e) {
-                    if (e.target.matches('.remove-approver')) {
-                        if (!confirm('Are you sure you want to remove this approver?')) {
-                            return;
-                        }
-
-                        const button = e.target;
-                        const workflowId = button.dataset.workflowId;
-                        const approverId = button.dataset.approverId;
-
-                        try {
-                            const response = await fetch(`{{ url('workflows/${workflowId}/remove-staff/${approverId}') }}`, {
-                                method: 'GET',
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                    'Accept': 'application/json',
-                                }
-                            });
-
-                            // Check if response is ok before parsing JSON
-                            if (!response.ok) {
-                                console.error('Response not ok:', response.status, response.statusText);
-                                const errorText = await response.text();
-                                console.error('Error response body:', errorText);
-                                show_notification(`HTTP Error: ${response.status} - ${response.statusText}`, 'error');
-                                return;
-                            }
-
-                            const result = await response.json();
-
-                            if (result.success) {
-                                // Remove the row
-                                button.closest('tr').remove();
-                                show_notification('Staff removed successfully', 'success');
-                            } else {
-                                show_notification(result.message, 'error');
-                            }
-                        } catch (error) {
-                            show_notification('An error occurred while removing staff', 'error');
-                            console.error(error);
-                        }
-                    }
-                });
-            });
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                    initAssignStaffPage();
+                }
+                document.addEventListener('DOMContentLoaded', initAssignStaffPage);
+                document.addEventListener('livewire:navigated', initAssignStaffPage);
+            })();
         </script>
     @endpush
 @endsection

@@ -1,0 +1,191 @@
+<div class="container-fluid">
+  <!-- Approver Statistics (quality cards, workplan-style) -->
+  <div class="stats-container">
+    <h5 class="mb-4 fw-bold text-center">
+      <i class="fa fa-chart-bar me-2"></i>Approver Dashboard Overview
+    </h5>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div class="stat-item total">
+          <div class="stat-icon-wrap"><i class="fa fa-users stat-icon"></i></div>
+          <span class="stat-number" id="totalApprovers">0</span>
+          <span class="stat-label">Total Approvers</span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-item pending">
+          <div class="stat-icon-wrap"><i class="fa fa-clock stat-icon"></i></div>
+          <span class="stat-number" id="totalPending">0</span>
+          <span class="stat-label">Total Pending</span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-item workflow">
+          <div class="stat-icon-wrap"><i class="fa fa-cogs stat-icon"></i></div>
+          <span class="stat-number" id="activeWorkflow">-</span>
+          <span class="stat-label">Active Workflows</span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-item updated">
+          <div class="stat-icon-wrap"><i class="fa fa-sync-alt stat-icon"></i></div>
+          <span class="stat-number" id="lastUpdated">-</span>
+          <span class="stat-label">Last Updated</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Average Time to Last Approver by Workflow (approved documents only) -->
+  <div class="card filter-card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0 text-dark">
+        <i class="fa fa-chart-bar me-2"></i>Average Time to Last Approver by Workflow
+      </h5>
+      <p class="mb-0 mt-1 small text-muted">Approved documents only. Time from submission to when the final approver approved.</p>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-lg-5">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0" id="workflowStatsTable">
+              <thead>
+                <tr>
+                  <th>Workflow Name</th>
+                  <th class="text-end">Approved Docs</th>
+                  <th class="text-end">Avg. Time to Last Approver</th>
+                </tr>
+              </thead>
+              <tbody id="workflowStatsBody">
+                <tr><td colspan="3" class="text-center text-muted">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="col-lg-7">
+          <div id="workflowAvgTimeChart" style="min-height: 350px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enhanced Filters -->
+  <div class="card filter-card">
+    <div class="card-header">
+      <h5 class="mb-0 text-dark">
+        <i class="fa fa-filter me-2"></i>Filter Approvers
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-search me-1"></i>Search Approver
+          </label>
+          <input type="text" id="searchApprover" class="form-control" placeholder="Search...">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-building me-1"></i>Division
+          </label>
+          <select id="filterDivision" class="form-select">
+            <option value="">All Divisions</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-file-alt me-1"></i>Document Type
+          </label>
+          <select id="filterDocType" class="form-select">
+            <option value="">All Types</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-cogs me-1"></i>Approval Level
+          </label>
+          <select id="filterApprovalLevel" class="form-select">
+            <option value="">All Levels</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-calendar-alt me-1"></i>Month
+          </label>
+          <select id="filterMonth" class="form-select">
+            <option value="">All</option>
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-calendar me-1"></i>Year
+          </label>
+          <select id="filterYear" class="form-select">
+            <option value="">All Years</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <label class="form-label fw-semibold d-block">&nbsp;</label>
+          <button type="button" class="btn btn-outline-secondary w-100" id="clearFilters">
+            Clear
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- Approver Dashboard Table -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bx bx-table me-2 text-primary"></i>Approver Dashboard</h6>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-danger btn-sm" id="exportPdfTable" title="Export current filters to PDF">
+                        <i class="fa fa-file-pdf me-1"></i>Export to PDF
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm" id="exportExcel">
+                        <i class="fa fa-file-excel me-1"></i>Export to Excel
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="approverTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 30px;">#</th>
+                                <th>Approver</th>
+                                <th>Last approval date</th>
+                                <th style="width: 15%;">Role</th>
+                                <th>Pending Items</th>
+                                <th>Total Pending</th>
+                                <th>Total Handled</th>
+                                <th>Avg. Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approverTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i>
+                                    <p class="mt-2">Loading approver data...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

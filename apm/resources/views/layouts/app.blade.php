@@ -4,6 +4,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="mobile-web-app-capable" content="no">
+    <meta name="apple-mobile-web-app-capable" content="no">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="user-logged-in" content="{{ !empty(session('user')) ? 'true' : 'false' }}">
     <meta name="api-base-url" content="{{ url('/api') }}">
@@ -11,6 +14,38 @@
     <title>@yield('title', config('app.name', 'Business Management System'))</title>
 
     @include('layouts.partials.css')
+    <style>
+    /* Content preloader: only covers content area; position/size set by JS so it never covers nav when scrolling */
+    .apm-content-area { min-height: 120px; }
+    .apm-content-preloader {
+        position: fixed;
+        background: rgba(255, 255, 255, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease, visibility 0.2s ease;
+        pointer-events: none;
+    }
+    .apm-content-preloader.apm-content-preloader--visible {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+    .apm-content-preloader-inner {
+        display: flex;
+        align-items: center;
+        font-size: 0.9rem;
+        color: #119a48;
+    }
+    .apm-content-preloader-inner .spinner-border {
+        color: #119a48;
+        border-color: currentColor;
+    }
+    </style>
+    @livewireStyles
     @if(env('SHOW_QUOTES', true))
     <style>
     /* Quote Button Styles */
@@ -280,25 +315,35 @@
     @include('layouts.partials.breadcrumbs')
     @include('layouts.partials.nav')
 
-            <!-- Content Area -->
-            @yield('content')
+            <!-- Content Area (preloader only covers this block; nav and breadcrumb stay visible) -->
+            <div id="apm-content-area" class="apm-content-area position-relative">
+                <div id="apm-content-preloader" class="apm-content-preloader" aria-hidden="true">
+                    <div class="apm-content-preloader-inner">
+                        <div class="spinner-border apm-preloader-spinner" role="status"></div>
+                        <span class="ms-2">Loading...</span>
+                    </div>
+                </div>
+                @yield('content')
+            </div>
+            </div>
         </div>
     </div>
     <!--end page wrapper -->
 
     @include('layouts.partials.footer')
     
-    <!-- Session Expiry Modals -->
-    @include('components.session-expiry-modal')
+    <!-- Session Expiry Modals (Livewire) -->
+    @livewire('session-expiry-modal')
     
     <!-- Session Monitor Script -->
     <script src="{{ asset('js/session-monitor.js') }}?v={{ time() }}"></script>
     
     @if(env('SHOW_QUOTES', true))
     <script>
-    let quoteModalTimeout;
+    (function() {
+    var quoteModalTimeout;
 
-    function showQuoteModal() {
+    window.showQuoteModal = function showQuoteModal() {
         const modal = document.getElementById('quoteModal');
         const progressFill = modal.querySelector('.quote-progress-fill');
         
@@ -323,45 +368,75 @@
         }, 4000);
     }
 
-    function hideQuoteModal() {
+    window.hideQuoteModal = function hideQuoteModal() {
         const modal = document.getElementById('quoteModal');
+        if (!modal) return;
         modal.classList.remove('show');
-        
-        // Add slide out animation
         modal.style.animation = 'slideOut 0.3s ease';
-        
         setTimeout(() => {
             modal.style.display = 'none';
             modal.style.animation = '';
         }, 300);
-        
-        // Clear timeout if modal is manually closed
         if (quoteModalTimeout) {
             clearTimeout(quoteModalTimeout);
         }
-    }
+    };
 
-
-    // Close modal when clicking outside
     document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('quoteModal');
         if (modal) {
             modal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    hideQuoteModal();
-                }
+                if (e.target === this) hideQuoteModal();
             });
         }
     });
-
-    // Close modal with Escape key
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            hideQuoteModal();
-        }
+        if (e.key === 'Escape') hideQuoteModal();
     });
+    })();
     </script>
     @endif
-    
+
+    @livewireScripts
+    <script>
+    (function () {
+        var preloader = document.getElementById('apm-content-preloader');
+        var contentArea = document.getElementById('apm-content-area');
+        if (!preloader || !contentArea) return;
+        var scrollResizeBound = false;
+        function positionPreloader() {
+            var r = contentArea.getBoundingClientRect();
+            preloader.style.top = r.top + 'px';
+            preloader.style.left = r.left + 'px';
+            preloader.style.width = r.width + 'px';
+            preloader.style.height = r.height + 'px';
+        }
+        function showPreloader() {
+            positionPreloader();
+            preloader.classList.add('apm-content-preloader--visible');
+            preloader.setAttribute('aria-hidden', 'false');
+            if (!scrollResizeBound) {
+                scrollResizeBound = true;
+                window.addEventListener('scroll', positionPreloader, true);
+                window.addEventListener('resize', positionPreloader);
+            }
+        }
+        function hidePreloader() {
+            preloader.classList.remove('apm-content-preloader--visible');
+            preloader.setAttribute('aria-hidden', 'true');
+        }
+        document.addEventListener('livewire:navigate', showPreloader);
+        document.addEventListener('livewire:navigated', hidePreloader);
+    })();
+    </script>
     @stack('scripts')
+
+    <script>
+        // PWA disabled: keep APM as normal web app (Livewire in browser tab)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                registrations.forEach(function (reg) { reg.unregister(); });
+            });
+        }
+    </script>
 </body>

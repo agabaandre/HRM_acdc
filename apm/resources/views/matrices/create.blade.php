@@ -24,7 +24,7 @@
 <div class="card shadow-lg border-0 mb-5 bg-light">
     <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
         <h4 class="mb-0 text-success fw-bold"><i class="bx bx-grid-alt me-2 text-success"></i> New Matrix</h4>
-        <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
+        <a wire:navigate href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back text-dark"></i> Back to List
         </a>
     </div>
@@ -206,7 +206,7 @@
             </div>
             @if(isfocal_person())
             <div class="d-flex justify-content-between border-top pt-4 mt-4">
-                <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary px-4 rounded-pill shadow-sm">
+                <a wire:navigate href="{{ route('matrices.index') }}" class="btn btn-outline-secondary px-4 rounded-pill shadow-sm">
                     <i class="bx bx-arrow-back me-1"></i> Cancel
                 </a>
                 <button type="submit" class="btn btn-success px-5 rounded-pill shadow-sm">

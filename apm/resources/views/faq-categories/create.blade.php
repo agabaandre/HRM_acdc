@@ -4,7 +4,7 @@
 @section('header', 'Add FAQ Category')
 
 @section('header-actions')
-<a href="{{ route('faq-categories.index') }}" class="btn btn-outline-secondary">
+<a wire:navigate href="{{ route('faq-categories.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-arrow-back"></i> Back to list
 </a>
 @endsection
@@ -57,7 +57,7 @@
             </div>
 
             <div class="d-flex justify-content-between align-items-center border-top pt-4 mt-4">
-                <a href="{{ route('faq-categories.index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                <a wire:navigate href="{{ route('faq-categories.index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
                 <button type="submit" class="btn btn-primary btn-lg px-5">Save category</button>
             </div>
         </form>

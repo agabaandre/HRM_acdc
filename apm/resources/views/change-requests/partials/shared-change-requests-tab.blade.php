@@ -180,24 +180,24 @@
                         @endif
                     </td>
                     <td class="text-center">
-                        <div class="btn-group" role="group">
-                            <a href="{{ route('change-requests.show', $changeRequest) }}" 
+                        <div class="btn-group-vertical btn-group-sm" role="group">
+                            <a wire:navigate href="{{ route('change-requests.show', $changeRequest) }}" 
                                class="btn btn-sm btn-outline-primary" 
                                title="View Details">
-                                <i class="bx bx-show"></i>
+                                <i class="bx bx-show me-1"></i>View
                             </a>
                             @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
-                                <a href="{{ route('change-requests.edit', $changeRequest) }}" 
+                                <a wire:navigate href="{{ route('change-requests.edit', $changeRequest) }}" 
                                    class="btn btn-sm btn-outline-warning" 
                                    title="Edit">
-                                    <i class="bx bx-edit"></i>
+                                    <i class="bx bx-edit me-1"></i>Edit
                                 </a>
                                 @if($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id'))
                                     <button type="button" 
                                             class="btn btn-sm btn-outline-danger" 
                                             title="Delete"
                                             onclick="deleteChangeRequest({{ $changeRequest->id }})">
-                                        <i class="bx bx-trash"></i>
+                                        <i class="bx bx-trash me-1"></i>Delete
                                     </button>
                                 @endif
                             @endif

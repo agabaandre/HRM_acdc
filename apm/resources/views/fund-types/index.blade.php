@@ -5,8 +5,8 @@
 @section('header', 'Fund Types')
 
 @section('header-actions')
-<a href="{{ route('fund-types.create') }}" class="btn btn-success">
-    <i class="bx bx-plus"></i> Add Fund Type
+<a wire:navigate href="{{ route('fund-types.create') }}" class="btn btn-success">
+    <i class="bx bx-plus me-1"></i>Add Fund Type
 </a>
 @endsection
 
@@ -15,12 +15,13 @@
     <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bx bx-list-ul me-2 text-primary"></i>All Fund Types</h5>
         <div>
-            <form action="{{ route('fund-types.index') }}" method="GET" class="d-flex">
-                <input type="text" name="search" class="form-control me-2" placeholder="Search fund types..." value="{{ request('search') }}">
+            <form id="fund-types-search-form" class="d-flex" role="search">
+                <input type="text" name="search" id="fund-types-search-input" class="form-control me-2" placeholder="Search fund types..." value="{{ request('search') }}" autocomplete="off">
                 <button type="submit" class="btn btn-outline-primary">
-                    <i class="bx bx-search"></i>
+                    <i class="bx bx-search me-1"></i>Search
                 </button>
             </form>
+            <a id="fund-types-search-navigate" wire:navigate href="{{ route('fund-types.index') }}" class="d-none" aria-hidden="true"></a>
         </div>
     </div>
     <div class="card-body p-0">
@@ -46,11 +47,11 @@
                             <td>{{ $fundType->created_at->format('Y-m-d') }}</td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('fund-types.show', $fundType) }}" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View">
-                                        <i class="bx bx-show"></i>
+                                    <a wire:navigate href="{{ route('fund-types.show', $fundType) }}" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View">
+                                        <i class="bx bx-show me-1"></i>View
                                     </a>
-                                    <a href="{{ route('fund-types.edit', $fundType) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit">
-                                        <i class="bx bx-edit"></i>
+                                    <a wire:navigate href="{{ route('fund-types.edit', $fundType) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit">
+                                        <i class="bx bx-edit me-1"></i>Edit
                                     </a>
                                 </div>
                             </td>
@@ -64,7 +65,7 @@
                                     </div>
                                     <h5 class="text-muted mb-3">No fund types found</h5>
                                     <p class="text-muted mb-4">Get started by adding your first fund type</p>
-                                    <a href="{{ route('fund-types.create') }}" class="btn btn-primary">
+                                    <a wire:navigate href="{{ route('fund-types.create') }}" class="btn btn-primary">
                                         <i class="bx bx-plus"></i> Add Fund Type
                                     </a>
                                 </div>
@@ -77,7 +78,7 @@
     </div>
     @if($fundTypes->hasPages())
         <div class="card-footer">
-            {{ $fundTypes->links() }}
+            {{ $fundTypes->withQueryString()->links() }}
         </div>
     @endif
 </div>
@@ -85,12 +86,28 @@
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
+(function() {
+    function initFundTypesIndex() {
+        var form = document.getElementById('fund-types-search-form');
+        var input = document.getElementById('fund-types-search-input');
+        var navLink = document.getElementById('fund-types-search-navigate');
+        if (form && input && navLink) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var base = '{{ route('fund-types.index') }}';
+                var q = (input.value || '').trim();
+                navLink.href = q ? (base + (base.indexOf('?') !== -1 ? '&' : '?') + 'search=' + encodeURIComponent(q)) : base;
+                navLink.click();
+            });
+        }
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (el) {
+            if (!el._tooltip) new bootstrap.Tooltip(el);
         });
-    });
+    }
+    if (document.readyState === 'complete') initFundTypesIndex();
+    else document.addEventListener('DOMContentLoaded', initFundTypesIndex);
+    document.addEventListener('livewire:navigated', initFundTypesIndex);
+})();
 </script>
 @endpush

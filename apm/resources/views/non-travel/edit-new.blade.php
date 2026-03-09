@@ -4,7 +4,7 @@
 @section('header', 'Edit Request')
 
 @section('header-actions')
-    <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back me-1 text-success"></i> Back to List
     </a>
 @endsection
@@ -380,7 +380,7 @@
                     <a href="#" id="previewMemoBtn" class="btn btn-primary" target="_blank">
                         <i class="bx bx-show me-1"></i> Preview Memo
                     </a>
-                    <a href="{{ route('non-travel.index') }}" class="btn btn-success">
+                    <a wire:navigate href="{{ route('non-travel.index') }}" class="btn btn-success">
                         <i class="bx bx-list-ul me-1"></i> Go to List
                     </a>
                 </div>

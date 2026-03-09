@@ -53,7 +53,7 @@
 @section('header', "Edit Special Memo")
 
 @section('header-actions')
-    <a href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back 
     </a>
 @endsection

@@ -82,7 +82,7 @@
                 </button>
             </div>
             <div class="col-md-2 d-flex align-items-end">
-                <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
+                <a wire:navigate href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
                     <i class="bx bx-reset me-1"></i> Reset
                 </a>
             </div>
@@ -169,11 +169,11 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('service-requests.show', $request) }}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                    <a wire:navigate href="{{ route('service-requests.show', $request) }}" class="btn btn-outline-primary btn-sm" title="View Details">
                                         <i class="bx bx-show"></i>
                                     </a>
                                     @if($request->overall_status === 'draft' || $request->overall_status === 'returned')
-                                        <a href="{{ route('service-requests.edit', $request) }}" class="btn btn-outline-warning btn-sm" title="Edit">
+                                        <a wire:navigate href="{{ route('service-requests.edit', $request) }}" class="btn btn-outline-warning btn-sm" title="Edit">
                                             <i class="bx bx-edit"></i>
                                         </a>
                                     @endif
@@ -252,11 +252,11 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('service-requests.show', $request) }}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                    <a wire:navigate href="{{ route('service-requests.show', $request) }}" class="btn btn-outline-primary btn-sm" title="View Details">
                                         <i class="bx bx-show"></i>
                                     </a>
                                     @if($request->overall_status === 'draft' || $request->overall_status === 'returned')
-                                        <a href="{{ route('service-requests.edit', $request) }}" class="btn btn-outline-warning btn-sm" title="Edit">
+                                        <a wire:navigate href="{{ route('service-requests.edit', $request) }}" class="btn btn-outline-warning btn-sm" title="Edit">
                                             <i class="bx bx-edit"></i>
                                         </a>
                                     @endif

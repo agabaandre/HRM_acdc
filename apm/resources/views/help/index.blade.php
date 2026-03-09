@@ -105,10 +105,10 @@
         <div class="container">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                 <div>
-                    <a href="{{ url('/') }}" class="d-inline-flex align-items-center mb-2 opacity-90"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
+                    <a wire:navigate href="{{ url('/') }}" class="d-inline-flex align-items-center mb-2 opacity-90"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('faq.index') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-question-circle me-1"></i>FAQs</a>
+                    <a wire:navigate href="{{ route('faq.index') }}" class="btn btn-outline-light btn-sm"><i class="fas fa-question-circle me-1"></i>FAQs</a>
                 </div>
             </div>
             <div class="help-hero">
@@ -120,7 +120,7 @@
 
     <div class="container py-4">
         <div class="platform-note">
-            <strong><i class="fas fa-info-circle me-1"></i>Access:</strong> The CBP platform is available at <a href="{{ rtrim(url('/'), '/') }}" target="_blank" rel="noopener">{{ rtrim(url('/'), '/') }}</a>. You must have a valid account to sign in.
+            <strong><i class="fas fa-info-circle me-1"></i>Access:</strong> The CBP platform is available at <a href="{{ rtrim(url('/'), '/') }}" rel="noopener">{{ rtrim(url('/'), '/') }}</a>. You must have a valid account to sign in.
         </div>
 
         <p class="section-label">Get started</p>
@@ -136,7 +136,7 @@
                             <div class="flex-grow-1">
                                 <h5 class="card-title">Frequently Asked Questions</h5>
                                 <p class="card-text text-muted small mb-2">Quick, searchable answers on special memos, travel matrices, change requests, and more.</p>
-                                <a href="{{ route('faq.index') }}" class="btn btn-success btn-sm">
+                                <a wire:navigate href="{{ route('faq.index') }}" class="btn btn-success btn-sm">
                                     <i class="fas fa-list-ul me-2"></i>View FAQs
                                 </a>
                             </div>
@@ -155,7 +155,7 @@
                             <div class="flex-grow-1">
                                 <h5 class="card-title">User Guide</h5>
                                 <p class="card-text small">For document creators: matrices, special memos, single memos, non-travel memos, change requests, service requests, ARF.</p>
-                                <a href="{{ route('help.user-guide') }}" class="btn btn-primary btn-sm">
+                                <a wire:navigate href="{{ route('help.user-guide') }}" class="btn btn-primary btn-sm">
                                     <i class="fas fa-book-open me-2"></i>Open User Guide
                                 </a>
                             </div>
@@ -174,7 +174,7 @@
                             <div class="flex-grow-1">
                                 <h5 class="card-title">Approvers Guide</h5>
                                 <p class="card-text small">For approvers: workflow, approving, returning, rejecting, and approval trail tracking.</p>
-                                <a href="{{ route('help.approvers-guide') }}" class="btn btn-info btn-sm">
+                                <a wire:navigate href="{{ route('help.approvers-guide') }}" class="btn btn-info btn-sm">
                                     <i class="fas fa-clipboard-check me-2"></i>Open Approvers Guide
                                 </a>
                             </div>
@@ -190,45 +190,45 @@
             <input type="text" id="docFilter" class="form-control" placeholder="Type to filter documentation list...">
         </div>
         <div class="doc-list list-group" id="docList">
-            <a href="{{ route('help.documentation.file', 'API_DOCUMENTATION.md') }}" class="list-group-item list-group-item-action" data-search="api documentation rest endpoints">
+            <a wire:navigate href="{{ route('help.documentation.file', 'API_DOCUMENTATION.md') }}" class="list-group-item list-group-item-action" data-search="api documentation rest endpoints">
                 <i class="fas fa-code me-2"></i>API Documentation
             </a>
-            <a href="{{ url('/docs') }}" class="list-group-item list-group-item-action" data-search="swagger openapi interactive api reference" target="_blank" rel="noopener">
+            <a href="{{ url('/docs') }}" class="list-group-item list-group-item-action" data-search="swagger openapi interactive api reference" rel="noopener">
                 <i class="fas fa-file-code me-2"></i>API Reference (Swagger)
             </a>
-            <a href="{{ route('help.documentation.file', 'README.md') }}" class="list-group-item list-group-item-action" data-search="complete apm documentation readme">
+            <a wire:navigate href="{{ route('help.documentation.file', 'README.md') }}" class="list-group-item list-group-item-action" data-search="complete apm documentation readme">
                 <i class="fas fa-book me-2"></i>Complete APM Documentation
             </a>
-            <a href="{{ route('help.documentation.file', 'DEPLOYMENT.md') }}" class="list-group-item list-group-item-action" data-search="deployment guide server">
+            <a wire:navigate href="{{ route('help.documentation.file', 'DEPLOYMENT.md') }}" class="list-group-item list-group-item-action" data-search="deployment guide server">
                 <i class="fas fa-server me-2"></i>Deployment Guide
             </a>
-            <a href="{{ route('help.documentation.file', 'QUEUE_SETUP_GUIDE.md') }}" class="list-group-item list-group-item-action" data-search="queue setup guide tasks">
+            <a wire:navigate href="{{ route('help.documentation.file', 'QUEUE_SETUP_GUIDE.md') }}" class="list-group-item list-group-item-action" data-search="queue setup guide tasks">
                 <i class="fas fa-tasks me-2"></i>Queue Setup Guide
             </a>
-            <a href="{{ route('help.documentation.file', 'QUEUE_TROUBLESHOOTING.md') }}" class="list-group-item list-group-item-action" data-search="queue troubleshooting wrench">
+            <a wire:navigate href="{{ route('help.documentation.file', 'QUEUE_TROUBLESHOOTING.md') }}" class="list-group-item list-group-item-action" data-search="queue troubleshooting wrench">
                 <i class="fas fa-wrench me-2"></i>Queue Troubleshooting
             </a>
-            <a href="{{ route('help.documentation.file', 'CRON_SETUP.md') }}" class="list-group-item list-group-item-action" data-search="cron setup guide clock">
+            <a wire:navigate href="{{ route('help.documentation.file', 'CRON_SETUP.md') }}" class="list-group-item list-group-item-action" data-search="cron setup guide clock">
                 <i class="fas fa-clock me-2"></i>Cron Setup Guide
             </a>
-            <a href="{{ route('help.documentation.file', 'APPROVAL_TRAIL_MANAGEMENT.md') }}" class="list-group-item list-group-item-action" data-search="approval trail management list">
+            <a wire:navigate href="{{ route('help.documentation.file', 'APPROVAL_TRAIL_MANAGEMENT.md') }}" class="list-group-item list-group-item-action" data-search="approval trail management list">
                 <i class="fas fa-list-check me-2"></i>Approval Trail Management
             </a>
-            <a href="{{ route('help.documentation.file', 'DOCUMENT_NUMBERING_SYSTEM.md') }}" class="list-group-item list-group-item-action" data-search="document numbering system hash">
+            <a wire:navigate href="{{ route('help.documentation.file', 'DOCUMENT_NUMBERING_SYSTEM.md') }}" class="list-group-item list-group-item-action" data-search="document numbering system hash">
                 <i class="fas fa-hashtag me-2"></i>Document Numbering System
             </a>
-            <a href="{{ route('help.documentation.file', 'SIGNATURE_VERIFICATION.md') }}" class="list-group-item list-group-item-action" data-search="signature verification">
+            <a wire:navigate href="{{ route('help.documentation.file', 'SIGNATURE_VERIFICATION.md') }}" class="list-group-item list-group-item-action" data-search="signature verification">
                 <i class="fas fa-signature me-2"></i>Signature Verification
             </a>
-            <a href="{{ route('help.documentation.file', 'SYSTEM_UPDATES.md') }}" class="list-group-item list-group-item-action" data-search="system updates sync">
+            <a wire:navigate href="{{ route('help.documentation.file', 'SYSTEM_UPDATES.md') }}" class="list-group-item list-group-item-action" data-search="system updates sync">
                 <i class="fas fa-sync-alt me-2"></i>System Updates
             </a>
         </div>
         <p id="docNoResults" class="small text-muted mt-2 mb-0" style="display: none;">No matching documents.</p>
 
         <div class="footer-actions text-center">
-            <a href="{{ route('faq.index') }}" class="btn btn-success"><i class="fas fa-question-circle me-2"></i>FAQs</a>
-            <a href="{{ url('/') }}" class="btn btn-outline-secondary ms-2"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
+            <a wire:navigate href="{{ route('faq.index') }}" class="btn btn-success"><i class="fas fa-question-circle me-2"></i>FAQs</a>
+            <a wire:navigate href="{{ url('/') }}" class="btn btn-outline-secondary ms-2"><i class="fas fa-arrow-left me-2"></i>Back to login</a>
         </div>
     </div>
 

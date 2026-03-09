@@ -5,7 +5,7 @@
 @section('header', 'Edit Staff')
 
 @section('header-actions')
-<a href="{{ route('staff.index') }}" class="btn btn-outline-secondary">
+<a wire:navigate href="{{ route('staff.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-arrow-back"></i> Back to List
 </a>
 @endsection
@@ -414,7 +414,7 @@
                         <button type="submit" class="btn btn-warning btn-lg">
                             <i class="bx bx-save me-2"></i> Update Staff Record
                         </button>
-                        <a href="{{ route('staff.index') }}" class="btn btn-outline-secondary">
+                        <a wire:navigate href="{{ route('staff.index') }}" class="btn btn-outline-secondary">
                             <i class="bx bx-arrow-back me-2"></i> Cancel
                         </a>
                     </div>

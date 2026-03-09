@@ -136,7 +136,7 @@
                             </small>
                         </div>
                         <div class="text-end">
-                            <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
+                            <a wire:navigate href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                                 <i class="bx bx-arrow-back me-1"></i>
                                 Back
                             </a>
@@ -177,7 +177,7 @@
                                     <i class="bx bx-search"></i>
                                 </button>
                                 @if(request('status') || request('activity_type'))
-                                    <a href="{{ route('staff.activities', ['staff_id' => $staff->staff_id, 'matrix' => $matrix->id]) }}" class="btn btn-outline-secondary btn-sm">
+                                    <a wire:navigate href="{{ route('staff.activities', ['staff_id' => $staff->staff_id, 'matrix' => $matrix->id]) }}" class="btn btn-outline-secondary btn-sm">
                                         <i class="bx bx-x"></i>
                                     </a>
                                 @endif
@@ -303,14 +303,14 @@
                                                         </td>
                                                         <td class="px-3 py-3 text-center">
                                                             @if($activity->is_single_memo)
-                                                                <a href="{{ route('activities.single-memos.show', $activity) }}" 
-                                                                   class="btn btn-sm btn-outline-primary" target="_blank">
+                                                                <a wire:navigate href="{{ route('activities.single-memos.show', $activity) }}" 
+                                                                   class="btn btn-sm btn-outline-primary">
                                                                     <i class="bx bx-show me-1"></i>
                                                                     Preview
                                                                 </a>
                                                             @else
-                                                                <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
-                                                                   class="btn btn-sm btn-outline-primary" target="_blank">
+                                                                <a wire:navigate href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
+                                                                   class="btn btn-sm btn-outline-primary">
                                                                     <i class="bx bx-show me-1"></i>
                                                                     Preview
                                                                 </a>
@@ -416,14 +416,14 @@
                                                         </td>
                                                         <td class="px-3 py-3 text-center">
                                                             @if($activity->is_single_memo)
-                                                                <a href="{{ route('activities.single-memos.show', $activity) }}" 
-                                                                   class="btn btn-sm btn-outline-primary" target="_blank">
+                                                                <a wire:navigate href="{{ route('activities.single-memos.show', $activity) }}" 
+                                                                   class="btn btn-sm btn-outline-primary">
                                                                     <i class="bx bx-show me-1"></i>
                                                                     Preview
                                                                 </a>
                                                             @else
-                                                                <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
-                                                                   class="btn btn-sm btn-outline-primary" target="_blank">
+                                                                <a wire:navigate href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
+                                                                   class="btn btn-sm btn-outline-primary">
                                                                     <i class="bx bx-show me-1"></i>
                                                                     Preview
                                                                 </a>

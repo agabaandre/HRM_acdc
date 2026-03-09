@@ -222,13 +222,13 @@
                     <p class="text-muted mb-0">Review and manage memo details</p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
-                    <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+                    <a wire:navigate href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
                     </a>
                     
                     @if (can_edit_memo($nonTravel))
-                        <a href="{{ route('non-travel.edit', $nonTravel) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1">
+                        <a wire:navigate href="{{ route('non-travel.edit', $nonTravel) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1">
                             <i class="bx bx-edit"></i>
                             <span>Edit Memo</span>
                         </a>
@@ -244,7 +244,7 @@
                     
                     @if($existingArf)
                         {{-- Show View ARF button if ARF exists --}}
-                        <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                        <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
                             <i class="bx bx-show"></i>
                             <span>View ARF</span>
                         </a>
@@ -267,13 +267,13 @@
                     
                     @if($existingServiceRequest)
                         {{-- Show View Service Request button if Service Request exists --}}
-                        <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1">
+                        <a wire:navigate href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-eye"></i>
                             <span>View Requests</span>
                         </a>
                     @elseif(can_request_services($nonTravel))
                         {{-- Show Create Service Request button if memo is approved and no Service Request exists --}}
-                        <a href="{{ route('service-requests.create') }}?source_type=non_travel&source_id={{ $nonTravel->id }}" 
+                        <a wire:navigate href="{{ route('service-requests.create') }}?source_type=non_travel&source_id={{ $nonTravel->id }}" 
                            class="btn btn-info btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-tools"></i>
                             <span>Request Services</span>
@@ -289,7 +289,7 @@
                     @endif
                     
                     @if($nonTravel->overall_status === 'approved')
-                        <a href="{{ route('non-travel.edit', $nonTravel) }}?change_request=1" 
+                        <a wire:navigate href="{{ route('non-travel.edit', $nonTravel) }}?change_request=1" 
                            class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-edit"></i>
                             <span>Change Request</span>
@@ -395,7 +395,7 @@
                             </td>
                             <td class="field-value" colspan="3">
                                 @if($changeRequestsCount > 0)
-                                    <a href="{{ route('change-requests.index', ['parent_memo_model' => 'App\Models\NonTravelMemo', 'parent_memo_id' => $nonTravel->id]) }}" class="text-primary fw-bold">
+                                    <a wire:navigate href="{{ route('change-requests.index', ['parent_memo_model' => 'App\Models\NonTravelMemo', 'parent_memo_id' => $nonTravel->id]) }}" class="text-primary fw-bold">
                                         {{ $changeRequestsCount }} Change Request{{ $changeRequestsCount > 1 ? 's' : '' }}
                                     </a>
                                 @else
@@ -806,7 +806,7 @@
                         @endif
 
                         <div class="mt-3">
-                            <a href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-success btn-sm w-100">
+                            <a wire:navigate href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-success btn-sm w-100">
                                 <i class="bx bx-info-circle me-1"></i>View Full Status
                             </a>
                         </div>
@@ -1004,7 +1004,7 @@
             <div class="alert alert-info">
                 <i class="bx bx-info-circle me-2"></i>
                 An ARF request has already been created for this non-travel memo.
-                <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
+                <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
                     <i class="bx bx-show me-1"></i>View Activity Request
                 </a>
             </div>

@@ -133,7 +133,7 @@
     @endforeach
 
     <div class="d-flex justify-content-end gap-2 mb-4">
-        <a href="{{ route('system-settings.index') }}" class="btn btn-outline-secondary">Cancel</a>
+        <a wire:navigate href="{{ route('system-settings.index') }}" class="btn btn-outline-secondary">Cancel</a>
         <button type="submit" class="btn system-settings-save-btn" id="save-settings-btn"><i class="fas fa-save me-1"></i> Save settings</button>
     </div>
 </form>

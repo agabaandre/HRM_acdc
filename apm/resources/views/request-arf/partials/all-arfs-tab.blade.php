@@ -59,12 +59,12 @@
                         <td>{{ $arf->created_at ? $arf->created_at->format('M d, Y') : 'N/A' }}</td>
                         <td class="text-center">
                             <div class="btn-group">
-                                <a href="{{ route('request-arf.show', $arf) }}" class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show"></i>
+                                <a wire:navigate href="{{ route('request-arf.show', $arf) }}" class="btn btn-sm btn-outline-info" title="View">
+                                    <i class="bx bx-show me-1"></i>View
                                 </a>
                                 @if($arf->overall_status === 'draft' || $arf->overall_status === 'returned')
-                                    <a href="{{ route('request-arf.edit', $arf) }}" class="btn btn-sm btn-outline-warning" title="Edit">
-                                        <i class="bx bx-edit"></i>
+                                    <a wire:navigate href="{{ route('request-arf.edit', $arf) }}" class="btn btn-sm btn-outline-warning" title="Edit">
+                                        <i class="bx bx-edit me-1"></i>Edit
                                     </a>
                                 @endif
                                 @if($arf->overall_status === 'draft' || $arf->overall_status === 'returned')
@@ -72,7 +72,7 @@
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                            <i class="bx bx-trash"></i>
+                                            <i class="bx bx-trash me-1"></i>Delete
                                         </button>
                                     </form>
                                 @endif

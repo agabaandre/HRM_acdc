@@ -9,7 +9,7 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">Memo Details</h4>
-                        <a href="{{ route('memos.index') }}" class="btn btn-secondary">Back to Memos</a>
+                        <a wire:navigate href="{{ route('memos.index') }}" class="btn btn-secondary">Back to Memos</a>
                     </div>
                     <div class="card-body">
                         @if(session('success'))
@@ -91,7 +91,7 @@
                         </div>
 
                         <div class="d-flex gap-2">
-                            <a href="{{ route('memos.edit', $memo->id) }}" class="btn btn-warning">Edit Memo</a>
+                            <a wire:navigate href="{{ route('memos.edit', $memo->id) }}" class="btn btn-warning">Edit Memo</a>
                             <button type="button" class="btn btn-danger" data-bs-toggle="modal"
                                 data-bs-target="#deleteMemo">Delete Memo</button>
                         </div>

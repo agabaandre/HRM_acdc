@@ -442,7 +442,7 @@
                         </div>
 
                            <div class="d-flex gap-3 col-md-2 justify-content-end">
-                                    <a href="{{ route('request-arf.index') }}"
+                                    <a wire:navigate href="{{ route('request-arf.index') }}"
                                         class="btn btn-outline-secondary d-flex align-items-center gap-2">
                                         <i class="bx bx-arrow-back"></i>
                                         <span>Back to List</span>
@@ -641,7 +641,7 @@
                                                     @if ($sourceModel)
                                                         @if ($requestARF->model_type === 'App\\Models\\Activity')
                                                             @if ($sourceData['matrix_id'])
-                                                                <a href="{{ route('matrices.activities.show', ['matrix' => $sourceData['matrix_id'], 'activity' => $requestARF->source_id]) }}"
+                                                                <a wire:navigate href="{{ route('matrices.activities.show', ['matrix' => $sourceData['matrix_id'], 'activity' => $requestARF->source_id]) }}"
                                                                     class="text-success text-decoration-underline">
                                                                     View Activity
                                                                 </a>
@@ -649,12 +649,12 @@
                                                                 <span class="text-muted">Activity (No Matrix)</span>
                                                             @endif
                                                         @elseif($requestARF->model_type === 'App\\Models\\NonTravelMemo')
-                                                            <a href="{{ route('non-travel.show', $requestARF->source_id) }}"
+                                                            <a wire:navigate href="{{ route('non-travel.show', $requestARF->source_id) }}"
                                                                 class="text-success text-decoration-underline">
                                                                 View Non-Travel Memo
                                                             </a>
                                                         @elseif($requestARF->model_type === 'App\\Models\\SpecialMemo')
-                                                            <a href="{{ route('special-memo.show', $requestARF->source_id) }}"
+                                                            <a wire:navigate href="{{ route('special-memo.show', $requestARF->source_id) }}"
                                                                 class="text-success text-decoration-underline">
                                                                 View Special Memo
                                                             </a>

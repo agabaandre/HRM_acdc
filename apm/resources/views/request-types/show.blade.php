@@ -6,10 +6,10 @@
 
 @section('header-actions')
     <div class="d-flex gap-2">
-        <a href="{{ route('request-types.edit', $requestType) }}" class="btn btn-primary">
+        <a wire:navigate href="{{ route('request-types.edit', $requestType) }}" class="btn btn-primary">
             <i class="bx bx-edit"></i> Edit
         </a>
-        <a href="{{ route('request-types.index') }}" class="btn btn-outline-secondary">
+        <a wire:navigate href="{{ route('request-types.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to List
         </a>
     </div>
@@ -56,7 +56,7 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('request-types.edit', $requestType) }}" class="btn btn-primary">
+                    <a wire:navigate href="{{ route('request-types.edit', $requestType) }}" class="btn btn-primary">
                         <i class="bx bx-edit me-1"></i> Edit Request Type
                     </a>
                     <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">

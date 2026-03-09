@@ -5,7 +5,7 @@
 @section('header', 'Locations')
 
 @section('header-actions')
-    <a href="{{ route('locations.create') }}" class="btn btn-primary">
+    <a wire:navigate href="{{ route('locations.create') }}" class="btn btn-primary">
         <i class="bx bx-plus"></i> Add Location
     </a>
 @endsection
@@ -135,8 +135,8 @@
                 '<td class="px-3 py-3 fw-semibold">' + escapeHtml(loc.name || '') + '</td>' +
                 '<td class="px-3 py-3 text-muted">' + created + '</td>' +
                 '<td class="px-3 py-3 text-end">' +
-                '<a href="{{ url("locations") }}/' + loc.id + '" class="btn btn-sm btn-outline-info" title="View"><i class="bx bx-show"></i></a> ' +
-                '<a href="{{ url("locations") }}/' + loc.id + '/edit" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bx bx-edit"></i></a>' +
+                '<a wire:navigate href="{{ url("locations") }}/' + loc.id + '" class="btn btn-sm btn-outline-info" title="View"><i class="bx bx-show me-1"></i>View</a> ' +
+                '<a wire:navigate href="{{ url("locations") }}/' + loc.id + '/edit" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bx bx-edit me-1"></i>Edit</a>' +
                 '</td></tr>';
         });
         locationsTableBodyEl.innerHTML = html;

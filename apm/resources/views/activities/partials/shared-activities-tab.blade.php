@@ -37,7 +37,7 @@
                             </div>
                         </td>
                         <td>
-                            <a href="{{ route('matrices.show', $activity->matrix) }}" class="text-decoration-none">
+                            <a wire:navigate href="{{ route('matrices.show', $activity->matrix) }}" class="text-decoration-none">
                                 {{ $activity->matrix->year }} {{ $activity->matrix->quarter }}
                             </a>
                         </td>
@@ -85,15 +85,15 @@
                             @endif
                         </td>
                         <td class="text-center">
-                            <div class="d-flex gap-2 justify-content-center">
-                                <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
-                                   class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show"></i>
+                            <div class="d-flex gap-2 justify-content-center flex-wrap activity-actions action-buttons-stacked">
+                                <a wire:navigate href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
+                                   class="btn btn-sm btn-outline-info activity-action-btn" title="View">
+                                    <i class="bx bx-show me-1"></i>View
                                 </a>
                                 @if($activity->overall_status === 'approved')
                                     <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
-                                       class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
-                                        <i class="bx bx-printer"></i>
+                                       class="btn btn-sm btn-outline-success activity-action-btn" title="Print PDF" target="_blank">
+                                        <i class="bx bx-printer me-1"></i>Print
                                     </a>
                                 @endif
                             </div>

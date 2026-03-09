@@ -6,7 +6,7 @@
 
 @section('header-actions')
     <div class="d-flex gap-2">
-        <a href="{{ route('non-travel-categories.show', $category->id) }}" class="btn btn-outline-secondary">
+        <a wire:navigate href="{{ route('non-travel-categories.show', $category->id) }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back"></i> Back to Details
         </a>
         <form action="{{ route('non-travel-categories.destroy', $category->id) }}" 
@@ -43,7 +43,7 @@
             </div>
 
             <div class="d-flex justify-content-end">
-                <a href="{{ route('non-travel-categories.show', $category->id) }}" class="btn btn-light me-2">
+                <a wire:navigate href="{{ route('non-travel-categories.show', $category->id) }}" class="btn btn-light me-2">
                     <i class="bx bx-x"></i> Cancel
                 </a>
                 <button type="submit" class="btn btn-primary">

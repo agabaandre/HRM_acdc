@@ -5,7 +5,7 @@
 @section('header', 'Create New Category')
 
 @section('header-actions')
-    <a href="{{ route('non-travel-categories.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('non-travel-categories.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
 @endsection

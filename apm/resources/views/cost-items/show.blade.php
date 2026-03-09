@@ -6,10 +6,10 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('cost-items.edit', $costItem->id) }}" class="btn btn-warning">
+    <a wire:navigate href="{{ route('cost-items.edit', $costItem->id) }}" class="btn btn-warning">
         <i class="bx bx-edit"></i> Edit Cost Item
     </a>
-    <a href="{{ route('cost-items.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('cost-items.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
 </div>

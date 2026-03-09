@@ -270,7 +270,7 @@
                                                 <i class="fas fa-paper-plane me-1"></i> Submit for approval
                                             </button>
                                         </form>
-                                        <a href="{{ route('service-requests.edit', $serviceRequest) }}" class="btn btn-outline-primary">
+                                        <a wire:navigate href="{{ route('service-requests.edit', $serviceRequest) }}" class="btn btn-outline-primary">
                                             <i class="fas fa-edit me-1"></i> Edit
                                         </a>
                                     </div>
@@ -301,7 +301,7 @@
                                 <label class="form-label text-muted small fw-semibold">Activity Title</label>
                                 <p class="mb-0 fw-semibold">{{ $displayTitle }}</p>
                                 @if($mainActivityUrl ?? null)
-                                    <a href="{{ $mainActivityUrl }}" class="btn btn-sm btn-outline-primary mt-2" target="_blank" rel="noopener">
+                                    <a href="{{ $mainActivityUrl }}" class="btn btn-sm btn-outline-primary mt-2" wire:navigate rel="noopener">
                                         <i class="fas fa-external-link-alt me-1"></i>View main activity
                                     </a>
                                 @endif
@@ -784,7 +784,7 @@
                                     <p class="mb-1 fw-semibold">{{ $attachment['name'] ?? 'Unknown File' }}</p>
                                     <small class="text-muted">{{ $attachment['size'] ?? 'Unknown size' }}</small>
                                 </div>
-                                <a href="{{ $attachment['url'] ?? '#' }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                <a href="{{ $attachment['url'] ?? '#' }}" class="btn btn-outline-primary btn-sm">
                                     <i class="fas fa-download"></i>
                                 </a>
                             </div>

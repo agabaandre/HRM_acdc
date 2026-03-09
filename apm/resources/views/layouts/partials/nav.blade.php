@@ -107,8 +107,8 @@
 
             <!-- Approver Dashboard -->
             <li class="nav-item">
-                <a href="{{ route('approver-dashboard.index') }}"
-                    class="nav-link {{ Request::is('approver-dashboard*') ? 'active' : '' }}">
+                <a class="nav-link {{ Request::is('approver-dashboard*') ? 'active' : '' }}"
+                    href="{{ route('approver-dashboard.index') }}" wire:navigate>
                     <div class="parent-icon"><i class="fas fa-tachometer-alt"></i></div>
                     <div class="menu-title">Dashboard</div>
                 </a>
@@ -116,7 +116,8 @@
 
             <!-- APMS Home -->
             <li class="nav-item">
-                <a href="{{ url('home') }}" class="nav-link {{ Request::is('home') ? 'active' : '' }}">
+                <a class="nav-link {{ Request::is('home') ? 'active' : '' }}"
+                    href="{{ route('home') }}" wire:navigate>
                     <div class="parent-icon"><i class="fas fa-sitemap"></i></div>
                     <div class="menu-title">APM Home</div>
                 </a>
@@ -124,7 +125,7 @@
 
             <!-- Pending Approvals -->
             <li class="nav-item">
-                <a href="{{ route('returned-memos.index') }}"
+                <a href="{{ route('returned-memos.index') }}" wire:navigate
                     class="nav-link {{ Request::is('returned-memos*') ? 'active' : '' }}">
                     <div class="parent-icon"><i class="fas fa-clock"></i></div>
                     <div class="menu-title">Returns</div>
@@ -149,7 +150,7 @@
 
             <!-- Pending Approvals -->
             <li class="nav-item">
-                <a href="{{ route('pending-approvals.index') }}"
+                <a href="{{ route('pending-approvals.index') }}" wire:navigate
                     class="nav-link {{ Request::is('pending-approvals*') ? 'active' : '' }}">
                     <div class="parent-icon"><i class="fas fa-clock"></i></div>
                     <div class="menu-title">Approvals</div>
@@ -199,52 +200,52 @@
                 <ul class="dropdown-menu">
                     <li>
                         <a class="dropdown-item {{ Request::is('matrices*') ? 'active' : '' }}"
-                            href="{{ route('matrices.index') }}">
+                            href="{{ route('matrices.index') }}" wire:navigate>
                             Quarterly Matrix
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item {{ Request::is('activities*') ? 'active' : '' }}"
-                            href="{{ route('activities.index') }}">
+                            href="{{ route('activities.index') }}" wire:navigate>
                             Matrix Memos
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item {{ Request::is('single-memos*') ? 'active' : '' }}"
-                            href="{{ route('activities.single-memos.index') }}">
+                            href="{{ route('activities.single-memos.index') }}" wire:navigate>
                             Matrix Single Memos
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}"
-                            href="{{ url('non-travel') }}">
+                            href="{{ url('non-travel') }}" wire:navigate>
                             Non-Travel Memos
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}"
-                            href="{{ url('special-memo') }}">
+                            href="{{ url('special-memo') }}" wire:navigate>
                             Special Travel Memos
                         </a>
                     </li>
                      <li>
                         <a class="dropdown-item {{ Request::is('change-requests*') ? 'active' : '' }}"
-                            href="{{ url('change-requests') }}">
+                            href="{{ url('change-requests') }}" wire:navigate>
                             Change Requests / Addendums
                         </a>
                     </li>
                     <li>        
                         <a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}"
-                            href="{{ url('service-requests') }}">Request DSA, Imprest and Ticket</a>
+                            href="{{ url('service-requests') }}" wire:navigate>Request DSA, Imprest and Ticket</a>
                     </li>
                     <li>
                         <a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}"
-                            href="{{ url('request-arf') }}">Request for ARF</a>
+                            href="{{ url('request-arf') }}" wire:navigate>Request for ARF</a>
                     </li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item {{ Request::is('signature-verify*') ? 'active' : '' }}"
-                            href="{{ route('signature-verify.index') }}">
+                            href="{{ route('signature-verify.index') }}" wire:navigate>
                             <i class="fas fa-fingerprint me-1"></i> Validate APM Document Signature Hashes
                         </a>
                     </li>
@@ -254,7 +255,7 @@
             <!-- Staff List -->
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('staff*') ? 'active' : '' }}"
-                    href="{{ route('staff.index') }}">
+                    href="{{ route('staff.index') }}" wire:navigate>
                     <div class="parent-icon"><i class="fas fa-user-cog"></i></div>
                     <div class="menu-title">Staff List</div>
                 </a>
@@ -263,7 +264,7 @@
             <!-- Reports -->
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('reports*') ? 'active' : '' }}"
-                    href="{{ route('reports.index') }}">
+                    href="{{ route('reports.index') }}" wire:navigate>
                     <div class="parent-icon"><i class="fas fa-chart-bar"></i></div>
                     <div class="menu-title">Reports</div>
                 </a>
@@ -280,6 +281,7 @@
                     <ul class="dropdown-menu">
                         @foreach ($workflowMenuItems as $item)
                             <li>
+                                {{-- Normal link (no wire:navigate) to avoid prefetch sandbox cookie error (Livewire store) --}}
                                 <a class="dropdown-item" href="{{ route($item['route']) }}">
                                     <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
                                 </a>
@@ -293,7 +295,7 @@
             <!-- Settings -->
             @if (in_array(89, user_session('permissions', [])))
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') ? 'active' : '' }}"
+                    <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') ? 'active' : '' }}"
                         href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                         <div class="menu-title">Settings</div>
@@ -302,7 +304,7 @@
                         @foreach ($settingsMenuItems as $item)
                             <li>
                                 <a class="dropdown-item"
-                                    href="{{ isset($item['url']) ? $item['url'] : route($item['route']) }}">
+                                    href="{{ isset($item['url']) ? $item['url'] : route($item['route']) }}" wire:navigate>
                                     <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
                                 </a>
                             </li>

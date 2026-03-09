@@ -15,12 +15,13 @@
     <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bx bx-list-ul me-2 text-primary"></i>All Partners</h5>
         <div>
-            <form action="{{ route('partners.index') }}" method="GET" class="d-flex">
-                <input type="text" name="search" class="form-control me-2" placeholder="Search partners..." value="{{ request('search') }}">
+            <form id="partners-search-form" class="d-flex" role="search">
+                <input type="text" name="search" id="partners-search-input" class="form-control me-2" placeholder="Search partners..." value="{{ request('search') }}" autocomplete="off">
                 <button type="submit" class="btn btn-outline-primary">
-                    <i class="bx bx-search"></i>
+                    <i class="bx bx-search me-1"></i>Search
                 </button>
             </form>
+            <a id="partners-search-navigate" wire:navigate href="{{ route('partners.index') }}" class="d-none" aria-hidden="true"></a>
         </div>
     </div>
     <div class="card-body p-0">
@@ -46,12 +47,12 @@
                             <td>{{ $partner->created_at?->format('Y-m-d') ?? '—' }}</td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('partners.show', $partner) }}" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View">
-                                        <i class="bx bx-show"></i>
+                                    <a wire:navigate href="{{ route('partners.show', $partner) }}" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View">
+                                        <i class="bx bx-show me-1"></i>View
                                     </a>
                                     <button type="button" class="btn btn-sm btn-outline-primary btn-edit-partner" data-bs-toggle="tooltip" title="Edit"
                                         data-id="{{ $partner->id }}" data-name="{{ e($partner->name) }}" data-url="{{ route('partners.update', $partner) }}">
-                                        <i class="bx bx-edit"></i>
+                                        <i class="bx bx-edit me-1"></i>Edit
                                     </button>
                                 </div>
                             </td>
@@ -163,9 +164,9 @@
                 '<td><span class="badge bg-info">' + (partner.fund_codes_count || 0) + ' Codes</span></td>' +
                 '<td>' + escapeHtml(partner.created_at || '—') + '</td>' +
                 '<td class="text-end"><div class="btn-group" role="group">' +
-                '<a href="' + showUrl + '" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View"><i class="bx bx-show"></i></a> ' +
+                '<a href="' + showUrl + '" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View" wire:navigate><i class="bx bx-show me-1"></i>View</a> ' +
                 '<button type="button" class="btn btn-sm btn-outline-primary btn-edit-partner" data-bs-toggle="tooltip" title="Edit" ' +
-                'data-id="' + partner.id + '" data-name="' + escapeHtml(partner.name) + '" data-url="' + updateUrl + '"><i class="bx bx-edit"></i></button>' +
+                'data-id="' + partner.id + '" data-name="' + escapeHtml(partner.name) + '" data-url="' + updateUrl + '"><i class="bx bx-edit me-1"></i>Edit</button>' +
                 '</div></td></tr>';
         }
 
@@ -306,6 +307,32 @@
             $('#editPartnerNameError').text('');
             $('#editPartnerSubmitBtn').prop('disabled', false);
         });
+        var partnersForm = document.getElementById('partners-search-form');
+        var partnersInput = document.getElementById('partners-search-input');
+        var partnersNav = document.getElementById('partners-search-navigate');
+        if (partnersForm && partnersInput && partnersNav) {
+            partnersForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var base = '{{ route('partners.index') }}';
+                var q = (partnersInput.value || '').trim();
+                partnersNav.href = q ? (base + (base.indexOf('?') !== -1 ? '&' : '?') + 'search=' + encodeURIComponent(q)) : base;
+                partnersNav.click();
+            });
+        }
+    });
+    document.addEventListener('livewire:navigated', function() {
+        var partnersForm = document.getElementById('partners-search-form');
+        var partnersInput = document.getElementById('partners-search-input');
+        var partnersNav = document.getElementById('partners-search-navigate');
+        if (partnersForm && partnersInput && partnersNav) {
+            partnersForm.onsubmit = function(e) {
+                e.preventDefault();
+                var base = '{{ route('partners.index') }}';
+                var q = (partnersInput.value || '').trim();
+                partnersNav.href = q ? (base + (base.indexOf('?') !== -1 ? '&' : '?') + 'search=' + encodeURIComponent(q)) : base;
+                partnersNav.click();
+            };
+        }
     });
 </script>
 @endpush

@@ -5,7 +5,7 @@
 @section('header', 'Create New Location')
 
 @section('header-actions')
-    <a href="{{ route('locations.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('locations.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
 @endsection

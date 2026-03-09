@@ -131,7 +131,7 @@
                                 <button type="submit" class="btn btn-primary btn-sm">
                                     <i class="bx bx-search"></i>
                                 </button>
-                                <a href="{{ route('audit-logs.index') }}" class="btn btn-secondary btn-sm">
+                                <a wire:navigate href="{{ route('audit-logs.index') }}" class="btn btn-secondary btn-sm">
                                     <i class="bx bx-x"></i>
                                 </a>
                             </div>
@@ -254,7 +254,7 @@
                                                         data-log-new-values="{{ $log->new_values }}"
                                                         data-log-metadata="{{ $log->metadata }}"
                                                         title="View Details">
-                                                    <i class="bx bx-show"></i>
+                                                    <i class="bx bx-show me-1"></i>View
                                                 </button>
                                                 @if(in_array(91, user_session('permissions')) && in_array($log->action, ['created', 'updated', 'deleted']))
                                                     @php
@@ -278,7 +278,7 @@
                                                             data-log-action="{{ $log->action }}"
                                                             data-log-entity="{{ $log->entity_id ?? 'N/A' }}"
                                                             title="{{ $actionText }}">
-                                                        <i class="bx {{ $actionIcon }}"></i>
+                                                        <i class="bx {{ $actionIcon }} me-1"></i>{{ $actionText }}
                                                     </button>
                                                 @endif
                                             </div>

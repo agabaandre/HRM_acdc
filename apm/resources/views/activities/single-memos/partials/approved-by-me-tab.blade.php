@@ -78,15 +78,15 @@
                             @endif
                         </td>
                         <td class="text-center">
-                            <div class="btn-group">
-                                <a href="{{ route('activities.single-memos.show', $memo) }}" 
+                            <div class="btn-group action-buttons-stacked">
+                                <a wire:navigate href="{{ route('activities.single-memos.show', $memo) }}" 
                                    class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show"></i>
+                                    <i class="bx bx-show me-1"></i>View
                                 </a>
                                 @if(can_edit_memo($memo))
-                                    <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
+                                    <a wire:navigate href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
                                        class="btn btn-sm btn-outline-warning" title="Edit">
-                                        <i class="bx bx-edit"></i>
+                                        <i class="bx bx-edit me-1"></i>Edit
                                     </a>
                                 @endif
                                 @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
@@ -94,14 +94,14 @@
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                            <i class="bx bx-trash"></i>
+                                            <i class="bx bx-trash me-1"></i>Delete
                                         </button>
                                     </form>
                                 @endif
                                 @if($memo->overall_status === 'approved')
-                                    <a href="{{ route('matrices.activities.memo-pdf', [$memo->matrix, $memo]) }}" 
+                                    <a wire:navigate href="{{ route('matrices.activities.memo-pdf', [$memo->matrix, $memo]) }}" 
                                        class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                        <i class="bx bx-printer"></i>
+                                        <i class="bx bx-printer me-1"></i>Print
                                     </a>
                                 @endif
                             </div>

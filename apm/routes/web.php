@@ -14,6 +14,11 @@ use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\Api\SessionController;
 use App\Http\Controllers\AuthController;
 
+// PWA disabled: prevent install prompt and standalone window
+Route::get('/manifest.json', function () {
+    return response('', 404);
+})->name('manifest.disabled');
+
 // The root route that handles token decoding and user session management
 Route::get('/', function (Request $request) {
     // Get token from query parameter
@@ -169,6 +174,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     
     // Funders Management
     Route::resource('funders', App\Http\Controllers\FunderController::class)->except(['destroy']);
+    Route::get('divisions/ajax', [App\Http\Controllers\DivisionController::class, 'getDivisionsAjax'])->name('divisions.ajax');
     Route::get('divisions/export/excel', [App\Http\Controllers\DivisionController::class, 'exportExcel'])->name('divisions.export.excel');
     Route::resource('divisions', App\Http\Controllers\DivisionController::class)->only(['index', 'show']);
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);

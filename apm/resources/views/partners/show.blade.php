@@ -6,10 +6,10 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('partners.edit', $partner) }}" class="btn btn-warning">
+    <a wire:navigate href="{{ route('partners.edit', $partner) }}" class="btn btn-warning">
         <i class="bx bx-edit"></i> Edit
     </a>
-    <a href="{{ route('partners.index') }}" class="btn btn-outline-secondary">
+    <a wire:navigate href="{{ route('partners.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to List
     </a>
 </div>
@@ -49,7 +49,7 @@
         <div class="card shadow-sm">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bx bx-list-ol me-2 text-primary"></i>Related Fund Codes</h5>
-                <a href="{{ route('fund-codes.create', ['partner_id' => $partner->id]) }}" class="btn btn-sm btn-success">
+                <a wire:navigate href="{{ route('fund-codes.create', ['partner_id' => $partner->id]) }}" class="btn btn-sm btn-success">
                     <i class="bx bx-plus"></i> Add Fund Code
                 </a>
             </div>
@@ -80,10 +80,10 @@
                                     </td>
                                     <td class="text-end">
                                         <div class="btn-group" role="group">
-                                            <a href="{{ route('fund-codes.show', $fundCode) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
+                                            <a wire:navigate href="{{ route('fund-codes.show', $fundCode) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
                                                 <i class="bx bx-show"></i>
                                             </a>
-                                            <a href="{{ route('fund-codes.edit', $fundCode) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit">
+                                            <a wire:navigate href="{{ route('fund-codes.edit', $fundCode) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit">
                                                 <i class="bx bx-edit"></i>
                                             </a>
                                         </div>

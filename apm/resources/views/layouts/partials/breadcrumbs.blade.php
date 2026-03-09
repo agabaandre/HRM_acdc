@@ -57,7 +57,7 @@
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0 p-0">
                         <li class="breadcrumb-item">
-                            <a href="{{ url('/home') }}">
+                            <a href="{{ url('/home') }}" wire:navigate>
                                 <i class="bx bx-home-alt"></i> Home
                             </a>
                         </li>
@@ -190,7 +190,7 @@
                         </li>
                         @else
                         <li class="breadcrumb-item">
-                            <a href="{{ url($url) }}" title="{{$displayName}}">
+                            <a href="{{ url($url) }}" wire:navigate title="{{$displayName}}">
                                 {{  Str::limit($displayName,100) }}
                             </a>
                         </li>
@@ -234,7 +234,4 @@
         </div>
         @endif
 
-        <div id="preloader">
-            <div id="status"></div>
-        </div>
         <div class="card">

@@ -79,27 +79,27 @@
                     </td>
                     <td class="text-center">
                         <div class="btn-group">
-                            <a href="{{ route('non-travel.show', $memo) }}" 
+                            <a wire:navigate href="{{ route('non-travel.show', $memo) }}" 
                                class="btn btn-sm btn-outline-info" title="View">
-                                <i class="bx bx-show"></i>
+                                <i class="bx bx-show me-1"></i>View
                             </a>
                             @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
-                                <a href="{{ route('non-travel.edit', $memo) }}"
+                                <a wire:navigate href="{{ route('non-travel.edit', $memo) }}"
                                    class="btn btn-sm btn-outline-warning" title="Edit">
-                                    <i class="bx bx-edit"></i>
+                                    <i class="bx bx-edit me-1"></i>Edit
                                 </a>
                                 <form action="{{ route('non-travel.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this memo? This action cannot be undone.');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                        <i class="bx bx-trash"></i>
+                                        <i class="bx bx-trash me-1"></i>Delete
                                     </button>
                                 </form>
                             @endif
                             @if($memo->overall_status === 'approved')
                                 <a href="{{ route('non-travel.print', $memo) }}" 
                                    class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                    <i class="bx bx-printer"></i>
+                                    <i class="bx bx-printer me-1"></i>Print
                                 </a>
                             @endif
                         </div>
