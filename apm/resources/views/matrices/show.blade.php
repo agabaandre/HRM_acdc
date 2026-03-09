@@ -62,13 +62,25 @@
         font-size: 1rem;
         border-radius: 0.5rem;
     }
-    /* Smaller action button text on matrix show page only */
+    /* Smaller action button text on matrix show page only (table actions, Search, Reset) */
     .matrix-show-page .btn {
-        font-size: 0.8rem;
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
     }
     .matrix-show-page .btn-sm {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
+        font-size: 0.55rem;
+        padding: 0.18rem 0.35rem;
+    }
+    /* Stacked action buttons: same width, vertical */
+    .matrix-show-page .matrix-show-action-group {
+        width: 100px;
+        display: inline-flex;
+        flex-direction: column;
+    }
+    .matrix-show-page .matrix-show-action-group .btn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
     }
     
     .shadow-sm {
@@ -166,10 +178,10 @@
                         @endif
                     </small>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-8">
                     <div class="row g-2">
                         <!-- General Search -->
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                         <div class="input-group">
                             <span class="input-group-text bg-white">
                                 <i class="bx bx-search text-muted"></i>
@@ -180,7 +192,7 @@
                             </div>
                         </div>
                         
-                        <!-- Document Number Filter -->
+                        <!-- Document Number Filter (narrower) -->
                         <div class="col-md-4">
                             <div class="input-group">
                                 <span class="input-group-text bg-white">
@@ -192,14 +204,14 @@
                         </div>
                         </div>
                         
-                        <!-- Search Buttons -->
-                        <div class="col-md-2">
+                        <!-- Search Buttons (wider so row aligns, no wrap) -->
+                        <div class="col-md-3">
                             <div class="btn-group w-100" role="group">
                                 <button type="button" id="search-btn" class="btn btn-primary">
-                            <i class="bx bx-search"></i>
-                        </button>
+                                    <i class="bx bx-search me-1"></i>Search
+                                </button>
                                 <button type="button" id="clear-search-btn" class="btn btn-outline-secondary">
-                                <i class="bx bx-x"></i>
+                                    <i class="bx bx-x me-1"></i>Reset
                                 </button>
                             </div>
                         </div>
@@ -342,10 +354,10 @@
                             <span id="single-memos-count">{{ $singleMemos->where('overall_status', 'approved')->count() }}</span> approved single memos in this matrix
                         </small>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-8">
                         <div class="row g-2">
                             <!-- General Search -->
-                            <div class="col-md-6">
+                            <div class="col-md-5">
                             <div class="input-group">
                                 <span class="input-group-text bg-white">
                                     <i class="bx bx-search text-muted"></i>
@@ -356,7 +368,7 @@
                             </div>
                             </div>
                             
-                            <!-- Document Number Filter -->
+                            <!-- Document Number Filter (narrower) -->
                             <div class="col-md-4">
                                 <div class="input-group">
                                     <span class="input-group-text bg-white">
@@ -368,17 +380,17 @@
                                 </div>
                             </div>
                             
-                            <!-- Search Buttons -->
-                            <div class="col-md-2">
-                                <div class="btn-group w-100" role="group">
+                            <!-- Search Buttons (wider so row aligns, no wrap) -->
+                        <div class="col-md-3">
+                            <div class="btn-group w-100" role="group">
                                     <button type="button" id="single-memo-search-btn" class="btn btn-primary">
-                                <i class="bx bx-search"></i>
-                            </button>
+                                        <i class="bx bx-search me-1"></i>Search
+                                    </button>
                                     <button type="button" id="single-memo-clear-search-btn" class="btn btn-outline-secondary">
-                                    <i class="bx bx-x"></i>
+                                        <i class="bx bx-x me-1"></i>Reset
                                     </button>
                                 </div>
-                            </div>
+                        </div>
                         </div>
                         
                         <!-- Page Size Selector -->
@@ -542,8 +554,8 @@
                                         </span>
                                     </td>
                                     <td class="px-3 py-3 text-center">
-                                        <div class="btn-group" role="group">
-                                            <a wire:navigate href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Single Memo">
+                                        <div class="btn-group btn-group-vertical btn-group-sm matrix-show-action-group" role="group">
+                                            <a wire:navigate href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm">
                                                 <i class="bx bx-show me-1"></i>View
                                             </a>
                                             @if($memo->overall_status == 'draft' && 
@@ -556,8 +568,7 @@
                                                             data-bs-toggle="modal" 
                                                             data-bs-target="#copyActivityModal" 
                                                             data-activity-id="{{ $memo->id }}"
-                                                            data-activity-title="{{ $memo->activity_title }}"
-                                                            data-bs-title="Copy Activity">
+                                                            data-activity-title="{{ $memo->activity_title }}">
                                                         <i class="bx bx-copy me-1"></i>Copy
                                                     </button>
                                                 @endif
@@ -565,8 +576,7 @@
                                                         data-bs-toggle="modal" 
                                                         data-bs-target="#deleteSingleMemoModal" 
                                                         data-memo-id="{{ $memo->id }}"
-                                                        data-memo-title="{{ $memo->activity_title }}"
-                                                        data-bs-title="Delete Single Memo">
+                                                        data-memo-title="{{ $memo->activity_title }}">
                                                     <i class="bx bx-trash me-1"></i>Delete
                                                 </button>
                                             @endif
@@ -1239,8 +1249,8 @@ function renderActivities(activities) {
             html += '</td>';
             
             html += '<td class="px-3 py-3 text-center">';
-            html += '<div class="btn-group" role="group">';
-            html += `<a href="${getActivityUrl(activity.id)}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Activity">`;
+            html += '<div class="btn-group btn-group-vertical btn-group-sm matrix-show-action-group" role="group">';
+            html += `<a href="${getActivityUrl(activity.id)}" class="btn btn-outline-primary btn-sm">`;
             html += '<i class="bx bx-show me-1"></i>View';
             html += '</a>';
             
@@ -1248,8 +1258,7 @@ function renderActivities(activities) {
             if (activity.overall_status === 'draft' && canShowDeleteButton()) {
                 html += '<button type="button" class="btn btn-outline-info btn-sm" ';
                 html += 'data-bs-toggle="modal" data-bs-target="#copyActivityModal" ';
-                html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}" `;
-                html += 'data-bs-title="Copy Activity">';
+                html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}">`;
                 html += '<i class="bx bx-copy me-1"></i>Copy';
                 html += '</button>';
             }
@@ -1257,8 +1266,7 @@ function renderActivities(activities) {
             if (canShowDeleteButton()) {
                 html += '<button type="button" class="btn btn-outline-danger btn-sm" ';
                 html += 'data-bs-toggle="modal" data-bs-target="#deleteActivityModal" ';
-                html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}" `;
-                html += 'data-bs-title="Delete Activity">';
+                html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}">`;
                 html += '<i class="bx bx-trash me-1"></i>Delete';
                 html += '</button>';
             }
@@ -1751,8 +1759,8 @@ function renderSingleMemos(singleMemos) {
                         <span class="badge bg-${status.badgeClass} rounded-pill">${status.text}</span>
                     </td>
                     <td class="px-3 py-3 text-center">
-                        <div class="btn-group" role="group">
-                            <a href="${getSingleMemoUrl(memo.id)}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="View Single Memo">
+                        <div class="btn-group btn-group-vertical btn-group-sm matrix-show-action-group" role="group">
+                            <a href="${getSingleMemoUrl(memo.id)}" class="btn btn-outline-primary btn-sm">
                                 <i class="bx bx-show me-1"></i>View
                             </a>
                             ${canShowSingleMemoDeleteButton(memo) ? `
@@ -1760,8 +1768,7 @@ function renderSingleMemos(singleMemos) {
                                         data-bs-toggle="modal" 
                                         data-bs-target="#deleteSingleMemoModal" 
                                         data-memo-id="${memo.id}"
-                                        data-memo-title="${memo.activity_title}"
-                                        data-bs-title="Delete Single Memo">
+                                        data-memo-title="${memo.activity_title}">
                                     <i class="bx bx-trash me-1"></i>Delete
                                 </button>
                             ` : ''}
