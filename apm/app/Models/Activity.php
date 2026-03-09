@@ -270,8 +270,10 @@ class Activity extends Model
      * Returns array keyed by staff_id (string) with participant_days (int) as value.
      * Handles both formats: object keyed by staff_id {"230":{...}} and array of objects [{staff_id:230,...}].
      * Used by staff-quarterly-travel report and division schedule (travel days from JSON).
+     *
+     * @param bool $internationalTravelOnly If true, only count participant_days where international_travel is truthy (person is travelling). Used by staff-quarterly-travel report so non-travel days are not counted as "Approved Travel days".
      */
-    public function getEffectiveInternalParticipants(): array
+    public function getEffectiveInternalParticipants(bool $internationalTravelOnly = false): array
     {
         $cr = ChangeRequest::where('activity_id', $this->id)
             ->where('overall_status', 'approved')
@@ -296,6 +298,12 @@ class Activity extends Model
                 if (!is_array($item)) {
                     continue;
                 }
+                if ($internationalTravelOnly) {
+                    $travel = isset($item['international_travel']) ? (int) $item['international_travel'] : 0;
+                    if ($travel !== 1) {
+                        continue;
+                    }
+                }
                 $pid = isset($item['staff_id']) ? (int) $item['staff_id'] : (isset($item['id']) ? (int) $item['id'] : null);
                 if ($pid === null) {
                     continue;
@@ -309,6 +317,12 @@ class Activity extends Model
             foreach ($raw as $key => $info) {
                 if (!is_array($info)) {
                     continue;
+                }
+                if ($internationalTravelOnly) {
+                    $travel = isset($info['international_travel']) ? (int) $info['international_travel'] : 0;
+                    if ($travel !== 1) {
+                        continue;
+                    }
                 }
                 $pid = (int) $key;
                 if ($pid <= 0) {

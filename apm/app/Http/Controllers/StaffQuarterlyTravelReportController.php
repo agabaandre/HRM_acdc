@@ -192,7 +192,7 @@ class StaffQuarterlyTravelReportController extends Controller
             }
             $yq = $matrix->year . ' ' . $matrix->quarter;
 
-            $participants = $activity->getEffectiveInternalParticipants();
+            $participants = $activity->getEffectiveInternalParticipants(true); // only count days where international_travel==1 (Approved Travel days)
             if (empty($participants)) {
                 continue;
             }
@@ -295,7 +295,7 @@ class StaffQuarterlyTravelReportController extends Controller
             if (!$matrix) {
                 continue;
             }
-            $participants = $activity->getEffectiveInternalParticipants();
+            $participants = $activity->getEffectiveInternalParticipants(true); // only count days where international_travel==1 (Approved Travel days)
             $staffIdStr = (string) $staffId;
             if (!isset($participants[$staffIdStr])) {
                 continue;
