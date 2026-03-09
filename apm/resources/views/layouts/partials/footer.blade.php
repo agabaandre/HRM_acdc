@@ -208,23 +208,26 @@
             });
         });
 
-        $('.mydata').DataTable({
-            dom: 'Bfrtip',
-            "paging": true,
-            "lengthChange": true,
-            "searching": true,
-            "ordering": true,
-            "info": true,
-            "autoWidth": true,
-            lengthMenu: [
-                [25, 50, 100, 150, -1],
-                ['25', '50', '100', '150', '200', 'Show all']
-            ],
-            buttons: [
-                'csvHtml5',
-                'pdfHtml5',
-                'pageLength',
-            ]
+        $('.mydata').each(function() {
+            if (!$.fn.DataTable || $.fn.DataTable.isDataTable(this)) return;
+            $(this).DataTable({
+                dom: 'Bfrtip',
+                "paging": true,
+                "lengthChange": true,
+                "searching": true,
+                "ordering": true,
+                "info": true,
+                "autoWidth": true,
+                lengthMenu: [
+                    [25, 50, 100, 150, -1],
+                    ['25', '50', '100', '150', '200', 'Show all']
+                ],
+                buttons: [
+                    'csvHtml5',
+                    'pdfHtml5',
+                    'pageLength',
+                ]
+            });
         });
     });
 </script>
@@ -275,65 +278,87 @@
 </script> -->
 
 <script type="text/javascript">
-    function googleTranslateElementInit() {
-        new google.translate.TranslateElement({
-            pageLanguage: 'en',
-            autoDisplay: false,
-            disableAutoHover: true,
-            showBanner: false
-        }, 'google_translate_element');
-    }
-
-    function GTranslateFireEvent(element, event) {
-        try {
-            if (document.createEventObject) {
-                var evt = document.createEventObject();
-                element.fireEvent('on' + event, evt);
-            } else {
-                var evt = document.createEvent('HTMLEvents');
-                evt.initEvent(event, true, true);
-                element.dispatchEvent(evt);
+    (function() {
+        var translateApplied = false;
+        function googleTranslateElementInit() {
+            try {
+                if (typeof google === 'undefined' || !google.translate || !google.translate.TranslateElement) return;
+                new google.translate.TranslateElement({
+                    pageLanguage: 'en',
+                    autoDisplay: false,
+                    disableAutoHover: true,
+                    showBanner: false
+                }, 'google_translate_element');
+            } catch (e) {
+                if (typeof console !== 'undefined' && console.warn) console.warn('Google Translate init failed:', e);
             }
-        } catch (e) { }
-    }
+        }
+        window.googleTranslateElementInit = googleTranslateElementInit;
 
-    function doGTranslate(lang_code) {
-        var lang = lang_code || 'en';
-        var interval = setInterval(function () {
-            var teCombo = document.querySelector('select.goog-te-combo');
-            if (teCombo && teCombo.options.length > 0) {
-                var langIndex = Array.from(teCombo.options).findIndex(option => option.value === lang);
-                if (langIndex !== -1) {
-                    teCombo.selectedIndex = langIndex;
-                    GTranslateFireEvent(teCombo, 'change');
-                    GTranslateFireEvent(teCombo, 'change');
-                    clearInterval(interval); // stop once applied
+        function GTranslateFireEvent(element, event) {
+            try {
+                if (!element) return;
+                if (document.createEventObject) {
+                    var evt = document.createEventObject();
+                    element.fireEvent('on' + event, evt);
+                } else {
+                    var evt = document.createEvent('HTMLEvents');
+                    evt.initEvent(event, true, true);
+                    element.dispatchEvent(evt);
                 }
-            }
-        }, 500); // retry every 500ms until successful
-    }
+            } catch (err) { }
+        }
 
-    document.addEventListener("DOMContentLoaded", function () {
-        // Get user's preferred language from session, default to 'en'
-        @php
-            $user = session('user', []);
-            $defaultLangCode = $user['langauge'] ?? 'en';
-            // Map language codes to Google Translate codes
-            $langMap = [
-                'en' => 'en',
-                'fr' => 'fr',
-                'sw' => 'sw',
-                'ar' => 'ar',
-                'pt' => 'pt',
-                'es' => 'es'
-            ];
-            $preferredLang = $langMap[$defaultLangCode] ?? 'en';
-        @endphp
-        const preferredLang = "{{ $preferredLang }}";
-        setTimeout(() => {
-            doGTranslate(preferredLang);
-        }, 1500); // delay to let Google Translate load
-    });
+        function doGTranslate(lang_code) {
+            if (translateApplied) return;
+            var lang = lang_code || 'en';
+            var attempts = 0;
+            var maxAttempts = 24;
+            var interval = setInterval(function () {
+                attempts++;
+                if (attempts > maxAttempts) {
+                    clearInterval(interval);
+                    return;
+                }
+                try {
+                    var teCombo = document.querySelector('select.goog-te-combo');
+                    if (teCombo && teCombo.options && teCombo.options.length > 0) {
+                        var langIndex = Array.from(teCombo.options).findIndex(function(option) { return option.value === lang; });
+                        if (langIndex !== -1) {
+                            teCombo.selectedIndex = langIndex;
+                            GTranslateFireEvent(teCombo, 'change');
+                            translateApplied = true;
+                            clearInterval(interval);
+                        }
+                    }
+                } catch (err) {
+                    if (typeof console !== 'undefined' && console.warn) console.warn('Google Translate apply failed:', err);
+                    clearInterval(interval);
+                }
+            }, 500);
+        }
+        window.doGTranslate = doGTranslate;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            @php
+                $user = session('user', []);
+                $defaultLangCode = $user['langauge'] ?? 'en';
+                $langMap = [
+                    'en' => 'en',
+                    'fr' => 'fr',
+                    'sw' => 'sw',
+                    'ar' => 'ar',
+                    'pt' => 'pt',
+                    'es' => 'es'
+                ];
+                $preferredLang = $langMap[$defaultLangCode] ?? 'en';
+            @endphp
+            var preferredLang = "{{ $preferredLang }}";
+            if (preferredLang && preferredLang !== 'en') {
+                setTimeout(function() { doGTranslate(preferredLang); }, 1500);
+            }
+        });
+    })();
 </script>
 
 <script>

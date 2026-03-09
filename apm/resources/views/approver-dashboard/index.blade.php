@@ -346,6 +346,59 @@ var userDivisionId = {{ $userDivisionId ?? 'null' }};
 var hasPermission88 = {{ $hasPermission88 ? 'true' : 'false' }};
 var baseUrl = '{{ user_session("base_url") ?? url("/") }}';
 var pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
+var dashboardApiUrl = '{{ route("approver-dashboard.api") }}';
+
+// Table cache: 5 min TTL, cache-first then background refresh
+var CACHE_TTL_MS = 5 * 60 * 1000;
+var CACHE_KEY_PREFIX = 'approverDashboard_';
+var skipCacheNextRequest = false;
+
+function buildTableRequestParams(d) {
+    var params = typeof d === 'object' && d !== null ? Object.assign({}, d) : {};
+    params.q = $('#searchApprover').val() || null;
+    params.division_id = $('#filterDivision').val() || null;
+    params.doc_type = $('#filterDocType').val() || null;
+    params.approval_level = $('#filterApprovalLevel').val() || null;
+    var monthVal = $('#filterMonth').val();
+    params.month = monthVal ? parseInt(monthVal, 10) : null;
+    var yearVal = $('#filterYear').val();
+    params.year = yearVal ? parseInt(yearVal, 10) : null;
+    params.page = Math.floor((params.start || 0) / (params.length || 25)) + 1;
+    params.per_page = params.length || 25;
+    delete params.start;
+    delete params.draw;
+    return params;
+}
+
+function getTableCacheKey(params) {
+    var key = { page: params.page, per_page: params.per_page, order: params.order, q: params.q, division_id: params.division_id, doc_type: params.doc_type, approval_level: params.approval_level, month: params.month, year: params.year };
+    return CACHE_KEY_PREFIX + JSON.stringify(key);
+}
+
+function getCachedTableResponse(cacheKey) {
+    try {
+        var raw = sessionStorage.getItem(cacheKey);
+        if (!raw) return null;
+        var parsed = JSON.parse(raw);
+        if (!parsed || !parsed.json || typeof parsed.cachedAt !== 'number') return null;
+        return parsed;
+    } catch (e) { return null; }
+}
+
+function setCachedTableResponse(cacheKey, json) {
+    try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ json: json, cachedAt: Date.now() }));
+    } catch (e) {}
+}
+
+function setLastUpdatedDisplay(timestamp) {
+    var el = document.getElementById('lastUpdated');
+    if (!el) return;
+    if (typeof timestamp !== 'number') timestamp = Date.now();
+    var d = new Date(timestamp);
+    el.textContent = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
 function pendingApprovalsFilterParams() {
     const y = $('#filterYear').val();
     const m = $('#filterMonth').val();
@@ -589,35 +642,54 @@ function initializeDataTable() {
         searching: false, // Disable DataTables search box
         ordering: true,
         order: [[7, 'desc']], // Sort by Avg. Time (highest days) descending by default
-        ajax: {
-        url: '{{ route("approver-dashboard.api") }}',
-        type: 'GET',
-            data: function(d) {
-                // Add custom filters
-                d.q = $('#searchApprover').val();
-                d.division_id = $('#filterDivision').val() || null;
-                d.doc_type = $('#filterDocType').val() || null;
-                d.approval_level = $('#filterApprovalLevel').val() || null;
-                const monthValue = $('#filterMonth').val();
-                d.month = monthValue ? parseInt(monthValue) : null;
-                const yearValue = $('#filterYear').val();
-                d.year = yearValue ? parseInt(yearValue) : null;
-                // Convert DataTables parameters to our API format
-                d.page = Math.floor(d.start / d.length) + 1;
-                d.per_page = d.length;
-                // Keep order parameter for server-side sorting
-                // Remove DataTables default params we don't need
-                delete d.start;
-                delete d.draw;
-            },
-            dataSrc: function(json) {
-                // Update summary stats
-                if (json.success && json.data) {
-                    updateSummaryStats(json);
-                    return json.data;
-                }
-                return [];
+        ajax: function(data, callback, settings) {
+            var params = buildTableRequestParams(data);
+            var cacheKey = getTableCacheKey(params);
+            var cached = getCachedTableResponse(cacheKey);
+            if (skipCacheNextRequest) {
+                skipCacheNextRequest = false;
+                cached = null;
             }
+            var now = Date.now();
+            if (cached && (now - cached.cachedAt) < CACHE_TTL_MS) {
+                setLastUpdatedDisplay(cached.cachedAt);
+                if (cached.json.success && cached.json.data) {
+                    updateSummaryStats(cached.json);
+                }
+                callback(cached.json);
+                // Background refresh: update cache and redraw so table shows fresh data within 5 min
+                setTimeout(function() {
+                    $.get(dashboardApiUrl, params).done(function(json) {
+                        if (json && json.success) {
+                            setCachedTableResponse(cacheKey, json);
+                            setLastUpdatedDisplay(Date.now());
+                            if (approverTable) approverTable.draw(false);
+                        }
+                    });
+                }, 0);
+                return;
+            }
+            $.ajax({
+                url: dashboardApiUrl,
+                type: 'GET',
+                data: params,
+                dataType: 'json'
+            }).done(function(json) {
+                if (json && json.success) {
+                    setCachedTableResponse(cacheKey, json);
+                    setLastUpdatedDisplay(Date.now());
+                    updateSummaryStats(json);
+                }
+                callback(json || { success: false, data: [] });
+            }).fail(function(xhr) {
+                callback({ success: false, data: [], recordsTotal: 0, recordsFiltered: 0 });
+            });
+        },
+        dataSrc: function(json) {
+            if (json && json.success && json.data) {
+                return json.data;
+            }
+            return [];
         },
         columns: [
             {
@@ -823,20 +895,20 @@ function initializeDataTable() {
 
 
 function updateSummaryStats(response) {
-    // Update summary statistics
-    if (response.pagination) {
-    $('#totalApprovers').text(response.pagination.total);
+    // Update summary statistics (lastUpdated is set by setLastUpdatedDisplay in ajax/cache path)
+    if (response && response.pagination) {
+        $('#totalApprovers').text(response.pagination.total);
     }
-    if (response.data && response.data.length > 0) {
-        $('#totalPending').text(response.data.reduce((sum, approver) => sum + (approver.total_pending || 0), 0));
+    if (response && response.data && response.data.length > 0) {
+        $('#totalPending').text(response.data.reduce(function(sum, approver) { return sum + (approver.total_pending || 0); }, 0));
     }
-    if (response.total_workflows !== undefined) {
-    $('#activeWorkflow').text(response.total_workflows || 0);
+    if (response && response.total_workflows !== undefined) {
+        $('#activeWorkflow').text(response.total_workflows || 0);
     }
-    $('#lastUpdated').text(new Date().toLocaleTimeString());
 }
 
 function refreshDashboard() {
+    skipCacheNextRequest = true;
     if (approverTable) {
         approverTable.draw(false);
     }
