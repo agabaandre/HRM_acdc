@@ -330,16 +330,7 @@
     <button type="button" class="btn btn-info btn-modern" onclick="refreshDashboard()">
         <i class="fa fa-sync-alt"></i> Refresh
     </button>
-    <div class="btn-group">
-        <button type="button" class="btn btn-success btn-modern" onclick="exportData('pdf')" title="Export as PDF">
-            <i class="fa fa-file-pdf"></i> Export PDF
-        </button>
-        <button type="button" class="btn btn-outline-success btn-modern" onclick="exportData('csv')" title="Export as CSV">
-            <i class="fa fa-file-excel"></i> CSV
-        </button>
-    </div>
 </div>
-{{-- @dd(user_session()) --}}
 @endsection
 
 @section('content')
@@ -528,9 +519,9 @@ function renderWorkflowStats(stats) {
     var yMax = maxHours > 0 ? Math.ceil(maxHours * 1.15) : 10;
 
     function drawChart() {
-        if (typeof Highcharts === 'undefined') return;
         var chartEl = document.getElementById('workflowAvgTimeChart');
-        if (!chartEl) return;
+        if (!chartEl) return false;
+        if (typeof Highcharts === 'undefined') return false;
         if (chartEl.__chart) {
             try { chartEl.__chart.destroy(); chartEl.__chart = null; } catch (e) {}
         }
@@ -561,15 +552,20 @@ function renderWorkflowStats(stats) {
                 credits: { enabled: false }
             });
             chartEl.__chart = chart;
+            return true;
         } catch (err) {
             if (typeof console !== 'undefined' && console.warn) console.warn('Workflow chart render failed:', err);
+            return false;
         }
     }
-    if (document.getElementById('workflowAvgTimeChart')) {
-        drawChart();
-    } else {
-        setTimeout(function() { drawChart(); }, 100);
+    function tryDrawChart(attempt) {
+        attempt = attempt || 0;
+        var maxAttempts = 25;
+        if (drawChart()) return;
+        if (attempt >= maxAttempts) return;
+        setTimeout(function() { tryDrawChart(attempt + 1); }, 100);
     }
+    setTimeout(function() { tryDrawChart(0); }, 0);
 }
 
 function escapeHtml(text) {
@@ -841,7 +837,10 @@ function updateSummaryStats(response) {
 }
 
 function refreshDashboard() {
-    loadDashboardData();
+    if (approverTable) {
+        approverTable.draw(false);
+    }
+    loadWorkflowStats();
     showSuccess('Dashboard refreshed successfully');
 }
 
