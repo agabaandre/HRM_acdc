@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
-use App\Models\ChangeRequest;
 use App\Models\Division;
 use App\Models\Matrix;
 use App\Models\Staff;
@@ -193,7 +192,7 @@ class StaffQuarterlyTravelReportController extends Controller
             }
             $yq = $matrix->year . ' ' . $matrix->quarter;
 
-            $participants = $this->getEffectiveInternalParticipants($activity);
+            $participants = $activity->getEffectiveInternalParticipants();
             if (empty($participants)) {
                 continue;
             }
@@ -296,7 +295,7 @@ class StaffQuarterlyTravelReportController extends Controller
             if (!$matrix) {
                 continue;
             }
-            $participants = $this->getEffectiveInternalParticipants($activity);
+            $participants = $activity->getEffectiveInternalParticipants();
             $staffIdStr = (string) $staffId;
             if (!isset($participants[$staffIdStr])) {
                 continue;
@@ -334,65 +333,4 @@ class StaffQuarterlyTravelReportController extends Controller
         ]);
     }
 
-    /**
-     * Get effective internal_participants for an activity.
-     * If there is an approved change request for this activity, use its internal_participants; else use activity's.
-     * Returns array keyed by staff_id (int) with participant_days (int) as value.
-     * Handles both formats: object keyed by staff_id {"230":{...}} and array of objects [{staff_id:230,...}].
-     */
-    private function getEffectiveInternalParticipants(Activity $activity): array
-    {
-        $cr = ChangeRequest::where('activity_id', $activity->id)
-            ->where('overall_status', 'approved')
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $raw = $cr ? $cr->internal_participants : $activity->internal_participants;
-
-        // Ensure we have an array (handle string/double-encoded JSON)
-        if (is_string($raw)) {
-            $decoded = json_decode($raw, true);
-            $raw = is_array($decoded) ? $decoded : [];
-        }
-        if (!is_array($raw)) {
-            return [];
-        }
-
-        $out = [];
-        $isList = array_keys($raw) === range(0, count($raw) - 1);
-
-        if ($isList) {
-            // Array of objects: [{"staff_id": 230, "participant_days": "1", ...}, ...]
-            foreach ($raw as $item) {
-                if (!is_array($item)) {
-                    continue;
-                }
-                $pid = isset($item['staff_id']) ? (int) $item['staff_id'] : (isset($item['id']) ? (int) $item['id'] : null);
-                if ($pid === null) {
-                    continue;
-                }
-                $days = isset($item['participant_days']) ? (int) $item['participant_days'] : 0;
-                if ($days > 0) {
-                    $out[$pid] = ($out[$pid] ?? 0) + $days;
-                }
-            }
-        } else {
-            // Object keyed by staff_id: {"230": {"participant_days": "1", ...}, "193": {...}}
-            foreach ($raw as $key => $info) {
-                if (!is_array($info)) {
-                    continue;
-                }
-                $pid = (int) $key;
-                if ($pid <= 0) {
-                    continue;
-                }
-                $days = isset($info['participant_days']) ? (int) $info['participant_days'] : 0;
-                if ($days > 0) {
-                    $out[$pid] = ($out[$pid] ?? 0) + $days;
-                }
-            }
-        }
-
-        return $out;
-    }
 }

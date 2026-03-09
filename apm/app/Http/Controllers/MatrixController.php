@@ -1286,16 +1286,13 @@ class MatrixController extends Controller
             $pageSize = $request->get('pageSize', 25);
             $start = ($page - 1) * $pageSize;
 
-            // Get all division staff first to calculate summary statistics
-            $allDivisionStaff = $matrix->division_staff;
-            $quarter_year = $matrix->quarter . "-" . $matrix->year;
+            // Travel days from activities' internal_participants (same source as staff-quarterly-travel)
+            $travelMap = $matrix->getTravelDaysFromInternalParticipants();
 
             // Build query for filtered staff
-            // Exclude staff with status "Expired" and "Separated"
             $query = Staff::where('division_id', $matrix->division_id)
                 ->whereNotIn('status', ['Expired', 'Separated']);
 
-            // Apply search filter
             if (!empty($search)) {
                 $query->where(function($q) use ($search) {
                     $q->where('fname', 'like', '%' . $search . '%')
@@ -1305,39 +1302,15 @@ class MatrixController extends Controller
                 });
             }
 
-            // Get total count
             $totalRecords = $query->count();
-
-            // Get paginated data
             $divisionStaff = $query->skip($start)->take($pageSize)->get();
 
-            // Calculate days for each staff member
             $staffData = [];
-
             foreach ($divisionStaff as $staff) {
-                // Get participant data for this staff member for the current quarter only
-                $participantSchedules = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
-                    ->where('international_travel', 1)
-                    ->where('quarter', $matrix->quarter)
-                    ->where('year', $matrix->year)
-                    ->whereHas('activity', function($q) {
-                        $q->where('overall_status', '!=', 'cancelled'); // Match staff activities filter
-                    })
-                    ->with('activity')
-                    ->get();
-
-                // Calculate division days (activities where participant is in their home division)
-                $division_days = $participantSchedules->where('is_home_division', true)->sum('participant_days');
-
-                // Other division days: only activities that are pending or approved (exclude draft, rejected)
-                $other_days = $participantSchedules
-                    ->where('is_home_division', false)
-                    ->filter(function ($ps) {
-                        $status = $ps->activity->overall_status ?? '';
-                        return in_array($status, ['pending', 'approved']);
-                    })
-                    ->sum('participant_days');
-                
+                $sid = (int) $staff->staff_id;
+                $d = $travelMap[$sid] ?? ['division_days' => 0, 'other_days' => 0];
+                $division_days = $d['division_days'];
+                $other_days = $d['other_days'];
                 $total_days = $division_days + $other_days;
                 $isOverLimit = $total_days > 21;
 
@@ -1355,34 +1328,18 @@ class MatrixController extends Controller
                 ];
             }
 
-            // Calculate summary statistics from all division staff
+            // Summary from all division staff using same travel map
+            $allDivisionStaff = Staff::where('division_id', $matrix->division_id)
+                ->whereNotIn('status', ['Expired', 'Separated'])
+                ->get();
             $totalStaff = $allDivisionStaff->count();
             $totalDivisionDays = 0;
             $overLimitCount = 0;
-
             foreach ($allDivisionStaff as $staff) {
-                $participantSchedules = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
-                    ->where('international_travel', 1)
-                    ->whereHas('activity', function($q) use ($matrix) {
-                        $q->where('matrix_id', $matrix->id)
-                          ->where('overall_status', '!=', 'cancelled'); // Match staff activities filter
-                    })
-                    ->with('activity')
-                    ->get();
-
-                $division_days = $participantSchedules->where('is_home_division', true)->sum('participant_days');
-                // Other division days: only pending or approved activities (exclude draft, rejected)
-                $other_days = $participantSchedules
-                    ->where('is_home_division', false)
-                    ->filter(function ($ps) {
-                        $status = $ps->activity->overall_status ?? '';
-                        return in_array($status, ['pending', 'approved']);
-                    })
-                    ->sum('participant_days');
-                $total_days = $division_days + $other_days;
-
-                $totalDivisionDays += $division_days;
-                if ($total_days >= 21) {
+                $sid = (int) $staff->staff_id;
+                $d = $travelMap[$sid] ?? ['division_days' => 0, 'other_days' => 0];
+                $totalDivisionDays += $d['division_days'];
+                if (($d['division_days'] + $d['other_days']) >= 21) {
                     $overLimitCount++;
                 }
             }

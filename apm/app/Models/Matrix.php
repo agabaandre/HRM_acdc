@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
 use function React\Promise\Stream\first;
+use App\Models\Activity;
 use App\Models\Staff;
+use Illuminate\Support\Collection;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class Matrix extends Model
@@ -241,49 +243,110 @@ class Matrix extends Model
         return $this->hasMany(ParticipantSchedule::class);
     }
 
+    /**
+     * Build travel days per staff from activities' internal_participants JSON (like staff-quarterly-travel).
+     * Uses effective internal_participants (approved change request overrides activity).
+     * Only includes activities where overall_status != 'cancelled'.
+     * Returns array keyed by staff_id (int) with keys division_days, other_days (ints).
+     */
+    public function getTravelDaysFromInternalParticipants(): array
+    {
+        $activities = $this->activities()
+            ->where('overall_status', '!=', 'cancelled')
+            ->get();
+
+        $byStaff = [];
+        $divisionId = (int) $this->division_id;
+        $allStaffIds = [];
+
+        foreach ($activities as $activity) {
+            $participants = $activity->getEffectiveInternalParticipants();
+            foreach (array_keys($participants) as $staffIdStr) {
+                $staffId = (int) $staffIdStr;
+                if ($staffId > 0) {
+                    $allStaffIds[$staffId] = true;
+                }
+            }
+        }
+
+        $staffById = !empty($allStaffIds)
+            ? Staff::whereIn('staff_id', array_keys($allStaffIds))->get()->keyBy('staff_id')
+            : collect();
+
+        foreach ($activities as $activity) {
+            $participants = $activity->getEffectiveInternalParticipants();
+            foreach ($participants as $staffIdStr => $days) {
+                $staffId = (int) $staffIdStr;
+                if ($staffId <= 0 || $days <= 0) {
+                    continue;
+                }
+                if (!isset($byStaff[$staffId])) {
+                    $byStaff[$staffId] = ['division_days' => 0, 'other_days' => 0];
+                }
+                $staff = $staffById->get($staffId);
+                $staffDivisionId = $staff ? (int) $staff->division_id : null;
+                if ($staffDivisionId === $divisionId) {
+                    $byStaff[$staffId]['division_days'] += $days;
+                } else {
+                    $byStaff[$staffId]['other_days'] += $days;
+                }
+            }
+        }
+
+        return $byStaff;
+    }
+
     public function getDivisionStaffAttribute(){
-        // Use the matrix's division_id instead of the logged-in user's division_id
         $division_id = $this->division_id;
-        //Get staff with with the division days in this quater and year
-        // Exclude staff with status "Expired" and "Separated"
-        return Staff::where('division_id', $division_id)
-        ->whereNotIn('status', ['Expired', 'Separated'])
-        ->withSum([
-            'participant_schedules as division_days' => function ($query) {
-                $query->where('quarter', $this->quarter)
-                      ->where('year', $this->year)
-                      ->where('is_home_division', 1);
-            }
-        ], 'participant_days')
-        ->withSum([
-            'participant_schedules as other_days' => function ($query) {
-                $query->where('quarter', $this->quarter)
-                      ->where('year', $this->year)
-                      ->where('is_home_division', 0);
-            }
-        ], 'participant_days')
-        ->orderBy('fname','asc')
-        ->get();
+        $travelMap = $this->getTravelDaysFromInternalParticipants();
+
+        $staff = Staff::where('division_id', $division_id)
+            ->whereNotIn('status', ['Expired', 'Separated'])
+            ->orderBy('fname', 'asc')
+            ->get();
+
+        foreach ($staff as $s) {
+            $sid = (int) $s->staff_id;
+            $d = $travelMap[$sid] ?? ['division_days' => 0, 'other_days' => 0];
+            $s->division_days = $d['division_days'];
+            $s->other_days = $d['other_days'];
+        }
+
+        return $staff;
     }
 
 
     
     public function getDivisionScheduleAttribute(){
-        return   $this->participant_schedules()->selectRaw('
-        MAX(id) as id,
-        participant_id,
-        MAX(quarter) as quarter,
-        MAX(year) as year,
-        MAX(participant_days) as participant_days,
-        MAX(is_home_division) as is_home_division,
-        MAX(division_id) as division_id
-        ')
-        ->with('staff')
-        ->where('division_id', $this->division_id)
-        ->where('quarter', $this->quarter)
-        ->where('year', $this->year)
-        ->groupBy('participant_id')
-        ->get();
+        $travelMap = $this->getTravelDaysFromInternalParticipants();
+        $divisionId = (int) $this->division_id;
+        $quarter = $this->quarter;
+        $year = (int) $this->year;
+
+        $staffIds = array_keys($travelMap);
+        $staffById = $staffIds ? Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id') : collect();
+
+        $rows = [];
+        foreach ($travelMap as $participantId => $days) {
+            $total = $days['division_days'] + $days['other_days'];
+            if ($total <= 0) {
+                continue;
+            }
+            $staff = $staffById->get($participantId);
+            $isHomeDivision = $staff ? ((int) $staff->division_id === $divisionId) : false;
+            $rows[] = (object) [
+                'id' => null,
+                'participant_id' => $participantId,
+                'quarter' => $quarter,
+                'year' => $year,
+                'participant_days' => $total,
+                'is_home_division' => $isHomeDivision ? 1 : 0,
+                'division_id' => $divisionId,
+                'staff' => $staff,
+            ];
+        }
+
+        return new Collection($rows);
     }
 
     public function getIntramuralBudgetAttribute(){
