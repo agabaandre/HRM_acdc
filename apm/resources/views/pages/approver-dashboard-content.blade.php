@@ -168,7 +168,7 @@
                                 <th style="width: 30px;">#</th>
                                 <th>Approver</th>
                                 <th>Last approval date</th>
-                                <th style="width: 15%;">Role</th>
+                                <th style="width: 350px;">Role</th>
                                 <th>Pending Items</th>
                                 <th>Total Pending</th>
                                 <th>Total Handled</th>
