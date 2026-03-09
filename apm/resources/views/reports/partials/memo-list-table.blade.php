@@ -4,14 +4,15 @@
 		<thead class="table-success">
 			<tr>
 				<th>#</th>
-				<th>Document #</th>
-				<th style="width: 25%;">Title</th>
-				<th>Division</th>
-				<th>Type</th>
-				<th>Year / Quarter</th>
-				<th class="text-center">Status</th>
-				<th>Date range</th>
-				<th>Responsible person</th>
+				@php $sortColumn = $sortColumn ?? 'year_quarter'; $sortDir = $sortDir ?? 'desc'; @endphp
+				@include('partials.sortable-th', ['column' => 'document_number', 'label' => 'Document #', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir])
+				@include('partials.sortable-th', ['column' => 'title', 'label' => 'Title', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir, 'style' => 'width: 25%;'])
+				@include('partials.sortable-th', ['column' => 'division_id', 'label' => 'Division', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir])
+				@include('partials.sortable-th', ['column' => 'document_type', 'label' => 'Type', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir])
+				@include('partials.sortable-th', ['column' => 'year_quarter', 'label' => 'Year / Quarter', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir])
+				@include('partials.sortable-th', ['column' => 'overall_status', 'label' => 'Status', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir, 'class' => 'text-center'])
+				@include('partials.sortable-th', ['column' => 'date_from', 'label' => 'Date range', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir])
+				@include('partials.sortable-th', ['column' => 'responsible_person_name', 'label' => 'Responsible person', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir])
 			</tr>
 		</thead>
 		<tbody>

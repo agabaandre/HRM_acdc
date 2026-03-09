@@ -4,18 +4,19 @@
 		<thead class="table-success">
 			<tr>
 				<th style="width: 32px;">#</th>
-				<th>Division</th>
-				<th class="text-center">Approved</th>
-				<th class="text-center">Pending</th>
-				<th class="text-center">Returned</th>
-				<th class="text-center">Draft</th>
-				<th class="text-center">Total</th>
+				@php $sortColumn = $sortColumn ?? 'division'; $sortDir = $sortDir ?? 'asc'; @endphp
+				@include('partials.sortable-th', ['column' => 'division', 'label' => 'Division', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir])
+				@include('partials.sortable-th', ['column' => 'approved_count', 'label' => 'Approved', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir, 'class' => 'text-center'])
+				@include('partials.sortable-th', ['column' => 'pending_count', 'label' => 'Pending', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir, 'class' => 'text-center'])
+				@include('partials.sortable-th', ['column' => 'returned_count', 'label' => 'Returned', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir, 'class' => 'text-center'])
+				@include('partials.sortable-th', ['column' => 'draft_count', 'label' => 'Draft', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir, 'class' => 'text-center'])
+				@include('partials.sortable-th', ['column' => 'total_count', 'label' => 'Total', 'sortColumn' => $sortColumn, 'sortDir' => $sortDir, 'class' => 'text-center'])
 			</tr>
 		</thead>
 		<tbody>
 			@forelse($counts as $idx => $row)
 				@php
-					$divisionId = is_numeric($idx) ? $idx : $row->division_id ?? null;
+					$divisionId = $row->division_id ?? $idx ?? null;
 					$division = $divisionsForCounts->get($divisionId);
 					$name = $division ? $division->division_name : ('Division #' . $divisionId);
 					$linkParams = [];

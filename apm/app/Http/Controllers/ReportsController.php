@@ -380,12 +380,37 @@ class ReportsController extends Controller
         $divisionIds = $counts->keys()->filter()->unique()->values()->toArray();
         $divisionsForCounts = Division::whereIn('id', $divisionIds)->get()->keyBy('id');
 
+        $sortColumn = $request->get('sort_column', 'division');
+        $sortDir = strtolower($request->get('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $allowedSort = ['division', 'approved_count', 'pending_count', 'returned_count', 'draft_count', 'total_count'];
+        if (!in_array($sortColumn, $allowedSort, true)) {
+            $sortColumn = 'division';
+        }
+
+        $countsArray = $counts->values()->all();
+        usort($countsArray, function ($a, $b) use ($sortColumn, $sortDir, $divisionsForCounts) {
+            if ($sortColumn === 'division') {
+                $divA = $divisionsForCounts->get($a->division_id);
+                $divB = $divisionsForCounts->get($b->division_id);
+                $na = $divA ? $divA->division_name : '';
+                $nb = $divB ? $divB->division_name : '';
+                $cmp = strcmp((string) $na, (string) $nb);
+            } else {
+                $va = (int) ($a->{$sortColumn} ?? 0);
+                $vb = (int) ($b->{$sortColumn} ?? 0);
+                $cmp = $va <=> $vb;
+            }
+            return $sortDir === 'asc' ? $cmp : -$cmp;
+        });
+
         $detailsUrl = route('reports.memo-list');
         $html = view('reports.partials.counts-table', [
-            'counts' => $counts,
+            'counts' => collect($countsArray),
             'divisionsForCounts' => $divisionsForCounts,
             'detailsUrl' => $detailsUrl,
             'request' => $request,
+            'sortColumn' => $sortColumn,
+            'sortDir' => $sortDir,
         ])->render();
 
         return response()->json(['html' => $html]);
@@ -447,14 +472,43 @@ class ReportsController extends Controller
             foreach (self::MEMO_LIST_DOC_TYPES as $type) {
                 $allRows = $allRows->concat($this->getMemoListRowsForType($type, $request));
             }
-            $allRows = $allRows->sortByDesc(function ($r) {
-                $y = $r->year ?? 0;
-                $q = $r->quarter ?? '';
-                $oq = ['Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4][$q] ?? 0;
-                $ts = $r->created_at ? (\Carbon\Carbon::parse($r->created_at)->timestamp ?? 0) : 0;
-                return sprintf('%04d-%02d-%010d', $y, $oq, $ts);
-            })->values();
         }
+
+        $sortColumn = $request->get('sort_column', 'year_quarter');
+        $sortDir = strtolower($request->get('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $allowedSort = ['document_number', 'title', 'division_id', 'document_type', 'year_quarter', 'overall_status', 'date_from', 'responsible_person_name'];
+        if (!in_array($sortColumn, $allowedSort, true)) {
+            $sortColumn = 'year_quarter';
+        }
+        $allRows = $allRows->sort(function ($a, $b) use ($sortColumn, $sortDir) {
+            if ($sortColumn === 'year_quarter') {
+                $ya = (int) ($a->year ?? 0);
+                $yb = (int) ($b->year ?? 0);
+                if ($ya !== $yb) {
+                    $cmp = $ya <=> $yb;
+                    return $sortDir === 'asc' ? $cmp : -$cmp;
+                }
+                $oq = ['Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4];
+                $qa = $oq[$a->quarter ?? ''] ?? 0;
+                $qb = $oq[$b->quarter ?? ''] ?? 0;
+                if ($qa !== $qb) {
+                    $cmp = $qa <=> $qb;
+                    return $sortDir === 'asc' ? $cmp : -$cmp;
+                }
+                $ta = $a->created_at ? \Carbon\Carbon::parse($a->created_at)->timestamp : 0;
+                $tb = $b->created_at ? \Carbon\Carbon::parse($b->created_at)->timestamp : 0;
+                $cmp = $ta <=> $tb;
+                return $sortDir === 'asc' ? $cmp : -$cmp;
+            }
+            $va = $a->{$sortColumn} ?? '';
+            $vb = $b->{$sortColumn} ?? '';
+            if (in_array($sortColumn, ['date_from'], true) && ($va || $vb)) {
+                $va = $va ? \Carbon\Carbon::parse($va)->format('Y-m-d') : '';
+                $vb = $vb ? \Carbon\Carbon::parse($vb)->format('Y-m-d') : '';
+            }
+            $cmp = strcmp((string) $va, (string) $vb);
+            return $sortDir === 'asc' ? $cmp : -$cmp;
+        })->values();
 
         $total = $allRows->count();
         $slice = $allRows->slice(($page - 1) * $perPage, $perPage)->values();
@@ -473,6 +527,8 @@ class ReportsController extends Controller
             'memoList' => $paginator,
             'divisions' => $divisions,
             'memoTypeLabels' => $memoTypeLabels,
+            'sortColumn' => $sortColumn,
+            'sortDir' => $sortDir,
         ])->render();
 
         return response()->json([

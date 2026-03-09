@@ -107,6 +107,7 @@
 </div>
 
 @push('scripts')
+<script src="{{ asset('js/table-sort-helper.js') }}"></script>
 <script>
 $(function() {
 	$('#filter_division').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'All divisions', allowClear: true });
@@ -118,6 +119,8 @@ $(function() {
 	var exportUrl = '{{ route('reports.memo-list.export.excel') }}';
 	var currentYear = '{{ $currentYear }}';
 	var usedInitialUrl = false;
+
+	TableSort.init({ defaultColumn: 'year_quarter', defaultDir: 'desc', readFromQuery: true });
 
 	function getQuery(page) {
 		page = page || 1;
@@ -133,16 +136,18 @@ $(function() {
 		if (quarter) params.set('quarter', quarter);
 		if (memoType) params.set('memo_type', memoType);
 		if (status) params.set('status', status);
+		TableSort.addToParams(params);
 		return params.toString();
 	}
 	function getQueryFromPageUrl(page) {
 		var urlParams = new URLSearchParams(window.location.search);
 		var params = new URLSearchParams();
 		params.set('page', String(page || 1));
-		['division','year','quarter','memo_type','status'].forEach(function(k) {
+		['division','year','quarter','memo_type','status','sort_column','sort_dir'].forEach(function(k) {
 			var v = urlParams.get(k);
 			if (v) params.set(k, v);
 		});
+		if (urlParams.get('sort_column')) TableSort.setState(urlParams.get('sort_column'), urlParams.get('sort_dir') || 'desc');
 		return params.toString();
 	}
 	function getQueryForExport() {
@@ -182,7 +187,7 @@ $(function() {
 		});
 	}
 
-	function attachPaginationHandlers() {
+		function attachPaginationHandlers() {
 		var container = document.getElementById('memo_list_container');
 		if (!container) return;
 		container.querySelectorAll('.pagination a').forEach(function(link) {
@@ -195,6 +200,7 @@ $(function() {
 				loadList(page);
 			});
 		});
+		TableSort.attach(container, function() { loadList(1); });
 	}
 
 	document.getElementById('memo_list_export_excel').addEventListener('click', function(e) {

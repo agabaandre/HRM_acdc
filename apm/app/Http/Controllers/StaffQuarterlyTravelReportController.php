@@ -62,6 +62,8 @@ class StaffQuarterlyTravelReportController extends Controller
             'staff_id' => 'nullable|integer|exists:staff,staff_id',
             'year' => 'nullable|integer|min:2000|max:2100',
             'quarter' => 'nullable|string|in:Q1,Q2,Q3,Q4',
+            'sort_column' => 'nullable|string|in:staff_name,division_name,year_quarter,activity_count,approved_travel_days',
+            'sort_dir' => 'nullable|string|in:asc,desc',
         ]);
 
         $rows = $this->buildReportData(
@@ -70,6 +72,21 @@ class StaffQuarterlyTravelReportController extends Controller
             $request->get('year') ? (int) $request->get('year') : null,
             $request->get('quarter') ?: null
         );
+
+        $sortColumn = $request->get('sort_column', 'division_name');
+        $sortDir = strtolower($request->get('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        usort($rows, function ($a, $b) use ($sortColumn, $sortDir) {
+            $va = $a[$sortColumn] ?? '';
+            $vb = $b[$sortColumn] ?? '';
+            if (in_array($sortColumn, ['activity_count', 'approved_travel_days'], true)) {
+                $va = (int) $va;
+                $vb = (int) $vb;
+                $cmp = $va <=> $vb;
+            } else {
+                $cmp = strcmp((string) $va, (string) $vb);
+            }
+            return $sortDir === 'desc' ? -$cmp : $cmp;
+        });
 
         return response()->json(['success' => true, 'data' => $rows]);
     }
