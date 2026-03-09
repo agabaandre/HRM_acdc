@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\FundCode;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
@@ -133,6 +134,21 @@ class SpecialMemo extends Model
     public function fundType(): BelongsTo
     {
         return $this->belongsTo(FundType::class, 'fund_type_id');
+    }
+
+    /**
+     * Budget codes (FundCode models) from budget_id array.
+     */
+    public function getFundCodesAttribute(): \Illuminate\Support\Collection
+    {
+        $budgetIds = $this->budget_id ?? [];
+        if (is_string($budgetIds)) {
+            $budgetIds = json_decode($budgetIds, true) ?? [];
+        }
+        if (!is_array($budgetIds) || empty($budgetIds)) {
+            return collect();
+        }
+        return FundCode::whereIn('id', $budgetIds)->get();
     }
 
     /**
