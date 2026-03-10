@@ -112,7 +112,7 @@ if ($has_permission) {
                     
                     <div class="mb-3">
                         <label for="supervisor_1_<?= $type ?>" class="form-label">First Supervisor <span class="text-danger">*</span></label>
-                        <select name="supervisor_1" id="supervisor_1_<?= $type ?>" class="form-control select2" required>
+                        <select name="supervisor_1" id="supervisor_1_<?= $type ?>" class="form-control select2">
                             <option value="">-- Select First Supervisor --</option>
                             <?php if (!empty($active_staff)): ?>
                                 <?php foreach ($active_staff as $staff): ?>
