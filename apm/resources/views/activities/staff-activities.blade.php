@@ -134,6 +134,14 @@
                                 <i class="bx bx-calendar me-1"></i>
                                 {{ strtoupper($quarter) }} {{ $year }} Activities
                             </small>
+                            <div class="mt-2 d-flex flex-wrap gap-3 align-items-center">
+                                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">
+                                    <i class="bx bx-time-five me-1"></i> Pending Days: <strong>{{ $pendingDays ?? 0 }}</strong>
+                                </span>
+                                <span class="badge bg-success px-3 py-2 rounded-pill">
+                                    <i class="bx bx-check-circle me-1"></i> Approved Days: <strong>{{ $approvedDays ?? 0 }}</strong>
+                                </span>
+                            </div>
                         </div>
                         <div class="text-end">
                             <a wire:navigate href="{{ url()->previous() }}" class="btn btn-outline-secondary">
@@ -223,16 +231,11 @@
                              aria-labelledby="my-division-tab">
                             <div class="p-4">
                                 @php
-                                    // Calculate total days for my division activities
+                                    $staffIdStr = (string) $staff->staff_id;
                                     $myDivisionTotalDays = 0;
                                     foreach($myDivisionActivities as $activity) {
-                                        $participantSchedule = $activity->participantSchedules
-                                            ->where('participant_id', $staff->staff_id)
-                                            ->where('is_home_division', true)
-                                            ->first();
-                                        if($participantSchedule) {
-                                            $myDivisionTotalDays += $participantSchedule->participant_days;
-                                        }
+                                        $participants = $activity->getEffectiveInternalParticipants(true);
+                                        $myDivisionTotalDays += isset($participants[$staffIdStr]) ? (int) $participants[$staffIdStr] : 0;
                                     }
                                 @endphp
                                 
@@ -259,13 +262,8 @@
                                                     @php
                                                         $startDate = \Carbon\Carbon::parse($activity->date_from);
                                                         $endDate = \Carbon\Carbon::parse($activity->date_to);
-                                                        
-                                                        // Get participant days from participant_schedules table for home division
-                                                        $participantSchedule = $activity->participantSchedules
-                                                            ->where('participant_id', $staff->staff_id)
-                                                            ->where('is_home_division', true)
-                                                            ->first();
-                                                        $days = $participantSchedule ? $participantSchedule->participant_days : 0;
+                                                        $participants = $activity->getEffectiveInternalParticipants(true);
+                                                        $days = isset($participants[(string)$staff->staff_id]) ? (int) $participants[(string)$staff->staff_id] : 0;
                                                     @endphp
                                                     <tr>
                                                         <td class="px-3 py-3">
@@ -336,16 +334,11 @@
                              aria-labelledby="other-divisions-tab">
                             <div class="p-4">
                                 @php
-                                    // Calculate total days for other division activities
+                                    $staffIdStrOther = (string) $staff->staff_id;
                                     $otherDivisionTotalDays = 0;
                                     foreach($otherDivisionActivities as $activity) {
-                                        $participantSchedule = $activity->participantSchedules
-                                            ->where('participant_id', $staff->staff_id)
-                                            ->where('is_home_division', false)
-                                            ->first();
-                                        if($participantSchedule) {
-                                            $otherDivisionTotalDays += $participantSchedule->participant_days;
-                                        }
+                                        $participants = $activity->getEffectiveInternalParticipants(true);
+                                        $otherDivisionTotalDays += isset($participants[$staffIdStrOther]) ? (int) $participants[$staffIdStrOther] : 0;
                                     }
                                 @endphp
                                 
@@ -372,13 +365,8 @@
                                                     @php
                                                         $startDate = \Carbon\Carbon::parse($activity->date_from);
                                                         $endDate = \Carbon\Carbon::parse($activity->date_to);
-                                                        
-                                                        // Get participant days from participant schedules for other divisions
-                                                        $participantSchedule = $activity->participantSchedules
-                                                            ->where('participant_id', $staff->staff_id)
-                                                            ->where('is_home_division', false)
-                                                            ->first();
-                                                        $days = $participantSchedule ? $participantSchedule->participant_days : 0;
+                                                        $participants = $activity->getEffectiveInternalParticipants(true);
+                                                        $days = isset($participants[(string)$staff->staff_id]) ? (int) $participants[(string)$staff->staff_id] : 0;
                                                     @endphp
                                                     <tr>
                                                         <td class="px-3 py-3">

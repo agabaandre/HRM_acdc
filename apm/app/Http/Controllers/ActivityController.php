@@ -1599,19 +1599,10 @@ class ActivityController extends Controller
         // Calculate date range for the quarter
         $quarterDates = $this->getQuarterDates($quarter, $year);
         
-        // Get ALL activities from the current quarter where this staff is a participant
-        $allActivities = Activity::with(['matrix', 'matrix.division', 'staff', 'participantSchedules' => function($query) use ($staffId, $matrix) {
-                $query->where('participant_id', $staffId)
-                      ->where('international_travel', 1)
-                      ->where('quarter', $matrix->quarter)
-                      ->where('year', $matrix->year); // Match participants schedule filter
-            }])
-            ->whereHas('participantSchedules', function($query) use ($staffId, $matrix) {
-                $query->where('participant_id', $staffId)
-                      ->where('international_travel', 1)
-                      ->where('quarter', $matrix->quarter)
-                      ->where('year', $matrix->year); // Match participants schedule filter
-            })
+        // Get ALL activities for this matrix where this staff is a participant (from internal_participants JSON).
+        // Using internal_participants ensures pending/draft activities show too, not only those in participant_schedules.
+        $matrixActivities = Activity::with(['matrix', 'matrix.division', 'staff'])
+            ->where('matrix_id', $matrix->id)
             ->where('overall_status', '!=', 'cancelled')
             ->when($statusFilter, function($query) use ($statusFilter) {
                 $query->where('overall_status', $statusFilter);
@@ -1624,22 +1615,39 @@ class ActivityController extends Controller
             })
             ->orderBy('date_from')
             ->get();
-        
-        // Separate activities by division based on participant schedules
-        $myDivisionActivities = $allActivities->filter(function($activity) use ($staff) {
-            // Activities where the staff member is a participant in their home division
-            return $activity->participantSchedules->where('participant_id', $staff->staff_id)
-                ->where('is_home_division', true)
-                ->isNotEmpty();
-        });
-        
-        $otherDivisionActivities = $allActivities->filter(function($activity) use ($staff) {
-            // Activities where the staff member is a participant in other divisions
-            return $activity->participantSchedules->where('participant_id', $staff->staff_id)
-                ->where('is_home_division', false)
-                ->isNotEmpty();
-        });
-        
+
+        $staffIdStr = (string) $staff->staff_id;
+        $allActivities = $matrixActivities->filter(function ($activity) use ($staffIdStr) {
+            $participants = $activity->getEffectiveInternalParticipants(true);
+            return isset($participants[$staffIdStr]) && (int) $participants[$staffIdStr] > 0;
+        })->values();
+
+        // Separate by division: my division = activity's matrix is staff's division; else other division
+        $myDivisionActivities = $allActivities->filter(function ($activity) use ($staff) {
+            return $activity->matrix && (int) $activity->matrix->division_id === (int) $staff->division_id;
+        })->values();
+        $otherDivisionActivities = $allActivities->filter(function ($activity) use ($staff) {
+            return !$activity->matrix || (int) $activity->matrix->division_id !== (int) $staff->division_id;
+        })->values();
+
+        // Pending days and approved days from internal_participants (international_travel only), for easy tracking
+        $staffIdStr = (string) $staff->staff_id;
+        $pendingDays = 0;
+        $approvedDays = 0;
+        foreach ($allActivities as $activity) {
+            $participants = $activity->getEffectiveInternalParticipants(true);
+            $days = isset($participants[$staffIdStr]) ? (int) $participants[$staffIdStr] : 0;
+            if ($days <= 0) {
+                continue;
+            }
+            $status = $activity->overall_status ?? '';
+            if ($status === 'approved') {
+                $approvedDays += $days;
+            } else {
+                $pendingDays += $days;
+            }
+        }
+
         return view('activities.staff-activities', [
             'staff' => $staff,
             'matrix' => $matrix,
@@ -1647,7 +1655,9 @@ class ActivityController extends Controller
             'otherDivisionActivities' => $otherDivisionActivities,
             'quarter' => $quarter,
             'year' => $year,
-            'quarterDates' => $quarterDates
+            'quarterDates' => $quarterDates,
+            'pendingDays' => $pendingDays,
+            'approvedDays' => $approvedDays,
         ]);
     }
     
@@ -1808,8 +1818,10 @@ class ActivityController extends Controller
         $years = range($currentYear, $minYear);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
     
-        // Handle AJAX requests for tab content
-        if ($request->ajax()) {
+        // Handle AJAX requests for tab content only (not initial page load).
+        // With Livewire wire:navigate, the first visit can send X-Requested-With and trigger ajax();
+        // we must return full HTML with populated selects unless we are explicitly loading a tab.
+        if ($request->ajax() && $request->filled('tab')) {
             $tab = $request->get('tab', '');
             $html = '';
             $countMyDivision = $myMemos->total();
