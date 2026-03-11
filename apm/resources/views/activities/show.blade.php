@@ -830,8 +830,9 @@
                             <td class="field-value">
                                 <span class="badge bg-success">{{ optional($activity->fundType)->name ?? 'Not specified' }}</span>
                                 @php
-                                    $budgetCodeLabels = isset($fundCodes) && $fundCodes->isNotEmpty()
-                                        ? $fundCodes->pluck('code')->filter()->unique()->values()->all()
+                                    $fundCodesCol = collect($fundCodes ?? []);
+                                    $budgetCodeLabels = $fundCodesCol->isNotEmpty()
+                                        ? $fundCodesCol->pluck('code')->filter()->unique()->values()->all()
                                         : [];
                                 @endphp
                                 @if(count($budgetCodeLabels) > 0)
