@@ -16,18 +16,25 @@
 @endsection
 
 @section('content')
+<style>
+#arfFilters select.arf-filter-select.select2-hidden-accessible {
+    position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important;
+}
+</style>
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-body py-3 px-4 bg-light rounded-3">
         <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
             <h4 class="mb-0 text-success fw-bold"><i class="bx bx-file-alt me-2 text-success"></i> ARF Request Management</h4>
         </div>
 
-        <div class="row g-3 align-items-end" id="arfFilters" autocomplete="off">
+        <form action="{{ route('request-arf.index') }}" method="GET" class="row g-3 align-items-end w-100" id="arfFiltersForm">
+            <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'mySubmitted') }}">
+        <div class="row g-3 align-items-end w-100" id="arfFilters" autocomplete="off">
                 <div class="col-md-2">
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
                     </label>
-                    <select name="year" id="year" class="form-select" style="width: 100%;">
+                    <select name="year" id="year" class="form-select arf-filter-select" style="width: 100%;">
                         @foreach($years ?? [] as $yr => $label)
                             <option value="{{ $yr }}" {{ (string)($selectedYear ?? date('Y')) === (string)$yr ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
@@ -43,7 +50,7 @@
                 <div class="col-md-2">
                     <label for="division_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-building me-1 text-success"></i> Division</label>
-                    <select name="division_id" id="division_id" class="form-select">
+                    <select name="division_id" id="division_id" class="form-select arf-filter-select">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -55,7 +62,7 @@
                 <div class="col-md-3">
                     <label for="staff_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-user me-1 text-success"></i> Staff</label>
-                    <select name="staff_id" id="staff_id" class="form-select">
+                    <select name="staff_id" id="staff_id" class="form-select arf-filter-select">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
@@ -74,7 +81,7 @@
                 <div class="col-md-2">
                     <label for="overall_status" class="form-label fw-semibold mb-1"><i
                             class="bx bx-info-circle me-1 text-success"></i> Status</label>
-                    <select name="overall_status" id="overall_status" class="form-select">
+                    <select name="overall_status" id="overall_status" class="form-select arf-filter-select">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('overall_status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -83,7 +90,7 @@
                     </select>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
-                    <button type="button" class="btn btn-success btn-sm w-100 fw-bold" id="applyFilters">
+                    <button type="submit" class="btn btn-success btn-sm w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -93,6 +100,7 @@
                     </a>
                 </div>
             </div>
+        </form>
         </div>
     </div>
 
@@ -168,10 +176,18 @@
 <script>
 function initRequestArfPage() {
     if (!document.getElementById('arfTabs')) return;
-    try {
-        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
-        $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
-    } catch (e) {}
+    var filtersEl = document.getElementById('arfFilters');
+    if (!filtersEl) return;
+    if (!filtersEl.hasAttribute('data-select2-inited')) {
+        try {
+            var $ = window.jQuery || window.$;
+            if ($ && $.fn.select2) {
+                $('#arfFilters select.arf-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+                $('#arfFilters select.arf-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                filtersEl.setAttribute('data-select2-inited', '1');
+            }
+        } catch (e) {}
+    }
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');
         if (activeTab) {
@@ -284,7 +300,12 @@ function initRequestArfPage() {
         });
     }
     
+    var filterTabInput = document.getElementById('filter_tab');
     document.querySelectorAll('#arfTabs button[data-bs-toggle="tab"]').forEach(button => {
+        button.addEventListener('click', function() {
+            var tabId = this.getAttribute('aria-controls');
+            if (filterTabInput) filterTabInput.value = tabId;
+        });
         button.addEventListener('shown.bs.tab', function (e) {
             const target = e.target.getAttribute('data-bs-target');
             const tabId = target.replace('#', '');
@@ -294,7 +315,8 @@ function initRequestArfPage() {
 }
 document.addEventListener('DOMContentLoaded', initRequestArfPage);
 document.addEventListener('livewire:navigated', function() {
-    if (document.getElementById('arfTabs')) initRequestArfPage();
+    if (!document.getElementById('arfTabs')) return;
+    setTimeout(initRequestArfPage, 0);
 });
 </script>
 @endsection
