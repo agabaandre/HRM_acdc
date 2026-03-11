@@ -55,7 +55,7 @@
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
                     </label>
-                    <select name="year" id="year" class="form-select non-travel-filter-select" style="width: 100%;">
+                    <select name="year" id="year" class="form-select select2 non-travel-filter-select" style="width: 100%;">
                         @foreach($years ?? [] as $yr => $label)
                             <option value="{{ $yr }}" {{ ($year ?? date('Y')) == $yr ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
@@ -75,7 +75,7 @@
                     <label for="staff_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-user me-1 text-success"></i> Staff
                     </label>
-                    <select name="staff_id" id="staff_id" class="form-select non-travel-filter-select" style="width: 100%;">
+                    <select name="staff_id" id="staff_id" class="form-select select2 non-travel-filter-select" style="width: 100%;">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
@@ -88,7 +88,7 @@
                     <label for="division_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-building me-1 text-success"></i> Division
                     </label>
-                    <select name="division_id" id="division_id" class="form-select non-travel-filter-select" style="width: 100%;">
+                    <select name="division_id" id="division_id" class="form-select select2 non-travel-filter-select" style="width: 100%;">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -101,7 +101,7 @@
                     <label for="memo_status" class="form-label fw-semibold mb-1">
                         <i class="bx bx-info-circle me-1 text-success"></i> Status
                     </label>
-                    <select name="status" id="memo_status" class="form-select non-travel-filter-select" style="width: 100%;">
+                    <select name="status" id="memo_status" class="form-select select2 non-travel-filter-select" style="width: 100%;">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>

@@ -34,7 +34,7 @@
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
                     </label>
-                    <select name="year" id="year" class="form-select arf-filter-select" style="width: 100%;">
+                    <select name="year" id="year" class="form-select select2 arf-filter-select" style="width: 100%;">
                         @foreach($years ?? [] as $yr => $label)
                             <option value="{{ $yr }}" {{ (string)($selectedYear ?? date('Y')) === (string)$yr ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
@@ -50,7 +50,7 @@
                 <div class="col-md-2">
                     <label for="division_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-building me-1 text-success"></i> Division</label>
-                    <select name="division_id" id="division_id" class="form-select arf-filter-select">
+                    <select name="division_id" id="division_id" class="form-select select2 arf-filter-select">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -62,7 +62,7 @@
                 <div class="col-md-3">
                     <label for="staff_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-user me-1 text-success"></i> Staff</label>
-                    <select name="staff_id" id="staff_id" class="form-select arf-filter-select">
+                    <select name="staff_id" id="staff_id" class="form-select select2 arf-filter-select">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
@@ -81,7 +81,7 @@
                 <div class="col-md-2">
                     <label for="overall_status" class="form-label fw-semibold mb-1"><i
                             class="bx bx-info-circle me-1 text-success"></i> Status</label>
-                    <select name="overall_status" id="overall_status" class="form-select arf-filter-select">
+                    <select name="overall_status" id="overall_status" class="form-select select2 arf-filter-select">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('overall_status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
