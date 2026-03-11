@@ -150,7 +150,7 @@
                            value="{{ request('search') }}" placeholder="Enter memo title...">
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
+                    <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -271,13 +271,24 @@ function initSpecialMemoPage() {
             if ($) {
                 $('#memoFilters select.special-memo-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#memoFilters select.special-memo-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
-                $('#memoFilters select.special-memo-filter-select').each(function() {
-                    var v = $(this).find('option:selected').val();
-                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
-                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
+    }
+    var $ = window.jQuery || window.$;
+    if ($) {
+        var params = new URLSearchParams(window.location.search);
+        $('#year').val(params.get('year') || '');
+        $('#request_type_id').val(params.get('request_type_id') || '');
+        $('#staff_id').val(params.get('staff_id') || '');
+        $('#division_id').val(params.get('division_id') || '');
+        $('#special_status').val(params.get('status') || '');
+        var docNum = document.getElementById('document_number');
+        var searchEl = document.getElementById('search');
+        if (docNum) docNum.value = params.get('document_number') || '';
+        if (searchEl) searchEl.value = params.get('search') || '';
+        var filterTabInput = document.getElementById('filter_tab');
+        if (filterTabInput) filterTabInput.value = params.get('tab') || 'mySubmitted';
     }
     function applyFilters() {
         setTimeout(function() {
@@ -285,6 +296,11 @@ function initSpecialMemoPage() {
             if (activeTab) loadTabData(activeTab.id);
         }, 0);
     }
+    if (document.getElementById('applyFilters')) {
+        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
+    }
+    var form = document.getElementById('specialMemoFiltersForm');
+    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
     ['year', 'request_type_id', 'staff_id', 'division_id', 'special_status'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', applyFilters);
@@ -335,13 +351,15 @@ function initSpecialMemoPage() {
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (status) currentUrl.searchParams.set('status', status);
         if (search) currentUrl.searchParams.set('search', search);
-        
+
+        window.history.replaceState({}, '', currentUrl.toString());
+
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
         if (tabContent) {
             tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
         }
-        
+
         fetch(currentUrl.toString(), {
             method: 'GET',
             headers: {

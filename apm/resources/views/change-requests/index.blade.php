@@ -162,7 +162,7 @@
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
+                    <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -293,13 +293,24 @@ function initChangeRequestsPage() {
             if ($) {
                 $('#changeRequestFilters select.change-request-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#changeRequestFilters select.change-request-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
-                $('#changeRequestFilters select.change-request-filter-select').each(function() {
-                    var v = $(this).find('option:selected').val();
-                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
-                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
+    }
+    var $ = window.jQuery || window.$;
+    if ($) {
+        var params = new URLSearchParams(window.location.search);
+        $('#year').val(params.get('year') || '');
+        $('#memo_type').val(params.get('memo_type') || '');
+        $('#staff_id').val(params.get('staff_id') || '');
+        $('#division_id').val(params.get('division_id') || '');
+        $('#statusFilter').val(params.get('status') || '');
+        var docNum = document.getElementById('document_number');
+        var searchEl = document.getElementById('search');
+        if (docNum) docNum.value = params.get('document_number') || '';
+        if (searchEl) searchEl.value = params.get('search') || '';
+        var filterTabInput = document.getElementById('filter_tab');
+        if (filterTabInput) filterTabInput.value = params.get('tab') || 'myChangeRequests';
     }
     
     // AJAX filtering - auto-update when filters change
@@ -311,6 +322,11 @@ function initChangeRequestsPage() {
         }
     }
     
+    if (document.getElementById('applyFilters')) {
+        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
+    }
+    var form = document.getElementById('changeRequestFiltersForm');
+    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
     // Auto-apply filters when they change
     if (document.getElementById('statusFilter')) {
         document.getElementById('statusFilter').addEventListener('change', applyFilters);
@@ -401,13 +417,15 @@ function initChangeRequestsPage() {
         if (status) currentUrl.searchParams.set('status', status);
         if (memoType) currentUrl.searchParams.set('memo_type', memoType);
         if (search) currentUrl.searchParams.set('search', search);
-        
+
+        window.history.replaceState({}, '', currentUrl.toString());
+
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
         if (tabContent) {
             tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
         }
-        
+
         fetch(currentUrl.toString(), {
             method: 'GET',
             headers: {
@@ -497,10 +515,7 @@ function initChangeRequestsPage() {
             loadTabData(tabId);
         });
     });
-    var activeTabButton = document.querySelector('#changeRequestTabs .nav-link.active');
-    if (activeTabButton && !urlTab) {
-        loadTabData(activeTabButton.getAttribute('aria-controls'));
-    }
+    // Do not call loadTabData on initial load when there is no tab in URL — keep server-rendered content so the view shows data. AJAX load only when user switches tab or applies filters.
 }
 document.addEventListener('DOMContentLoaded', initChangeRequestsPage);
 document.addEventListener('livewire:navigated', function() {

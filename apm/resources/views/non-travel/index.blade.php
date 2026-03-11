@@ -118,7 +118,7 @@
                            value="{{ request('search') }}" placeholder="Enter memo title..." style="width: 100%;">
                 </div>
                 <div class="col-auto d-flex align-items-end">
-                    <button type="submit" class="btn btn-success btn-sm" id="applyFilters">
+                    <button type="button" class="btn btn-success btn-sm" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -212,13 +212,23 @@ function initNonTravelPage() {
             if ($) {
                 $('#memoFilters select.non-travel-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#memoFilters select.non-travel-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
-                $('#memoFilters select.non-travel-filter-select').each(function() {
-                    var v = $(this).find('option:selected').val();
-                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
-                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
+    }
+    var $ = window.jQuery || window.$;
+    if ($) {
+        var params = new URLSearchParams(window.location.search);
+        $('#year').val(params.get('year') || '');
+        $('#staff_id').val(params.get('staff_id') || '');
+        $('#division_id').val(params.get('division_id') || '');
+        $('#memo_status').val(params.get('status') || '');
+        var docNum = document.getElementById('document_number');
+        var searchEl = document.getElementById('search');
+        if (docNum) docNum.value = params.get('document_number') || '';
+        if (searchEl) searchEl.value = params.get('search') || '';
+        var filterTabInput = document.getElementById('filter_tab');
+        if (filterTabInput) filterTabInput.value = params.get('tab') || 'mySubmitted';
     }
     function applyFilters() {
         setTimeout(function() {
@@ -226,6 +236,11 @@ function initNonTravelPage() {
             if (activeTab) loadTabData(activeTab.id);
         }, 0);
     }
+    if (document.getElementById('applyFilters')) {
+        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
+    }
+    var form = document.getElementById('nonTravelFiltersForm');
+    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
     ['staff_id', 'division_id', 'memo_status', 'year'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', applyFilters);
@@ -281,6 +296,8 @@ function initNonTravelPage() {
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (status) currentUrl.searchParams.set('status', status);
         if (search) currentUrl.searchParams.set('search', search);
+        
+        window.history.replaceState({}, '', currentUrl.toString());
         
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
