@@ -63,8 +63,9 @@
     
     .action-buttons {
         display: flex;
+        flex-direction: column;
         gap: 0.25rem;
-        flex-wrap: wrap;
+        align-items: flex-start;
     }
     
     .btn-sm {
@@ -311,7 +312,7 @@
                     <label for="searchInput" class="form-label fw-semibold">
                         <i class="fas fa-search me-1"></i>Search
                     </label>
-                    <input type="text" class="form-control" id="searchInput" placeholder="Search by title, document number, or division...">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search by title, document number, or submitted by...">
                 </div>
                 <div class="col-md-3 mb-3">
                     <label for="categoryFilter" class="form-label fw-semibold">
@@ -322,17 +323,6 @@
                             <option value="{{ $category['value'] }}" {{ $category == $category ? 'selected' : '' }}>
                                 {{ $category['label'] }} ({{ $category['count'] }})
                             </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <label for="divisionFilter" class="form-label fw-semibold">
-                        <i class="fas fa-building me-1"></i>Division
-                    </label>
-                    <select id="divisionFilter" class="form-select select2" style="width: 100%;">
-                        <option value="all">All Divisions</option>
-                        @foreach($divisions as $division)
-                            <option value="{{ $division->id }}">{{ $division->division_name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -354,7 +344,6 @@
                             <th width="25%">Title</th>
                             <th width="10%">Type</th>
                             <th width="12%">Document #</th>
-                            <th width="15%">Division</th>
                             <th width="12%">Submitted By</th>
                             <th width="10%">Date Returned</th>
                             <th width="8%">Status</th>
@@ -381,9 +370,6 @@
                                         <span class="text-muted">{{ $item['document_number'] }}</span>
                                     </td>
                                     <td>
-                                        <span class="text-muted">{{ $item['division'] }}</span>
-                                    </td>
-                                    <td>
                                         <span class="text-muted">{!! $item['submitted_by'] !!}</span>
                                     </td>
                                     <td>
@@ -391,33 +377,35 @@
                                         <br><small class="text-muted">{{ $item['date_received']->format('H:i') }}</small>
                                     </td>
                                     <td>
-                                        <span class="status-badge status-{{ $item['status'] }}">
-                                            {{ ucfirst($item['status']) }}
+                                        <span class="status-badge status-{{ $item['overall_status'] }}">
+                                            {{ ucfirst($item['overall_status']) }}
                                         </span>
                                     </td>
                                     <td>
                                         <div class="action-buttons">
                                             <a href="{{ $item['view_url'] }}" class="btn btn-success btn-sm" title="View" style="background-color: #119A48; border-color: #119A48;">
-                                                <i class="fas fa-eye"></i>
+                                                <i class="fas fa-eye me-1"></i> View
                                             </a>
                                             
                                             @if($item['can_edit'] && $item['edit_url'])
                                                 <a href="{{ $item['edit_url'] }}" class="btn btn-warning btn-sm" title="Edit" style="background-color: #ffc107; border-color: #ffc107; color: #000;">
-                                                    <i class="fas fa-edit"></i>
+                                                    <i class="fas fa-edit me-1"></i> Edit
                                                 </a>
                                             @else
                                                 <button class="btn btn-secondary btn-sm" disabled title="Edit not available">
-                                                    <i class="fas fa-edit"></i>
+                                                    <i class="fas fa-edit me-1"></i> Edit
                                                 </button>
                                             @endif
                                             
                                             @if($item['can_delete'] && $item['delete_url'])
-                                                <button class="btn btn-danger btn-sm" onclick="confirmDelete('{{ $item['delete_url'] }}', '{{ $item['title'] }}')" title="Delete">
-                                                    <i class="fas fa-trash"></i>
+                                                <button type="button" class="btn btn-danger btn-sm btn-delete-returned" title="Delete"
+                                                    data-delete-url="{{ e($item['delete_url']) }}"
+                                                    data-delete-title="{{ e($item['title']) }}">
+                                                    <i class="fas fa-trash me-1"></i> Delete
                                                 </button>
                                             @else
                                                 <button class="btn btn-secondary btn-sm" disabled title="Delete not available">
-                                                    <i class="fas fa-trash"></i>
+                                                    <i class="fas fa-trash me-1"></i> Delete
                                                 </button>
                                             @endif
                                         </div>
@@ -486,28 +474,24 @@ $(document).ready(function() {
     // Apply filters
     $('#applyFilters').click(function() {
         const category = $('#categoryFilter').val();
-        const division = $('#divisionFilter').val();
         
         // Reload page with filters
         const url = new URL(window.location);
         url.searchParams.set('category', category);
-        url.searchParams.set('division', division);
         window.location.href = url.toString();
     });
     
-    // Filter table function
+    // Filter table function (columns: #=0, Title=1, Type=2, Document#=3, Submitted By=4, Date=5, Status=6, Actions=7)
     function filterTable(searchTerm) {
         $('#returnedMemosTable tbody tr').each(function() {
             const row = $(this);
             const title = row.find('td:eq(1)').text().toLowerCase();
             const documentNumber = row.find('td:eq(3)').text().toLowerCase();
-            const division = row.find('td:eq(4)').text().toLowerCase();
-            const submittedBy = row.find('td:eq(5)').text().toLowerCase();
+            const submittedBy = row.find('td:eq(4)').text().toLowerCase();
             const type = row.find('td:eq(2)').text().toLowerCase();
             
             const matchesSearch = title.includes(searchTerm) || 
                                 documentNumber.includes(searchTerm) || 
-                                division.includes(searchTerm) || 
                                 submittedBy.includes(searchTerm) ||
                                 type.includes(searchTerm);
             
@@ -530,34 +514,36 @@ $(document).ready(function() {
         });
     }
     
-    // Confirm delete
-    window.confirmDelete = function(url, title) {
+    // Delete button click: show modal using data attributes (avoids escaping issues)
+    $(document).on('click', '.btn-delete-returned', function() {
+        const url = $(this).data('delete-url');
+        const title = $(this).data('delete-title');
+        if (!url) return;
         deleteUrl = url;
-        $('#deleteItemTitle').text(title);
-        $('#deleteModal').modal('show');
-    };
-    
-    $('#confirmDeleteBtn').click(function() {
+        $('#deleteItemTitle').text(title || 'this item');
+        const modalEl = document.getElementById('deleteModal');
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            (new bootstrap.Modal(modalEl)).show();
+        } else {
+            $(modalEl).modal('show');
+        }
+    });
+
+    $('#confirmDeleteBtn').on('click', function() {
         if (deleteUrl) {
-            // Create a form to submit DELETE request
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = deleteUrl;
-            
-            // Add CSRF token
             const csrfToken = document.createElement('input');
             csrfToken.type = 'hidden';
             csrfToken.name = '_token';
             csrfToken.value = '{{ csrf_token() }}';
             form.appendChild(csrfToken);
-            
-            // Add method override
             const methodField = document.createElement('input');
             methodField.type = 'hidden';
             methodField.name = '_method';
             methodField.value = 'DELETE';
             form.appendChild(methodField);
-            
             document.body.appendChild(form);
             form.submit();
         }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Matrix;
 use App\Models\Activity;
 use App\Models\ActivityApprovalTrail;
+use App\Models\ApprovalTrail;
 use App\Models\WorkflowModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -97,15 +98,39 @@ class ApmActivityController extends Controller
     {
         try {
             $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Activity') ?: 1;
+
+            // Copy activity_approval_trails to approval_trails (single memo uses approval_trails going forward)
+            $activityTrails = ActivityApprovalTrail::where('activity_id', $activity->id)
+                ->orderBy('id')
+                ->get();
+            foreach ($activityTrails as $t) {
+                ApprovalTrail::create([
+                    'model_id' => $activity->id,
+                    'model_type' => Activity::class,
+                    'matrix_id' => $t->matrix_id,
+                    'staff_id' => $t->staff_id,
+                    'oic_staff_id' => $t->oic_staff_id,
+                    'action' => $t->action,
+                    'remarks' => $t->remarks,
+                    'approval_order' => $t->approval_order,
+                    'forward_workflow_id' => $t->forward_workflow_id,
+                    'is_archived' => $t->is_archived ?? 0,
+                ]);
+            }
+
+            // next_approval_level from mother matrix at time of return
+            $matrix = $activity->matrix ?? \App\Models\Matrix::find($activity->matrix_id);
+            $nextApprovalLevel = $matrix ? ($matrix->next_approval_level ?? $matrix->approval_level + 1) : 2;
+
+            // Update activity to single memo; approval_level = 1 (HOD); next from matrix; retain existing workflow_id
             $activity->update([
                 'is_single_memo' => true,
                 'document_number' => null,
-                'overall_status' => 'draft',
+                'overall_status' => 'returned', // Returned as single memo
                 'approval_level' => 1,
-                'next_approval_level' => 2,
-                'forward_workflow_id' => null,
-                'reverse_workflow_id' => $assignedWorkflowId,
-                'is_draft' => true,
+                'next_approval_level' => $nextApprovalLevel,
+                // forward_workflow_id and reverse_workflow_id are not changed – activity keeps previous values
+                'is_draft' => false,
             ]);
             \App\Jobs\AssignDocumentNumberJob::dispatch($activity);
         } catch (\Exception $e) {

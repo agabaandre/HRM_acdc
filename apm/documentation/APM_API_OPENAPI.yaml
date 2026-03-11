@@ -24,7 +24,7 @@ tags:
   - name: Documents
     description: Document detail by type and id (with approval trails)
   - name: Actions
-    description: Approve, reject, return, cancel on documents
+    description: Approve, reject, return, cancel on documents; resubmit returned documents
   - name: Approved by me
     description: List and average time for documents approved by current user
   - name: Matrices
@@ -583,6 +583,58 @@ paths:
           description: Not authorized to perform this action
         '404':
           description: Document not found
+
+  /actions/resubmit:
+    post:
+      tags: [Actions]
+      summary: Resubmit document for approval
+      description: |
+        Resubmit a **returned**, **pending**, or **draft** document for approval. Works for all document types
+        (special_memo, non_travel_memo, single_memo, matrix, service_request, arf, change_request).
+        The document is sent back to the **previous level it came from** (the level that returned it),
+        same behaviour as non-travel memo resubmit. Only division heads or the creator (when document is at level 0) can resubmit.
+      operationId: resubmit
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, id]
+              properties:
+                type:
+                  type: string
+                  enum: [special_memo, non_travel_memo, single_memo, matrix, service_request, arf, change_request]
+                  description: Document type (same as in pending-approvals / documents).
+                id: { type: integer, description: Document ID }
+                comment: { type: string, maxLength: 1000, description: Optional remarks for the resubmission trail }
+            example:
+              type: non_travel_memo
+              id: 5
+              comment: "Resubmitted after revision."
+      responses:
+        '200':
+          description: Document resubmitted successfully (document goes to previous approval level).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Document resubmitted for approval." }
+                  data:
+                    type: object
+                    properties:
+                      document_type: { type: string }
+                      document_id: { type: integer }
+                      approval_level: { type: integer, description: Level the document was sent to }
+        '403':
+          description: Not authorized to resubmit (e.g. not division head or creator at level 0)
+        '404':
+          description: Document not found
+        '422':
+          description: Document not in a resubmittable status or could not determine return level
 
   /approved-by-me:
     get:
