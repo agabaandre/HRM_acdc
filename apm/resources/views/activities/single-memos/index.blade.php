@@ -135,7 +135,7 @@
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success w-100 fw-bold" id="applyFilters">
+                    <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -229,19 +229,35 @@ function initSingleMemosPage() {
                     if ($(this).data('select2')) $(this).select2('destroy');
                 });
                 $('#memoFilters select.memo-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
-                $('#memoFilters select.memo-filter-select').each(function() {
-                    var v = $(this).find('option:selected').val();
-                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
-                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
+    }
+    // Set filter values from URL on load (matrices pattern - keeps state on reload/navigate)
+    var $ = window.jQuery || window.$;
+    if ($) {
+        var params = new URLSearchParams(window.location.search);
+        $('#staff_id').val(params.get('staff_id') || '');
+        $('#division_id').val(params.get('division_id') || '');
+        $('#year').val(params.get('year') || '');
+        $('#quarter').val(params.get('quarter') || '');
+        $('#statusFilter').val(params.get('status') || '');
+        var docNum = document.getElementById('document_number');
+        var searchEl = document.getElementById('search');
+        if (docNum) docNum.value = params.get('document_number') || '';
+        if (searchEl) searchEl.value = params.get('search') || '';
+        var filterTabInput = document.getElementById('filter_tab');
+        if (filterTabInput) filterTabInput.value = params.get('tab') || 'mySubmitted';
     }
     function applyFilters() {
         var activeTab = document.querySelector('#memoTabsContent .tab-pane.active');
         if (activeTab) loadTabData(activeTab.id);
     }
-    // Filter button is type="submit" so form submits and page loads with correct values; no click handler needed.
+    if (document.getElementById('applyFilters')) {
+        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
+    }
+    var form = document.getElementById('memoFiltersForm');
+    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
     // Auto-apply filters when selects change (AJAX tab reload)
     if (document.getElementById('staff_id')) {
         document.getElementById('staff_id').addEventListener('change', applyFilters);
@@ -333,6 +349,9 @@ function initSingleMemosPage() {
         if (search) currentUrl.searchParams.set('search', search);
         if (year) currentUrl.searchParams.set('year', year);
         if (quarter) currentUrl.searchParams.set('quarter', quarter);
+
+        // Update URL so filter state persists on reload (matrices pattern)
+        window.history.replaceState({}, '', currentUrl.toString());
 
         // Show loading indicator
         const tabContent = document.getElementById(tabId);

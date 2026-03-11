@@ -90,7 +90,7 @@
                     </select>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success btn-sm w-100 fw-bold" id="applyFilters">
+                    <button type="button" class="btn btn-success btn-sm w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -184,13 +184,23 @@ function initRequestArfPage() {
             if ($ && $.fn.select2) {
                 $('#arfFilters select.arf-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#arfFilters select.arf-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
-                $('#arfFilters select.arf-filter-select').each(function() {
-                    var v = $(this).find('option:selected').val();
-                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
-                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
+    }
+    var $ = window.jQuery || window.$;
+    if ($) {
+        var params = new URLSearchParams(window.location.search);
+        $('#year').val(params.get('year') || '');
+        $('#division_id').val(params.get('division_id') || '');
+        $('#staff_id').val(params.get('staff_id') || '');
+        $('#overall_status').val(params.get('overall_status') || '');
+        var docNum = document.getElementById('document_number');
+        var searchEl = document.getElementById('search');
+        if (docNum) docNum.value = params.get('document_number') || '';
+        if (searchEl) searchEl.value = params.get('search') || '';
+        var filterTabInput = document.getElementById('filter_tab');
+        if (filterTabInput) filterTabInput.value = params.get('tab') || 'mySubmitted';
     }
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');
@@ -200,10 +210,11 @@ function initRequestArfPage() {
         }
     }
     
-    // Manual filter button click
     if (document.getElementById('applyFilters')) {
-        document.getElementById('applyFilters').addEventListener('click', applyFilters);
+        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
     }
+    var form = document.getElementById('arfFiltersForm');
+    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
     
     // Auto-apply filters when they change
     if (document.getElementById('division_id')) {
@@ -264,12 +275,14 @@ function initRequestArfPage() {
         if (status) currentUrl.searchParams.set('overall_status', status);
         if (search) currentUrl.searchParams.set('search', search);
 
+        window.history.replaceState({}, '', currentUrl.toString());
+
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
         if (tabContent) {
             tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
         }
-        
+
         fetch(currentUrl.toString(), {
             method: 'GET',
             headers: {

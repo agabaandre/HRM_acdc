@@ -252,7 +252,7 @@
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
+                        <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
                             <i class="bx bx-search-alt-2 me-1"></i> Filter
                         </button>
                     </div>
@@ -333,19 +333,35 @@ function initActivitiesIndexPage() {
             if ($) {
                 $('#activityFilters select.activities-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#activityFilters select.activities-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
-                $('#activityFilters select.activities-filter-select').each(function() {
-                    var v = $(this).find('option:selected').val();
-                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
-                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
+    }
+    // Set filter values from URL on load (matrices pattern)
+    var $ = window.jQuery || window.$;
+    if ($) {
+        var params = new URLSearchParams(window.location.search);
+        $('#staff_id').val(params.get('staff_id') || '');
+        $('#year').val(params.get('year') || '');
+        $('#quarter').val(params.get('quarter') || '');
+        $('#division_id').val(params.get('division_id') || '');
+        var docNum = document.getElementById('document_number');
+        var searchEl = document.getElementById('search');
+        if (docNum) docNum.value = params.get('document_number') || '';
+        if (searchEl) searchEl.value = params.get('search') || '';
+        var filterTabInput = document.getElementById('filter_tab');
+        if (filterTabInput) filterTabInput.value = params.get('tab') || (document.getElementById('all-activities-tab') ? 'all-activities' : 'my-division');
     }
     function applyFilters() {
         var activeTab = document.querySelector('#activitiesTabsContent .tab-pane.active');
         if (activeTab) loadTabData(activeTab.id);
     }
     
+    if (document.getElementById('applyFilters')) {
+        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
+    }
+    var form = document.getElementById('activitiesFiltersForm');
+    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
     // Auto-apply filters when they change
     if (document.getElementById('year')) {
         document.getElementById('year').addEventListener('change', applyFilters);
@@ -436,6 +452,8 @@ function initActivitiesIndexPage() {
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (search) currentUrl.searchParams.set('search', search);
+
+        window.history.replaceState({}, '', currentUrl.toString());
 
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
