@@ -441,9 +441,25 @@ class MatrixController extends Controller
         $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails.staff','matrixApprovalTrails.oicStaff']);
     //dd($matrix);
         // Separate regular activities and single memos
-        $activitiesQuery = $matrix->activities()->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
-        $singleMemosQuery = $matrix->activities()->where('is_single_memo', 1)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
-        
+        $activitiesQuery = $matrix->activities()->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
+        $singleMemosQuery = $matrix->activities()->where('is_single_memo', 1)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
+
+        // Approvers at current level only see activities they can approve (get_approvable_activities respects allowed_funders)
+        $userStaffId = user_session('staff_id');
+        $userDivisionId = user_session('division_id');
+        $isApprover = $userStaffId && $this->isUserApproverAtCurrentLevel($matrix, $userStaffId, $userDivisionId);
+        if ($isApprover) {
+            $approvable = get_approvable_activities($matrix);
+            $approvableIds = $approvable->pluck('id')->toArray();
+            if (!empty($approvableIds)) {
+                $activitiesQuery->whereIn('id', $approvableIds);
+                $singleMemosQuery->whereIn('id', $approvableIds);
+            } else {
+                $activitiesQuery->whereRaw('1 = 0');
+                $singleMemosQuery->whereRaw('1 = 0');
+            }
+        }
+
         // Apply document number filter if provided
         if ($request->filled('document_number')) {
             $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
@@ -529,78 +545,29 @@ class MatrixController extends Controller
             return $this->getAllActivities($matrix, $request);
         }
 
-        // Build activities query with filtering and eager loading
-        $activitiesQuery = $matrix->activities()
-            ->where('is_single_memo', 0)
-            ->with([
-                'requestType', 
-                'fundType', 
-                'responsiblePerson', 
-                'activity_budget', 
-                'activity_budget.fundcode',
-                'activity_budget.fundcode.funder',
-                'matrix.division', // Eager load matrix division
-                'matrix.forwardWorkflow' // Eager load workflow
-            ]);
-
-        // Get all activities first, then filter using the same logic as get_approvable_activities
-        $allActivities = $matrix->activities()
-            ->where('is_single_memo', 0)
-            ->with([
-                'requestType', 
-                'fundType', 
-                'responsiblePerson', 
-                'activity_budget', 
-                'activity_budget.fundcode',
-                'activity_budget.fundcode.funder',
-                'matrix.division',
-                'matrix.forwardWorkflow'
-            ])
-            ->get();
-        
-        // Filter activities based on allowed_funders using the same logic as get_approvable_activities
-        $filteredActivities = collect();
-        if ($userWorkflowDefinition->allowed_funders) {
-            $allowedFunders = is_string($userWorkflowDefinition->allowed_funders) 
-                ? json_decode($userWorkflowDefinition->allowed_funders, true) 
-                : $userWorkflowDefinition->allowed_funders;
-            
-            if (is_array($allowedFunders) && !empty($allowedFunders)) {
-                foreach ($allActivities as $activity) {
-                    $canApprove = true;
-                    
-                    // Use budget_breakdown JSON to determine fund type instead of activity_budget model
-                    if ($activity->budget_breakdown) {
-                        // Parse budget_breakdown JSON
-                        $budgetBreakdown = is_string($activity->budget_breakdown) 
-                            ? json_decode($activity->budget_breakdown, true) 
-                            : $activity->budget_breakdown;
-                        
-                        if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
-                            // Check if activity's fund type is in allowed_funders
-                            $activityFundTypeId = $activity->fund_type_id;
-                            $canApprove = in_array($activityFundTypeId, $allowedFunders);
-                        } else {
-                            // For activities with empty budget_breakdown, only allow if fund type 3 is in allowed_funders
-                            $canApprove = in_array(3, $allowedFunders);
-                        }
-                    } else {
-                        // For activities with no budget_breakdown, only allow if fund type 3 is in allowed_funders
-                        $canApprove = in_array(3, $allowedFunders);
-                    }
-                    
-                    if ($canApprove) {
-                        $filteredActivities->push($activity);
-                    }
-                }
-            } else {
-                $filteredActivities = $allActivities;
-            }
+        // Use get_approvable_activities so matrix view shows only what user can approve (respects allowed_funders)
+        $approvable = get_approvable_activities($matrix);
+        $approvableIds = $approvable->pluck('id')->toArray();
+        if (empty($approvableIds)) {
+            $filteredActivities = collect();
         } else {
-            $filteredActivities = $allActivities;
+            $filteredActivities = $matrix->activities()
+                ->where('is_single_memo', 0)
+                ->whereIn('id', $approvableIds)
+                ->with([
+                    'requestType',
+                    'fundType',
+                    'responsiblePerson',
+                    'activity_budget',
+                    'activity_budget.fundcode',
+                    'activity_budget.fundcode.funder',
+                    'matrix.division',
+                    'matrix.forwardWorkflow'
+                ])
+                ->get();
         }
-        
-        // Now apply search and document number filters to the filtered activities
+
+        // Apply search and document number filters to the filtered activities
         $activitiesQuery = $filteredActivities;
 
         // Apply document number filter if provided
@@ -892,6 +859,59 @@ class MatrixController extends Controller
                 if ($isOicApprover) {
                     return true;
                 }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if the current user is a Grants (extramural-only) approver for this matrix's workflow.
+     * Grants are tied to fund type Extramural (fund_type_id = 2) and should only see/pass extramural activities.
+     */
+    private function isUserExtramuralOnlyApprover(Matrix $matrix, $userStaffId, $userDivisionId): bool
+    {
+        if (!$matrix->forward_workflow_id || !$userStaffId) {
+            return false;
+        }
+
+        $extramuralFundTypeId = 2;
+
+        $definitions = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->where('fund_type', $extramuralFundTypeId)
+            ->get();
+
+        if ($definitions->isEmpty()) {
+            return false;
+        }
+
+        $today = \Carbon\Carbon::today();
+
+        foreach ($definitions as $definition) {
+            if ($definition->is_division_specific && $matrix->division) {
+                if ($this->isDivisionSpecificApprover($matrix, $definition, $userStaffId, $userDivisionId)) {
+                    return true;
+                }
+                continue;
+            }
+            $isApprover = Approver::where('workflow_dfn_id', $definition->id)
+                ->where('staff_id', $userStaffId)
+                ->where(function ($query) use ($today) {
+                    $query->whereNull('end_date')->orWhere('end_date', '>=', $today);
+                })
+                ->exists();
+            if ($isApprover) {
+                return true;
+            }
+            $isOicApprover = Approver::where('workflow_dfn_id', $definition->id)
+                ->where('oic_staff_id', $userStaffId)
+                ->where(function ($query) use ($today) {
+                    $query->whereNull('end_date')->orWhere('end_date', '>=', $today);
+                })
+                ->exists();
+            if ($isOicApprover) {
+                return true;
             }
         }
 

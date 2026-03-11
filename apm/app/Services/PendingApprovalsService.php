@@ -133,8 +133,8 @@ class PendingApprovalsService
             }
         ]);
 
-        // Only show pending matrices (not draft)
-        $query->where('overall_status', 'pending')
+        // Include pending and returned (returned with forward_workflow_id stay in pending list)
+        $query->whereIn('overall_status', ['pending', 'returned'])
               ->where('forward_workflow_id', '!=', null)
               ->where('approval_level', '>', 0);
 
@@ -285,7 +285,8 @@ class PendingApprovalsService
     protected function getPendingSpecialMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = SpecialMemo::with(['staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition'])
-            ->where('overall_status', 'pending');
+            ->whereIn('overall_status', ['pending', 'returned'])
+            ->whereNotNull('forward_workflow_id');
 
         // Get all approval levels for this user (both division-specific and non-division-specific)
         $approvalLevels = $this->getUserApprovalLevels('SpecialMemo');
@@ -341,7 +342,7 @@ class PendingApprovalsService
     protected function getPendingNonTravelMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = NonTravelMemo::with(['staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff'])
-            ->where('overall_status', 'pending')
+            ->whereIn('overall_status', ['pending', 'returned'])
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
 
@@ -416,7 +417,8 @@ class PendingApprovalsService
     {
         $query = Activity::with(['staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff'])
             ->where('is_single_memo', true)
-            ->where('overall_status', 'pending');
+            ->whereIn('overall_status', ['pending', 'returned'])
+            ->whereNotNull('forward_workflow_id');
 
         // Get all approval levels for this user (both division-specific and non-division-specific)
         $approvalLevels = $this->getUserApprovalLevels('Activity');
@@ -488,7 +490,7 @@ class PendingApprovalsService
     protected function getPendingServiceRequests(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
-            ->where('overall_status', 'pending')
+            ->whereIn('overall_status', ['pending', 'returned'])
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
 
@@ -564,7 +566,7 @@ class PendingApprovalsService
     protected function getPendingARFRequests(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = RequestARF::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
-            ->where('overall_status', 'pending')
+            ->whereIn('overall_status', ['pending', 'returned'])
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
 
@@ -948,7 +950,7 @@ class PendingApprovalsService
             'id' => $item->id,
             'category' => $category,
             'type' => $data['item_type'] ?? $category, // Use item_type if available, otherwise use category
-            'status' => $item->overall_status,
+            'overall_status' => $item->overall_status,
             'created_at' => $item->created_at,
             'updated_at' => $item->updated_at,
             'is_admin_assistant_view' => $isAdminAssistant && !$this->isCurrentApprover($item), // True if admin assistant viewing but not the actual approver
@@ -1177,7 +1179,7 @@ class PendingApprovalsService
     protected function getPendingChangeRequests(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = ChangeRequest::with(['staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
-            ->where('overall_status', 'pending')
+            ->whereIn('overall_status', ['pending', 'returned'])
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
 

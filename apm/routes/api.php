@@ -58,6 +58,7 @@ Route::prefix('apm/v1')->group(function () {
             ->middleware('accept.token.in.query');
 
         Route::post('actions', [ApmApprovalController::class, 'action']);
+        Route::post('actions/resubmit', [ApmApprovalController::class, 'resubmit']);
 
         Route::get('approved-by-me', [ApmApprovedByMeController::class, 'index']);
         Route::get('approved-by-me/average-time', [ApmApprovedByMeController::class, 'averageTime']);

@@ -330,7 +330,7 @@ class ApmDocumentController extends Controller
         if (!$doc) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
         }
-        $data = $this->normalizeMemoJsonFields($doc->toArray());
+        $data = $this->normalizeDocumentJsonFields($doc->toArray());
         $data['document_type'] = 'change_request';
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'change_request', $id);

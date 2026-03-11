@@ -1419,17 +1419,13 @@ class ActivityController extends Controller
 
         $message = "Activity Updated successfully";
         
-        // If converted to single memo, show different message and redirect to matrix view
+        // Redirect back to parent matrix so approver can continue with other activities
         if ($request->action === 'convert_to_single_memo') {
             $message = "Activity converted to single memo successfully. It has been returned to the creator for revision.";
-            return redirect()
-                ->route('matrices.show', $matrix)
-                ->with('success', $message);
         }
-
         return redirect()
-        ->route('matrices.activities.show', [$matrix, $activity])
-        ->with('success', $message);
+            ->route('matrices.show', $matrix)
+            ->with('success', $message);
     }
 
     private function update_activity_status($request, $activity)
@@ -1472,6 +1468,8 @@ class ActivityController extends Controller
 
     /**
      * Convert activity to single memo.
+     * Copies activity_approval_trails to approval_trails so the single memo uses approval_trails going forward.
+     * Sets approval_level to 1 (HOD) so it goes to HOD level 1 instead of level 0.
      */
     private function convertActivityToSingleMemo(Activity $activity, string $comment = null)
     {
@@ -1483,23 +1481,42 @@ class ActivityController extends Controller
                 Log::warning('No workflow assignment found for Activity model in convert to single memo, using default workflow ID: 1');
             }
 
-            // Update activity to single memo
+            // Copy activity_approval_trails to approval_trails (single memo uses approval_trails going forward)
+            $activityTrails = ActivityApprovalTrail::where('activity_id', $activity->id)
+                ->orderBy('id')
+                ->get();
+            foreach ($activityTrails as $t) {
+                ApprovalTrail::create([
+                    'model_id' => $activity->id,
+                    'model_type' => Activity::class,
+                    'matrix_id' => $t->matrix_id,
+                    'staff_id' => $t->staff_id,
+                    'oic_staff_id' => $t->oic_staff_id,
+                    'action' => $t->action,
+                    'remarks' => $t->remarks,
+                    'approval_order' => $t->approval_order,
+                    'forward_workflow_id' => $t->forward_workflow_id,
+                    'is_archived' => $t->is_archived ?? 0,
+                ]);
+            }
+
+            // next_approval_level from mother matrix at time of return
+            $matrix = $activity->matrix ?? Matrix::find($activity->matrix_id);
+            $nextApprovalLevel = $matrix ? ($matrix->next_approval_level ?? $matrix->approval_level + 1) : 2;
+
+            // Update activity to single memo; approval_level = 1 (HOD); next from matrix
             $activity->update([
                 'is_single_memo' => true,
                 'document_number' => null,
-                'overall_status' => 'draft', // Set to draft so creator can edit
-                'approval_level' => 1, // Reset to approval level 1
-                'next_approval_level' => 2, // Set next level to 2
-                'forward_workflow_id' => null, // Set to NULL when returned as single memo
-                'reverse_workflow_id' => $assignedWorkflowId,
-                'is_draft' => true, // Mark as draft so it can be edited
+                'overall_status' => 'returned', // Returned as single memo
+                'approval_level' => 1, // HOD level 1 (not 0)
+                'next_approval_level' => $nextApprovalLevel,
+                // Retain existing forward_workflow_id and reverse_workflow_id
+                'is_draft' => false,
             ]);
 
             // Assign new document number for single memo (SM type)
             \App\Jobs\AssignDocumentNumberJob::dispatch($activity);
-
-            // Note: Approval trail entry is already created in update_activity_status() 
-            // No need to create a duplicate entry here
 
         } catch (\Exception $e) {
             Log::error('Error converting activity to single memo', [

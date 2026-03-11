@@ -831,6 +831,47 @@ if (!function_exists('user_session')) {
         }
     }
 
+    /**
+     * Get funder IDs for an activity from its budget (budget_breakdown fund code IDs or activity_budget).
+     * allowed_funders in workflow definition stores funder IDs (exists:funders,id), not fund_type_id.
+     */
+    if (!function_exists('get_activity_funder_ids')) {
+        function get_activity_funder_ids($activity): array
+        {
+            $funderIds = [];
+            // From activity_budget relation if available
+            if (method_exists($activity, 'activity_budget') && $activity->relationLoaded('activity_budget')) {
+                foreach ($activity->activity_budget ?? [] as $budget) {
+                    $fundcode = $budget->relationLoaded('fundcode') ? $budget->fundcode : $budget->fundcode ?? null;
+                    if ($fundcode && isset($fundcode->funder_id) && $fundcode->funder_id !== null) {
+                        $funderIds[] = (int) $fundcode->funder_id;
+                    }
+                }
+            }
+            // From budget_breakdown JSON (fund code IDs as keys)
+            if (empty($funderIds) && $activity->budget_breakdown) {
+                $budgetBreakdown = is_string($activity->budget_breakdown)
+                    ? json_decode($activity->budget_breakdown, true)
+                    : $activity->budget_breakdown;
+                if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
+                    $fundCodeIds = array_filter(array_keys($budgetBreakdown), function ($k) {
+                        return $k !== 'grand_total' && is_numeric($k);
+                    });
+                    if (!empty($fundCodeIds)) {
+                        $funderIds = \App\Models\FundCode::whereIn('id', $fundCodeIds)
+                            ->whereNotNull('funder_id')
+                            ->pluck('funder_id')
+                            ->map(fn ($id) => (int) $id)
+                            ->unique()
+                            ->values()
+                            ->all();
+                    }
+                }
+            }
+            return array_values(array_unique($funderIds));
+        }
+    }
+
     if (!function_exists('can_approve_activity')) {
 
         
@@ -841,40 +882,37 @@ if (!function_exists('user_session')) {
           
             if($activity->matrix->forward_workflow_id==null)
                 return false;
-          
-            // if($activity->fund_type_id==3)
-            //     return true;
 
-            if(!$activity->matrix->workflow_definition->allowed_funders||empty($activity->matrix->workflow_definition->allowed_funders))
+            $definition = $activity->matrix->workflow_definition ?? null;
+            if (!$definition) {
                 return true;
-
-            // Use budget_breakdown JSON to determine fund type instead of activity_budget model
-            if ($activity->budget_breakdown) {
-                // Parse budget_breakdown JSON
-                $budgetBreakdown = is_string($activity->budget_breakdown) 
-                    ? json_decode($activity->budget_breakdown, true) 
-                    : $activity->budget_breakdown;
-                
-                if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
-                    // Check if activity's fund type is in allowed_funders
-                    $allowedFunders = is_string($activity->matrix->workflow_definition->allowed_funders) 
-                        ? json_decode($activity->matrix->workflow_definition->allowed_funders, true) 
-                        : $activity->matrix->workflow_definition->allowed_funders;
-                    return in_array($activity->fund_type_id, $allowedFunders ?? []);
-                } else {
-                    // For activities with empty budget_breakdown, allow if fund type 3 is in allowed_funders
-                    $allowedFunders = is_string($activity->matrix->workflow_definition->allowed_funders) 
-                        ? json_decode($activity->matrix->workflow_definition->allowed_funders, true) 
-                        : $activity->matrix->workflow_definition->allowed_funders;
-                    return in_array(3, $allowedFunders ?? []);
-                }
-            } else {
-                // For activities with no budget_breakdown, allow if fund type 3 is in allowed_funders
-                $allowedFunders = is_string($activity->matrix->workflow_definition->allowed_funders) 
-                    ? json_decode($activity->matrix->workflow_definition->allowed_funders, true) 
-                    : $activity->matrix->workflow_definition->allowed_funders;
-                return in_array(3, $allowedFunders ?? []);
             }
+
+            // fund_type and allowed_funders work together: one of the conditions can be true
+            $defFundType = $definition->fund_type !== null && $definition->fund_type !== '' ? (int) $definition->fund_type : null;
+            $allowedFunders = null;
+            if ($definition->allowed_funders && !empty($definition->allowed_funders)) {
+                $allowedFunders = is_string($definition->allowed_funders)
+                    ? json_decode($definition->allowed_funders, true)
+                    : $definition->allowed_funders;
+                $allowedFunders = is_array($allowedFunders) ? array_map('intval', array_filter($allowedFunders)) : [];
+            }
+            $hasRestriction = $defFundType !== null || !empty($allowedFunders);
+
+            if (!$hasRestriction) {
+                return true;
+            }
+
+            if ($defFundType !== null && (int) $activity->fund_type_id === $defFundType) {
+                return true;
+            }
+            if (!empty($allowedFunders)) {
+                $activityFunderIds = get_activity_funder_ids($activity);
+                if (!empty($activityFunderIds) && count(array_intersect($activityFunderIds, $allowedFunders)) > 0) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -967,153 +1005,170 @@ if (!function_exists('user_session')) {
         }
     }
 
+    /**
+     * Get the workflow definition that the current user is an approver for at the matrix's current approval level.
+     * When multiple definitions exist at the same level (e.g. Finance vs PIU/Grants), returns the one the user is assigned to.
+     */
+    if (!function_exists('get_user_workflow_definition_for_matrix')) {
+        function get_user_workflow_definition_for_matrix($matrix)
+        {
+            $currentUserId = user_session('staff_id');
+            $userDivisionId = user_session('division_id');
+            if (!$currentUserId || !$matrix->forward_workflow_id) {
+                return null;
+            }
+
+            $definitions = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+                ->where('approval_order', $matrix->approval_level)
+                ->where('is_enabled', 1)
+                ->get();
+            if ($definitions->isEmpty()) {
+                return null;
+            }
+
+            $today = \Carbon\Carbon::today();
+
+            // Division-specific: if multiple definitions and matrix has division, try category-matched division-specific first
+            if ($definitions->count() > 1 && $matrix->division) {
+                $divisionSpecific = $definitions->where('is_division_specific', 1)
+                    ->where('category', $matrix->division->category)
+                    ->first();
+                if ($divisionSpecific && _helper_is_division_specific_approver($matrix, $divisionSpecific, $currentUserId, $userDivisionId)) {
+                    return $divisionSpecific;
+                }
+            }
+
+            foreach ($definitions as $definition) {
+                if ($definition->is_division_specific) {
+                    if (_helper_is_division_specific_approver($matrix, $definition, $currentUserId, $userDivisionId)) {
+                        return $definition;
+                    }
+                    continue;
+                }
+                if (\App\Models\Approver::where('workflow_dfn_id', $definition->id)->where('staff_id', $currentUserId)
+                    ->where(function ($q) use ($today) { $q->whereNull('end_date')->orWhere('end_date', '>=', $today); })->exists()) {
+                    return $definition;
+                }
+                if (\App\Models\Approver::where('workflow_dfn_id', $definition->id)->where('oic_staff_id', $currentUserId)
+                    ->where(function ($q) use ($today) { $q->whereNull('end_date')->orWhere('end_date', '>=', $today); })->exists()) {
+                    return $definition;
+                }
+            }
+
+            // Division-level (finance_officer, division_head, director) – match first definition that has this user as division approver
+            $matrixDivision = $matrix->division;
+            if ($matrixDivision) {
+                $isDivisionLevel = ($matrixDivision->finance_officer == $currentUserId)
+                    || ($matrixDivision->division_head == $currentUserId)
+                    || ($matrixDivision->finance_officer_oic_id == $currentUserId)
+                    || ($matrixDivision->director_id == $currentUserId)
+                    || ($matrixDivision->director_oic_id == $currentUserId)
+                    || ($matrixDivision->head_oic_id == $currentUserId);
+                if ($isDivisionLevel) {
+                    return $definitions->first();
+                }
+            }
+            return null;
+        }
+    }
+
+    if (!function_exists('_helper_is_division_specific_approver')) {
+        function _helper_is_division_specific_approver($matrix, $definition, $userStaffId, $userDivisionId)
+        {
+            if (!$definition->is_division_specific || !$matrix->division) {
+                return false;
+            }
+            if ($userDivisionId && (int) $matrix->division_id === (int) $userDivisionId) {
+                return true;
+            }
+            if ($definition->division_reference_column) {
+                $col = $definition->division_reference_column;
+                if (isset($matrix->division->$col) && $matrix->division->$col == $userStaffId) {
+                    return true;
+                }
+                $today = \Carbon\Carbon::today();
+                $oicMap = ['division_head' => 'head_oic_id', 'finance_officer' => 'finance_officer_oic_id', 'director_id' => 'director_oic_id'];
+                $oicCol = $oicMap[$col] ?? $col . '_oic_id';
+                if (isset($matrix->division->$oicCol) && $matrix->division->$oicCol == $userStaffId) {
+                    $startCol = str_replace('_oic_id', '_oic_start_date', $oicCol);
+                    $endCol = str_replace('_oic_id', '_oic_end_date', $oicCol);
+                    if ((!isset($matrix->division->$startCol) || $matrix->division->$startCol <= $today)
+                        && (!isset($matrix->division->$endCol) || $matrix->division->$endCol >= $today)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    }
+
     if (!function_exists('get_approvable_activities')) {
         function get_approvable_activities($matrix){
             
             $approvable_activities = collect();
             $currentUserId = user_session('staff_id');
             
-            // Simple cache key for this matrix and user
-            $cacheKey = "approvable_activities_{$matrix->id}_{$currentUserId}_{$matrix->approval_level}";
+            // Only consider approvable list when matrix is not yet approved (same as approval UI)
+            if ($matrix->overall_status === 'approved') {
+                return $approvable_activities;
+            }
+            
+            // Cache key v4: fund_type OR allowed_funders (one of the conditions can be true)
+            $cacheKey = "approvable_activities_v4_{$matrix->id}_{$currentUserId}_{$matrix->approval_level}";
             
             // Check cache first (cache for 5 minutes)
             if (\Cache::has($cacheKey)) {
                 return \Cache::get($cacheKey);
             }
             
-            // Get the current user's workflow definition for this matrix
-            $userWorkflowDefinition = null;
-            
             // Check if user is logged in
             if (!$currentUserId) {
                 return $approvable_activities; // Return empty collection if not logged in
             }
             
-            // Get workflow definition based on matrix's current approval level
-            $currentApprovalLevel = $matrix->approval_level;
-        //    / dd($currentApprovalLevel);
-            
-            // Find workflow definition for current approval level
-            $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                ->where('approval_order', $currentApprovalLevel)
-                ->first();
-            //dd($workflowDefinition);
+            // Use the workflow definition THIS USER is assigned to (not just first at level – PIU vs Finance have different allowed_funders)
+            $workflowDefinition = get_user_workflow_definition_for_matrix($matrix);
             if (!$workflowDefinition) {
-                return $approvable_activities; // Return empty if no workflow definition found
-            }
-           //dd($workflowDefinition);
-            //dd($currentUserId);
-            // Check if user is an approver for this workflow definition
-            $isApprover = \App\Models\Approver::where('workflow_dfn_id', $workflowDefinition->id)
-                ->where('staff_id', $currentUserId)
-                ->where(function($query) {
-                    $query->whereNull('end_date')
-                          ->orWhere('end_date', '>=', now());
-                })
-                ->exists();
-
-        // getFullSql(($isApprover));
-
-           // dd($isApprover);
-                
-            // Check if user is an OIC approver
-            $isOicApprover = \App\Models\Approver::where('workflow_dfn_id', $workflowDefinition->id)
-                ->where('oic_staff_id', $currentUserId)
-                ->where(function($query) {
-                    $query->whereNull('end_date')
-                          ->orWhere('end_date', '>=', now());
-                })
-                ->exists();
-           //dd($isOicApprover);
-            // Check for division-level approvers (Finance Officer, Head of Division, Director)
-            $isDivisionLevelApprover = false;
-            
-            // Get matrix's division (not user's division)
-            $matrixDivision = $matrix->division;
-            
-            if ($matrixDivision) {
-                // Check if user is Finance Officer for this matrix's division
-                $isFinanceOfficer = $matrixDivision->finance_officer == $currentUserId;
-                
-                // Check if user is Head of Division for this matrix's division
-                $isHeadOfDivision = $matrixDivision->division_head == $currentUserId;
-                
-                // Check if user is Finance Officer OIC for this matrix's division
-                $isFinanceOfficerOic = $matrixDivision->finance_officer_oic_id == $currentUserId;
-                
-                // Check if user is Director for this matrix's division
-                $isDirector = $matrixDivision->director_id == $currentUserId;
-                
-                // Check if user is Director OIC for this matrix's division
-                $isDirectorOic = $matrixDivision->director_oic_id == $currentUserId;
-                
-                // Check if user is Head OIC for this matrix's division
-                $isHeadOic = $matrixDivision->head_oic_id == $currentUserId;
-                
-                $isDivisionLevelApprover = $isFinanceOfficer || $isHeadOfDivision || $isFinanceOfficerOic || $isDirector || $isDirectorOic || $isHeadOic;
-            }
-            
-            
-            // Additional check: Check if user is an OIC for any approver in the current workflow definition
-            // This covers cases where someone is an OIC but not specifically assigned to division fields
-            $isWorkflowOic = \App\Models\Approver::where('workflow_dfn_id', $workflowDefinition->id)
-                ->where('oic_staff_id', $currentUserId)
-                ->where(function($query) {
-                    $query->whereNull('end_date')
-                          ->orWhere('end_date', '>=', now());
-                })
-                ->exists();
-            
-            // If user is not an approver for this level, return empty collection
-            if (!$isApprover && !$isOicApprover && !$isDivisionLevelApprover && !$isWorkflowOic) {
-               // dd($isApprover,$isOicApprover);
                 return $approvable_activities;
             }
             
-            // Filter activities based on allowed_funders if specified
+            // Filter activities: approvable if (fund_type matches) OR (funder in allowed_funders); neither set = no restriction
             if ($matrix->activities) {
-                foreach($matrix->activities as $activity) {
-                $canApprove = true;
-                
-                // Check if activity has budget data and allowed_funders is specified
+                $defFundType = $workflowDefinition->fund_type !== null && $workflowDefinition->fund_type !== '' ? (int) $workflowDefinition->fund_type : null;
+                $allowedFunders = null;
                 if ($workflowDefinition->allowed_funders && !empty($workflowDefinition->allowed_funders)) {
-                    // Use budget_breakdown JSON to determine fund type instead of activity_budget model
-                    if ($activity->budget_breakdown) {
-                        // Parse budget_breakdown JSON
-                        $budgetBreakdown = is_string($activity->budget_breakdown) 
-                            ? json_decode($activity->budget_breakdown, true) 
-                            : $activity->budget_breakdown;
-                        
-                        if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
-                            // Check if activity's fund type is in allowed_funders
-                            $allowedFunders = is_string($workflowDefinition->allowed_funders) 
-                                ? json_decode($workflowDefinition->allowed_funders, true) 
-                                : $workflowDefinition->allowed_funders;
-                            $canApprove = in_array($activity->fund_type_id, $allowedFunders ?? []);
-                        } else {
-                            // For activities with empty budget_breakdown, only allow if fund type 3 is in allowed_funders
-                            $allowedFunders = is_string($workflowDefinition->allowed_funders) 
-                                ? json_decode($workflowDefinition->allowed_funders, true) 
-                                : $workflowDefinition->allowed_funders;
-                            $canApprove = in_array(3, $allowedFunders ?? []);
-                        }
+                    $allowedFunders = is_string($workflowDefinition->allowed_funders)
+                        ? json_decode($workflowDefinition->allowed_funders, true)
+                        : $workflowDefinition->allowed_funders;
+                    $allowedFunders = is_array($allowedFunders) ? array_map('intval', array_filter($allowedFunders)) : [];
+                }
+                $hasRestriction = $defFundType !== null || !empty($allowedFunders);
+
+                foreach ($matrix->activities as $activity) {
+                    $canApprove = false;
+
+                    if (!$hasRestriction) {
+                        $canApprove = true;
                     } else {
-                        // For activities with no budget_breakdown, only allow if fund type 3 is in allowed_funders
-                        $allowedFunders = is_string($workflowDefinition->allowed_funders) 
-                            ? json_decode($workflowDefinition->allowed_funders, true) 
-                            : $workflowDefinition->allowed_funders;
-                        $canApprove = in_array(3, $allowedFunders ?? []);
+                        // One of the conditions can be true: fund_type match OR funder in allowed_funders
+                        if ($defFundType !== null && (int) $activity->fund_type_id === $defFundType) {
+                            $canApprove = true;
+                        }
+                        if (!$canApprove && !empty($allowedFunders)) {
+                            $activityFunderIds = get_activity_funder_ids($activity);
+                            if (!empty($activityFunderIds) && count(array_intersect($activityFunderIds, $allowedFunders)) > 0) {
+                                $canApprove = true;
+                            }
+                        }
                     }
-                }
-                
-                // Additional check using existing can_approve_activity function
-                if ($canApprove) {
-                    $canApprove = can_approve_activity($activity);
-                }
-                
-                if ($canApprove) {
-                    $approvable_activities->push($activity);
-                }
+
+                    if ($canApprove) {
+                        $canApprove = can_approve_activity($activity);
+                    }
+
+                    if ($canApprove) {
+                        $approvable_activities->push($activity);
+                    }
                 }
             }
             
