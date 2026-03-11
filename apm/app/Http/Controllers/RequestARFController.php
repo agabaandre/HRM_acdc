@@ -122,8 +122,8 @@ class RequestARFController extends Controller
         $divisions = Division::orderBy('division_name')->get();
         $staff = Staff::active()->get();
 
-        // Handle AJAX requests for tab content
-        if ($request->ajax()) {
+        // Handle AJAX requests for tab content only (not initial Livewire navigation)
+        if ($request->ajax() && $request->filled('tab')) {
             $tab = $request->get('tab', '');
             $html = '';
             $countMy = $mySubmittedArfs->total();

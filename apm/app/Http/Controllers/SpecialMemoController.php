@@ -163,8 +163,8 @@ class SpecialMemoController extends Controller
 
         $sharedMemos = $sharedMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
-        // Handle AJAX requests for tab content
-        if ($request->ajax()) {
+        // Handle AJAX requests for tab content only (not initial Livewire navigation)
+        if ($request->ajax() && $request->filled('tab')) {
             $tab = $request->get('tab', '');
             $html = '';
 

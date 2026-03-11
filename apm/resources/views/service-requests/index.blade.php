@@ -26,6 +26,9 @@
 .btn-group-vertical form .btn { width: 100%; border-radius: 0; }
 .btn-group-vertical .btn:first-child { border-top-left-radius: 0.25rem; border-top-right-radius: 0.25rem; }
 .btn-group-vertical .btn:last-child { border-bottom-left-radius: 0.25rem; border-bottom-right-radius: 0.25rem; }
+#serviceFilters select.service-request-filter-select.select2-hidden-accessible {
+    position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important;
+}
 </style>
 @endsection
 
@@ -42,12 +45,14 @@
             <h4 class="mb-0 text-success fw-bold"><i class="bx bx-cog me-2 text-success"></i> Service Request Management</h4>
         </div>
 
-        <div class="row g-3 align-items-end w-100" id="serviceFilters" autocomplete="off">
+        <form action="{{ route('service-requests.index') }}" method="GET" class="row g-3 align-items-end w-100" id="serviceFiltersForm">
+            <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'mySubmitted') }}">
+            <div class="row g-3 align-items-end w-100" id="serviceFilters" autocomplete="off">
             <div class="col-md-2">
                 <label for="year" class="form-label fw-semibold mb-1">
                     <i class="bx bx-calendar me-1 text-success"></i> Year
                 </label>
-                <select name="year" id="year" class="form-select select2" style="width: 100%;">
+                <select name="year" id="year" class="form-select service-request-filter-select" style="width: 100%;">
                     @foreach($years ?? [] as $yr => $label)
                         <option value="{{ $yr }}" {{ (string)($selectedYear ?? date('Y')) === (string)$yr ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
@@ -57,7 +62,7 @@
                 <label for="division_id" class="form-label fw-semibold mb-1">
                     <i class="bx bx-building me-1 text-success"></i> Division
                 </label>
-                <select name="division_id" id="division_id" class="form-select select2">
+                <select name="division_id" id="division_id" class="form-select service-request-filter-select">
                     <option value="">All Divisions</option>
                     @foreach($divisions as $division)
                         <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -70,7 +75,7 @@
                 <label for="staff_id" class="form-label fw-semibold mb-1">
                     <i class="bx bx-user me-1 text-success"></i> Staff
                 </label>
-                <select name="staff_id" id="staff_id" class="form-select select2">
+                <select name="staff_id" id="staff_id" class="form-select service-request-filter-select">
                     <option value="">All Staff</option>
                     @foreach($staff as $member)
                         <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
@@ -83,7 +88,7 @@
                 <label for="service_type" class="form-label fw-semibold mb-1">
                     <i class="bx bx-cog me-1 text-success"></i> Service Type
                 </label>
-                <select name="service_type" id="service_type" class="form-select select2">
+                <select name="service_type" id="service_type" class="form-select service-request-filter-select">
                     <option value="">All Types</option>
                     <option value="IT Support" {{ request('service_type') == 'IT Support' ? 'selected' : '' }}>IT Support</option>
                     <option value="Maintenance" {{ request('service_type') == 'Maintenance' ? 'selected' : '' }}>Maintenance</option>
@@ -101,7 +106,7 @@
                 <label for="request_status" class="form-label fw-semibold mb-1">
                     <i class="bx bx-info-circle me-1 text-success"></i> Status
                 </label>
-                <select name="status" id="request_status" class="form-select select2">
+                <select name="status" id="request_status" class="form-select service-request-filter-select">
                     <option value="">All Statuses</option>
                     <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -110,7 +115,7 @@
                 </select>
             </div>
             <div class="col-md-1 d-flex align-items-end">
-                <button type="button" class="btn btn-success btn-sm w-100 fw-bold" id="applyFilters">
+                <button type="submit" class="btn btn-success btn-sm w-100 fw-bold" id="applyFilters">
                     <i class="bx bx-search-alt-2 me-1"></i> Filter
                 </button>
             </div>
@@ -119,7 +124,8 @@
                     <i class="bx bx-reset me-1"></i> Reset
                 </a>
             </div>
-        </div>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -195,16 +201,18 @@
 <script>
 function initServiceRequestsPage() {
     if (!document.getElementById('serviceTabs')) return;
-    try {
-        $('#year, #division_id, #staff_id, #service_type, #request_status').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $('#year, #division_id, #staff_id, #service_type, #request_status').select2({
-                placeholder: 'Select an option',
-                allowClear: true,
-                width: '100%'
-            });
-        }
-    } catch (e) {}
+    var filtersEl = document.getElementById('serviceFilters');
+    if (!filtersEl) return;
+    if (!filtersEl.hasAttribute('data-select2-inited')) {
+        try {
+            var $ = window.jQuery || window.$;
+            if ($ && $.fn.select2) {
+                $('#serviceFilters select.service-request-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+                $('#serviceFilters select.service-request-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                filtersEl.setAttribute('data-select2-inited', '1');
+            }
+        } catch (e) {}
+    }
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');
         if (activeTab) {
@@ -314,7 +322,12 @@ function initServiceRequestsPage() {
         });
     }
     
+    var filterTabInput = document.getElementById('filter_tab');
     document.querySelectorAll('#serviceTabs button[data-bs-toggle="tab"]').forEach(button => {
+        button.addEventListener('click', function(e) {
+            var tabId = this.getAttribute('aria-controls');
+            if (filterTabInput) filterTabInput.value = tabId;
+        });
         button.addEventListener('shown.bs.tab', function (e) {
             const target = e.target.getAttribute('data-bs-target');
             const tabId = target.replace('#', '');
@@ -324,7 +337,8 @@ function initServiceRequestsPage() {
 }
 document.addEventListener('DOMContentLoaded', initServiceRequestsPage);
 document.addEventListener('livewire:navigated', function() {
-    if (document.getElementById('serviceTabs')) initServiceRequestsPage();
+    if (!document.getElementById('serviceTabs')) return;
+    setTimeout(initServiceRequestsPage, 0);
 });
 </script>
 @endsection

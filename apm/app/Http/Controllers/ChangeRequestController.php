@@ -155,8 +155,8 @@ class ChangeRequestController extends Controller
             'rejected' => 'Rejected'
         ];
 
-        // Handle AJAX requests for tab content (use query('year') so correct year is applied)
-        if ($request->ajax()) {
+        // Handle AJAX requests for tab content only (not initial Livewire navigation)
+        if ($request->ajax() && $request->filled('tab')) {
             $tab = $request->get('tab', '');
             $html = '';
             $yearFromQuery = $request->query('year');

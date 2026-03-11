@@ -72,6 +72,9 @@
     white-space: normal;
     line-height: 1.3;
 }
+#changeRequestFilters select.change-request-filter-select.select2-hidden-accessible {
+    position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important;
+}
 </style>
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-body py-3 px-4 bg-light rounded-3">
@@ -80,12 +83,13 @@
         </div>
 
         <div class="row g-3 align-items-end" id="changeRequestFilters" autocomplete="off">
-            <form action="{{ route('change-requests.index') }}" method="GET" class="row g-3 align-items-end w-100">
+            <form action="{{ route('change-requests.index') }}" method="GET" class="row g-3 align-items-end w-100" id="changeRequestFiltersForm">
+                <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'myChangeRequests') }}">
                 <div class="col-md-2">
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
                     </label>
-                    <select name="year" id="year" class="form-select select2" style="width: 100%;">
+                    <select name="year" id="year" class="form-select change-request-filter-select" style="width: 100%;">
                         @foreach($years ?? [] as $yrValue => $yrLabel)
                             <option value="{{ $yrValue }}" {{ (request('year', $selectedYear ?? date('Y')) == (string)$yrValue) ? 'selected' : '' }}>{{ $yrLabel }}</option>
                         @endforeach
@@ -102,7 +106,7 @@
                     <label for="memo_type" class="form-label fw-semibold mb-1">
                         <i class="bx bx-category me-1 text-success"></i> Memo Type
                     </label>
-                    <select name="memo_type" id="memo_type" class="form-select select2" style="width: 100%;">
+                    <select name="memo_type" id="memo_type" class="form-select change-request-filter-select" style="width: 100%;">
                         <option value="">All Memo Types</option>
                         <option value="App\Models\Activity" {{ request('memo_type') == 'App\Models\Activity' ? 'selected' : '' }}>Activity</option>
                         <option value="App\Models\SpecialMemo" {{ request('memo_type') == 'App\Models\SpecialMemo' ? 'selected' : '' }}>Special Memo</option>
@@ -115,7 +119,7 @@
                     <label for="staff_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-user me-1 text-success"></i> Staff
                     </label>
-                    <select name="staff_id" id="staff_id" class="form-select select2" style="width: 100%;">
+                    <select name="staff_id" id="staff_id" class="form-select change-request-filter-select" style="width: 100%;">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
@@ -128,7 +132,7 @@
                     <label for="division_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-building me-1 text-success"></i> Division
                     </label>
-                    <select name="division_id" id="division_id" class="form-select select2" style="width: 100%;">
+                    <select name="division_id" id="division_id" class="form-select change-request-filter-select" style="width: 100%;">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->division_id }}" {{ request('division_id') == $division->division_id ? 'selected' : '' }}>
@@ -148,7 +152,7 @@
                     <label for="status" class="form-label fw-semibold mb-1">
                         <i class="bx bx-info-circle me-1 text-success"></i> Status
                     </label>
-                    <select name="status" id="statusFilter" class="form-select select2" style="width: 100%;">
+                    <select name="status" id="statusFilter" class="form-select change-request-filter-select" style="width: 100%;">
                         <option value="">All Statuses</option>
                         @foreach($statuses as $value => $label)
                             <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>
@@ -158,7 +162,7 @@
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
+                    <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -281,19 +285,18 @@
 <script>
 function initChangeRequestsPage() {
     if (!document.getElementById('changeRequestTabs')) return;
-    try {
-        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
-    } catch (e) {}
-    $('.select2').select2({
-        theme: 'bootstrap-5',
-        width: '100%'
-    });
-    $('#year').select2('destroy').select2({
-        theme: 'bootstrap-5',
-        width: '100%',
-        allowClear: false,
-        placeholder: null
-    });
+    var filtersEl = document.getElementById('changeRequestFilters');
+    if (!filtersEl) return;
+    if (!filtersEl.hasAttribute('data-select2-inited')) {
+        try {
+            var $ = window.jQuery || window.$;
+            if ($) {
+                $('#changeRequestFilters select.change-request-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+                $('#changeRequestFilters select.change-request-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                filtersEl.setAttribute('data-select2-inited', '1');
+            }
+        } catch (e) {}
+    }
     
     // AJAX filtering - auto-update when filters change
     function applyFilters() {
@@ -460,24 +463,18 @@ function initChangeRequestsPage() {
         });
     }
 
-    // Add click handlers to tabs to load data via AJAX
-    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    var filterTabInput = document.getElementById('filter_tab');
+    const tabButtons = document.querySelectorAll('#changeRequestTabs [data-bs-toggle="tab"]');
     tabButtons.forEach(button => {
         button.addEventListener('click', function(e) {
-            e.preventDefault(); // Prevent Bootstrap's default tab behavior
-            
-            // Remove active class from all tabs and buttons
+            e.preventDefault();
             document.querySelectorAll('#changeRequestTabs .nav-link').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('#changeRequestTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
-            
-            // Add active class to clicked button and corresponding pane
             this.classList.add('active');
             const tabId = this.getAttribute('aria-controls');
+            if (filterTabInput) filterTabInput.value = tabId;
             const tabPane = document.getElementById(tabId);
-            if (tabPane) {
-                tabPane.classList.add('active', 'show');
-            }
-            
+            if (tabPane) tabPane.classList.add('active', 'show');
             loadTabData(tabId);
         });
     });
@@ -489,7 +486,8 @@ function initChangeRequestsPage() {
 }
 document.addEventListener('DOMContentLoaded', initChangeRequestsPage);
 document.addEventListener('livewire:navigated', function() {
-    if (document.getElementById('changeRequestTabs')) initChangeRequestsPage();
+    if (!document.getElementById('changeRequestTabs')) return;
+    setTimeout(initChangeRequestsPage, 0);
 });
 
 // Delete change request function

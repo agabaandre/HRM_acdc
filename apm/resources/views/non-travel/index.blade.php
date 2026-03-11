@@ -38,6 +38,9 @@
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
 }
+#memoFilters select.non-travel-filter-select.select2-hidden-accessible {
+    position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important;
+}
 </style>
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-body py-3 px-4 bg-light rounded-3">
@@ -46,12 +49,13 @@
             </div>
 
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
-            <div class="row g-3 align-items-end w-100">
+            <form action="{{ route('non-travel.index') }}" method="GET" class="row g-3 align-items-end w-100" id="nonTravelFiltersForm">
+                <input type="hidden" name="tab" id="filter_tab" value="mySubmitted">
                 <div class="col-md-2">
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
                     </label>
-                    <select name="year" id="year" class="form-select select2" style="width: 100%;">
+                    <select name="year" id="year" class="form-select non-travel-filter-select" style="width: 100%;">
                         @foreach($years ?? [] as $yr => $label)
                             <option value="{{ $yr }}" {{ ($year ?? date('Y')) == $yr ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
@@ -71,7 +75,7 @@
                     <label for="staff_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-user me-1 text-success"></i> Staff
                     </label>
-                    <select name="staff_id" id="staff_id" class="form-select select2" style="width: 100%;">
+                    <select name="staff_id" id="staff_id" class="form-select non-travel-filter-select" style="width: 100%;">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
@@ -84,7 +88,7 @@
                     <label for="division_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-building me-1 text-success"></i> Division
                     </label>
-                    <select name="division_id" id="division_id" class="form-select select2" style="width: 100%;">
+                    <select name="division_id" id="division_id" class="form-select non-travel-filter-select" style="width: 100%;">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -97,7 +101,7 @@
                     <label for="memo_status" class="form-label fw-semibold mb-1">
                         <i class="bx bx-info-circle me-1 text-success"></i> Status
                     </label>
-                    <select name="status" id="memo_status" class="form-select select2" style="width: 100%;">
+                    <select name="status" id="memo_status" class="form-select non-travel-filter-select" style="width: 100%;">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -114,7 +118,7 @@
                            value="{{ request('search') }}" placeholder="Enter memo title..." style="width: 100%;">
                 </div>
                 <div class="col-auto d-flex align-items-end">
-                    <button type="button" class="btn btn-success btn-sm" id="applyFilters">
+                    <button type="submit" class="btn btn-success btn-sm" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -123,7 +127,7 @@
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
-            </div>
+            </form>
             </div>
         </div>
     </div>
@@ -200,39 +204,27 @@
 <script>
 function initNonTravelPage() {
     if (!document.getElementById('memoTabs')) return;
-    try {
-        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
-        $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
-    } catch (e) {}
-    const forms = document.querySelectorAll('form');
-    forms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            applyFilters();
-        });
-    });
-    
-    // AJAX filtering - run after a tick so Select2 has updated the underlying select
+    var filtersEl = document.getElementById('memoFilters');
+    if (!filtersEl) return;
+    if (!filtersEl.hasAttribute('data-select2-inited')) {
+        try {
+            var $ = window.jQuery || window.$;
+            if ($) {
+                $('#memoFilters select.non-travel-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+                $('#memoFilters select.non-travel-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                filtersEl.setAttribute('data-select2-inited', '1');
+            }
+        } catch (e) {}
+    }
     function applyFilters() {
         setTimeout(function() {
-            var activeTab = document.querySelector('.tab-pane.active');
-            if (activeTab) {
-                loadTabData(activeTab.id);
-            }
+            var activeTab = document.querySelector('#memoTabsContent .tab-pane.active');
+            if (activeTab) loadTabData(activeTab.id);
         }, 0);
     }
-    
-    // Manual filter button click
-    if (document.getElementById('applyFilters')) {
-        document.getElementById('applyFilters').addEventListener('click', applyFilters);
-    }
-    
-    // Auto-apply filters when they change (defer so Select2 has updated DOM)
     ['staff_id', 'division_id', 'memo_status', 'year'].forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('change', applyFilters);
-        }
+        if (el) el.addEventListener('change', applyFilters);
     });
     
     // Document number filter - apply on Enter key or after 1 second delay
@@ -341,24 +333,18 @@ function initNonTravelPage() {
         });
     }
 
-    // Add click handlers to tabs to load data via AJAX
-    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    var filterTabInput = document.getElementById('filter_tab');
+    const tabButtons = document.querySelectorAll('#memoTabs [data-bs-toggle="tab"]');
     tabButtons.forEach(button => {
         button.addEventListener('click', function(e) {
-            e.preventDefault(); // Prevent Bootstrap's default tab behavior
-            
-            // Remove active class from all tabs and buttons
+            e.preventDefault();
             document.querySelectorAll('#memoTabs .nav-link').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('#memoTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
-            
-            // Add active class to clicked button and corresponding pane
             this.classList.add('active');
             const tabId = this.getAttribute('aria-controls');
+            if (filterTabInput) filterTabInput.value = tabId === 'allMemos' ? 'allMemos' : 'mySubmitted';
             const tabPane = document.getElementById(tabId);
-            if (tabPane) {
-                tabPane.classList.add('active', 'show');
-            }
-            
+            if (tabPane) tabPane.classList.add('active', 'show');
             loadTabData(tabId);
         });
     });
@@ -370,7 +356,8 @@ function initNonTravelPage() {
 }
 document.addEventListener('DOMContentLoaded', initNonTravelPage);
 document.addEventListener('livewire:navigated', function() {
-    if (document.getElementById('memoTabs')) initNonTravelPage();
+    if (!document.getElementById('memoTabs')) return;
+    setTimeout(initNonTravelPage, 0);
 });
 </script>
 @endsection
