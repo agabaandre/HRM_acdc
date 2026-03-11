@@ -1186,8 +1186,6 @@ function initServiceRequestCreatePage() {
         updateTotals();
         updateParticipantsSummary();
     }
-    document.removeEventListener('click', onAddInternalClick);
-    document.addEventListener('click', onAddInternalClick);
 
     // Remove internal participant row — delegation; ignore disabled button
     function onRemoveInternalClick(e) {
@@ -1203,8 +1201,6 @@ function initServiceRequestCreatePage() {
             updateParticipantsSummary();
         }
     }
-    document.removeEventListener('click', onRemoveInternalClick);
-    document.addEventListener('click', onRemoveInternalClick);
 
     // Add external participant — delegation so it works after Livewire navigation
     function onAddExternalClick(e) {
@@ -1246,8 +1242,6 @@ function initServiceRequestCreatePage() {
         updateTotals();
         updateParticipantsSummary();
     }
-    document.removeEventListener('click', onAddExternalClick);
-    document.addEventListener('click', onAddExternalClick);
 
     // Remove external participant row — delegation; ignore disabled button
     function onRemoveExternalClick(e) {
@@ -1262,9 +1256,16 @@ function initServiceRequestCreatePage() {
             updateParticipantsSummary();
         }
     }
-    document.removeEventListener('click', onRemoveExternalClick);
-    document.addEventListener('click', onRemoveExternalClick);
-    
+
+    // Register delegated click handlers only once to avoid double-add (e.g. DOMContentLoaded + livewire:navigated)
+    if (!window._serviceRequestParticipantHandlersRegistered) {
+        document.addEventListener('click', onAddInternalClick);
+        document.addEventListener('click', onRemoveInternalClick);
+        document.addEventListener('click', onAddExternalClick);
+        document.addEventListener('click', onRemoveExternalClick);
+        window._serviceRequestParticipantHandlersRegistered = true;
+    }
+
     // Add event listeners for cost inputs
     document.addEventListener('input', function(e) {
         if (e.target.classList.contains('cost-input')) {
