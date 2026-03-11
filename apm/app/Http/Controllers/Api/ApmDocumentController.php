@@ -342,8 +342,18 @@ class ApmDocumentController extends Controller
 
     /**
      * Normalize document array for API: decode any JSON string fields that are still raw strings.
+     * Used by matrix, activity, and other document types.
      */
     private function normalizeMemoJsonFields(array $data): array
+    {
+        return $this->normalizeDocumentJsonFields($data);
+    }
+
+    /**
+     * Normalize document array for API: decode any JSON string fields that are still raw strings.
+     * Shared implementation so both normalizeMemoJsonFields and direct callers work.
+     */
+    private function normalizeDocumentJsonFields(array $data): array
     {
         $jsonKeys = [
             'budget_breakdown', 'budget_id', 'location_id', 'attachment', 'attachments',
