@@ -184,6 +184,10 @@ function initRequestArfPage() {
             if ($ && $.fn.select2) {
                 $('#arfFilters select.arf-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#arfFilters select.arf-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                $('#arfFilters select.arf-filter-select').each(function() {
+                    var v = $(this).find('option:selected').val();
+                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
+                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
@@ -300,6 +304,16 @@ function initRequestArfPage() {
         });
     }
     
+    var urlTab = new URLSearchParams(window.location.search).get('tab');
+    if (urlTab && (urlTab === 'mySubmitted' || urlTab === 'allArfs')) {
+        setTimeout(function() {
+            var tabEl = document.getElementById(urlTab + '-tab');
+            if (tabEl && typeof bootstrap !== 'undefined') {
+                var tab = new bootstrap.Tab(tabEl);
+                tab.show();
+            }
+        }, 50);
+    }
     var filterTabInput = document.getElementById('filter_tab');
     document.querySelectorAll('#arfTabs button[data-bs-toggle="tab"]').forEach(button => {
         button.addEventListener('click', function() {

@@ -209,6 +209,10 @@ function initServiceRequestsPage() {
             if ($ && $.fn.select2) {
                 $('#serviceFilters select.service-request-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#serviceFilters select.service-request-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                $('#serviceFilters select.service-request-filter-select').each(function() {
+                    var v = $(this).find('option:selected').val();
+                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
+                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
@@ -322,6 +326,16 @@ function initServiceRequestsPage() {
         });
     }
     
+    var urlTab = new URLSearchParams(window.location.search).get('tab');
+    if (urlTab && (urlTab === 'mySubmitted' || urlTab === 'allRequests')) {
+        setTimeout(function() {
+            var tabEl = document.getElementById(urlTab + '-tab');
+            if (tabEl && typeof bootstrap !== 'undefined') {
+                var tab = new bootstrap.Tab(tabEl);
+                tab.show();
+            }
+        }, 50);
+    }
     var filterTabInput = document.getElementById('filter_tab');
     document.querySelectorAll('#serviceTabs button[data-bs-toggle="tab"]').forEach(button => {
         button.addEventListener('click', function(e) {

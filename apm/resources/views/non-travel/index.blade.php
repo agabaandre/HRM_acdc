@@ -50,7 +50,7 @@
 
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
             <form action="{{ route('non-travel.index') }}" method="GET" class="row g-3 align-items-end w-100" id="nonTravelFiltersForm">
-                <input type="hidden" name="tab" id="filter_tab" value="mySubmitted">
+                <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'mySubmitted') }}">
                 <div class="col-md-2">
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
@@ -212,6 +212,10 @@ function initNonTravelPage() {
             if ($) {
                 $('#memoFilters select.non-travel-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#memoFilters select.non-travel-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                $('#memoFilters select.non-travel-filter-select').each(function() {
+                    var v = $(this).find('option:selected').val();
+                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
+                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
@@ -333,6 +337,21 @@ function initNonTravelPage() {
         });
     }
 
+    // Open tab from URL so filter state persists after submit/reload
+    var urlTab = new URLSearchParams(window.location.search).get('tab');
+    if (urlTab) {
+        setTimeout(function() {
+            var tabEl = (urlTab === 'allMemos') ? document.getElementById('allMemos-tab') : document.getElementById('mySubmitted-tab');
+            if (tabEl && typeof bootstrap !== 'undefined') {
+                document.querySelectorAll('#memoTabs .nav-link').forEach(function(btn) { btn.classList.remove('active'); });
+                document.querySelectorAll('#memoTabsContent .tab-pane').forEach(function(pane) { pane.classList.remove('active', 'show'); });
+                tabEl.classList.add('active');
+                var pane = document.getElementById(tabEl.getAttribute('aria-controls'));
+                if (pane) { pane.classList.add('active', 'show'); loadTabData(pane.id); }
+            }
+        }, 50);
+    }
+    
     var filterTabInput = document.getElementById('filter_tab');
     const tabButtons = document.querySelectorAll('#memoTabs [data-bs-toggle="tab"]');
     tabButtons.forEach(button => {
@@ -349,8 +368,8 @@ function initNonTravelPage() {
         });
     });
     
-    const activeTabButton = document.querySelector('#memoTabs .nav-link.active');
-    if (activeTabButton) {
+    var activeTabButton = document.querySelector('#memoTabs .nav-link.active');
+    if (activeTabButton && !urlTab) {
         loadTabData(activeTabButton.getAttribute('aria-controls'));
     }
 }
