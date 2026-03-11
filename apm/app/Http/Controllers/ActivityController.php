@@ -2354,8 +2354,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $staff = \App\Models\Staff::whereNotIn('status', ['Expired', 'Separated'])
             ->orderBy('fname')->orderBy('lname')->get();
 
-        // Handle AJAX requests for tab content
-        if ($request->ajax()) {
+        // Handle AJAX requests for tab content only (not initial Livewire navigation)
+        if ($request->ajax() && $request->filled('tab')) {
             $tab = $request->get('tab', '');
             $html = '';
             $countAll = $allActivities->total();

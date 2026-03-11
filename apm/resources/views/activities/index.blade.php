@@ -31,6 +31,9 @@
 .btn-group .btn {
     padding: 0.25rem 0.5rem;
 }
+#activityFilters select.activities-filter-select.select2-hidden-accessible {
+    position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important;
+}
 </style>
     @if(isset($matrix))
         <!-- Matrix-specific activities view -->
@@ -193,7 +196,8 @@
                 </div>
 
                 <div class="row g-3 align-items-end" id="activityFilters" autocomplete="off">
-                    <form action="{{ route('activities.index') }}" method="GET" class="row g-3 align-items-end w-100">
+                    <form action="{{ route('activities.index') }}" method="GET" class="row g-3 align-items-end w-100" id="activitiesFiltersForm">
+                        <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', in_array(87, user_session('permissions', [])) ? 'all-activities' : 'my-division') }}">
                     <div class="col-md-2">
                         <label for="document_number" class="form-label fw-semibold mb-1">
                             <i class="bx bx-file me-1 text-success"></i> Document #
@@ -205,7 +209,7 @@
                         <label for="staff_id" class="form-label fw-semibold mb-1">
                             <i class="bx bx-user me-1 text-success"></i> Responsible Person
                         </label>
-                        <select name="staff_id" id="staff_id" class="form-select select2" style="width: 100%;">
+                        <select name="staff_id" id="staff_id" class="form-select select2 activities-filter-select" style="width: 100%;">
                             <option value="">All Staff</option>
                             @foreach($staff as $staffMember)
                                 <option value="{{ $staffMember->staff_id }}" {{ request('staff_id') == $staffMember->staff_id ? 'selected' : '' }}>
@@ -218,7 +222,7 @@
                         <label for="year" class="form-label fw-semibold mb-1">
                             <i class="bx bx-calendar me-1 text-success"></i> Year
                         </label>
-                        <select name="year" id="year" class="form-select select2" style="width: 100%;">
+                        <select name="year" id="year" class="form-select select2 activities-filter-select" style="width: 100%;">
                             @foreach($years as $year)
                                 <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>
                                     {{ $year }}
@@ -230,7 +234,7 @@
                         <label for="quarter" class="form-label fw-semibold mb-1">
                             <i class="bx bx-time-five me-1 text-success"></i> Quarter
                         </label>
-                        <select name="quarter" id="quarter" class="form-select select2" style="width: 100%;">
+                        <select name="quarter" id="quarter" class="form-select select2 activities-filter-select" style="width: 100%;">
                             @foreach($quarters as $quarter)
                                 <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>
                                     {{ $quarter }}
@@ -242,7 +246,7 @@
                         <label for="division_id" class="form-label fw-semibold mb-1">
                             <i class="bx bx-building me-1 text-success"></i> Division
                         </label>
-                        <select name="division_id" id="division_id" class="form-select select2" style="width: 100%;">
+                        <select name="division_id" id="division_id" class="form-select select2 activities-filter-select" style="width: 100%;">
                             <option value="">All Divisions</option>
                             @foreach($divisions as $division)
                                 <option value="{{ $division->id }}" {{ $selectedDivisionId == $division->id ? 'selected' : '' }}>
@@ -252,7 +256,7 @@
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
-                        <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
+                        <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
                             <i class="bx bx-search-alt-2 me-1"></i> Filter
                         </button>
                     </div>
@@ -325,21 +329,21 @@
 <script>
 function initActivitiesIndexPage() {
     if (!document.getElementById('activitiesTabs')) return;
-    try {
-        $('.select2').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
-        $('.select2').select2({ theme: 'bootstrap-5', width: '100%' });
-    } catch (e) {}
-    function applyFilters() {
-        const activeTab = document.querySelector('.tab-pane.active');
-        if (activeTab) {
-            const tabId = activeTab.id;
-            loadTabData(tabId);
-        }
+    var filtersEl = document.getElementById('activityFilters');
+    if (!filtersEl) return;
+    if (!filtersEl.hasAttribute('data-select2-inited')) {
+        try {
+            var $ = window.jQuery || window.$;
+            if ($) {
+                $('#activityFilters select.activities-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
+                $('#activityFilters select.activities-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                filtersEl.setAttribute('data-select2-inited', '1');
+            }
+        } catch (e) {}
     }
-    
-    // Manual filter button click
-    if (document.getElementById('applyFilters')) {
-        document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    function applyFilters() {
+        var activeTab = document.querySelector('#activitiesTabsContent .tab-pane.active');
+        if (activeTab) loadTabData(activeTab.id);
     }
     
     // Auto-apply filters when they change
@@ -361,50 +365,32 @@ function initActivitiesIndexPage() {
     
     // Document number filter - apply on Enter key or after 1 second delay
     if (document.getElementById('document_number')) {
-        let documentNumberTimeout;
+        var documentNumberTimeout;
         document.getElementById('document_number').addEventListener('input', function() {
             clearTimeout(documentNumberTimeout);
             documentNumberTimeout = setTimeout(applyFilters, 1000);
         });
-        
         document.getElementById('document_number').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                clearTimeout(documentNumberTimeout);
-                applyFilters();
-            }
+            if (e.key === 'Enter') { e.preventDefault(); clearTimeout(documentNumberTimeout); applyFilters(); }
         });
     }
+    
+    // Keep hidden tab in sync so form submit opens the right tab
+    var filterTabInput = document.getElementById('filter_tab');
     
     // Handle tab switching based on URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
     
     if (tabParam) {
-        // Wait for DOM to be fully loaded, then switch to the appropriate tab
         setTimeout(() => {
-            switch(tabParam) {
-                case 'all':
-                    const allTab = document.getElementById('all-activities-tab');
-                    if (allTab) {
-                        // Use Bootstrap's tab API to properly switch
-                        const tab = new bootstrap.Tab(allTab);
-                        tab.show();
-                    }
-                    break;
-                case 'my-division':
-                    const myDivisionTab = document.getElementById('my-division-tab');
-                    if (myDivisionTab) {
-                        const tab = new bootstrap.Tab(myDivisionTab);
-                        tab.show();
-                    }
-                    break;
-                case 'shared':
-                    const sharedTab = document.getElementById('shared-activities-tab');
-                    if (sharedTab) {
-                        const tab = new bootstrap.Tab(sharedTab);
-                        tab.show();
-                    }
-                    break;
+            var tabEl = null;
+            if (tabParam === 'all' || tabParam === 'all-activities') tabEl = document.getElementById('all-activities-tab');
+            else if (tabParam === 'my-division') tabEl = document.getElementById('my-division-tab');
+            else if (tabParam === 'shared' || tabParam === 'shared-activities') tabEl = document.getElementById('shared-activities-tab');
+            if (tabEl && typeof bootstrap !== 'undefined') {
+                var tab = new bootstrap.Tab(tabEl);
+                tab.show();
             }
         }, 100);
         
@@ -420,23 +406,17 @@ function initActivitiesIndexPage() {
     attachPaginationHandlers('shared-activities');
     
     // Add click handlers to tabs to load data via AJAX
-    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    const tabButtons = document.querySelectorAll('#activitiesTabs [data-bs-toggle="tab"]');
     tabButtons.forEach(button => {
         button.addEventListener('click', function(e) {
-            e.preventDefault(); // Prevent Bootstrap's default tab behavior
-            
-            // Remove active class from all tabs and buttons
-            document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
-            
-            // Add active class to clicked button and corresponding pane
+            e.preventDefault();
+            document.querySelectorAll('#activitiesTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#activitiesTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
             this.classList.add('active');
             const tabId = this.getAttribute('aria-controls');
+            if (filterTabInput) filterTabInput.value = tabId;
             const tabPane = document.getElementById(tabId);
-            if (tabPane) {
-                tabPane.classList.add('active', 'show');
-            }
-            
+            if (tabPane) tabPane.classList.add('active', 'show');
             loadTabData(tabId);
         });
     });
@@ -525,7 +505,8 @@ function initActivitiesIndexPage() {
 }
 document.addEventListener('DOMContentLoaded', initActivitiesIndexPage);
 document.addEventListener('livewire:navigated', function() {
-    if (document.getElementById('activitiesTabs')) initActivitiesIndexPage();
+    if (!document.getElementById('activitiesTabs')) return;
+    setTimeout(initActivitiesIndexPage, 0);
 });
 </script>
 @endsection

@@ -77,7 +77,7 @@
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
                     </label>
-                    <select name="year" id="year" class="form-select special-memo-filter-select" style="width: 100%;">
+                    <select name="year" id="year" class="form-select select2 special-memo-filter-select" style="width: 100%;">
                         @foreach($years ?? [] as $yr => $label)
                             <option value="{{ $yr }}" {{ (string)($year ?? date('Y')) === (string)$yr ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
@@ -94,7 +94,7 @@
                     <label for="request_type_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-category me-1 text-success"></i> Request Type
                     </label>
-                    <select name="request_type_id" id="request_type_id" class="form-select special-memo-filter-select" style="width: 100%;">
+                    <select name="request_type_id" id="request_type_id" class="form-select select2 special-memo-filter-select" style="width: 100%;">
                         <option value="">All Request Types</option>
                         @foreach($requestTypes as $requestType)
                             <option value="{{ $requestType->id }}" {{ request('request_type_id') == $requestType->id ? 'selected' : '' }}>
@@ -107,7 +107,7 @@
                     <label for="staff_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-user me-1 text-success"></i> Staff
                     </label>
-                    <select name="staff_id" id="staff_id" class="form-select special-memo-filter-select" style="width: 100%;">
+                    <select name="staff_id" id="staff_id" class="form-select select2 special-memo-filter-select" style="width: 100%;">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
@@ -120,7 +120,7 @@
                     <label for="division_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-building me-1 text-success"></i> Division
                     </label>
-                    <select name="division_id" id="division_id" class="form-select special-memo-filter-select" style="width: 100%;">
+                    <select name="division_id" id="division_id" class="form-select select2 special-memo-filter-select" style="width: 100%;">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -133,7 +133,7 @@
                     <label for="special_status" class="form-label fw-semibold mb-1">
                         <i class="bx bx-info-circle me-1 text-success"></i> Status
                     </label>
-                    <select name="status" id="special_status" class="form-select special-memo-filter-select" style="width: 100%;">
+                    <select name="status" id="special_status" class="form-select select2 special-memo-filter-select" style="width: 100%;">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>

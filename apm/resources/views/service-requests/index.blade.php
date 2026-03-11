@@ -52,7 +52,7 @@
                 <label for="year" class="form-label fw-semibold mb-1">
                     <i class="bx bx-calendar me-1 text-success"></i> Year
                 </label>
-                <select name="year" id="year" class="form-select service-request-filter-select" style="width: 100%;">
+                <select name="year" id="year" class="form-select select2 service-request-filter-select" style="width: 100%;">
                     @foreach($years ?? [] as $yr => $label)
                         <option value="{{ $yr }}" {{ (string)($selectedYear ?? date('Y')) === (string)$yr ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
@@ -62,7 +62,7 @@
                 <label for="division_id" class="form-label fw-semibold mb-1">
                     <i class="bx bx-building me-1 text-success"></i> Division
                 </label>
-                <select name="division_id" id="division_id" class="form-select service-request-filter-select">
+                <select name="division_id" id="division_id" class="form-select select2 service-request-filter-select">
                     <option value="">All Divisions</option>
                     @foreach($divisions as $division)
                         <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -75,7 +75,7 @@
                 <label for="staff_id" class="form-label fw-semibold mb-1">
                     <i class="bx bx-user me-1 text-success"></i> Staff
                 </label>
-                <select name="staff_id" id="staff_id" class="form-select service-request-filter-select">
+                <select name="staff_id" id="staff_id" class="form-select select2 service-request-filter-select">
                     <option value="">All Staff</option>
                     @foreach($staff as $member)
                         <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
@@ -88,7 +88,7 @@
                 <label for="service_type" class="form-label fw-semibold mb-1">
                     <i class="bx bx-cog me-1 text-success"></i> Service Type
                 </label>
-                <select name="service_type" id="service_type" class="form-select service-request-filter-select">
+                <select name="service_type" id="service_type" class="form-select select2 service-request-filter-select">
                     <option value="">All Types</option>
                     <option value="IT Support" {{ request('service_type') == 'IT Support' ? 'selected' : '' }}>IT Support</option>
                     <option value="Maintenance" {{ request('service_type') == 'Maintenance' ? 'selected' : '' }}>Maintenance</option>
@@ -106,7 +106,7 @@
                 <label for="request_status" class="form-label fw-semibold mb-1">
                     <i class="bx bx-info-circle me-1 text-success"></i> Status
                 </label>
-                <select name="status" id="request_status" class="form-select service-request-filter-select">
+                <select name="status" id="request_status" class="form-select select2 service-request-filter-select">
                     <option value="">All Statuses</option>
                     <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
