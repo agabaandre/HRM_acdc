@@ -269,6 +269,7 @@ const oldTravel = @json(old('international_travel', []));
 const existingParticipants = @json($internalParticipants);
 const existingExternalParticipants = @json($externalParticipants ?? []);
 const existingBudgetItems = @json($budgetItems);
+const initialActivityCodeValue = {!! json_encode(old('activity_code', $activity->workplan_activity_code ?? '')) !!};
 
 $(document).ready(function () {
     // Activity Title: max 200 characters – real-time validation and counter
@@ -1355,6 +1356,8 @@ $(document).ready(function () {
                     
                     // Update the select2 dropdown to reflect the selections
                     $('#budget_codes').trigger('change.select2');
+                    // Fire standard 'change' so Activity Code visibility runs (show when any selected code has show_activity_code)
+                    $('#budget_codes').trigger('change');
                     
                     // Also try to refresh the select2 if it exists
                     if ($('#budget_codes').hasClass('select2-hidden-accessible')) {
@@ -1366,6 +1369,13 @@ $(document).ready(function () {
                             allowClear: true,
                             maximumSelectionLength: isExtramural ? 1 : 2
                         });
+                        // Re-trigger change so Activity Code visibility is applied after Select2 re-init
+                        $('#budget_codes').trigger('change');
+                    }
+                    initializeWorldBankActivityCodeRequirement();
+                    // Restore Activity Code value (fund_type change handler clears it; show it when intramural + World Bank)
+                    if (initialActivityCodeValue !== undefined && initialActivityCodeValue !== null && $('.activity_code').is(':visible')) {
+                        $('#activity_code').val(initialActivityCodeValue);
                     }
                 }, 1000);
             }
@@ -1543,14 +1553,14 @@ $(document).ready(function () {
         }
     });
 
-    // Initialize World Bank Activity Code requirement on page load
+    // Initialize World Bank Activity Code requirement on page load (and after budget codes restored)
     function initializeWorldBankActivityCodeRequirement() {
         const selected = $('#budget_codes').find('option:selected');
+        const fundTypeId = $('#fund_type').val(); // Use current fund type (options don't have data-fund-type-id)
         let hasWorldBankIntramuralCode = false;
         
         selected.each(function () {
             const funderId = $(this).data('funder-id');
-            const fundTypeId = $(this).data('fund-type-id');
             if (funderId == 1 && fundTypeId == 1) { // World Bank funder_id AND Intramural fund_type_id
                 hasWorldBankIntramuralCode = true;
             }
