@@ -325,13 +325,22 @@ class ApmDocumentController extends Controller
     private function changeRequest(int $id): JsonResponse
     {
         $doc = ChangeRequest::with([
-            'staff', 'division', 'matrix', 'fundType', 'requestType', 'nonTravelMemoCategory', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
+            'staff', 'division', 'fundType', 'requestType', 'nonTravelMemoCategory', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
         ])->find($id);
         if (!$doc) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
         }
+        // Only load matrix when parent is not an Activity (e.g. when parent is SpecialMemo, NonTravelMemo, etc.)
+        $parentIsActivity = in_array($doc->parent_memo_model ?? '', ['App\\Models\\Activity', 'Activity'], true);
+        if (!$parentIsActivity) {
+            $doc->load('matrix');
+        }
         $data = $this->normalizeDocumentJsonFields($doc->toArray());
+        if ($parentIsActivity) {
+            unset($data['matrix']);
+        }
         $data['document_type'] = 'change_request';
+        $data['internal_participants'] = $this->formatInternalParticipantsFromRaw($data['internal_participants'] ?? []);
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'change_request', $id);
         $data['print_url'] = $this->getPrintUrl('change_request', $doc);
@@ -437,12 +446,11 @@ class ApmDocumentController extends Controller
     }
 
     /**
-     * Format activity internal_participants (raw object keyed by staff_id) as a list with staff names,
-     * matching the shape used by the matrix endpoint for activities.
+     * Format raw internal_participants (object keyed by staff_id) as a list with staff names,
+     * matching the shape used by the matrix/activity endpoints.
      */
-    private function formatActivityInternalParticipants(Activity $activity): array
+    private function formatInternalParticipantsFromRaw($raw): array
     {
-        $raw = $activity->internal_participants ?? null;
         if (is_string($raw)) {
             $raw = json_decode($raw, true);
         }
@@ -453,6 +461,9 @@ class ApmDocumentController extends Controller
         $staffById = $staffIds ? Staff::with('division')->whereIn('staff_id', $staffIds)->get()->keyBy('staff_id') : collect();
         $list = [];
         foreach ($raw as $staffId => $participantData) {
+            if (!is_array($participantData)) {
+                continue;
+            }
             $staffId = (int) $staffId;
             $staff = $staffById->get($staffId);
             $participantName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
@@ -470,6 +481,15 @@ class ApmDocumentController extends Controller
             ];
         }
         return $list;
+    }
+
+    /**
+     * Format activity internal_participants (raw object keyed by staff_id) as a list with staff names,
+     * matching the shape used by the matrix endpoint for activities.
+     */
+    private function formatActivityInternalParticipants(Activity $activity): array
+    {
+        return $this->formatInternalParticipantsFromRaw($activity->internal_participants ?? []);
     }
 
     /**
