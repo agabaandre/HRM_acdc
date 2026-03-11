@@ -54,20 +54,16 @@
             <h4 class="mb-0 text-success fw-bold"><i class="bx bx-file-doc me-2 text-success"></i> Single Memo Management</h4>
                     </div>
 
-        <!-- Search Row -->
-        <div class="row g-3 mb-3">
-            <div class="col-12">
-                <label for="search" class="form-label fw-semibold mb-1">
-                    <i class="bx bx-search me-1 text-success"></i> Search Single Memo Title
-                </label>
-                <input type="text" name="search" id="search" class="form-control" 
-                       value="{{ $searchTerm ?? '' }}" placeholder="Enter single memo title to search...">
-            </div>
-        </div>
-
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
             <form action="{{ route('activities.single-memos.index') }}" method="GET" class="row g-3 align-items-end w-100" id="memoFiltersForm">
-                <input type="hidden" name="tab" id="filter_tab" value="{{ in_array(request('tab'), ['all', 'shared']) ? request('tab') : 'my-division' }}">
+                <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'mySubmitted') }}">
+                <div class="col-12 mb-2">
+                    <label for="search" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-search me-1 text-success"></i> Search Single Memo Title
+                    </label>
+                    <input type="text" name="search" id="search" class="form-control" 
+                           value="{{ $searchTerm ?? request('search') }}" placeholder="Enter single memo title to search...">
+                </div>
                 <div class="col-md-2">
                     <label for="document_number" class="form-label fw-semibold mb-1">
                         <i class="bx bx-file me-1 text-success"></i> Document #
@@ -233,6 +229,10 @@ function initSingleMemosPage() {
                     if ($(this).data('select2')) $(this).select2('destroy');
                 });
                 $('#memoFilters select.memo-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                $('#memoFilters select.memo-filter-select').each(function() {
+                    var v = $(this).find('option:selected').val();
+                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
+                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
@@ -270,43 +270,20 @@ function initSingleMemosPage() {
             if (e.key === 'Enter') { e.preventDefault(); clearTimeout(documentNumberTimeout); applyFilters(); }
         });
     }
-    // Handle tab switching based on URL parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabParam = urlParams.get('tab');
-    
+    // Open tab from URL so filter state (and tab) persist after submit/reload
+    var urlParams = new URLSearchParams(window.location.search);
+    var tabParam = urlParams.get('tab');
     if (tabParam) {
-        // Wait for DOM to be fully loaded, then switch to the appropriate tab
-        setTimeout(() => {
-            switch(tabParam) {
-                case 'all':
-                    const allTab = document.getElementById('allMemos-tab');
-                    if (allTab) {
-                        // Use Bootstrap's tab API to properly switch
-                        const tab = new bootstrap.Tab(allTab);
-                        tab.show();
-                    }
-                    break;
-                case 'my-division':
-                    const myDivisionTab = document.getElementById('mySubmitted-tab');
-                    if (myDivisionTab) {
-                        const tab = new bootstrap.Tab(myDivisionTab);
-                        tab.show();
-                    }
-                    break;
-                case 'shared':
-                    const sharedTab = document.getElementById('sharedMemos-tab');
-                    if (sharedTab) {
-                        const tab = new bootstrap.Tab(sharedTab);
-                        tab.show();
-                    }
-                    break;
+        setTimeout(function() {
+            var tabEl = null;
+            if (tabParam === 'mySubmitted' || tabParam === 'my-division') tabEl = document.getElementById('mySubmitted-tab');
+            else if (tabParam === 'allMemos' || tabParam === 'all') tabEl = document.getElementById('allMemos-tab');
+            else if (tabParam === 'sharedMemos' || tabParam === 'shared') tabEl = document.getElementById('sharedMemos-tab');
+            if (tabEl && typeof bootstrap !== 'undefined') {
+                var tab = new bootstrap.Tab(tabEl);
+                tab.show();
             }
-        }, 100);
-        
-        // Remove the tab parameter from URL after switching to avoid confusion
-        const newUrl = new URL(window.location);
-        newUrl.searchParams.delete('tab');
-        window.history.replaceState({}, '', newUrl);
+        }, 50);
     }
     
     // Add click handlers to tabs to reset pagination when switching

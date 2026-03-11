@@ -184,20 +184,16 @@
                     <h4 class="mb-0 text-success fw-bold"><i class="bx bx-task me-2 text-success"></i> Activity Details</h4>
                 </div>
 
-                <!-- Search Row -->
-                <div class="row g-3 mb-3">
-                    <div class="col-12">
-                        <label for="search" class="form-label fw-semibold mb-1">
-                            <i class="bx bx-search me-1 text-success"></i> Search Activity Title
-                        </label>
-                        <input type="text" name="search" id="search" class="form-control" 
-                               value="{{ $searchTerm ?? '' }}" placeholder="Enter activity title to search...">
-                    </div>
-                </div>
-
                 <div class="row g-3 align-items-end" id="activityFilters" autocomplete="off">
                     <form action="{{ route('activities.index') }}" method="GET" class="row g-3 align-items-end w-100" id="activitiesFiltersForm">
                         <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', in_array(87, user_session('permissions', [])) ? 'all-activities' : 'my-division') }}">
+                        <div class="col-12 mb-2">
+                            <label for="search" class="form-label fw-semibold mb-1">
+                                <i class="bx bx-search me-1 text-success"></i> Search Activity Title
+                            </label>
+                            <input type="text" name="search" id="search" class="form-control" 
+                                   value="{{ $searchTerm ?? request('search') }}" placeholder="Enter activity title to search...">
+                        </div>
                     <div class="col-md-2">
                         <label for="document_number" class="form-label fw-semibold mb-1">
                             <i class="bx bx-file me-1 text-success"></i> Document #
@@ -337,6 +333,10 @@ function initActivitiesIndexPage() {
             if ($) {
                 $('#activityFilters select.activities-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#activityFilters select.activities-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                $('#activityFilters select.activities-filter-select').each(function() {
+                    var v = $(this).find('option:selected').val();
+                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
+                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
@@ -383,7 +383,7 @@ function initActivitiesIndexPage() {
     const tabParam = urlParams.get('tab');
     
     if (tabParam) {
-        setTimeout(() => {
+        setTimeout(function() {
             var tabEl = null;
             if (tabParam === 'all' || tabParam === 'all-activities') tabEl = document.getElementById('all-activities-tab');
             else if (tabParam === 'my-division') tabEl = document.getElementById('my-division-tab');
@@ -392,12 +392,7 @@ function initActivitiesIndexPage() {
                 var tab = new bootstrap.Tab(tabEl);
                 tab.show();
             }
-        }, 100);
-        
-        // Remove the tab parameter from URL after switching to avoid confusion
-        const newUrl = new URL(window.location);
-        newUrl.searchParams.delete('tab');
-        window.history.replaceState({}, '', newUrl);
+        }, 50);
     }
     
     // Attach initial pagination handlers for all tabs

@@ -293,6 +293,10 @@ function initChangeRequestsPage() {
             if ($) {
                 $('#changeRequestFilters select.change-request-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
                 $('#changeRequestFilters select.change-request-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
+                $('#changeRequestFilters select.change-request-filter-select').each(function() {
+                    var v = $(this).find('option:selected').val();
+                    if (v !== undefined && v !== null) $(this).val(v).trigger('change.select2');
+                });
                 filtersEl.setAttribute('data-select2-inited', '1');
             }
         } catch (e) {}
@@ -463,6 +467,21 @@ function initChangeRequestsPage() {
         });
     }
 
+    var urlTab = new URLSearchParams(window.location.search).get('tab');
+    if (urlTab) {
+        setTimeout(function() {
+            var tabEl = document.getElementById(urlTab + '-tab');
+            if (tabEl && ['myChangeRequests', 'myDivisionChangeRequests', 'sharedChangeRequests', 'allChangeRequests'].indexOf(urlTab) !== -1) {
+                if (typeof bootstrap !== 'undefined') {
+                    document.querySelectorAll('#changeRequestTabs .nav-link').forEach(function(btn) { btn.classList.remove('active'); });
+                    document.querySelectorAll('#changeRequestTabsContent .tab-pane').forEach(function(pane) { pane.classList.remove('active', 'show'); });
+                    tabEl.classList.add('active');
+                    var pane = document.getElementById(tabEl.getAttribute('aria-controls'));
+                    if (pane) { pane.classList.add('active', 'show'); loadTabData(pane.id); }
+                }
+            }
+        }, 50);
+    }
     var filterTabInput = document.getElementById('filter_tab');
     const tabButtons = document.querySelectorAll('#changeRequestTabs [data-bs-toggle="tab"]');
     tabButtons.forEach(button => {
@@ -478,9 +497,8 @@ function initChangeRequestsPage() {
             loadTabData(tabId);
         });
     });
-    
-    const activeTabButton = document.querySelector('#changeRequestTabs .nav-link.active');
-    if (activeTabButton) {
+    var activeTabButton = document.querySelector('#changeRequestTabs .nav-link.active');
+    if (activeTabButton && !urlTab) {
         loadTabData(activeTabButton.getAttribute('aria-controls'));
     }
 }
