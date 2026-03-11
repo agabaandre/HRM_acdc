@@ -539,7 +539,7 @@
                                 @foreach($internalParticipants as $pIdx => $participant)
                                 <tr>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-internal-row" {{ $pIdx === 0 ? 'disabled' : '' }}>
+                                        <button type="button" class="btn btn-link text-danger p-0 border-0 remove-internal-row" {{ $pIdx === 0 ? 'disabled' : '' }} title="Remove">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -576,7 +576,7 @@
                             @else
                             <tr>
                                 <td class="text-center">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-internal-row" disabled>
+                                        <button type="button" class="btn btn-link text-danger p-0 border-0 remove-internal-row" disabled title="Remove">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -666,7 +666,7 @@
                                 @foreach($externalParticipants as $eIdx => $extParticipant)
                                 <tr>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-external-row" {{ $eIdx === 0 ? 'disabled' : '' }}>
+                                        <button type="button" class="btn btn-link text-danger p-0 border-0 remove-external-row" {{ $eIdx === 0 ? 'disabled' : '' }} title="Remove">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -698,7 +698,7 @@
                             @else
                             <tr>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-external-row" disabled>
+                                        <button type="button" class="btn btn-link text-danger p-0 border-0 remove-external-row" disabled title="Remove">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -1080,19 +1080,22 @@
              width: 200px !important;
          }
          
-        /* Remove button styling */
+        /* Remove button: icon only, no outline */
+        .remove-internal-row,
+        .remove-external-row {
+            background: none !important;
+            box-shadow: none !important;
+        }
         .remove-internal-row:disabled,
         .remove-external-row:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-         
-         .remove-internal-row:not(:disabled):hover,
-         .remove-external-row:not(:disabled):hover {
-             background-color: #dc3545;
-             border-color: #dc3545;
-             color: white;
-         }
+        .remove-internal-row:not(:disabled):hover,
+        .remove-external-row:not(:disabled):hover {
+            color: #dc3545 !important;
+            opacity: 0.9;
+        }
 
          /* Participants Summary: limit Name column to 600px and wrap */
          #participantsSummaryTable th:nth-child(2),
@@ -1113,43 +1116,37 @@ const isEditMode = {{ isset($serviceRequest) ? 'true' : 'false' }};
 const initialInternalCount = {{ ($isEdit && !empty($internalParticipants)) ? count($internalParticipants) : 1 }};
 const initialExternalCount = {{ ($isEdit && !empty($externalParticipants ?? [])) ? count($externalParticipants) : 1 }};
 
-document.addEventListener('DOMContentLoaded', function() {
+function initServiceRequestCreatePage() {
     let internalParticipantCount = initialInternalCount;
     let externalParticipantCount = initialExternalCount;
-    
-    // Add internal participant
-    document.getElementById('addInternal').addEventListener('click', function() {
+
+    // Add internal participant — delegation so it works after Livewire navigation
+    function onAddInternalClick(e) {
+        if (!e.target.closest('#addInternal')) return;
         const tbody = document.getElementById('internalParticipants');
+        if (!tbody || !tbody.rows.length) return;
+        const newIndex = tbody.rows.length;
         const newRow = tbody.rows[0].cloneNode(true);
-        
-        // Update input names and clear values
+
         const inputs = newRow.querySelectorAll('input, select');
         inputs.forEach(input => {
             if (input.name) {
-                        input.name = input.name.replace('[0]', '[' + internalParticipantCount +
-                        ']');
+                input.name = input.name.replace(/\[\d+\]/, '[' + newIndex + ']');
             }
-                    if (input.type === 'number' || input.type === 'text' || input.type ===
-                        'email') {
+            if (input.type === 'number' || input.type === 'text' || input.type === 'email') {
                 input.value = '';
             } else if (input.tagName === 'SELECT') {
                 input.selectedIndex = 0;
             }
         });
-        
-        // Populate the participant dropdown with available options (excluding already selected ones)
+
         const participantSelect = newRow.querySelector('select[name*="[staff_id]"]');
         if (participantSelect) {
-            // Clear existing options
             participantSelect.innerHTML = '<option value="">Select Participant</option>';
-            
-            // Get currently selected participant IDs
             const selectedParticipantIds = Array.from(document.querySelectorAll('#internalParticipants select[name*="[staff_id]"]'))
                 .map(select => select.value)
                 .filter(value => value !== '');
-            
             if (participantNames.length > 0) {
-                // Add participant options from source activity, excluding already selected ones
                 participantNames.forEach(participant => {
                     if (!selectedParticipantIds.includes(participant.id)) {
                         const option = document.createElement('option');
@@ -1158,8 +1155,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         participantSelect.appendChild(option);
                     }
                 });
-                
-                // If no available participants, show message
                 if (participantSelect.options.length === 1) {
                     const option = document.createElement('option');
                     option.value = '';
@@ -1168,7 +1163,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     participantSelect.appendChild(option);
                 }
             } else {
-                // No participants available from source activity
                 const option = document.createElement('option');
                 option.value = '';
                 option.disabled = true;
@@ -1176,126 +1170,100 @@ document.addEventListener('DOMContentLoaded', function() {
                 participantSelect.appendChild(option);
             }
         }
-        
-        // Set default values for hidden fields
+
         const costTypeInput = newRow.querySelector('input[name*="[cost_type]"]');
         const descriptionInput = newRow.querySelector('input[name*="[description]"]');
         if (costTypeInput) costTypeInput.value = 'Daily Rate';
         if (descriptionInput) descriptionInput.value = '';
-        
-        // Clear the total cell
-                const totalCell = newRow.querySelector('.total-cell');
-        if (totalCell) {
-            totalCell.textContent = '$0.00';
-        }
-        
-        // Enable remove button for this row
+        const totalCell = newRow.querySelector('.total-cell');
+        if (totalCell) totalCell.textContent = '$0.00';
         const removeBtn = newRow.querySelector('.remove-internal-row');
-        if (removeBtn) {
-            removeBtn.disabled = false;
-        }
-        
+        if (removeBtn) removeBtn.disabled = false;
+
         tbody.appendChild(newRow);
         internalParticipantCount++;
-        
-        // Update participant options immediately after adding new row
         updateInternalParticipantOptions();
         updateTotals();
         updateParticipantsSummary();
-    });
-    
-    // Remove individual internal participant row
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-internal-row')) {
-            const row = e.target.closest('tr');
-            const tbody = document.getElementById('internalParticipants');
-            
-            // Don't remove if it's the only row
-            if (tbody.rows.length > 1) {
-                row.remove();
-                internalParticipantCount--;
-                
-                // Update available options in remaining dropdowns
-                updateInternalParticipantOptions();
-                updateTotals();
-                updateParticipantsSummary();
-            }
+    }
+    document.removeEventListener('click', onAddInternalClick);
+    document.addEventListener('click', onAddInternalClick);
+
+    // Remove internal participant row — delegation; ignore disabled button
+    function onRemoveInternalClick(e) {
+        const btn = e.target.closest('.remove-internal-row');
+        if (!btn || btn.disabled) return;
+        const row = e.target.closest('tr');
+        const tbody = document.getElementById('internalParticipants');
+        if (tbody && tbody.rows.length > 1) {
+            row.remove();
+            internalParticipantCount--;
+            updateInternalParticipantOptions();
+            updateTotals();
+            updateParticipantsSummary();
         }
-    });
-    
-    // Add external participant
-    document.getElementById('addExternal').addEventListener('click', function() {
+    }
+    document.removeEventListener('click', onRemoveInternalClick);
+    document.addEventListener('click', onRemoveInternalClick);
+
+    // Add external participant — delegation so it works after Livewire navigation
+    function onAddExternalClick(e) {
+        if (!e.target.closest('#addExternal')) return;
         const tbody = document.getElementById('externalParticipants');
+        if (!tbody || !tbody.rows.length) return;
+        const newIndex = tbody.rows.length;
         const newRow = tbody.rows[0].cloneNode(true);
-        
-        // Update input names and clear values
+
         const inputs = newRow.querySelectorAll('input, select');
         inputs.forEach(input => {
             if (input.name) {
-                        input.name = input.name.replace('[0]', '[' + externalParticipantCount +
-                        ']');
+                input.name = input.name.replace(/\[\d+\]/, '[' + newIndex + ']');
             }
             if (input.type === 'number' || input.type === 'text' || input.type === 'email') {
                 input.value = '';
-                if (input.name.includes('[name]')) {
-                    input.placeholder = 'Name';
-                } else if (input.name.includes('[email]')) {
-                    input.placeholder = 'Email (optional)';
-                }
+                if (input.name.includes('[name]')) input.placeholder = 'Name';
+                else if (input.name.includes('[email]')) input.placeholder = 'Email (optional)';
             } else if (input.tagName === 'SELECT') {
                 input.selectedIndex = 0;
             }
         });
-        
-        // Set default values for hidden fields
+
         const costTypeInput = newRow.querySelector('input[name*="[cost_type]"]');
         const descriptionInput = newRow.querySelector('input[name*="[description]"]');
         if (costTypeInput) costTypeInput.value = 'Daily Rate';
         if (descriptionInput) descriptionInput.value = '';
-        
-        // Ensure Name and Email columns have fixed width (cells 1 and 2; cell 0 is Remove)
         const nameCell = newRow.cells[1];
         const emailCell = newRow.cells[2];
-        if (nameCell) {
-            nameCell.style.minWidth = '200px';
-            nameCell.style.width = '200px';
-        }
-        if (emailCell) {
-            emailCell.style.minWidth = '200px';
-            emailCell.style.width = '200px';
-        }
-        
-        // Clear the total cell
-                const totalCell = newRow.querySelector('.total-cell');
-        if (totalCell) {
-            totalCell.textContent = '$0.00';
-        }
-        
-        // Enable remove button for new row
+        if (nameCell) { nameCell.style.minWidth = '200px'; nameCell.style.width = '200px'; }
+        if (emailCell) { emailCell.style.minWidth = '200px'; emailCell.style.width = '200px'; }
+        const totalCell = newRow.querySelector('.total-cell');
+        if (totalCell) totalCell.textContent = '$0.00';
         const removeBtn = newRow.querySelector('.remove-external-row');
-        if (removeBtn) {
-            removeBtn.disabled = false;
-        }
-        
+        if (removeBtn) removeBtn.disabled = false;
+
         tbody.appendChild(newRow);
         externalParticipantCount++;
         updateTotals();
         updateParticipantsSummary();
-    });
-    
-    // Remove external participant (individual row removal)
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-external-row')) {
-            const tbody = document.getElementById('externalParticipants');
-            if (tbody.rows.length > 1) {
-                const row = e.target.closest('tr');
-                row.remove();
-                externalParticipantCount--;
-                updateTotals();
-                updateParticipantsSummary();
-            }
+    }
+    document.removeEventListener('click', onAddExternalClick);
+    document.addEventListener('click', onAddExternalClick);
+
+    // Remove external participant row — delegation; ignore disabled button
+    function onRemoveExternalClick(e) {
+        const btn = e.target.closest('.remove-external-row');
+        if (!btn || btn.disabled) return;
+        const tbody = document.getElementById('externalParticipants');
+        if (tbody && tbody.rows.length > 1) {
+            const row = e.target.closest('tr');
+            row.remove();
+            externalParticipantCount--;
+            updateTotals();
+            updateParticipantsSummary();
         }
-    });
+    }
+    document.removeEventListener('click', onRemoveExternalClick);
+    document.addEventListener('click', onRemoveExternalClick);
     
     // Add event listeners for cost inputs
     document.addEventListener('input', function(e) {
@@ -1810,6 +1778,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sourceType === 'non_travel_memo') {
         updateTotals(); // Initialize the budget display
     }
-    });
+}
+
+document.addEventListener('DOMContentLoaded', initServiceRequestCreatePage);
+document.addEventListener('livewire:navigated', function() {
+    setTimeout(function() {
+        if (document.getElementById('internalParticipants') || document.getElementById('externalParticipants')) {
+            initServiceRequestCreatePage();
+        }
+    }, 0);
+});
 </script>
 @endsection
