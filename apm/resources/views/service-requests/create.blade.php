@@ -1257,12 +1257,112 @@ function initServiceRequestCreatePage() {
         }
     }
 
-    // Register delegated click handlers only once to avoid double-add (e.g. DOMContentLoaded + livewire:navigated)
+    // Form submit: build participant JSON and set hidden fields before submit (delegation so it runs after Livewire)
+    function onServiceRequestFormSubmit(e) {
+        if (!e.target || e.target.id !== 'serviceRequestForm') return;
+        // Strip commas from cost inputs first so totals and JSON payload have clean numbers
+        document.querySelectorAll('.cost-input').forEach(input => {
+            if (input.value) input.value = input.value.replace(/,/g, '');
+        });
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            if (input.value && input.value.includes(',')) input.value = input.value.replace(/,/g, '');
+        });
+        if (sourceType !== 'non_travel_memo') {
+            updateTotals();
+            const originalBudget = parseFloat(document.getElementById('originalTotalBudget').value) || 0;
+            const newBudget = parseFloat(document.getElementById('newTotalBudget').value) || 0;
+            const originalBudgetFormatted = originalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const newBudgetFormatted = newBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (newBudget > originalBudget) {
+                e.preventDefault();
+                show_notification(
+                    'Total Requested Funds ($' + newBudgetFormatted + ') exceeds the Original Memo Budget ($' + originalBudgetFormatted + ') by $' + (newBudget - originalBudget).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '. Please adjust your request to stay within the original allocation before submitting or saving as draft.',
+                    'error'
+                );
+                return false;
+            }
+            if (newBudget < originalBudget && newBudget > 0) {
+                const shortfallFormatted = (originalBudget - newBudget).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                show_notification(
+                    'Total Requested Funds ($' + newBudgetFormatted + ') is less than the Original Memo Budget ($' + originalBudgetFormatted + ') by $' + shortfallFormatted + '. Please check that all costs from the original memo are included in your request.',
+                    'warning'
+                );
+            }
+        }
+        // Build participant data as JSON and set hidden inputs (avoids PHP max_input_vars truncation)
+        const internalRows = document.querySelectorAll('#internalParticipants tr');
+        const internalData = [];
+        internalRows.forEach(row => {
+            const staffSelect = row.querySelector('select[name*="[staff_id]"]');
+            const costTypeInput = row.querySelector('input[name*="[cost_type]"]');
+            const descInput = row.querySelector('input[name*="[description]"]');
+            const staffId = staffSelect ? staffSelect.value : '';
+            if (!staffId) return;
+            const costs = {};
+            row.querySelectorAll('input').forEach(costInput => {
+                if (costInput.name && costInput.name.indexOf('[costs][') !== -1) {
+                    const m = costInput.name.match(/\[costs\]\[([^\]]+)\]/);
+                    if (m) costs[m[1]] = costInput.value || '0';
+                }
+            });
+            internalData.push({
+                staff_id: staffId,
+                cost_type: (costTypeInput && costTypeInput.value) ? costTypeInput.value : 'Daily Rate',
+                description: (descInput && descInput.value) ? descInput.value : '',
+                costs: costs
+            });
+        });
+        const externalRows = document.querySelectorAll('#externalParticipants tr');
+        const externalData = [];
+        externalRows.forEach(row => {
+            const nameInput = row.querySelector('input[name*="[name]"]');
+            const emailInput = row.querySelector('input[name*="[email]"]');
+            const costTypeInput = row.querySelector('input[name*="[cost_type]"]');
+            const descInput = row.querySelector('input[name*="[description]"]');
+            const name = nameInput ? (nameInput.value || '').trim() : '';
+            if (!name) return;
+            const costs = {};
+            row.querySelectorAll('input').forEach(costInput => {
+                if (costInput.name && costInput.name.indexOf('[costs][') !== -1) {
+                    const m = costInput.name.match(/\[costs\]\[([^\]]+)\]/);
+                    if (m) costs[m[1]] = costInput.value || '0';
+                }
+            });
+            externalData.push({
+                name: name,
+                email: (emailInput && emailInput.value) ? (emailInput.value || '').trim() : '',
+                cost_type: (costTypeInput && costTypeInput.value) ? costTypeInput.value : 'Daily Rate',
+                description: (descInput && descInput.value) ? descInput.value : '',
+                costs: costs
+            });
+        });
+        const internalDataEl = document.getElementById('internalParticipantsData');
+        const externalDataEl = document.getElementById('externalParticipantsData');
+        if (internalDataEl) internalDataEl.value = JSON.stringify(internalData);
+        if (externalDataEl) externalDataEl.value = JSON.stringify(externalData);
+        internalRows.forEach(row => {
+            row.querySelectorAll('input, select').forEach(input => { if (input.name) input.removeAttribute('name'); });
+        });
+        externalRows.forEach(row => {
+            row.querySelectorAll('input, select').forEach(input => { if (input.name) input.removeAttribute('name'); });
+        });
+        // Strip commas from all inputs before submission
+        document.querySelectorAll('.cost-input').forEach(input => { if (input.value) input.value = input.value.replace(/,/g, ''); });
+        document.querySelectorAll('input[type="number"]').forEach(input => { if (input.value && input.value.includes(',')) input.value = input.value.replace(/,/g, ''); });
+        document.querySelectorAll('input[type="text"][pattern*="[0-9]"]').forEach(input => { if (input.value && input.value.includes(',')) input.value = input.value.replace(/,/g, ''); });
+        document.querySelectorAll('input[name="original_total_budget"], input[name="new_total_budget"]').forEach(input => { if (input.value && input.value.includes(',')) input.value = input.value.replace(/,/g, ''); });
+        document.querySelectorAll('input[type="hidden"], input[type="text"]').forEach(input => {
+            if (input.value && input.value.includes(',') && !isNaN(input.value.replace(/,/g, ''))) input.value = input.value.replace(/,/g, '');
+        });
+    }
+
+    // Register delegated handlers only once (submit + click) so they work after Livewire and don't double-fire
     if (!window._serviceRequestParticipantHandlersRegistered) {
         document.addEventListener('click', onAddInternalClick);
         document.addEventListener('click', onRemoveInternalClick);
         document.addEventListener('click', onAddExternalClick);
         document.addEventListener('click', onRemoveExternalClick);
+        document.addEventListener('submit', onServiceRequestFormSubmit);
         window._serviceRequestParticipantHandlersRegistered = true;
     }
 
@@ -1389,143 +1489,6 @@ function initServiceRequestCreatePage() {
                     input.value = '';
         }
     }
-    
-    // Form submission handler - strip commas from numeric inputs and validate budget
-    document.getElementById('serviceRequestForm').addEventListener('submit', function(e) {
-        // Strip commas from cost inputs first so totals and JSON payload have clean numbers
-        document.querySelectorAll('.cost-input').forEach(input => {
-            if (input.value) input.value = input.value.replace(/,/g, '');
-        });
-        document.querySelectorAll('input[type="number"]').forEach(input => {
-            if (input.value && input.value.includes(',')) input.value = input.value.replace(/,/g, '');
-        });
-
-        // Budget validation MUST run before we remove name attributes from participant rows,
-        // so updateTotals() can read input[name*="[costs]"] and compute correct Total Requested Funds.
-        if (sourceType !== 'non_travel_memo') {
-            updateTotals();
-            const originalBudget = parseFloat(document.getElementById('originalTotalBudget').value) || 0;
-            const newBudget = parseFloat(document.getElementById('newTotalBudget').value) || 0;
-            console.log('Budget validation:', { sourceType, originalBudget, newBudget, difference: newBudget - originalBudget });
-            const originalBudgetFormatted = originalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const newBudgetFormatted = newBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            if (newBudget > originalBudget) {
-                const differenceFormatted = (newBudget - originalBudget).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                e.preventDefault();
-                show_notification(
-                    'Total Requested Funds ($' + newBudgetFormatted + ') exceeds the Original Memo Budget ($' + originalBudgetFormatted + ') by $' + differenceFormatted + '. Please adjust your request to stay within the original allocation before submitting or saving as draft.',
-                    'error'
-                );
-                return false;
-            }
-            if (newBudget < originalBudget && newBudget > 0) {
-                const shortfallFormatted = (originalBudget - newBudget).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                show_notification(
-                    'Total Requested Funds ($' + newBudgetFormatted + ') is less than the Original Memo Budget ($' + originalBudgetFormatted + ') by $' + shortfallFormatted + '. Please check that all costs from the original memo are included in your request.',
-                    'warning'
-                );
-            }
-        }
-
-        // Build participant data as JSON and submit via hidden inputs to avoid PHP max_input_vars truncation (e.g. 92 rows)
-        const internalRows = document.querySelectorAll('#internalParticipants tr');
-        const internalData = [];
-        internalRows.forEach(row => {
-            const staffSelect = row.querySelector('select[name*="[staff_id]"]');
-            const costTypeInput = row.querySelector('input[name*="[cost_type]"]');
-            const descInput = row.querySelector('input[name*="[description]"]');
-            const staffId = staffSelect ? staffSelect.value : '';
-            if (!staffId) return;
-            const costs = {};
-            row.querySelectorAll('input').forEach(costInput => {
-                if (costInput.name && costInput.name.indexOf('[costs][') !== -1) {
-                    const m = costInput.name.match(/\[costs\]\[([^\]]+)\]/);
-                    if (m) costs[m[1]] = costInput.value || '0';
-                }
-            });
-            internalData.push({
-                staff_id: staffId,
-                cost_type: (costTypeInput && costTypeInput.value) ? costTypeInput.value : 'Daily Rate',
-                description: (descInput && descInput.value) ? descInput.value : '',
-                costs: costs
-            });
-        });
-        const externalRows = document.querySelectorAll('#externalParticipants tr');
-        const externalData = [];
-        externalRows.forEach(row => {
-            const nameInput = row.querySelector('input[name*="[name]"]');
-            const emailInput = row.querySelector('input[name*="[email]"]');
-            const costTypeInput = row.querySelector('input[name*="[cost_type]"]');
-            const descInput = row.querySelector('input[name*="[description]"]');
-            const name = nameInput ? (nameInput.value || '').trim() : '';
-            if (!name) return;
-            const costs = {};
-            row.querySelectorAll('input').forEach(costInput => {
-                if (costInput.name && costInput.name.indexOf('[costs][') !== -1) {
-                    const m = costInput.name.match(/\[costs\]\[([^\]]+)\]/);
-                    if (m) costs[m[1]] = costInput.value || '0';
-                }
-            });
-            externalData.push({
-                name: name,
-                email: (emailInput && emailInput.value) ? (emailInput.value || '').trim() : '',
-                cost_type: (costTypeInput && costTypeInput.value) ? costTypeInput.value : 'Daily Rate',
-                description: (descInput && descInput.value) ? descInput.value : '',
-                costs: costs
-            });
-        });
-        document.getElementById('internalParticipantsData').value = JSON.stringify(internalData);
-        document.getElementById('externalParticipantsData').value = JSON.stringify(externalData);
-        // Remove names from table inputs so only the JSON payload is submitted (avoids max_input_vars)
-        internalRows.forEach(row => {
-            row.querySelectorAll('input, select').forEach(input => { if (input.name) input.removeAttribute('name'); });
-        });
-        externalRows.forEach(row => {
-            row.querySelectorAll('input, select').forEach(input => { if (input.name) input.removeAttribute('name'); });
-        });
-
-        // Strip commas from all cost inputs before submission
-        const costInputs = document.querySelectorAll('.cost-input');
-        costInputs.forEach(input => {
-            if (input.value) {
-                input.value = input.value.replace(/,/g, '');
-            }
-        });
-        
-        // Strip commas from number inputs
-        const numberInputs = document.querySelectorAll('input[type="number"]');
-        numberInputs.forEach(input => {
-            if (input.value && input.value.includes(',')) {
-                input.value = input.value.replace(/,/g, '');
-            }
-        });
-        
-        // Strip commas from any other numeric text inputs
-        const numericInputs = document.querySelectorAll('input[type="text"][pattern*="[0-9]"]');
-        numericInputs.forEach(input => {
-            if (input.value && input.value.includes(',')) {
-                input.value = input.value.replace(/,/g, '');
-            }
-        });
-        
-        // Strip commas from budget total inputs (hidden inputs)
-        const budgetInputs = document.querySelectorAll('input[name="original_total_budget"], input[name="new_total_budget"]');
-        budgetInputs.forEach(input => {
-            if (input.value && input.value.includes(',')) {
-                input.value = input.value.replace(/,/g, '');
-            }
-        });
-        
-        // Strip commas from all inputs that might contain numeric values
-        const allInputs = document.querySelectorAll('input[type="hidden"], input[type="text"]');
-        allInputs.forEach(input => {
-            if (input.value && input.value.includes(',') && !isNaN(input.value.replace(/,/g, ''))) {
-                input.value = input.value.replace(/,/g, '');
-            }
-        });
-        
-        // Budget validation already ran above (before removing names) so updateTotals() could read participant costs.
-    });
     
     // Update participants summary
     function updateParticipantsSummary() {
