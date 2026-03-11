@@ -75,7 +75,7 @@
                     <label for="staff_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-user me-1 text-success"></i> Staff/Responsible Person
                     </label>
-                    <select name="staff_id" id="staff_id" class="form-select select2 memo-filter-select" style="width: 100%;">
+                    <select name="staff_id" id="staff_id" class="form-select apm-filter-select memo-filter-select" style="width: 100%;">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
@@ -88,7 +88,7 @@
                     <label for="division_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-building me-1 text-success"></i> Division
                     </label>
-                    <select name="division_id" id="division_id" class="form-select select2 memo-filter-select" style="width: 100%;">
+                    <select name="division_id" id="division_id" class="form-select apm-filter-select memo-filter-select" style="width: 100%;">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->division_id }}" {{ request('division_id') == $division->division_id ? 'selected' : '' }}>
@@ -101,7 +101,7 @@
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
                     </label>
-                    <select name="year" id="year" class="form-select select2 memo-filter-select" style="width: 100%;">
+                    <select name="year" id="year" class="form-select" style="width: 100%;">
                         @foreach($years as $year)
                             <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>
                                 {{ $year }}
@@ -113,7 +113,7 @@
                     <label for="quarter" class="form-label fw-semibold mb-1">
                         <i class="bx bx-time-five me-1 text-success"></i> Quarter
                     </label>
-                    <select name="quarter" id="quarter" class="form-select select2 memo-filter-select" style="width: 100%;">
+                    <select name="quarter" id="quarter" class="form-select" style="width: 100%;">
                         @foreach($quarters as $quarter)
                             <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>
                                 {{ $quarter }}
@@ -125,7 +125,7 @@
                     <label for="status" class="form-label fw-semibold mb-1">
                         <i class="bx bx-info-circle me-1 text-success"></i> Status
                     </label>
-                    <select name="status" id="statusFilter" class="form-select select2 memo-filter-select" style="width: 100%;">
+                    <select name="status" id="statusFilter" class="form-select apm-filter-select memo-filter-select" style="width: 100%;">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -220,34 +220,22 @@ function initSingleMemosPage() {
     if (!document.getElementById('memoTabs')) return;
     var filtersEl = document.getElementById('memoFilters');
     if (!filtersEl) return;
-    // Init Select2 only on filter selects, once per page (avoid duplicate inits from footer + navigated)
-    if (!filtersEl.hasAttribute('data-select2-inited')) {
-        try {
-            var $ = window.jQuery || window.$;
-            if ($) {
-                $('#memoFilters select.memo-filter-select').each(function() {
-                    if ($(this).data('select2')) $(this).select2('destroy');
-                });
-                $('#memoFilters select.memo-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
-                filtersEl.setAttribute('data-select2-inited', '1');
-            }
-        } catch (e) {}
-    }
-    // Set filter values from URL on load (matrices pattern - keeps state on reload/navigate)
-    var $ = window.jQuery || window.$;
-    if ($) {
-        var params = new URLSearchParams(window.location.search);
-        $('#staff_id').val(params.get('staff_id') || '');
-        $('#division_id').val(params.get('division_id') || '');
-        $('#year').val(params.get('year') || '');
-        $('#quarter').val(params.get('quarter') || '');
-        $('#statusFilter').val(params.get('status') || '');
-        var docNum = document.getElementById('document_number');
-        var searchEl = document.getElementById('search');
-        if (docNum) docNum.value = params.get('document_number') || '';
-        if (searchEl) searchEl.value = params.get('search') || '';
-        var filterTabInput = document.getElementById('filter_tab');
-        if (filterTabInput) filterTabInput.value = params.get('tab') || 'mySubmitted';
+    if (window.APMFilters) {
+        APMFilters.clearInited('#memoFilters');
+        APMFilters.init('#memoFilters', {
+            fields: [
+                { param: 'staff_id', id: 'staff_id' },
+                { param: 'division_id', id: 'division_id' },
+                { param: 'year', id: 'year', default: APMFilters.currentYear },
+                { param: 'quarter', id: 'quarter', default: APMFilters.currentQuarter },
+                { param: 'status', id: 'statusFilter' },
+                { param: 'document_number', id: 'document_number' },
+                { param: 'search', id: 'search' }
+            ],
+            tabParam: 'filter_tab',
+            tabDefault: 'mySubmitted',
+            selectSelector: '.apm-filter-select'
+        });
     }
     function applyFilters() {
         var activeTab = document.querySelector('#memoTabsContent .tab-pane.active');

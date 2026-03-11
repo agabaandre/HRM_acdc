@@ -34,7 +34,7 @@
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
                     </label>
-                    <select name="year" id="year" class="form-select select2 arf-filter-select" style="width: 100%;">
+                    <select name="year" id="year" class="form-select" style="width: 100%;">
                         @foreach($years ?? [] as $yr => $label)
                             <option value="{{ $yr }}" {{ (string)($selectedYear ?? date('Y')) === (string)$yr ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
@@ -50,7 +50,7 @@
                 <div class="col-md-2">
                     <label for="division_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-building me-1 text-success"></i> Division</label>
-                    <select name="division_id" id="division_id" class="form-select select2 arf-filter-select">
+                    <select name="division_id" id="division_id" class="form-select apm-filter-select arf-filter-select">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -62,7 +62,7 @@
                 <div class="col-md-3">
                     <label for="staff_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-user me-1 text-success"></i> Staff</label>
-                    <select name="staff_id" id="staff_id" class="form-select select2 arf-filter-select">
+                    <select name="staff_id" id="staff_id" class="form-select apm-filter-select arf-filter-select">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
@@ -81,7 +81,7 @@
                 <div class="col-md-2">
                     <label for="overall_status" class="form-label fw-semibold mb-1"><i
                             class="bx bx-info-circle me-1 text-success"></i> Status</label>
-                    <select name="overall_status" id="overall_status" class="form-select select2 arf-filter-select">
+                    <select name="overall_status" id="overall_status" class="form-select apm-filter-select arf-filter-select">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('overall_status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -178,29 +178,21 @@ function initRequestArfPage() {
     if (!document.getElementById('arfTabs')) return;
     var filtersEl = document.getElementById('arfFilters');
     if (!filtersEl) return;
-    if (!filtersEl.hasAttribute('data-select2-inited')) {
-        try {
-            var $ = window.jQuery || window.$;
-            if ($ && $.fn.select2) {
-                $('#arfFilters select.arf-filter-select').each(function() { if ($(this).data('select2')) $(this).select2('destroy'); });
-                $('#arfFilters select.arf-filter-select').select2({ theme: 'bootstrap-5', width: '100%' });
-                filtersEl.setAttribute('data-select2-inited', '1');
-            }
-        } catch (e) {}
-    }
-    var $ = window.jQuery || window.$;
-    if ($) {
-        var params = new URLSearchParams(window.location.search);
-        $('#year').val(params.get('year') || '');
-        $('#division_id').val(params.get('division_id') || '');
-        $('#staff_id').val(params.get('staff_id') || '');
-        $('#overall_status').val(params.get('overall_status') || '');
-        var docNum = document.getElementById('document_number');
-        var searchEl = document.getElementById('search');
-        if (docNum) docNum.value = params.get('document_number') || '';
-        if (searchEl) searchEl.value = params.get('search') || '';
-        var filterTabInput = document.getElementById('filter_tab');
-        if (filterTabInput) filterTabInput.value = params.get('tab') || 'mySubmitted';
+    if (window.APMFilters) {
+        APMFilters.clearInited('#arfFilters');
+        APMFilters.init('#arfFilters', {
+            fields: [
+                { param: 'year', id: 'year', default: APMFilters.currentYear },
+                { param: 'division_id', id: 'division_id' },
+                { param: 'staff_id', id: 'staff_id' },
+                { param: 'overall_status', id: 'overall_status' },
+                { param: 'document_number', id: 'document_number' },
+                { param: 'search', id: 'search' }
+            ],
+            tabParam: 'filter_tab',
+            tabDefault: 'mySubmitted',
+            selectSelector: '.apm-filter-select'
+        });
     }
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');

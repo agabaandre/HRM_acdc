@@ -429,6 +429,7 @@
         document.addEventListener('livewire:navigated', hidePreloader);
     })();
     </script>
+    <script src="{{ asset('js/apm-filter-state.js') }}"></script>
     @stack('scripts')
 
     <script>
