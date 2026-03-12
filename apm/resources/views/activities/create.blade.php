@@ -173,6 +173,49 @@
 const staffData = @json($allStaffGroupedByDivision);
 const oldParticipants = @json(old('internal_participants', []));
 const oldTravel = @json(old('international_travel', []));
+const participantDaysInMatrix = @json($participantDaysInMatrix ?? []);
+const PARTICIPANT_DAYS_LIMIT = 21;
+
+// Normalize to object with string keys (JSON may have numeric keys)
+var participantDaysLookup = {};
+if (participantDaysInMatrix && typeof participantDaysInMatrix === 'object' && !Array.isArray(participantDaysInMatrix)) {
+    for (var k in participantDaysInMatrix) {
+        if (Object.prototype.hasOwnProperty.call(participantDaysInMatrix, k)) {
+            participantDaysLookup[String(k)] = parseInt(participantDaysInMatrix[k], 10) || 0;
+        }
+    }
+}
+
+function checkParticipantDaysWarnings() {
+    var limit = typeof PARTICIPANT_DAYS_LIMIT !== 'undefined' ? PARTICIPANT_DAYS_LIMIT : 21;
+    var existingByStaff = participantDaysLookup || {};
+    $('#participantsTableBody tr[data-participant-id]').not('.participant-days-warning-row').each(function () {
+        var $participantRow = $(this);
+        var pid = $participantRow.attr('data-participant-id');
+        if (pid == null || pid === '') return;
+        var participantName = $participantRow.find('td').first().text().trim() || 'This participant';
+        var $daysInput = $participantRow.find('input.participant-days');
+        var $travelCheckbox = $participantRow.find('input.international-travel-checkbox');
+        var $warningRow = $participantRow.prev('tr.participant-days-warning-row[data-participant-id="' + pid + '"]');
+        if (!$warningRow.length) return;
+        var existing = parseInt(existingByStaff[String(pid)] || 0, 10);
+        var isTravel = $travelCheckbox.length && $travelCheckbox.is(':checked');
+        var current = isTravel ? (parseInt($daysInput.val() || 0, 10)) : 0;
+        var total = existing + current;
+        if (total > limit && current > 0) {
+            $warningRow.find('td').first().html('<span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i><strong>' + escapeHtml(participantName) + '</strong> already has <strong>' + existing + '</strong> travel days in other activities this quarter. With this activity: <strong>' + total + '</strong> days (exceeds ' + limit + '). Contact them to harmonise; activity may not be approved.</span>');
+            $warningRow.show().addClass('bg-warning bg-opacity-25');
+        } else {
+            $warningRow.find('td').first().empty();
+            $warningRow.hide().removeClass('bg-warning bg-opacity-25');
+        }
+    });
+}
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 $(document).ready(function () {
     // Activity Title: max 200 characters – real-time validation and counter
@@ -463,6 +506,7 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
 
     staffList.forEach(({ id, name }) => {
         if (!tableBody.find(`input[name="participant_days[${id}]"]`).length) {
+            const warningRow = $(`<tr class="participant-days-warning-row" data-participant-id="${id}" style="display:none"><td colspan="6" class="small py-2"></td></tr>`);
             const row = $(`
                 <tr data-participant-id="${id}">
                     <td>${name}</td>
@@ -476,47 +520,45 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
                             <label class="form-check-label ms-2">Yes</label>
                         </div>
                     </td>
+                    <td></td>
                 </tr>
             `);
-            tableBody.append(row);
+            tableBody.append(warningRow).append(row);
 
             // Flatpickr initialization
             const $start = row.find('.participant-start');
             const $end = row.find('.participant-end');
             const $days = row.find('.participant-days');
 
+            function runDaysUpdate() {
+                const startDate = $start.val();
+                const endDate = $end.val();
+                if (startDate && endDate) {
+                    $days.val(getActivityDays(startDate, endDate));
+                    updateTotalParticipants();
+                    checkParticipantDaysWarnings();
+                }
+            }
+
             $start.flatpickr({
                 dateFormat: 'Y-m-d',
                 defaultDate: mainStart,
-                onChange: function () {
-                    const startDate = $start.val();
-                    const endDate = $end.val();
-                    if (startDate && endDate) {
-                        $days.val(getActivityDays(startDate, endDate));
-                        updateTotalParticipants(); // 🔁 trigger here too
-                    }
-                }
+                onChange: runDaysUpdate
             });
 
             $end.flatpickr({
                 dateFormat: 'Y-m-d',
                 defaultDate: mainEnd,
-                onChange: function () {
-                    const startDate = $start.val();
-                    const endDate = $end.val();
-                    if (startDate && endDate) {
-                        $days.val(getActivityDays(startDate, endDate));
-                        updateTotalParticipants(); // 🔁 trigger here too
-                    }
-                }
+                onChange: runDaysUpdate
             });
+
+            checkParticipantDaysWarnings();
         }
     });
 
     updateTotalParticipants(); // 🔁 TRIGGER HERE AFTER ALL PARTICIPANTS ADDED
+    setTimeout(checkParticipantDaysWarnings, 50);
 }
-
-
 
     $('#addDivisionBlock').click(function () {
         if (!isValidActivityDates()) {
@@ -622,6 +664,7 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
         const row = $(this).closest('tr');
         const hidden = row.find('input.international-travel-value');
         hidden.val($(this).is(':checked') ? '1' : '0');
+        if (typeof checkParticipantDaysWarnings === 'function') checkParticipantDaysWarnings();
     });
 });
 
@@ -673,13 +716,14 @@ $(document).ready(function () {
     participantsTableBody.empty();
 
     if (!selectedIds || selectedIds.length === 0) {
-        participantsTableBody.append('<tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>');
+        participantsTableBody.append('<tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>');
         return;
     }
 
     selectedIds.forEach(id => {
         const name = $(`#internal_participants option[value="${id}"]`).text();
-        participantsTableBody.append(`
+        const warningRow = $(`<tr class="participant-days-warning-row" data-participant-id="${id}" style="display:none"><td colspan="6" class="small py-2"></td></tr>`);
+        const participantRow = $(`
             <tr data-participant-id="${id}">
                 <td>${name}</td>
                 <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
@@ -692,27 +736,33 @@ $(document).ready(function () {
                         <label class="form-check-label ms-2">Yes</label>
                     </div>
                 </td>
+                <td></td>
             </tr>
         `);
+        participantsTableBody.append(warningRow).append(participantRow);
     });
 
     flatpickr('.date-picker', {
         dateFormat: 'Y-m-d'
     });
+    setTimeout(function() { checkParticipantDaysWarnings(); }, 100);
 }
 
 
 $(document).on('change', '.participant-start, .participant-end', function () {
     const row = $(this).closest('tr');
-    const $start = row.find('.participant-start').get(0)._flatpickr;
-    const $end = row.find('.participant-end').get(0)._flatpickr;
-
+    const startEl = row.find('.participant-start').get(0);
+    const endEl = row.find('.participant-end').get(0);
+    if (!startEl || !endEl || !startEl._flatpickr || !endEl._flatpickr) return;
+    const $start = startEl._flatpickr;
+    const $end = endEl._flatpickr;
     if ($start && $end && $start.selectedDates.length && $end.selectedDates.length) {
         const start = $start.selectedDates[0];
         const end = $end.selectedDates[0];
         const msPerDay = 1000 * 60 * 60 * 24;
         const days = Math.max(Math.ceil((end - start) / msPerDay) + 1, 1);
         row.find('.participant-days').val(days);
+        if (typeof checkParticipantDaysWarnings === 'function') checkParticipantDaysWarnings();
     }
 });
 
@@ -732,7 +782,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         } else {
             $('#internal_participants').val(null).trigger('change.select2');
             $('#internal_participants').prop('disabled', true);
-            $('#participantsTableBody').empty().append('<tr><td colspan="2" class="text-muted text-center">No participants selected yet</td></tr>');
+            $('#participantsTableBody').empty().append('<tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>');
         }
     }
 
