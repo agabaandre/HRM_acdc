@@ -203,7 +203,7 @@ function checkParticipantDaysWarnings() {
         var current = isTravel ? (parseInt($daysInput.val() || 0, 10)) : 0;
         var total = existing + current;
         if (total > limit && current > 0) {
-            $warningRow.find('td').first().html('<span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i><strong>' + escapeHtml(participantName) + '</strong> already has <strong>' + existing + '</strong> travel days in other activities this quarter. With this activity: <strong>' + total + '</strong> days (exceeds ' + limit + '). Contact them to harmonise; activity may not be approved.</span>');
+            $warningRow.find('td').first().html('<span class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i><strong>' + escapeHtml(participantName) + '</strong> already has <strong>' + existing + '</strong> travel days in other activities this quarter (all matrices). With this activity: <strong>' + total + '</strong> days (exceeds ' + limit + '). Contact them to harmonise; activity may not be approved.</span>');
             $warningRow.show().addClass('bg-warning bg-opacity-25');
         } else {
             $warningRow.find('td').first().empty();

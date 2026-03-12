@@ -160,7 +160,7 @@
             <h6 class="fw-bold text-success mb-3 mt-4">
                     <i class="fas fa-users-cog me-2"></i> Participants - Days
                 </h6>
-                <p class="text-muted small mb-2">If a participant’s total <strong>travel</strong> days in this matrix (other activities + this activity, only when International Travel is Yes) exceed 21, a warning row will appear above that participant. Contact the participant to harmonise; otherwise the activity may not be approved.</p>
+                <p class="text-muted small mb-2">If a participant’s total <strong>travel</strong> days in this quarter (all matrices, any division) plus this activity (only when International Travel is Yes) exceed 21, a warning row will appear above that participant. Contact the participant to harmonise; otherwise the activity may not be approved.</p>
                 <div class="table-responsive">
     <table class="table table-bordered table-sm align-middle" id="participantsTable">
         <thead class="table-light">
