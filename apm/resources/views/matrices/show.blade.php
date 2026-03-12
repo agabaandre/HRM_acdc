@@ -131,8 +131,8 @@
             </a>
         @endif
         @if($matrix->overall_status === 'approved')
-            <div class="dropdown">
-                <button class="btn btn-primary btn-sm shadow-sm dropdown-toggle" type="button" id="matrixExportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="dropdown" id="matrixExportDropdownWrap">
+                <button class="btn btn-primary btn-sm shadow-sm dropdown-toggle" type="button" id="matrixExportDropdown" data-bs-toggle="dropdown" data-bs-boundary="viewport" data-bs-auto-close="true" aria-expanded="false" aria-haspopup="true">
                     <i class="bx bx-download me-1"></i> Export
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="matrixExportDropdown">
@@ -1005,6 +1005,17 @@
 
 @push('scripts')
 <script>
+// Ensure Export dropdown shows options (fix for Livewire navigation / clipping)
+function initMatrixExportDropdown() {
+    var btn = document.getElementById('matrixExportDropdown');
+    if (!btn || typeof bootstrap === 'undefined') return;
+    try {
+        bootstrap.Dropdown.getOrCreateInstance(btn, { boundary: 'viewport' });
+    } catch (e) {}
+}
+document.addEventListener('DOMContentLoaded', initMatrixExportDropdown);
+document.addEventListener('livewire:navigated', initMatrixExportDropdown);
+
 // Global variables for AJAX functionality
 let currentPage = 1;
 let isLoading = false;
