@@ -247,6 +247,7 @@ class Matrix extends Model
      * Build travel days per staff from activities' internal_participants JSON (like staff-quarterly-travel).
      * Uses effective internal_participants (approved change request overrides activity).
      * Only includes activities where overall_status != 'cancelled'.
+     * Only counts participant_days where international_travel is 1 (travel days); excludes domestic/non-travel (international_travel=0) so division schedule matches staff drill-down and staff-quarterly-travel report.
      * Returns array keyed by staff_id (int) with keys division_days, other_days (ints).
      */
     public function getTravelDaysFromInternalParticipants(): array
@@ -260,7 +261,7 @@ class Matrix extends Model
         $allStaffIds = [];
 
         foreach ($activities as $activity) {
-            $participants = $activity->getEffectiveInternalParticipants();
+            $participants = $activity->getEffectiveInternalParticipants(true); // only count days where international_travel=1
             foreach (array_keys($participants) as $staffIdStr) {
                 $staffId = (int) $staffIdStr;
                 if ($staffId > 0) {
@@ -274,7 +275,7 @@ class Matrix extends Model
             : collect();
 
         foreach ($activities as $activity) {
-            $participants = $activity->getEffectiveInternalParticipants();
+            $participants = $activity->getEffectiveInternalParticipants(true); // only count days where international_travel=1
             foreach ($participants as $staffIdStr => $days) {
                 $staffId = (int) $staffIdStr;
                 if ($staffId <= 0 || $days <= 0) {
