@@ -666,7 +666,7 @@
 
 
 <!-- Submit Matrix Confirmation Modal -->
-<div class="modal fade" id="submitMatrixModal" tabindex="-1" aria-labelledby="submitMatrixModalLabel" aria-hidden="true">
+<div class="modal fade" id="submitMatrixModal" tabindex="-1" aria-labelledby="submitMatrixModalLabel" aria-hidden="true" data-request-approval-url="{{ route('matrices.request_approval', $matrix) }}">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
@@ -2219,6 +2219,63 @@ document.addEventListener('click', function(event) {
     window.location.href = '{{ url("matrices/" . $matrix->id . "/activities") }}/' + activityId + '/copy';
 });
 
+// Resubmit / submit matrix with comment: delegated so it works after Livewire navigation
+document.addEventListener('click', function(event) {
+    const submitWithCommentBtn = event.target.closest('#submitWithCommentBtn');
+    if (submitWithCommentBtn) {
+        event.preventDefault();
+        const modal = submitWithCommentBtn.closest('#submitMatrixModal');
+        const actionUrl = modal && modal.getAttribute('data-request-approval-url');
+        if (!actionUrl) return;
+        const commentEl = document.getElementById('hodComment');
+        const comment = commentEl ? commentEl.value.trim() : '';
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = actionUrl;
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+        if (comment) {
+            const commentInput = document.createElement('input');
+            commentInput.type = 'hidden';
+            commentInput.name = 'hod_comment';
+            commentInput.value = comment;
+            form.appendChild(commentInput);
+        }
+        document.body.appendChild(form);
+        form.submit();
+        return;
+    }
+    const submitWithFocalCommentBtn = event.target.closest('#submitWithFocalCommentBtn');
+    if (submitWithFocalCommentBtn) {
+        event.preventDefault();
+        const modal = submitWithFocalCommentBtn.closest('#submitMatrixModal');
+        const actionUrl = modal && modal.getAttribute('data-request-approval-url');
+        if (!actionUrl) return;
+        const commentEl = document.getElementById('focalPersonComment');
+        const comment = commentEl ? commentEl.value.trim() : '';
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = actionUrl;
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+        if (comment) {
+            const commentInput = document.createElement('input');
+            commentInput.type = 'hidden';
+            commentInput.name = 'focal_person_comment';
+            commentInput.value = comment;
+            form.appendChild(commentInput);
+        }
+        document.body.appendChild(form);
+        form.submit();
+    }
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('selectAll');
     const activityCheckboxes = document.querySelectorAll('.activity-checkbox');
@@ -2415,73 +2472,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle HOD submission with comment
-    const submitWithCommentBtn = document.getElementById('submitWithCommentBtn');
-    if (submitWithCommentBtn) {
-        submitWithCommentBtn.addEventListener('click', function() {
-            const comment = document.getElementById('hodComment').value;
-            const matrixId = {{ $matrix->id }};
-            
-            // Create a form to submit with comment
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `{{ route('matrices.request_approval', $matrix) }}`;
-            
-            // Add CSRF token
-            const csrfToken = document.createElement('input');
-            csrfToken.type = 'hidden';
-            csrfToken.name = '_token';
-            csrfToken.value = '{{ csrf_token() }}';
-            form.appendChild(csrfToken);
-            
-            // Add comment if provided
-            if (comment.trim()) {
-                const commentInput = document.createElement('input');
-                commentInput.type = 'hidden';
-                commentInput.name = 'hod_comment';
-                commentInput.value = comment.trim();
-                form.appendChild(commentInput);
-            }
-            
-            // Submit the form
-            document.body.appendChild(form);
-            form.submit();
-        });
-    }
-
-    // Handle focal person submission with comment (when matrix is returned)
-    const submitWithFocalCommentBtn = document.getElementById('submitWithFocalCommentBtn');
-    if (submitWithFocalCommentBtn) {
-        submitWithFocalCommentBtn.addEventListener('click', function() {
-            const comment = document.getElementById('focalPersonComment').value;
-            const matrixId = {{ $matrix->id }};
-            
-            // Create a form to submit with comment
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `{{ route('matrices.request_approval', $matrix) }}`;
-            
-            // Add CSRF token
-            const csrfToken = document.createElement('input');
-            csrfToken.type = 'hidden';
-            csrfToken.name = '_token';
-            csrfToken.value = '{{ csrf_token() }}';
-            form.appendChild(csrfToken);
-            
-            // Add comment if provided
-            if (comment.trim()) {
-                const commentInput = document.createElement('input');
-                commentInput.type = 'hidden';
-                commentInput.name = 'focal_person_comment';
-                commentInput.value = comment.trim();
-                form.appendChild(commentInput);
-            }
-            
-            // Submit the form
-            document.body.appendChild(form);
-            form.submit();
-        });
-    }
+    // Submit matrix / resubmit handlers are delegated below (outside DOMContentLoaded) so they work after Livewire navigation
 });
 </script>
 
