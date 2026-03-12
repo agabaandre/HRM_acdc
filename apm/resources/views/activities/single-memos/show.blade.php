@@ -633,6 +633,7 @@
                                 'participant_start' => $participantData['participant_start'] ?? null,
                                 'participant_end' => $participantData['participant_end'] ?? null,
                                 'participant_days' => $participantData['participant_days'] ?? null,
+                                'international_travel' => (int) ($participantData['international_travel'] ?? 0),
                             ];
                         }
                     }
@@ -1006,9 +1007,10 @@
                                                 <th>Staff</th>
                                                 <th>Division</th>
                                                 <th>Contract Status</th>
-                                            <th>Start Date</th>
-                                            <th>End Date</th>
-                                            <th>Days</th>
+                                                <th>Start Date</th>
+                                                <th>End Date</th>
+                                                <th>Days</th>
+                                                <th>Is Traveling</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1040,6 +1042,7 @@
                                                     <td>{{ $participant['participant_start'] ?? '-' }}</td>
                                                     <td>{{ $participant['participant_end'] ?? '-' }}</td>
                                                     <td>{{ $participant['participant_days'] ?? '-' }}</td>
+                                                    <td>{{ !empty($participant['international_travel']) ? 'Yes' : 'No' }}</td>
                                         </tr>
                                         @endforeach
                                     </tbody>
