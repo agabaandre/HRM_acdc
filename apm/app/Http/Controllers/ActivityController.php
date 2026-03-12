@@ -585,9 +585,18 @@ class ActivityController extends Controller
             ? json_decode($activity->budget_id, true)
             : ($activity->budget_id ?? []);
 
-        $budgetItems = is_string($activity->budget_breakdown)
+        $budgetRaw = is_string($activity->budget_breakdown)
             ? json_decode($activity->budget_breakdown, true)
             : ($activity->budget_breakdown ?? []);
+        $budgetRaw = is_array($budgetRaw) ? $budgetRaw : [];
+        // Normalize: per–fund code may be object {"0":..., "1":...}; ensure sequential arrays for the edit view
+        $budgetItems = [];
+        foreach ($budgetRaw as $codeId => $items) {
+            if ($codeId === 'grand_total') {
+                continue;
+            }
+            $budgetItems[$codeId] = is_array($items) ? array_values($items) : $items;
+        }
 
         $attachments = is_string($activity->attachment)
             ? json_decode($activity->attachment, true)
@@ -758,8 +767,18 @@ class ActivityController extends Controller
             unset($budget['grand_total']);
         }
         
-        // Ensure budgetItems is always an array (even if empty)
-        $budgetItems = is_array($budget) ? $budget : [];
+        // Normalize budget items: per–fund code value may be stored as object {"0":..., "1":...}
+        // (e.g. from JSON). Ensure each is a sequential array so the edit view/JS can iterate safely.
+        $budgetItems = [];
+        if (is_array($budget)) {
+            foreach ($budget as $codeId => $items) {
+                if (is_array($items)) {
+                    $budgetItems[$codeId] = array_values($items);
+                } else {
+                    $budgetItems[$codeId] = $items;
+                }
+            }
+        }
 
         $attachments = is_string($activity->attachment)
             ? json_decode($activity->attachment, true)
