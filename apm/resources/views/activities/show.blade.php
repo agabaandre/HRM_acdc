@@ -626,6 +626,7 @@
                             'participant_start' => $participantData['participant_start'] ?? null,
                             'participant_end' => $participantData['participant_end'] ?? null,
                             'participant_days' => $participantData['participant_days'] ?? null,
+                            'international_travel' => (int) ($participantData['international_travel'] ?? 0),
                         ];
                     }
                 }
@@ -961,15 +962,16 @@
                                         <tr>
                                             <th>#</th>
                                             <th>Staff</th>
-                                    <th>Job Title</th>
+                                            <th>Job Title</th>
                                             <th>Division</th>
                                             <th>Contract Status</th>
-                                    <th>Duty Station</th>
+                                            <th>Duty Station</th>
                                             <th>Start Date</th>
                                             <th>End Date</th>
-                                    <th>Days</th>
-                                </tr>
-                            </thead>
+                                            <th>Days</th>
+                                            <th>Is Traveling</th>
+                                        </tr>
+                                    </thead>
                             <tbody>
                                         @foreach ($processedInternalParticipants as $index => $participant)
                                             <tr>
@@ -1012,7 +1014,8 @@
                                                 <td>{{ $participant['participant_start'] ?? '-' }}</td>
                                                 <td>{{ $participant['participant_end'] ?? '-' }}</td>
                                                 <td>{{ $participant['participant_days'] ?? '-' }}</td>
-                                    </tr>
+                                                <td>{{ !empty($participant['international_travel']) ? 'Yes' : 'No' }}</td>
+                                            </tr>
                                 @endforeach
                             </tbody>
                         </table>
