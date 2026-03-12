@@ -130,14 +130,23 @@ class ActivityController extends Controller
         $budgetCodes = FundCode::all();
         $costItems = CostItem::all();
 
-        // Travel days per participant in this matrix (Division Schedule – same computation as matrix show)
-        // Used to warn when current activity would push a participant over 21 days for the quarter
-        $travelMap = $matrix->getTravelDaysFromInternalParticipants();
+        // Travel days per participant for the whole quarter (all matrices, all divisions) – same computation as Division Schedule (international_travel=1 only)
+        // Used to warn when current activity would push a participant over 21 days; includes staff from any division added to any matrix in this quarter
+        $matricesInQuarter = Matrix::where('year', (int) $matrix->year)
+            ->where('quarter', $matrix->quarter)
+            ->get();
         $participantDaysInMatrix = [];
-        foreach ($travelMap as $staffId => $days) {
-            $participantDaysInMatrix[(int) $staffId] = (int) ($days['division_days'] + $days['other_days']);
+        foreach ($matricesInQuarter as $m) {
+            $travelMap = $m->getTravelDaysFromInternalParticipants();
+            foreach ($travelMap as $staffId => $days) {
+                $sid = (int) $staffId;
+                $total = (int) ($days['division_days'] + $days['other_days']);
+                if ($total > 0) {
+                    $participantDaysInMatrix[$sid] = ($participantDaysInMatrix[$sid] ?? 0) + $total;
+                }
+            }
         }
-    
+
         return view('activities.create', [
             'matrix' => $matrix,
             'requestTypes' => $requestTypes,
