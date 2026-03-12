@@ -40,17 +40,13 @@
       <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="{{ asset('assets/plugins/notifications/js/lobibox.min.js') }}"></script>
-<!-- Core Highcharts -->
-<script src="https://code.highcharts.com/highcharts.js"></script>
-
-<!-- Dependencies for Solid Gauge -->
-<script src="https://code.highcharts.com/highcharts-more.js"></script>
-<script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
-
-<!-- Optional Modules -->
-<script src="https://code.highcharts.com/modules/exporting.js"></script>
-<script src="https://code.highcharts.com/modules/export-data.js"></script>
-<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+<!-- Core Highcharts (local assets to avoid code.highcharts.com 403) -->
+<script src="{{ asset('assets/plugins/highcharts/js/highcharts.js') }}"></script>
+<script src="{{ asset('assets/plugins/highcharts/js/highcharts-more.js') }}"></script>
+<script src="{{ asset('assets/plugins/highcharts/js/solid-gauge.js') }}"></script>
+<script src="{{ asset('assets/plugins/highcharts/js/exporting.js') }}"></script>
+<script src="{{ asset('assets/plugins/highcharts/js/export-data.js') }}"></script>
+<script src="{{ asset('assets/plugins/highcharts/js/accessibility.js') }}"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" integrity="sha512-nMNlpuaDPrqlEls3IX/Q56H36qvBASwb3ipuo3MxeWbsQB1881ox0cRv7UPTgBlriqoynt35KjEwgGUeUXIPnw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <!-- Global: Disable Highcharts Credits -->

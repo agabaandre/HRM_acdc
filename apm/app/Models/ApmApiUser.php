@@ -33,6 +33,7 @@ class ApmApiUser extends Authenticatable implements JWTSubject
         'langauge',
         'email',
         'last_used_at',
+        'firebase_token',
         'remember_token',
         'updated_at',
     ];
@@ -40,6 +41,7 @@ class ApmApiUser extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
         'remember_token',
+        'firebase_token', // do not expose in JSON; used server-side only for FCM
     ];
 
     protected function casts(): array

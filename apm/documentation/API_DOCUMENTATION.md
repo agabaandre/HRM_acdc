@@ -176,6 +176,7 @@ All of these require the `Authorization: Bearer <token>` header.
 |--------|------|-------------|
 | POST | `/auth/refresh` | Refresh JWT |
 | GET | `/auth/me` | Current user and divisions |
+| PUT or POST | `/me/firebase-token` | Register or update FCM device token for push notifications |
 | GET | `/pending-approvals` | Pending items with approval trails (optional `?category=all`) |
 | GET | `/pending-approvals/summary` | Summary counts only |
 | GET | `/documents/{type}/{status}` | List documents by type and status (filters: year, quarter, title, document_number, per_page, page) |
@@ -193,6 +194,30 @@ All of these require the `Authorization: Bearer <token>` header.
 | GET | `/reference-data` | Lookup data (divisions, staff, fund codes, etc.). Optional `?include=divisions,staff` |
 
 **Document types:** `special_memo`, `matrix`, `activity`, `non_travel_memo`, `service_request`, `arf`, `change_request`.
+
+### Firebase device token (push notifications)
+
+**PUT** or **POST** `/me/firebase-token`  
+**Auth:** JWT required.
+
+Register the device’s FCM token so the server can send push notifications (e.g. “You have N pending approvals”). Call this after login and whenever the FCM token refreshes on the device. To clear the token (e.g. on logout), send an empty string or `"token": null`.
+
+**Request body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `token` | string \| null | No | FCM device token; omit or `""` or `null` to clear |
+
+**Response (200):** `{ "success": true, "message": "Firebase token updated." }` or `"Firebase token cleared."`
+
+**Example:**
+
+```bash
+curl -X PUT 'http://localhost/staff/apm/api/apm/v1/me/firebase-token' \
+  -H 'Authorization: Bearer YOUR_JWT' \
+  -H 'Content-Type: application/json' \
+  -d '{"token":"dFCM_DEVICE_TOKEN_FROM_CLIENT"}'
+```
 
 ---
 

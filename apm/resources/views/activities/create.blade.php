@@ -469,16 +469,22 @@ $(document).ready(function () {
 }
 
 $('#internal_participants').on('change', function () {
-    const selectedIds = $(this).val() || [];
-    const staffList = selectedIds.map(id => {
-        return {
-            id: id,
-            name: $(`#internal_participants option[value="${id}"]`).text()
-        };
-    });
+    if (window._internalParticipantsChangeInProgress) return;
+    window._internalParticipantsChangeInProgress = true;
+    try {
+        const selectedIds = $(this).val() || [];
+        const staffList = selectedIds.map(id => {
+            return {
+                id: id,
+                name: $(`#internal_participants option[value="${id}"]`).text()
+            };
+        });
 
-    appendToInternalParticipantsTable(staffList); // appends rows
-    updateTotalParticipants(); //  force count update
+        appendToInternalParticipantsTable(staffList); // appends rows
+        updateTotalParticipants(); //  force count update
+    } finally {
+        window._internalParticipantsChangeInProgress = false;
+    }
 });
 
 $(document).on('input change', '#participantsTableBody input, #internal_participants, .staff-names, #total_external_participants', function () {

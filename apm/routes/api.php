@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ApmActivityController;
 use App\Http\Controllers\Api\ApmMemoListController;
 use App\Http\Controllers\Api\ApmReferenceDataController;
 use App\Http\Controllers\Api\ApmSettingsController;
+use App\Http\Controllers\Api\ApmFcmController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SignatureVerificationController;
 use Illuminate\Http\Request;
@@ -46,6 +47,9 @@ Route::prefix('apm/v1')->group(function () {
     Route::middleware(['auth:api', 'apm.api.context'])->group(function () {
         Route::post('auth/refresh', [ApmAuthController::class, 'refresh']);
         Route::get('auth/me', [ApmAuthController::class, 'me']);
+
+        Route::put('me/firebase-token', [ApmFcmController::class, 'updateToken']);
+        Route::post('me/firebase-token', [ApmFcmController::class, 'updateToken']);
 
         Route::get('pending-approvals', [ApmPendingController::class, 'index']);
         Route::get('pending-approvals/summary', [ApmPendingController::class, 'summary']);
