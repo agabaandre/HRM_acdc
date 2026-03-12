@@ -645,14 +645,20 @@ $(document).ready(function () {
 
     // Participant selection change handler (use string id; pass internationalTravelMap when restoring from server)
     $('#internal_participants').on('change', function () {
-        const selectedIds = ($(this).val() || []).map(id => String(id));
-        const staffList = selectedIds.map(id => ({
-            id: id,
-            name: $(`#internal_participants option[value="${id}"]`).text()
-        }));
-        const internationalTravelMap = $(this).data('internationalTravelMap') || {};
-        appendToInternalParticipantsTable(staffList, internationalTravelMap);
-        updateTotalParticipants();
+        if (window._internalParticipantsChangeInProgress) return;
+        window._internalParticipantsChangeInProgress = true;
+        try {
+            const selectedIds = ($(this).val() || []).map(id => String(id));
+            const staffList = selectedIds.map(id => ({
+                id: id,
+                name: $(`#internal_participants option[value="${id}"]`).text()
+            }));
+            const internationalTravelMap = $(this).data('internationalTravelMap') || {};
+            appendToInternalParticipantsTable(staffList, internationalTravelMap);
+            updateTotalParticipants();
+        } finally {
+            window._internalParticipantsChangeInProgress = false;
+        }
     });
 
     // Restore existing participants after change handler is registered: pass international_travel map so each row is created with correct state
@@ -832,6 +838,8 @@ $(document).ready(function () {
     }
 
     $('#fund_type').on('change', function () {
+        if (window._fundTypeChangeInProgress) return;
+        window._fundTypeChangeInProgress = true;
         const fundTypeId = $(this).val();
         const selectedText = $('#fund_type option:selected').text().toLowerCase();
         const isExtramural = selectedText.indexOf('extramural') > -1;
@@ -844,10 +852,12 @@ $(document).ready(function () {
 
         if (!fundTypeId) {
             budgetCodesHelp.text('Select a fund type first');
+            window._fundTypeChangeInProgress = false;
             return;
         }
         if (isExternalSource) {
             budgetCodesSelect.empty().append('<option disabled selected>Not applicable for external source</option>');
+            window._fundTypeChangeInProgress = false;
             return;
         }
 
@@ -875,8 +885,10 @@ $(document).ready(function () {
                 budgetCodesHelp.text('No budget codes found');
             }
             $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
+            window._fundTypeChangeInProgress = false;
         }).fail(function() {
             $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
+            window._fundTypeChangeInProgress = false;
         });
     });
 
@@ -977,57 +989,68 @@ $(document).ready(function () {
     }
 
     $('#budget_codes').on('change', function () {
-        const selected = $(this).find('option:selected');
-        const container = $('#budgetGroupContainer');
-        // World Bank Activity Code: show when any selected code's funder has show_activity_code enabled (control from funders admin)
-        let hasWorldBankCode = false;
-        selected.each(function () {
-            if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
-                hasWorldBankCode = true;
-            }
-        });
-
-        if (hasWorldBankCode) {
-            var firstLabel = 'Activity Code *';
+        if (window._budgetCodesChangeInProgress) return;
+        window._budgetCodesChangeInProgress = true;
+        try {
+            const selected = $(this).find('option:selected');
+            const container = $('#budgetGroupContainer');
+            // World Bank Activity Code: show when any selected code's funder has show_activity_code enabled (control from funders admin)
+            let hasWorldBankCode = false;
             selected.each(function () {
                 if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
-                    var l = $(this).data('activity-code-label') || $(this).data('activityCodeLabel');
-                    if (l) { firstLabel = l; return false; }
+                    hasWorldBankCode = true;
                 }
             });
-            $('.activity_code .activity-code-label').text(firstLabel);
-            $('.activity_code').show();
-            $('#activity_code').prop('required', true);
-            $('.activity_code label .text-danger').show();
-        } else {
-            $('.activity_code').hide();
-            $('#activity_code').val('').prop('required', false);
-            $('.activity_code label .text-danger').hide();
-        }
-        
-        // Get newly selected code IDs
-        const selectedCodeIds = selected.map(function() { return $(this).val(); }).get();
-        
-        // Remove cards for codes that are no longer selected
-        container.find('.card').each(function() {
-            const cardCodeId = $(this).find('.budget-body').data('code');
-            if (!selectedCodeIds.includes(cardCodeId)) {
-                $(this).remove();
-            }
-        });
 
-        // Add cards for newly selected codes
-        selected.each(function () {
-            const codeId = $(this).val();
-            const label = $(this).text();
-            const balance = $(this).data('balance');
+            if (hasWorldBankCode) {
+                var firstLabel = 'Activity Code *';
+                selected.each(function () {
+                    if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
+                        var l = $(this).data('activity-code-label') || $(this).data('activityCodeLabel');
+                        if (l) { firstLabel = l; return false; }
+                    }
+                });
+                $('.activity_code .activity-code-label').text(firstLabel);
+                $('.activity_code').show();
+                $('#activity_code').prop('required', true);
+                $('.activity_code label .text-danger').show();
+            } else {
+                $('.activity_code').hide();
+                $('#activity_code').val('').prop('required', false);
+                $('.activity_code label .text-danger').hide();
+            }
             
-            // Get existing data for this code
-            const existingData = existingBudgetItems && existingBudgetItems[codeId] ? existingBudgetItems[codeId] : null;
+            if (window._restoringBudgetCards) {
+                window._restoringBudgetCards = false;
+                return;
+            }
             
-            // Create the card with data using the simple function
-            createBudgetCardWithData(codeId, label, balance, existingData);
-        });
+            // Get newly selected code IDs
+            const selectedCodeIds = selected.map(function() { return $(this).val(); }).get();
+            
+            // Remove cards for codes that are no longer selected
+            container.find('.card').each(function() {
+                const cardCodeId = $(this).find('.budget-body').data('code');
+                if (!selectedCodeIds.includes(cardCodeId)) {
+                    $(this).remove();
+                }
+            });
+
+            // Add cards for newly selected codes
+            selected.each(function () {
+                const codeId = $(this).val();
+                const label = $(this).text();
+                const balance = $(this).data('balance');
+                
+                // Get existing data for this code
+                const existingData = existingBudgetItems && existingBudgetItems[codeId] ? existingBudgetItems[codeId] : null;
+                
+                // Create the card with data using the simple function
+                createBudgetCardWithData(codeId, label, balance, existingData);
+            });
+        } finally {
+            window._budgetCodesChangeInProgress = false;
+        }
     });
 
     $(document).on('click', '.add-row', function () {
@@ -1324,6 +1347,7 @@ $(document).ready(function () {
                 
                 // Wait for budget codes to load, then restore existing selections
                 setTimeout(() => {
+                    window._restoringBudgetCards = true;
                     Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
                         // Skip grand_total as it's not a budget code
                         if (codeId === 'grand_total') {
@@ -1369,7 +1393,7 @@ $(document).ready(function () {
                             allowClear: true,
                             maximumSelectionLength: isExtramural ? 1 : 2
                         });
-                        // Re-trigger change so Activity Code visibility is applied after Select2 re-init
+                        window._restoringBudgetCards = true;
                         $('#budget_codes').trigger('change');
                     }
                     initializeWorldBankActivityCodeRequirement();

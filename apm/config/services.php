@@ -49,6 +49,15 @@ return [
     ],
 
     /*
+    | Firebase Cloud Messaging (FCM) for push notifications to API/mobile users.
+    | Service account JSON from Firebase Console → Project Settings → Service Accounts.
+    */
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'credentials' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase-credentials.json')),
+    ],
+
+    /*
     | Microsoft SSO (Azure AD / Entra) for ACDC staff - same app as CodeIgniter auth.
     | Used by mobile app: validate access_token or exchange code for token, then issue APM JWT.
     */

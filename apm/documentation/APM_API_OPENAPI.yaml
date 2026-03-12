@@ -284,6 +284,52 @@ paths:
         '401':
           description: Unauthorized
 
+  /me/firebase-token:
+    put:
+      tags: [Device]
+      summary: Register or update FCM device token
+      description: |
+        Register the Firebase Cloud Messaging (FCM) device token for push notifications (e.g. pending approvals).
+        Call after login and when the token refreshes on the device. Send empty token to clear.
+      operationId: updateFirebaseToken
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string, nullable: true, description: FCM device token; omit or empty string to clear }
+      responses:
+        '200':
+          description: Token updated or cleared
+          content:
+            application/json:
+              schema: { type: object, properties: { success: { type: boolean }, message: { type: string } } }
+        '401':
+          description: Unauthorized
+        '422':
+          description: Validation failed (e.g. token too long)
+    post:
+      tags: [Device]
+      summary: Register or update FCM device token (alias for PUT)
+      operationId: updateFirebaseTokenPost
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string, nullable: true }
+      responses:
+        '200':
+          description: Token updated or cleared
+        '401':
+          description: Unauthorized
+
   /pending-approvals:
     get:
       tags: [Pending]
