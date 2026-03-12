@@ -148,7 +148,7 @@
 @endsection
 
 @section('content')
-<div class="matrix-show-page">
+<div class="matrix-show-page" id="matrix-show-root" data-matrix-id="{{ $matrix->id }}" data-activities-url="{{ route('matrices.activities-for-approver', $matrix) }}" data-single-memos-url="{{ route('matrices.single-memos-for-approver', $matrix) }}" data-budgets-url="{{ route('matrices.budgets', $matrix) }}">
 @include('matrices.partials.matrix-metadata')
    
 <div class="col-md-12">
@@ -1066,8 +1066,16 @@ function loadActivities(page = 1, search = '', documentNumber = '') {
     }
     hideSearchStatus();
     
-    // Build URL with parameters
-    const url = new URL('{{ route("matrices.activities-for-approver", $matrix) }}', window.location.origin);
+    // Build URL from current page (data attribute) so it's correct after Livewire navigation
+    const root = document.getElementById('matrix-show-root');
+    const activitiesBaseUrl = root ? root.getAttribute('data-activities-url') : null;
+    if (!activitiesBaseUrl) {
+        isLoading = false;
+        if (loadingElement) loadingElement.style.display = 'none';
+        if (errorElement) { errorElement.style.display = 'block'; document.getElementById('activities-error-message').textContent = 'Matrix context not found. Please refresh the page.'; }
+        return;
+    }
+    const url = new URL(activitiesBaseUrl, window.location.origin);
     if (page > 1) url.searchParams.set('page', page);
     if (search) url.searchParams.set('search', search);
     if (documentNumber) url.searchParams.set('document_number', documentNumber);
@@ -1627,8 +1635,15 @@ function loadSingleMemos(page = 1, search = '', documentNumber = '') {
     }
     hideSingleMemoSearchStatus();
     
-    // Build URL with parameters
-    const url = new URL('{{ route("matrices.single-memos-for-approver", $matrix) }}', window.location.origin);
+    // Build URL from current page (data attribute) so it's correct after Livewire navigation
+    const root = document.getElementById('matrix-show-root');
+    const singleMemosBaseUrl = root ? root.getAttribute('data-single-memos-url') : null;
+    if (!singleMemosBaseUrl) {
+        if (loadingElement) loadingElement.style.display = 'none';
+        if (tableContainer) { tableContainer.style.display = 'block'; tableContainer.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Matrix context not found. Please refresh.</td></tr>'; }
+        return;
+    }
+    const url = new URL(singleMemosBaseUrl, window.location.origin);
     if (page > 1) url.searchParams.set('page', page);
     if (search) url.searchParams.set('search', search);
     if (documentNumber) url.searchParams.set('document_number', documentNumber);
@@ -1948,9 +1963,12 @@ function clearSingleMemoSearch() {
     loadSingleMemos(1, '', '');
 }
 
-// Load matrix budget information
+// Load matrix budget information (URL from current page so correct after Livewire navigation)
 function loadMatrixBudgets() {
-    fetch(`{{ route('matrices.budgets', $matrix->id) }}`)
+    const root = document.getElementById('matrix-show-root');
+    const budgetsUrl = root ? root.getAttribute('data-budgets-url') : null;
+    if (!budgetsUrl) return;
+    fetch(budgetsUrl)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
