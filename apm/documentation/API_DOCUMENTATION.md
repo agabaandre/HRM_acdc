@@ -30,8 +30,9 @@ All endpoints below are relative to this base unless noted.
 1. [Authentication](#authentication)
 2. [Public endpoints (no JWT)](#public-endpoints-no-jwt)
 3. [Protected endpoints (JWT required)](#protected-endpoints-jwt-required)
-4. [Request/response conventions](#requestresponse-conventions)
-5. [Full specification](#full-specification)
+4. [Web app URLs (attachments and print)](#web-app-urls-attachments-and-print)
+5. [Request/response conventions](#requestresponse-conventions)
+6. [Full specification](#full-specification)
 
 ---
 
@@ -195,6 +196,28 @@ All of these require the `Authorization: Bearer <token>` header.
 
 ---
 
+## Web app URLs (attachments and print)
+
+These URLs are served under the **web app root** (e.g. `http://localhost/staff/apm`), not under `/api/apm/v1`. They accept **session (web login) or JWT** so mobile and in-browser can use the same URL.
+
+**Authentication (either):**
+- **Web session** — user is logged in via the web app (cookies).
+- **JWT** — `Authorization: Bearer <token>` header, or query `?token=<token>` (e.g. for opening in browser or mobile).
+
+| Purpose | Path (relative to web app root) | Example |
+|--------|----------------------------------|--------|
+| Stream attachment | `GET /documents/attachments/{type}/{id}/{index}` | `.../documents/attachments/activity/418/0` or `.../0?token=eyJ...` |
+| Print service request | `GET /service-requests/{id}/print` | `.../service-requests/4/print?token=eyJ...` |
+| Print special memo | `GET /special-memo/{id}/print` | `.../special-memo/22/print` |
+| Print non-travel memo | `GET /non-travel/{id}/print` | `.../non-travel/5/print` |
+| Print request ARF | `GET /request-arf/{id}/print` | `.../request-arf/3/print` |
+| Print change request | `GET /change-requests/{id}/print` | `.../change-requests/7/print` |
+| Print single memo | `GET /single-memos/{id}/print` | `.../single-memos/12/print` |
+
+Use the **url** or **web_view_url** from `GET /documents/{type}/{id}` (in `attachments[].url` or `attachments[].web_view_url`). For mobile, append `?token=<access_token>` if the client cannot send the Bearer header (e.g. in-app browser).
+
+---
+
 ## Settings
 
 **GET** `/settings`  
@@ -229,6 +252,48 @@ Return memos for the **authenticated user’s divisions**: primary division plus
 **Query parameters:** `year`, `quarter`, `memo_type` (QM, SM, SPM, NT, CR, SR, ARF), `title`, `document_number`, `per_page` (default 20), `page` (default 1).
 
 **Response (200):** `success`, `data.memos` (array), `data.division_id` (primary), `data.division_ids` (array of all division IDs used), `data.status`, `data.filters`, `data.total`, `data.per_page`, `data.current_page`, `data.last_page`.
+
+---
+
+## Create matrix and activities
+
+**POST** `/matrices`  
+**Auth:** Bearer required.
+
+Create a new matrix (draft) and optionally one or more activities. Only one matrix per division per year/quarter is allowed. **focal_person_id** defaults to the authenticated user's staff_id and must belong to the same division.
+
+**Request body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `division_id` | integer | Yes | Division ID (must exist). |
+| `year` | integer | Yes | 2020–2030. |
+| `quarter` | string | Yes | Q1, Q2, Q3, or Q4. |
+| `key_result_area` | array | Yes | At least one item; each has `description` (string). |
+| `focal_person_id` | integer | No | Staff ID; defaults to authenticated user. Must belong to division. |
+| `activities` | array | No | Optional list of activities to create. |
+
+**Each activity object:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `activity_title` | string | Yes | Max 500 chars. |
+| `responsible_person_id` | integer | Yes | Staff ID (must exist). |
+| `request_type_id` | integer | No | Default 1. |
+| `fund_type_id` | integer | No | Default 1. |
+| `date_from` | string (date) | No | Default today. |
+| `date_to` | string (date) | No | Default same as date_from. |
+| `total_participants` | integer | No | Default 1. |
+| `background` | string | No | |
+| `activity_request_remarks` | string | No | |
+| `internal_participants` | object | No | Keyed by staff_id; values: participant_start, participant_end, participant_days, international_travel. |
+| `location_id` | array of integers | No | Location IDs. |
+| `budget_id` | array | No | Fund code IDs. |
+| `budget_breakdown` | object | No | Budget items. |
+
+**Response (201):** `success`, `message`, `data.matrix_id`, `data.division_id`, `data.year`, `data.quarter`, `data.overall_status` (draft), `data.activities_count`, `data.activities` (array of `{ id, activity_title, document_number }`).
+
+**Errors:** 401 Unauthenticated; 422 validation or matrix already exists for division/year/quarter; 500 server error.
 
 ---
 

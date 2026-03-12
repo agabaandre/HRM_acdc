@@ -30,7 +30,7 @@
         
         <!-- Recommend Changes Modal -->
         <div class="modal fade" id="recommendChangesModal" tabindex="-1" aria-labelledby="recommendChangesModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-sm  modal-dialog-centered">
+            <div class="modal-dialog modal-md modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="recommendChangesModalLabel">Not Approved</h5>
@@ -39,9 +39,12 @@
                     <form action="{{ route('matrices.status', [$matrix])}}" method="POST">
                         @csrf
                         <div class="modal-body">
+                            <div class="alert alert-info small mb-3 py-2">
+                                <i class="fa fa-info-circle me-1"></i> Please give a clear remark on the <strong>activities that have caused this return</strong>. Use the <strong>document numbers</strong> from the activities table above (you can copy them directly) so the HOD can identify and correct the right activities.
+                            </div>
                             <div class="mb-3">
                                 <label for="recommendChangesComment" class="form-label">Comments</label>
-                                <textarea class="form-control" id="recommendChangesComment" name="comment" rows="3" required></textarea>
+                                <textarea class="form-control" id="recommendChangesComment" name="comment" rows="4" required placeholder="e.g. Please revise activities with document numbers AU/CDC/DHIS/IM/SM/002, ..."></textarea>
                                 <input type="hidden" name="action" value="returned"/>
                             </div>
                         </div>

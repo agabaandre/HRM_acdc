@@ -297,6 +297,23 @@
                                     </div>
                                     </div>
 
+            <!-- Approver guidelines: when to return entire matrix vs return as single memos (only when pending) -->
+            @if($matrix->overall_status === 'pending')
+            <div class="p-4 border-top border-start border-end bg-light mt-0" id="matrix-approval-guidelines">
+                <div class="d-flex align-items-start">
+                    <i class="bx bx-info-circle text-primary me-2 fs-4 mt-1"></i>
+                    <div class="small">
+                        <strong class="text-dark d-block mb-2">Approval guidelines</strong>
+                        <ul class="mb-0 ps-3 text-muted">
+                            <li class="mb-1"><strong>Return entire matrix</strong> when <strong>more than 50%</strong> of the activities have an issue. Use the matrix-level “Return” action so the whole matrix goes back to the HOD for correction.</li>
+                            <li class="mb-1"><strong>Do not</strong> return every activity as a single memo. That would leave the matrix with no activities and is not recommended.</li>
+                            <li class="mb-1">When <strong>around 30% or fewer</strong> activities have issues, you can <strong>pass the rest</strong> and return only the problematic ones as single memos: open each activity’s details and use “Return as single memo”. The matrix stays in the workflow, the activities you pass are approved with the matrix, and the returned activities become <strong>Single Memos</strong> to the HOD for correction and are approved independently.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <!-- Finance Officer Notice -->
             @if(can_take_action($matrix) && is_finance_officer($matrix) && $matrix->approval_level == 5)
                 <div class="p-4 border-top bg-warning bg-opacity-10">
@@ -563,7 +580,7 @@
                                                  $memo->staff_id == user_session('staff_id') || 
                                                  $matrix->division->division_head == user_session('staff_id') ||
                                                  $matrix->staff_id == user_session('staff_id')))
-                                                @if($matrix->overall_status == 'draft')
+                                                @if($matrix->overall_status == 'draft' || ($matrix->overall_status == 'returned' && in_array((int) $matrix->approval_level, [0, 1])))
                                                     <button type="button" class="btn btn-outline-info btn-sm" 
                                                             data-bs-toggle="modal" 
                                                             data-bs-target="#copyActivityModal" 
@@ -1020,6 +1037,11 @@ function canShowDeleteButton() {
     return {{ ($matrix->overall_status == 'draft' || $matrix->overall_status == 'returned') ? 'true' : 'false' }};
 }
 
+// Check if copy button should be shown (draft or returned at approval_order 0 or 1)
+function canShowCopyButton() {
+    return {{ ($matrix->overall_status == 'draft' || ($matrix->overall_status == 'returned' && in_array((int)$matrix->approval_level, [0, 1]))) ? 'true' : 'false' }};
+}
+
 // Load activities via AJAX
 function loadActivities(page = 1, search = '', documentNumber = '') {
     if (isLoading) return;
@@ -1254,8 +1276,9 @@ function renderActivities(activities) {
             html += '<i class="bx bx-show me-1"></i>View';
             html += '</a>';
             
-            // Add copy button for draft activities
-            if (activity.overall_status === 'draft' && canShowDeleteButton()) {
+            // Add copy button when matrix allows copy: draft activities, or pending when matrix is returned (0/1)
+            const canCopyActivity = (activity.overall_status === 'draft' || activity.overall_status === 'pending') && canShowCopyButton();
+            if (canCopyActivity) {
                 html += '<button type="button" class="btn btn-outline-info btn-sm" ';
                 html += 'data-bs-toggle="modal" data-bs-target="#copyActivityModal" ';
                 html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}">`;
@@ -2145,6 +2168,28 @@ function initializeTooltips() {
     });
 }
 
+// Copy Activity Modal: use delegation so it works after Livewire navigation (wire:navigate)
+document.addEventListener('show.bs.modal', function(event) {
+    if (event.target.id !== 'copyActivityModal') return;
+    const modal = event.target;
+    const button = event.relatedTarget;
+    if (!button) return;
+    const activityId = button.getAttribute('data-activity-id');
+    const activityTitle = button.getAttribute('data-activity-title') || '';
+    modal.setAttribute('data-copy-activity-id', activityId || '');
+    const titleEl = modal.querySelector('#copy-activity-title');
+    if (titleEl) titleEl.textContent = activityTitle;
+});
+document.addEventListener('click', function(event) {
+    const confirmBtn = event.target.closest('#confirm-copy-activity');
+    if (!confirmBtn) return;
+    const modal = document.getElementById('copyActivityModal');
+    if (!modal) return;
+    const activityId = modal.getAttribute('data-copy-activity-id');
+    if (!activityId) return;
+    window.location.href = '{{ url("matrices/" . $matrix->id . "/activities") }}/' + activityId + '/copy';
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('selectAll');
     const activityCheckboxes = document.querySelectorAll('.activity-checkbox');
@@ -2153,31 +2198,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize tooltips on page load
     initializeTooltips();
     
-    // Copy Activity Modal functionality
-    const copyActivityModal = document.getElementById('copyActivityModal');
-    if (copyActivityModal) {
-        copyActivityModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            const activityId = button.getAttribute('data-activity-id');
-            const activityTitle = button.getAttribute('data-activity-title');
-            
-            // Update modal content
-            const modalTitle = copyActivityModal.querySelector('#copy-activity-title');
-            if (modalTitle) {
-                modalTitle.textContent = activityTitle;
-            }
-            
-            // Set up confirm button
-            const confirmButton = copyActivityModal.querySelector('#confirm-copy-activity');
-            if (confirmButton) {
-                confirmButton.onclick = function() {
-                    // Redirect to copy URL
-                    const copyUrl = '{{ url("matrices/" . $matrix->id . "/activities") }}/' + activityId + '/copy';
-                    window.location.href = copyUrl;
-                };
-            }
-        });
-    }
     const selectedCount = document.getElementById('selectedCount');
     const selectedActivitiesList = document.getElementById('selectedActivitiesList');
     const selectedActivityIds = document.getElementById('selectedActivityIds');
@@ -2513,7 +2533,7 @@ document.addEventListener('DOMContentLoaded', function() {
 @endpush
 
 <!-- Copy Activity Modal -->
-<div class="modal fade" id="copyActivityModal" tabindex="-1" aria-labelledby="copyActivityModalLabel" aria-hidden="true">
+<div class="modal fade" id="copyActivityModal" tabindex="-1" aria-labelledby="copyActivityModalLabel" aria-hidden="true" data-matrix-id="{{ $matrix->id }}">
     <div class="modal-dialog modal-dialog-centered modal-md">
         <div class="modal-content">
             <div class="modal-header">

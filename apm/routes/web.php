@@ -79,12 +79,12 @@ Route::post('auth/login', [App\Http\Controllers\Api\ApmAuthController::class, 'l
 // Microsoft OAuth callback: Azure redirects here after login. Exchanges code for token, finds APM user, sets web session, redirects to /home.
 Route::get('oauth/callback', [App\Http\Controllers\Api\ApmAuthController::class, 'microsoftCallback'])->name('apm.oauth.callback');
 
-// Document attachment stream for in-browser viewing (session auth; use this URL to open attachments in the browser).
+// Document attachment stream: session or JWT (Bearer or ?token=) so mobile and in-browser can access.
 Route::get('documents/attachments/{type}/{id}/{index}', [App\Http\Controllers\Api\ApmDocumentController::class, 'streamAttachment'])
     ->name('documents.attachments.stream')
     ->where('type', 'special_memo|matrix|activity|non_travel_memo|service_request|arf|change_request')
     ->where('index', '[0-9]+')
-    ->middleware(CheckSessionMiddleware::class);
+    ->middleware(['accept.token.in.query', 'auth.session.or.jwt']);
 
 // Public FAQ, Help and Documentation (no login required; no system menu)
 Route::get('/faq', [App\Http\Controllers\FaqController::class, 'publicPage'])->name('faq.index');
@@ -102,6 +102,27 @@ Route::get('/home', function () {
         'base_url' => session('base_url', ''),
     ]);
 })->name('home')->middleware(CheckSessionMiddleware::class);
+
+// Memo print routes: allow session OR JWT (header Authorization: Bearer <token> or ?token= for GET)
+$printMiddleware = ['accept.token.in.query', 'auth.session.or.jwt'];
+Route::get('service-requests/{serviceRequest}/print', [App\Http\Controllers\ServiceRequestController::class, 'print'])
+    ->name('service-requests.print')
+    ->middleware($printMiddleware);
+Route::get('special-memo/{specialMemo}/print', [App\Http\Controllers\SpecialMemoController::class, 'print'])
+    ->name('special-memo.print')
+    ->middleware($printMiddleware);
+Route::get('non-travel/{nonTravel}/print', [App\Http\Controllers\NonTravelMemoController::class, 'print'])
+    ->name('non-travel.print')
+    ->middleware($printMiddleware);
+Route::get('request-arf/{requestARF}/print', [App\Http\Controllers\RequestARFController::class, 'print'])
+    ->name('request-arf.print')
+    ->middleware($printMiddleware);
+Route::get('change-requests/{changeRequest}/print', [App\Http\Controllers\ChangeRequestController::class, 'print'])
+    ->name('change-requests.print')
+    ->middleware($printMiddleware);
+Route::get('/single-memos/{activity}/print', [ActivityController::class, 'printSingleMemo'])
+    ->name('activities.single-memos.print')
+    ->middleware($printMiddleware);
 
 // Workflow Management Routes
 Route::middleware([CheckSessionMiddleware::class])->group(function () {
@@ -333,7 +354,6 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     Route::get('/single-memos/{matrix}/edit/{activity}', [ActivityController::class, 'editSingleMemo'])->name('activities.single-memos.edit');
     Route::put('/single-memos/{matrix}/update/{activity}', [ActivityController::class, 'updateSingleMemo'])->name('activities.single-memos.update');
     Route::get('/single-memos/{activity}/status', [ActivityController::class, 'showSingleMemoStatus'])->name('activities.single-memos.status');
-    Route::get('/single-memos/{activity}/print', [ActivityController::class, 'printSingleMemo'])->name('activities.single-memos.print');
     Route::post('/single-memos/{activity}/submit-for-approval', [ActivityController::class, 'submitSingleMemoForApproval'])->name('activities.single-memos.submit-for-approval');
     Route::post('/single-memos/{activity}/update-status', [ActivityController::class, 'updateSingleMemoStatus'])->name('activities.single-memos.update-status');
     Route::post('/single-memos/{activity}/resubmit', [ActivityController::class, 'resubmitSingleMemo'])->name('activities.single-memos.resubmit');
@@ -357,8 +377,7 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
     Route::get('non-travel/pending-approvals', [App\Http\Controllers\NonTravelMemoController::class, 'pendingApprovals'])->name('non-travel.pending-approvals');
     Route::delete('non-travel/{nonTravel}/remove-attachment', [App\Http\Controllers\NonTravelMemoController::class, 'removeAttachment'])->name('non-travel.remove-attachment');
-    Route::get('non-travel/{nonTravel}/print', [App\Http\Controllers\NonTravelMemoController::class, 'print'])->name('non-travel.print');
-    
+
     // Non-Travel Memo Export Routes
     Route::get('non-travel/export/my-submitted', [App\Http\Controllers\NonTravelMemoController::class, 'exportMySubmittedCsv'])->name('non-travel.export.my-submitted');
     Route::get('non-travel/export/all', [App\Http\Controllers\NonTravelMemoController::class, 'exportAllCsv'])->name('non-travel.export.all');
@@ -393,10 +412,8 @@ Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoContro
     Route::post('request-arf/{requestARF}/approve', [App\Http\Controllers\RequestARFController::class, 'approve'])->name('request-arf.approve');
     Route::post('request-arf/{requestARF}/submit-for-approval', [App\Http\Controllers\RequestARFController::class, 'submitForApproval'])->name('request-arf.submit-for-approval');
     Route::post('request-arf/{requestARF}/update-status', [App\Http\Controllers\RequestARFController::class, 'updateStatus'])->name('request-arf.update-status');
-    Route::get('request-arf/{requestARF}/print', [App\Http\Controllers\RequestARFController::class, 'print'])->name('request-arf.print');
-    
+
     Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
-    Route::get('special-memo/{specialMemo}/print', [App\Http\Controllers\SpecialMemoController::class, 'print'])->name('special-memo.print');
 
 // Special Memo Approval Routes
 Route::post('special-memo/{specialMemo}/submit-for-approval', [App\Http\Controllers\SpecialMemoController::class, 'submitForApproval'])->name('special-memo.submit-for-approval');
@@ -416,8 +433,7 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     // Resource routes
     Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
     Route::delete('service-requests/{serviceRequest}/remove-attachment', [App\Http\Controllers\ServiceRequestController::class, 'removeAttachment'])->name('service-requests.remove-attachment');
-    Route::get('service-requests/{serviceRequest}/print', [App\Http\Controllers\ServiceRequestController::class, 'print'])->name('service-requests.print');
-    
+
     // Change Request Routes
     Route::get('change-requests/pending-approvals', [App\Http\Controllers\ChangeRequestController::class, 'pendingApprovals'])->name('change-requests.pending-approvals');
     Route::resource('change-requests', App\Http\Controllers\ChangeRequestController::class);
@@ -425,7 +441,6 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     Route::resource('faq-categories', App\Http\Controllers\FaqCategoryController::class)->except(['show']);
     Route::post('change-requests/{changeRequest}/submit-for-approval', [App\Http\Controllers\ChangeRequestController::class, 'submitForApproval'])->name('change-requests.submit-for-approval');
     Route::post('change-requests/{changeRequest}/update-status', [App\Http\Controllers\ChangeRequestController::class, 'updateStatus'])->name('change-requests.update-status');
-    Route::get('change-requests/{changeRequest}/print', [App\Http\Controllers\ChangeRequestController::class, 'print'])->name('change-requests.print');
     Route::post('change-requests/{changeRequest}/resubmit', [App\Http\Controllers\ChangeRequestController::class, 'resubmit'])->name('change-requests.resubmit');
     Route::post('change-requests/{changeRequest}/admin-update', [App\Http\Controllers\ChangeRequestController::class, 'adminUpdate'])->name('change-requests.admin-update');
 
@@ -485,8 +500,11 @@ Route::get('docs/spec', function () {
         abort(404);
     }
     // Use the same origin/path as this request so docs work on any install (e.g. /staff/apm or root)
-    $apiBaseUrl = rtrim(url('/'), '/') . '/api/apm/v1';
-    $yaml = str_replace('{{API_BASE_URL}}', $apiBaseUrl, file_get_contents($path));
+    $base = rtrim(url('/'), '/');
+    $apiBaseUrl = $base . '/api/apm/v1';
+    $yaml = file_get_contents($path);
+    $yaml = str_replace('{{API_BASE_URL}}', $apiBaseUrl, $yaml);
+    $yaml = str_replace('{{APP_BASE_URL}}', $base, $yaml);
     return response($yaml, 200, [
         'Content-Type' => 'application/x-yaml',
         'Content-Disposition' => 'inline; filename="APM_API_OPENAPI.yaml"',

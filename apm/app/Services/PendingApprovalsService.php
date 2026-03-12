@@ -127,9 +127,10 @@ class PendingApprovalsService
             'forwardWorkflow',
             'matrixApprovalTrails.staff',
             'matrixApprovalTrails.oicStaff',
+            // Load activities with relations needed for get_approvable_activities (approval_order / allowed_funders / fund_type)
             'activities' => function ($q) {
-                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
-                  ->whereNotNull('matrix_id');
+                $q->where('is_single_memo', 0)->whereNotNull('matrix_id')
+                  ->with(['activity_budget.fundcode']);
             }
         ]);
 
@@ -187,11 +188,12 @@ class PendingApprovalsService
             return false;
         })->map(function ($matrix) use ($isAdminAssistant) {
             $isAdminAssistantView = $isAdminAssistant && !$this->isCurrentApprover($matrix);
+            $approvableActivities = $this->getApprovableActivitiesForMatrix($matrix);
             return $this->formatPendingItem($matrix, 'Matrix', [
                 'title' => "Matrix - {$matrix->quarter} {$matrix->year}",
                 'division' => $matrix->division->division_name ?? 'N/A',
-                'submitted_by' => $matrix->focalPerson ? 
-                    ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 
+                'submitted_by' => $matrix->focalPerson ?
+                    ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) :
                     ($matrix->staff->fname . ' ' . $matrix->staff->lname ?? 'N/A'),
                 'date_received' => $this->getDateReceivedToCurrentLevel($matrix),
                 'view_url' => url(route('matrices.show', $matrix, false)),
@@ -200,6 +202,7 @@ class PendingApprovalsService
                 'item_id' => $matrix->id,
                 'item_type' => 'Matrix',
                 'approval_trails' => $this->formatApprovalTrailsForApi($matrix->matrixApprovalTrails ?? collect()),
+                'activities' => $approvableActivities,
             ], $isAdminAssistantView);
         });
     }
@@ -937,6 +940,28 @@ class PendingApprovalsService
                 'role' => $role,
                 'created_at' => $t->created_at ? (Carbon::parse($t->created_at)->toIso8601String()) : null,
                 'is_archived' => (bool) ($t->is_archived ?? false),
+            ];
+        })->values()->toArray();
+    }
+
+    /**
+     * Get activities applicable to the current approval order for a matrix (allowed fund_type / allowed_funders).
+     * Uses same logic as matrix show: get_approvable_activities custom helper.
+     */
+    protected function getApprovableActivitiesForMatrix(Matrix $matrix): array
+    {
+        if (!function_exists('get_approvable_activities')) {
+            return [];
+        }
+        $approvable = get_approvable_activities($matrix);
+        return $approvable->map(function ($activity) {
+            return [
+                'id' => $activity->id,
+                'matrix_id' => $activity->matrix_id,
+                'activity_title' => $activity->activity_title ?? null,
+                'document_number' => $activity->document_number ?? null,
+                'fund_type_id' => $activity->fund_type_id ?? null,
+                'total_participants' => $activity->total_participants ?? null,
             ];
         })->values()->toArray();
     }

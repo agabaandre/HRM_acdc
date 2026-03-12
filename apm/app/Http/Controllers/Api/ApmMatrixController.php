@@ -4,15 +4,162 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Matrix;
+use App\Models\Activity;
 use App\Models\Staff;
 use App\Models\ApprovalTrail;
 use App\Services\ApprovalService;
 use App\Services\PendingApprovalsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ApmMatrixController extends Controller
 {
+    /**
+     * Create a matrix and optionally its activities.
+     * Matrix is created in draft; activities are created as draft and linked to the matrix.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $sessionData = $request->attributes->get('api_user_session');
+        if (!$sessionData) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $staffId = (int) ($sessionData['staff_id'] ?? 0);
+        $divisionId = (int) ($sessionData['division_id'] ?? 0);
+
+        $validated = $request->validate([
+            'division_id' => 'required|exists:divisions,id',
+            'year' => 'required|integer|min:2020|max:2030',
+            'quarter' => 'required|in:Q1,Q2,Q3,Q4',
+            'key_result_area' => 'required|array|min:1',
+            'key_result_area.*.description' => 'required|string',
+            'focal_person_id' => 'nullable|exists:staff,staff_id',
+            'activities' => 'nullable|array',
+            'activities.*.activity_title' => 'required_with:activities|string|max:500',
+            'activities.*.responsible_person_id' => 'required_with:activities|integer|exists:staff,staff_id',
+            'activities.*.request_type_id' => 'nullable|integer|exists:request_types,id',
+            'activities.*.fund_type_id' => 'nullable|integer|exists:fund_types,id',
+            'activities.*.date_from' => 'nullable|date',
+            'activities.*.date_to' => 'nullable|date|after_or_equal:activities.*.date_from',
+            'activities.*.total_participants' => 'nullable|integer|min:0',
+            'activities.*.background' => 'nullable|string',
+            'activities.*.activity_request_remarks' => 'nullable|string',
+            'activities.*.internal_participants' => 'nullable|array',
+            'activities.*.location_id' => 'nullable|array',
+            'activities.*.location_id.*' => 'integer|exists:locations,id',
+            'activities.*.budget_id' => 'nullable|array',
+            'activities.*.budget_breakdown' => 'nullable|array',
+        ]);
+
+        if (Matrix::existsForDivisionYearQuarter($validated['division_id'], $validated['year'], $validated['quarter'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A matrix already exists for this division, year and quarter. Only one matrix per division per quarter is allowed.',
+            ], 422);
+        }
+
+        $focalPersonId = (int) ($validated['focal_person_id'] ?? $staffId);
+        $matrixDivisionId = (int) $validated['division_id'];
+        $focalStaff = Staff::find($focalPersonId);
+        if (!$focalStaff) {
+            return response()->json(['success' => false, 'message' => 'focal_person_id must be a valid staff ID.'], 422);
+        }
+        if ((int) $focalStaff->division_id !== $matrixDivisionId) {
+            return response()->json(['success' => false, 'message' => 'focal_person_id must belong to the same division as division_id.'], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $matrix = Matrix::create([
+                'division_id' => $validated['division_id'],
+                'focal_person_id' => $focalPersonId,
+                'year' => $validated['year'],
+                'quarter' => $validated['quarter'],
+                'key_result_area' => json_encode($validated['key_result_area']),
+                'staff_id' => $staffId,
+                'forward_workflow_id' => null,
+                'overall_status' => 'draft',
+            ]);
+
+            $approvalService = app(ApprovalService::class);
+            $approvalService->updateApprovalOrderMap($matrix);
+
+            $activitiesPayload = $validated['activities'] ?? [];
+            $createdActivities = [];
+
+            foreach ($activitiesPayload as $idx => $act) {
+                $dateFrom = isset($act['date_from']) ? $act['date_from'] : now()->toDateString();
+                $dateTo = isset($act['date_to']) ? $act['date_to'] : $dateFrom;
+                $internalParticipants = $act['internal_participants'] ?? [];
+                if (!is_array($internalParticipants)) {
+                    $internalParticipants = [];
+                }
+                $locationId = isset($act['location_id']) && is_array($act['location_id']) ? $act['location_id'] : [];
+                $budgetId = isset($act['budget_id']) && is_array($act['budget_id']) ? $act['budget_id'] : [];
+                $budgetBreakdown = isset($act['budget_breakdown']) && is_array($act['budget_breakdown']) ? $act['budget_breakdown'] : [];
+
+                $activity = $matrix->activities()->create([
+                    'staff_id' => $staffId,
+                    'responsible_person_id' => (int) $act['responsible_person_id'],
+                    'date_from' => $dateFrom,
+                    'date_to' => $dateTo,
+                    'total_participants' => (int) ($act['total_participants'] ?? 1),
+                    'total_external_participants' => 0,
+                    'key_result_area' => $validated['key_result_area'][0]['description'] ?? '',
+                    'request_type_id' => (int) ($act['request_type_id'] ?? 1),
+                    'activity_title' => $act['activity_title'],
+                    'background' => $act['background'] ?? '',
+                    'activity_request_remarks' => $act['activity_request_remarks'] ?? '',
+                    'forward_workflow_id' => null,
+                    'reverse_workflow_id' => 1,
+                    'status' => Activity::STATUS_DRAFT,
+                    'fund_type_id' => (int) ($act['fund_type_id'] ?? 1),
+                    'location_id' => $locationId,
+                    'internal_participants' => $internalParticipants,
+                    'budget_id' => $budgetId,
+                    'budget_breakdown' => $budgetBreakdown,
+                    'attachment' => [],
+                    'is_single_memo' => 0,
+                    'approval_level' => 0,
+                    'division_id' => $matrix->division_id,
+                    'overall_status' => Activity::STATUS_DRAFT,
+                ]);
+
+                $createdActivities[] = [
+                    'id' => $activity->id,
+                    'activity_title' => $activity->activity_title,
+                    'document_number' => $activity->document_number ?? null,
+                ];
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Matrix created successfully.',
+                'data' => [
+                    'matrix_id' => $matrix->id,
+                    'division_id' => $matrix->division_id,
+                    'year' => $matrix->year,
+                    'quarter' => $matrix->quarter,
+                    'overall_status' => $matrix->overall_status,
+                    'activities_count' => count($createdActivities),
+                    'activities' => $createdActivities,
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            report($e);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create matrix.',
+            ], 500);
+        }
+    }
+
     /**
      * Matrix detail with activities and metadata for current approver (passed vs pending).
      * internal_participants per activity and division_schedule are returned as lists with participant names.

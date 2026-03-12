@@ -63,6 +63,7 @@ Route::prefix('apm/v1')->group(function () {
         Route::get('approved-by-me', [ApmApprovedByMeController::class, 'index']);
         Route::get('approved-by-me/average-time', [ApmApprovedByMeController::class, 'averageTime']);
 
+        Route::post('matrices', [ApmMatrixController::class, 'store']);
         Route::get('matrices/{matrixId}', [ApmMatrixController::class, 'show']);
         Route::post('matrices/{matrixId}', [ApmMatrixController::class, 'updateStatus']);
 
