@@ -105,9 +105,9 @@ class ActivityController extends Controller
             ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name', 'job_name', 'duty_station_name'])
             ->get();
     
-        // Staff only from current matrix division for internal participants
+        // Staff only from current matrix division for internal participants (include job_name for display in warnings)
         $divisionStaff =  Staff::active()
-            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
+            ->select(['id', 'fname', 'lname', 'staff_id', 'division_id', 'division_name', 'job_name'])
             ->where('division_id', $matrix->division_id)
             ->get();
     
@@ -129,6 +129,14 @@ class ActivityController extends Controller
         $fundTypes = FundType::all();
         $budgetCodes = FundCode::all();
         $costItems = CostItem::all();
+
+        // Travel days per participant in this matrix (Division Schedule – same computation as matrix show)
+        // Used to warn when current activity would push a participant over 21 days for the quarter
+        $travelMap = $matrix->getTravelDaysFromInternalParticipants();
+        $participantDaysInMatrix = [];
+        foreach ($travelMap as $staffId => $days) {
+            $participantDaysInMatrix[(int) $staffId] = (int) ($days['division_days'] + $days['other_days']);
+        }
     
         return view('activities.create', [
             'matrix' => $matrix,
@@ -141,6 +149,7 @@ class ActivityController extends Controller
             'fundTypes' => $fundTypes,
             'budgetCodes' => $budgetCodes,
             'costItems' => $costItems,
+            'participantDaysInMatrix' => $participantDaysInMatrix,
             'title' => 'Create Activity',
             'editing' => false,
         ]);
