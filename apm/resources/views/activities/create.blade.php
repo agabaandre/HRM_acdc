@@ -520,7 +520,11 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
                             <label class="form-check-label ms-2">Yes</label>
                         </div>
                     </td>
-                    <td></td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${id}" title="Remove participant">
+                            <i class="fas fa-trash me-1"></i>Remove
+                        </button>
+                    </td>
                 </tr>
             `);
             tableBody.append(warningRow).append(row);
@@ -736,7 +740,11 @@ $(document).ready(function () {
                         <label class="form-check-label ms-2">Yes</label>
                     </div>
                 </td>
-                <td></td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${id}" title="Remove participant">
+                        <i class="fas fa-trash me-1"></i>Remove
+                    </button>
+                </td>
             </tr>
         `);
         participantsTableBody.append(warningRow).append(participantRow);
@@ -799,6 +807,15 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         placeholder: 'Select Internal Participants',
         width: '100%'
     }).on('select2:select select2:unselect', function () {
+        handleParticipantsChange();
+    });
+
+    $(document).on('click', '.remove-participant', function () {
+        const staffId = String($(this).data('staff-id'));
+        $('#internal_participants').val(function () {
+            const current = $(this).val() || [];
+            return current.filter(function (id) { return String(id) !== staffId; });
+        }).trigger('change');
         handleParticipantsChange();
     });
 
