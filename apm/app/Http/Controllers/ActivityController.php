@@ -3144,14 +3144,16 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
      */
     public function copy(Matrix $matrix, Activity $activity)
     {
-        // Check if activity is in draft status
-        if ($activity->overall_status !== 'draft') {
-            return redirect()->back()->with('error', 'Only draft activities can be copied.');
+        // Check if matrix allows activity copy: draft or returned at approval_order 0 or 1 (back with creator or HOD)
+        $matrixAllowsCopy = $matrix->overall_status === 'draft'
+            || ($matrix->overall_status === 'returned' && in_array((int) $matrix->approval_level, [0, 1], true));
+        if (!$matrixAllowsCopy) {
+            return redirect()->back()->with('error', 'Activities can only be copied when the matrix is in draft or returned to you (approval level 0 or 1).');
         }
 
-        // Check if matrix allows activity creation
-        if ($matrix->overall_status !== 'draft') {
-            return redirect()->back()->with('error', 'Activities can only be copied when the matrix is in draft status.');
+        // Allow copying draft activities, or pending activities when matrix is returned (so HOD/creator can rework)
+        if ($activity->overall_status !== 'draft' && !($matrix->overall_status === 'returned' && in_array((int) $matrix->approval_level, [0, 1], true) && $activity->overall_status === 'pending')) {
+            return redirect()->back()->with('error', 'Only draft activities can be copied, or pending activities when the matrix is returned to you.');
         }
 
         // Check if user has permission to copy this activity

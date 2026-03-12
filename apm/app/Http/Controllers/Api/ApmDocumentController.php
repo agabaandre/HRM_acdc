@@ -18,6 +18,7 @@ use App\Models\Staff;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ApmDocumentController extends Controller
@@ -289,19 +290,32 @@ class ApmDocumentController extends Controller
     private function serviceRequest(int $id): JsonResponse
     {
         $doc = ServiceRequest::with([
-            'staff', 'division', 'fundType', 'activity', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+            'staff', 'division', 'fundType', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
         ])->find($id);
         if (!$doc) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
         }
+        return response()->json(['success' => true, 'data' => $this->buildServiceRequestDocumentData($doc, $id)]);
+    }
+
+    /**
+     * Build service request document data (same shape for show and list endpoints).
+     */
+    private function buildServiceRequestDocumentData(ServiceRequest $doc, int $id): array
+    {
         $data = $doc->toArray();
+        unset($data['activity'], $data['budget_breakdown']);
         $data['document_type'] = 'service_request';
+        $data['internal_participants'] = $this->formatServiceRequestParticipantCostList($doc->internal_participants_cost ?? [], true);
+        $data['external_participants'] = $this->formatServiceRequestParticipantCostList($doc->external_participants_cost ?? [], false);
+        $data['internal_participants_cost'] = $this->formatServiceRequestParticipantCostList($doc->internal_participants_cost ?? [], true);
+        $data['external_participants_cost'] = $this->ensureList($doc->external_participants_cost ?? []);
+        $data['other_costs'] = $this->ensureList($doc->other_costs ?? []);
+        $data['budget_breakdown'] = $this->processServiceRequestBudgetBreakdown($doc->budget_breakdown ?? null);
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'service_request', $id);
         $data['print_url'] = $this->getPrintUrl('service_request', $doc);
-        $data['budget_information'] = $this->buildBudgetInformation($doc, 'service_request');
-        $data = array_merge($data, $this->enrichDocumentRelations($doc, 'service_request'));
-        return response()->json(['success' => true, 'data' => $data]);
+        return $data;
     }
 
     private function arf(int $id): JsonResponse
@@ -330,9 +344,16 @@ class ApmDocumentController extends Controller
         if (!$doc) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
         }
-        // Only load matrix when parent is not an Activity (e.g. when parent is SpecialMemo, NonTravelMemo, etc.)
+        return response()->json(['success' => true, 'data' => $this->buildChangeRequestDocumentData($doc, $id)]);
+    }
+
+    /**
+     * Build change request document data (same shape for show and list endpoints).
+     */
+    private function buildChangeRequestDocumentData(ChangeRequest $doc, int $id): array
+    {
         $parentIsActivity = in_array($doc->parent_memo_model ?? '', ['App\\Models\\Activity', 'Activity'], true);
-        if (!$parentIsActivity) {
+        if (!$parentIsActivity && !$doc->relationLoaded('matrix')) {
             $doc->load('matrix');
         }
         $data = $this->normalizeDocumentJsonFields($doc->toArray());
@@ -340,13 +361,27 @@ class ApmDocumentController extends Controller
             unset($data['matrix']);
         }
         $data['document_type'] = 'change_request';
+        $data['source_id'] = $doc->parent_memo_id;
+        $data['source_type'] = $this->changeRequestParentModelToSourceType($doc->parent_memo_model);
         $data['internal_participants'] = $this->formatInternalParticipantsFromRaw($data['internal_participants'] ?? []);
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'change_request', $id);
         $data['print_url'] = $this->getPrintUrl('change_request', $doc);
         $data['budget_information'] = $this->buildBudgetInformation($doc, 'change_request');
         $data = array_merge($data, $this->enrichDocumentRelations($doc, 'change_request'));
-        return response()->json(['success' => true, 'data' => $data]);
+        return $data;
+    }
+
+    /**
+     * Map change request parent_memo_model (full class) to short source_type name, e.g. "activity", "special_memo".
+     */
+    private function changeRequestParentModelToSourceType(?string $parentMemoModel): ?string
+    {
+        if ($parentMemoModel === null || $parentMemoModel === '') {
+            return null;
+        }
+        $basename = class_basename(str_replace('\\\\', '\\', $parentMemoModel));
+        return strtolower(Str::snake($basename));
     }
 
     /**
@@ -430,19 +465,143 @@ class ApmDocumentController extends Controller
                 'approvalTrails.staff', 'approvalTrails.oicStaff',
             ])->where('overall_status', $status),
             'non_travel_memo' => NonTravelMemo::with([
-                'staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+                'staff', 'division', 'fundType', 'nonTravelMemoCategory', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
             ])->where('overall_status', $status),
             'service_request' => ServiceRequest::with([
-                'staff', 'division', 'activity', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+                'staff', 'division', 'fundType', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
             ])->where('overall_status', $status),
             'arf' => RequestARF::with([
-                'staff', 'division', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
+                'staff', 'division', 'fundType', 'funder', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'forwardWorkflow',
             ])->where('overall_status', $status),
             'change_request' => ChangeRequest::with([
-                'staff', 'division', 'matrix', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
+                'staff', 'division', 'fundType', 'requestType', 'nonTravelMemoCategory', 'matrix', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
             ])->where('overall_status', $status),
             default => null,
         };
+    }
+
+    /**
+     * Ensure value is a JSON list (0-indexed array). Decode if string, then array_values.
+     */
+    private function ensureList($value): array
+    {
+        if (is_string($value)) {
+            $value = json_decode($value, true);
+        }
+        if (!is_array($value)) {
+            return [];
+        }
+        return array_values($value);
+    }
+
+    /**
+     * Process service request budget_breakdown: decode, normalize "Unknown Cost (ID: X)" keys, return as list structure.
+     */
+    private function processServiceRequestBudgetBreakdown($raw): array
+    {
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+        if (!is_array($raw)) {
+            return [];
+        }
+        $data = $this->normalizeBudgetBreakdownCostKeysRecursive($raw);
+        return $this->budgetBreakdownAsList($data);
+    }
+
+    /**
+     * Recursively normalize "Unknown Cost (ID: X)" keys in costs arrays within budget_breakdown.
+     */
+    private function normalizeBudgetBreakdownCostKeysRecursive(array $data): array
+    {
+        $prefix = 'Unknown Cost (ID: ';
+        $len = strlen($prefix);
+        foreach ($data as $key => $value) {
+            if ($key === 'costs' && is_array($value)) {
+                $newCosts = [];
+                foreach ($value as $costKey => $costVal) {
+                    $k = (string) $costKey;
+                    if (strpos($k, $prefix) === 0 && substr($k, -1) === ')') {
+                        $costKey = substr($k, $len, -1);
+                    }
+                    $newCosts[$costKey] = $costVal;
+                }
+                $data['costs'] = $newCosts;
+            } elseif (is_array($value)) {
+                $data[$key] = $this->normalizeBudgetBreakdownCostKeysRecursive($value);
+            }
+        }
+        return $data;
+    }
+
+    /**
+     * Convert budget_breakdown to list form: sections that are arrays become 0-indexed lists.
+     */
+    private function budgetBreakdownAsList(array $data): array
+    {
+        $listKeys = ['internal_participants', 'external_participants', 'other_costs', 'by_fund_code', 'items'];
+        foreach ($listKeys as $key) {
+            if (isset($data[$key]) && is_array($data[$key])) {
+                $data[$key] = array_values($data[$key]);
+            }
+        }
+        if (isset($data['by_fund_code']) && is_array($data['by_fund_code'])) {
+            foreach ($data['by_fund_code'] as $i => $group) {
+                if (is_array($group) && isset($group['items']) && is_array($group['items'])) {
+                    $data['by_fund_code'][$i]['items'] = array_values($group['items']);
+                }
+            }
+        }
+        return $data;
+    }
+
+    /**
+     * Normalize participant cost keys: "Unknown Cost (ID: Name)" -> "Name" so the API returns proper cost labels.
+     */
+    private function normalizeParticipantCostsKeys(array $row): array
+    {
+        if (!isset($row['costs']) || !is_array($row['costs'])) {
+            return $row;
+        }
+        $prefix = 'Unknown Cost (ID: ';
+        $len = strlen($prefix);
+        $newCosts = [];
+        foreach ($row['costs'] as $costKey => $value) {
+            $key = (string) $costKey;
+            if (strpos($key, $prefix) === 0 && substr($key, -1) === ')') {
+                $costKey = substr($key, $len, -1);
+            }
+            $newCosts[$costKey] = $value;
+        }
+        $row['costs'] = $newCosts;
+        return $row;
+    }
+
+    /**
+     * Format service request participant cost array as a list with staff names when staff_id present (internal).
+     */
+    private function formatServiceRequestParticipantCostList($raw, bool $resolveStaff): array
+    {
+        $arr = $this->ensureList($raw);
+        $arr = array_map(fn ($row) => $this->normalizeParticipantCostsKeys(is_array($row) ? $row : []), $arr);
+        if (!$resolveStaff || empty($arr)) {
+            return $arr;
+        }
+        $staffIds = array_values(array_unique(array_filter(array_map(function ($row) {
+            $id = $row['staff_id'] ?? null;
+            return is_numeric($id) ? (int) $id : null;
+        }, $arr))));
+        $staffById = $staffIds ? Staff::with('division')->whereIn('staff_id', $staffIds)->get()->keyBy('staff_id') : collect();
+        return array_map(function ($row) use ($staffById) {
+            $row = is_array($row) ? $row : [];
+            $staffId = isset($row['staff_id']) ? (int) $row['staff_id'] : null;
+            $staff = $staffId ? $staffById->get($staffId) : null;
+            $name = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
+            $row['name'] = $name;
+            $row['participant_name'] = $name;
+            $row['division_name'] = ($staff && $staff->relationLoaded('division') && $staff->division) ? ($staff->division->division_name ?? null) : null;
+            return $row;
+        }, $arr);
     }
 
     /**
@@ -587,13 +746,28 @@ class ApmDocumentController extends Controller
     }
 
     /**
-     * Convert a loaded model to API document data (document_type, approval_trails, attachments).
+     * Convert a loaded model to API document data (same shape as show() for each type).
      */
     private function modelToDocumentData(object $model, string $type, int $id): array
     {
+        if ($type === 'service_request' && $model instanceof ServiceRequest) {
+            return $this->buildServiceRequestDocumentData($model, $id);
+        }
+        if ($type === 'change_request' && $model instanceof ChangeRequest) {
+            return $this->buildChangeRequestDocumentData($model, $id);
+        }
+
         $data = $this->normalizeMemoJsonFields($model->toArray());
         $docType = $type === 'activity' && isset($model->is_single_memo) && $model->is_single_memo ? 'single_memo' : $type;
         $data['document_type'] = $docType;
+
+        if ($type === 'activity' || $type === 'single_memo') {
+            foreach (['matrix', 'division_schedule', 'division_staff', 'workflow_definition', 'current_actor', 'has_intramural', 'has_extramural', 'intramural_budget', 'extramural_budget'] as $key) {
+                unset($data[$key]);
+            }
+            $data['internal_participants'] = $this->formatActivityInternalParticipants($model);
+        }
+
         if ($type === 'matrix') {
             $data['approval_trails'] = $this->formatApprovalTrails($model->matrixApprovalTrails ?? collect());
         } elseif ($type === 'activity' || $type === 'single_memo') {
@@ -606,6 +780,12 @@ class ApmDocumentController extends Controller
         }
         $data['attachments'] = $this->buildAttachmentsWithUrls($model, $type, $id);
         $data['print_url'] = $this->getPrintUrl($docType, $model);
+
+        if (in_array($type, ['special_memo', 'non_travel_memo', 'arf', 'activity', 'single_memo'], true)) {
+            $data['budget_information'] = $this->buildBudgetInformation($model, $docType);
+            $data = array_merge($data, $this->enrichDocumentRelations($model, $docType));
+        }
+
         return $data;
     }
 

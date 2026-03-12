@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'apm.api.context' => \App\Http\Middleware\SetApmApiUserContext::class,
             'accept.token.in.query' => \App\Http\Middleware\AcceptTokenInQuery::class,
+            'auth.session.or.jwt' => \App\Http\Middleware\AuthenticateSessionOrJwt::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

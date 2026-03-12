@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
   title: APM (Approvals Management) API
   description: |
@@ -14,7 +14,7 @@ servers:
   - url: "{{API_BASE_URL}}"
     description: API base URL for this server (injected from the host where the docs are loaded)
   - url: "{{APP_BASE_URL}}"
-    description: Web app root (for document verification upload; use when calling POST /api/documents/verify)
+    description: Web app root (document verification upload, memo print PDFs; use for paths under /api/documents/verify and print paths below)
 
 tags:
   - name: Auth
@@ -37,6 +37,8 @@ tags:
     description: Lookup data (divisions, staff, fund codes, workflow definitions, etc.)
   - name: Document verification
     description: Verify APM document signature hashes via PDF upload (PDF only; session auth)
+  - name: Print
+    description: Memo print PDF endpoints (web app; session or JWT)
 
 paths:
   /api/documents/verify:
@@ -477,15 +479,17 @@ paths:
         Stream a single attachment file by document type, id, and zero-based index.
         Use the **url** from GET /documents/{type}/{id} response (attachments[].url).
 
-        **Authentication (either):**
-        - **Authorization header:** `Authorization: Bearer <access_token>` (recommended for API clients).
-        - **Query parameter:** `?token=<access_token>` — use when opening the URL in a browser (e.g. new tab or iframe)
-          so the file can be displayed inline without sending headers. Append the token to the url, e.g.
-          `.../documents/attachments/activity/408/0?token=eyJ0eXAi...`.
+        **Two base URLs (choose server in Swagger):**
+        - **API_BASE_URL:** e.g. `.../api/apm/v1/documents/attachments/{type}/{id}/{index}` — JWT only (Bearer or ?token=).
+        - **APP_BASE_URL (web app):** e.g. `.../documents/attachments/{type}/{id}/{index}` — **session or JWT** (Bearer or ?token=).
+          Use the web app base for mobile or in-browser; same path accepts session (web login) or JWT so one URL works for both.
 
-        Returns the file with **Content-Disposition: inline** and original filename so PDFs and images
-        display in the browser. For in-browser viewing with **web session** (no JWT), use **web_view_url**
-        from the document response instead (requires user to be logged in via the web app).
+        **Authentication:**
+        - **Authorization header:** `Authorization: Bearer <access_token>` (recommended for API/mobile).
+        - **Query parameter:** `?token=<access_token>` — use when opening the URL in a browser (e.g. new tab or iframe)
+          so the file can be displayed inline. Example: `.../documents/attachments/activity/418/0?token=eyJ0eXAi...`.
+
+        Returns the file with **Content-Disposition: inline** and original filename so PDFs and images display in the browser.
       operationId: getDocumentAttachment
       security: [{ bearerAuth: [] }]
       parameters:
@@ -528,6 +532,156 @@ paths:
           description: Document or attachment not found
         '400':
           description: Invalid attachment path
+
+  # --- Memo print PDFs (use server APP_BASE_URL = web app root) ---
+  # Authentication: session (web login) OR JWT via Authorization: Bearer <token> or ?token=<token> (same as document attachments).
+
+  /service-requests/{serviceRequest}/print:
+    get:
+      tags: [Print]
+      summary: Print service request as PDF
+      description: |
+        Returns the service request memo as a PDF (inline disposition). Use **APP_BASE_URL** as the server base.
+        **Authentication (either):** web session, or JWT via `Authorization: Bearer <token>` or query `?token=<token>`.
+      operationId: printServiceRequest
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: serviceRequest
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: token
+          in: query
+          required: false
+          schema: { type: string }
+          description: JWT; use when opening URL in browser (e.g. ?token=eyJ...).
+      responses:
+        '200':
+          description: PDF file (application/pdf, inline).
+        '401':
+          description: Unauthenticated (redirect to login if no JWT).
+        '404':
+          description: Service request not found
+
+  /special-memo/{specialMemo}/print:
+    get:
+      tags: [Print]
+      summary: Print special memo as PDF
+      description: "Returns the special memo as PDF. Use **APP_BASE_URL**. Auth: session or JWT (Bearer or ?token=)."
+      operationId: printSpecialMemo
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: specialMemo
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: token
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: PDF file (application/pdf, inline).
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Special memo not found
+
+  /non-travel/{nonTravel}/print:
+    get:
+      tags: [Print]
+      summary: Print non-travel memo as PDF
+      description: "Returns the non-travel memo as PDF. Use **APP_BASE_URL**. Auth: session or JWT (Bearer or ?token=)."
+      operationId: printNonTravelMemo
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: nonTravel
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: token
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: PDF file (application/pdf, inline).
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Non-travel memo not found
+
+  /request-arf/{requestARF}/print:
+    get:
+      tags: [Print]
+      summary: Print request ARF as PDF
+      description: "Returns the request ARF memo as PDF. Use **APP_BASE_URL**. Auth: session or JWT (Bearer or ?token=)."
+      operationId: printRequestARF
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: requestARF
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: token
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: PDF file (application/pdf, inline).
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Request ARF not found
+
+  /change-requests/{changeRequest}/print:
+    get:
+      tags: [Print]
+      summary: Print change request as PDF
+      description: "Returns the change request memo as PDF. Use **APP_BASE_URL**. Auth: session or JWT (Bearer or ?token=)."
+      operationId: printChangeRequest
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: changeRequest
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: token
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: PDF file (application/pdf, inline).
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Change request not found
+
+  /single-memos/{activity}/print:
+    get:
+      tags: [Print]
+      summary: Print single memo (activity) as PDF
+      description: "Returns the single memo (activity) as PDF. Use **APP_BASE_URL**. Auth: session or JWT (Bearer or ?token=)."
+      operationId: printSingleMemo
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: activity
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: token
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: PDF file (application/pdf, inline).
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Activity (single memo) not found
 
   /actions:
     post:
@@ -686,6 +840,118 @@ paths:
       responses:
         '200':
           description: Average time only
+
+  /matrices:
+    post:
+      tags: [Matrices]
+      summary: Create matrix and activities
+      description: |
+        Create a new matrix (draft) and optionally one or more activities linked to it.
+        Only one matrix per division per year/quarter is allowed.
+        **division_id** must exist; **focal_person_id** defaults to the authenticated user's staff_id and must belong to the same division.
+        Each activity in **activities** requires **activity_title** and **responsible_person_id**; other fields are optional.
+      operationId: matrixCreate
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [division_id, year, quarter, key_result_area]
+              properties:
+                division_id:
+                  type: integer
+                  description: Division ID (must exist).
+                year:
+                  type: integer
+                  minimum: 2020
+                  maximum: 2030
+                quarter:
+                  type: string
+                  enum: [Q1, Q2, Q3, Q4]
+                key_result_area:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [description]
+                    properties:
+                      description: { type: string }
+                focal_person_id:
+                  type: integer
+                  nullable: true
+                  description: Staff ID; defaults to authenticated user. Must belong to division_id.
+                activities:
+                  type: array
+                  description: Optional list of activities to create under this matrix.
+                  items:
+                    type: object
+                    required: [activity_title, responsible_person_id]
+                    properties:
+                      activity_title: { type: string, maxLength: 500 }
+                      responsible_person_id: { type: integer, description: Staff ID }
+                      request_type_id: { type: integer, default: 1 }
+                      fund_type_id: { type: integer, default: 1 }
+                      date_from: { type: string, format: date }
+                      date_to: { type: string, format: date }
+                      total_participants: { type: integer, minimum: 0 }
+                      background: { type: string }
+                      activity_request_remarks: { type: string }
+                      internal_participants:
+                        type: object
+                        description: Keyed by staff_id; values { participant_start?, participant_end?, participant_days?, international_travel? }
+                      location_id: { type: array, items: { type: integer } }
+                      budget_id: { type: array }
+                      budget_breakdown: { type: object }
+            example:
+              division_id: 1
+              year: 2025
+              quarter: Q2
+              key_result_area:
+                - description: "Key result area 1"
+              focal_person_id: 42
+              activities:
+                - activity_title: "Workshop on approvals"
+                  responsible_person_id: 42
+                  request_type_id: 1
+                  fund_type_id: 1
+                  date_from: "2025-04-01"
+                  date_to: "2025-04-02"
+                  total_participants: 5
+      responses:
+        '201':
+          description: Matrix and activities created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: "Matrix created successfully." }
+                  data:
+                    type: object
+                    properties:
+                      matrix_id: { type: integer }
+                      division_id: { type: integer }
+                      year: { type: integer }
+                      quarter: { type: string }
+                      overall_status: { type: string, example: draft }
+                      activities_count: { type: integer }
+                      activities:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer }
+                            activity_title: { type: string }
+                            document_number: { type: string, nullable: true }
+        '401':
+          description: Unauthenticated
+        '422':
+          description: Validation error or matrix already exists for division/year/quarter
+        '500':
+          description: Server error
 
   /matrices/{matrixId}:
     get:
