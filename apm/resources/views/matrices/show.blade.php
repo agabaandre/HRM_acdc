@@ -1328,36 +1328,56 @@ function renderActivities(activities) {
     initializeTooltips();
 }
 
-// Calculate budget from breakdown
+// Calculate budget from breakdown (same logic as activities edit/show: use grand_total/total when present, else sum from items)
 function calculateBudget(budgetBreakdown) {
     if (!budgetBreakdown) return 0;
     
-    const budget = typeof budgetBreakdown === 'string' ? JSON.parse(budgetBreakdown) : budgetBreakdown;
-    let totalBudget = 0;
-    
-    if (Array.isArray(budget)) {
-        return totalBudget;
+    let budget = budgetBreakdown;
+    if (typeof budgetBreakdown === 'string') {
+        try {
+            budget = JSON.parse(budgetBreakdown);
+        } catch (e) {
+            return 0;
+        }
     }
     
+    if (Array.isArray(budget)) return 0;
+    if (!budget || typeof budget !== 'object') return 0;
+
+    // Use stored grand_total or total when present (fix for Intramural and other activities that store the total here)
+    const grandTotal = budget.grand_total;
+    if (grandTotal != null && grandTotal !== '' && !Array.isArray(grandTotal)) {
+        const n = parseFloat(grandTotal);
+        if (!isNaN(n)) return n;
+    }
+    const total = budget.total;
+    if (total != null && total !== '' && !Array.isArray(total)) {
+        const n = parseFloat(total);
+        if (!isNaN(n)) return n;
+    }
+
+    let totalBudget = 0;
     Object.keys(budget).forEach(key => {
-        if (key === 'grand_total') return;
-        
+        if (key === 'grand_total' || key === 'total') return;
+
         const entries = budget[key];
         if (Array.isArray(entries)) {
             entries.forEach(item => {
-                const unitCost = parseFloat(item.unit_cost || 0);
-                const units = parseFloat(item.units || 0);
-                const days = parseFloat(item.days || 1);
-                
+                const unitCost = parseFloat(item.unit_cost ?? item.unit_price ?? 0) || 0;
+                const units = parseFloat(item.units ?? item.quantity ?? 0) || 0;
+                const days = parseFloat(item.days ?? 1) || 1;
+
                 if (days > 1) {
                     totalBudget += unitCost * units * days;
                 } else {
                     totalBudget += unitCost * units;
                 }
             });
+        } else if (typeof entries === 'number' && !isNaN(entries)) {
+            totalBudget += entries;
         }
     });
-    
+
     return totalBudget;
 }
 
