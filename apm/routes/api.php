@@ -12,6 +12,9 @@ use App\Http\Controllers\Api\ApmMemoListController;
 use App\Http\Controllers\Api\ApmReferenceDataController;
 use App\Http\Controllers\Api\ApmSettingsController;
 use App\Http\Controllers\Api\ApmFcmController;
+use App\Http\Controllers\Api\ApmFundCodeController;
+use App\Http\Controllers\Api\ApmDirectorateController;
+use App\Http\Controllers\Api\ApmDivisionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SignatureVerificationController;
 use Illuminate\Http\Request;
@@ -78,5 +81,26 @@ Route::prefix('apm/v1')->group(function () {
         Route::get('memo-list/approved', [ApmMemoListController::class, 'approved']);
 
         Route::get('reference-data', [ApmReferenceDataController::class, 'index']);
+
+        // Fund codes (light: funder and partner only, no activities)
+        Route::get('fund-codes', [ApmFundCodeController::class, 'index']);
+        Route::get('fund-codes/{id}', [ApmFundCodeController::class, 'show'])->where('id', '[0-9]+');
+        Route::post('fund-codes', [ApmFundCodeController::class, 'store']);
+        Route::put('fund-codes/{id}', [ApmFundCodeController::class, 'update'])->where('id', '[0-9]+');
+        Route::patch('fund-codes/{id}', [ApmFundCodeController::class, 'update'])->where('id', '[0-9]+');
+
+        // Directorates
+        Route::get('directorates', [ApmDirectorateController::class, 'index']);
+        Route::get('directorates/{id}', [ApmDirectorateController::class, 'show'])->where('id', '[0-9]+');
+        Route::post('directorates', [ApmDirectorateController::class, 'store']);
+        Route::put('directorates/{id}', [ApmDirectorateController::class, 'update'])->where('id', '[0-9]+');
+        Route::patch('directorates/{id}', [ApmDirectorateController::class, 'update'])->where('id', '[0-9]+');
+
+        // Divisions
+        Route::get('divisions', [ApmDivisionController::class, 'index']);
+        Route::get('divisions/{id}', [ApmDivisionController::class, 'show'])->where('id', '[0-9]+');
+        Route::post('divisions', [ApmDivisionController::class, 'store']);
+        Route::put('divisions/{id}', [ApmDivisionController::class, 'update'])->where('id', '[0-9]+');
+        Route::patch('divisions/{id}', [ApmDivisionController::class, 'update'])->where('id', '[0-9]+');
     });
 });
