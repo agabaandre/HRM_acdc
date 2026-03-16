@@ -192,6 +192,18 @@ All of these require the `Authorization: Bearer <token>` header.
 | GET | `/memo-list/pending` | Pending memos for user’s divisions (primary + associated) |
 | GET | `/memo-list/approved` | Approved memos for user’s divisions (primary + associated) |
 | GET | `/reference-data` | Lookup data (divisions, staff, fund codes, etc.). Optional `?include=divisions,staff` |
+| GET | `/fund-codes` | List fund codes (funder & partner only; no activities). Optional filters: `is_active`, `year`, `division_id`, `funder_id`, `partner_id`, `per_page` |
+| GET | `/fund-codes/{id}` | Single fund code with funder and partner |
+| POST | `/fund-codes` | Create fund code |
+| PUT / PATCH | `/fund-codes/{id}` | Update fund code |
+| GET | `/directorates` | List directorates. Optional: `is_active`, `per_page` |
+| GET | `/directorates/{id}` | Single directorate |
+| POST | `/directorates` | Create directorate |
+| PUT / PATCH | `/directorates/{id}` | Update directorate |
+| GET | `/divisions` | List divisions. Optional: `directorate_id`, `per_page` |
+| GET | `/divisions/{id}` | Single division |
+| POST | `/divisions` | Create division |
+| PUT / PATCH | `/divisions/{id}` | Update division |
 
 **Document types:** `special_memo`, `matrix`, `activity`, `non_travel_memo`, `service_request`, `arf`, `change_request`.
 
@@ -277,6 +289,158 @@ Return memos for the **authenticated user’s divisions**: primary division plus
 **Query parameters:** `year`, `quarter`, `memo_type` (QM, SM, SPM, NT, CR, SR, ARF), `title`, `document_number`, `per_page` (default 20), `page` (default 1).
 
 **Response (200):** `success`, `data.memos` (array), `data.division_id` (primary), `data.division_ids` (array of all division IDs used), `data.status`, `data.filters`, `data.total`, `data.per_page`, `data.current_page`, `data.last_page`.
+
+---
+
+## Fund codes (light: funder and partner only)
+
+Fund code endpoints return **funder** and **partner** relations only (no activities) so responses stay light for external systems.
+
+**GET** `/fund-codes`  
+**Auth:** Bearer required.
+
+List fund codes with optional filters.
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|----------|------|-------------|
+| `is_active` | 0 \| 1 | Filter by active flag |
+| `year` | integer | Filter by year |
+| `division_id` | integer | Filter by division |
+| `funder_id` | integer | Filter by funder |
+| `partner_id` | integer | Filter by partner |
+| `per_page` | integer | Items per page (default 50, max 100) |
+| `page` | integer | Page number |
+
+**Response (200):** `success`, `data` (array of fund code objects with `funder` and `partner` nested), `pagination` (`current_page`, `last_page`, `per_page`, `total`).
+
+**GET** `/fund-codes/{id}`  
+**Auth:** Bearer required.
+
+Single fund code with funder and partner.
+
+**Response (200):** `success`, `data` (fund code with `funder`, `partner`).  
+**Response (404):** Fund code not found.
+
+**POST** `/fund-codes`  
+**Auth:** Bearer required.
+
+Create a fund code.
+
+**Request body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `code` | string | Yes | Unique code |
+| `activity` | string | No | Activity description |
+| `year` | integer | Yes | 2020–2100 |
+| `funder_id` | integer | No | Funder ID (must exist) |
+| `partner_id` | integer | No | Partner ID (must exist) |
+| `fund_type_id` | integer | No | Fund type ID |
+| `division_id` | integer | No | Division ID |
+| `cost_centre` | string | No | |
+| `amert_code` | string | No | |
+| `fund` | string | No | |
+| `budget_balance` | string | No | |
+| `approved_budget` | string | No | |
+| `uploaded_budget` | string | No | |
+| `is_active` | boolean | No | Default true |
+
+**Response (201):** `success`, `message`, `data` (created fund code with funder and partner).  
+**Response (422):** Validation error (e.g. duplicate `code`).
+
+**PUT** or **PATCH** `/fund-codes/{id}`  
+**Auth:** Bearer required.
+
+Update a fund code. Send only fields to change.
+
+**Response (200):** `success`, `message`, `data` (updated fund code).  
+**Response (404):** Fund code not found.
+
+---
+
+## Directorates
+
+**GET** `/directorates`  
+**Auth:** Bearer required.
+
+List directorates. Query: `is_active` (0|1), `per_page`, `page`.
+
+**Response (200):** `success`, `data` (array), `pagination`.
+
+**GET** `/directorates/{id}`  
+**Auth:** Bearer required.
+
+Single directorate. **Response (404):** Not found.
+
+**POST** `/directorates`  
+**Auth:** Bearer required.
+
+Create a directorate.
+
+**Request body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Directorate name |
+| `is_active` | boolean | No | Default true |
+
+**Response (201):** `success`, `message`, `data`.
+
+**PUT** or **PATCH** `/directorates/{id}`  
+**Auth:** Bearer required.
+
+Update a directorate. **Response (200):** `success`, `message`, `data`. **Response (404):** Not found.
+
+---
+
+## Divisions
+
+**GET** `/divisions`  
+**Auth:** Bearer required.
+
+List divisions. Query: `directorate_id`, `per_page`, `page`.
+
+**Response (200):** `success`, `data` (array), `pagination`.
+
+**GET** `/divisions/{id}`  
+**Auth:** Bearer required.
+
+Single division. **Response (404):** Not found.
+
+**POST** `/divisions`  
+**Auth:** Bearer required.
+
+Create a division.
+
+**Request body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `division_name` | string | Yes | Max 150 chars |
+| `division_short_name` | string | No | Max 100 chars |
+| `division_head` | integer | No | Staff ID (exists in staff) |
+| `focal_person` | integer | No | Staff ID |
+| `admin_assistant` | integer | No | Staff ID |
+| `finance_officer` | integer | No | Staff ID |
+| `directorate_id` | integer | No | Directorate ID |
+| `head_oic_id` | integer | No | Staff ID |
+| `head_oic_start_date` | date | No | |
+| `head_oic_end_date` | date | No | |
+| `director_id` | integer | No | Staff ID |
+| `director_oic_id` | integer | No | Staff ID |
+| `director_oic_start_date` | date | No | |
+| `director_oic_end_date` | date | No | |
+| `category` | string | No | Programs, Operations, Other, or empty |
+
+**Response (201):** `success`, `message`, `data`.  
+**Response (422):** Validation error.
+
+**PUT** or **PATCH** `/divisions/{id}`  
+**Auth:** Bearer required.
+
+Update a division. Send only fields to change. **Response (200):** `success`, `message`, `data`. **Response (404):** Not found.
 
 ---
 

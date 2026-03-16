@@ -1255,6 +1255,574 @@ paths:
         '401':
           description: Unauthenticated
 
+  /fund-codes:
+    get:
+      tags: [Reference data]
+      summary: List fund codes
+      description: |
+        List fund codes. Responses include funder and partner only (no activities) for light consumption by external systems.
+        Optional filters: is_active, year, division_id, funder_id, partner_id. Pagination: per_page (default 50, max 100), page.
+      operationId: fundCodesIndex
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: is_active
+          in: query
+          schema: { type: integer, enum: [0, 1] }
+        - name: year
+          in: query
+          schema: { type: integer }
+        - name: division_id
+          in: query
+          schema: { type: integer }
+        - name: funder_id
+          in: query
+          schema: { type: integer }
+        - name: partner_id
+          in: query
+          schema: { type: integer }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+      responses:
+        '200':
+          description: Paginated fund codes with funder and partner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { type: array, items: { $ref: '#/components/schemas/FundCodeItem' } }
+                  pagination:
+                    type: object
+                    properties:
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                      per_page: { type: integer }
+                      total: { type: integer }
+        '401':
+          description: Unauthenticated
+    post:
+      tags: [Reference data]
+      summary: Create fund code
+      description: Create a fund code. Returns created resource with funder and partner.
+      operationId: fundCodesStore
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, year]
+              properties:
+                code: { type: string }
+                activity: { type: string, nullable: true }
+                year: { type: integer, minimum: 2020, maximum: 2100 }
+                funder_id: { type: integer, nullable: true }
+                partner_id: { type: integer, nullable: true }
+                fund_type_id: { type: integer, nullable: true }
+                division_id: { type: integer, nullable: true }
+                cost_centre: { type: string, nullable: true }
+                amert_code: { type: string, nullable: true }
+                fund: { type: string, nullable: true }
+                budget_balance: { type: string, nullable: true }
+                approved_budget: { type: string, nullable: true }
+                uploaded_budget: { type: string, nullable: true }
+                is_active: { type: boolean, default: true }
+      responses:
+        '201':
+          description: Fund code created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/FundCodeItem' }
+        '401':
+          description: Unauthenticated
+        '422':
+          description: Validation error (e.g. duplicate code)
+
+  /fund-codes/{id}:
+    get:
+      tags: [Reference data]
+      summary: Single fund code
+      description: One fund code with funder and partner (no activities).
+      operationId: fundCodesShow
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Fund code with funder and partner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/FundCodeItem' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Fund code not found
+    put:
+      tags: [Reference data]
+      summary: Update fund code
+      operationId: fundCodesUpdate
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: string }
+                activity: { type: string, nullable: true }
+                year: { type: integer }
+                funder_id: { type: integer, nullable: true }
+                partner_id: { type: integer, nullable: true }
+                fund_type_id: { type: integer, nullable: true }
+                division_id: { type: integer, nullable: true }
+                cost_centre: { type: string, nullable: true }
+                amert_code: { type: string, nullable: true }
+                fund: { type: string, nullable: true }
+                budget_balance: { type: string, nullable: true }
+                approved_budget: { type: string, nullable: true }
+                uploaded_budget: { type: string, nullable: true }
+                is_active: { type: boolean }
+      responses:
+        '200':
+          description: Fund code updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/FundCodeItem' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Fund code not found
+        '422':
+          description: Validation error
+    patch:
+      tags: [Reference data]
+      summary: Update fund code (partial)
+      operationId: fundCodesUpdatePatch
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: string }
+                activity: { type: string, nullable: true }
+                year: { type: integer }
+                funder_id: { type: integer, nullable: true }
+                partner_id: { type: integer, nullable: true }
+                fund_type_id: { type: integer, nullable: true }
+                division_id: { type: integer, nullable: true }
+                cost_centre: { type: string, nullable: true }
+                amert_code: { type: string, nullable: true }
+                fund: { type: string, nullable: true }
+                budget_balance: { type: string, nullable: true }
+                approved_budget: { type: string, nullable: true }
+                uploaded_budget: { type: string, nullable: true }
+                is_active: { type: boolean }
+      responses:
+        '200':
+          description: Fund code updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/FundCodeItem' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Fund code not found
+        '422':
+          description: Validation error
+
+  /directorates:
+    get:
+      tags: [Reference data]
+      summary: List directorates
+      description: Optional filter is_active; pagination per_page, page.
+      operationId: directoratesIndex
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: is_active
+          in: query
+          schema: { type: integer, enum: [0, 1] }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+      responses:
+        '200':
+          description: Paginated directorates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { type: array, items: { $ref: '#/components/schemas/DirectorateItem' } }
+                  pagination: { type: object, properties: { current_page: {}, last_page: {}, per_page: {}, total: {} } }
+        '401':
+          description: Unauthenticated
+    post:
+      tags: [Reference data]
+      summary: Create directorate
+      operationId: directoratesStore
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                is_active: { type: boolean, default: true }
+      responses:
+        '201':
+          description: Directorate created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/DirectorateItem' }
+        '401':
+          description: Unauthenticated
+        '422':
+          description: Validation error
+
+  /directorates/{id}:
+    get:
+      tags: [Reference data]
+      summary: Single directorate
+      operationId: directoratesShow
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Directorate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/DirectorateItem' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Not found
+    put:
+      tags: [Reference data]
+      summary: Update directorate
+      operationId: directoratesUpdate
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                is_active: { type: boolean }
+      responses:
+        '200':
+          description: Directorate updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/DirectorateItem' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Not found
+        '422':
+          description: Validation error
+    patch:
+      tags: [Reference data]
+      summary: Update directorate (partial)
+      operationId: directoratesUpdatePatch
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                is_active: { type: boolean }
+      responses:
+        '200':
+          description: Directorate updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/DirectorateItem' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Not found
+        '422':
+          description: Validation error
+
+  /divisions:
+    get:
+      tags: [Reference data]
+      summary: List divisions
+      description: Optional filter directorate_id; pagination per_page, page.
+      operationId: divisionsIndex
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: directorate_id
+          in: query
+          schema: { type: integer }
+        - name: per_page
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+      responses:
+        '200':
+          description: Paginated divisions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { type: array, items: { $ref: '#/components/schemas/DivisionItem' } }
+                  pagination: { type: object, properties: { current_page: {}, last_page: {}, per_page: {}, total: {} } }
+        '401':
+          description: Unauthenticated
+    post:
+      tags: [Reference data]
+      summary: Create division
+      operationId: divisionsStore
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [division_name]
+              properties:
+                division_name: { type: string, maxLength: 150 }
+                division_short_name: { type: string, maxLength: 100, nullable: true }
+                division_head: { type: integer, nullable: true }
+                focal_person: { type: integer, nullable: true }
+                admin_assistant: { type: integer, nullable: true }
+                finance_officer: { type: integer, nullable: true }
+                directorate_id: { type: integer, nullable: true }
+                head_oic_id: { type: integer, nullable: true }
+                head_oic_start_date: { type: string, format: date, nullable: true }
+                head_oic_end_date: { type: string, format: date, nullable: true }
+                director_id: { type: integer, nullable: true }
+                director_oic_id: { type: integer, nullable: true }
+                director_oic_start_date: { type: string, format: date, nullable: true }
+                director_oic_end_date: { type: string, format: date, nullable: true }
+                category: { type: string, enum: [Programs, Operations, Other, ''], nullable: true }
+      responses:
+        '201':
+          description: Division created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/DivisionItem' }
+        '401':
+          description: Unauthenticated
+        '422':
+          description: Validation error
+
+  /divisions/{id}:
+    get:
+      tags: [Reference data]
+      summary: Single division
+      operationId: divisionsShow
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Division
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/DivisionItem' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Not found
+    put:
+      tags: [Reference data]
+      summary: Update division
+      operationId: divisionsUpdate
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                division_name: { type: string, maxLength: 150 }
+                division_short_name: { type: string, maxLength: 100, nullable: true }
+                division_head: { type: integer, nullable: true }
+                focal_person: { type: integer, nullable: true }
+                admin_assistant: { type: integer, nullable: true }
+                finance_officer: { type: integer, nullable: true }
+                directorate_id: { type: integer, nullable: true }
+                head_oic_id: { type: integer, nullable: true }
+                head_oic_start_date: { type: string, format: date, nullable: true }
+                head_oic_end_date: { type: string, format: date, nullable: true }
+                director_id: { type: integer, nullable: true }
+                director_oic_id: { type: integer, nullable: true }
+                director_oic_start_date: { type: string, format: date, nullable: true }
+                director_oic_end_date: { type: string, format: date, nullable: true }
+                category: { type: string, enum: [Programs, Operations, Other, ''], nullable: true }
+      responses:
+        '200':
+          description: Division updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/DivisionItem' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Not found
+        '422':
+          description: Validation error
+    patch:
+      tags: [Reference data]
+      summary: Update division (partial)
+      operationId: divisionsUpdatePatch
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                division_name: { type: string, maxLength: 150 }
+                division_short_name: { type: string, maxLength: 100, nullable: true }
+                division_head: { type: integer, nullable: true }
+                focal_person: { type: integer, nullable: true }
+                admin_assistant: { type: integer, nullable: true }
+                finance_officer: { type: integer, nullable: true }
+                directorate_id: { type: integer, nullable: true }
+                head_oic_id: { type: integer, nullable: true }
+                head_oic_start_date: { type: string, format: date, nullable: true }
+                head_oic_end_date: { type: string, format: date, nullable: true }
+                director_id: { type: integer, nullable: true }
+                director_oic_id: { type: integer, nullable: true }
+                director_oic_start_date: { type: string, format: date, nullable: true }
+                director_oic_end_date: { type: string, format: date, nullable: true }
+                category: { type: string, enum: [Programs, Operations, Other, ''], nullable: true }
+      responses:
+        '200':
+          description: Division updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/DivisionItem' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Not found
+        '422':
+          description: Validation error
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1286,7 +1854,7 @@ components:
 
     DivisionItem:
       type: object
-      description: One division in login/me/refresh divisions list.
+      description: One division in login/me/refresh divisions list or from divisions API.
       properties:
         id: { type: integer }
         division_name: { type: string, nullable: true }
@@ -1298,6 +1866,50 @@ components:
         director_id: { type: integer, nullable: true }
         directorate_id: { type: integer, nullable: true }
         category: { type: string, nullable: true }
+
+    FundCodeItem:
+      type: object
+      description: Fund code with funder and partner only (no activities); for light API consumption.
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        activity: { type: string, nullable: true }
+        year: { type: integer, nullable: true }
+        funder_id: { type: integer, nullable: true }
+        partner_id: { type: integer, nullable: true }
+        fund_type_id: { type: integer, nullable: true }
+        division_id: { type: integer, nullable: true }
+        is_active: { type: boolean, nullable: true }
+        cost_centre: { type: string, nullable: true }
+        amert_code: { type: string, nullable: true }
+        fund: { type: string, nullable: true }
+        budget_balance: { type: string, nullable: true }
+        approved_budget: { type: string, nullable: true }
+        uploaded_budget: { type: string, nullable: true }
+        created_at: { type: string, format: date-time, nullable: true }
+        updated_at: { type: string, format: date-time, nullable: true }
+        funder:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        partner:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+
+    DirectorateItem:
+      type: object
+      description: Directorate from directorates API.
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        is_active: { type: boolean, nullable: true }
+        created_at: { type: string, format: date-time, nullable: true }
+        updated_at: { type: string, format: date-time, nullable: true }
 
     ApprovalTrailItem:
       type: object
