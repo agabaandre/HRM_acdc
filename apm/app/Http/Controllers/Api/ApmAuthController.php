@@ -281,7 +281,7 @@ class ApmAuthController extends Controller
             ? (is_array($staff->associated_divisions) ? $staff->associated_divisions : [])
             : [];
 
-        return [
+        $data = [
             'user_id' => $user->user_id,
             'auth_staff_id' => $user->auth_staff_id,
             'email' => $user->email,
@@ -295,6 +295,47 @@ class ApmAuthController extends Controller
             'is_director' => $isDirector,
             'is_finance_officer' => $isFinanceOfficer,
         ];
+
+        $staffImageBase64 = $this->getStaffImageBase64($user);
+        if ($staffImageBase64 !== null) {
+            $data['staff_image_base64'] = $staffImageBase64;
+            $data['photo_data'] = $staffImageBase64; // compatibility with session/helper expecting photo_data
+        }
+
+        return $data;
+    }
+
+    /**
+     * Resolve staff photo to base64 string (no data URI prefix). Returns null if no photo or file missing.
+     * Tries Staff->photo first, then ApmApiUser->photo. Path: public uploads/staff/{filename}.
+     */
+    private function getStaffImageBase64($user): ?string
+    {
+        $user->loadMissing('staff');
+        $staff = $user->staff;
+        $photo = null;
+        if ($staff && !empty(trim($staff->photo ?? ''))) {
+            $photo = $staff->photo;
+        }
+        if ($photo === null && !empty(trim($user->photo ?? ''))) {
+            $photo = $user->photo;
+        }
+        if ($photo === null || trim($photo) === '') {
+            return null;
+        }
+        $photo = basename(trim($photo));
+        if ($photo === '' || str_contains($photo, '..')) {
+            return null;
+        }
+        $path = public_path('uploads/staff/' . $photo);
+        if (!is_file($path) || !is_readable($path)) {
+            return null;
+        }
+        $content = @file_get_contents($path);
+        if ($content === false) {
+            return null;
+        }
+        return base64_encode($content);
     }
 
     /**

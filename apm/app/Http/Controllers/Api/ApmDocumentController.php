@@ -18,6 +18,8 @@ use App\Models\Staff;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -48,10 +50,9 @@ class ApmDocumentController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid attachment path.'], 400);
         }
 
-        $path = str_replace('\\', '/', $path);
-        $basePath = realpath(storage_path('app/public')) ?: storage_path('app/public');
-        $fullPath = realpath($basePath . '/' . $path);
-        if ($fullPath === false || !str_starts_with($fullPath, $basePath) || !is_file($fullPath)) {
+        $fullPath = $this->resolveAttachmentFilePath($path);
+        if ($fullPath === null) {
+            Log::warning('Attachment file not found', ['type' => $type, 'id' => $id, 'index' => $index, 'path' => $path]);
             return response()->json(['success' => false, 'message' => 'File not found.'], 404);
         }
 
@@ -95,10 +96,9 @@ class ApmDocumentController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid attachment path.'], 400);
         }
 
-        $path = str_replace('\\', '/', $path);
-        $basePath = realpath(storage_path('app/public')) ?: storage_path('app/public');
-        $fullPath = realpath($basePath . '/' . $path);
-        if ($fullPath === false || !str_starts_with($fullPath, $basePath) || !is_file($fullPath)) {
+        $fullPath = $this->resolveAttachmentFilePath($path);
+        if ($fullPath === null) {
+            Log::warning('Attachment file not found (stream)', ['type' => $type, 'id' => $id, 'index' => $index, 'path' => $path]);
             return response()->json(['success' => false, 'message' => 'File not found.'], 404);
         }
 
@@ -114,6 +114,34 @@ class ApmDocumentController extends Controller
         }, $filename, [
             'Content-Type' => $mimeType,
         ], 'inline');
+    }
+
+    /**
+     * Resolve stored attachment path to a real file path. Path may be stored relative to
+     * storage/app/public (e.g. "uploads/special-memos/file.pdf") or with "storage/" prefix.
+     * Returns full filesystem path or null if file does not exist.
+     */
+    private function resolveAttachmentFilePath(string $path): ?string
+    {
+        $path = str_replace('\\', '/', trim($path));
+        if ($path === '' || str_contains($path, '..')) {
+            return null;
+        }
+        // Normalize: strip leading "storage/" or "/" so path is relative to public disk root
+        $path = preg_replace('#^/+#', '', $path);
+        $path = preg_replace('#^storage/+#', '', $path);
+
+        $disk = Storage::disk('public');
+        if ($disk->exists($path)) {
+            return $disk->path($path);
+        }
+        // Fallback: path might be stored as absolute under storage/app/public
+        $basePath = realpath(storage_path('app/public')) ?: storage_path('app/public');
+        $fullPath = realpath($basePath . '/' . $path);
+        if ($fullPath !== false && str_starts_with($fullPath, $basePath) && is_file($fullPath)) {
+            return $fullPath;
+        }
+        return null;
     }
 
     /**

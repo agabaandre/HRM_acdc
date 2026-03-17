@@ -109,7 +109,8 @@ paths:
       security: []
       description: |
         Authenticate with email and password. Returns JWT, user data, and divisions.
-        Passwords use Argon2i (same as staff app). User object includes role flags and associated_divisions.
+        Passwords use Argon2i (same as staff app). User object includes role flags, associated_divisions,
+        and staff_image_base64 (and photo_data) when the staff profile has a photo.
       operationId: login
       requestBody:
         required: true
@@ -152,7 +153,8 @@ paths:
       description: |
         Authenticate with Microsoft (Azure AD / Entra). For mobile app: send either the Microsoft **access_token**
         (from MSAL) or **code** + **redirect_uri** (after Microsoft redirect). API validates token / exchanges code,
-        gets user email from Graph /me, finds APM user by email, and returns same payload as email login.
+        gets user email from Graph /me, finds APM user by email, and returns same payload as email login
+        (JWT, user with staff_image_base64/photo_data when photo exists, divisions).
       operationId: microsoftLogin
       requestBody:
         required: true
@@ -1896,7 +1898,7 @@ components:
   schemas:
     UserData:
       type: object
-      description: User payload returned by login, refresh, and me (and Microsoft SSO login).
+      description: User payload returned by login, refresh, me, and Microsoft SSO login.
       properties:
         user_id: { type: integer }
         auth_staff_id: { type: integer }
@@ -1913,6 +1915,14 @@ components:
         is_admin_assistant: { type: boolean }
         is_director: { type: boolean }
         is_finance_officer: { type: boolean }
+        staff_image_base64:
+          type: string
+          nullable: true
+          description: Staff profile photo as base64 string (no data URI prefix). Omitted if no photo. Use as data URI with e.g. data:image/jpeg;base64,{value}.
+        photo_data:
+          type: string
+          nullable: true
+          description: Same as staff_image_base64; present for compatibility with session/helper.
 
     DivisionItem:
       type: object
