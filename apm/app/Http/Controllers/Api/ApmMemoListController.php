@@ -181,6 +181,8 @@ class ApmMemoListController extends Controller
                 ->select([
                     $activitiesTable . '.id',
                     $activitiesTable . '.matrix_id',
+                    $activitiesTable . '.fund_type_id',
+                    $activitiesTable . '.is_single_memo',
                     $activitiesTable . '.document_number',
                     $activitiesTable . '.activity_title',
                     $activitiesTable . '.division_id',
@@ -196,6 +198,7 @@ class ApmMemoListController extends Controller
                 ])
                 ->join($matricesTable, $activitiesTable . '.matrix_id', '=', $matricesTable . '.id')
                 ->leftJoin('staff', $activitiesTable . '.responsible_person_id', '=', 'staff.staff_id')
+                ->with(['fundType', 'activityApprovalTrails.staff', 'activityApprovalTrails.workflowDefinition', 'approvalTrails.staff', 'approvalTrails.workflowDefinition'])
                 ->where(function ($q) use ($activitiesTable, $documentType) {
                     if ($documentType === DocumentCounter::TYPE_SINGLE_MEMO) {
                         $q->where($activitiesTable . '.is_single_memo', 1);
@@ -239,7 +242,9 @@ class ApmMemoListController extends Controller
                 if ($respName === '') {
                     $respName = 'N/A';
                 }
-                $rows->push([
+                $trails = ($a->is_single_memo ?? false) ? ($a->approvalTrails ?? collect()) : ($a->activityApprovalTrails ?? collect());
+                $enrich = $this->enrichMemoRowWithApprovalAndFundType($trails, $a->fundType ?? null);
+                $rows->push(array_merge([
                     'document_type' => $documentType,
                     'id' => $a->id,
                     'matrix_id' => $a->matrix_id,
@@ -253,7 +258,7 @@ class ApmMemoListController extends Controller
                     'date_to' => $a->date_to,
                     'responsible_person_name' => $respName,
                     'created_at' => $a->created_at?->toDateTimeString(),
-                ]);
+                ], $enrich));
             }
             return $rows;
         }
@@ -270,14 +275,20 @@ class ApmMemoListController extends Controller
             return $rows;
         }
 
-        $with = [];
+        $with = ['fundType'];
         if (method_exists($model, 'responsiblePerson')) {
             $with[] = 'responsiblePerson';
         }
         if (method_exists($model, 'staff')) {
             $with[] = 'staff';
         }
-        $q = $model::query()->when(!empty($with), fn ($q) => $q->with($with))
+        if ($documentType === DocumentCounter::TYPE_SERVICE_REQUEST && method_exists($model, 'serviceRequestApprovalTrails')) {
+            $with[] = 'serviceRequestApprovalTrails';
+        } elseif (method_exists($model, 'approvalTrails')) {
+            $with[] = 'approvalTrails.staff';
+            $with[] = 'approvalTrails.workflowDefinition';
+        }
+        $q = $model::query()->with($with)
             ->whereIn('division_id', $divisionIds)
             ->where('overall_status', $status)
             ->orderBy('created_at', 'desc');
@@ -308,7 +319,11 @@ class ApmMemoListController extends Controller
             $rowTitle = $documentType === DocumentCounter::TYPE_SERVICE_REQUEST
                 ? ($m->title ?? $m->service_title ?? '—')
                 : ($m->activity_title ?? '—');
-            $rows->push([
+            $trails = $documentType === DocumentCounter::TYPE_SERVICE_REQUEST
+                ? ($m->serviceRequestApprovalTrails ?? collect())
+                : ($m->approvalTrails ?? collect());
+            $enrich = $this->enrichMemoRowWithApprovalAndFundType($trails, $m->fundType ?? null);
+            $rows->push(array_merge([
                 'document_type' => $documentType,
                 'id' => $m->id,
                 'matrix_id' => null,
@@ -322,8 +337,73 @@ class ApmMemoListController extends Controller
                 'date_to' => $m->date_to ?? null,
                 'responsible_person_name' => $respName,
                 'created_at' => $m->created_at?->toDateTimeString(),
-            ]);
+            ], $enrich));
         }
         return $rows;
+    }
+
+    /**
+     * Return fund_type, approval_trail, current_approval_level_role, and approver_name for a memo list row.
+     * @param \Illuminate\Support\Collection $trails ApprovalTrail, ActivityApprovalTrail, or ServiceRequestApprovalTrail collection
+     * @param object|null $fundType FundType model or null
+     */
+    private function enrichMemoRowWithApprovalAndFundType(Collection $trails, ?object $fundType): array
+    {
+        $fundTypePayload = null;
+        if ($fundType && isset($fundType->id)) {
+            $fundTypePayload = ['id' => $fundType->id, 'name' => $fundType->name ?? null];
+        }
+
+        $approvalTrail = [];
+        $currentRole = null;
+        $approverName = null;
+
+        $sorted = $trails->isEmpty() ? collect() : $trails->sortBy(function ($t) {
+            $order = $t->approval_order ?? 999;
+            $ts = $t->created_at ? \Carbon\Carbon::parse($t->created_at)->timestamp : 0;
+            return sprintf('%03d-%010d', $order, $ts);
+        })->values();
+        foreach ($sorted as $t) {
+            $staffName = null;
+            $role = null;
+            if (isset($t->staff_id) && $t->relationLoaded('staff') && $t->staff) {
+                $s = $t->staff;
+                $staffName = trim(($s->title ?? '') . ' ' . ($s->fname ?? '') . ' ' . ($s->lname ?? '') . ' ' . ($s->oname ?? ''));
+            }
+            if ($t->relationLoaded('workflowDefinition') && $t->workflowDefinition) {
+                $role = $t->workflowDefinition->role ?? null;
+            } elseif (method_exists($t, 'getApproverRoleNameAttribute')) {
+                $role = $t->approver_role_name ?? null;
+            }
+            $approvalTrail[] = [
+                'id' => $t->id ?? null,
+                'approval_order' => $t->approval_order ?? null,
+                'action' => $t->action ?? null,
+                'remarks' => $t->remarks ?? null,
+                'staff_id' => $t->staff_id ?? null,
+                'staff_name' => $staffName,
+                'role' => $role,
+                'created_at' => $t->created_at ? \Carbon\Carbon::parse($t->created_at)->toIso8601String() : null,
+            ];
+        }
+        $last = $sorted->isEmpty() ? null : $sorted->last();
+        if ($last) {
+            if ($last->relationLoaded('workflowDefinition') && $last->workflowDefinition) {
+                $currentRole = $last->workflowDefinition->role ?? null;
+            } elseif (method_exists($last, 'getApproverRoleNameAttribute')) {
+                $currentRole = $last->approver_role_name ?? null;
+            }
+            if (isset($last->staff_id) && $last->relationLoaded('staff') && $last->staff) {
+                $s = $last->staff;
+                $approverName = trim(($s->title ?? '') . ' ' . ($s->fname ?? '') . ' ' . ($s->lname ?? '') . ' ' . ($s->oname ?? ''));
+            }
+        }
+
+        return [
+            'fund_type' => $fundTypePayload,
+            'approval_trail' => array_values($approvalTrail),
+            'current_approval_level_role' => $currentRole,
+            'approver_name' => $approverName,
+        ];
     }
 }
