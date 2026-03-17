@@ -91,7 +91,12 @@ class ApmApiUser extends Authenticatable implements JWTSubject
     {
         $staff = $this->staff;
         $name = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : ($this->name ?? $this->email);
-        $photo = ($staff && !empty(trim($staff->photo ?? ''))) ? $staff->photo : ($this->photo ?? null);
+        // Photo from APM staff table (fresh), same source as web auth session user->photo
+        $staffId = (int) ($this->auth_staff_id ?? 0);
+        $photoFromStaff = $staffId > 0
+            ? Staff::query()->where('staff_id', $staffId)->value('photo')
+            : null;
+        $photo = !empty(trim((string) $photoFromStaff)) ? trim((string) $photoFromStaff) : ($this->photo ?? null);
         $data = [
             'staff_id' => $this->auth_staff_id,
             'division_id' => $staff->division_id ?? null,
