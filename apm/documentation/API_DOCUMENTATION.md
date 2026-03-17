@@ -54,7 +54,7 @@ Request body (JSON):
 
 **Response (200):** `success`, `data.access_token`, `data.token_type` (`bearer`), `data.expires_in` (seconds), `data.user`, `data.divisions`.
 
-`data.user` includes: `user_id`, `auth_staff_id`, `email`, `name`, `division_id`, `associated_divisions` (array of division IDs), `role`, `status`, `is_division_head`, `is_admin_assistant`, `is_director`, `is_finance_officer`.
+`data.user` includes: `user_id`, `auth_staff_id`, `email`, `name`, `division_id`, `associated_divisions` (array of division IDs), `role`, `status`, `is_division_head`, `is_admin_assistant`, `is_director`, `is_finance_officer`, and when the staff has a profile photo: `staff_image_base64` (base64 string) and `photo_data` (same, for compatibility).
 
 `data.divisions` is the list of divisions the user can access (primary + associated), each with `id`, `division_name`, `division_short_name`, `division_head`, `focal_person`, `admin_assistant`, `finance_officer`, `director_id`, `directorate_id`, `category`.
 
