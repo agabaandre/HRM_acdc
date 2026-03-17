@@ -307,7 +307,7 @@ class ApmAuthController extends Controller
 
     /**
      * Resolve staff photo to base64 string (no data URI prefix). Returns null if no photo or file missing.
-     * Tries Staff->photo first, then ApmApiUser->photo. Path: public uploads/staff/{filename}.
+     * Tries Staff->photo first, then ApmApiUser->photo. Tries multiple path roots (public, parent dirs, storage).
      */
     private function getStaffImageBase64($user): ?string
     {
@@ -327,8 +327,8 @@ class ApmAuthController extends Controller
         if ($photo === '' || str_contains($photo, '..')) {
             return null;
         }
-        $path = public_path('uploads/staff/' . $photo);
-        if (!is_file($path) || !is_readable($path)) {
+        $path = $this->resolveStaffPhotoPath($photo);
+        if ($path === null) {
             return null;
         }
         $content = @file_get_contents($path);
@@ -336,6 +336,33 @@ class ApmAuthController extends Controller
             return null;
         }
         return base64_encode($content);
+    }
+
+    /**
+     * Try multiple possible roots for uploads/staff (public, parent dirs for staff/apm, storage, config).
+     */
+    private function resolveStaffPhotoPath(string $filename): ?string
+    {
+        $candidates = [
+            public_path('uploads/staff/' . $filename),
+            base_path('uploads/staff/' . $filename),
+            base_path('../uploads/staff/' . $filename),
+            base_path('../../uploads/staff/' . $filename),
+            storage_path('app/public/uploads/staff/' . $filename),
+        ];
+        $customRoot = config('services.staff_api.uploads_path') ?? env('STAFF_UPLOADS_PATH');
+        if (!empty($customRoot) && is_string($customRoot)) {
+            $candidates[] = rtrim($customRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'staff' . DIRECTORY_SEPARATOR . $filename;
+        }
+        foreach ($candidates as $path) {
+            if ($path !== '' && is_file($path) && is_readable($path)) {
+                return $path;
+            }
+        }
+        if (config('app.debug')) {
+            Log::debug('Staff photo not found', ['filename' => $filename, 'tried' => $candidates]);
+        }
+        return null;
     }
 
     /**
