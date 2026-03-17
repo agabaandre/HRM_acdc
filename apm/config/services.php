@@ -37,6 +37,7 @@ return [
 
     'staff_api' => [
         'base_url' => env('BASE_URL', 'http://localhost/staff/'),
+        'uploads_path' => env('STAFF_UPLOADS_PATH'), // optional; e.g. /var/www/staff/uploads for staff photo resolution
         'token' => env('STAFF_API_TOKEN', 'YWZyY2FjZGNzdGFmZnRyYWNrZXI'),
         'username' => env('STAFF_API_USERNAME'),
         'password' => env('STAFF_API_PASSWORD'),
