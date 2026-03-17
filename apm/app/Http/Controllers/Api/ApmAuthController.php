@@ -307,7 +307,9 @@ class ApmAuthController extends Controller
 
     /**
      * Resolve staff photo to base64 string (no data URI prefix). Returns null if no photo or file missing.
-     * Tries Staff->photo first, then ApmApiUser->photo. Tries multiple path roots (public, parent dirs, storage).
+     * Tries Staff->photo first, then ApmApiUser->photo.
+     * Tries (1) filesystem paths, then (2) the same URL the web uses (base_url + /uploads/staff/ + filename)
+     * so the API finds the image even when the web server serves uploads from a different path than public_path().
      */
     private function getStaffImageBase64($user): ?string
     {
@@ -327,15 +329,26 @@ class ApmAuthController extends Controller
         if ($photo === '' || str_contains($photo, '..')) {
             return null;
         }
+
+        // 1) Try filesystem (public, parent dirs, storage, STAFF_UPLOADS_PATH)
         $path = $this->resolveStaffPhotoPath($photo);
-        if ($path === null) {
-            return null;
+        if ($path !== null) {
+            $content = @file_get_contents($path);
+            if ($content !== false) {
+                return base64_encode($content);
+            }
         }
-        $content = @file_get_contents($path);
-        if ($content === false) {
-            return null;
+
+        // 2) Fallback: fetch via the same URL the web uses (browser requests this; web server serves the file)
+        $content = $this->fetchStaffPhotoViaUrl($photo);
+        if ($content !== null) {
+            return base64_encode($content);
         }
-        return base64_encode($content);
+
+        if (config('app.debug')) {
+            Log::debug('Staff photo not found (disk or URL)', ['filename' => $photo]);
+        }
+        return null;
     }
 
     /**
@@ -359,10 +372,41 @@ class ApmAuthController extends Controller
                 return $path;
             }
         }
-        if (config('app.debug')) {
-            Log::debug('Staff photo not found', ['filename' => $filename, 'tried' => $candidates]);
-        }
         return null;
+    }
+
+    /**
+     * Fetch staff photo via the same URL the web app uses (base_url + /uploads/staff/ + filename).
+     * The web works because the browser requests this URL and the server serves the file; PHP may not
+     * have the same filesystem path, so we fetch via HTTP to use the same path the server uses.
+     */
+    private function fetchStaffPhotoViaUrl(string $filename): ?string
+    {
+        $baseUrl = rtrim(config('app.url'), '/');
+        if ($baseUrl === '') {
+            return null;
+        }
+        $url = $baseUrl . '/uploads/staff/' . $filename;
+        try {
+            $response = Http::timeout(5)->get($url);
+            if (!$response->successful()) {
+                return null;
+            }
+            $body = $response->body();
+            if ($body === '' || strlen($body) < 100) {
+                return null;
+            }
+            $contentType = $response->header('Content-Type') ?? '';
+            if (!str_contains($contentType, 'image/') && !str_contains($contentType, 'octet-stream')) {
+                return null;
+            }
+            return $body;
+        } catch (\Throwable $e) {
+            if (config('app.debug')) {
+                Log::debug('Staff photo URL fetch failed', ['url' => $url, 'error' => $e->getMessage()]);
+            }
+            return null;
+        }
     }
 
     /**
