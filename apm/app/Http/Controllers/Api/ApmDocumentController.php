@@ -363,7 +363,9 @@ class ApmDocumentController extends Controller
         $data['document_type'] = 'change_request';
         $data['source_id'] = $doc->parent_memo_id;
         $data['source_type'] = $this->changeRequestParentModelToSourceType($doc->parent_memo_model);
-        $data['internal_participants'] = $this->formatInternalParticipantsFromRaw($data['internal_participants'] ?? []);
+        // Use raw DB value: column can be double-encoded JSON (string of JSON string), so decode until we get an array
+        $rawIp = $doc->getRawOriginal('internal_participants');
+        $data['internal_participants'] = $this->formatInternalParticipantsFromRaw($this->decodeJsonFieldUntilArray($rawIp));
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'change_request', $id);
         $data['print_url'] = $this->getPrintUrl('change_request', $doc);
@@ -411,6 +413,29 @@ class ApmDocumentController extends Controller
             }
         }
         return $data;
+    }
+
+    /**
+     * Decode a JSON field that may be double-encoded (e.g. DB stores a JSON string whose value is another JSON string).
+     * Keeps decoding until an array is obtained or no longer a string. Returns [] if invalid or not array.
+     */
+    private function decodeJsonFieldUntilArray($value): array
+    {
+        $maxDecodes = 5;
+        while ($maxDecodes-- > 0) {
+            if ($value === null || !is_string($value)) {
+                return is_array($value) ? $value : [];
+            }
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+            if (!is_string($decoded)) {
+                return [];
+            }
+            $value = $decoded;
+        }
+        return [];
     }
 
     /**
@@ -605,8 +630,9 @@ class ApmDocumentController extends Controller
     }
 
     /**
-     * Format raw internal_participants (object keyed by staff_id) as a list with staff names,
-     * matching the shape used by the matrix/activity endpoints.
+     * Format raw internal_participants (object keyed by staff_id) as a list with staff names/division resolved from Staff.
+     * Returns every participant from the raw data; only skips staff_id < 1 (invalid placeholders).
+     * Name/division are null when Staff record is not found.
      */
     private function formatInternalParticipantsFromRaw($raw): array
     {
@@ -616,7 +642,7 @@ class ApmDocumentController extends Controller
         if (!is_array($raw) || empty($raw)) {
             return [];
         }
-        $staffIds = array_values(array_unique(array_filter(array_map('intval', array_keys($raw)))));
+        $staffIds = array_values(array_unique(array_filter(array_map('intval', array_keys($raw)), fn ($id) => $id > 0)));
         $staffById = $staffIds ? Staff::with('division')->whereIn('staff_id', $staffIds)->get()->keyBy('staff_id') : collect();
         $list = [];
         foreach ($raw as $staffId => $participantData) {
@@ -624,8 +650,14 @@ class ApmDocumentController extends Controller
                 continue;
             }
             $staffId = (int) $staffId;
+            if ($staffId < 1) {
+                continue;
+            }
             $staff = $staffById->get($staffId);
             $participantName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
+            if ($participantName !== null && $participantName === '') {
+                $participantName = null;
+            }
             $division = $staff && $staff->relationLoaded('division') ? $staff->division : null;
             $list[] = [
                 'staff_id' => $staffId,

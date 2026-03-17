@@ -35,10 +35,13 @@ class ApmPendingController extends Controller
             $pendingAsLists[$cat] = array_values($items);
         }
 
+        $totalPending = $summaryStats['total_pending'] ?? 0;
+        $pendingValue = $totalPending === 0 ? null : $pendingAsLists;
+
         return response()->json([
             'success' => true,
             'data' => [
-                'pending' => $pendingAsLists,
+                'pending' => $pendingValue,
                 'summary' => $this->summaryForApi($summaryStats),
                 'filters' => ['category' => $category],
             ],
