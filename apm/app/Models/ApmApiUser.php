@@ -91,7 +91,8 @@ class ApmApiUser extends Authenticatable implements JWTSubject
     {
         $staff = $this->staff;
         $name = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : ($this->name ?? $this->email);
-        return [
+        $photo = ($staff && !empty(trim($staff->photo ?? ''))) ? $staff->photo : ($this->photo ?? null);
+        $data = [
             'staff_id' => $this->auth_staff_id,
             'division_id' => $staff->division_id ?? null,
             'permissions' => [],
@@ -99,5 +100,9 @@ class ApmApiUser extends Authenticatable implements JWTSubject
             'email' => $this->email ?? $staff->work_email ?? null,
             'base_url' => config('app.url'),
         ];
+        if ($photo !== null && $photo !== '') {
+            $data['photo'] = $photo;
+        }
+        return $data;
     }
 }

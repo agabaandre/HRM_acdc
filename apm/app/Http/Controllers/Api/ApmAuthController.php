@@ -376,24 +376,53 @@ class ApmAuthController extends Controller
     }
 
     /**
-     * Fetch staff photo via the same URL the web app uses (base_url + /uploads/staff/ + filename).
-     * The web works because the browser requests this URL and the server serves the file; PHP may not
-     * have the same filesystem path, so we fetch via HTTP to use the same path the server uses.
+     * Fetch staff photo via the same URL(s) the web app uses (base_url + /uploads/staff/ + filename).
+     * The web often uses the main staff app BASE_URL (e.g. .../demo_staff/) for uploads, not the APM path
+     * (.../demo_staff/apm/), so we try multiple base URLs.
      */
     private function fetchStaffPhotoViaUrl(string $filename): ?string
     {
-        $baseUrl = rtrim(config('app.url'), '/');
-        if ($baseUrl === '') {
-            return null;
+        $candidateBaseUrls = $this->getStaffPhotoBaseUrls();
+        foreach ($candidateBaseUrls as $baseUrl) {
+            if ($baseUrl === '') {
+                continue;
+            }
+            $url = rtrim($baseUrl, '/') . '/uploads/staff/' . $filename;
+            $content = $this->fetchUrlAsImage($url);
+            if ($content !== null) {
+                return $content;
+            }
         }
-        $url = $baseUrl . '/uploads/staff/' . $filename;
+        return null;
+    }
+
+    /**
+     * Base URLs to try for staff uploads (web may use main staff app URL, not APM).
+     */
+    private function getStaffPhotoBaseUrls(): array
+    {
+        $appUrl = rtrim(config('app.url'), '/');
+        $staffBaseUrl = rtrim(config('services.staff_api.base_url', ''), '/');
+        $urls = array_filter([$appUrl, $staffBaseUrl], fn ($u) => $u !== '');
+        // If app is at .../demo_staff/apm, also try .../demo_staff (uploads often live under main app)
+        if ($appUrl !== '' && str_ends_with($appUrl, '/apm')) {
+            $urls[] = preg_replace('#/apm$#', '', $appUrl);
+        }
+        return array_values(array_unique($urls));
+    }
+
+    /**
+     * GET a URL and return body if response looks like an image; null otherwise.
+     */
+    private function fetchUrlAsImage(string $url): ?string
+    {
         try {
             $response = Http::timeout(5)->get($url);
             if (!$response->successful()) {
                 return null;
             }
             $body = $response->body();
-            if ($body === '' || strlen($body) < 100) {
+            if ($body === '' || strlen($body) < 50) {
                 return null;
             }
             $contentType = $response->header('Content-Type') ?? '';
