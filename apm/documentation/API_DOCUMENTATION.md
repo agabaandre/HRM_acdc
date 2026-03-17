@@ -188,7 +188,8 @@ All of these require the `Authorization: Bearer <token>` header.
 | GET | `/matrices/{matrixId}` | Matrix detail (includes division_schedule and activities with internal_participants as lists with names) |
 | POST | `/matrices/{matrixId}` | Approve or return matrix |
 | GET | `/matrices/{matrixId}/activities/{activityId}` | Activity detail |
-| POST | `/matrices/{matrixId}/activities/{activityId}` | Pass, return, or convert to single memo |
+| POST | `/matrices/{matrixId}/activities` | Activity action (bulk): body `activity_ids[]`, `action` (passed/returned/convert_to_single_memo), optional `comment`, `available_budget` |
+| POST | `/matrices/{matrixId}/activities/{activityId}` | Activity action (single): body `action`, optional `comment`, `available_budget` |
 | GET | `/memo-list/pending` | Pending memos for user’s divisions (primary + associated) |
 | GET | `/memo-list/approved` | Approved memos for user’s divisions (primary + associated) |
 | GET | `/reference-data` | Lookup data (divisions, staff, fund codes, etc.). Optional `?include=divisions,staff` |

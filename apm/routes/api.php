@@ -75,6 +75,7 @@ Route::prefix('apm/v1')->group(function () {
         Route::post('matrices/{matrixId}', [ApmMatrixController::class, 'updateStatus']);
 
         Route::get('matrices/{matrixId}/activities/{activityId}', [ApmActivityController::class, 'show']);
+        Route::post('matrices/{matrixId}/activities', [ApmActivityController::class, 'updateStatusBulk']);
         Route::post('matrices/{matrixId}/activities/{activityId}', [ApmActivityController::class, 'updateStatus']);
 
         Route::get('memo-list/pending', [ApmMemoListController::class, 'pending']);

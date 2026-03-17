@@ -39,7 +39,81 @@ class ApmActivityController extends Controller
     }
 
     /**
-     * Activity action: passed, returned, convert_to_single_memo (matrix activity only).
+     * Activity action (bulk): pass, return, or convert for multiple activities in the matrix.
+     * POST /matrices/{matrixId}/activities with body { "activity_ids": [1,2,3], "action": "passed", "comment": "...", "available_budget": 0 }.
+     */
+    public function updateStatusBulk(Request $request, int $matrixId): JsonResponse
+    {
+        $request->validate([
+            'activity_ids' => 'required|array',
+            'activity_ids.*' => 'integer|min:1',
+            'action' => 'required|in:passed,returned,convert_to_single_memo',
+            'comment' => 'nullable|string|max:1000',
+            'available_budget' => 'nullable|numeric|min:0',
+        ]);
+
+        $sessionData = $request->attributes->get('api_user_session');
+        if (!$sessionData) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $activityIds = array_values(array_unique(array_filter($request->input('activity_ids', []), fn ($id) => is_numeric($id) && (int) $id > 0)));
+        if (empty($activityIds)) {
+            return response()->json(['success' => false, 'message' => 'At least one valid activity_id is required.'], 422);
+        }
+
+        $matrix = Matrix::find($matrixId);
+        if (!$matrix) {
+            return response()->json(['success' => false, 'message' => 'Matrix not found.'], 404);
+        }
+
+        $processed = [];
+        $errors = [];
+        $staffId = (int) ($sessionData['staff_id'] ?? 0);
+        $action = $request->action;
+        $comment = $request->comment ?? ($action === 'passed' ? 'Passed' : '');
+        $availableBudget = $request->filled('available_budget') ? (float) $request->available_budget : null;
+
+        foreach ($activityIds as $activityId) {
+            $activity = Activity::where('matrix_id', $matrixId)->where('is_single_memo', 0)->find($activityId);
+            if (!$activity) {
+                $errors[] = ['activity_id' => $activityId, 'message' => 'Activity not found or not a matrix activity.'];
+                continue;
+            }
+            try {
+                $this->processActivityAction($activity, $action, $comment, $availableBudget, $staffId);
+                $processed[] = $activityId;
+            } catch (\Throwable $e) {
+                $errors[] = ['activity_id' => $activityId, 'message' => $e->getMessage()];
+                Log::warning('Activity action failed', ['activity_id' => $activityId, 'error' => $e->getMessage()]);
+            }
+        }
+
+        $matrix->refresh();
+        if ($action !== 'passed' && $action !== 'convert_to_single_memo' && !empty($processed)) {
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix') ?: 1;
+            $matrix->forward_workflow_id = $assignedWorkflowId;
+            $matrix->overall_status = 'pending';
+            $matrix->update();
+        }
+
+        return response()->json([
+            'success' => count($errors) === 0,
+            'message' => count($processed) === count($activityIds)
+                ? 'All activities updated successfully.'
+                : (count($processed) > 0 ? 'Some activities updated; see errors.' : 'No activities were updated.'),
+            'data' => [
+                'action' => $action,
+                'matrix_id' => $matrixId,
+                'processed_activity_ids' => $processed,
+                'errors' => $errors,
+            ],
+        ]);
+    }
+
+    /**
+     * Activity action (single): pass, return, or convert for one activity.
+     * POST /matrices/{matrixId}/activities/{activityId} with body { "action": "passed", "comment": "...", "available_budget": 0 }.
      */
     public function updateStatus(Request $request, int $matrixId, int $activityId): JsonResponse
     {
@@ -60,27 +134,16 @@ class ApmActivityController extends Controller
         }
 
         $staffId = (int) ($sessionData['staff_id'] ?? 0);
-
-        $trail = new ActivityApprovalTrail();
-        $trail->remarks = $request->comment ?? 'Passed';
-        $trail->action = $request->action;
-        $trail->approval_order = $activity->matrix->approval_level;
-        $trail->activity_id = $activity->id;
-        $trail->matrix_id = $activity->matrix_id;
-        $trail->staff_id = $staffId;
-        $trail->is_archived = 0;
-        $trail->save();
-
-        if ($request->action === 'passed' && $request->filled('available_budget')) {
-            $activity->available_budget = $request->available_budget;
-            $activity->save();
-        }
+        $this->processActivityAction(
+            $activity,
+            $request->action,
+            $request->comment ?? ($request->action === 'passed' ? 'Passed' : ''),
+            $request->filled('available_budget') ? (float) $request->available_budget : null,
+            $staffId
+        );
 
         $matrix = $activity->matrix;
-
-        if ($request->action === 'convert_to_single_memo') {
-            $this->convertActivityToSingleMemo($activity, $request->comment);
-        } elseif ($request->action !== 'passed') {
+        if ($request->action !== 'passed' && $request->action !== 'convert_to_single_memo') {
             $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix') ?: 1;
             $matrix->forward_workflow_id = $assignedWorkflowId;
             $matrix->overall_status = 'pending';
@@ -92,6 +155,31 @@ class ApmActivityController extends Controller
             'message' => 'Activity updated successfully.',
             'data' => ['action' => $request->action, 'matrix_id' => $matrixId, 'activity_id' => $activityId],
         ]);
+    }
+
+    /**
+     * Apply one action (passed, returned, convert_to_single_memo) to a single matrix activity.
+     */
+    private function processActivityAction(Activity $activity, string $action, string $comment, ?float $availableBudget, int $staffId): void
+    {
+        $trail = new ActivityApprovalTrail();
+        $trail->remarks = $comment;
+        $trail->action = $action;
+        $trail->approval_order = $activity->matrix->approval_level;
+        $trail->activity_id = $activity->id;
+        $trail->matrix_id = $activity->matrix_id;
+        $trail->staff_id = $staffId;
+        $trail->is_archived = 0;
+        $trail->save();
+
+        if ($action === 'passed' && $availableBudget !== null) {
+            $activity->available_budget = $availableBudget;
+            $activity->save();
+        }
+
+        if ($action === 'convert_to_single_memo') {
+            $this->convertActivityToSingleMemo($activity, $comment);
+        }
     }
 
     private function convertActivityToSingleMemo(Activity $activity, ?string $comment): void

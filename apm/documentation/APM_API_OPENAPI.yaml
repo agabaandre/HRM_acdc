@@ -1044,6 +1044,55 @@ paths:
         '403':
           description: Not current approver
 
+  /matrices/{matrixId}/activities:
+    post:
+      tags: [Activities]
+      summary: Activity action (bulk)
+      description: |
+        Pass, return, or convert to single memo for **multiple** matrix activities in one request.
+        Use this when updating several activities at once; for a single activity you can use
+        `POST /matrices/{matrixId}/activities/{activityId}` instead.
+      operationId: activityUpdateStatusBulk
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: matrixId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [activity_ids, action]
+              properties:
+                activity_ids:
+                  type: array
+                  items: { type: integer }
+                  description: List of activity IDs in this matrix to apply the action to.
+                action:
+                  type: string
+                  enum: [passed, returned, convert_to_single_memo]
+                  description: Action to apply (pass, return, or convert to single memo).
+                comment:
+                  type: string
+                  maxLength: 1000
+                  description: Optional comment (e.g. for approval trail).
+                available_budget:
+                  type: number
+                  minimum: 0
+                  description: Optional; used when action is `passed`.
+      responses:
+        '200':
+          description: Success (may include partial success; check `data.processed_activity_ids` and `data.errors`).
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Matrix not found
+        '422':
+          description: Validation error (e.g. empty or invalid activity_ids)
+
   /matrices/{matrixId}/activities/{activityId}:
     get:
       tags: [Activities]
@@ -1067,8 +1116,10 @@ paths:
           description: Not found
     post:
       tags: [Activities]
-      summary: Activity action
-      description: Pass, return, or convert to single memo (matrix activities only).
+      summary: Activity action (single)
+      description: |
+        Pass, return, or convert to single memo for **one** matrix activity (path `activityId`).
+        For multiple activities use `POST /matrices/{matrixId}/activities` with body `activity_ids`.
       operationId: activityUpdateStatus
       security: [{ bearerAuth: [] }]
       parameters:
@@ -1087,14 +1138,25 @@ paths:
               type: object
               required: [action]
               properties:
-                action: { type: string, enum: [passed, returned, convert_to_single_memo] }
-                comment: { type: string }
-                available_budget: { type: number }
+                action:
+                  type: string
+                  enum: [passed, returned, convert_to_single_memo]
+                  description: Action (pass, return, or convert to single memo).
+                comment:
+                  type: string
+                  maxLength: 1000
+                  description: Optional comment for approval trail.
+                available_budget:
+                  type: number
+                  minimum: 0
+                  description: Optional; used when action is `passed`.
       responses:
         '200':
           description: Success
+        '401':
+          description: Unauthenticated
         '404':
-          description: Not found
+          description: Activity not found or not a matrix activity
 
   /memo-list/pending:
     get:
