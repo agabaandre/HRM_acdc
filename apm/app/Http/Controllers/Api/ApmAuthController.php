@@ -12,6 +12,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class ApmAuthController extends Controller
@@ -306,47 +308,68 @@ class ApmAuthController extends Controller
     }
 
     /**
-     * Resolve staff photo to base64 string (no data URI prefix). Returns null if no photo or file missing.
-     * Tries Staff->photo first, then ApmApiUser->photo.
-     * Tries (1) filesystem paths, then (2) the same URL the web uses (base_url + /uploads/staff/ + filename)
-     * so the API finds the image even when the web server serves uploads from a different path than public_path().
+     * Staff image as base64. Always reads current row from APM staff table (same as web auth: staff.photo).
+     * Web (CodeIgniter): session user from staff table, image at base_url/uploads/staff/{photo}.
+     * APM staff UI may use profile_photo on staff (storage/staff-photos/…) when that column exists.
      */
     private function getStaffImageBase64($user): ?string
     {
-        $user->loadMissing('staff');
-        $staff = $user->staff;
-        $photo = null;
-        if ($staff && !empty(trim($staff->photo ?? ''))) {
-            $photo = $staff->photo;
+        $staffId = (int) ($user->auth_staff_id ?? 0);
+        if ($staffId <= 0) {
+            $fallback = trim((string) ($user->photo ?? ''));
+            return $fallback !== '' ? $this->encodeStaffUploadsPhotoAsBase64(basename($fallback)) : null;
         }
-        if ($photo === null && !empty(trim($user->photo ?? ''))) {
-            $photo = $user->photo;
+
+        $staffRow = Staff::query()->where('staff_id', $staffId)->first();
+        if (!$staffRow) {
+            $fallback = trim((string) ($user->photo ?? ''));
+            return $fallback !== '' ? $this->encodeStaffUploadsPhotoAsBase64(basename($fallback)) : null;
         }
-        if ($photo === null || trim($photo) === '') {
-            return null;
+
+        // APM Staff create/edit: profile_photo path on public disk (e.g. staff-photos/xxx.jpg)
+        if (Schema::hasColumn('staff', 'profile_photo')) {
+            $profilePath = trim((string) ($staffRow->getAttributes()['profile_photo'] ?? $staffRow->profile_photo ?? ''));
+            if ($profilePath !== '' && !str_contains($profilePath, '..')) {
+                $disk = Storage::disk('public');
+                if ($disk->exists($profilePath)) {
+                    $content = $disk->get($profilePath);
+                    if ($content !== false && $content !== '') {
+                        return base64_encode($content);
+                    }
+                }
+            }
         }
-        $photo = basename(trim($photo));
-        if ($photo === '' || str_contains($photo, '..')) {
+
+        // Same as web auth: staff.photo filename under uploads/staff/
+        $photo = trim((string) ($staffRow->photo ?? ''));
+        if ($photo === '') {
             return null;
         }
 
-        // 1) Try filesystem (public, parent dirs, storage, STAFF_UPLOADS_PATH)
-        $path = $this->resolveStaffPhotoPath($photo);
+        return $this->encodeStaffUploadsPhotoAsBase64(basename($photo));
+    }
+
+    /**
+     * Encode uploads/staff/{filename} to base64: disk paths then HTTP (main staff BASE_URL).
+     */
+    private function encodeStaffUploadsPhotoAsBase64(string $filename): ?string
+    {
+        if ($filename === '' || str_contains($filename, '..')) {
+            return null;
+        }
+        $path = $this->resolveStaffPhotoPath($filename);
         if ($path !== null) {
             $content = @file_get_contents($path);
             if ($content !== false) {
                 return base64_encode($content);
             }
         }
-
-        // 2) Fallback: fetch via the same URL the web uses (browser requests this; web server serves the file)
-        $content = $this->fetchStaffPhotoViaUrl($photo);
+        $content = $this->fetchStaffPhotoViaUrl($filename);
         if ($content !== null) {
             return base64_encode($content);
         }
-
         if (config('app.debug')) {
-            Log::debug('Staff photo not found (disk or URL)', ['filename' => $photo]);
+            Log::debug('Staff photo not found (disk or URL)', ['filename' => $filename]);
         }
         return null;
     }
