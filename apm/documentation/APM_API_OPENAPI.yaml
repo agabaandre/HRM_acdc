@@ -1923,6 +1923,27 @@ components:
           type: string
           nullable: true
           description: Same as staff_image_base64; present for compatibility with session/helper.
+        job:
+          type: object
+          nullable: true
+          description: From APM staff profile.
+          properties:
+            job_name: { type: string, nullable: true }
+            title: { type: string, nullable: true, description: Name prefix (e.g. Dr, Mr) }
+            grade: { type: string, nullable: true }
+        supervisors:
+          type: array
+          description: Supervisors from staff.supervisor_id. Empty if none.
+          items: { $ref: '#/components/schemas/UserSupervisor' }
+
+    UserSupervisor:
+      type: object
+      properties:
+        staff_id: { type: integer }
+        name: { type: string }
+        email: { type: string, nullable: true }
+        job_name: { type: string, nullable: true }
+        title: { type: string, nullable: true }
 
     DivisionItem:
       type: object
