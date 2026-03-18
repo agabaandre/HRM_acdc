@@ -1481,7 +1481,7 @@ private function _can_first_supervisor_see_endterm($entry_id, $staff_id)
     $this->db->where('entry_id', $entry_id);
     $entry = $this->db->get()->row();
     
-    if (!$entry || $entry->endterm_supervisor_1 != $staff_id) {
+    if (!$entry || (int) $entry->endterm_supervisor_1 !== (int) $staff_id) {
         return false;
     }
     
@@ -1495,48 +1495,48 @@ private function _can_first_supervisor_see_endterm($entry_id, $staff_id)
         return false;
     }
     
-    // Check if most recent action by first supervisor is NOT 'Approved'
-    $last_action = $this->_get_endterm_last_action($entry_id, $staff_id);
-    $not_approved = ($last_action != 'Approved');
-    
-    // OR if entry was returned by anyone and then resubmitted
-    $was_returned_and_resubmitted = $this->_was_returned_and_resubmitted($entry_id);
-    
-    return $not_approved || $was_returned_and_resubmitted;
-}
+    /*
+     * Show in first supervisor's pending list only if they have not yet approved
+     * after the employee's latest Submitted/Updated. Previously we also OR'd
+     * _was_returned_and_resubmitted(), which is true whenever *any* historical
+     * Return→Submit pair exists — so after sup1 re-approved, the item wrongly
+     * stayed in sup1's queue. (Flow: sup1 approves → staff consent → sup2;
+     * sup1 must not still see "pending first supervisor".)
+     */
+    $this->db->select('staff_id');
+    $this->db->from('ppa_entries');
+    $this->db->where('entry_id', $entry_id);
+    $ratee_row = $this->db->get()->row();
+    $ratee_staff_id = $ratee_row ? (int) $ratee_row->staff_id : 0;
 
-/**
- * Check if entry was returned and then resubmitted
- */
-private function _was_returned_and_resubmitted($entry_id)
-{
-    if (empty($entry_id)) {
-        return false;
-    }
-    
-    // Check if there's a 'Returned' action followed by 'Submitted' or 'Updated'
-    $sql = "SELECT id 
-            FROM ppa_approval_trail_end_term 
-            WHERE entry_id COLLATE utf8mb4_general_ci = ? 
-            AND action = 'Returned'";
-    $returns = $this->db->query($sql, [$entry_id])->result();
-    
-    foreach ($returns as $return) {
-        // Check if there's a Submitted or Updated action after this return
-        $sql = "SELECT 1 
-                FROM ppa_approval_trail_end_term 
-                WHERE entry_id COLLATE utf8mb4_general_ci = ? 
-                AND action IN ('Submitted', 'Updated') 
-                AND id > ? 
-                LIMIT 1";
-        $result = $this->db->query($sql, [$entry_id, $return->id]);
-        
-        if ($result->num_rows() > 0) {
-            return true;
+    $latest_ratee_submit_id = 0;
+    if ($ratee_staff_id > 0) {
+        $sql = "SELECT MAX(id) AS mid
+                FROM ppa_approval_trail_end_term
+                WHERE entry_id COLLATE utf8mb4_general_ci = ?
+                  AND staff_id = ?
+                  AND action IN ('Submitted', 'Updated')";
+        $r = $this->db->query($sql, [$entry_id, $ratee_staff_id])->row();
+        if ($r && !empty($r->mid)) {
+            $latest_ratee_submit_id = (int) $r->mid;
         }
     }
-    
-    return false;
+
+    if ($latest_ratee_submit_id === 0) {
+        $last_action = $this->_get_endterm_last_action($entry_id, $staff_id);
+        return ($last_action != 'Approved');
+    }
+
+    $sql = "SELECT 1 AS ok
+            FROM ppa_approval_trail_end_term
+            WHERE entry_id COLLATE utf8mb4_general_ci = ?
+              AND staff_id = ?
+              AND action = 'Approved'
+              AND id > ?
+            LIMIT 1";
+    $approved_after_latest = $this->db->query($sql, [$entry_id, $staff_id, $latest_ratee_submit_id])->row();
+
+    return !$approved_after_latest;
 }
 
 /**
@@ -1656,6 +1656,14 @@ private function _calculate_endterm_status($entry, $supervisor1_action, $supervi
         }
     }
     
+    // After first supervisor approved: waiting on employee consent before second supervisor
+    if ($supervisor1_action == 'Approved' &&
+        !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1) &&
+        empty($entry->endterm_staff_consent_at) &&
+        !empty($entry->endterm_supervisor_2)) {
+        return 'Pending Employee Consent';
+    }
+
     // Check if pending second supervisor
     if ($supervisor1_action == 'Approved' && 
         !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1) &&
