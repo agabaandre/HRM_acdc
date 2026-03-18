@@ -296,6 +296,8 @@ class ApmAuthController extends Controller
             'is_admin_assistant' => $isAdminAssistant,
             'is_director' => $isDirector,
             'is_finance_officer' => $isFinanceOfficer,
+            'job' => $this->staffJobForApp($staff),
+            'supervisors' => $this->staffSupervisorsForApp($staff),
         ];
 
         $staffImageBase64 = $this->getStaffImageBase64($user);
@@ -305,6 +307,46 @@ class ApmAuthController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * Job fields from APM staff row (login / me response).
+     */
+    private function staffJobForApp(?Staff $staff): ?array
+    {
+        if (!$staff) {
+            return null;
+        }
+        return [
+            'job_name' => $staff->job_name,
+            'title' => $staff->title,
+            'grade' => $staff->grade ?? null,
+        ];
+    }
+
+    /**
+     * Supervisors from staff.supervisor_id (APM staff table). Ordered: primary supervisor first.
+     */
+    private function staffSupervisorsForApp(?Staff $staff): array
+    {
+        if (!$staff) {
+            return [];
+        }
+        $id = (int) ($staff->supervisor_id ?? 0);
+        if ($id <= 0) {
+            return [];
+        }
+        $sup = Staff::query()->where('staff_id', $id)->first();
+        if (!$sup) {
+            return [];
+        }
+        return [[
+            'staff_id' => $sup->staff_id,
+            'name' => $sup->name,
+            'email' => $sup->work_email,
+            'job_name' => $sup->job_name,
+            'title' => $sup->title,
+        ]];
     }
 
     /**
