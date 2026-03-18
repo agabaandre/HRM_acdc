@@ -1003,6 +1003,11 @@ public function ppa_contract($contract_id){
       $data['readonly'] = true;
       $file_name= staff_name($staff_id).'_'.$data['ppa']->performance_period.'_Endterm.pdf';
 
+      $eds = isset($data['endppa']->endterm_draft_status) ? (int) $data['endppa']->endterm_draft_status : 1;
+      if ($eds !== 2) {
+          $data['performance_draft_watermark_text'] = ($eds === 1) ? 'DRAFT' : 'PENDING APPROVAL';
+      }
+
       pdf_print_data($data, $file_name, 'P', 'performance/staff_endterm_print');
   }
 

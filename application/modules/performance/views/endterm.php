@@ -130,6 +130,15 @@ if (!empty($ppa) && !empty($endppa)) {
     }
 }
 ?>
+<?php if (!empty($ppa) && !empty($ppa->entry_id) && !empty($endterm_exists) && !$canPrint): ?>
+    <div class="mb-3">
+        <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
+           class="btn btn-outline-secondary btn-sm me-2" target="_blank" rel="noopener">
+            <i class="fa fa-print"></i> Print draft (Endterm)
+        </a>
+        <small class="text-muted">Shows DRAFT (draft_status 1) or PENDING APPROVAL (0) until fully approved (2).</small>
+    </div>
+<?php endif; ?>
 <?php if ($canPrint): ?>
     <div class="mb-3">
         <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>" 

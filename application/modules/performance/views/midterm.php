@@ -85,6 +85,16 @@ $this->load->view('ppa_tabs');
 if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 ?>
 
+<?php if (!empty($ppa) && !empty($ppa->entry_id) && !empty($midterm_exists)): ?>
+  <div class="mb-3">
+    <a href="<?= base_url('performance/midterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
+       class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+      <i class="fa fa-print"></i> Print draft (Midterm)
+    </a>
+    <small class="text-muted ms-2">Watermark reflects midterm status: draft (1) or pending approval (0).</small>
+  </div>
+<?php endif; ?>
+
 <?php echo form_open_multipart(base_url('performance/midterm/save_ppa'), ['id' => 'staff_ppa']); ?>
 <input type="hidden" name="staff_id" value="<?= $staff_id ?>">
 <input type="hidden" name="entry_id" value="<?= $ppa->entry_id ?>">

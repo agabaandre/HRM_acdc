@@ -561,6 +561,11 @@ public function ppa_contract($contract_id){
       $data['readonly'] = true;
       $file_name= staff_name($staff_id).'_'.$data['ppa']->performance_period.'_Midterm.pdf';
 
+      $mds = isset($data['midppa']->midterm_draft_status) ? (int) $data['midppa']->midterm_draft_status : 1;
+      if ($mds !== 2) {
+          $data['performance_draft_watermark_text'] = ($mds === 1) ? 'DRAFT' : 'PENDING APPROVAL';
+      }
+
       pdf_print_data($data, $file_name, 'P', 'performance/staff_midterm_print');
   }
 
