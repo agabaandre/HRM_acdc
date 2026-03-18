@@ -1,5 +1,6 @@
 <?php
 // performance/views/staff_endterm_print.php
+$is_draft_print = !empty($performance_draft_watermark_text);
 ?>
 <html>
 
@@ -615,6 +616,10 @@
       <tr>
         <td colspan="2" style="padding: 25px; text-align: center;">
           <div style="margin-bottom: 15px; font-weight: bold;">Supervisor Signature</div>
+          <?php if ($is_draft_print): ?>
+            <div style="margin-top: 20px; margin-bottom: 20px; min-height: 70px; border: 1px dashed #cbd5e1; max-width: 280px; margin-left: auto; margin-right: auto;"></div>
+            <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
+          <?php else: ?>
           <div style="margin-top: 20px; margin-bottom: 20px; min-height: 60px;">
             <?php if (!empty($supervisor->signature)): ?>
               <img src="<?= base_url('uploads/staff/signature/' . $supervisor->signature) ?>" 
@@ -639,6 +644,7 @@
               SIGNATURE ID: <?= strtoupper($sup_hash) ?>
             </div>
           </div>
+          <?php endif; ?>
         </td>
       </tr>
     </table>
@@ -728,6 +734,10 @@
       <tr>
         <td colspan="2" style="padding: 25px; text-align: center;">
           <div style="margin-bottom: 15px; font-weight: bold;">Staff Signature</div>
+          <?php if ($is_draft_print): ?>
+            <div style="margin-top: 20px; margin-bottom: 20px; min-height: 70px; border: 1px dashed #cbd5e1; max-width: 280px; margin-left: auto; margin-right: auto;"></div>
+            <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
+          <?php else: ?>
           <div style="margin-top: 20px; margin-bottom: 20px; min-height: 60px;">
             <?php if (!empty($staff->signature)): ?>
               <img src="<?= base_url('uploads/staff/signature/' . $staff->signature) ?>" 
@@ -752,6 +762,7 @@
               SIGNATURE ID: <?= strtoupper($staff_hash) ?>
             </div>
           </div>
+          <?php endif; ?>
         </td>
       </tr>
     </table>
@@ -860,6 +871,10 @@
       <tr>
         <td colspan="2" style="padding: 25px; text-align: center;">
           <div style="margin-bottom: 15px; font-weight: bold;">Second Supervisor Signature</div>
+          <?php if ($is_draft_print): ?>
+            <div style="margin-top: 20px; margin-bottom: 20px; min-height: 70px; border: 1px dashed #cbd5e1; max-width: 280px; margin-left: auto; margin-right: auto;"></div>
+            <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
+          <?php else: ?>
           <div style="margin-top: 20px; margin-bottom: 20px; min-height: 60px;">
             <?php if (!empty($second_supervisor->signature)): ?>
               <img src="<?= base_url('uploads/staff/signature/' . $second_supervisor->signature) ?>" 
@@ -886,6 +901,7 @@
             </div>
             <?php endif; ?>
           </div>
+          <?php endif; ?>
         </td>
       </tr>
     </table>
