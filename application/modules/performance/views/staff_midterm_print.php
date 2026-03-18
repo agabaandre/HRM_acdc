@@ -1,5 +1,6 @@
 <?php
 // performance/views/staff_midterm_print.php
+$is_draft_print = !empty($performance_draft_watermark_text);
 ?>
 <html>
 
@@ -437,10 +438,15 @@
           $sup_signed_at = get_last_ppa_approval_action_midterm($ppa->entry_id, $ppa->midterm_supervisor_1)->created_at ?? $ppa->created_at;
           $sup_hash = substr(md5(sha1($ppa->midterm_supervisor_1 . $sup_signed_at)), 0, 15);
         ?>
-            SIGNED BY
+        <?php if ($is_draft_print): ?>
+          <div style="text-align: center;">
+            <div style="font-weight: bold; margin-bottom: 12px;">Supervisor</div>
+            <div style="min-height: 70px; border: 1px dashed #cbd5e1; margin: 12px auto; max-width: 220px;"></div>
+            <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
           </div>
-          
-          <!-- Signature Area -->
+        <?php else: ?>
+          <div style="text-align: center;">
+            <div style="margin-bottom: 8px;">SIGNED BY</div>
           <div style="margin-top: 25px; margin-bottom: 20px; padding:45px;">
             <?php if (!empty($supervisor->signature)): ?>
               <img src="<?= base_url('uploads/staff/signature/' . $supervisor->signature) ?>" 
@@ -451,8 +457,6 @@
               </div>
             <?php endif; ?>
           </div>
-          
-          <!-- Signature Metadata -->
           <div style="text-align: center; margin-top: 15px;">
             <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
               <?= $supervisor->fname . ' ' . $supervisor->lname ?>
@@ -467,7 +471,8 @@
              SIGNATURE ID: <?= strtoupper($sup_hash) ?>
             </div>
           </div>
-        </div>
+          </div>
+        <?php endif; ?>
       </td>
 
       <!-- Staff Signature -->
@@ -477,23 +482,25 @@
           $staff_signed_at = $ppa->midterm_created_at;
           $staff_hash = substr(md5(sha1($ppa->staff_id . $staff_signed_at)), 0, 15);
         ?>
-
-            SIGNED BY
+        <?php if ($is_draft_print): ?>
+          <div style="text-align: center;">
+            <div style="font-weight: bold; margin-bottom: 12px;">Staff</div>
+            <div style="min-height: 70px; border: 1px dashed #cbd5e1; margin: 12px auto; max-width: 220px;"></div>
+            <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
           </div>
-          
-          <!-- Signature Area -->
+        <?php else: ?>
+          <div style="text-align: center;">
+            <div style="margin-bottom: 8px;">SIGNED BY</div>
           <div style="margin-top: 25px; margin-bottom: 20px; padding:45px;">
             <?php if (!empty($staff->signature)): ?>
               <img src="<?= base_url('uploads/staff/signature/' . $staff->signature) ?>" 
                    style="max-width: 180px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;">
             <?php else: ?>
-  
+              <div style="border-bottom: 2px solid #ccc; width: 200px; height: 60px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
                 <span style="color: #999; font-style: italic; font-size: 11px;"><?= $staff->work_email; ?></span>
               </div>
             <?php endif; ?>
           </div>
-          
-          <!-- Signature Metadata -->
           <div style="text-align: center; margin-top: 15px;">
             <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
               <?= $staff->fname . ' ' . $staff->lname ?>
@@ -508,7 +515,8 @@
             SIGNATURE ID: <?= strtoupper($staff_hash) ?>
             </div>
           </div>
-        </div>
+          </div>
+        <?php endif; ?>
       </td>
     </tr>
 </table>

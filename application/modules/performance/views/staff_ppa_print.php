@@ -1,5 +1,6 @@
 <?php
 // performance/views/print_ppa_view.php
+$is_draft_print = !empty($performance_draft_watermark_text);
 ?>
 <html>
 <head>
@@ -346,7 +347,9 @@
     </tr>
     <tr>
       <td>
-        <?php if (!empty(staff_details($ppa->staff_id)->signature)): ?>
+        <?php if ($is_draft_print): ?>
+          <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px;"></div>
+        <?php elseif (!empty(staff_details($ppa->staff_id)->signature)): ?>
           <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->staff_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
         <?php else: ?>
           <p style="text-decoration:underline;"><?=staff_details($staff_id)->title.' '.staff_details($staff_id)->lname;?></p><br>
@@ -355,7 +358,9 @@
        <b> Staff Signature</b>
       </td>
       <td>
-        <?php if (!empty(staff_details($ppa->supervisor_id)->signature)): ?>
+        <?php if ($is_draft_print): ?>
+          <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px;"></div>
+        <?php elseif (!empty(staff_details($ppa->supervisor_id)->signature)): ?>
           <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->supervisor_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
         <?php else: ?>
           <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor_id)->title.' '.staff_details($ppa->supervisor_id)->lname;?></p><br>
@@ -366,11 +371,11 @@
     </tr>
     <tr>
       <td>
-        <?= date('d/m/Y', strtotime($ppa->created_at)) ?><br>
+        <?php if ($is_draft_print): ?>—<?php else: ?><?= date('d/m/Y', strtotime($ppa->created_at)) ?><?php endif; ?><br>
        <b> Date</b>
       </td>
       <td>
-        <?= date('d/m/Y', strtotime(get_last_ppa_approval_action($ppa->entry_id,$ppa->supervisor_id)->created_at) ?? $ppa->created_at) ?><br>
+        <?php if ($is_draft_print): ?>—<?php else: ?><?= date('d/m/Y', strtotime(get_last_ppa_approval_action($ppa->entry_id,$ppa->supervisor_id)->created_at) ?? $ppa->created_at) ?><?php endif; ?><br>
        <b> Date</b>
       </td>
     </tr>
@@ -393,7 +398,9 @@
     </tr>
       <tr>
         <td colspan="2" style="text-align: left;">
-          <?php if (!empty(staff_details($ppa->supervisor2_id)->signature)): ?>
+          <?php if ($is_draft_print): ?>
+            <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px; max-width: 200px;"></div>
+          <?php elseif (!empty(staff_details($ppa->supervisor2_id)->signature)): ?>
             <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->supervisor2_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
           <?php else: ?>
             <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor2_id)->title.' '.staff_details($ppa->supervisor2_id)->lname;?></p><br>
@@ -404,7 +411,7 @@
       </tr>
       <tr>
         <td colspan="2">
-        <?= date('d/m/Y', strtotime(get_last_ppa_approval_action($ppa->entry_id,$ppa->supervisor2_id)->created_at) ?? $ppa->created_at) ?><br>
+        <?php if ($is_draft_print): ?>—<?php else: ?><?= date('d/m/Y', strtotime(get_last_ppa_approval_action($ppa->entry_id,$ppa->supervisor2_id)->created_at) ?? $ppa->created_at) ?><?php endif; ?><br>
           <b>Date</b>
         </td>
       </tr>
