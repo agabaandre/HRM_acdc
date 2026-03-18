@@ -110,6 +110,16 @@ input[type="number"] {
   echo $showApprovalBtns;
 } ?>
 
+<?php if (!empty($ppa) && !empty($ppa->entry_id)): ?>
+  <div class="mb-3">
+    <a href="<?= base_url('performance/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
+       class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+      <i class="fa fa-print"></i> Print draft (PPA)
+    </a>
+    <small class="text-muted ms-2">Shows &ldquo;DRAFT&rdquo; or &ldquo;PENDING APPROVAL&rdquo; watermark unless the PPA is fully approved.</small>
+  </div>
+<?php endif; ?>
+
 <?php echo form_open_multipart(base_url('performance/save_ppa'), ['id' => 'staff_ppa']); ?>
 
 <input type="hidden" name="staff_id" value="<?=$staff_id?>">

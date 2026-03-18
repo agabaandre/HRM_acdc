@@ -1037,11 +1037,23 @@ function curl_send_post($url, $body, $headers) {
                 $pdf = $CI->m_pdf->pdf;
             }
     
-            // Set watermark image (if available)
-            $watermark = FCPATH . "assets/images/au_emblem.png";
-            if (file_exists($watermark)) {
-                $pdf->SetWatermarkImage($watermark);
-                $pdf->showWatermarkImage = true;
+            // Draft / pending approval text watermark (PPA, midterm, endterm when not fully approved)
+            if (!empty($data['performance_draft_watermark_text'])) {
+                $pdf->showWatermarkImage = false;
+                if (method_exists($pdf, 'SetWatermarkText')) {
+                    $alpha = isset($data['performance_draft_watermark_alpha']) ? (float) $data['performance_draft_watermark_alpha'] : 0.14;
+                    $pdf->SetWatermarkText($data['performance_draft_watermark_text'], $alpha);
+                }
+                if (property_exists($pdf, 'showWatermarkText')) {
+                    $pdf->showWatermarkText = true;
+                }
+            } else {
+                // Default: AU emblem watermark when not printing a draft
+                $watermark = FCPATH . "assets/images/au_emblem.png";
+                if (file_exists($watermark)) {
+                    $pdf->SetWatermarkImage($watermark);
+                    $pdf->showWatermarkImage = true;
+                }
             }
     
             // Set PDF margins

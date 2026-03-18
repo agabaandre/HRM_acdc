@@ -472,6 +472,11 @@ public function print_ppa($entry_id,$staff_id,$staff_contract_id,$approval_trail
         $data['readonly'] = true;
 		$file_name= staff_name($staff_id).'_'.$data['ppa']->performance_period.'_PPA.pdf';
 
+        $ds = (int) ($data['ppa']->draft_status ?? 1);
+        if ($ds !== 2) {
+            $data['performance_draft_watermark_text'] = ($ds === 1) ? 'DRAFT' : 'PENDING APPROVAL';
+        }
+
         pdf_print_data($data, $file_name, 'P', 'performance/staff_ppa_print');
     }
 
