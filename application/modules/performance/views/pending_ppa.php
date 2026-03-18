@@ -52,6 +52,9 @@
                   } elseif ($status == 'Pending Second Supervisor') {
                     $badgeClass = 'bg-info text-white'; // Light blue background with white text for better contrast
                     $badgeText = 'Pending Second Supervisor: ' . staff_name($plan['supervisor2_id']);
+                  } elseif ($status == 'Pending Employee Consent') {
+                    $badgeClass = 'bg-warning text-dark';
+                    $badgeText = 'Pending employee consent (after 1st supervisor approval)';
                   } elseif (stripos($status, 'pending') !== false) {
                     $badgeClass = 'bg-warning text-dark';
                   } elseif (stripos($status, 'approved') !== false) {
