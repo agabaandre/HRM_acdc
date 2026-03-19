@@ -905,12 +905,16 @@ public function revert()
   }
   public function contract_info($staff_id){
     $current_contract = current_contract($staff_id);
-    $this->db->where('staff_contract_id',$current_contract);
+    if ($current_contract === null || $current_contract === '' || $current_contract === false) {
+      return false;
+    }
+    $this->db->where('staff_contract_id', $current_contract);
     $this->db->join('jobs', 'staff_contracts.job_id=jobs.job_id');
     $this->db->join('staff', 'staff.staff_id=staff_contracts.staff_id');
-    $this->db->join('jobs_acting', 'staff_contracts.job_acting_id=jobs_acting.job_acting_id');
-    $data=  $this->db->get('staff_contracts')->row();
-    return $data;
+    // LEFT: many contracts have NULL/0 job_acting_id — INNER join dropped the row entirely
+    $this->db->join('jobs_acting', 'staff_contracts.job_acting_id=jobs_acting.job_acting_id', 'left');
+    $data = $this->db->get('staff_contracts')->row();
+    return $data ? $data : false;
   }
   public function updateUser()
   {
