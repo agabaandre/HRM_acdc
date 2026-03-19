@@ -2,15 +2,35 @@
 
 $session = $this->session->userdata('user');
 
-if (!empty($ppa)) {
+if (!empty($ppa) && is_object($ppa)) {
   $readonly = '';
   $staff_id = $ppa->staff_id;
   $staff_contract_id = $ppa->staff_contract_id;
   $contract = Modules::run('performance/ppa_contract', $staff_contract_id);
+  if (!is_object($contract) && !empty($ppa->staff_id)) {
+    $contract = Modules::run('auth/contract_info', $ppa->staff_id);
+  }
 } else {
   $staff_id = $session->staff_id;
   $contract = Modules::run('auth/contract_info', $staff_id);
-  $staff_contract_id = $contract->staff_contract_id;
+  $staff_contract_id = is_object($contract) ? $contract->staff_contract_id : '';
+}
+
+$contract_missing = !is_object($contract);
+if ($contract_missing) {
+  $contract = (object) [
+    'staff_contract_id' => $staff_contract_id ?? '',
+    'fname' => '',
+    'lname' => '',
+    'SAPNO' => '',
+    'job_name' => '',
+    'initiation_date' => '',
+    'division_id' => null,
+    'first_supervisor' => null,
+    'second_supervisor' => null,
+    'funder_id' => null,
+    'contract_type_id' => null,
+  ];
 }
 
 $permissions = $session->permissions;
@@ -19,7 +39,7 @@ $ppa_settings = ppa_settings();
 //dd($ppa_settings);
 
 $readonly = '';
-if (!isset($ppa) || empty($ppa)) {
+if (!isset($ppa) || empty($ppa) || !is_object($ppa)) {
     $readonly = '';
 } else {
     $status = (int) @$ppa->draft_status;
@@ -130,6 +150,11 @@ if (!empty($ppa) && !empty($endppa)) {
     }
 }
 ?>
+<?php if (!empty($contract_missing)): ?>
+  <div class="alert alert-warning" role="alert">
+    <strong>No staff contract on file.</strong> We could not load your active contract. Please contact HR.
+  </div>
+<?php endif; ?>
 <?php if (!empty($ppa) && !empty($ppa->entry_id) && !empty($endterm_exists) && !$canPrint): ?>
     <div class="mb-3">
         <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"

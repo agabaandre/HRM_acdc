@@ -349,8 +349,12 @@ if (!function_exists('flash_form')) {
 if (!function_exists('current_contract')) {
     function current_contract($staff_id)
     {
-    $ci = &get_instance();
-    return $ci->db->query("SELECT max(staff_contract_id) as current_contract from staff_contracts where staff_id ='$staff_id'")->row()->current_contract;
+        $ci = &get_instance();
+        $row = $ci->db->query(
+            'SELECT MAX(staff_contract_id) AS current_contract FROM staff_contracts WHERE staff_id = ?',
+            [$staff_id]
+        )->row();
+        return $row ? $row->current_contract : null;
     }
 }
 if (!function_exists('current_head_of_departmemnt')) {
@@ -737,8 +741,14 @@ if (!function_exists('acdc_division')) {
     function acdc_division($division)
     {
         $ci = &get_instance();
-    return $ci->db->query("SELECT division_name from divisions where division_id='$division'")->row()->division_name;
-    
+        if ($division === null || $division === '') {
+            return '';
+        }
+        $row = $ci->db->query(
+            'SELECT division_name FROM divisions WHERE division_id = ?',
+            [(int) $division]
+        )->row();
+        return $row ? $row->division_name : '';
     }
 }
 

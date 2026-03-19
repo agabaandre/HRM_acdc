@@ -1,19 +1,40 @@
 <?php 
 $session = $this->session->userdata('user');
 
-if (!empty($ppa)) {
+if (!empty($ppa) && is_object($ppa)) {
   $readonly = ''; // Editable for creating new PPA
   $staff_id = $ppa->staff_id;
   $staff_contract_id = $ppa->staff_contract_id;
   //dd($staff_contract_id);
   $contract = Modules::run('performance/ppa_contract', $staff_contract_id);
+  // HMVC used to return '' when the method returned null; still guard non-objects
+  if (!is_object($contract) && !empty($ppa->staff_id)) {
+    $contract = Modules::run('auth/contract_info', $ppa->staff_id);
+  }
   $period_for_form = !empty($ppa->performance_period) ? $ppa->performance_period : (isset($performance_period) ? $performance_period : str_replace(' ', '-', current_period()));
-}
-else{
+} else {
   $staff_id = $session->staff_id;
   $contract = Modules::run('auth/contract_info', $staff_id);
-  $staff_contract_id = $contract->staff_contract_id;
+  $staff_contract_id = is_object($contract) ? $contract->staff_contract_id : '';
   $period_for_form = isset($performance_period) ? $performance_period : str_replace(' ', '-', current_period());
+}
+
+// Ensure $contract is always an object for the rest of the view (avoid property reads on false/'')
+$contract_missing = !is_object($contract);
+if ($contract_missing) {
+  $contract = (object) [
+    'staff_contract_id' => $staff_contract_id ?? '',
+    'fname' => '',
+    'lname' => '',
+    'SAPNO' => '',
+    'job_name' => '',
+    'initiation_date' => '',
+    'division_id' => null,
+    'first_supervisor' => null,
+    'second_supervisor' => null,
+    'funder_id' => null,
+    'contract_type_id' => null,
+  ];
 }
 $permissions = $session->permissions;
 // End year of performance period for default timeline (e.g. January-2025-to-December-2025 -> 2025)
@@ -30,7 +51,7 @@ $ppa_settings=ppa_settings();
 $readonly = '';
 
 // Default: allow if it's a new PPA
-if (!isset($ppa) || empty($ppa)) {
+if (!isset($ppa) || empty($ppa) || !is_object($ppa)) {
     $readonly = ''; // Editable for creating new PPA
 } else {
     // Extract status
@@ -58,8 +79,8 @@ if (!isset($ppa) || empty($ppa)) {
 //sdd($showApprovalBtns);
 
 
-$selected_skills = (!empty($ppa) && is_string(@$ppa->required_skills)) ? json_decode($ppa->required_skills, true) : ((!empty($ppa) && isset($ppa->required_skills)) ? $ppa->required_skills : []);
-$objectives_raw = !empty($ppa) ? (@$ppa->objectives ?? []) : [];
+$selected_skills = (!empty($ppa) && is_object($ppa) && is_string(@$ppa->required_skills)) ? json_decode($ppa->required_skills, true) : ((!empty($ppa) && is_object($ppa) && isset($ppa->required_skills)) ? $ppa->required_skills : []);
+$objectives_raw = (!empty($ppa) && is_object($ppa)) ? (@$ppa->objectives ?? []) : [];
 
 
 if (is_string($objectives_raw)) {
@@ -110,7 +131,13 @@ input[type="number"] {
   echo $showApprovalBtns;
 } ?>
 
-<?php if (!empty($ppa) && !empty($ppa->entry_id)): ?>
+<?php if (!empty($contract_missing)): ?>
+  <div class="alert alert-warning" role="alert">
+    <strong>No staff contract on file.</strong> We could not load your active contract (HR / jobs data). You cannot submit a PPA until a valid contract is linked to your profile. Please contact HR.
+  </div>
+<?php endif; ?>
+
+<?php if (!empty($ppa) && is_object($ppa) && !empty($ppa->entry_id)): ?>
   <div class="mb-3">
     <a href="<?= base_url('performance/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
        class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
@@ -148,28 +175,42 @@ input[type="number"] {
   <tr>
     <td><b>First Supervisor</b></td>
     <td colspan="1">
-      <?= staff_name(!empty($ppa->supervisor_id) ? $ppa->supervisor_id : $contract->first_supervisor) ?>
-      <?php if (!empty($ppa) && isset($ppa->draft_status) && (int)$ppa->draft_status !== 2): ?>
+      <?= staff_name((!empty($ppa) && is_object($ppa) && !empty($ppa->supervisor_id)) ? $ppa->supervisor_id : $contract->first_supervisor) ?>
+      <?php if (!empty($ppa) && is_object($ppa) && isset($ppa->draft_status) && (int)$ppa->draft_status !== 2): ?>
         <?php $this->load->view('performance/partials/change_supervisor_modal', ['ppa' => $ppa, 'type' => 'ppa', 'entry_id' => isset($entry_id) ? $entry_id : ($ppa->entry_id ?? '')]); ?>
       <?php endif; ?>
       <input type="hidden" name="supervisor_id"
-        value="<?= !empty($ppa->supervisor_id) ? $ppa->supervisor_id : $contract->first_supervisor ?>">
+        value="<?= (!empty($ppa) && is_object($ppa) && !empty($ppa->supervisor_id)) ? $ppa->supervisor_id : ($contract->first_supervisor ?? '') ?>">
     </td>
     <td><b>Second Supervisor</b></td>
     <td colspan="">
-      <?= @staff_name(!empty($ppa->supervisor2_id) ? $ppa->supervisor2_id : $contract->second_supervisor) ?>
+      <?= @staff_name((!empty($ppa) && is_object($ppa) && !empty($ppa->supervisor2_id)) ? $ppa->supervisor2_id : ($contract->second_supervisor ?? '')) ?>
         <input type="hidden" name="supervisor2_id"
-        value="<?= !empty($ppa->supervisor2_id) ? $ppa->supervisor2_id : $contract->second_supervisor ?>">
+        value="<?= (!empty($ppa) && is_object($ppa) && !empty($ppa->supervisor2_id)) ? $ppa->supervisor2_id : ($contract->second_supervisor ?? '') ?>">
     </td>
   </tr>
   <tr>
     <td><b>Funder</b></td>
     <td colspan="1">
-     <?php echo $this->db->query("SELECT * FROM `funders` where funder_id=$contract->funder_id")->row()->funder;?>
+     <?php
+     $funder_label = '—';
+     if (!empty($contract->funder_id)) {
+       $fr = $this->db->query('SELECT funder FROM funders WHERE funder_id = ?', [(int) $contract->funder_id])->row();
+       $funder_label = $fr ? $fr->funder : '—';
+     }
+     echo htmlspecialchars($funder_label);
+     ?>
     </td>
     <td><b>Contract Type</b></td>
     <td colspan="1">
-     <?php echo $this->db->query("SELECT * FROM `contract_types` where contract_type_id=$contract->contract_type_id")->row()->contract_type;?>
+     <?php
+     $ctype_label = '—';
+     if (!empty($contract->contract_type_id)) {
+       $ct = $this->db->query('SELECT contract_type FROM contract_types WHERE contract_type_id = ?', [(int) $contract->contract_type_id])->row();
+       $ctype_label = $ct ? $ct->contract_type : '—';
+     }
+     echo htmlspecialchars($ctype_label);
+     ?>
     </td>
   </tr>
 </table>
@@ -437,6 +478,9 @@ input[type="number"] {
   <?php if (!empty($approval_trail)): ?>
     <?php foreach ($approval_trail as $log): 
       $logged = Modules::run('auth/contract_info', $log->staff_id);
+      if (!is_object($logged)) {
+        $logged = staff_details($log->staff_id);
+      }
 
       // Determine role
       if ($log->staff_id == $ppa->staff_id) {
@@ -450,7 +494,7 @@ input[type="number"] {
       }
     ?>
       <tr>
-        <td><?php echo $logged->title.' '.$logged->fname.' '.$logged->lname.' '.$logged->oname; ?></td>
+        <td><?php echo is_object($logged) ? htmlspecialchars(trim(($logged->title ?? '') . ' ' . ($logged->fname ?? '') . ' ' . ($logged->lname ?? '') . ' ' . ($logged->oname ?? ''))) : htmlspecialchars(staff_name($log->staff_id)); ?></td>
         <td><?= $role; ?></td>
         <td><?= $log->action; ?></td>
         <td><?= date('d M Y H:i', strtotime($log->created_at)); ?></td>
