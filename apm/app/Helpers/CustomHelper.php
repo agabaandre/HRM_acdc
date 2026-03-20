@@ -882,7 +882,7 @@ if (!function_exists('user_session')) {
           
             if($activity->matrix->forward_workflow_id==null)
                 return false;
-
+          
             $definition = $activity->matrix->workflow_definition ?? null;
             if (!$definition) {
                 return true;
@@ -1032,7 +1032,7 @@ if (!function_exists('user_session')) {
             if ($definitions->count() > 1 && $matrix->division) {
                 $divisionSpecific = $definitions->where('is_division_specific', 1)
                     ->where('category', $matrix->division->category)
-                    ->first();
+                ->first();
                 if ($divisionSpecific && _helper_is_division_specific_approver($matrix, $divisionSpecific, $currentUserId, $userDivisionId)) {
                     return $divisionSpecific;
                 }
@@ -1137,9 +1137,9 @@ if (!function_exists('user_session')) {
                 $defFundType = $workflowDefinition->fund_type !== null && $workflowDefinition->fund_type !== '' ? (int) $workflowDefinition->fund_type : null;
                 $allowedFunders = null;
                 if ($workflowDefinition->allowed_funders && !empty($workflowDefinition->allowed_funders)) {
-                    $allowedFunders = is_string($workflowDefinition->allowed_funders)
-                        ? json_decode($workflowDefinition->allowed_funders, true)
-                        : $workflowDefinition->allowed_funders;
+                            $allowedFunders = is_string($workflowDefinition->allowed_funders) 
+                                ? json_decode($workflowDefinition->allowed_funders, true) 
+                                : $workflowDefinition->allowed_funders;
                     $allowedFunders = is_array($allowedFunders) ? array_map('intval', array_filter($allowedFunders)) : [];
                 }
                 $hasRestriction = $defFundType !== null || !empty($allowedFunders);
@@ -1162,13 +1162,13 @@ if (!function_exists('user_session')) {
                         }
                     }
 
-                    if ($canApprove) {
-                        $canApprove = can_approve_activity($activity);
-                    }
-
-                    if ($canApprove) {
-                        $approvable_activities->push($activity);
-                    }
+                if ($canApprove) {
+                    $canApprove = can_approve_activity($activity);
+                }
+                
+                if ($canApprove) {
+                    $approvable_activities->push($activity);
+                }
                 }
             }
             

@@ -10,6 +10,7 @@ use App\Models\Partner;
 use Illuminate\Http\Request;
 use App\Models\FundCodeTransaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FundCodeController extends Controller
 {
@@ -25,7 +26,7 @@ class FundCodeController extends Controller
         $initialSearch = $request->input('search', '');
         $initialFundTypeId = $request->input('fund_type_id', '');
         $initialDivisionId = $request->input('division_id', '');
-        $initialStatus = $request->input('status', '');
+        $initialStatus = $request->input('status', 'active');
         $initialPage = (int) $request->input('page', 1);
 
         return view('fund-codes.index', compact('fundTypes', 'divisions', 'funders', 'initialYear', 'initialSearch', 'initialFundTypeId', 'initialDivisionId', 'initialStatus', 'initialPage'));
@@ -572,5 +573,142 @@ class FundCodeController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Upload SAP export CSV and update fund_codes.budget_balance using:
+     * - Fund center -> fund_codes.code
+     * - Only rows where Fund is not blank
+     * - Only rows where Released Budget balance > 0
+     */
+    public function uploadSap(Request $request)
+    {
+        $request->validate([
+            'sap_csv_file' => 'required|file|mimes:csv,txt|max:10240', // 10MB
+        ]);
+
+        $file = $request->file('sap_csv_file');
+
+        try {
+            $csvData = array_map('str_getcsv', file($file->getPathname()));
+            if (empty($csvData) || count($csvData) < 2) {
+                return back()->withErrors(['sap_csv_file' => 'CSV is empty or has no data rows.']);
+            }
+
+            $headers = array_map(function ($h) {
+                return $this->normalizeCsvHeader((string) $h);
+            }, array_shift($csvData));
+
+            // Normalize header lookup (case-insensitive)
+            $normalized = [];
+            foreach ($headers as $idx => $header) {
+                $normalized[$header] = $idx;
+            }
+
+            $requiredHeaders = ['fund center', 'released budget balance'];
+            $missing = [];
+            foreach ($requiredHeaders as $h) {
+                if (!array_key_exists($h, $normalized)) {
+                    $missing[] = $h;
+                }
+            }
+            if (!empty($missing)) {
+                return back()->withErrors([
+                    'sap_csv_file' => 'Missing required headers: ' . implode(', ', $missing),
+                ]);
+            }
+
+            $fundCenterIdx = $normalized['fund center'];
+            $balanceIdx = $normalized['released budget balance'];
+
+            // Aggregate by fund center (sum of qualifying rows)
+            $balancesByFundCenter = [];
+            $qualifyingRows = 0;
+
+            foreach ($csvData as $lineNo => $row) {
+                if (!is_array($row) || count($row) === 0) {
+                    continue;
+                }
+
+                $fundCenter = trim((string) ($row[$fundCenterIdx] ?? ''));
+                $balanceRaw = trim((string) ($row[$balanceIdx] ?? '0'));
+
+                if ($fundCenter === '') {
+                    continue; // must have fund center
+                }
+
+                $balance = $this->parseCsvDecimal($balanceRaw);
+                if ($balance <= 0) {
+                    continue; // only positive released budget balance
+                }
+
+                $qualifyingRows++;
+                if (!isset($balancesByFundCenter[$fundCenter])) {
+                    $balancesByFundCenter[$fundCenter] = 0.0;
+                }
+                $balancesByFundCenter[$fundCenter] += $balance;
+            }
+
+            if (empty($balancesByFundCenter)) {
+                return redirect()->route('fund-codes.index')
+                    ->with('msg', 'SAP upload processed. No rows matched the conditions (Fund not blank and Released Budget balance > 0).')
+                    ->with('type', 'info');
+            }
+
+            $updated = 0;
+            $notMatched = 0;
+            $currentYear = (int) date('Y');
+
+            DB::beginTransaction();
+            foreach ($balancesByFundCenter as $fundCenter => $balanceTotal) {
+                $affected = FundCode::where('code', $fundCenter)
+                    ->where('year', $currentYear)
+                    ->where('is_active', 1)
+                    ->update(['budget_balance' => number_format($balanceTotal, 2, '.', '')]);
+                if ($affected > 0) {
+                    $updated += $affected;
+                } else {
+                    $notMatched++;
+                }
+            }
+            DB::commit();
+
+            $message = "SAP upload completed for active fund codes in {$currentYear}. Qualifying rows (Released Budget balance > 0): {$qualifyingRows}. ";
+            $message .= "Fund centers processed: " . count($balancesByFundCenter) . ". ";
+            $message .= "Updated fund codes: {$updated}.";
+            if ($notMatched > 0) {
+                $message .= " Unmatched fund centers: {$notMatched}.";
+            }
+
+            return redirect()->route('fund-codes.index')
+                ->with('msg', $message)
+                ->with('type', 'success');
+        } catch (\Throwable $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            Log::error('SAP fund code upload failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return back()->withErrors(['sap_csv_file' => 'Error processing SAP CSV: ' . $e->getMessage()]);
+        }
+    }
+
+    private function parseCsvDecimal(string $value): float
+    {
+        $clean = str_replace([',', ' '], '', $value);
+        if ($clean === '' || !is_numeric($clean)) {
+            return 0.0;
+        }
+        return (float) $clean;
+    }
+
+    private function normalizeCsvHeader(string $header): string
+    {
+        // Remove UTF-8 BOM and normalize spacing/case for reliable matching
+        $header = str_replace("\xEF\xBB\xBF", '', $header);
+        $header = trim($header);
+        $header = preg_replace('/\s+/', ' ', $header);
+        return strtolower($header);
     }
 }

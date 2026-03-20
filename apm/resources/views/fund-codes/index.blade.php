@@ -9,6 +9,9 @@
     <button type="button" class="btn btn-outline-success shadow-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
         <i class="bx bx-upload me-1"></i> Upload CSV
     </button>
+    <button type="button" class="btn btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#sapUploadModal">
+        <i class="bx bx-transfer-alt me-1"></i> SAP Upload
+    </button>
     <a wire:navigate href="{{ route('fund-codes.create') }}" class="btn btn-success shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Add Fund Code
     </a>
@@ -16,6 +19,24 @@
 @endsection
 
 @section('content')
+<style>
+    .fund-codes-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .fund-code-col {
+        width: 35% !important;
+        max-width: 35% !important;
+    }
+
+    .fund-code-cell {
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+</style>
+
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-header bg-white border-bottom">
         <h5 class="mb-0 text-dark">
@@ -115,24 +136,25 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 fund-codes-table">
                 <thead class="table-success">
                     <tr>
                         <th>#</th>
-                        <th>Code</th>
+                        <th class="fund-code-col">Code</th>
                         <th>Year</th>
                         <th>Funder</th>
                         <th>Fund Type</th>
                         <th>Division</th>
                         <th>Partner</th>
                         <th>Activity</th>
+                        <th>Budget Balance</th>
                         <th>Status</th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="fundCodesTableBody">
                     <tr>
-                        <td colspan="10" class="text-center py-4">
+                        <td colspan="11" class="text-center py-4">
                             <i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i>
                             <div class="mt-2">Loading fund codes...</div>
                         </td>
@@ -248,6 +270,54 @@
     </div>
 </div>
 
+<!-- SAP Upload Modal -->
+<div class="modal fade" id="sapUploadModal" tabindex="-1" aria-labelledby="sapUploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sapUploadModalLabel">
+                    <i class="bx bx-transfer-alt me-2"></i> SAP Budget Upload
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('fund-codes.upload-sap') }}" method="POST" enctype="multipart/form-data" id="sapUploadForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        <strong>Processing rules:</strong>
+                        <ul class="mb-0 mt-2 ps-3">
+                            <li>Match SAP <code>Fund center</code> to <code>fund_codes.code</code>.</li>
+                            <li>Only rows where <code>Released Budget balance</code> is greater than 0 are used.</li>
+                            <li>Only updates <code>fund_codes</code> where <code>year = current year</code> and <code>is_active = 1</code>.</li>
+                            <li>For each Fund center, qualifying balances are summed and saved to <code>fund_codes.budget_balance</code>.</li>
+                        </ul>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sap_csv_file" class="form-label fw-semibold">
+                            <i class="bx bx-file me-1 text-primary"></i> SAP CSV File <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" class="form-control @error('sap_csv_file') is-invalid @enderror"
+                               id="sap_csv_file" name="sap_csv_file" accept=".csv" required>
+                        <small class="text-muted">Only CSV files are allowed. Maximum file size: 10MB</small>
+                        @error('sap_csv_file')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bx bx-x me-1"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="sapUploadBtn">
+                        <i class="bx bx-upload me-1"></i> Upload SAP CSV
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
     $(document).ready(function() {
@@ -280,6 +350,28 @@
         var maxSize = 5 * 1024 * 1024;
         if (file && file.size > maxSize) {
             alert('File size must be less than 5MB.');
+            this.value = '';
+        }
+    });
+
+    // Handle SAP upload form
+    $('#sapUploadForm').on('submit', function(e) {
+        var fileInput = $('#sap_csv_file')[0];
+        var uploadBtn = $('#sapUploadBtn');
+        if (!fileInput || fileInput.files.length === 0) {
+            e.preventDefault();
+            alert('Please select a SAP CSV file to upload.');
+            return;
+        }
+        uploadBtn.prop('disabled', true);
+        uploadBtn.html('<i class="bx bx-loader-alt bx-spin me-1"></i> Processing...');
+    });
+
+    $('#sap_csv_file').on('change', function() {
+        var file = this.files[0];
+        var maxSize = 10 * 1024 * 1024;
+        if (file && file.size > maxSize) {
+            alert('File size must be less than 10MB.');
             this.value = '';
         }
     });
@@ -322,7 +414,7 @@
         if (!fundCodesTableBodyEl) return;
         currentPage = page;
         var params = getFundCodeParams(page);
-        fundCodesTableBodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4"><i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i><div class="mt-2">Loading fund codes...</div></td></tr>';
+        fundCodesTableBodyEl.innerHTML = '<tr><td colspan="11" class="text-center py-4"><i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i><div class="mt-2">Loading fund codes...</div></td></tr>';
 
         $.ajax({
             url: '{{ route("fund-codes.ajax") }}',
@@ -336,7 +428,7 @@
                     totalPages = response.totalPages || 0;
                     renderFundCodePagination();
                 } else {
-                    fundCodesTableBodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted"><i class="bx bx-barcode fs-1"></i><div class="mt-2">No fund codes found</div><small>Try adjusting your filters</small></td></tr>';
+                    fundCodesTableBodyEl.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted"><i class="bx bx-barcode fs-1"></i><div class="mt-2">No fund codes found</div><small>Try adjusting your filters</small></td></tr>';
                     totalRecords = 0;
                     totalPages = 0;
                     renderFundCodePagination();
@@ -345,7 +437,7 @@
                 updateFundCodeShowingRange();
             },
             error: function() {
-                fundCodesTableBodyEl.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-danger"><i class="bx bx-error fs-1"></i><div class="mt-2">Error loading data</div></td></tr>';
+                fundCodesTableBodyEl.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-danger"><i class="bx bx-error fs-1"></i><div class="mt-2">Error loading data</div></td></tr>';
             }
         });
     }
@@ -361,10 +453,17 @@
         var startIndex = (currentPage - 1) * pageSize;
         var baseUrl = '{{ rtrim(route("fund-codes.index"), "/") }}';
         var html = '';
+        function formatBudgetBalance(value) {
+            var num = parseFloat(String(value || '0').replace(/,/g, ''));
+            if (isNaN(num)) num = 0;
+            return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
         data.forEach(function(fc, index) {
             var rowNum = startIndex + index + 1;
-            var codeCell = '<div class="fw-bold text-primary">' + escapeHtml(fc.code || '') + '</div>';
-            if (fc.cost_centre) codeCell += '<small class="text-muted">CC: ' + escapeHtml(fc.cost_centre) + '</small>';
+            var fullActivity = (fc.activity && String(fc.activity).trim() !== '') ? String(fc.activity) : (fc.code || '');
+            var codeCell = '<div class="fw-bold text-primary">' + escapeHtml(fullActivity) + '</div>';
+            if (fc.code) codeCell += '<small class="text-muted d-block">Code: ' + escapeHtml(fc.code) + '</small>';
+            if (fc.cost_centre) codeCell += '<small class="text-muted d-block">CC: ' + escapeHtml(fc.cost_centre) + '</small>';
             var funderName = (fc.funder && fc.funder.name) ? escapeHtml(fc.funder.name) : 'N/A';
             var fundTypeName = (fc.fund_type && fc.fund_type.name) ? escapeHtml(fc.fund_type.name) : ((fc.fundType && fc.fundType.name) ? escapeHtml(fc.fundType.name) : 'N/A');
             var fundTypeNameLower = (fc.fund_type && fc.fund_type.name) ? String(fc.fund_type.name).toLowerCase() : ((fc.fundType && fc.fundType.name) ? String(fc.fundType.name).toLowerCase() : '');
@@ -373,19 +472,21 @@
             if (fundTypeNameLower !== 'extramural') partnerName = '—';
             var activityRaw = fc.activity || '';
             var activity = activityRaw ? (activityRaw.length > 50 ? escapeHtml(activityRaw.substring(0, 50)) + '…' : escapeHtml(activityRaw)) : 'N/A';
+            var budgetBalance = formatBudgetBalance(fc.budget_balance);
             var isActive = fc.is_active;
             var statusClass = isActive ? 'bg-success' : 'bg-danger';
             var statusText = isActive ? 'Active' : 'Inactive';
             var statusIcon = isActive ? 'check-circle' : 'x-circle';
             html += '<tr>' +
                 '<td><span class="badge bg-secondary rounded-pill">' + rowNum + '</span></td>' +
-                '<td>' + codeCell + '</td>' +
+                '<td class="fund-code-col fund-code-cell">' + codeCell + '</td>' +
                 '<td><span class="badge bg-info text-dark"><i class="bx bx-calendar me-1"></i>' + escapeHtml(fc.year || '') + '</span></td>' +
                 '<td>' + funderName + '</td>' +
                 '<td><span class="badge bg-secondary text-white"><i class="bx bx-category me-1"></i>' + fundTypeName + '</span></td>' +
                 '<td>' + divisionName + '</td>' +
                 '<td>' + partnerName + '</td>' +
                 '<td><div class="text-truncate" style="max-width:200px" title="' + (activityRaw ? escapeHtml(activityRaw) : '') + '">' + activity + '</div></td>' +
+                '<td><span class="fw-semibold text-success">' + budgetBalance + '</span></td>' +
                 '<td><span class="badge ' + statusClass + ' text-white"><i class="bx bx-' + statusIcon + ' me-1"></i>' + statusText + '</span></td>' +
                 '<td class="text-center"><div class="d-flex gap-2 justify-content-center">' +
                 '<a href="' + baseUrl + '/' + fc.id + '" class="btn btn-sm btn-light text-info" title="View Details" wire:navigate><i class="bx bx-show fs-6 me-1"></i>View</a> ' +

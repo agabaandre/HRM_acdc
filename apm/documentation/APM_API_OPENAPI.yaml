@@ -1369,6 +1369,56 @@ paths:
                       total: { type: integer }
         '401':
           description: Unauthenticated
+
+  /sap_budgets:
+    get:
+      tags: [Reference data]
+      summary: SAP budgets feed
+      description: |
+        Returns SAP-style budget balances derived from fund codes.
+        Maps `fund_codes.code` as `fund_center` and `fund_codes.budget_balance` as `released_budget_balance`.
+        Optional filters: `year`, `min_balance` (default 0).
+      operationId: sapBudgets
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer }
+          description: Filter by year.
+        - name: min_balance
+          in: query
+          required: false
+          schema: { type: number, default: 0 }
+          description: Return rows where released_budget_balance is greater than this value.
+      responses:
+        '200':
+          description: SAP budgets list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        fund_center: { type: string }
+                        fund: { type: string, nullable: true }
+                        year: { type: integer, nullable: true }
+                        released_budget_balance: { type: string, example: "250000.00" }
+                        updated_at: { type: string, format: date-time, nullable: true }
+                  count: { type: integer }
+                  filters:
+                    type: object
+                    properties:
+                      year: { type: integer, nullable: true }
+                      min_balance: { type: number }
+        '401':
+          description: Unauthenticated
     post:
       tags: [Reference data]
       summary: Create fund code

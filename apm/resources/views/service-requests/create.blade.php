@@ -1091,11 +1091,11 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
-        .remove-internal-row:not(:disabled):hover,
-        .remove-external-row:not(:disabled):hover {
+         .remove-internal-row:not(:disabled):hover,
+         .remove-external-row:not(:disabled):hover {
             color: #dc3545 !important;
             opacity: 0.9;
-        }
+         }
 
          /* Participants Summary: limit Name column to 600px and wrap */
          #participantsSummaryTable th:nth-child(2),
@@ -1119,7 +1119,7 @@ const initialExternalCount = {{ ($isEdit && !empty($externalParticipants ?? []))
 function initServiceRequestCreatePage() {
     let internalParticipantCount = initialInternalCount;
     let externalParticipantCount = initialExternalCount;
-
+    
     // Add internal participant — delegation so it works after Livewire navigation
     function onAddInternalClick(e) {
         if (!e.target.closest('#addInternal')) return;
@@ -1127,7 +1127,7 @@ function initServiceRequestCreatePage() {
         if (!tbody || !tbody.rows.length) return;
         const newIndex = tbody.rows.length;
         const newRow = tbody.rows[0].cloneNode(true);
-
+        
         const inputs = newRow.querySelectorAll('input, select');
         inputs.forEach(input => {
             if (input.name) {
@@ -1139,7 +1139,7 @@ function initServiceRequestCreatePage() {
                 input.selectedIndex = 0;
             }
         });
-
+        
         const participantSelect = newRow.querySelector('select[name*="[staff_id]"]');
         if (participantSelect) {
             participantSelect.innerHTML = '<option value="">Select Participant</option>';
@@ -1170,16 +1170,16 @@ function initServiceRequestCreatePage() {
                 participantSelect.appendChild(option);
             }
         }
-
+        
         const costTypeInput = newRow.querySelector('input[name*="[cost_type]"]');
         const descriptionInput = newRow.querySelector('input[name*="[description]"]');
         if (costTypeInput) costTypeInput.value = 'Daily Rate';
         if (descriptionInput) descriptionInput.value = '';
-        const totalCell = newRow.querySelector('.total-cell');
+                const totalCell = newRow.querySelector('.total-cell');
         if (totalCell) totalCell.textContent = '$0.00';
         const removeBtn = newRow.querySelector('.remove-internal-row');
         if (removeBtn) removeBtn.disabled = false;
-
+        
         tbody.appendChild(newRow);
         internalParticipantCount++;
         updateInternalParticipantOptions();
@@ -1191,17 +1191,17 @@ function initServiceRequestCreatePage() {
     function onRemoveInternalClick(e) {
         const btn = e.target.closest('.remove-internal-row');
         if (!btn || btn.disabled) return;
-        const row = e.target.closest('tr');
-        const tbody = document.getElementById('internalParticipants');
+            const row = e.target.closest('tr');
+            const tbody = document.getElementById('internalParticipants');
         if (tbody && tbody.rows.length > 1) {
-            row.remove();
-            internalParticipantCount--;
-            updateInternalParticipantOptions();
-            updateTotals();
-            updateParticipantsSummary();
+                row.remove();
+                internalParticipantCount--;
+                updateInternalParticipantOptions();
+                updateTotals();
+                updateParticipantsSummary();
+            }
         }
-    }
-
+    
     // Add external participant — delegation so it works after Livewire navigation
     function onAddExternalClick(e) {
         if (!e.target.closest('#addExternal')) return;
@@ -1209,7 +1209,7 @@ function initServiceRequestCreatePage() {
         if (!tbody || !tbody.rows.length) return;
         const newIndex = tbody.rows.length;
         const newRow = tbody.rows[0].cloneNode(true);
-
+        
         const inputs = newRow.querySelectorAll('input, select');
         inputs.forEach(input => {
             if (input.name) {
@@ -1223,7 +1223,7 @@ function initServiceRequestCreatePage() {
                 input.selectedIndex = 0;
             }
         });
-
+        
         const costTypeInput = newRow.querySelector('input[name*="[cost_type]"]');
         const descriptionInput = newRow.querySelector('input[name*="[description]"]');
         if (costTypeInput) costTypeInput.value = 'Daily Rate';
@@ -1232,11 +1232,11 @@ function initServiceRequestCreatePage() {
         const emailCell = newRow.cells[2];
         if (nameCell) { nameCell.style.minWidth = '200px'; nameCell.style.width = '200px'; }
         if (emailCell) { emailCell.style.minWidth = '200px'; emailCell.style.width = '200px'; }
-        const totalCell = newRow.querySelector('.total-cell');
+                const totalCell = newRow.querySelector('.total-cell');
         if (totalCell) totalCell.textContent = '$0.00';
         const removeBtn = newRow.querySelector('.remove-external-row');
         if (removeBtn) removeBtn.disabled = false;
-
+        
         tbody.appendChild(newRow);
         externalParticipantCount++;
         updateTotals();
@@ -1247,15 +1247,15 @@ function initServiceRequestCreatePage() {
     function onRemoveExternalClick(e) {
         const btn = e.target.closest('.remove-external-row');
         if (!btn || btn.disabled) return;
-        const tbody = document.getElementById('externalParticipants');
+            const tbody = document.getElementById('externalParticipants');
         if (tbody && tbody.rows.length > 1) {
-            const row = e.target.closest('tr');
-            row.remove();
-            externalParticipantCount--;
-            updateTotals();
-            updateParticipantsSummary();
+                const row = e.target.closest('tr');
+                row.remove();
+                externalParticipantCount--;
+                updateTotals();
+                updateParticipantsSummary();
+            }
         }
-    }
 
     // Form submit: build participant JSON and set hidden fields before submit (delegation so it runs after Livewire)
     function onServiceRequestFormSubmit(e) {
@@ -1365,7 +1365,7 @@ function initServiceRequestCreatePage() {
         document.addEventListener('submit', onServiceRequestFormSubmit);
         window._serviceRequestParticipantHandlersRegistered = true;
     }
-
+    
     // Add event listeners for cost inputs
     document.addEventListener('input', function(e) {
         if (e.target.classList.contains('cost-input')) {
@@ -1751,6 +1751,6 @@ document.addEventListener('livewire:navigated', function() {
             initServiceRequestCreatePage();
         }
     }, 0);
-});
+    });
 </script>
 @endsection

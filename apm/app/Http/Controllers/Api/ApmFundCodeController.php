@@ -13,6 +13,47 @@ use Illuminate\Http\Request;
 class ApmFundCodeController extends Controller
 {
     /**
+     * Lightweight SAP budgets feed from fund_codes.
+     * Optional filters: year, min_balance (default 0).
+     */
+    public function sapBudgets(Request $request): JsonResponse
+    {
+        $query = FundCode::query()
+            ->select(['id', 'code', 'fund', 'year', 'budget_balance', 'updated_at'])
+            ->whereNotNull('code')
+            ->where('code', '!=', '');
+
+        if ($request->filled('year')) {
+            $query->where('year', (int) $request->query('year'));
+        }
+
+        $minBalance = (float) $request->query('min_balance', 0);
+        $rows = $query->orderBy('code')->get()->map(function ($item) use ($minBalance) {
+            $balance = (float) str_replace(',', '', (string) ($item->budget_balance ?? 0));
+            return [
+                'id' => $item->id,
+                'fund_center' => $item->code,
+                'fund' => $item->fund,
+                'year' => $item->year,
+                'released_budget_balance' => number_format($balance, 2, '.', ''),
+                'updated_at' => optional($item->updated_at)->toDateTimeString(),
+            ];
+        })->filter(function ($item) use ($minBalance) {
+            return (float) $item['released_budget_balance'] > $minBalance;
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rows,
+            'count' => $rows->count(),
+            'filters' => [
+                'year' => $request->query('year'),
+                'min_balance' => $minBalance,
+            ],
+        ]);
+    }
+
+    /**
      * List fund codes. Optional: ?is_active=1, ?year=2025, ?division_id=1, ?funder_id=1, ?partner_id=1
      */
     public function index(Request $request): JsonResponse

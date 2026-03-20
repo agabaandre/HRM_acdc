@@ -190,6 +190,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::get('fund-codes/ajax', [App\Http\Controllers\FundCodeController::class, 'getFundCodesAjax'])->name('fund-codes.ajax');
     Route::get('fund-codes/download-template', [App\Http\Controllers\FundCodeController::class, 'downloadTemplate'])->name('fund-codes.download-template');
     Route::post('fund-codes/upload', [App\Http\Controllers\FundCodeController::class, 'upload'])->name('fund-codes.upload');
+    Route::post('fund-codes/upload-sap', [App\Http\Controllers\FundCodeController::class, 'uploadSap'])->name('fund-codes.upload-sap');
     Route::get('fund-codes/{fundCode}/transactions', [App\Http\Controllers\FundCodeController::class, 'transactions'])->name('fund-codes.transactions');
     Route::resource('fund-codes', App\Http\Controllers\FundCodeController::class)->except(['destroy']);
     
