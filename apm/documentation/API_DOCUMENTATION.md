@@ -194,6 +194,7 @@ All of these require the `Authorization: Bearer <token>` header.
 | GET | `/memo-list/approved` | Approved memos for user’s divisions (primary + associated) |
 | GET | `/reference-data` | Lookup data (divisions, staff, fund codes, etc.). Optional `?include=divisions,staff` |
 | GET | `/fund-codes` | List fund codes (funder & partner only; no activities). Optional filters: `is_active`, `year`, `division_id`, `funder_id`, `partner_id`, `per_page` |
+| GET | `/sap_budgets` | SAP-style budgets feed from `fund_codes` (`fund_center`, `released_budget_balance`). Optional filters: `year`, `min_balance` |
 | GET | `/fund-codes/{id}` | Single fund code with funder and partner |
 | POST | `/fund-codes` | Create fund code |
 | PUT / PATCH | `/fund-codes/{id}` | Update fund code |
@@ -358,6 +359,26 @@ Update a fund code. Send only fields to change.
 
 **Response (200):** `success`, `message`, `data` (updated fund code).  
 **Response (404):** Fund code not found.
+
+---
+
+## SAP budgets
+
+**GET** `/sap_budgets`  
+**Auth:** Bearer required.
+
+Returns SAP-style budget balances from `fund_codes`:
+- `fund_center` = `fund_codes.code`
+- `released_budget_balance` = `fund_codes.budget_balance`
+
+**Query parameters:**
+
+| Parameter | Type | Description |
+|----------|------|-------------|
+| `year` | integer | Optional year filter |
+| `min_balance` | number | Optional minimum balance threshold (default `0`) |
+
+**Response (200):** `success`, `data` (array), `count`, `filters`.
 
 ---
 

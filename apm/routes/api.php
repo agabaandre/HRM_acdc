@@ -85,6 +85,7 @@ Route::prefix('apm/v1')->group(function () {
 
         // Fund codes (light: funder and partner only, no activities)
         Route::get('fund-codes', [ApmFundCodeController::class, 'index']);
+        Route::get('sap_budgets', [ApmFundCodeController::class, 'sapBudgets']);
         Route::get('fund-codes/{id}', [ApmFundCodeController::class, 'show'])->where('id', '[0-9]+');
         Route::post('fund-codes', [ApmFundCodeController::class, 'store']);
         Route::put('fund-codes/{id}', [ApmFundCodeController::class, 'update'])->where('id', '[0-9]+');
