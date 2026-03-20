@@ -143,7 +143,6 @@
                         <th class="fund-code-col">Code</th>
                         <th>Year</th>
                         <th>Partner</th>
-                        <th>Activity</th>
                         <th>Budget Balance</th>
                         <th>Status</th>
                         <th class="text-center">Actions</th>
@@ -151,7 +150,7 @@
                 </thead>
                 <tbody id="fundCodesTableBody">
                     <tr>
-                        <td colspan="8" class="text-center py-4">
+                        <td colspan="7" class="text-center py-4">
                             <i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i>
                             <div class="mt-2">Loading fund codes...</div>
                         </td>
@@ -411,7 +410,7 @@
         if (!fundCodesTableBodyEl) return;
         currentPage = page;
         var params = getFundCodeParams(page);
-        fundCodesTableBodyEl.innerHTML = '<tr><td colspan="8" class="text-center py-4"><i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i><div class="mt-2">Loading fund codes...</div></td></tr>';
+        fundCodesTableBodyEl.innerHTML = '<tr><td colspan="7" class="text-center py-4"><i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i><div class="mt-2">Loading fund codes...</div></td></tr>';
 
         $.ajax({
             url: '{{ route("fund-codes.ajax") }}',
@@ -425,7 +424,7 @@
                     totalPages = response.totalPages || 0;
                     renderFundCodePagination();
                 } else {
-                    fundCodesTableBodyEl.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="bx bx-barcode fs-1"></i><div class="mt-2">No fund codes found</div><small>Try adjusting your filters</small></td></tr>';
+                    fundCodesTableBodyEl.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted"><i class="bx bx-barcode fs-1"></i><div class="mt-2">No fund codes found</div><small>Try adjusting your filters</small></td></tr>';
                     totalRecords = 0;
                     totalPages = 0;
                     renderFundCodePagination();
@@ -434,7 +433,7 @@
                 updateFundCodeShowingRange();
             },
             error: function() {
-                fundCodesTableBodyEl.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger"><i class="bx bx-error fs-1"></i><div class="mt-2">Error loading data</div></td></tr>';
+                fundCodesTableBodyEl.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger"><i class="bx bx-error fs-1"></i><div class="mt-2">Error loading data</div></td></tr>';
             }
         });
     }
@@ -482,10 +481,9 @@
                 '<td class="fund-code-col fund-code-cell">' + codeCell + '</td>' +
                 '<td><span class="badge bg-info text-dark"><i class="bx bx-calendar me-1"></i>' + escapeHtml(fc.year || '') + '</span></td>' +
                 '<td>' + partnerName + '</td>' +
-                '<td><div class="text-truncate" style="max-width:200px" title="' + (activityRaw ? escapeHtml(activityRaw) : '') + '">' + activity + '</div></td>' +
                 '<td><span class="fw-semibold text-success">' + budgetBalance + '</span></td>' +
                 '<td><span class="badge ' + statusClass + ' text-white"><i class="bx bx-' + statusIcon + ' me-1"></i>' + statusText + '</span></td>' +
-                '<td class="text-center"><div class="d-flex gap-2 justify-content-center">' +
+                '<td class="text-center"><div class="d-flex flex-column gap-1">' +
                 '<a href="' + baseUrl + '/' + fc.id + '" class="btn btn-sm btn-light text-info" title="View Details" wire:navigate><i class="bx bx-show fs-6 me-1"></i>View</a> ' +
                 '<a href="' + baseUrl + '/' + fc.id + '/edit" class="btn btn-sm btn-light text-primary" title="Edit Fund Code" wire:navigate><i class="bx bx-edit fs-6 me-1"></i>Edit</a> ' +
                 '<a href="' + baseUrl + '/' + fc.id + '/transactions" class="btn btn-sm btn-light text-success" title="View Transactions" wire:navigate><i class="bx bx-history fs-6 me-1"></i>Transactions</a>' +
