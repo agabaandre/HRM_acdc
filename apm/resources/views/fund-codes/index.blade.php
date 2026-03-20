@@ -468,6 +468,9 @@
             var fundTypeName = (fc.fund_type && fc.fund_type.name) ? escapeHtml(fc.fund_type.name) : ((fc.fundType && fc.fundType.name) ? escapeHtml(fc.fundType.name) : 'N/A');
             var fundTypeNameLower = (fc.fund_type && fc.fund_type.name) ? String(fc.fund_type.name).toLowerCase() : ((fc.fundType && fc.fundType.name) ? String(fc.fundType.name).toLowerCase() : '');
             var divisionName = (fc.division && fc.division.division_name) ? escapeHtml(fc.division.division_name) : 'N/A';
+            codeCell += '<small class="text-muted d-block">Funder: ' + funderName + '</small>';
+            codeCell += '<small class="text-muted d-block">Fund Type: ' + fundTypeName + '</small>';
+            codeCell += '<small class="text-muted d-block">Division: ' + divisionName + '</small>';
             var partnerName = (fc.partner && fc.partner.name) ? escapeHtml(fc.partner.name) : '—';
             if (fundTypeNameLower !== 'extramural') partnerName = '—';
             var activityRaw = fc.activity || '';
