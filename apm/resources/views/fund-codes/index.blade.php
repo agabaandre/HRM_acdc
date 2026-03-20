@@ -142,9 +142,6 @@
                         <th>#</th>
                         <th class="fund-code-col">Code</th>
                         <th>Year</th>
-                        <th>Funder</th>
-                        <th>Fund Type</th>
-                        <th>Division</th>
                         <th>Partner</th>
                         <th>Activity</th>
                         <th>Budget Balance</th>
@@ -154,7 +151,7 @@
                 </thead>
                 <tbody id="fundCodesTableBody">
                     <tr>
-                        <td colspan="11" class="text-center py-4">
+                        <td colspan="8" class="text-center py-4">
                             <i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i>
                             <div class="mt-2">Loading fund codes...</div>
                         </td>
@@ -414,7 +411,7 @@
         if (!fundCodesTableBodyEl) return;
         currentPage = page;
         var params = getFundCodeParams(page);
-        fundCodesTableBodyEl.innerHTML = '<tr><td colspan="11" class="text-center py-4"><i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i><div class="mt-2">Loading fund codes...</div></td></tr>';
+        fundCodesTableBodyEl.innerHTML = '<tr><td colspan="8" class="text-center py-4"><i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i><div class="mt-2">Loading fund codes...</div></td></tr>';
 
         $.ajax({
             url: '{{ route("fund-codes.ajax") }}',
@@ -428,7 +425,7 @@
                     totalPages = response.totalPages || 0;
                     renderFundCodePagination();
                 } else {
-                    fundCodesTableBodyEl.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted"><i class="bx bx-barcode fs-1"></i><div class="mt-2">No fund codes found</div><small>Try adjusting your filters</small></td></tr>';
+                    fundCodesTableBodyEl.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="bx bx-barcode fs-1"></i><div class="mt-2">No fund codes found</div><small>Try adjusting your filters</small></td></tr>';
                     totalRecords = 0;
                     totalPages = 0;
                     renderFundCodePagination();
@@ -437,7 +434,7 @@
                 updateFundCodeShowingRange();
             },
             error: function() {
-                fundCodesTableBodyEl.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-danger"><i class="bx bx-error fs-1"></i><div class="mt-2">Error loading data</div></td></tr>';
+                fundCodesTableBodyEl.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger"><i class="bx bx-error fs-1"></i><div class="mt-2">Error loading data</div></td></tr>';
             }
         });
     }
@@ -484,9 +481,6 @@
                 '<td><span class="badge bg-secondary rounded-pill">' + rowNum + '</span></td>' +
                 '<td class="fund-code-col fund-code-cell">' + codeCell + '</td>' +
                 '<td><span class="badge bg-info text-dark"><i class="bx bx-calendar me-1"></i>' + escapeHtml(fc.year || '') + '</span></td>' +
-                '<td>' + funderName + '</td>' +
-                '<td><span class="badge bg-secondary text-white"><i class="bx bx-category me-1"></i>' + fundTypeName + '</span></td>' +
-                '<td>' + divisionName + '</td>' +
                 '<td>' + partnerName + '</td>' +
                 '<td><div class="text-truncate" style="max-width:200px" title="' + (activityRaw ? escapeHtml(activityRaw) : '') + '">' + activity + '</div></td>' +
                 '<td><span class="fw-semibold text-success">' + budgetBalance + '</span></td>' +
