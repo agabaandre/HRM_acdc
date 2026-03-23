@@ -9,11 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
+use App\Traits\TrimsSummernoteHtmlFields;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class ChangeRequest extends Model
 {
-    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, TrimsSummernoteHtmlFields;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -770,5 +771,15 @@ class ChangeRequest extends Model
             return 'pending'; // Other actions like 'returned', 'submitted', etc.
         }
     }
-   
+
+    /** @return array<int, string> */
+    protected function summernoteHtmlFieldsToTrim(): array
+    {
+        return [
+            'supporting_reasons',
+            'justification',
+            'background',
+            'activity_request_remarks',
+        ];
+    }
 }

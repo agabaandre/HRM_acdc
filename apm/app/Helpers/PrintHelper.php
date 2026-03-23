@@ -2,6 +2,8 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Str;
+
 class PrintHelper
 {
     /**
@@ -939,6 +941,19 @@ class PrintHelper
     }
 
     /**
+     * Trim leading/trailing whitespace and invisible characters (NBSP, BOM, zero-width, etc.)
+     * from pasted Summernote HTML before save or sanitization.
+     */
+    public static function trimRichTextInput(?string $html): string
+    {
+        if ($html === null) {
+            return '';
+        }
+
+        return Str::trim($html);
+    }
+
+    /**
      * Normalize Summernote / rich HTML for mPDF and browser views.
      *
      * Strips float/clear/absolute positioning, unsupported properties (e.g. text-wrap-mode),
@@ -948,7 +963,8 @@ class PrintHelper
      */
     public static function sanitizeRichTextForMpdf(?string $html): string
     {
-        if ($html === null || trim($html) === '') {
+        $html = self::trimRichTextInput($html);
+        if ($html === '') {
             return '';
         }
 
@@ -977,6 +993,8 @@ class PrintHelper
                 $comment->parentNode->removeChild($comment);
             }
         }
+
+        self::trimDomDocumentEdges($root);
 
         foreach ($xpath->query('//*[@class]') as $el) {
             /** @var \DOMElement $el */
@@ -1045,8 +1063,103 @@ class PrintHelper
         foreach ($root->childNodes as $child) {
             $inner .= $dom->saveHTML($child);
         }
+        $inner = Str::trim($inner);
+        if ($inner === '') {
+            return '';
+        }
 
         return '<div class="rich-text-content html-content" style="margin:8px 0;text-align:left;overflow:visible;">' . $inner . '</div>';
+    }
+
+    /**
+     * Remove leading/trailing whitespace-only text nodes and empty p/div blocks (e.g. trailing &lt;p&gt;&lt;br&gt;&lt;/p&gt;).
+     */
+    private static function trimDomDocumentEdges(\DOMElement $root): void
+    {
+        self::trimDomLeadingEdge($root);
+        self::trimDomTrailingEdge($root);
+    }
+
+    private static function trimDomLeadingEdge(\DOMElement $parent): void
+    {
+        while ($parent->firstChild) {
+            $c = $parent->firstChild;
+            if ($c->nodeType === XML_TEXT_NODE) {
+                $text = $c->textContent;
+                $trimmedLeft = preg_replace('/^\s+/u', '', $text);
+                if ($trimmedLeft === '') {
+                    $parent->removeChild($c);
+                    continue;
+                }
+                if ($trimmedLeft !== $text) {
+                    $c->textContent = $trimmedLeft;
+                }
+                return;
+            }
+            if ($c->nodeType === XML_ELEMENT_NODE && self::isEmptyRichBlock($c)) {
+                $parent->removeChild($c);
+                continue;
+            }
+            return;
+        }
+    }
+
+    private static function trimDomTrailingEdge(\DOMElement $parent): void
+    {
+        while ($parent->lastChild) {
+            $c = $parent->lastChild;
+            if ($c->nodeType === XML_TEXT_NODE) {
+                $text = $c->textContent;
+                $trimmedRight = preg_replace('/\s+$/u', '', $text);
+                if ($trimmedRight === '') {
+                    $parent->removeChild($c);
+                    continue;
+                }
+                if ($trimmedRight !== $text) {
+                    $c->textContent = $trimmedRight;
+                }
+                return;
+            }
+            if ($c->nodeType === XML_ELEMENT_NODE && self::isEmptyRichBlock($c)) {
+                $parent->removeChild($c);
+                continue;
+            }
+            return;
+        }
+    }
+
+    /**
+     * True for p/div that only contain whitespace, &nbsp;, and/or br (common paste cruft).
+     */
+    private static function isEmptyRichBlock(\DOMNode $node): bool
+    {
+        if ($node->nodeType !== XML_ELEMENT_NODE) {
+            return false;
+        }
+        /** @var \DOMElement $el */
+        $el = $node;
+        $tag = strtolower($el->tagName);
+        if (!in_array($tag, ['p', 'div'], true)) {
+            return false;
+        }
+        foreach ($el->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE) {
+                $t = preg_replace('/\x{00A0}/u', ' ', $child->textContent);
+                if (Str::trim($t) !== '') {
+                    return false;
+                }
+                continue;
+            }
+            if ($child->nodeType === XML_ELEMENT_NODE) {
+                $name = strtolower($child->nodeName);
+                if ($name === 'br') {
+                    continue;
+                }
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -1054,6 +1167,10 @@ class PrintHelper
      */
     private static function sanitizeRichTextForMpdfFallback(string $html): string
     {
+        $html = Str::trim($html);
+        if ($html === '') {
+            return '';
+        }
         $out = preg_replace('/<!--.*?-->/s', '', $html);
         $out = preg_replace('/\bclass\s*=\s*"(?:[^"]*\bnote-float[^"]*)"/i', '', $out);
         $out = preg_replace('/\bclass\s*=\s*\'(?:[^\']*\bnote-float[^\']*)\'/i', '', $out);
@@ -1072,6 +1189,11 @@ class PrintHelper
             },
             $out
         );
+
+        $out = Str::trim($out);
+        if ($out === '') {
+            return '';
+        }
 
         return '<div class="rich-text-content html-content" style="margin:8px 0;text-align:left;">' . $out . '</div>';
     }

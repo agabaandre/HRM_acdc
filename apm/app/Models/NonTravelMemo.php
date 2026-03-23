@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
+use App\Traits\TrimsSummernoteHtmlFields;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class NonTravelMemo extends Model
 {
-    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, TrimsSummernoteHtmlFields;
 
     /**
      * The attributes that are mass assignable.
@@ -273,5 +274,9 @@ class NonTravelMemo extends Model
         return route('non-travel.show', $this->id);
     }
 
-
+    /** @return array<int, string> */
+    protected function summernoteHtmlFieldsToTrim(): array
+    {
+        return ['background', 'justification', 'activity_request_remarks'];
+    }
 }

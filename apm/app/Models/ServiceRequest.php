@@ -12,10 +12,11 @@ use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Traits\HasDocumentNumber;
 use App\Traits\HasApprovalWorkflow;
+use App\Traits\TrimsSummernoteHtmlFields;
 
 class ServiceRequest extends Model
 {
-    use HasFactory, HasDocumentNumber, Auditable, HasApprovalWorkflow;
+    use HasFactory, HasDocumentNumber, Auditable, HasApprovalWorkflow, TrimsSummernoteHtmlFields;
 
     /**
      * The attributes that are mass assignable.
@@ -251,5 +252,18 @@ class ServiceRequest extends Model
     public function getResourceUrlAttribute()
     {
         return route('service-requests.show', $this->id);
+    }
+
+    /** @return array<int, string> */
+    protected function summernoteHtmlFieldsToTrim(): array
+    {
+        return [
+            'justification',
+            'description',
+            'internal_participants_comment',
+            'external_participants_comment',
+            'other_costs_comment',
+            'remarks',
+        ];
     }
 }

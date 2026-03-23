@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
+use App\Traits\TrimsSummernoteHtmlFields;
 use Illuminate\Support\Str;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 use App\Models\ActivityApprovalTrail;
@@ -15,7 +16,7 @@ use App\Models\ChangeRequest;
 
 class Activity extends Model
 {
-    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, TrimsSummernoteHtmlFields;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -536,5 +537,11 @@ class Activity extends Model
     public function getResourceUrlAttribute()
     {
         return route(( $this->is_single_memo ? 'activities.single-memos.show' : 'activities.show'), $this->id);
+    }
+
+    /** @return array<int, string> */
+    protected function summernoteHtmlFieldsToTrim(): array
+    {
+        return ['background', 'activity_request_remarks'];
     }
 }
