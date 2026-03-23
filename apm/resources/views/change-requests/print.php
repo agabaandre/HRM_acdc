@@ -153,6 +153,17 @@
     .text-right { text-align: right; }
     .text-center { text-align: center; }
     .bg-highlight { background-color: #fef3c7; }
+
+    /* Summernote rich HTML (mPDF-safe) */
+    .rich-text-content { margin: 8px 0; text-align: left; }
+    .rich-text-content img, .html-content img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        margin: 8px 0;
+        float: none !important;
+    }
+    .rich-text-content p { margin: 0 0 8px 0; padding: 0; }
 </style>
 </head>
 <body>
@@ -489,7 +500,7 @@
   <?php if ($changeRequest->has_activity_request_remarks_changed && !empty($changeRequest->activity_request_remarks)): ?>
     <div class="section-label mb-15" style="margin-top: <?php echo !empty($summaryChanges) ? '20px' : '15px'; ?>;"><strong>Request for Approval</strong></div>
     <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border: 1px solid #e5e7eb;">
-      <?php echo $changeRequest->activity_request_remarks; ?>
+      <?php echo PrintHelper::sanitizeRichTextForMpdf($changeRequest->activity_request_remarks ?? ''); ?>
     </div>
   <?php endif; ?>
 

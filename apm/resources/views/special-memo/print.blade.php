@@ -45,6 +45,13 @@
             text-align: center;
         }
         .footer .line { border-top: 1px solid #aaa; margin: 6px 14mm 4px; }
+        .rich-text-content img, .html-content img {
+            max-width: 100% !important;
+            height: auto !important;
+            float: none !important;
+            display: block;
+            margin: 8px 0;
+        }
     </style>
 </head>
 <body>
@@ -117,17 +124,13 @@
                 <th class="w-25">Title</th>
                 <td colspan="3">{{ $specialMemo->activity_title ?? $specialMemo->title ?? 'N/A' }}</td>
             </tr>
-            @php
-                $printBackground = trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->background ?? '')));
-                $printJustification = trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->justification ?? $specialMemo->activity_request_remarks ?? '')));
-            @endphp
             <tr>
                 <th>Background</th>
-                <td colspan="3">{{ $printBackground }}</td>
+                <td colspan="3">{!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($specialMemo->background ?? '') !!}</td>
             </tr>
             <tr>
                 <th>Justification</th>
-                <td colspan="3">{{ $printJustification }}</td>
+                <td colspan="3">{!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($specialMemo->justification ?? $specialMemo->activity_request_remarks ?? '') !!}</td>
             </tr>
             @if (!empty($locations) && count($locations))
             <tr>

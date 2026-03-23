@@ -199,6 +199,17 @@
         word-spacing: 0.1em;
         line-height: 1.6;
     }
+
+    /* Summernote rich HTML (mPDF-safe) */
+    .rich-text-content { margin: 8px 0; text-align: left; }
+    .rich-text-content img, .html-content img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        margin: 8px 0;
+        float: none !important;
+    }
+    .rich-text-content p { margin: 0 0 8px 0; padding: 0; }
 </style>
 </head>
 <body>
@@ -608,7 +619,7 @@
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Background:</strong></td>
   </tr>
   <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><p class="justify-text"><?=trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->background ?? '')));?></p></td>
+   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($specialMemo->background ?? ''); ?></td>
   </tr>
  </table>
 
@@ -619,7 +630,7 @@
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Justification:</strong></td>
   </tr>
   <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><p class="justify-text"><?=trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->justification ?? '')));?></p></td>
+   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($specialMemo->justification ?? ''); ?></td>
   </tr>
  </table>
   
@@ -776,7 +787,10 @@
                    
                 </div>
      <div style="margin-bottom: 0; color: #006633; font-style: italic;"><strong>Request for Approval</strong></div>
-     <div class="justify-text" style="padding: 10px;"><?php echo trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($specialMemo->activity_request_remarks ?? $specialMemo->justification ?? 'N/A'))); ?></div>
+     <div class="justify-text" style="padding: 10px;"><?php
+     $_approvalSm = $specialMemo->activity_request_remarks ?? $specialMemo->justification ?? '';
+     echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($_approvalSm !== '' ? $_approvalSm : 'N/A');
+     ?></div>
 
     <?php if($fundCode->fundType->id == 1): ?>
     <div class="page-break"></div>

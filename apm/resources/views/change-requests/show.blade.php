@@ -265,7 +265,7 @@
             <div class="mt-4">
                 <h6 class="text-success">Request for Approval</h6>
                 <div class="bg-light p-3 rounded">
-                    {!! $changeRequest->supporting_reasons !!}
+                    {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($changeRequest->supporting_reasons ?? '') !!}
                 </div>
             </div>
         @endif
@@ -883,7 +883,7 @@
                                         <div class="row">
                                             <div class="col-12">
                                                 <small class="text-muted">Changed to:</small>
-                                                <div>{!! $changeRequest->activity_request_remarks !!}</div>
+                                                <div>{!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($changeRequest->activity_request_remarks ?? '') !!}</div>
                                             </div>
                                         </div>
                                     </div>
