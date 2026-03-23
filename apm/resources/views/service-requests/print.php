@@ -200,6 +200,20 @@
         word-spacing: 0.1em;
         line-height: 1.6;
     }
+
+    /* Summernote / rich HTML in participant comments (mPDF-safe: no floats) */
+    .rich-text-content {
+        margin: 8px 0;
+        text-align: left;
+    }
+    .rich-text-content img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        margin: 8px 0;
+        float: none !important;
+    }
+    .rich-text-content p { margin: 0 0 8px 0; padding: 0; }
 </style>
 </head>
 <body>
@@ -786,7 +800,7 @@
                                 <h6 class="fw-bold text-success mb-2">
                                     <i class="fas fa-comment me-2"></i>Internal Participants Comments
                                 </h6>
-                                <p class="mb-0 text-muted"><?php echo html_entity_decode($serviceRequest->internal_participants_comment); ?></p>
+                                <div class="mb-0 text-muted"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($serviceRequest->internal_participants_comment); ?></div>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -1008,7 +1022,7 @@
                                 <h6 class="fw-bold text-warning mb-2">
                                     <i class="fas fa-comment me-2"></i>External Participants Comments
                                 </h6>
-                                <p class="mb-0 text-muted"><?php echo html_entity_decode($serviceRequest->external_participants_comment); ?></p>
+                                <div class="mb-0 text-muted"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($serviceRequest->external_participants_comment); ?></div>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -1071,7 +1085,7 @@
                                 <h6 class="fw-bold text-info mb-2">
                                     <i class="fas fa-comment me-2"></i>Other Costs Comments
                                 </h6>
-                                <p class="mb-0 text-muted"><?php echo html_entity_decode($serviceRequest->other_costs_comment); ?></p>
+                                <div class="mb-0 text-muted"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($serviceRequest->other_costs_comment); ?></div>
                             </div>
                             <?php endif; ?>
                         </div>
