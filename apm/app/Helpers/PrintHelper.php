@@ -937,5 +937,142 @@ class PrintHelper
 
         return $organizedApprovers;
     }
-    
+
+    /**
+     * Normalize Summernote / rich HTML for mPDF output.
+     *
+     * Strips float/clear/absolute positioning, unsupported properties (e.g. text-wrap-mode),
+     * rgba backgrounds on spans, and Summernote float classes. Forces images to block layout
+     * with max-width so JPEG/PNG embeds render reliably instead of throwing layout errors.
+     */
+    public static function sanitizeRichTextForMpdf(?string $html): string
+    {
+        if ($html === null || trim($html) === '') {
+            return '';
+        }
+
+        $decoded = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        libxml_use_internal_errors(true);
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $wrapper = '<div id="mpdf-rich-root">' . $decoded . '</div>';
+        // Standard HTML parse (wraps in html/body); more reliable than NOIMPLIED for Summernote fragments
+        $loaded = @$dom->loadHTML('<?xml encoding="UTF-8">' . $wrapper);
+        libxml_clear_errors();
+
+        if (!$loaded) {
+            return self::sanitizeRichTextForMpdfFallback($decoded);
+        }
+
+        $root = $dom->getElementById('mpdf-rich-root');
+        if (!$root) {
+            return self::sanitizeRichTextForMpdfFallback($decoded);
+        }
+
+        $xpath = new \DOMXPath($dom);
+
+        foreach ($xpath->query('//comment()') as $comment) {
+            if ($comment->parentNode) {
+                $comment->parentNode->removeChild($comment);
+            }
+        }
+
+        foreach ($xpath->query('//*[@class]') as $el) {
+            /** @var \DOMElement $el */
+            $class = $el->getAttribute('class');
+            if ($class === '') {
+                continue;
+            }
+            $parts = preg_split('/\s+/', trim($class), -1, PREG_SPLIT_NO_EMPTY);
+            if (!$parts) {
+                $el->removeAttribute('class');
+                continue;
+            }
+            $filtered = array_values(array_filter($parts, function ($c) {
+                return stripos($c, 'note-float') === false
+                    && stripos($c, 'note-image') === false;
+            }));
+            if (count($filtered) === 0) {
+                $el->removeAttribute('class');
+            } else {
+                $el->setAttribute('class', implode(' ', $filtered));
+            }
+        }
+
+        foreach ($xpath->query('//*[@style]') as $el) {
+            /** @var \DOMElement $el */
+            $style = $el->getAttribute('style');
+            $style = preg_replace('/\b(float|clear|text-wrap-mode)\s*:\s*[^;]+;?/i', '', $style);
+            $style = preg_replace('/\bposition\s*:\s*(absolute|fixed|sticky)\s*;?/i', '', $style);
+            $style = preg_replace('/\b(z-index|transform)\s*:\s*[^;]+;?/i', '', $style);
+            $style = preg_replace('/\bbackground(?:-color)?\s*:\s*rgba\([^)]+\)\s*;?/i', '', $style);
+            $style = trim(preg_replace('/\s*;\s*/', ';', $style), " ;\t\n\r\0\x0B");
+            if ($style === '') {
+                $el->removeAttribute('style');
+            } else {
+                $el->setAttribute('style', $style);
+            }
+        }
+
+        foreach ($xpath->query('//img') as $img) {
+            /** @var \DOMElement $img */
+            $img->removeAttribute('class');
+            $style = $img->getAttribute('style');
+            $style = preg_replace('/\b(float|clear|vertical-align)\s*:\s*[^;]+;?/i', '', $style);
+            $style = preg_replace('/\bwidth\s*:\s*[^;]+;?/i', '', $style);
+            $style = preg_replace('/\bheight\s*:\s*[^;]+;?/i', '', $style);
+            $style = trim($style . ' max-width:100%; height:auto; display:block; margin:8px 0;');
+            $style = preg_replace('/\s*;\s*/', '; ', trim($style));
+            $img->setAttribute('style', $style);
+
+            $src = $img->getAttribute('src');
+            if ($src !== '' && !preg_match('#^https?://#i', $src)) {
+                $base = rtrim((string) (config('app.url') ?: ''), '/');
+                if ($base !== '') {
+                    if (str_starts_with($src, '//')) {
+                        $img->setAttribute('src', (str_starts_with($base, 'https') ? 'https:' : 'http:') . $src);
+                    } elseif (str_starts_with($src, '/')) {
+                        $img->setAttribute('src', $base . $src);
+                    } else {
+                        $img->setAttribute('src', $base . '/' . ltrim($src, '/'));
+                    }
+                }
+            }
+        }
+
+        $inner = '';
+        foreach ($root->childNodes as $child) {
+            $inner .= $dom->saveHTML($child);
+        }
+
+        return '<div class="rich-text-content" style="margin:8px 0;text-align:left;overflow:visible;">' . $inner . '</div>';
+    }
+
+    /**
+     * Regex-based fallback when DOM parsing fails (malformed markup).
+     */
+    private static function sanitizeRichTextForMpdfFallback(string $html): string
+    {
+        $out = preg_replace('/<!--.*?-->/s', '', $html);
+        $out = preg_replace('/\bclass\s*=\s*"(?:[^"]*\bnote-float[^"]*)"/i', '', $out);
+        $out = preg_replace('/\bclass\s*=\s*\'(?:[^\']*\bnote-float[^\']*)\'/i', '', $out);
+        $out = preg_replace_callback(
+            '/<img\b[^>]*(?:\/)?>/i',
+            function ($m) {
+                $tag = $m[0];
+                $tag = preg_replace('/\sstyle\s*=\s*"[^"]*"/i', '', $tag);
+                $tag = preg_replace("/\sstyle\s*=\s*'[^']*'/i", '', $tag);
+                $tag = preg_replace('/\sclass\s*=\s*"[^"]*"/i', '', $tag);
+                if (preg_match('/\/\s*>$/', $tag)) {
+                    return preg_replace('/\/\s*>$/', ' style="max-width:100%;height:auto;display:block;margin:8px 0;" />', $tag);
+                }
+
+                return preg_replace('/>$/', ' style="max-width:100%;height:auto;display:block;margin:8px 0;">', $tag);
+            },
+            $out
+        );
+
+        return '<div class="rich-text-content" style="margin:8px 0;text-align:left;">' . $out . '</div>';
+    }
+
 }
