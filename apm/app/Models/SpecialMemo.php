@@ -9,11 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\FundCode;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
+use App\Traits\TrimsSummernoteHtmlFields;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class SpecialMemo extends Model
 {
-    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, TrimsSummernoteHtmlFields;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -434,4 +435,9 @@ class SpecialMemo extends Model
         return route('special-memos.show', $this->id);
     }
 
+    /** @return array<int, string> */
+    protected function summernoteHtmlFieldsToTrim(): array
+    {
+        return ['background', 'justification', 'activity_request_remarks', 'supporting_reasons'];
+    }
 }

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\TrimsSummernoteHtmlFields;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Faq extends Model
 {
-    use HasFactory;
+    use HasFactory, TrimsSummernoteHtmlFields;
 
     /** Placeholder in answer HTML replaced with staff portal base URL at display time */
     public const PLACEHOLDER_STAFF_PORTAL_URL = '{{staff_portal_url}}';
@@ -41,6 +42,12 @@ class Faq extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /** @return array<int, string> */
+    protected function summernoteHtmlFieldsToTrim(): array
+    {
+        return ['answer'];
     }
 
     public function scopeOrdered($query)
