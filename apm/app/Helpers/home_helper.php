@@ -325,60 +325,56 @@ if (!function_exists('generate_pdf')) {
             exit;
         }
 
-      // mPDF font configuration with Arial + safe fallback
-$defaultConfig      = (new \Mpdf\Config\ConfigVariables())->getDefaults();
-$fontDirs           = $defaultConfig['fontDir'];
-//dd($fontDirs);
-$defaultFontConfig  = (new \Mpdf\Config\FontVariables())->getDefaults();
-$fontData           = $defaultFontConfig['fontdata'];
-//dd($fontData);
-$arialFontDir = public_path('assets/fonts/arial');
-//dd($arialFontDir);
-$arialFiles = [
-    'R'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIAL.TTF',
-    'B'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBD.TTF',
-    'I'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALI.TTF',
-    'BI' => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBI.TTF',
-];
+        // mPDF font configuration with Arial + safe fallback
+        $defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();
+        $fontDirs = $defaultConfig['fontDir'];
+        $defaultFontConfig = (new \Mpdf\Config\FontVariables())->getDefaults();
+        $fontData = $defaultFontConfig['fontdata'];
+        $arialFontDir = public_path('assets/fonts/arial');
+        $arialFiles = [
+            'R' => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIAL.TTF',
+            'B' => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBD.TTF',
+            'I' => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALI.TTF',
+            'BI' => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBI.TTF',
+        ];
 
-// Determine if all Arial files exist (Linux is case-sensitive)
-$haveArial =
-    is_dir($arialFontDir) &&
-    file_exists($arialFiles['R']) &&
-    file_exists($arialFiles['B']) &&
-    file_exists($arialFiles['I']) &&
-    file_exists($arialFiles['BI']);
+        $haveArial =
+            is_dir($arialFontDir) &&
+            file_exists($arialFiles['R']) &&
+            file_exists($arialFiles['B']) &&
+            file_exists($arialFiles['I']) &&
+            file_exists($arialFiles['BI']);
 
-if (!$haveArial) {
-    Log::warning('Arial fonts not found or incomplete. Falling back to DejaVuSans.', [
-        'dir_exists' => is_dir($arialFontDir),
-        'files'      => $arialFiles
-    ]);
-}
+        if (!$haveArial) {
+            Log::warning('Arial fonts not found or incomplete. Falling back to DejaVuSans.', [
+                'dir_exists' => is_dir($arialFontDir),
+                'files' => $arialFiles,
+            ]);
+        }
 
-$mpdf = new \Mpdf\Mpdf([
-    'mode'     => 'utf-8',
-    'format'   => 'A4',
-    'tempDir'  => storage_path('app/mpdf_tmp'), // ensure this exists & is writable
-    'fontDir'  => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
-    'fontdata' => $haveArial
-        ? $fontData + [
-            'arial' => [
-                'R'  => 'ARIAL.TTF',
-                'B'  => 'ARIALBD.TTF',
-                'I'  => 'ARIALI.TTF',
-                'BI' => 'ARIALBI.TTF',
-            ],
-        ]
-        : $fontData, // keep defaults if no Arial
-    'default_font' => $haveArial ? 'arial' : 'freesans',
-    'default_font_size' => 10,
-]);
+        $mpdfConfig = [
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'tempDir' => storage_path('app/mpdf_tmp'),
+            'fontDir' => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
+            'fontdata' => $haveArial
+                ? $fontData + [
+                    'arial' => [
+                        'R' => 'ARIAL.TTF',
+                        'B' => 'ARIALBD.TTF',
+                        'I' => 'ARIALI.TTF',
+                        'BI' => 'ARIALBI.TTF',
+                    ],
+                ]
+                : $fontData,
+            'default_font' => $haveArial ? 'arial' : 'freesans',
+            'default_font_size' => 10,
+        ];
 
-        // Set PDF margins exactly like CodeIgniter
-        $mpdf->SetMargins(10, 10, 35);         // left, top, right margins
-        $mpdf->SetAutoPageBreak(true, 30); 
-        $header = '<div style="width: 100%; text-align: center; padding-bottom: 5px;">
+        $applyMpdfChrome = static function (\Mpdf\Mpdf $mpdf) use ($options): void {
+            $mpdf->SetMargins(10, 10, 35);
+            $mpdf->SetAutoPageBreak(true, 30);
+            $header = '<div style="width: 100%; text-align: center; padding-bottom: 5px;">
             <div style="width: 100%; padding-bottom: 5px;">
                 <div style="width: 100%; padding: 10px 0;">
                     <!-- Top Row: Logo and Tagline -->
@@ -418,18 +414,48 @@ $mpdf = new \Mpdf\Mpdf([
         $mpdf->SetHTMLFooter($footer);
 
         // Optional watermark text (e.g. "APPROVED") on every page
-        if (!empty($options['watermark_text'])) {
-            $mpdf->SetWatermarkText($options['watermark_text'], $options['watermark_alpha'] ?? 0.12);
-            $mpdf->showWatermarkText = true;
-        }
+            if (!empty($options['watermark_text'])) {
+                $mpdf->SetWatermarkText($options['watermark_text'], $options['watermark_alpha'] ?? 0.12);
+                $mpdf->showWatermarkText = true;
+            }
+        };
 
-        // Write HTML content exactly like CodeIgniter with error handling
+        $mpdf = new \Mpdf\Mpdf($mpdfConfig);
+        $applyMpdfChrome($mpdf);
+
+        $stripSvgBlocks = static function (string $html): string {
+            return preg_replace(
+                '/<svg\b[^>]*>.*?<\/svg>/is',
+                '<p style="color:#888;font-size:9pt"><em>Illustration omitted</em></p>',
+                $html
+            );
+        };
+
+        $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
+
         try {
             $mpdf->WriteHTML($html);
-        } catch (Exception $e) {
-            // If there's an error, try with minimal HTML
-            $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
-            $mpdf->WriteHTML($simpleHtml);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('mPDF WriteHTML failed', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            try {
+                $mpdf = new \Mpdf\Mpdf($mpdfConfig);
+                $applyMpdfChrome($mpdf);
+                $mpdf->WriteHTML($stripSvgBlocks($html));
+            } catch (\Throwable $e2) {
+                \Illuminate\Support\Facades\Log::error('mPDF WriteHTML failed after SVG strip', [
+                    'message' => $e2->getMessage(),
+                    'file' => $e2->getFile(),
+                    'line' => $e2->getLine(),
+                ]);
+                $mpdf = new \Mpdf\Mpdf($mpdfConfig);
+                $applyMpdfChrome($mpdf);
+                $mpdf->WriteHTML($simpleHtml);
+            }
         }
 
         return $mpdf;
