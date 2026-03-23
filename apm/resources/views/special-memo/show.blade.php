@@ -875,7 +875,7 @@
                         </h6>
                     </div>
                     <div class="card-body">
-                    <div class="html-content">{!! $specialMemo->background !!}</div>
+                    {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($specialMemo->background ?? '') !!}
                         </div>
                         </div>
         @endif
@@ -890,7 +890,7 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    <div class="html-content">{!! $specialMemo->justification !!}</div>
+                    {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($specialMemo->justification ?? '') !!}
                 </div>
             </div>
         @endif
@@ -1176,7 +1176,7 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <div class="html-content">{!! $specialMemo->activity_request_remarks !!}</div>
+                            {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($specialMemo->activity_request_remarks ?? '') !!}
                         </div>
                     </div>
                 @endif

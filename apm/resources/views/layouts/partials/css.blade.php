@@ -126,6 +126,20 @@
         transform: translateY(-50%);
     }
 
+    /* Summernote / rich HTML: stack images, override float layouts (memos, activities, SR) */
+    .rich-text-content,
+    .html-content {
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+    }
+    .rich-text-content img,
+    .html-content img {
+        max-width: 100% !important;
+        height: auto !important;
+        float: none !important;
+        display: block;
+        margin: 0.75rem auto;
+    }
 
     .modal.fade .modal-dialog.modal-bottom {
         transform: translateY(100%);

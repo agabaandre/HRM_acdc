@@ -920,7 +920,7 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    <div class="html-content">{!! $activity->background !!}</div>
+                    {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($activity->background ?? '') !!}
                 </div>
             </div>
         @endif
@@ -1299,7 +1299,7 @@
                         </h6>
                         </div>
                     <div class="card-body">
-                        <div class="html-content">{!! $activity->activity_request_remarks !!}</div>
+                        {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($activity->activity_request_remarks ?? '') !!}
                             </div>
                             </div>
                                 @endif

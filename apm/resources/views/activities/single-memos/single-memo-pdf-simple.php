@@ -199,6 +199,17 @@
         word-spacing: 0.1em;
         line-height: 1.6;
     }
+
+    /* Summernote rich HTML (mPDF-safe) */
+    .rich-text-content { margin: 8px 0; text-align: left; }
+    .rich-text-content img, .html-content img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        margin: 8px 0;
+        float: none !important;
+    }
+    .rich-text-content p { margin: 0 0 8px 0; padding: 0; }
 </style>
 </head>
 <body>
@@ -394,7 +405,7 @@
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Background:</strong></td>
   </tr>
   <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><div class="justify-text"><?=trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($activity->background ?? '')));?></div></td>
+   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($activity->background ?? ''); ?></td>
   </tr>
  </table>
   
@@ -481,7 +492,10 @@
     if (!$hasBudgetSection):
     ?>
     <div class="section-label"><strong>Request for Approval</strong></div>
-    <div class="justify-text" style="padding: 2px;"><?php echo trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($activity->activity_request_remarks ?? 'N/A'))); ?></div>
+    <div class="justify-text" style="padding: 2px;"><?php
+    $_arSingle = $activity->activity_request_remarks ?? '';
+    echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($_arSingle !== '' ? $_arSingle : 'N/A');
+    ?></div>
     <?php
     endif;
 
@@ -595,7 +609,10 @@
                    
                 </div>
      <div class="section-label"><strong>Request for Approval</strong></div>
-     <div class="justify-text" style="padding: 2px;"><?php echo trim(preg_replace('/[a-zA-Z0-9.#\s]+\s*\{[^}]*\}/', '', strip_tags($activity->activity_request_remarks ?? 'N/A'))); ?></div>
+     <div class="justify-text" style="padding: 2px;"><?php
+    $_arSingle = $activity->activity_request_remarks ?? '';
+    echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($_arSingle !== '' ? $_arSingle : 'N/A');
+    ?></div>
 
     <?php if($fundCode->fundType->id == 1): ?>
     <div class="page-break"></div>

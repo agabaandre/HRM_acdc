@@ -939,11 +939,12 @@ class PrintHelper
     }
 
     /**
-     * Normalize Summernote / rich HTML for mPDF output.
+     * Normalize Summernote / rich HTML for mPDF and browser views.
      *
      * Strips float/clear/absolute positioning, unsupported properties (e.g. text-wrap-mode),
      * rgba backgrounds on spans, and Summernote float classes. Forces images to block layout
      * with max-width so JPEG/PNG embeds render reliably instead of throwing layout errors.
+     * Output is wrapped in a div with classes "rich-text-content" and "html-content".
      */
     public static function sanitizeRichTextForMpdf(?string $html): string
     {
@@ -1045,7 +1046,7 @@ class PrintHelper
             $inner .= $dom->saveHTML($child);
         }
 
-        return '<div class="rich-text-content" style="margin:8px 0;text-align:left;overflow:visible;">' . $inner . '</div>';
+        return '<div class="rich-text-content html-content" style="margin:8px 0;text-align:left;overflow:visible;">' . $inner . '</div>';
     }
 
     /**
@@ -1072,7 +1073,7 @@ class PrintHelper
             $out
         );
 
-        return '<div class="rich-text-content" style="margin:8px 0;text-align:left;">' . $out . '</div>';
+        return '<div class="rich-text-content html-content" style="margin:8px 0;text-align:left;">' . $out . '</div>';
     }
 
 }

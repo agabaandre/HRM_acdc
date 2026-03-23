@@ -559,7 +559,7 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="mb-0 lh-lg text-dark">{!! $nonTravel->background !!}</p>
+                            <div class="mb-0 lh-lg text-dark">{!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($nonTravel->background ?? '') !!}</div>
                         </div>
                     </div>
 
@@ -574,7 +574,7 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="mb-0 lh-lg text-dark">{!! $nonTravel->justification !!}</p>
+                            <div class="mb-0 lh-lg text-dark">{!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($nonTravel->justification ?? '') !!}</div>
                         </div>
                     </div>
                 </div>
@@ -668,7 +668,7 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="mb-0 lh-lg text-dark">{!! $nonTravel->activity_request_remarks !!}</p>
+                            <div class="mb-0 lh-lg text-dark">{!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($nonTravel->activity_request_remarks ?? '') !!}</div>
                         </div>
                     </div>
 
