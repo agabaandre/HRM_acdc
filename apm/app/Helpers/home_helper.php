@@ -426,12 +426,7 @@ $mpdf = new \Mpdf\Mpdf([
         // Write HTML content exactly like CodeIgniter with error handling
         try {
             $mpdf->WriteHTML($html);
-        } catch (\Throwable $e) {
-            Log::warning('mPDF WriteHTML failed', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
+        } catch (Exception $e) {
             // If there's an error, try with minimal HTML
             $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
             $mpdf->WriteHTML($simpleHtml);
