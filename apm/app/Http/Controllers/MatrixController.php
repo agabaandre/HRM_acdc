@@ -114,9 +114,7 @@ class MatrixController extends Controller
         if (empty($selectedYear) && !$request->has('year')) {
             $selectedYear = $currentYear;
         }
-        if (empty($selectedQuarter) && !$request->has('quarter')) {
-            $selectedQuarter = $currentQuarter;
-        }
+        // Do not default quarter: show all quarters for the selected year unless the user picks one.
 
         // Apply year filter only if a year is selected
         if (!empty($selectedYear)) {
@@ -138,9 +136,8 @@ class MatrixController extends Controller
 
        //  dd(getFullSql($query));
 
-        $matrices = $query->orderBy('year', 'desc')
-                          ->orderBy('quarter', 'desc')
-                          ->paginate(24);
+        $this->applyMatrixListOrdering($query, $currentQuarter, $selectedYear, $currentYear);
+        $matrices = $query->paginate(24);
 
         //dd($matrices->toArray());
 
@@ -198,9 +195,8 @@ class MatrixController extends Controller
             $myDivisionQuery->where('division_id', $request->division);
         }
 
-        $myDivisionMatrices = $myDivisionQuery->orderBy('year', 'desc')
-                                            ->orderBy('quarter', 'desc')
-                                            ->paginate(24, ['*'], 'my_division_page');
+        $this->applyMatrixListOrdering($myDivisionQuery, $currentQuarter, $selectedYear, $currentYear);
+        $myDivisionMatrices = $myDivisionQuery->paginate(24, ['*'], 'my_division_page');
 
         // Get all matrices for users with permission ID 87
         $allMatrices = collect();
@@ -232,9 +228,8 @@ class MatrixController extends Controller
                 $allMatricesQuery->where('division_id', $request->division);
             }
 
-            $allMatrices = $allMatricesQuery->orderBy('year', 'desc')
-                                           ->orderBy('quarter', 'desc')
-                                           ->paginate(24, ['*'], 'all_matrices_page');
+            $this->applyMatrixListOrdering($allMatricesQuery, $currentQuarter, $selectedYear, $currentYear);
+            $allMatrices = $allMatricesQuery->paginate(24, ['*'], 'all_matrices_page');
         }
 
         //  dd($filteredActionedMatrices->toArray());
@@ -279,8 +274,29 @@ class MatrixController extends Controller
             'selectedQuarter' => $selectedQuarter,
         ]);
     }
-    
-    
+
+    /**
+     * Order listing queries: by division, year (desc). For the current calendar year (or no year filter), list the
+     * active calendar quarter first, then Q1–Q4. For other selected years, order Q1–Q4 only.
+     */
+    private function applyMatrixListOrdering(
+        \Illuminate\Database\Eloquent\Builder $query,
+        string $currentQuarter,
+        mixed $selectedYear,
+        int $currentYear
+    ): void {
+        $query->orderBy('division_id')
+            ->orderBy('year', 'desc');
+
+        $yearFiltered = $selectedYear !== '' && $selectedYear !== null;
+        $useCurrentQuarterBoost = ! $yearFiltered || (int) $selectedYear === $currentYear;
+
+        if ($useCurrentQuarterBoost) {
+            $query->orderByRaw('CASE WHEN quarter = ? THEN 0 ELSE 1 END', [$currentQuarter]);
+        }
+
+        $query->orderByRaw("CASE quarter WHEN 'Q1' THEN 1 WHEN 'Q2' THEN 2 WHEN 'Q3' THEN 3 WHEN 'Q4' THEN 4 ELSE 99 END");
+    }
 
     /**
      * Show the form for creating a new matrix.

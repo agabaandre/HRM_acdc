@@ -31,7 +31,7 @@
                     <div class="input-group w-100">
                         <span class="input-group-text bg-white"><i class="bx bx-time-five"></i></span>
                         <select class="form-select" id="quarterFilter">
-                            <option value="">All Quarters</option>
+                            <option value="" {{ ($selectedQuarter === '' || $selectedQuarter === null) ? 'selected' : '' }}>All Quarters</option>
                             @foreach (['Q1', 'Q2', 'Q3', 'Q4'] as $quarter)
                                 <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>{{ $quarter }}</option>
                             @endforeach
