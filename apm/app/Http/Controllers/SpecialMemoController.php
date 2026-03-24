@@ -698,7 +698,7 @@ class SpecialMemoController extends Controller
     /**
      * Show the form for editing the specified special memo.
      */
-    public function edit(SpecialMemo $specialMemo): View
+    public function edit(SpecialMemo $specialMemo): View|RedirectResponse
     {
         $isChangeRequest = request('change_request') == '1';
 
