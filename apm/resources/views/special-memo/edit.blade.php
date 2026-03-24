@@ -48,6 +48,14 @@
             min-height: 60vh !important;
         }
     }
+
+    /* Stable height before/after Select2 replaces the native multi-select (reduces flicker on load & Livewire navigate) */
+    #internal_participants + .select2-container {
+        min-width: 100%;
+    }
+    .select2-container--default .select2-selection--multiple {
+        min-height: 38px;
+    }
 </style>
 @endsection
 @section('header', "Edit Special Memo")
@@ -67,9 +75,55 @@
         </div>
 <?php ///dd($specialMemo)?>
         <div class="card-body p-4">
-            <form action="{{ route('special-memo.update', $specialMemo) }}" method="POST" id="activityForm" enctype="multipart/form-data">
+            <form action="{{ request('change_request') ? route('change-requests.store') : route('special-memo.update', $specialMemo) }}" method="POST" id="activityForm" enctype="multipart/form-data">
                 @csrf
-                @method('PUT')
+                @if(!request('change_request'))
+                    @method('PUT')
+                @endif
+
+                @if(request('change_request'))
+                    <input type="hidden" name="parent_memo_id" value="{{ $specialMemo->id }}">
+                    <input type="hidden" name="parent_memo_model" value="App\Models\SpecialMemo">
+                    @if(request('change_request_id'))
+                        <input type="hidden" name="change_request_id" value="{{ request('change_request_id') }}">
+                    @endif
+                    <input type="hidden" name="fund_type" id="fund_type_for_change_request" value="{{ old('fund_type_id', $specialMemo->fund_type_id) }}">
+                @endif
+
+                @if(request('change_request') && request('change_request_id'))
+                    <div class="alert alert-warning d-flex align-items-start mb-4" role="alert">
+                        <i class="fas fa-info-circle me-2 mt-1"></i>
+                        <div>
+                            <strong>Note:</strong> You are editing a <strong>saved change request draft</strong> (document
+                            @if(!empty($changeRequestForEdit?->document_number))
+                                <span class="fw-semibold">{{ $changeRequestForEdit->document_number }}</span>
+                            @else
+                                #{{ request('change_request_id') }}
+                            @endif
+                            ). Fields below reflect this draft; save to update it.
+                        </div>
+                    </div>
+                @endif
+
+                @if(request('change_request'))
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0">
+                                <i class="fas fa-edit me-2"></i> Change Request Details
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="supporting_reasons" class="form-label fw-semibold">
+                                    <i class="fas fa-comment-alt me-1 text-warning"></i> Supporting Reasons <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="supporting_reasons" id="supporting_reasons" class="form-control" rows="4"
+                                    placeholder="Please explain why you are requesting changes to this special memo..." required>{{ old('supporting_reasons', optional($changeRequestForEdit)->supporting_reasons ?? '') }}</textarea>
+                                <small class="text-muted">Provide detailed justification for the requested changes.</small>
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 @includeIf('special-memo.form')
 
@@ -240,9 +294,15 @@
                 </div>
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
-                    <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
-                        <i class="bx bx-save me-1"></i> Update Special Memo
-                    </button>
+                    @if(request('change_request'))
+                        <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
+                            <i class="bx bx-save me-1"></i> Save as Draft
+                        </button>
+                    @else
+                        <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
+                            <i class="bx bx-save me-1"></i> Update Special Memo
+                        </button>
+                    @endif
                     
                     {{-- <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
                         <i class="bx bx-send me-1"></i> Submit for Approval
@@ -348,6 +408,10 @@ $(document).ready(function () {
         let selectedText = $('#fund_type_id option:selected').text().toLowerCase();
         let selectedId = $('#fund_type_id').val();
 
+        if ($('#fund_type_for_change_request').length) {
+            $('#fund_type_for_change_request').val(selectedId);
+        }
+
         const isExternalSource = selectedId == 3 || selectedText.indexOf("external") > -1;
         if (isExternalSource) {
             $('#activity_code').val("").prop('required', false);
@@ -387,7 +451,10 @@ $(document).ready(function () {
     }
 
     $('#internal_participants').on('change', function () {
-        const selectedIds = $(this).val() || [];
+        if (window._specialMemoRestoringParticipants) {
+            return;
+        }
+        const selectedIds = ($(this).val() || []).map(id => String(id));
         const staffList = selectedIds.map(id => {
             return {
                 id: id,
@@ -428,9 +495,9 @@ $(document).ready(function () {
                         <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
                         <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
                         <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
-                        <td class="text-center">
-                            <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${id}">
-                                <i class="fas fa-trash"></i>
+                        <td class="text-center text-nowrap align-middle">
+                            <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${id}" title="Remove this participant" aria-label="Remove">
+                                <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
                             </button>
                         </td>
                     </tr>
@@ -510,9 +577,9 @@ $(document).ready(function () {
                         <td><input type="text" name="participant_end[${staffId}]" class="form-control date-picker participant-end" value="${participantEnd}"></td>
                         <td><input type="number" name="participant_days[${staffId}]" class="form-control participant-days" value="${participantDays}" readonly></td>
                        
-                        <td class="text-center">
-                            <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${staffId}">
-                                <i class="fas fa-trash"></i>
+                        <td class="text-center text-nowrap align-middle">
+                            <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${staffId}" title="Remove this participant" aria-label="Remove">
+                                <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
                             </button>
                         </td>
                     </tr>
@@ -581,11 +648,11 @@ $(document).ready(function () {
                                 <thead class="table-light fw-bold">
                                     <tr>
                                         <th>Cost</th>
-                                        <th>Description</th>
                                         <th>Unit Cost</th>
                                         <th>Units/People</th>
                                         <th>Days/Frequency</th>
                                         <th>Total</th>
+                                        <th>Description</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -637,6 +704,10 @@ $(document).ready(function () {
                     @endforeach
                 </select>
             </td>
+            <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0" value="${item.unit_cost || 0}"></td>
+            <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0" value="${item.units || 0}"></td>
+            <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0" value="${item.days || 0}"></td>
+            <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="${((item.unit_cost || 0) * (item.units || 0)).toFixed(2)}"></td>
             <td>
                 <input type="text" 
                        name="budget[${codeId}][${index}][description]" 
@@ -644,10 +715,6 @@ $(document).ready(function () {
                        placeholder="Description (optional)"
                        value="${item.description || ''}">
             </td>
-            <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0" value="${item.unit_cost || 0}"></td>
-            <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0" value="${item.units || 0}"></td>
-            <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0" value="${item.days || 0}"></td>
-            <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="${((item.unit_cost || 0) * (item.units || 0)).toFixed(2)}"></td>
             <td><button type="button" class="btn btn-danger remove-row"><i class="fas fa-trash"></i></button></td>
         </tr>`;
     }
@@ -748,40 +815,20 @@ $(document).ready(function () {
         appendToInternalParticipantsTable(selectedStaff);
     });
 
-    // Load existing participants data - following activities pattern exactly
-    let existingParticipants = @json($internalParticipants ?? []);
-    const existingBudgetItems = @json($budgetItems ?? []);
-    
-    console.log('Processed participants from controller:', existingParticipants);
-    console.log('Raw participants from specialMemo:', @json($specialMemo->internal_participants ?? []));
-    
-    // Fallback: If internalParticipants is empty, try to get data from raw internal_participants
-    if (existingParticipants.length === 0) {
-        const rawParticipants = @json($specialMemo->internal_participants ?? []);
-        console.log('Using fallback raw participants data:', rawParticipants);
-        
-        if (rawParticipants && rawParticipants.length > 0) {
-            existingParticipants = rawParticipants;
-            console.log('Switched to raw participants data');
-        }
-    }
-    
-    console.log('Final participants to load:', existingParticipants);
-    console.log('Loading budget items:', existingBudgetItems);
-    
-    // Participant loading moved to loadExistingParticipants() function
+    // existingParticipants / existingBudgetItems come from outer script scope (single source of truth)
 
     // Initialize total participants display
     updateTotalParticipants();
 
-    // Remove participant event handler
-    $(document).on('click', '.remove-participant', function() {
+    // Remove participant event handler (only participants table; avoids clashes with budget row buttons)
+    $(document).on('click', '#participantsTable .remove-participant', function() {
         const staffId = $(this).data('staff-id');
         const row = $(this).closest('tr');
         
         // Remove from select2
         $('#internal_participants').val(function() {
-            return $(this).val().filter(id => id != staffId);
+            const sid = String(staffId);
+            return ($(this).val() || []).filter(id => String(id) !== sid);
         }).trigger('change');
         
         // Remove from table
@@ -816,23 +863,6 @@ $(document).ready(function () {
         return true;
     }
 
-    function toggleParticipantSelection() {
-        const hasDates = $('#date_from').val() && $('#date_to').val();
-
-        if (hasDates) {
-            $('#internal_participants').prop('disabled', false);
-        } else {
-            $('#internal_participants').val(null).trigger('change.select2');
-            $('#internal_participants').prop('disabled', true);
-            $('#participantsTableBody').empty().append('<tr><td colspan="2" class="text-muted text-center">No participants selected yet</td></tr>');
-        }
-    }
-
-    function handleParticipantsChange() {
-        if (!validateDates(false)) return;
-        updateParticipantsTable();
-    }
-
     function updateParticipantsTable() {
         const selectedIds = $('#internal_participants').val();
         const participantsTableBody = $('#participantsTableBody');
@@ -842,18 +872,24 @@ $(document).ready(function () {
         participantsTableBody.empty();
 
         if (!selectedIds || selectedIds.length === 0) {
-            participantsTableBody.append('<tr><td colspan="4" class="text-muted text-center">No participants selected yet</td></tr>');
+            participantsTableBody.append('<tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>');
             return;
         }
 
         selectedIds.forEach(id => {
-            const name = $(`#internal_participants option[value="${id}"]`).text();
+            const sid = String(id);
+            const name = $(`#internal_participants option[value="${sid}"]`).text();
             participantsTableBody.append(`
-                <tr data-participant-id="${id}">
+                <tr data-participant-id="${sid}">
                     <td>${name}</td>
-                    <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
-                    <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
-                    <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
+                    <td><input type="text" name="participant_start[${sid}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
+                    <td><input type="text" name="participant_end[${sid}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
+                    <td><input type="number" name="participant_days[${sid}]" class="form-control participant-days" value="${days}" readonly></td>
+                    <td class="text-center text-nowrap align-middle">
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${sid}" title="Remove this participant" aria-label="Remove">
+                            <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
+                        </button>
+                    </td>
                 </tr>
             `);
         });
@@ -863,72 +899,103 @@ $(document).ready(function () {
         });
     }
 
-    // Date change handlers
+    // Date change handlers — rebuild participant rows from activity dates (aligns with activities edit)
     $('#date_from, #date_to').on('change', function () {
-        toggleParticipantSelection();
         if (validateDates()) {
             updateParticipantsTable();
         }
     });
 
-    // Initialize select2 for responsible person
-    $('#responsible_person_id').select2({
-        placeholder: 'Select Responsible Person',
-        width: '100%'
-    });
-
-    // Initialize select2 for internal participants
-    $('#internal_participants').select2({
-        placeholder: 'Select Internal Participants',
-        width: '100%'
-    }).on('select2:select select2:unselect', function () {
-        handleParticipantsChange();
-    });
-
-    // Load existing participants after Select2 is initialized
-    loadExistingParticipants();
-
-    // Function to load existing participants
-    function loadExistingParticipants() {
-        // Initialize existing participants table if data exists - following activities pattern exactly
-        if (existingParticipants && existingParticipants.length > 0) {
-            console.log('Processing participants:', existingParticipants);
-            
-            // Get all participant IDs from the stored data (don't filter by division here)
-            // The dropdown options are already filtered by division in the controller
-            let participantIds = [];
-            if (existingParticipants[0] && existingParticipants[0].staff) {
-                // Activities pattern: {staff: {staff_id: 123}, ...}
-                participantIds = existingParticipants.map(p => p.staff.staff_id);
-            } else if (existingParticipants[0] && existingParticipants[0].staff_id) {
-                // Direct pattern: {staff_id: 123, name: "John Doe", ...}
-                participantIds = existingParticipants.map(p => p.staff_id);
-            }
-            
-            console.log('Setting participant IDs:', participantIds);
-            if (participantIds.length > 0) {
-                // Set the select values and trigger change event
-                $('#internal_participants').val(participantIds).trigger('change');
-                
-                // Load existing participants with their stored data
-                loadExistingParticipantsToTable(existingParticipants);
-                
-                console.log('Participants loaded successfully in dropdown and table');
-            } else {
-                console.log('No participants found in stored data');
-            }
-        }
+    // Select2 order matches activities/edit: internal → location → responsible → request type (then values + Select2 UI sync)
+    if ($('#internal_participants').hasClass('select2-hidden-accessible')) {
+        $('#internal_participants').select2('destroy');
     }
+    $('#internal_participants').select2({
+        placeholder: 'Select Internal Participants (optional)',
+        allowClear: true,
+        width: '100%'
+    });
 
-    // Initialize select2 for locations
+    if ($('#location_id').hasClass('select2-hidden-accessible')) {
+        $('#location_id').select2('destroy');
+    }
     $('#location_id').select2({
         placeholder: "Select Location/Venue",
         allowClear: true,
         width: '100%'
     });
 
-    // Initial check
-    toggleParticipantSelection();
+    if ($('#responsible_person_id').hasClass('select2-hidden-accessible')) {
+        $('#responsible_person_id').select2('destroy');
+    }
+    $('#responsible_person_id').select2({
+        placeholder: 'Select Responsible Person',
+        width: '100%'
+    });
+
+    if ($('#request_type_id').length) {
+        if ($('#request_type_id').hasClass('select2-hidden-accessible')) {
+            $('#request_type_id').select2('destroy');
+        }
+        $('#request_type_id').select2({
+            placeholder: 'Select Request Type',
+            width: '100%'
+        });
+    }
+
+    function syncSelect2FromNative($el) {
+        if (!$el.length || !$el.hasClass('select2-hidden-accessible')) {
+            return;
+        }
+        const v = $el.val();
+        $el.val(v).trigger('change');
+        if ($el.data('select2')) {
+            $el.trigger('change.select2');
+        }
+    }
+
+    function refreshSpecialMemoSelect2Fields() {
+        syncSelect2FromNative($('#responsible_person_id'));
+        syncSelect2FromNative($('#location_id'));
+        syncSelect2FromNative($('#request_type_id'));
+        syncSelect2FromNative($('#internal_participants'));
+        syncSelect2FromNative($('#budget_codes'));
+    }
+
+    // Load existing participants after all related Select2 instances exist (aligns with activities edit)
+    loadExistingParticipants();
+
+    // Function to load existing participants
+    function loadExistingParticipants() {
+        if (!existingParticipants || existingParticipants.length === 0) {
+            return;
+        }
+        let participantIds = [];
+        if (existingParticipants[0] && existingParticipants[0].staff) {
+            participantIds = existingParticipants.map(p => String(p.staff.staff_id));
+        } else if (existingParticipants[0] && existingParticipants[0].staff_id) {
+            participantIds = existingParticipants.map(p => String(p.staff_id));
+        }
+        if (participantIds.length === 0) {
+            return;
+        }
+        window._specialMemoRestoringParticipants = true;
+        try {
+            $('#participantsTableBody').empty();
+            $('#internal_participants').val(participantIds).trigger('change');
+            if ($('#internal_participants').data('select2')) {
+                $('#internal_participants').trigger('change.select2');
+            }
+            loadExistingParticipantsToTable(existingParticipants);
+        } finally {
+            window._specialMemoRestoringParticipants = false;
+        }
+    }
+
+    refreshSpecialMemoSelect2Fields();
+    setTimeout(refreshSpecialMemoSelect2Fields, 0);
+    setTimeout(refreshSpecialMemoSelect2Fields, 100);
+    setTimeout(refreshSpecialMemoSelect2Fields, 500);
 
     // Budget management (extramural: one code; intramural: up to 2)
     const budgetCodesSelect = $('#budget_codes');
@@ -957,10 +1024,16 @@ $(document).ready(function () {
 
         if (!fundTypeId) {
             budgetCodesHelp.text('Select a fund type first');
+            if (window._specialMemoRestoreBudgetAfterFundTypeAjax) {
+                window._specialMemoRestoreBudgetAfterFundTypeAjax = false;
+            }
             return;
         }
         if (isExternalSource) {
             budgetCodesSelect.empty().append('<option disabled selected>Not applicable for external source</option>');
+            if (window._specialMemoRestoreBudgetAfterFundTypeAjax) {
+                window._specialMemoRestoreBudgetAfterFundTypeAjax = false;
+            }
             return;
         }
 
@@ -986,50 +1059,60 @@ $(document).ready(function () {
                 budgetCodesHelp.text('No budget codes found');
             }
             $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
+            if (window._specialMemoRestoreBudgetAfterFundTypeAjax && data && data.length) {
+                window._specialMemoRestoreBudgetAfterFundTypeAjax = false;
+                setTimeout(function () {
+                    runSpecialMemoBudgetRestoreFromExisting();
+                }, 50);
+            } else if (window._specialMemoRestoreBudgetAfterFundTypeAjax) {
+                window._specialMemoRestoreBudgetAfterFundTypeAjax = false;
+            }
         }).fail(function() {
             $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
+            if (window._specialMemoRestoreBudgetAfterFundTypeAjax) {
+                window._specialMemoRestoreBudgetAfterFundTypeAjax = false;
+            }
         });
     });
 
-    $('#budget_codes').on('change', function () {
-        const selected = $(this).find('option:selected');
-        const container = $('#budgetGroupContainer');
-
-        // World Bank Activity Code: show when any selected code's funder has show_activity_code enabled (control from funders admin)
-        let hasWorldBankCode = false;
-        selected.each(function () {
-            if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
-                hasWorldBankCode = true;
-            }
-        });
-        if (hasWorldBankCode) {
-            var firstLabel = 'Activity Code *';
-            selected.each(function () {
-                if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
-                    var l = $(this).data('activity-code-label') || $(this).data('activityCodeLabel');
-                    if (l) { firstLabel = l; return false; }
-                }
+    function normalizeBudgetItemsToArray(items) {
+        if (!items) return [];
+        if (Array.isArray(items)) return items;
+        if (typeof items === 'object') {
+            return Object.values(items).filter(function (item) {
+                return item && typeof item === 'object';
             });
-            $('.activity_code .activity-code-label').text(firstLabel);
-            $('.activity_code').show();
-            $('#activity_code').prop('required', true);
-            $('.activity_code label .text-danger').show();
-            if (typeof initialActivityCode !== 'undefined' && initialActivityCode) {
-                $('#activity_code').val(initialActivityCode);
-            }
-        } else {
-            $('.activity_code').hide();
-            $('#activity_code').val('').prop('required', false);
-            $('.activity_code label .text-danger').hide();
+        }
+        return [];
+    }
+
+    function getExistingBudgetItemsForCode(codeId) {
+        if (!existingBudgetItems) return null;
+        const s = String(codeId);
+        if (existingBudgetItems[s] !== undefined) return existingBudgetItems[s];
+        if (existingBudgetItems[codeId] !== undefined) return existingBudgetItems[codeId];
+        const n = Number(codeId);
+        if (!Number.isNaN(n) && existingBudgetItems[n] !== undefined) return existingBudgetItems[n];
+        return null;
+    }
+
+    function findBudgetCodeOption(codeId) {
+        const s = String(codeId);
+        return $('#budget_codes option').filter(function () {
+            return String($(this).val()) === s;
+        }).first();
+    }
+
+    function createBudgetCardWithData(codeId, label, balance, existingData) {
+        const container = $('#budgetGroupContainer');
+        const existingCard = container.find(`.budget-body[data-code="${codeId}"]`).closest('.card');
+        if (existingCard.length > 0) {
+            return;
         }
 
-        container.empty();
-        selected.each(function () {
-            const codeId = $(this).val();
-            const label = $(this).text();
-            const balance = $(this).data('balance');
+        const itemsArray = normalizeBudgetItemsToArray(existingData);
 
-            const cardHtml = `
+        const cardHtml = `
                 <div class="card mt-4">
                     <div class="card-header bg-light">
                         <h6 class="fw-semibold">
@@ -1042,16 +1125,15 @@ $(document).ready(function () {
                             <thead class="table-light fw-bold">
                                 <tr>
                                     <th>Cost</th>
-                                    <th>Description</th>
                                     <th>Unit Cost</th>
                                     <th>Units/People</th>
                                     <th>Days/Frequency</th>
                                     <th>Total</th>
+                                    <th>Description</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="budget-body" data-code="${codeId}">
-                                ${createBudgetRow(codeId, 0)}
                             </tbody>
                         </table>
                         <div class="text-end mt-2">
@@ -1064,15 +1146,102 @@ $(document).ready(function () {
                 </div>
             `;
 
-            container.append(cardHtml);
+        container.append(cardHtml);
 
-            container.find('.select-cost-item').select2({
+        const tbody = $(`.budget-body[data-code="${codeId}"]`);
+
+        if (itemsArray.length > 0) {
+            itemsArray.forEach(function (item, index) {
+                tbody.append(createBudgetRow(codeId, index));
+                const newRow = tbody.find('tr').last();
+                newRow.find('select[name*="[cost]"]').val(item.cost).trigger('change');
+                newRow.find('input[name*="[unit_cost]"]').val(item.unit_cost);
+                newRow.find('input[name*="[units]"]').val(item.units);
+                newRow.find('input[name*="[days]"]').val(item.days);
+                newRow.find('input[name*="[description]"]').val(item.description);
+                const unitCost = parseFloat(item.unit_cost) || 0;
+                const units = parseFloat(item.units) || 0;
+                const days = parseFloat(item.days) || 0;
+                newRow.find('.total').val((unitCost * units * days).toFixed(2));
+            });
+            tbody.find('.select-cost-item').select2({
                 theme: 'bootstrap4',
                 width: '100%',
                 placeholder: 'Select Cost Item',
                 allowClear: true
             });
-        });
+        } else {
+            tbody.append(createBudgetRow(codeId, 0));
+            tbody.find('.select-cost-item').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: 'Select Cost Item',
+                allowClear: true
+            });
+        }
+
+        updateAllTotals();
+    }
+
+    $('#budget_codes').on('change', function () {
+        if (window._budgetCodesChangeInProgress) return;
+        window._budgetCodesChangeInProgress = true;
+        try {
+            const selected = $(this).find('option:selected');
+            const container = $('#budgetGroupContainer');
+
+            let hasWorldBankCode = false;
+            selected.each(function () {
+                if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
+                    hasWorldBankCode = true;
+                }
+            });
+            if (hasWorldBankCode) {
+                var firstLabel = 'Activity Code *';
+                selected.each(function () {
+                    if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
+                        var l = $(this).data('activity-code-label') || $(this).data('activityCodeLabel');
+                        if (l) { firstLabel = l; return false; }
+                    }
+                });
+                $('.activity_code .activity-code-label').text(firstLabel);
+                $('.activity_code').show();
+                $('#activity_code').prop('required', true);
+                $('.activity_code label .text-danger').show();
+                if (typeof initialActivityCode !== 'undefined' && initialActivityCode) {
+                    $('#activity_code').val(initialActivityCode);
+                }
+            } else {
+                $('.activity_code').hide();
+                $('#activity_code').val('').prop('required', false);
+                $('.activity_code label .text-danger').hide();
+            }
+
+            if (window._restoringBudgetCards) {
+                window._restoringBudgetCards = false;
+                return;
+            }
+
+            const selectedCodeIds = selected.map(function () { return String($(this).val()); }).get();
+
+            container.find('.card').each(function () {
+                const cardCodeId = $(this).find('.budget-body').data('code');
+                if (cardCodeId === undefined || cardCodeId === null) return;
+                if (selectedCodeIds.indexOf(String(cardCodeId)) === -1) {
+                    $(this).remove();
+                }
+            });
+
+            selected.each(function () {
+                const codeId = $(this).val();
+                const label = $(this).text();
+                const balance = $(this).data('balance');
+                const raw = getExistingBudgetItemsForCode(codeId);
+                createBudgetCardWithData(codeId, label, balance, raw);
+            });
+        } finally {
+            window._budgetCodesChangeInProgress = false;
+        }
     });
 
     function createBudgetRow(codeId, index) {
@@ -1090,17 +1259,16 @@ $(document).ready(function () {
                 </select>
             </td>
 
+            <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0"></td>
+            <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0"></td>
+            <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0"></td>
+            <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="0.00"></td>
             <td>
                 <input type="text" 
                        name="budget[${codeId}][${index}][description]" 
                        class="form-control" 
                        placeholder="Description (optional)">
             </td>
-
-            <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0"></td>
-            <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0"></td>
-            <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0"></td>
-            <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="0.00"></td>
             <td><button type="button" class="btn btn-danger remove-row"><i class="fas fa-trash"></i></button></td>
         </tr>`;
     }
@@ -1154,8 +1322,8 @@ $(document).ready(function () {
             });
             
             // Calculate original subtotal from existing items (for change requests)
-            if (isChangeRequest && existingBudgetItems && existingBudgetItems[code]) {
-                existingBudgetItems[code].forEach(function(item) {
+            if (isChangeRequest && existingBudgetItems) {
+                normalizeBudgetItemsToArray(getExistingBudgetItemsForCode(code)).forEach(function (item) {
                     const unitCost = parseFloat(item.unit_cost) || 0;
                     const units = parseFloat(item.units) || 0;
                     const days = parseFloat(item.days) || 0;
@@ -1172,8 +1340,8 @@ $(document).ready(function () {
             @if(isset($editing) && $editing && isset($budgetCodes))
                 // Get current memo budget for this code from existing items
                 let currentMemoBudget = 0;
-                if (existingBudgetItems && existingBudgetItems[code]) {
-                    existingBudgetItems[code].forEach(function(item) {
+                if (existingBudgetItems) {
+                    normalizeBudgetItemsToArray(getExistingBudgetItemsForCode(code)).forEach(function (item) {
                         const unitCost = parseFloat(item.unit_cost) || 0;
                         const units = parseFloat(item.units) || 0;
                         const days = parseFloat(item.days) || 0;
@@ -1249,10 +1417,15 @@ $(document).ready(function () {
                 .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
         } else {
             submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success');
+            if (isChangeRequest) {
+                submitBtn.html('<i class="bx bx-save me-1"></i> Save as Draft');
+            } else {
+                submitBtn.html('<i class="bx bx-save me-1"></i> Update Special Memo');
+            }
         }
     }
 
-    // Initialize select2 for budget codes
+    // Initial select2 for budget codes (replaced when fund type loads options)
     $('#budget_codes').select2({ maximumSelectionLength: 2, width: '100%' });
 
     // Load existing fund type and budget data - following activities pattern exactly
@@ -1341,6 +1514,55 @@ $(document).ready(function () {
         });
     }
 
+    let budgetDataRestored = false;
+
+    function runSpecialMemoBudgetRestoreFromExisting() {
+        if (!existingBudgetItems || Object.keys(existingBudgetItems).length === 0) {
+            return;
+        }
+        window._restoringBudgetCards = true;
+        Object.entries(existingBudgetItems).forEach(function (entry) {
+            const codeId = entry[0];
+            const items = entry[1];
+            if (codeId === 'grand_total') {
+                return;
+            }
+            const itemsArray = normalizeBudgetItemsToArray(items);
+            const option = findBudgetCodeOption(codeId);
+            if (!option.length) {
+                console.warn('Budget code option not found:', codeId);
+                return;
+            }
+            option.prop('selected', true);
+            const label = option.text();
+            const balance = option.data('balance');
+            createBudgetCardWithData(codeId, label, balance, itemsArray);
+        });
+
+        $('#budget_codes').trigger('change.select2');
+        $('#budget_codes').trigger('change');
+
+        if ($('#budget_codes').hasClass('select2-hidden-accessible')) {
+            const isExtramural = $('#fund_type_id option:selected').text().toLowerCase().indexOf('extramural') > -1;
+            $('#budget_codes').select2('destroy').select2({
+                maximumSelectionLength: isExtramural ? 1 : 2,
+                width: '100%'
+            });
+            window._restoringBudgetCards = true;
+            $('#budget_codes').trigger('change');
+        }
+
+        if (typeof initialActivityCode !== 'undefined' && initialActivityCode) {
+            $('#activity_code').val(initialActivityCode);
+        }
+        budgetDataRestored = true;
+        setTimeout(function () {
+            if (typeof refreshSpecialMemoSelect2Fields === 'function') {
+                refreshSpecialMemoSelect2Fields();
+            }
+        }, 0);
+    }
+
     // Initialize form fields with existing data - following activities pattern
     function initializeExistingData() {
         // Set activity code visibility based on fund type
@@ -1353,92 +1575,12 @@ $(document).ready(function () {
         // Load budget codes if fund type is selected
         if ($('#fund_type_id').val()) {
             console.log('Fund type selected:', $('#fund_type_id').val());
-            // Enable budget codes dropdown and load codes
             $('#budget_codes').prop('disabled', false);
-            
-            // Trigger fund type change to load budget codes
+            if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0 && !budgetDataRestored) {
+                window._specialMemoRestoreBudgetAfterFundTypeAjax = true;
+            }
             $('#fund_type_id').trigger('change');
-            
-            // If there are existing budget items, ensure they're properly loaded
-            if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0) {
-                console.log('Existing budget items found:', existingBudgetItems);
-                
-                // Wait for budget codes to load, then restore existing selections
-                setTimeout(() => {
-                    console.log('Restoring budget code selections...');
-                    const budgetCodeIds = Object.keys(existingBudgetItems);
-                    console.log('Budget code IDs to select:', budgetCodeIds);
-                    
-                    // Select the budget codes
-                    budgetCodeIds.forEach(codeId => {
-                        const option = $(`#budget_codes option[value="${codeId}"]`);
-                        if (option.length) {
-                            option.prop('selected', true);
-                            console.log(`Selected budget code: ${codeId}`);
-                        } else {
-                            console.warn(`Budget code option not found: ${codeId}`);
-                        }
-                    });
-                
-                    // Trigger budget codes change to create budget cards
-                    $('#budget_codes').trigger('change');
-                    
-                    // Restore budget items in the cards after they're created
-                    setTimeout(() => {
-                        console.log('Restoring budget items in cards...');
-                        Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
-                            // Skip grand_total as it's not a budget code
-                            if (codeId === 'grand_total') {
-                                console.log('Skipping grand_total as it\'s not a budget code');
-                                return;
-                            }
-                            
-                            const tbody = $(`.budget-body[data-code="${codeId}"]`);
-                            console.log(`Looking for tbody with data-code="${codeId}":`, tbody.length);
-                            
-                            if (tbody.length && items.length > 0) {
-                                tbody.empty();
-                                items.forEach((item, index) => {
-                                    console.log(`Creating budget row for item:`, item);
-                                    const row = createBudgetRow(codeId, index);
-                                    tbody.append(row);
-                                    
-                                    // Set values
-                                    const newRow = tbody.find('tr').last();
-                                    newRow.find('select[name*="[cost]"]').val(item.cost).trigger('change');
-                                    newRow.find('input[name*="[unit_cost]"]').val(item.unit_cost);
-                                    newRow.find('input[name*="[units]"]').val(item.units);
-                                    newRow.find('input[name*="[days]"]').val(item.days);
-                                    newRow.find('input[name*="[description]"]').val(item.description);
-                                    
-                                    // Calculate total
-                                    const unitCost = parseFloat(item.unit_cost) || 0;
-                                    const units = parseFloat(item.units) || 0;
-                                    const days = parseFloat(item.days) || 0;
-                                    const total = (unitCost * units * days).toFixed(2);
-                                    newRow.find('.total').val(total);
-                                });
-                                
-                                // Initialize select2 for cost items
-                                tbody.find('.select-cost-item').select2({
-                                    theme: 'bootstrap4',
-                                    width: '100%',
-                                    placeholder: 'Select Cost Item',
-                                    allowClear: true
-                                });
-                                
-                                updateAllTotals();
-                                console.log(`Budget items restored for code ${codeId}`);
-                            } else {
-                                console.warn(`Tbody not found or no items for code ${codeId}`);
-                            }
-                        });
-                        if (typeof initialActivityCode !== 'undefined' && initialActivityCode) {
-                            $('#activity_code').val(initialActivityCode);
-                        }
-                    }, 500);
-                }, 1500);
-            } else {
+            if (!existingBudgetItems || Object.keys(existingBudgetItems).length === 0) {
                 console.log('No existing budget items found');
             }
         } else {
@@ -1453,10 +1595,24 @@ $(document).ready(function () {
 
         // Update total participants display
         updateTotalParticipants();
+
+        setTimeout(function () {
+            if (typeof refreshSpecialMemoSelect2Fields === 'function') {
+                refreshSpecialMemoSelect2Fields();
+            }
+        }, 250);
     }
 
     // Call initialization after a short delay to ensure all elements are loaded
     setTimeout(initializeExistingData, 100);
+
+    setTimeout(function () {
+        if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0 && $('.budget-body').length === 0) {
+            budgetDataRestored = false;
+            window._specialMemoRestoreBudgetAfterFundTypeAjax = true;
+            $('#fund_type_id').trigger('change');
+        }
+    }, 3000);
 
     // Debug: Log the special memo data
     console.log('Special Memo Data:', {
@@ -1629,6 +1785,18 @@ $('#removeAttachment').on('click', function () {
             `);
         }
     }
+});
+
+// Tear down Select2 before Livewire swaps the page (avoids duplicate instances & UI flicker on wire:navigate)
+document.addEventListener('livewire:navigate', function () {
+    $('#internal_participants, #location_id, #responsible_person_id, #request_type_id, #budget_codes').each(function () {
+        var $el = $(this);
+        if ($el.length && $el.hasClass('select2-hidden-accessible')) {
+            try {
+                $el.select2('destroy');
+            } catch (e) { /* ignore */ }
+        }
+    });
 });
 </script>
 @endpush

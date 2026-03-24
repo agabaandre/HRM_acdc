@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
+use App\Models\ChangeRequest;
 use App\Models\ActivityApprovalTrail;
 use App\Models\ApprovalTrail;
 use App\Models\ActivityBudget;
@@ -553,6 +554,11 @@ class ActivityController extends Controller
         // Eager load the division relationship
         $matrix->load('division');
 
+        $changeRequestForEdit = null;
+        if ($isChangeRequest && request()->filled('change_request_id')) {
+            $changeRequestForEdit = $this->loadChangeRequestOverlayForActivityEdit($activity);
+        }
+
         $requestTypes = RequestType::all();
         // All staff in the system for responsible person (with job details)
         $staff = Staff::active()
@@ -607,31 +613,10 @@ class ActivityController extends Controller
             ? json_decode($activity->internal_participants, true)
             : ($activity->internal_participants ?? []);
 
-        // Extract staff details and append date/days info
-        $internalParticipants = [];
-        $externalParticipants = [];
-        if (!empty($rawParticipants)) {
-            $staffDetails = Staff::whereIn('staff_id', array_keys($rawParticipants))->get()->keyBy('staff_id');
-
-            foreach ($rawParticipants as $staffId => $participantData) {
-                if (isset($staffDetails[$staffId])) {
-                    $participant = [
-                        'staff' => $staffDetails[$staffId],
-                        'participant_start' => $participantData['participant_start'] ?? null,
-                        'participant_end' => $participantData['participant_end'] ?? null,
-                        'participant_days' => $participantData['participant_days'] ?? null,
-                        'international_travel' => (int) ($participantData['international_travel'] ?? 0),
-                    ];
-                    
-                    // Separate internal and external participants
-                    if ($staffDetails[$staffId]->division_id == $matrix->division_id) {
-                        $internalParticipants[] = $participant;
-                    } else {
-                        $externalParticipants[] = $participant;
-                    }
-                }
-            }
-        }
+        [$internalParticipants, $externalParticipants] = $this->partitionActivityParticipantsByMatrixDivision(
+            $rawParticipants,
+            (int) $matrix->division_id
+        );
 
         // Fetch related data
         $selectedLocations = Location::whereIn('id', $locationIds ?: [])->get();
@@ -663,6 +648,7 @@ class ActivityController extends Controller
         return view('activities.edit', [
             'matrix' => $matrix,
             'activity' => $activity,
+            'changeRequestForEdit' => $changeRequestForEdit,
             'requestTypes' => $requestTypes,
             'staff' => $staff,
             'divisionStaff' => $divisionStaff,
@@ -711,6 +697,11 @@ class ActivityController extends Controller
 
         // Eager load the division relationship
         $matrix->load('division');
+
+        $changeRequestForEdit = null;
+        if ($isChangeRequest && request()->filled('change_request_id')) {
+            $changeRequestForEdit = $this->loadChangeRequestOverlayForActivityEdit($activity);
+        }
 
         $requestTypes = RequestType::all();
         // All staff in the system for responsible person (with job details)
@@ -789,31 +780,10 @@ class ActivityController extends Controller
             ? json_decode($activity->internal_participants, true)
             : ($activity->internal_participants ?? []);
 
-        // Extract staff details and append date/days info
-        $internalParticipants = [];
-        $externalParticipants = [];
-        if (!empty($rawParticipants)) {
-            $staffDetails = Staff::whereIn('staff_id', array_keys($rawParticipants))->get()->keyBy('staff_id');
-
-            foreach ($rawParticipants as $staffId => $participantData) {
-                if (isset($staffDetails[$staffId])) {
-                    $participant = [
-                        'staff' => $staffDetails[$staffId],
-                        'participant_start' => $participantData['participant_start'] ?? null,
-                        'participant_end' => $participantData['participant_end'] ?? null,
-                        'participant_days' => $participantData['participant_days'] ?? null,
-                        'international_travel' => (int) ($participantData['international_travel'] ?? 0),
-                    ];
-                    
-                    // Separate internal and external participants
-                    if ($staffDetails[$staffId]->division_id == $matrix->division_id) {
-                        $internalParticipants[] = $participant;
-                    } else {
-                        $externalParticipants[] = $participant;
-                    }
-                }
-            }
-        }
+        [$internalParticipants, $externalParticipants] = $this->partitionActivityParticipantsByMatrixDivision(
+            $rawParticipants,
+            (int) $matrix->division_id
+        );
 
         // Fetch related data
         $selectedLocations = Location::whereIn('id', $locationIds ?: [])->get();
@@ -832,6 +802,7 @@ class ActivityController extends Controller
         return view('activities.edit', [
             'matrix' => $matrix,
             'activity' => $activity,
+            'changeRequestForEdit' => $changeRequestForEdit,
             'requestTypes' => $requestTypes,
             'staff' => $staff,
             'divisionStaff' => $divisionStaff,
@@ -3349,5 +3320,147 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 'message' => 'Failed to update: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Split stored internal_participants JSON into internal (matrix division) vs external lists for the activity edit UI.
+     *
+     * @return array{0: array<int, array>, 1: array<int, array>}
+     */
+    private function partitionActivityParticipantsByMatrixDivision(mixed $rawParticipants, int $matrixDivisionId): array
+    {
+        $internalParticipants = [];
+        $externalParticipants = [];
+
+        if (! is_array($rawParticipants) || $rawParticipants === []) {
+            return [$internalParticipants, $externalParticipants];
+        }
+
+        // If internal_participants was stored as a sequential list (legacy / import), normalize to staff_id => payload
+        if (array_is_list($rawParticipants)) {
+            $assoc = [];
+            foreach ($rawParticipants as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $sid = $row['staff_id'] ?? null;
+                if ($sid === null && isset($row['staff']) && is_array($row['staff'])) {
+                    $sid = $row['staff']['staff_id'] ?? null;
+                }
+                if ($sid === null || ! is_numeric($sid)) {
+                    continue;
+                }
+                $assoc[(int) $sid] = [
+                    'participant_start' => $row['participant_start'] ?? null,
+                    'participant_end' => $row['participant_end'] ?? null,
+                    'participant_days' => $row['participant_days'] ?? null,
+                    'international_travel' => (int) ($row['international_travel'] ?? 0),
+                ];
+            }
+            $rawParticipants = $assoc;
+        }
+
+        $staffIds = [];
+        foreach (array_keys($rawParticipants) as $k) {
+            if (is_numeric($k)) {
+                $staffIds[] = (int) $k;
+            }
+        }
+        $staffIds = array_values(array_unique(array_filter($staffIds)));
+
+        if ($staffIds === []) {
+            return [$internalParticipants, $externalParticipants];
+        }
+
+        $staffDetails = Staff::whereIn('staff_id', $staffIds)->get()->keyBy(fn ($s) => (int) $s->staff_id);
+
+        foreach ($rawParticipants as $staffId => $participantData) {
+            if (! is_array($participantData)) {
+                continue;
+            }
+            if (! is_numeric($staffId)) {
+                continue;
+            }
+            $sid = (int) $staffId;
+            $staff = $staffDetails->get($sid);
+            if (! $staff) {
+                continue;
+            }
+
+            $participant = [
+                'staff' => $staff,
+                'participant_start' => $participantData['participant_start'] ?? null,
+                'participant_end' => $participantData['participant_end'] ?? null,
+                'participant_days' => $participantData['participant_days'] ?? null,
+                'international_travel' => (int) ($participantData['international_travel'] ?? 0),
+            ];
+
+            if ((int) $staff->division_id === $matrixDivisionId) {
+                $internalParticipants[] = $participant;
+            } else {
+                $externalParticipants[] = $participant;
+            }
+        }
+
+        return [$internalParticipants, $externalParticipants];
+    }
+
+    /**
+     * Load a draft/rejected change request and overlay its snapshot onto the activity for the edit form (in-memory only).
+     */
+    private function loadChangeRequestOverlayForActivityEdit(Activity $activity): ChangeRequest
+    {
+        $changeRequest = ChangeRequest::findOrFail((int) request('change_request_id'));
+        $parentMatches = (int) $changeRequest->parent_memo_id === (int) $activity->id
+            && (
+                $changeRequest->parent_memo_model === Activity::class
+                || $changeRequest->parent_memo_model === 'App\\Models\\Activity'
+            );
+        if (! $parentMatches) {
+            abort(404, 'This change request does not belong to this activity.');
+        }
+        $userStaffId = (int) user_session('staff_id');
+        $isCrOwner = (int) $changeRequest->staff_id === $userStaffId;
+        $isCrResponsible = (int) $changeRequest->responsible_person_id === $userStaffId;
+        if (! $isCrOwner && ! $isCrResponsible) {
+            abort(403, 'You are not authorized to edit this change request.');
+        }
+        $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED];
+        if (! in_array($changeRequest->overall_status, $allowedStatuses, true)) {
+            abort(403, 'Only draft or rejected change requests can be edited.');
+        }
+
+        $this->applyChangeRequestSnapshotToActivity($activity, $changeRequest);
+
+        return $changeRequest;
+    }
+
+    private function applyChangeRequestSnapshotToActivity(Activity $activity, ChangeRequest $cr): void
+    {
+        $internalParticipants = $cr->internal_participants;
+        if (is_string($internalParticipants)) {
+            $decoded = json_decode($internalParticipants, true);
+            $internalParticipants = is_array($decoded) ? $decoded : [];
+        }
+
+        $activity->fill([
+            'activity_title' => $cr->activity_title,
+            'background' => $cr->background,
+            'request_type_id' => $cr->request_type_id,
+            'responsible_person_id' => $cr->responsible_person_id,
+            'date_from' => $cr->date_from,
+            'date_to' => $cr->date_to,
+            'location_id' => $cr->location_id,
+            'internal_participants' => $internalParticipants,
+            'fund_type_id' => $cr->fund_type_id,
+            'budget_id' => $cr->budget_id,
+            'budget_breakdown' => $cr->budget_breakdown,
+            'total_participants' => $cr->total_participants,
+            'total_external_participants' => $cr->total_external_participants,
+            'activity_request_remarks' => $cr->activity_request_remarks,
+            'workplan_activity_code' => $cr->workplan_activity_code,
+            'key_result_area' => $cr->key_result_area ?? $activity->key_result_area,
+        ]);
+        $activity->setAttribute('attachment', $cr->attachment);
     }
 }

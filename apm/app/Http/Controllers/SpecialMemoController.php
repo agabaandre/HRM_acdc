@@ -13,6 +13,7 @@ use App\Models\Location;
 use App\Models\Staff;
 use App\Models\CostItem;
 use App\Models\SpecialMemo;
+use App\Models\ChangeRequest;
 use App\Models\WorkflowModel;
 use App\Services\ApprovalService;
 use Illuminate\Http\Request;
@@ -382,9 +383,9 @@ class SpecialMemoController extends Controller
             'justification' => 'required|string',
             'location_id' => 'required|array|min:1',
             'location_id.*' => 'exists:locations,id',
-            'participant_start' => 'required|array',
-            'participant_end' => 'required|array',
-            'participant_days' => 'required|array',
+            'participant_start' => 'nullable|array',
+            'participant_end' => 'nullable|array',
+            'participant_days' => 'nullable|array',
             'responsible_person_id' => 'required|exists:staff,staff_id',
             'fund_type_id' => 'required|exists:fund_types,id',
             'budget_codes' => 'nullable|array',
@@ -478,13 +479,19 @@ class SpecialMemoController extends Controller
         try {
             DB::beginTransaction();
     
-            // Reformat internal participants
+            // Reformat internal participants (optional; may be external-participants-only)
             $internalParticipants = [];
-            foreach ($request->participant_start as $staffId => $start) {
+            $participantStarts = $request->input('participant_start', []);
+            $participantStarts = is_array($participantStarts) ? $participantStarts : [];
+            $participantEnds = $request->input('participant_end', []);
+            $participantEnds = is_array($participantEnds) ? $participantEnds : [];
+            $participantDaysIn = $request->input('participant_days', []);
+            $participantDaysIn = is_array($participantDaysIn) ? $participantDaysIn : [];
+            foreach ($participantStarts as $staffId => $start) {
                 $internalParticipants[$staffId] = [
                     'participant_start' => $start,
-                    'participant_end' => $request->participant_end[$staffId] ?? null,
-                    'participant_days' => $request->participant_days[$staffId] ?? null,
+                    'participant_end' => $participantEnds[$staffId] ?? null,
+                    'participant_days' => $participantDaysIn[$staffId] ?? null,
                 ];
             }
     
@@ -693,11 +700,51 @@ class SpecialMemoController extends Controller
      */
     public function edit(SpecialMemo $specialMemo): View
     {
-        // Check if user has privileges to edit this memo using can_edit_memo()
-        if (!can_edit_memo($specialMemo)) {
+        $isChangeRequest = request('change_request') == '1';
+
+        if ($isChangeRequest) {
+            $user = (object) session('user', []);
+            $isOwner = isset($specialMemo->staff_id, $user->staff_id) && $specialMemo->staff_id == $user->staff_id;
+            $isResponsible = isset($specialMemo->responsible_person_id, $user->staff_id) && $specialMemo->responsible_person_id == $user->staff_id;
+
+            if (!$isOwner && !$isResponsible) {
+                return redirect()
+                    ->route('special-memo.show', $specialMemo)
+                    ->with('error', 'You can only create change requests for special memos you own or are responsible for.');
+            }
+        } elseif (!can_edit_memo($specialMemo)) {
             return redirect()
                 ->route('special-memo.show', $specialMemo)
                 ->with('error', 'You do not have permission to edit this memo.');
+        }
+
+        $changeRequestForEdit = null;
+        if ($isChangeRequest && request()->filled('change_request_id')) {
+            $changeRequestForEdit = ChangeRequest::findOrFail((int) request('change_request_id'));
+            $parentMatches = (int) $changeRequestForEdit->parent_memo_id === (int) $specialMemo->id
+                && (
+                    $changeRequestForEdit->parent_memo_model === SpecialMemo::class
+                    || $changeRequestForEdit->parent_memo_model === 'App\\Models\\SpecialMemo'
+                );
+            if (! $parentMatches) {
+                abort(404, 'This change request does not belong to this special memo.');
+            }
+            $userStaffId = (int) user_session('staff_id');
+            $isCrOwner = (int) $changeRequestForEdit->staff_id === $userStaffId;
+            $isCrResponsible = (int) $changeRequestForEdit->responsible_person_id === $userStaffId;
+            if (! $isCrOwner && ! $isCrResponsible) {
+                return redirect()
+                    ->route('special-memo.show', $specialMemo)
+                    ->with('error', 'You are not authorized to edit this change request.');
+            }
+            $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED];
+            if (! in_array($changeRequestForEdit->overall_status, $allowedStatuses, true)) {
+                return redirect()
+                    ->route('special-memo.show', $specialMemo)
+                    ->with('error', 'Only draft or rejected change requests can be edited.');
+            }
+
+            $this->applyChangeRequestSnapshotToSpecialMemo($specialMemo, $changeRequestForEdit);
         }
 
         ini_set('memory_limit', '1024M');
@@ -836,6 +883,7 @@ class SpecialMemoController extends Controller
     
         return view('special-memo.edit', [
             'specialMemo' => $specialMemo,
+            'changeRequestForEdit' => $changeRequestForEdit,
             'requestTypes' => $requestTypes,
             'staff' => $staff,
             'divisionStaff' => $divisionStaff,
@@ -852,6 +900,33 @@ class SpecialMemoController extends Controller
             'title' => 'Edit Special Memo',
             'editing' => true,
         ]);
+    }
+
+    /**
+     * Overlay change request draft data onto the special memo model for the edit form (in-memory only).
+     */
+    private function applyChangeRequestSnapshotToSpecialMemo(SpecialMemo $memo, ChangeRequest $cr): void
+    {
+        $memo->fill([
+            'activity_title' => $cr->activity_title,
+            'background' => $cr->background,
+            'request_type_id' => $cr->request_type_id,
+            'responsible_person_id' => $cr->responsible_person_id,
+            'date_from' => $cr->date_from,
+            'date_to' => $cr->date_to,
+            'location_id' => $cr->location_id,
+            'internal_participants' => $cr->internal_participants,
+            'fund_type_id' => $cr->fund_type_id,
+            'budget_id' => $cr->budget_id,
+            'budget_breakdown' => $cr->budget_breakdown,
+            'total_participants' => $cr->total_participants,
+            'total_external_participants' => $cr->total_external_participants,
+            'justification' => $cr->justification,
+            'activity_request_remarks' => $cr->activity_request_remarks,
+            'workplan_activity_code' => $cr->workplan_activity_code,
+        ]);
+
+        $memo->setAttribute('attachment', $cr->attachment);
     }
 
     /**
@@ -883,9 +958,9 @@ class SpecialMemoController extends Controller
             'supporting_reasons' => 'nullable|string',
             'location_id' => 'required|array|min:1',
             'location_id.*' => 'exists:locations,id',
-            'participant_start' => 'required|array',
-            'participant_end' => 'required|array',
-            'participant_days' => 'required|array',
+            'participant_start' => 'nullable|array',
+            'participant_end' => 'nullable|array',
+            'participant_days' => 'nullable|array',
             'responsible_person_id' => 'required|exists:staff,staff_id',
             'fund_type_id' => 'required|exists:fund_types,id',
             'budget_codes' => 'nullable|array',
@@ -958,13 +1033,19 @@ class SpecialMemoController extends Controller
         try {
             DB::beginTransaction();
     
-            // Reformat internal participants
+            // Reformat internal participants (optional; may be external-participants-only)
             $internalParticipants = [];
-            foreach ($request->participant_start as $staffId => $start) {
+            $participantStarts = $request->input('participant_start', []);
+            $participantStarts = is_array($participantStarts) ? $participantStarts : [];
+            $participantEnds = $request->input('participant_end', []);
+            $participantEnds = is_array($participantEnds) ? $participantEnds : [];
+            $participantDaysIn = $request->input('participant_days', []);
+            $participantDaysIn = is_array($participantDaysIn) ? $participantDaysIn : [];
+            foreach ($participantStarts as $staffId => $start) {
                 $internalParticipants[$staffId] = [
                     'participant_start' => $start,
-                    'participant_end' => $request->participant_end[$staffId] ?? null,
-                    'participant_days' => $request->participant_days[$staffId] ?? null,
+                    'participant_end' => $participantEnds[$staffId] ?? null,
+                    'participant_days' => $participantDaysIn[$staffId] ?? null,
                 ];
             }
     

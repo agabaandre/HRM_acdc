@@ -290,7 +290,7 @@ $(document).ready(function () {
 }
 
 $('#internal_participants').on('change', function () {
-    const selectedIds = $(this).val() || [];
+    const selectedIds = ($(this).val() || []).map(id => String(id));
     const staffList = selectedIds.map(id => {
         return {
             id: id,
@@ -300,6 +300,17 @@ $('#internal_participants').on('change', function () {
 
     appendToInternalParticipantsTable(staffList); // appends rows
     updateTotalParticipants(); //  force count update
+});
+
+$(document).on('click', '#participantsTable .remove-participant', function () {
+    const staffId = $(this).data('staff-id');
+    const row = $(this).closest('tr');
+    $('#internal_participants').val(function () {
+        const sid = String(staffId);
+        return ($(this).val() || []).filter(id => String(id) !== sid);
+    }).trigger('change');
+    row.remove();
+    updateTotalParticipants();
 });
 
 $(document).on('input change', '#participantsTableBody input, #internal_participants, .staff-names, #total_external_participants', function () {
@@ -326,13 +337,19 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
     }
 
     staffList.forEach(({ id, name }) => {
-        if (!tableBody.find(`input[name="participant_days[${id}]"]`).length) {
+        const sid = String(id);
+        if (!tableBody.find(`input[name="participant_days[${sid}]"]`).length) {
             const row = $(`
-                <tr data-participant-id="${id}">
+                <tr data-participant-id="${sid}">
                     <td>${name}</td>
-                    <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
-                    <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
-                    <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
+                    <td><input type="text" name="participant_start[${sid}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
+                    <td><input type="text" name="participant_end[${sid}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
+                    <td><input type="number" name="participant_days[${sid}]" class="form-control participant-days" value="${days}" readonly></td>
+                    <td class="text-center text-nowrap align-middle">
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${sid}" title="Remove this participant" aria-label="Remove">
+                            <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
+                        </button>
+                    </td>
                 </tr>
             `);
             tableBody.append(row);
@@ -506,18 +523,24 @@ $(document).ready(function () {
     participantsTableBody.empty();
 
     if (!selectedIds || selectedIds.length === 0) {
-        participantsTableBody.append('<tr><td colspan="4" class="text-muted text-center">No participants selected yet</td></tr>');
+        participantsTableBody.append('<tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>');
         return;
     }
 
     selectedIds.forEach(id => {
-        const name = $(`#internal_participants option[value="${id}"]`).text();
+        const sid = String(id);
+        const name = $(`#internal_participants option[value="${sid}"]`).text();
         participantsTableBody.append(`
-            <tr data-participant-id="${id}">
+            <tr data-participant-id="${sid}">
                 <td>${name}</td>
-                <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
-                <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
-                <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
+                <td><input type="text" name="participant_start[${sid}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
+                <td><input type="text" name="participant_end[${sid}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
+                <td><input type="number" name="participant_days[${sid}]" class="form-control participant-days" value="${days}" readonly></td>
+                <td class="text-center text-nowrap align-middle">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${sid}" title="Remove this participant" aria-label="Remove">
+                        <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
+                    </button>
+                </td>
             </tr>
         `);
     });
@@ -543,39 +566,19 @@ $(document).on('change', '.participant-start, .participant-end', function () {
 });
 
 
-    function handleParticipantsChange() {
-
-        if (!validateDates(false)) return;
-        updateParticipantsTable();
-    }
-
-    function toggleParticipantSelection() {
-        const hasDates = $('#date_from').val() && $('#date_to').val();
-       
-
-        if (hasDates) {
-            $('#internal_participants').prop('disabled', false);
-        } else {
-            $('#internal_participants').val(null).trigger('change.select2');
-            $('#internal_participants').prop('disabled', true);
-            $('#participantsTableBody').empty().append('<tr><td colspan="2" class="text-muted text-center">No participants selected yet</td></tr>');
-        }
-    }
-
     $('#date_from, #date_to').on('change', function () {
-        toggleParticipantSelection();
         if (validateDates()) {
             updateParticipantsTable();
         }
     });
 
-   
-
+    if ($('#internal_participants').hasClass('select2-hidden-accessible')) {
+        $('#internal_participants').select2('destroy');
+    }
     $('#internal_participants').select2({
-        placeholder: 'Select Internal Participants',
+        placeholder: 'Select Internal Participants (optional)',
+        allowClear: true,
         width: '100%'
-    }).on('select2:select select2:unselect', function () {
-        handleParticipantsChange();
     });
 
     $('#location_id').select2({
@@ -695,11 +698,11 @@ $(document).on('change', '.participant-start, .participant-end', function () {
                         <thead class="table-light fw-bold">
                             <tr>
                                 <th>Cost</th>
-                                <th>Description</th>
                                 <th>Unit Cost</th>
                                 <th>Units/People</th>
                                 <th>Days/Frequency</th>
                                 <th>Total</th>
+                                <th>Description</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -744,17 +747,16 @@ $(document).on('change', '.participant-start, .participant-end', function () {
             </select>
         </td>
 
+        <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0"></td>
+        <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0"></td>
+        <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0"></td>
+        <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="0.00"></td>
         <td>
             <input type="text" 
                    name="budget[${codeId}][${index}][description]" 
                    class="form-control" 
                    placeholder="Description (optional)">
         </td>
-
-        <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0"></td>
-        <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0"></td>
-        <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0"></td>
-        <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="0.00"></td>
         <td><button type="button" class="btn btn-danger remove-row"><i class="fas fa-trash"></i></button></td>
     </tr>`;
 }
@@ -807,8 +809,6 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         $('#grandBudgetTotalInput').val(grand.toFixed(2));
     }
 
-    // Initial check
-    toggleParticipantSelection();
 });
 
 // Summernote is initialized once in layout (footer) with full toolbar (fontsize, fontname, etc.)
@@ -851,6 +851,16 @@ $(document).on('change', '.attachment-input', function () {
     }
 });
 
+document.addEventListener('livewire:navigate', function () {
+    $('#internal_participants, #location_id, #budget_codes').each(function () {
+        var $el = $(this);
+        if ($el.length && $el.hasClass('select2-hidden-accessible')) {
+            try {
+                $el.select2('destroy');
+            } catch (e) { /* ignore */ }
+        }
+    });
+});
 
 </script>
 

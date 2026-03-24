@@ -526,9 +526,9 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
                             <label class="form-check-label ms-2">Yes</label>
                         </div>
                     </td>
-                    <td class="text-center">
-                        <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${id}" title="Remove participant">
-                            <i class="fas fa-trash me-1"></i>Remove
+                    <td class="text-center text-nowrap align-middle">
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${id}" title="Remove this participant" aria-label="Remove">
+                            <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
                         </button>
                     </td>
                 </tr>
@@ -746,9 +746,9 @@ $(document).ready(function () {
                         <label class="form-check-label ms-2">Yes</label>
                     </div>
                 </td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${id}" title="Remove participant">
-                        <i class="fas fa-trash me-1"></i>Remove
+                <td class="text-center text-nowrap align-middle">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${id}" title="Remove this participant" aria-label="Remove">
+                        <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
                     </button>
                 </td>
             </tr>

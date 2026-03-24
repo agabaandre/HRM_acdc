@@ -117,37 +117,61 @@
             </div>
             <div class="col-md-4">
                 <label for="internal_participants" class="form-label fw-semibold">
-                    <i class="fas fa-user-friends me-1 text-success"></i> Select Internal Participants <span class="text-danger">*</span>
+                    <i class="fas fa-user-friends me-1 text-success"></i> Select Internal Participants
                 </label>
-                <select name="internal_participants[]" id="internal_participants" class="form-select select2 border-success" multiple required>
+                <select name="internal_participants[]" id="internal_participants" class="form-select select2 border-success" multiple>
                     @php
-                        // Use processed participants if available, otherwise fall back to raw data
+                        // Use processed participants if available, otherwise fall back to raw data (object/array staff, keyed, or list)
                         $selectedParticipantIds = [];
                         if (isset($internalParticipants) && !empty($internalParticipants)) {
-                            // Extract staff_id from processed participants
                             foreach ($internalParticipants as $participant) {
-                                if (isset($participant['staff']['staff_id'])) {
-                                    $selectedParticipantIds[] = $participant['staff']['staff_id'];
-                                } elseif (isset($participant['staff_id'])) {
-                                    $selectedParticipantIds[] = $participant['staff_id'];
+                                $sid = null;
+                                if (isset($participant['staff'])) {
+                                    $st = $participant['staff'];
+                                    if (is_object($st) && isset($st->staff_id)) {
+                                        $sid = $st->staff_id;
+                                    } elseif (is_array($st) && isset($st['staff_id'])) {
+                                        $sid = $st['staff_id'];
+                                    }
+                                }
+                                if ($sid === null && isset($participant['staff_id'])) {
+                                    $sid = $participant['staff_id'];
+                                }
+                                if ($sid !== null) {
+                                    $selectedParticipantIds[] = $sid;
                                 }
                             }
                         } else {
-                            // Fallback to raw data
                             $rawParticipants = is_string($specialMemo->internal_participants ?? null)
                                 ? json_decode($specialMemo->internal_participants, true)
                                 : ($specialMemo->internal_participants ?? []);
-                            $selectedParticipantIds = array_keys($rawParticipants);
+                            if (!is_array($rawParticipants)) {
+                                $rawParticipants = [];
+                            }
+                            if (isset($rawParticipants[0]) && is_array($rawParticipants[0]) && isset($rawParticipants[0]['staff'])) {
+                                foreach ($rawParticipants as $p) {
+                                    $st = $p['staff'] ?? null;
+                                    if (is_object($st) && isset($st->staff_id)) {
+                                        $selectedParticipantIds[] = $st->staff_id;
+                                    } elseif (is_array($st) && isset($st['staff_id'])) {
+                                        $selectedParticipantIds[] = $st['staff_id'];
+                                    }
+                                }
+                            } else {
+                                $selectedParticipantIds = array_keys($rawParticipants);
+                            }
                         }
+                        $selectedParticipantIds = array_values(array_unique(array_filter($selectedParticipantIds)));
+                        $selectedIdsNormalized = array_map('strval', (array) old('internal_participants', $selectedParticipantIds));
                     @endphp
                     @foreach($divisionStaff as $member)
                         <option value="{{ $member->staff_id }}" 
-                                {{ in_array($member->staff_id, old('internal_participants', $selectedParticipantIds)) ? 'selected' : '' }}>
+                                {{ in_array((string) $member->staff_id, $selectedIdsNormalized, true) ? 'selected' : '' }}>
                             {{ $member->fname }} {{ $member->lname }}
                         </option>
                     @endforeach
                 </select>
-                <small class="text-muted">You cannot select more than the total participants</small>
+                <small class="text-muted">Optional. You cannot select more than the total participants.</small>
             </div>
             <div class="col-md-4">
                 <label for="total_external_participants" class="form-label fw-semibold">
@@ -171,21 +195,23 @@
                     <i class="fas fa-plus-circle me-1"></i> Add Division Participants
                 </button>
             </div>
-            <h6 class="fw-bold text-success mb-3 mt-4">
-                <i class="fas fa-users-cog me-2"></i> Participants - Days
+            <h6 class="fw-bold text-success mb-2 mt-4">
+                <i class="fas fa-users-cog me-2"></i>Participant dates &amp; days
             </h6>
+            <p class="text-muted small mb-3">Start, end, and day count for each internal participant selected above. Use <strong>Remove</strong> in the last column to drop a row.</p>
             <div class="table-responsive">
                 <table class="table table-bordered table-sm align-middle" id="participantsTable">
                     <thead class="table-light">
                         <tr>
-                            <th>Participant Name</th>
-                            <th>Activity Start Date</th>
-                            <th>Activity End Date</th>
-                            <th>No. of Days</th>
+                            <th scope="col">Participant name</th>
+                            <th scope="col">Activity start date</th>
+                            <th scope="col">Activity end date</th>
+                            <th scope="col">No. of days</th>
+                            <th scope="col" class="text-center text-nowrap" style="width: 1%;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="participantsTableBody">
-                        <tr><td colspan="4" class="text-muted text-center">No participants selected yet</td></tr>
+                        <tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>
                     </tbody>
                 </table>
             </div>

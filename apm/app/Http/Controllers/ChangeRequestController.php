@@ -553,11 +553,12 @@ class ChangeRequestController extends Controller
 
                 $internalParticipants = [];
                 foreach ($participantStarts as $staffId => $startDate) {
-                    $internalParticipants[$staffId] = [
+                    $sid = is_numeric($staffId) ? (int) $staffId : $staffId;
+                    $internalParticipants[$sid] = [
                         'participant_start' => $startDate,
-                        'participant_end' => $participantEnds[$staffId] ?? null,
-                        'participant_days' => $participantDays[$staffId] ?? null,
-                        'international_travel' => isset($internationalTravel[$staffId]) ? 1 : 0,
+                        'participant_end' => $participantEnds[$staffId] ?? $participantEnds[$sid] ?? null,
+                        'participant_days' => $participantDays[$staffId] ?? $participantDays[$sid] ?? null,
+                        'international_travel' => (isset($internationalTravel[$staffId]) || isset($internationalTravel[$sid])) ? 1 : 0,
                     ];
                 }
 
@@ -636,12 +637,12 @@ class ChangeRequestController extends Controller
                     'date_from' => $request->input('date_from', $parentMemo->date_from ?? now()->toDateString()),
                     'date_to' => $request->input('date_to', $parentMemo->date_to ?? now()->toDateString()),
                     'memo_date' => $request->input('memo_date', $parentMemo->memo_date ?? now()->toDateString()),
-                    'location_id' => json_encode($request->input('location_id', [])),
+                    'location_id' => $request->input('location_id', []),
                     'total_participants' => (int) $request->input('total_participants', 1),
-                    'internal_participants' => json_encode($internalParticipants),
+                    'internal_participants' => $internalParticipants,
                     'total_external_participants' => (int) $request->input('total_external_participants', 0),
                     'division_staff_request' => $parentMemo->division_staff_request ?? null,
-                    'budget_id' => json_encode($budgetCodes),
+                    'budget_id' => is_array($budgetCodes) ? $budgetCodes : [],
                     'key_result_area' => clean_unicode($request->input('key_result_area', $parentMemo->key_result_area ?? '')),
                     'non_travel_memo_category_id' => $parentMemo->non_travel_memo_category_id ?? null,
                     'request_type_id' => (int) $request->input('request_type_id', $parentMemo->request_type_id ?? 1),
@@ -649,12 +650,12 @@ class ChangeRequestController extends Controller
                     'background' => clean_unicode($request->input('background', $parentMemo->background ?? '')),
                     'activity_request_remarks' => clean_unicode($request->input('activity_request_remarks', $parentMemo->activity_request_remarks ?? '')),
                     'is_single_memo' => $request->input('is_single_memo', $parentMemo->is_single_memo ?? false),
-                    'budget_breakdown' => json_encode($budgetItems),
+                    'budget_breakdown' => $budgetItems,
                     'available_budget' => $totalBudget,
-                    'attachment' => json_encode($attachments),
+                    'attachment' => $attachments,
                     
-                    // Status fields - preserve status if updating
-                    'status' => $isUpdate ? $changeRequest->status : ChangeRequest::STATUS_DRAFT,
+                    // Status fields - preserve DB column if updating (do not use $changeRequest->status: accessor returns labels like "Draft"/"Pending", not enum values)
+                    'status' => $isUpdate ? ($changeRequest->getRawOriginal('status') ?: ChangeRequest::STATUS_DRAFT) : ChangeRequest::STATUS_DRAFT,
                     'fund_type_id' => $request->input('fund_type', $parentMemo->fund_type_id ?? 1),
                     'activity_ref' => $parentMemo->activity_ref ?? null,
                     'approval_level' => $isUpdate ? $changeRequest->approval_level : 0,
