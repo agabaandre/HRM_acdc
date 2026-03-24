@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\PrintHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Matrix;
 use App\Models\Activity;
@@ -111,8 +112,8 @@ class ApmMatrixController extends Controller
                     'key_result_area' => $validated['key_result_area'][0]['description'] ?? '',
                     'request_type_id' => (int) ($act['request_type_id'] ?? 1),
                     'activity_title' => $act['activity_title'],
-                    'background' => $act['background'] ?? '',
-                    'activity_request_remarks' => $act['activity_request_remarks'] ?? '',
+                    'background' => PrintHelper::trimRichTextInput($act['background'] ?? ''),
+                    'activity_request_remarks' => PrintHelper::trimRichTextInput($act['activity_request_remarks'] ?? ''),
                     'forward_workflow_id' => null,
                     'reverse_workflow_id' => 1,
                     'status' => Activity::STATUS_DRAFT,
