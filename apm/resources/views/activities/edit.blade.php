@@ -31,6 +31,9 @@
                     @method('POST')
                     <input type="hidden" name="parent_memo_id" value="{{ $activity->id }}">
                     <input type="hidden" name="parent_memo_model" value="App\Models\Activity">
+                    @if(request('change_request_id'))
+                        <input type="hidden" name="change_request_id" value="{{ request('change_request_id') }}">
+                    @endif
                 @else
                     @method('PUT')
                 @endif
@@ -39,8 +42,11 @@
                     <div class="alert alert-warning d-flex align-items-start mb-4" role="alert">
                         <i class="fas fa-info-circle me-2 mt-1"></i>
                         <div>
-                            <strong>Note:</strong> This form is loading the <strong>original memo data</strong>. 
-                            Make your changes below and submit to update the change request.
+                            <strong>Note:</strong> You are editing a <strong>saved change request draft</strong>
+                            @if(!empty($changeRequestForEdit?->document_number))
+                                (<span class="fw-semibold">{{ $changeRequestForEdit->document_number }}</span>)
+                            @endif
+                            . Fields below reflect this draft; save to update it.
                         </div>
                     </div>
                 @endif
@@ -60,7 +66,7 @@
                                     <i class="fas fa-comment-alt me-1 text-warning"></i> Supporting Reasons <span class="text-danger">*</span>
                                 </label>
                                 <textarea name="supporting_reasons" id="supporting_reasons" class="form-control" rows="4" 
-                                    placeholder="Please explain why you are requesting changes to this activity..." required>{{ old('supporting_reasons') }}</textarea>
+                                    placeholder="Please explain why you are requesting changes to this activity..." required>{{ old('supporting_reasons', optional($changeRequestForEdit ?? null)->supporting_reasons ?? '') }}</textarea>
                                 <small class="text-muted">Provide detailed justification for the requested changes.</small>
                             </div>
                         </div>
@@ -138,8 +144,6 @@
                         <input type="hidden" name="total_participants" id="total_participants" value="{{ old('total_participants', $activity->total_participants) }}">
                     </div>
                 </div>
-
-                <div id="externalParticipantsWrapper"></div>
 
                 <div id="budgetGroupContainer" class="mt-4"></div>
 
@@ -251,7 +255,11 @@
                         <i class="bx bx-arrow-back me-1"></i> Cancel
                     </a>
                     <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
-                        <i class="bx bx-check-circle me-1"></i> {{ request('change_request') ? 'Submit Change Request' : 'Update Activity' }}
+                        @if(request('change_request'))
+                            <i class="bx bx-save me-1"></i> Save as Draft
+                        @else
+                            <i class="bx bx-check-circle me-1"></i> Update Activity
+                        @endif
                     </button>
                 </div>
                     </div>
@@ -564,9 +572,9 @@ $(document).ready(function () {
                                 <label class="form-check-label ms-2">Yes</label>
                             </div>
                         </td>
-                        <td class="text-center">
-                            <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${sid}">
-                                <i class="fas fa-trash"></i>
+                        <td class="text-center text-nowrap align-middle">
+                            <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${sid}" title="Remove this participant" aria-label="Remove">
+                                <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
                             </button>
                         </td>
                     </tr>
@@ -681,12 +689,13 @@ $(document).ready(function () {
 
     // Remove participant event handler
     $(document).on('click', '.remove-participant', function() {
-        const staffId = $(this).data('staff-id');
+        const staffId = String($(this).data('staff-id'));
         const row = $(this).closest('tr');
         
         // Remove from select2
         $('#internal_participants').val(function() {
-            return $(this).val().filter(id => id != staffId);
+            const current = $(this).val() || [];
+            return current.filter(function (id) { return String(id) !== staffId; });
         }).trigger('change');
         
         // Remove from table
@@ -829,12 +838,20 @@ $(document).ready(function () {
             budgetCodesSelect.select2('destroy');
         }
         budgetCodesSelect.select2({
+            theme: 'bootstrap4',
             maximumSelectionLength: isExtramural ? 1 : 2,
             width: '100%',
             placeholder: 'Select Budget Code(s)',
             allowClear: true
         });
         budgetCodesHelp.text(isExtramural ? 'Select one code (extramural)' : 'Select up to 2 codes (intramural)');
+    }
+
+    function findBudgetCodeOption(codeId) {
+        const s = String(codeId);
+        return $('#budget_codes option').filter(function () {
+            return String($(this).val()) === s;
+        }).first();
     }
 
     $('#fund_type').on('change', function () {
@@ -853,11 +870,17 @@ $(document).ready(function () {
         if (!fundTypeId) {
             budgetCodesHelp.text('Select a fund type first');
             window._fundTypeChangeInProgress = false;
+            if (window._activitiesRestoreBudgetAfterFundTypeAjax) {
+                window._activitiesRestoreBudgetAfterFundTypeAjax = false;
+            }
             return;
         }
         if (isExternalSource) {
             budgetCodesSelect.empty().append('<option disabled selected>Not applicable for external source</option>');
             window._fundTypeChangeInProgress = false;
+            if (window._activitiesRestoreBudgetAfterFundTypeAjax) {
+                window._activitiesRestoreBudgetAfterFundTypeAjax = false;
+            }
             return;
         }
 
@@ -886,9 +909,20 @@ $(document).ready(function () {
             }
             $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
             window._fundTypeChangeInProgress = false;
+            if (window._activitiesRestoreBudgetAfterFundTypeAjax && data && data.length) {
+                window._activitiesRestoreBudgetAfterFundTypeAjax = false;
+                setTimeout(function () {
+                    runActivitiesBudgetRestoreFromExisting();
+                }, 50);
+            } else if (window._activitiesRestoreBudgetAfterFundTypeAjax) {
+                window._activitiesRestoreBudgetAfterFundTypeAjax = false;
+            }
         }).fail(function() {
             $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
             window._fundTypeChangeInProgress = false;
+            if (window._activitiesRestoreBudgetAfterFundTypeAjax) {
+                window._activitiesRestoreBudgetAfterFundTypeAjax = false;
+            }
         });
     });
 
@@ -1186,20 +1220,20 @@ $(document).ready(function () {
             submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
                 .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
         } else {
-            let buttonText;
             if (isChangeRequest) {
-                buttonText = 'Submit Change Request';
+                submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
+                    .html('<i class="bx bx-save me-1"></i> Save as Draft');
             } else {
-                buttonText = fundTypeId === 3 ? 'Update Activity (External Source)' : 'Update Activity';
+                const buttonText = fundTypeId === 3 ? 'Update Activity (External Source)' : 'Update Activity';
+                submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
+                    .html('<i class="bx bx-check-circle me-1"></i> ' + buttonText);
             }
-            submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
-                .html('<i class="bx bx-check-circle me-1"></i> ' + buttonText);
         }
     }
 
 
 
-    // Initialize Select2 for form fields
+    // Select2 order: internal → location → budget_codes → responsible → request_type (then sync UI)
     $('#internal_participants').select2({
         placeholder: 'Select Internal Participants',
         width: '100%'
@@ -1213,8 +1247,11 @@ $(document).ready(function () {
 
     budgetCodesHelp.text('Select a fund type first');
     $('#budget_codes').select2({
+        theme: 'bootstrap4',
         maximumSelectionLength: 2,
-        width: '100%'
+        width: '100%',
+        placeholder: 'Select Budget Code(s)',
+        allowClear: true
     });
 
     $('#responsible_person_id').select2({
@@ -1226,6 +1263,25 @@ $(document).ready(function () {
         placeholder: 'Select Request Type',
         width: '100%'
     });
+
+    function syncSelect2FromNative($el) {
+        if (!$el.length || !$el.hasClass('select2-hidden-accessible')) {
+            return;
+        }
+        const v = $el.val();
+        $el.val(v).trigger('change');
+        if ($el.data('select2')) {
+            $el.trigger('change.select2');
+        }
+    }
+
+    function refreshActivitiesSelect2Fields() {
+        syncSelect2FromNative($('#responsible_person_id'));
+        syncSelect2FromNative($('#location_id'));
+        syncSelect2FromNative($('#request_type_id'));
+        syncSelect2FromNative($('#internal_participants'));
+        syncSelect2FromNative($('#budget_codes'));
+    }
 
     // Initialize date pickers
     $('.datepicker').flatpickr({
@@ -1242,9 +1298,17 @@ $(document).ready(function () {
         });
         $('#internal_participants').data('internationalTravelMap', internationalTravelMap);
         $('#internal_participants').val(participantIds).trigger('change');
+        if ($('#internal_participants').data('select2')) {
+            $('#internal_participants').trigger('change.select2');
+        }
         $('#internal_participants').removeData('internationalTravelMap');
         setTimeout(applyInternationalTravelFromExistingParticipants, 0);
     }
+
+    refreshActivitiesSelect2Fields();
+    setTimeout(refreshActivitiesSelect2Fields, 0);
+    setTimeout(refreshActivitiesSelect2Fields, 100);
+    setTimeout(refreshActivitiesSelect2Fields, 500);
 
     // Function to restore external participants division blocks
     function restoreExternalParticipants(externalParticipants) {
@@ -1325,6 +1389,62 @@ $(document).ready(function () {
     // Flag to prevent multiple restoration attempts
     let budgetDataRestored = false;
 
+    function runActivitiesBudgetRestoreFromExisting() {
+        if (!existingBudgetItems || Object.keys(existingBudgetItems).length === 0) {
+            return;
+        }
+        window._restoringBudgetCards = true;
+        Object.entries(existingBudgetItems).forEach(function (entry) {
+            const codeId = entry[0];
+            const items = entry[1];
+            if (codeId === 'grand_total') {
+                return;
+            }
+            let itemsArray = [];
+            if (Array.isArray(items)) {
+                itemsArray = items;
+            } else if (items && typeof items === 'object') {
+                itemsArray = Object.values(items).filter(function (item) {
+                    return item && typeof item === 'object';
+                });
+            }
+            const option = findBudgetCodeOption(codeId);
+            if (!option.length) {
+                return;
+            }
+            option.prop('selected', true);
+            const label = option.text();
+            const balance = option.data('balance');
+            createBudgetCardWithData(codeId, label, balance, itemsArray);
+        });
+
+        $('#budget_codes').trigger('change.select2');
+        $('#budget_codes').trigger('change');
+
+        if ($('#budget_codes').hasClass('select2-hidden-accessible')) {
+            const isExtramural = $('#fund_type option:selected').text().toLowerCase().indexOf('extramural') > -1;
+            $('#budget_codes').select2('destroy').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: 'Select Budget Code(s)',
+                allowClear: true,
+                maximumSelectionLength: isExtramural ? 1 : 2
+            });
+            window._restoringBudgetCards = true;
+            $('#budget_codes').trigger('change');
+        }
+        initializeWorldBankActivityCodeRequirement();
+        if (initialActivityCodeValue !== undefined && initialActivityCodeValue !== null && $('.activity_code').is(':visible')) {
+            $('#activity_code').val(initialActivityCodeValue);
+        }
+        budgetDataRestored = true;
+        setTimeout(function () {
+            if (typeof refreshActivitiesSelect2Fields === 'function') {
+                refreshActivitiesSelect2Fields();
+            }
+        }, 0);
+    }
+
     // Initialize form fields with existing data
     function initializeExistingData() {
         // World Bank Activity Code visibility is set by budget_codes change (when a selected code is World Bank)
@@ -1335,74 +1455,11 @@ $(document).ready(function () {
 
         // Load budget codes if fund type is selected
         if ($('#fund_type').val()) {
-            // Enable budget codes dropdown and load codes
             $('#budget_codes').prop('disabled', false);
-            
-            // Trigger fund type change to load budget codes
-            $('#fund_type').trigger('change');
-            
-            // If there are existing budget items, ensure they're properly loaded
             if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0 && !budgetDataRestored) {
-                budgetDataRestored = true; // Set flag to prevent multiple restorations
-                
-                // Wait for budget codes to load, then restore existing selections
-                setTimeout(() => {
-                    window._restoringBudgetCards = true;
-                    Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
-                        // Skip grand_total as it's not a budget code
-                        if (codeId === 'grand_total') {
-                            return;
-                        }
-                        
-                        // Select the budget code
-                        const option = $(`#budget_codes option[value="${codeId}"]`);
-                        if (option.length) {
-                            option.prop('selected', true);
-                            
-                            // Get the option details
-                            const label = option.text();
-                            const balance = option.data('balance');
-                            
-                            // Convert items object to array if needed
-                            // Budget items come as object with numeric keys: {"0": {...}, "1": {...}}
-                            let itemsArray = [];
-                            if (Array.isArray(items)) {
-                                itemsArray = items;
-                            } else if (items && typeof items === 'object') {
-                                // Convert object with numeric keys to array
-                                itemsArray = Object.values(items).filter(item => item && typeof item === 'object');
-                            }
-                            
-                            // Create the card with data directly
-                            createBudgetCardWithData(codeId, label, balance, itemsArray);
-                        }
-                    });
-                    
-                    // Update the select2 dropdown to reflect the selections
-                    $('#budget_codes').trigger('change.select2');
-                    // Fire standard 'change' so Activity Code visibility runs (show when any selected code has show_activity_code)
-                    $('#budget_codes').trigger('change');
-                    
-                    // Also try to refresh the select2 if it exists
-                    if ($('#budget_codes').hasClass('select2-hidden-accessible')) {
-                        const isExtramural = $('#fund_type option:selected').text().toLowerCase().indexOf('extramural') > -1;
-                        $('#budget_codes').select2('destroy').select2({
-                            theme: 'bootstrap4',
-                            width: '100%',
-                            placeholder: 'Select Budget Code(s)',
-                            allowClear: true,
-                            maximumSelectionLength: isExtramural ? 1 : 2
-                        });
-                        window._restoringBudgetCards = true;
-                        $('#budget_codes').trigger('change');
-                    }
-                    initializeWorldBankActivityCodeRequirement();
-                    // Restore Activity Code value (fund_type change handler clears it; show it when intramural + World Bank)
-                    if (initialActivityCodeValue !== undefined && initialActivityCodeValue !== null && $('.activity_code').is(':visible')) {
-                        $('#activity_code').val(initialActivityCodeValue);
-                    }
-                }, 1000);
+                window._activitiesRestoreBudgetAfterFundTypeAjax = true;
             }
+            $('#fund_type').trigger('change');
         }
 
         // Restore external participants division blocks
@@ -1414,6 +1471,12 @@ $(document).ready(function () {
 
         // Update total participants display
         updateTotalParticipants();
+
+        setTimeout(function () {
+            if (typeof refreshActivitiesSelect2Fields === 'function') {
+                refreshActivitiesSelect2Fields();
+            }
+        }, 250);
     }
 
     // Call initialization after a short delay to ensure all elements are loaded
@@ -1442,6 +1505,8 @@ $(document).ready(function () {
             if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0) {
                 const budgetCards = $('.budget-body');
                 if (budgetCards.length === 0) {
+                    budgetDataRestored = false;
+                    window._activitiesRestoreBudgetAfterFundTypeAjax = true;
                     initializeExistingData();
                     
                     // Show debug button if still no budget cards after retry

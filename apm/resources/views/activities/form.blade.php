@@ -121,19 +121,52 @@
                 <label for="internal_participants" class="form-label fw-semibold">
                     <i class="fas fa-user-friends me-1 text-success"></i> Select Internal Participants <span class="text-danger">*</span>
                 </label>
+                @php
+                    $selectedInternalParticipantIds = [];
+                    if (isset($internalParticipants) && !empty($internalParticipants)) {
+                        foreach ($internalParticipants as $participant) {
+                            $sid = null;
+                            if (isset($participant['staff'])) {
+                                $st = $participant['staff'];
+                                if (is_object($st) && isset($st->staff_id)) {
+                                    $sid = $st->staff_id;
+                                } elseif (is_array($st) && isset($st['staff_id'])) {
+                                    $sid = $st['staff_id'];
+                                }
+                            }
+                            if ($sid === null && isset($participant['staff_id'])) {
+                                $sid = $participant['staff_id'];
+                            }
+                            if ($sid !== null) {
+                                $selectedInternalParticipantIds[] = $sid;
+                            }
+                        }
+                    } elseif (isset($activity) && isset($activity->internal_participants)) {
+                        $rawParticipants = is_string($activity->internal_participants)
+                            ? json_decode($activity->internal_participants, true)
+                            : $activity->internal_participants;
+                        if (!is_array($rawParticipants)) {
+                            $rawParticipants = [];
+                        }
+                        if (isset($rawParticipants[0]) && is_array($rawParticipants[0]) && isset($rawParticipants[0]['staff'])) {
+                            foreach ($rawParticipants as $p) {
+                                $st = $p['staff'] ?? null;
+                                if (is_object($st) && isset($st->staff_id)) {
+                                    $selectedInternalParticipantIds[] = $st->staff_id;
+                                } elseif (is_array($st) && isset($st['staff_id'])) {
+                                    $selectedInternalParticipantIds[] = $st['staff_id'];
+                                }
+                            }
+                        } else {
+                            $selectedInternalParticipantIds = array_keys($rawParticipants);
+                        }
+                    }
+                    $selectedInternalParticipantIds = array_values(array_unique(array_filter($selectedInternalParticipantIds)));
+                    $internalParticipantIdsNormalized = array_map('strval', (array) old('internal_participants', $selectedInternalParticipantIds));
+                @endphp
                 <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple style="width: 100%;">
                     @foreach($divisionStaff as $member)
-                        @php
-                            $participantIds = [];
-                            if (isset($activity->internal_participants)) {
-                                $rawParticipants = is_string($activity->internal_participants) 
-                                    ? json_decode($activity->internal_participants, true) 
-                                    : $activity->internal_participants;
-                                $participantIds = array_keys($rawParticipants ?? []);
-                            }
-                            $isSelected = in_array($member->staff_id, old('internal_participants', $participantIds));
-                        @endphp
-                        <option value="{{ $member->staff_id }}" {{ $isSelected ? 'selected' : '' }}>
+                        <option value="{{ $member->staff_id }}" {{ in_array((string) $member->staff_id, $internalParticipantIdsNormalized, true) ? 'selected' : '' }}>
                             {{ $member->fname }} {{ $member->lname }}@if(!empty($member->job_name)) ({{ $member->job_name }})@endif
                         </option>
                     @endforeach
@@ -170,7 +203,7 @@
                 <th>End Date</th>
                 <th>No. of Days</th>
                 <th>International Travel</th>
-                <th>Actions</th>
+                <th scope="col" class="text-center text-nowrap" style="width: 1%;">Actions</th>
             </tr>
         </thead>
         <tbody id="participantsTableBody">
