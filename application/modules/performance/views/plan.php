@@ -153,9 +153,13 @@ if($showApprovalBtns!='show'){
       <button type="button" class="btn btn-outline-success btn-sm" id="sharePpaBtn">
         <i class="fa fa-share-alt"></i> Share
       </button>
-      <button type="button" class="btn btn-outline-success btn-sm" id="mailPpaBtn">
+      <?php
+        $mailSubjectPpa = trim(staff_name($ppa->staff_id) . ' PPA ' . str_replace('-', ' ', (string)($ppa->performance_period ?? '')) . ' ' . (((int)($ppa->draft_status ?? -1) === 2) ? 'Final' : 'Draft'));
+        $mailBodyPpa = 'Please follow the link to view my PPA ' . ((((int)($ppa->draft_status ?? -1) === 2) ? 'Final' : 'Draft')) . ".\n\n" . base_url('performance/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id);
+      ?>
+      <a class="btn btn-outline-success btn-sm" id="mailPpaBtn" href="mailto:?subject=<?= rawurlencode($mailSubjectPpa) ?>&body=<?= rawurlencode($mailBodyPpa) ?>">
         <i class="fa fa-envelope"></i> Mail
-      </button>
+      </a>
     </div>
     <small class="text-muted d-block mt-1">Shows &ldquo;DRAFT&rdquo; or &ldquo;PENDING APPROVAL&rdquo; watermark unless the PPA is fully approved.</small>
   </div>
@@ -165,8 +169,7 @@ if($showApprovalBtns!='show'){
 <script>
   (function() {
     const shareBtn = document.getElementById('sharePpaBtn');
-    const mailBtn = document.getElementById('mailPpaBtn');
-    if (!shareBtn || !mailBtn) return;
+    if (!shareBtn) return;
 
     const employeeName = <?= json_encode(trim((string) staff_name($ppa->staff_id))) ?>;
     const financialYear = <?= json_encode(str_replace('-', ' ', (string) ($ppa->performance_period ?? ''))) ?>;
@@ -193,9 +196,6 @@ if($showApprovalBtns!='show'){
       window.location.href = mailtoLink;
     });
 
-    mailBtn.addEventListener('click', function () {
-      window.location.href = mailtoLink;
-    });
   })();
 </script>
 <?php endif; ?>

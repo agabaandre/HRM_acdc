@@ -170,9 +170,13 @@ if (!empty($ppa) && !empty($endppa)) {
             <button type="button" class="btn btn-outline-success btn-sm" id="shareEndtermBtn">
                 <i class="fa fa-share-alt"></i> Share
             </button>
-            <button type="button" class="btn btn-outline-success btn-sm" id="mailEndtermBtn">
+            <?php
+              $mailSubjectEndterm = trim(staff_name($ppa->staff_id) . ' Endterm ' . str_replace('-', ' ', (string)($ppa->performance_period ?? '')) . ' ' . (!empty($canPrint) ? 'Final' : 'Draft'));
+              $mailBodyEndterm = 'Please follow the link to view my Endterm ' . (!empty($canPrint) ? 'Final' : 'Draft') . ".\n\n" . base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id);
+            ?>
+            <a class="btn btn-outline-success btn-sm" id="mailEndtermBtn" href="mailto:?subject=<?= rawurlencode($mailSubjectEndterm) ?>&body=<?= rawurlencode($mailBodyEndterm) ?>">
                 <i class="fa fa-envelope"></i> Mail
-            </button>
+            </a>
         </div>
         <small class="text-muted d-block mt-1">Shows DRAFT (draft_status 1) or PENDING APPROVAL (0) until fully approved (2).</small>
     </div>
@@ -191,9 +195,13 @@ if (!empty($ppa) && !empty($endppa)) {
             <button type="button" class="btn btn-outline-success btn-sm" id="shareEndtermBtn">
                 <i class="fa fa-share-alt"></i> Share
             </button>
-            <button type="button" class="btn btn-outline-success btn-sm" id="mailEndtermBtn">
+            <?php
+              $mailSubjectEndterm = trim(staff_name($ppa->staff_id) . ' Endterm ' . str_replace('-', ' ', (string)($ppa->performance_period ?? '')) . ' ' . (!empty($canPrint) ? 'Final' : 'Draft'));
+              $mailBodyEndterm = 'Please follow the link to view my Endterm ' . (!empty($canPrint) ? 'Final' : 'Draft') . ".\n\n" . base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id);
+            ?>
+            <a class="btn btn-outline-success btn-sm" id="mailEndtermBtn" href="mailto:?subject=<?= rawurlencode($mailSubjectEndterm) ?>&body=<?= rawurlencode($mailBodyEndterm) ?>">
                 <i class="fa fa-envelope"></i> Mail
-            </button>
+            </a>
         </div>
     </div>
 <?php endif; ?>
@@ -202,8 +210,7 @@ if (!empty($ppa) && !empty($endppa)) {
 <script>
   (function() {
     const shareBtn = document.getElementById('shareEndtermBtn');
-    const mailBtn = document.getElementById('mailEndtermBtn');
-    if (!shareBtn || !mailBtn) return;
+    if (!shareBtn) return;
 
     const employeeName = <?= json_encode(trim((string) staff_name($ppa->staff_id))) ?>;
     const financialYear = <?= json_encode(str_replace('-', ' ', (string) ($ppa->performance_period ?? ''))) ?>;
@@ -230,9 +237,6 @@ if (!empty($ppa) && !empty($endppa)) {
       window.location.href = mailtoLink;
     });
 
-    mailBtn.addEventListener('click', function () {
-      window.location.href = mailtoLink;
-    });
   })();
 </script>
 <?php endif; ?>

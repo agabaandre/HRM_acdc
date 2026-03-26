@@ -126,9 +126,13 @@ $this->load->view('ppa_tabs');
       <button type="button" class="btn btn-outline-success btn-sm" id="shareMidtermBtn">
         <i class="fa fa-share-alt"></i> Share
       </button>
-      <button type="button" class="btn btn-outline-success btn-sm" id="mailMidtermBtn">
+      <?php
+        $mailSubjectMidterm = trim(staff_name($ppa->staff_id) . ' Midterm ' . str_replace('-', ' ', (string)($ppa->performance_period ?? '')) . ' ' . (((int)($midppa->midterm_draft_status ?? -1) === 2) ? 'Final' : 'Draft'));
+        $mailBodyMidterm = 'Please follow the link to view my Midterm ' . ((((int)($midppa->midterm_draft_status ?? -1) === 2) ? 'Final' : 'Draft')) . ".\n\n" . base_url('performance/midterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id);
+      ?>
+      <a class="btn btn-outline-success btn-sm" id="mailMidtermBtn" href="mailto:?subject=<?= rawurlencode($mailSubjectMidterm) ?>&body=<?= rawurlencode($mailBodyMidterm) ?>">
         <i class="fa fa-envelope"></i> Mail
-      </button>
+      </a>
     </div>
     <small class="text-muted d-block mt-1">Watermark reflects midterm status: draft (1) or pending approval (0).</small>
   </div>
@@ -138,8 +142,7 @@ $this->load->view('ppa_tabs');
 <script>
   (function() {
     const shareBtn = document.getElementById('shareMidtermBtn');
-    const mailBtn = document.getElementById('mailMidtermBtn');
-    if (!shareBtn || !mailBtn) return;
+    if (!shareBtn) return;
 
     const employeeName = <?= json_encode(trim((string) staff_name($ppa->staff_id))) ?>;
     const financialYear = <?= json_encode(str_replace('-', ' ', (string) ($ppa->performance_period ?? ''))) ?>;
@@ -166,9 +169,6 @@ $this->load->view('ppa_tabs');
       window.location.href = mailtoLink;
     });
 
-    mailBtn.addEventListener('click', function () {
-      window.location.href = mailtoLink;
-    });
   })();
 </script>
 <?php endif; ?>
