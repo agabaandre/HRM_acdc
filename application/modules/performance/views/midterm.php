@@ -102,7 +102,8 @@ if (!is_array($objectives)) $objectives = [];
 $this->load->view('ppa_tabs');
 
 // ✅ SAFE to use here now
-if ($showApprovalBtns != 'show') echo $showApprovalBtns;
+// helper approval buttons hidden per request
+// if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 ?>
 
 <?php if (!empty($contract_missing)): ?>
@@ -252,7 +253,7 @@ if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 }
 </style>
 
-<?php if ($showApprovalBtns == 'show' || in_array('83', $permissions)) {
+<?php if (false && ($showApprovalBtns == 'show' || in_array('83', $permissions))) {
     $this->load->view('performance/partials/approval_buttons', compact('ppa', 'ppa_settings', 'session', 'approval_trail','midreadonly','midterm_exists','permissions'));
 } ?>
 

@@ -127,7 +127,8 @@ if (!is_array($objectives)) $objectives = [];
 $this->load->view('ppa_tabs');
 
 // ✅ SAFE to use here now
-if ($showApprovalBtns != 'show') echo $showApprovalBtns;
+// helper approval buttons hidden per request
+// if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 
 // Print Buttons - Show only when endterm is actually approved (draft_status = 2) and not returned
 // If draft_status == 2, it means the endterm is fully approved regardless of supervisor fields
@@ -338,7 +339,7 @@ $this->load->view('performance/endterm/endterm_section_a', compact('contract', '
 }
 </style>
 
-<?php if ($showApprovalBtns == 'show' || in_array('83', $permissions)) {
+<?php if (false && ($showApprovalBtns == 'show' || in_array('83', $permissions))) {
   //d($showApprovalBtns);
     $this->load->view('performance/partials/approval_buttons_endterm', compact('ppa', 'ppa_settings', 'session', 'approval_trail','endreadonly','endterm_exists','permissions'));
 } ?>
