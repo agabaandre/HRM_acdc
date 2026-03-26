@@ -170,6 +170,9 @@ if (!empty($ppa) && !empty($endppa)) {
             <button type="button" class="btn btn-outline-success btn-sm" id="shareEndtermBtn">
                 <i class="fa fa-share-alt"></i> Share
             </button>
+            <button type="button" class="btn btn-outline-success btn-sm" id="mailEndtermBtn">
+                <i class="fa fa-envelope"></i> Mail
+            </button>
         </div>
         <small class="text-muted d-block mt-1">Shows DRAFT (draft_status 1) or PENDING APPROVAL (0) until fully approved (2).</small>
     </div>
@@ -188,6 +191,9 @@ if (!empty($ppa) && !empty($endppa)) {
             <button type="button" class="btn btn-outline-success btn-sm" id="shareEndtermBtn">
                 <i class="fa fa-share-alt"></i> Share
             </button>
+            <button type="button" class="btn btn-outline-success btn-sm" id="mailEndtermBtn">
+                <i class="fa fa-envelope"></i> Mail
+            </button>
         </div>
     </div>
 <?php endif; ?>
@@ -196,7 +202,8 @@ if (!empty($ppa) && !empty($endppa)) {
 <script>
   (function() {
     const shareBtn = document.getElementById('shareEndtermBtn');
-    if (!shareBtn) return;
+    const mailBtn = document.getElementById('mailEndtermBtn');
+    if (!shareBtn || !mailBtn) return;
 
     const employeeName = <?= json_encode(trim((string) staff_name($ppa->staff_id))) ?>;
     const financialYear = <?= json_encode(str_replace('-', ' ', (string) ($ppa->performance_period ?? ''))) ?>;
@@ -205,6 +212,7 @@ if (!empty($ppa) && !empty($endppa)) {
     const versionLabel = isApproved ? 'Final' : 'Draft';
     const subject = `${employeeName} Endterm ${financialYear} ${versionLabel}`.trim();
     const body = `Please follow the link to view my Endterm ${versionLabel}.\n\n${shareUrl}`;
+    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
     shareBtn.addEventListener('click', async function () {
       if (navigator.share) {
@@ -219,7 +227,11 @@ if (!empty($ppa) && !empty($endppa)) {
           // User cancelled share dialog or share failed; fallback to email compose.
         }
       }
-      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoLink;
+    });
+
+    mailBtn.addEventListener('click', function () {
+      window.location.href = mailtoLink;
     });
   })();
 </script>
