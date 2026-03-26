@@ -157,29 +157,37 @@ if (!empty($ppa) && !empty($endppa)) {
 <?php endif; ?>
 <?php if (!empty($ppa) && !empty($ppa->entry_id) && !empty($endterm_exists) && !$canPrint): ?>
     <div class="mb-3">
-        <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
-           class="btn btn-outline-secondary btn-sm me-2" target="_blank" rel="noopener">
-            <i class="fa fa-print"></i> Print draft (Endterm)
-        </a>
-        <button type="button" class="btn btn-outline-primary btn-sm me-2" id="shareEndtermBtn">
-            <i class="fa fa-share-alt"></i> Share
-        </button>
-        <small class="text-muted">Shows DRAFT (draft_status 1) or PENDING APPROVAL (0) until fully approved (2).</small>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
+               class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+                <i class="fa fa-print"></i> Print (No Trail)
+            </a>
+            <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id . '/1') ?>"
+               class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+                <i class="fa fa-print"></i> Print (With Trail)
+            </a>
+            <button type="button" class="btn btn-outline-success btn-sm" id="shareEndtermBtn">
+                <i class="fa fa-share-alt"></i> Share
+            </button>
+        </div>
+        <small class="text-muted d-block mt-1">Shows DRAFT (draft_status 1) or PENDING APPROVAL (0) until fully approved (2).</small>
     </div>
 <?php endif; ?>
 <?php if ($canPrint): ?>
     <div class="mb-3">
-        <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>" 
-           class="btn btn-dark btn-sm me-2" target="_blank">
-            <i class="fa fa-print"></i> Print Endterm without Approval Trail
-        </a>
-        <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id . '/1') ?>" 
-           class="btn btn-dark btn-sm" target="_blank">
-            <i class="fa fa-print"></i> Print Endterm With Approval Trail
-        </a>
-        <button type="button" class="btn btn-outline-primary btn-sm ms-2" id="shareEndtermBtn">
-            <i class="fa fa-share-alt"></i> Share
-        </button>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>" 
+               class="btn btn-dark btn-sm" target="_blank">
+                <i class="fa fa-print"></i> Print (No Trail)
+            </a>
+            <a href="<?= base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id . '/1') ?>" 
+               class="btn btn-dark btn-sm" target="_blank">
+                <i class="fa fa-print"></i> Print (With Trail)
+            </a>
+            <button type="button" class="btn btn-outline-success btn-sm" id="shareEndtermBtn">
+                <i class="fa fa-share-alt"></i> Share
+            </button>
+        </div>
     </div>
 <?php endif; ?>
 

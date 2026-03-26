@@ -113,14 +113,20 @@ if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 
 <?php if (!empty($ppa) && !empty($ppa->entry_id) && !empty($midterm_exists)): ?>
   <div class="mb-3">
-    <a href="<?= base_url('performance/midterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
-       class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
-      <i class="fa fa-print"></i> Print draft (Midterm)
-    </a>
-    <button type="button" class="btn btn-outline-primary btn-sm ms-2" id="shareMidtermBtn">
-      <i class="fa fa-share-alt"></i> Share
-    </button>
-    <small class="text-muted ms-2">Watermark reflects midterm status: draft (1) or pending approval (0).</small>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <a href="<?= base_url('performance/midterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
+         class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+        <i class="fa fa-print"></i> Print (No Trail)
+      </a>
+      <a href="<?= base_url('performance/midterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id . '/1') ?>"
+         class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+        <i class="fa fa-print"></i> Print (With Trail)
+      </a>
+      <button type="button" class="btn btn-outline-success btn-sm" id="shareMidtermBtn">
+        <i class="fa fa-share-alt"></i> Share
+      </button>
+    </div>
+    <small class="text-muted d-block mt-1">Watermark reflects midterm status: draft (1) or pending approval (0).</small>
   </div>
 <?php endif; ?>
 
