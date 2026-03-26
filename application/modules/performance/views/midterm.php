@@ -126,6 +126,9 @@ $this->load->view('ppa_tabs');
       <button type="button" class="btn btn-outline-success btn-sm" id="shareMidtermBtn">
         <i class="fa fa-share-alt"></i> Share
       </button>
+      <button type="button" class="btn btn-outline-success btn-sm" id="mailMidtermBtn">
+        <i class="fa fa-envelope"></i> Mail
+      </button>
     </div>
     <small class="text-muted d-block mt-1">Watermark reflects midterm status: draft (1) or pending approval (0).</small>
   </div>
@@ -135,7 +138,8 @@ $this->load->view('ppa_tabs');
 <script>
   (function() {
     const shareBtn = document.getElementById('shareMidtermBtn');
-    if (!shareBtn) return;
+    const mailBtn = document.getElementById('mailMidtermBtn');
+    if (!shareBtn || !mailBtn) return;
 
     const employeeName = <?= json_encode(trim((string) staff_name($ppa->staff_id))) ?>;
     const financialYear = <?= json_encode(str_replace('-', ' ', (string) ($ppa->performance_period ?? ''))) ?>;
@@ -144,6 +148,7 @@ $this->load->view('ppa_tabs');
     const versionLabel = isApproved ? 'Final' : 'Draft';
     const subject = `${employeeName} Midterm ${financialYear} ${versionLabel}`.trim();
     const body = `Please follow the link to view my Midterm ${versionLabel}.\n\n${shareUrl}`;
+    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
     shareBtn.addEventListener('click', async function () {
       if (navigator.share) {
@@ -158,7 +163,11 @@ $this->load->view('ppa_tabs');
           // User cancelled share dialog or share failed; fallback to email compose.
         }
       }
-      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoLink;
+    });
+
+    mailBtn.addEventListener('click', function () {
+      window.location.href = mailtoLink;
     });
   })();
 </script>

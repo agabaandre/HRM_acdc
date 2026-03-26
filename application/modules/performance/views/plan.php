@@ -153,6 +153,9 @@ if($showApprovalBtns!='show'){
       <button type="button" class="btn btn-outline-success btn-sm" id="sharePpaBtn">
         <i class="fa fa-share-alt"></i> Share
       </button>
+      <button type="button" class="btn btn-outline-success btn-sm" id="mailPpaBtn">
+        <i class="fa fa-envelope"></i> Mail
+      </button>
     </div>
     <small class="text-muted d-block mt-1">Shows &ldquo;DRAFT&rdquo; or &ldquo;PENDING APPROVAL&rdquo; watermark unless the PPA is fully approved.</small>
   </div>
@@ -162,7 +165,8 @@ if($showApprovalBtns!='show'){
 <script>
   (function() {
     const shareBtn = document.getElementById('sharePpaBtn');
-    if (!shareBtn) return;
+    const mailBtn = document.getElementById('mailPpaBtn');
+    if (!shareBtn || !mailBtn) return;
 
     const employeeName = <?= json_encode(trim((string) staff_name($ppa->staff_id))) ?>;
     const financialYear = <?= json_encode(str_replace('-', ' ', (string) ($ppa->performance_period ?? ''))) ?>;
@@ -171,6 +175,7 @@ if($showApprovalBtns!='show'){
     const versionLabel = isApproved ? 'Final' : 'Draft';
     const subject = `${employeeName} PPA ${financialYear} ${versionLabel}`.trim();
     const body = `Please follow the link to view my PPA ${versionLabel}.\n\n${shareUrl}`;
+    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
     shareBtn.addEventListener('click', async function () {
       if (navigator.share) {
@@ -185,7 +190,11 @@ if($showApprovalBtns!='show'){
           // User cancelled share dialog or share failed; fallback to email compose.
         }
       }
-      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoLink;
+    });
+
+    mailBtn.addEventListener('click', function () {
+      window.location.href = mailtoLink;
     });
   })();
 </script>
