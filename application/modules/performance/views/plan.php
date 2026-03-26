@@ -139,14 +139,20 @@ input[type="number"] {
 
 <?php if (!empty($ppa) && is_object($ppa) && !empty($ppa->entry_id)): ?>
   <div class="mb-3">
-    <a href="<?= base_url('performance/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
-       class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
-      <i class="fa fa-print"></i> Print draft (PPA)
-    </a>
-    <button type="button" class="btn btn-outline-primary btn-sm ms-2" id="sharePpaBtn">
-      <i class="fa fa-share-alt"></i> Share
-    </button>
-    <small class="text-muted ms-2">Shows &ldquo;DRAFT&rdquo; or &ldquo;PENDING APPROVAL&rdquo; watermark unless the PPA is fully approved.</small>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <a href="<?= base_url('performance/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id) ?>"
+         class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+        <i class="fa fa-print"></i> Print (No Trail)
+      </a>
+      <a href="<?= base_url('performance/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id . '/1') ?>"
+         class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+        <i class="fa fa-print"></i> Print (With Trail)
+      </a>
+      <button type="button" class="btn btn-outline-success btn-sm" id="sharePpaBtn">
+        <i class="fa fa-share-alt"></i> Share
+      </button>
+    </div>
+    <small class="text-muted d-block mt-1">Shows &ldquo;DRAFT&rdquo; or &ldquo;PENDING APPROVAL&rdquo; watermark unless the PPA is fully approved.</small>
   </div>
 <?php endif; ?>
 
