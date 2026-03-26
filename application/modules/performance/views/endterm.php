@@ -161,6 +161,9 @@ if (!empty($ppa) && !empty($endppa)) {
            class="btn btn-outline-secondary btn-sm me-2" target="_blank" rel="noopener">
             <i class="fa fa-print"></i> Print draft (Endterm)
         </a>
+        <button type="button" class="btn btn-outline-primary btn-sm me-2" id="shareEndtermBtn">
+            <i class="fa fa-share-alt"></i> Share
+        </button>
         <small class="text-muted">Shows DRAFT (draft_status 1) or PENDING APPROVAL (0) until fully approved (2).</small>
     </div>
 <?php endif; ?>
@@ -174,7 +177,43 @@ if (!empty($ppa) && !empty($endppa)) {
            class="btn btn-dark btn-sm" target="_blank">
             <i class="fa fa-print"></i> Print Endterm With Approval Trail
         </a>
+        <button type="button" class="btn btn-outline-primary btn-sm ms-2" id="shareEndtermBtn">
+            <i class="fa fa-share-alt"></i> Share
+        </button>
     </div>
+<?php endif; ?>
+
+<?php if (!empty($ppa) && !empty($ppa->entry_id) && !empty($endterm_exists)): ?>
+<script>
+  (function() {
+    const shareBtn = document.getElementById('shareEndtermBtn');
+    if (!shareBtn) return;
+
+    const employeeName = <?= json_encode(trim((string) staff_name($ppa->staff_id))) ?>;
+    const financialYear = <?= json_encode(str_replace('-', ' ', (string) ($ppa->performance_period ?? ''))) ?>;
+    const shareUrl = <?= json_encode(base_url('performance/endterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id)) ?>;
+    const isApproved = <?= !empty($canPrint) ? 'true' : 'false' ?>;
+    const versionLabel = isApproved ? 'Final' : 'Draft';
+    const subject = `${employeeName} Endterm ${financialYear} ${versionLabel}`.trim();
+    const body = `Please follow the link to view my Endterm ${versionLabel}.\n\n${shareUrl}`;
+
+    shareBtn.addEventListener('click', async function () {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: subject,
+            text: body,
+            url: shareUrl
+          });
+          return;
+        } catch (err) {
+          // User cancelled share dialog or share failed; fallback to email compose.
+        }
+      }
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    });
+  })();
+</script>
 <?php endif; ?>
 
 <?php echo form_open_multipart(base_url('performance/endterm/save_ppa'), ['id' => 'staff_ppa']); ?>
