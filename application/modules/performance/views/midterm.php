@@ -117,8 +117,44 @@ if ($showApprovalBtns != 'show') echo $showApprovalBtns;
        class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
       <i class="fa fa-print"></i> Print draft (Midterm)
     </a>
+    <button type="button" class="btn btn-outline-primary btn-sm ms-2" id="shareMidtermBtn">
+      <i class="fa fa-share-alt"></i> Share
+    </button>
     <small class="text-muted ms-2">Watermark reflects midterm status: draft (1) or pending approval (0).</small>
   </div>
+<?php endif; ?>
+
+<?php if (!empty($ppa) && !empty($ppa->entry_id) && !empty($midterm_exists)): ?>
+<script>
+  (function() {
+    const shareBtn = document.getElementById('shareMidtermBtn');
+    if (!shareBtn) return;
+
+    const employeeName = <?= json_encode(trim((string) staff_name($ppa->staff_id))) ?>;
+    const financialYear = <?= json_encode(str_replace('-', ' ', (string) ($ppa->performance_period ?? ''))) ?>;
+    const shareUrl = <?= json_encode(base_url('performance/midterm/print_ppa/' . $ppa->entry_id . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id)) ?>;
+    const isApproved = <?= ((int) (@$midppa->midterm_draft_status ?? -1) === 2) ? 'true' : 'false' ?>;
+    const versionLabel = isApproved ? 'Final' : 'Draft';
+    const subject = `${employeeName} Midterm ${financialYear} ${versionLabel}`.trim();
+    const body = `Please follow the link to view my Midterm ${versionLabel}.\n\n${shareUrl}`;
+
+    shareBtn.addEventListener('click', async function () {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: subject,
+            text: body,
+            url: shareUrl
+          });
+          return;
+        } catch (err) {
+          // User cancelled share dialog or share failed; fallback to email compose.
+        }
+      }
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    });
+  })();
+</script>
 <?php endif; ?>
 
 <?php echo form_open_multipart(base_url('performance/midterm/save_ppa'), ['id' => 'staff_ppa']); ?>
