@@ -355,7 +355,7 @@ $this->load->view('performance/endterm/endterm_section_a', compact('contract', '
 }
 </style>
 
-<?php if (false && ($showApprovalBtns == 'show' || in_array('83', $permissions))) {
+<?php if (($showApprovalBtns == 'show' || in_array('83', $permissions))) {
   //d($showApprovalBtns);
     $this->load->view('performance/partials/approval_buttons_endterm', compact('ppa', 'ppa_settings', 'session', 'approval_trail','endreadonly','endterm_exists','permissions'));
 } ?>

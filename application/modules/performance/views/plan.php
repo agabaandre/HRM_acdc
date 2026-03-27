@@ -429,7 +429,7 @@ if($showApprovalBtns!='show'){
 <?php 
   //dd($showApprovalBtns); 
   $status = ((intval(@$ppa_settings->allow_supervisor_return) === 1) && (in_array('83', $permissions)));
-  if (false && (($showApprovalBtns ==='show')||(in_array('83', $permissions)))){ 
+  if ((($showApprovalBtns ==='show')||(in_array('83', $permissions)))){ 
     // Check if $ppa exists and is not false
     if (!empty($ppa) && is_object($ppa) && isset($ppa->entry_id)) { ?>
   <?php echo form_open('performance/approve_ppa/' . $ppa->entry_id, [
