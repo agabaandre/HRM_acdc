@@ -9,7 +9,7 @@ class Jobs extends MX_Controller
     public function __construct()
     {
         parent::__construct();
-       // $this->load->model("midterm_mdl", 'midterm_mdl');
+        // per_mdl & midterm_mdl are autoloaded in application/config/autoload.php
     }
  
    //render user accounts automatically
@@ -313,7 +313,20 @@ public function cron_register(){
     {
         $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
         $today = date('Y-m-d');
-        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status = '0' and (subject like'PPA%' OR subject like '%Midterm%') and email_to NOT LIKE 'xx%'")->result();
+        // Pending today: include NULL/empty status (new rows) — not only literal '0'.
+        // Subjects: previous filter "PPA%" missed "Reminder: Pending PPA..." and all Endterm/Consent mail.
+        $messages = $this->db->query("
+            SELECT * FROM email_notifications
+            WHERE next_dispatch LIKE " . $this->db->escape($today . '%') . "
+              AND (status IS NULL OR status = '' OR status = '0')
+              AND email_to NOT LIKE 'xx%'
+              AND (
+                    subject LIKE '%PPA%'
+                 OR subject LIKE '%Midterm%'
+                 OR subject LIKE '%Endterm%'
+                 OR subject LIKE '%Consent%'
+              )
+        ")->result();
 
         $counter = 0;
         if (count($messages) > 0) {
