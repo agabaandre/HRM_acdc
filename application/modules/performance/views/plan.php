@@ -399,13 +399,9 @@ if($showApprovalBtns!='show'){
       <br>
       <!-- Staff Submission Buttons -->
       <?php if ((empty(@$ppa->staff_id))||(@$ppa->staff_id == $this->session->userdata('user')->staff_id)){?>
-      <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save Draft</button>
+      <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5"><i class="fas fa-save me-1"></i> Save Draft</button>
       <br><br>
-      <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
-      <?php } else if((@(int)$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)) {?>
-      <br><br>
-      
-      <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Save Changes (If Any)</button>
+      <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5"><i class="fas fa-paper-plane me-1"></i> Submit</button>
       <?php } ?>
       <br><br>
 
@@ -445,23 +441,24 @@ if($showApprovalBtns!='show'){
 
     <input type="hidden" name="action" id="approval_action" value="">
 
-    <div class="text-center">
-      <?php 
-      //make sure its in draft and the supervisor is allowed
-      if(!empty($ppa) && is_object($ppa) && ((int)@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)){?>
-      <button type="submit" class="btn btn-success px-5 me-2" onclick="document.getElementById('approval_action').value = 'approve';">
-        Approve
+    <?php
+    $ppa_supervisor_can_act = !empty($ppa) && is_object($ppa)
+      && ((int) @$ppa->draft_status !== 2)
+      && ((@$ppa->supervisor_id == $session->staff_id) || (@$ppa->supervisor2_id == $session->staff_id));
+    ?>
+    <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3">
+      <?php if ($ppa_supervisor_can_act): ?>
+      <button type="submit" form="staff_ppa" name="submit_action" value="submit" class="btn btn-success px-5">
+        <i class="fas fa-save me-1"></i> Save Changes (If Any)
       </button>
-      <?php } ?>
-      <?php
-
-    
-
-    if ((@$status) && !empty($ppa) && is_object($ppa) && isset($ppa->entry_id)) { ?>
-  <button type="button" class="btn btn-danger px-5" data-bs-toggle="modal" data-bs-target="#confirmReturnModal_<?= $ppa->entry_id ?>">
-  Return
-</button>
-
+      <button type="submit" class="btn btn-success px-5" onclick="document.getElementById('approval_action').value = 'approve';">
+        <i class="fas fa-check me-1"></i> Approve
+      </button>
+      <?php endif; ?>
+      <?php if ((@$status) && !empty($ppa) && is_object($ppa) && isset($ppa->entry_id)) { ?>
+      <button type="button" class="btn btn-danger px-5" data-bs-toggle="modal" data-bs-target="#confirmReturnModal_<?= $ppa->entry_id ?>">
+        <i class="fas fa-reply me-1"></i> Return
+      </button>
       <?php } ?>
     </div>
   </form>

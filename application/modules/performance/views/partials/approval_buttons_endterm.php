@@ -77,6 +77,20 @@ if ($firstSupervisorApproved && $staffConsented &&
 
 // Show staff consent form if first supervisor approved but staff hasn't consented
 $showStaffConsent = $firstSupervisorApproved && !$staffConsented && $isOwner && $endterm_exists && ((int)@$ppa->endterm_draft_status !== 2);
+
+$hasEndtermObjectives = false;
+if (!empty($ppa->endterm_objectives)) {
+  $decoded = is_string($ppa->endterm_objectives)
+    ? json_decode($ppa->endterm_objectives, true)
+    : (is_array($ppa->endterm_objectives) ? $ppa->endterm_objectives : []);
+  $hasEndtermObjectives = is_array($decoded) && count($decoded) > 0;
+}
+$showEndtermSupervisorSave = empty($endreadonly)
+  && $hasEndtermObjectives
+  && !$isOwner
+  && $isSupervisor
+  && (int) @$ppa->endterm_draft_status !== 2;
+$renderedEndtermSupervisorSave = false;
 ?>
 
 <?php if ($showStaffConsent): ?>
@@ -117,7 +131,7 @@ $showStaffConsent = $firstSupervisorApproved && !$staffConsented && $isOwner && 
   
   <div class="text-center">
     <button type="submit" class="btn btn-success px-5">
-      Employee Consent
+      <i class="fas fa-signature me-1"></i> Employee Consent
     </button>
   </div>
   
@@ -166,16 +180,22 @@ $showStaffConsent = $firstSupervisorApproved && !$staffConsented && $isOwner && 
 
   <input type="hidden" name="action" id="approval_action_<?= $ppa->entry_id ?>" value="">
 
-  <div class="text-center">
-    <button type="submit" class="btn btn-success px-5 me-2"
+  <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3">
+    <?php if ($showEndtermSupervisorSave): ?>
+      <button type="submit" form="staff_ppa" name="endterm_submit_action" value="submit" class="btn btn-success px-5">
+        <i class="fas fa-save me-1"></i> Save Changes (If Any)
+      </button>
+      <?php $renderedEndtermSupervisorSave = true; ?>
+    <?php endif; ?>
+    <button type="submit" class="btn btn-success px-5"
             onclick="document.getElementById('approval_action_<?= $ppa->entry_id ?>').value = 'approve';">
-      Approve
+      <i class="fas fa-check me-1"></i> Approve
     </button>
 
     <?php if ($status && ((int)@$ppa->endterm_draft_status !== 1)): ?>
       <button type="button" class="btn btn-danger px-5" data-bs-toggle="modal"
               data-bs-target="#confirmReturnModal_endterm_<?= $ppa->entry_id ?>">
-        Return
+        <i class="fas fa-reply me-1"></i> Return
       </button>
     <?php endif; ?>
   </div>
@@ -213,16 +233,22 @@ $showStaffConsent = $firstSupervisorApproved && !$staffConsented && $isOwner && 
 
   <input type="hidden" name="action" id="approval_action_<?= $ppa->entry_id ?>" value="">
 
-  <div class="text-center">
-    <button type="submit" class="btn btn-success px-5 me-2"
+  <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3">
+    <?php if ($showEndtermSupervisorSave): ?>
+      <button type="submit" form="staff_ppa" name="endterm_submit_action" value="submit" class="btn btn-success px-5">
+        <i class="fas fa-save me-1"></i> Save Changes (If Any)
+      </button>
+      <?php $renderedEndtermSupervisorSave = true; ?>
+    <?php endif; ?>
+    <button type="submit" class="btn btn-success px-5"
             onclick="document.getElementById('approval_action_<?= $ppa->entry_id ?>').value = 'approve';">
-      Approve
+      <i class="fas fa-check me-1"></i> Approve
     </button>
 
     <?php if ($status && ((int)@$ppa->endterm_draft_status !== 1)): ?>
       <button type="button" class="btn btn-danger px-5" data-bs-toggle="modal"
               data-bs-target="#confirmReturnModal_endterm_<?= $ppa->entry_id ?>">
-        Return
+        <i class="fas fa-reply me-1"></i> Return
       </button>
     <?php endif; ?>
   </div>
@@ -255,15 +281,29 @@ $showStaffConsent = $firstSupervisorApproved && !$staffConsented && $isOwner && 
     
     <input type="hidden" name="action" id="return_action_<?= $ppa->entry_id ?>" value="return">
     
-    <div class="text-center">
+    <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3">
+      <?php if ($showEndtermSupervisorSave && !$renderedEndtermSupervisorSave): ?>
+        <button type="submit" form="staff_ppa" name="endterm_submit_action" value="submit" class="btn btn-success px-5">
+          <i class="fas fa-save me-1"></i> Save Changes (If Any)
+        </button>
+        <?php $renderedEndtermSupervisorSave = true; ?>
+      <?php endif; ?>
       <button type="button" class="btn btn-danger px-5" data-bs-toggle="modal"
               data-bs-target="#confirmReturnModal_endterm_<?= $ppa->entry_id ?>">
-        Return
+        <i class="fas fa-reply me-1"></i> Return
       </button>
     </div>
     
     <?php echo form_close(); ?>
   <?php endif; ?>
+<?php endif; ?>
+
+<?php if ($showEndtermSupervisorSave && !$renderedEndtermSupervisorSave): ?>
+  <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3">
+    <button type="submit" form="staff_ppa" name="endterm_submit_action" value="submit" class="btn btn-success px-5">
+      <i class="fas fa-save me-1"></i> Save Changes (If Any)
+    </button>
+  </div>
 <?php endif; ?>
 
 <!-- Return Confirmation Modal -->

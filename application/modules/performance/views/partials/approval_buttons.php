@@ -1,15 +1,21 @@
 <?php
 $status = ((intval(@$ppa_settings->allow_supervisor_return) === 1) && in_array('83', $permissions));
 $isSupervisor = in_array($session->staff_id, [(int) @$ppa->midterm_supervisor_1, (int) @$ppa->midterm_supervisor_2]);
+$isOwner = isset($ppa->staff_id) && (int) $ppa->staff_id === (int) $session->staff_id;
+$hasMidtermObjectives = false;
+if (!empty($ppa->midterm_objectives)) {
+  $decoded = is_string($ppa->midterm_objectives)
+    ? json_decode($ppa->midterm_objectives, true)
+    : (is_array($ppa->midterm_objectives) ? $ppa->midterm_objectives : []);
+  $hasMidtermObjectives = is_array($decoded) && count($decoded) > 0;
+}
+$showMidtermSupervisorSave = $midterm_exists
+  && $hasMidtermObjectives
+  && !$isOwner
+  && $isSupervisor
+  && (int) @$ppa->midterm_draft_status !== 2;
 
-// $hasMidtermObjectives = false;
-// if (!empty($ppa->midterm_objectives)) {
-//   $decoded = is_string($ppa->midterm_objectives)
-//     ? json_decode($ppa->midterm_objectives, true)
-//     : (is_array($ppa->midterm_objectives) ? $ppa->midterm_objectives : []);
-//   $hasMidtermObjectives = is_array($decoded) && count($decoded) > 0;
-// }
-// ?>
+?>
 
 <?php echo form_open('performance/midterm/approve_ppa/' . $ppa->entry_id, [
   'method' => 'post',
@@ -25,22 +31,27 @@ $isSupervisor = in_array($session->staff_id, [(int) @$ppa->midterm_supervisor_1,
 
 <input type="hidden" name="action" id="approval_action_<?= $ppa->entry_id ?>" value="">
 
-<div class="text-center">
+<div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3">
+  <?php if ($showMidtermSupervisorSave): ?>
+    <button type="submit" form="staff_ppa" name="midterm_submit_action" value="submit" class="btn btn-success px-5">
+      <i class="fas fa-save me-1"></i> Save Changes (If Any)
+    </button>
+  <?php endif; ?>
   <?php if (
     $midterm_exists &&
     ((int)@$ppa->midterm_draft_status !== 2) &&
     $isSupervisor):
   ?>
-    <button type="submit" class="btn btn-success px-5 me-2"
+    <button type="submit" class="btn btn-success px-5"
             onclick="document.getElementById('approval_action_<?= $ppa->entry_id ?>').value = 'approve';">
-      Approve
+      <i class="fas fa-check me-1"></i> Approve
     </button>
   <?php endif; ?>
 
   <?php if ($midterm_exists && $status): ?>
     <button type="button" class="btn btn-danger px-5" data-bs-toggle="modal"
             data-bs-target="#confirmReturnModal_midterm_<?= $ppa->entry_id ?>">
-      Return
+      <i class="fas fa-reply me-1"></i> Return
     </button>
   <?php endif; ?>
 </div>
