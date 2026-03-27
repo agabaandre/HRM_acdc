@@ -600,24 +600,20 @@ $(document).ready(function() {
       $('.competency-error-message').remove();
       $('.competency-table tr').removeClass('table-danger');
       
-      // Run validation
+      // Run validation (do not use global $('.is-invalid') — other page UI may use that class)
       const errors = validateForm();
       console.log('Total validation errors found:', errors.length);
       console.log('Error details:', errors);
       
-      // Also check for invalid fields
-      const invalidFields = $('.is-invalid').length;
-      console.log('Invalid fields count:', invalidFields);
-      
-      if (errors.length > 0 || invalidFields > 0) {
+      if (errors.length > 0) {
         // Show validation errors
         if (errors.length > 0) {
           displayValidationSummary(errors);
         }
         show_notification('Please correct the validation errors before proceeding.', 'error');
         
-        // Scroll to first error
-        const firstError = $('.is-invalid').first();
+        // Scroll to first error in this form / main PPA
+        const firstError = $('#staff_ppa').find('.is-invalid').add('form[id^="approvalForm_midterm_"] .is-invalid').first();
         if (firstError.length) {
           $('html, body').animate({
             scrollTop: firstError.offset().top - 100
@@ -720,6 +716,7 @@ $(document).ready(function() {
       url: mainForm.action,
       type: 'POST',
       data: formData,
+      dataType: 'text',
       processData: false,
       contentType: false,
       success: function(response) {
