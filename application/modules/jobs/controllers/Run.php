@@ -153,6 +153,97 @@ class Run extends MX_Controller
     }
 
     /**
+     * CLI test: queue three sample supervisor emails (PPA, Midterm, Endterm first) and try to send.
+     *
+     * Default recipient is agabaandre@gmail.com. Override with env (CodeIgniter disallows @ in CLI URI args):
+     *
+     *   php index.php jobs/run/test_performance_notifications
+     *   TEST_EMAIL=other@example.com php index.php jobs/run/test_performance_notifications
+     */
+    public function test_performance_notifications()
+    {
+        if (!$this->input->is_cli_request()) {
+            show_error('CLI only.', 403);
+            return;
+        }
+
+        $candidate = getenv('TEST_EMAIL');
+        $email = ($candidate && filter_var($candidate, FILTER_VALIDATE_EMAIL))
+            ? $candidate
+            : 'agabaandre@gmail.com';
+
+        $cfg = $this->db->get('ppa_configs')->row();
+        if (!$cfg) {
+            echo "Error: ppa_configs row missing.\n";
+            return;
+        }
+
+        $ppa_period = str_replace(' ', '-', previous_period());
+        $endterm_period = str_replace(' ', '-', endterm_reminder_period());
+        $disp = date('Y-m-d');
+
+        $sample_obj = [(object) [
+            'staff_name' => 'Sample Staff (test)',
+            'entry_id' => '0',
+            'staff_id' => '0',
+        ]];
+
+        $sample_endterm_arr = [[
+            'staff_name' => 'Sample Staff (test)',
+            'entry_id' => '0',
+            'staff_id' => '0',
+        ]];
+
+        echo "Test performance notifications → {$email}\n";
+
+        // PPA
+        $data = [
+            'supervisor_name' => 'Test Supervisor',
+            'period'          => $ppa_period,
+            'deadline'        => $cfg->ppa_deadline,
+            'pending_list'    => $sample_obj,
+            'subject'         => "[TEST] Reminder: Pending PPA Approvals for {$ppa_period}",
+            'email_to'        => $email,
+        ];
+        $data['body'] = $this->load->view('supervisor_reminder', $data, true);
+        $eid = md5('TEST-PPA-' . $email . '-' . microtime(true));
+        golobal_log_email('Staff Portal System', $email, $data['body'], $data['subject'], 0, $disp, $disp, $eid);
+        echo "  queued PPA (entry_id hash)\n";
+
+        // Midterm
+        $data = [
+            'supervisor_name' => 'Test Supervisor',
+            'period'          => $ppa_period,
+            'deadline'        => $cfg->mid_term_deadline,
+            'pending_list'    => $sample_obj,
+            'subject'         => "[TEST] Reminder: Pending Midterm Approvals for {$ppa_period}",
+            'email_to'        => $email,
+        ];
+        $data['body'] = $this->load->view('supervisor_reminder_midterm', $data, true);
+        $eid = md5('TEST-MID-' . $email . '-' . microtime(true));
+        golobal_log_email('Staff Portal System', $email, $data['body'], $data['subject'], 0, $disp, $disp, $eid);
+        echo "  queued Midterm\n";
+
+        // Endterm (first supervisor template)
+        $data = [
+            'supervisor_name' => 'Test Supervisor',
+            'period'          => $endterm_period,
+            'deadline'        => $cfg->end_term_deadline,
+            'pending_list'    => $sample_endterm_arr,
+            'subject'         => "[TEST] Reminder: Pending Endterm Approvals for {$endterm_period}",
+            'email_to'        => $email,
+        ];
+        $data['body'] = $this->load->view('supervisor_reminder_endterm_first', $data, true);
+        $eid = md5('TEST-END1-' . $email . '-' . microtime(true));
+        golobal_log_email('Staff Portal System', $email, $data['body'], $data['subject'], 0, $disp, $disp, $eid);
+        echo "  queued Endterm (first supervisor)\n";
+
+        echo "\nRunning send_instant_mails (one pass)…\n";
+        Modules::run('jobs/jobs/send_instant_mails');
+        echo "Done. Look for three messages with [TEST] in the subject (inbox/spam).\n";
+    }
+
+    /**
      * Optional one-shot: queue performance notifications then run one pass of the mail sender.
      * Use when you want same cron line to queue + send without waiting for send_mails schedule.
      */
@@ -181,5 +272,7 @@ class Run extends MX_Controller
         echo "  php index.php jobs/run/tick                    # single crontab entry (edit tick_schedule() in Run.php)\n";
         echo "  php index.php jobs/run/performance_notifications\n";
         echo "  php index.php jobs/run/performance_notifications_and_send\n";
+        echo "  php index.php jobs/run/test_performance_notifications\n";
+        echo "  TEST_EMAIL=you@example.com php index.php jobs/run/test_performance_notifications\n";
     }
 }
