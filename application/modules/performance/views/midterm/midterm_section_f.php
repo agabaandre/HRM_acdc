@@ -30,15 +30,10 @@
         <?php if (!$hasMidtermObjectives || $isOwner): ?>
           <!-- Staff owns or creating -->
           <button type="submit" name="midterm_submit_action" value="draft" class="btn btn-warning px-5 me-2">
-            Save Draft
+            <i class="fas fa-save me-1"></i> Save Draft
           </button>
           <button type="submit" name="midterm_submit_action" value="submit" class="btn btn-success px-5">
-            Submit
-          </button>
-        <?php elseif ((int)@$ppa->midterm_draft_status !== 2 && $isSupervisor): ?>
-          <!-- Supervisor editing before approval -->
-          <button type="submit" name="midterm_submit_action" value="submit" class="btn btn-success px-5">
-            Save Changes (If Any)
+            <i class="fas fa-paper-plane me-1"></i> Submit
           </button>
         <?php endif; ?>
 
