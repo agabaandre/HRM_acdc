@@ -262,7 +262,7 @@ $this->load->view('ppa_tabs');
 }
 </style>
 
-<?php if (false && ($showApprovalBtns == 'show' || in_array('83', $permissions))) {
+<?php if (($showApprovalBtns == 'show' || in_array('83', $permissions))) {
     $this->load->view('performance/partials/approval_buttons', compact('ppa', 'ppa_settings', 'session', 'approval_trail','midreadonly','midterm_exists','permissions'));
 } ?>
 
