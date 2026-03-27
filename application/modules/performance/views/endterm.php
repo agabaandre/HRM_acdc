@@ -364,30 +364,6 @@ $this->load->view('performance/endterm/endterm_section_a', compact('contract', '
 <?php $this->load->view('performance/partials/approval_trail_endterm', compact('ppa','session', 'approval_trail','endreadonly')); ?>
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/lobibox.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Find the approval form (adjust selector if needed)
-  const approvalForm = document.querySelector('form[id^="approvalForm_endterm_"]');
-  if (!approvalForm) return;
-
-  approvalForm.addEventListener('submit', function(e) {
-    const actionInput = approvalForm.querySelector('input[name="action"]');
-    if (actionInput && actionInput.value === 'approve') {
-      // The main validation is now handled by the comprehensive validateForm() function
-      // This prevents the default submission to allow the main form validation to run first
-      e.preventDefault();
-      
-      // Trigger the main form validation
-      const mainForm = document.getElementById('staff_ppa');
-      if (mainForm) {
-        // Create a submit event to trigger validation
-        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-        mainForm.dispatchEvent(submitEvent);
-      }
-    }
-  });
-});
-</script>
-<script>
 function toggleTrainingSection(show) {
   const section = document.getElementById('training-section');
   if (section) section.style.display = show ? 'block' : 'none';
@@ -738,24 +714,20 @@ $(document).ready(function() {
       $('input[name="discussion_confirmation"]').removeClass('is-invalid');
       $('#endterm_achievements').removeClass('is-invalid');
       
-      // Run validation
+      // Run validation (do not use global $('.is-invalid') — other page UI may use that class)
       const errors = validateForm();
       console.log('Total validation errors found:', errors.length);
       console.log('Error details:', errors);
       
-      // Also check for invalid fields
-      const invalidFields = $('.is-invalid').length;
-      console.log('Invalid fields count:', invalidFields);
-      
-      if (errors.length > 0 || invalidFields > 0) {
+      if (errors.length > 0) {
         // Show validation errors
         if (errors.length > 0) {
           displayValidationSummary(errors);
         }
         show_notification('Please correct the validation errors before proceeding.', 'error');
         
-        // Scroll to first error
-        const firstError = $('.is-invalid').first();
+        // Scroll to first error in this form / main PPA
+        const firstError = $('#staff_ppa').find('.is-invalid').add('form[id^="approvalForm_endterm_"] .is-invalid').first();
         if (firstError.length) {
           $('html, body').animate({
             scrollTop: firstError.offset().top - 100
@@ -888,6 +860,7 @@ $(document).ready(function() {
       url: mainForm.action,
       type: 'POST',
       data: formData,
+      dataType: 'text',
       processData: false,
       contentType: false,
       success: function(response) {
