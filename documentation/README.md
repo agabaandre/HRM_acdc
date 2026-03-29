@@ -44,6 +44,7 @@ Laravel-based system for managing approvals, workflows, and document processing.
 **Quick Links:**
 - [Approval Trail Management](../apm/documentation/APPROVAL_TRAIL_MANAGEMENT.md)
 - [Document Numbering System](../apm/documentation/DOCUMENT_NUMBERING_SYSTEM.md)
+- [Firebase / FCM push notifications](../apm/documentation/FIREBASE_PUSH_NOTIFICATIONS.md) — mobile pending-approval pushes; test with `php artisan notifications:test-fcm-pending-approvals`
 - [Queue Setup Guide](../apm/documentation/QUEUE_SETUP_GUIDE.md)
 - [Systemd Queue Guide](../apm/documentation/SYSTEMD_QUEUE_GUIDE.md)
 - [Deployment Guide](../apm/documentation/DEPLOYMENT.md)

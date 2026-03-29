@@ -35,6 +35,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 ### Notifications & Automation
 
 - **[Daily Notifications Setup](./DAILY_NOTIFICATIONS_SETUP.md)** - Daily notification system configuration
+- **[Firebase / FCM push (pending approvals)](./FIREBASE_PUSH_NOTIFICATIONS.md)** - Setup, API token registration, Artisan commands (`notifications:test-fcm-pending-approvals`, `notifications:send-pending-approvals-fcm`)
 - **[Session Expiry Setup](./SESSION_EXPIRY_SETUP.md)** - Session expiration and management
 
 ### System Improvements
@@ -80,6 +81,22 @@ php artisan cache:clear
 php artisan config:clear
 php artisan route:clear
 php artisan view:clear
+```
+
+### Firebase (FCM) pending-approval pushes
+
+From the `apm/` directory. Full guide: [FIREBASE_PUSH_NOTIFICATIONS.md](./FIREBASE_PUSH_NOTIFICATIONS.md).
+
+```bash
+# Test: list users with tokens + pending counts (no send)
+php artisan notifications:test-fcm-pending-approvals --dry-run
+
+# Test: send pending-approval FCM immediately (no queue worker required)
+php artisan notifications:test-fcm-pending-approvals
+
+# Production batch (queues jobs unless --sync)
+php artisan notifications:send-pending-approvals-fcm
+php artisan notifications:send-pending-approvals-fcm --sync
 ```
 
 ## 📖 Documentation by Topic
