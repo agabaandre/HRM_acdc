@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ApmApiUser;
 use App\Services\FirebaseMessagingService;
+use App\Services\PendingApprovalsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
