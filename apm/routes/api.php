@@ -48,6 +48,11 @@ Route::prefix('apm/v1')->group(function () {
     // Also support path with duplicate "api": .../api/apm/v1/api/documents/verify
     Route::post('api/documents/verify', [SignatureVerificationController::class, 'validateUpload'])->name('apm.documents.verify.legacy');
 
+    // accept.token.in.query must run before auth:api so GET ?token= works (same as attachments).
+    Route::middleware(['accept.token.in.query', 'auth:api', 'apm.api.context'])->group(function () {
+        Route::get('me/photo', [ApmAuthController::class, 'mePhoto'])->name('apm.v1.me.photo');
+    });
+
     Route::middleware(['auth:api', 'apm.api.context'])->group(function () {
         Route::post('auth/refresh', [ApmAuthController::class, 'refresh']);
         Route::get('auth/me', [ApmAuthController::class, 'me']);

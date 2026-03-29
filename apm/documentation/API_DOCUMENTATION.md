@@ -54,7 +54,7 @@ Request body (JSON):
 
 **Response (200):** `success`, `data.access_token`, `data.token_type` (`bearer`), `data.expires_in` (seconds), `data.user`, `data.divisions`.
 
-`data.user` includes: `user_id`, `auth_staff_id`, `email`, `name`, `division_id`, `associated_divisions` (array of division IDs), `role`, `status`, `is_division_head`, `is_admin_assistant`, `is_director`, `is_finance_officer`, `job` (`job_name`, `title`, `grade` from APM staff), `supervisors` (array of `{ staff_id, name, email, job_name, title }` from `staff.supervisor_id`), and when the staff has a profile photo: `staff_image_base64` and `photo_data`.
+`data.user` includes: `user_id`, `auth_staff_id`, `email`, `name`, `division_id`, `associated_divisions` (array of division IDs), `role`, `status`, `is_division_head`, `is_admin_assistant`, `is_director`, `is_finance_officer`, `job` (`job_name`, `title`, `grade` from APM staff), `supervisors` (array of `{ staff_id, name, email, job_name, title }` from `staff.supervisor_id`), and when a staff photo can be resolved: `staff_photo_url` (absolute URL—**GET** with `Authorization: Bearer <token>`, or `?token=` on that GET). No base64 in the login payload.
 
 `data.divisions` is the list of divisions the user can access (primary + associated), each with `id`, `division_name`, `division_short_name`, `division_head`, `focal_person`, `admin_assistant`, `finance_officer`, `director_id`, `directorate_id`, `category`.
 
@@ -176,6 +176,7 @@ All of these require the `Authorization: Bearer <token>` header.
 |--------|------|-------------|
 | POST | `/auth/refresh` | Refresh JWT |
 | GET | `/auth/me` | Current user and divisions |
+| GET | `/me/photo` | Staff profile image (binary); Bearer or `?token=` (same as attachments) |
 | PUT or POST | `/me/firebase-token` | Register or update FCM device token for push notifications |
 | GET | `/me/notifications` | In-app notifications (default unread only; `?unread_only=false`, `per_page`, `page`) |
 | POST or PATCH | `/me/notifications/read-all` | Mark all unread notifications as read for the current staff member |

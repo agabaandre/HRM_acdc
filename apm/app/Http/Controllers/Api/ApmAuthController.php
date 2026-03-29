@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 
 class ApmAuthController extends Controller
 {
@@ -300,13 +301,32 @@ class ApmAuthController extends Controller
             'supervisors' => $this->staffSupervisorsForApp($staff),
         ];
 
-        $staffImageBase64 = $this->getStaffImageBase64($user);
-        if ($staffImageBase64 !== null) {
-            $data['staff_image_base64'] = $staffImageBase64;
-            $data['photo_data'] = $staffImageBase64; // compatibility with session/helper expecting photo_data
+        if ($this->resolveStaffPhotoForResponse($user) !== null) {
+            $data['staff_photo_url'] = route('apm.v1.me.photo', [], true);
         }
 
         return $data;
+    }
+
+    /**
+     * Stream the authenticated user's staff photo. Requires Bearer token (or ?token= for GET).
+     */
+    public function mePhoto(Request $request): Response
+    {
+        $user = auth('api')->user();
+        if (!$user instanceof ApmApiUser) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $resolved = $this->resolveStaffPhotoForResponse($user);
+        if ($resolved === null) {
+            return response()->json(['success' => false, 'message' => 'No photo available.'], 404);
+        }
+
+        return response($resolved['content'], 200, [
+            'Content-Type' => $resolved['mime'],
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
     }
 
     /**
@@ -350,25 +370,28 @@ class ApmAuthController extends Controller
     }
 
     /**
-     * Staff image as base64. Always reads current row from APM staff table (same as web auth: staff.photo).
-     * Web (CodeIgniter): session user from staff table, image at base_url/uploads/staff/{photo}.
-     * APM staff UI may use profile_photo on staff (storage/staff-photos/…) when that column exists.
+     * Resolve raw image bytes + MIME for the API user's staff photo (same sources as former base64 login field).
+     * Web (CodeIgniter): staff.photo filename under uploads/staff/{photo}.
+     * APM staff UI: profile_photo on public disk when column exists.
+     *
+     * @return array{content: string, mime: string}|null
      */
-    private function getStaffImageBase64($user): ?string
+    private function resolveStaffPhotoForResponse($user): ?array
     {
         $staffId = (int) ($user->auth_staff_id ?? 0);
         if ($staffId <= 0) {
             $fallback = trim((string) ($user->photo ?? ''));
-            return $fallback !== '' ? $this->encodeStaffUploadsPhotoAsBase64(basename($fallback)) : null;
+
+            return $fallback !== '' ? $this->resolveStaffUploadsPhoto(basename($fallback)) : null;
         }
 
         $staffRow = Staff::query()->where('staff_id', $staffId)->first();
         if (!$staffRow) {
             $fallback = trim((string) ($user->photo ?? ''));
-            return $fallback !== '' ? $this->encodeStaffUploadsPhotoAsBase64(basename($fallback)) : null;
+
+            return $fallback !== '' ? $this->resolveStaffUploadsPhoto(basename($fallback)) : null;
         }
 
-        // APM Staff create/edit: profile_photo path on public disk (e.g. staff-photos/xxx.jpg)
         if (Schema::hasColumn('staff', 'profile_photo')) {
             $profilePath = trim((string) ($staffRow->getAttributes()['profile_photo'] ?? $staffRow->profile_photo ?? ''));
             if ($profilePath !== '' && !str_contains($profilePath, '..')) {
@@ -376,25 +399,29 @@ class ApmAuthController extends Controller
                 if ($disk->exists($profilePath)) {
                     $content = $disk->get($profilePath);
                     if ($content !== false && $content !== '') {
-                        return base64_encode($content);
+                        return [
+                            'content' => $content,
+                            'mime' => $this->guessImageMime($content, $profilePath),
+                        ];
                     }
                 }
             }
         }
 
-        // Same as web auth: staff.photo filename under uploads/staff/
         $photo = trim((string) ($staffRow->photo ?? ''));
         if ($photo === '') {
             return null;
         }
 
-        return $this->encodeStaffUploadsPhotoAsBase64(basename($photo));
+        return $this->resolveStaffUploadsPhoto(basename($photo));
     }
 
     /**
-     * Encode uploads/staff/{filename} to base64: disk paths then HTTP (main staff BASE_URL).
+     * Load uploads/staff/{filename} from disk or HTTP (main staff BASE_URL).
+     *
+     * @return array{content: string, mime: string}|null
      */
-    private function encodeStaffUploadsPhotoAsBase64(string $filename): ?string
+    private function resolveStaffUploadsPhoto(string $filename): ?array
     {
         if ($filename === '' || str_contains($filename, '..')) {
             return null;
@@ -402,18 +429,48 @@ class ApmAuthController extends Controller
         $path = $this->resolveStaffPhotoPath($filename);
         if ($path !== null) {
             $content = @file_get_contents($path);
-            if ($content !== false) {
-                return base64_encode($content);
+            if ($content !== false && $content !== '') {
+                return [
+                    'content' => $content,
+                    'mime' => $this->guessImageMime($content, $path),
+                ];
             }
         }
         $content = $this->fetchStaffPhotoViaUrl($filename);
         if ($content !== null) {
-            return base64_encode($content);
+            return [
+                'content' => $content,
+                'mime' => $this->guessImageMime($content, $filename),
+            ];
         }
         if (config('app.debug')) {
             Log::debug('Staff photo not found (disk or URL)', ['filename' => $filename]);
         }
+
         return null;
+    }
+
+    private function guessImageMime(string $content, string $hint = ''): string
+    {
+        if (function_exists('finfo_open')) {
+            $f = finfo_open(FILEINFO_MIME_TYPE);
+            if ($f !== false) {
+                $mime = finfo_buffer($f, $content);
+                finfo_close($f);
+                if (is_string($mime) && str_starts_with($mime, 'image/')) {
+                    return $mime;
+                }
+            }
+        }
+        $ext = strtolower(pathinfo($hint, PATHINFO_EXTENSION));
+
+        return match ($ext) {
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'jpg', 'jpeg' => 'image/jpeg',
+            default => 'image/jpeg',
+        };
     }
 
     /**
