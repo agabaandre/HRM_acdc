@@ -4,6 +4,8 @@
 /public/hot
 /public/storage
 /storage/*.key
+# Firebase service account (never commit)
+/storage/app/firebase-credentials.json
 /storage/pail
 /vendor
 .env
