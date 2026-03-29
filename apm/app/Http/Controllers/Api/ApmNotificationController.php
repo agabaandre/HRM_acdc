@@ -131,8 +131,14 @@ class ApmNotificationController extends Controller
      */
     private function toApiRow(Notification $n): array
     {
+        $title = $n->title;
+        if ($title === null || $title === '') {
+            $title = Notification::DEFAULT_TITLE;
+        }
+
         return [
             'id' => $n->id,
+            'title' => $title,
             'message' => $n->message,
             'type' => $n->type,
             'is_read' => (bool) $n->is_read,

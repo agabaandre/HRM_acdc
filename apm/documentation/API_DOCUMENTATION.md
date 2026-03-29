@@ -257,7 +257,7 @@ Lists notifications stored for the staff profile linked to the token (`auth_staf
 | `per_page` | integer | `20` | Page size (max 100) |
 | `page` | integer | `1` | Page number |
 
-**Response (200):** `success`, `data` (array of items with `id`, `message`, `type`, `is_read`, `read_at`, `model_id`, `model_type`, `created_at`), `pagination`, `filters`.
+**Response (200):** `success`, `data` (array of items with `id`, `title`, `message`, `type`, `is_read`, `read_at`, `model_id`, `model_type`, `created_at`), `pagination`, `filters`. If `title` is missing in storage, the API returns **`APM Approval Notification`**.
 
 **POST** or **PATCH** `/me/notifications/read-all`  
 Marks every unread notification for that staff member as read. **Response (200):** `success`, `message`, `marked_count` (number of rows updated).
