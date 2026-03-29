@@ -50,7 +50,32 @@ php artisan migrate
 
 ## Sending notifications
 
-### Option A: Scheduled command
+Run all commands from the **`apm/`** directory (where `artisan` lives).
+
+### Option A: Test command (recommended for manual checks)
+
+Use this to verify Firebase config, see who has tokens and pending counts, and **send pushes immediately** without a queue worker (default).
+
+```bash
+# Show help
+php artisan notifications:test-fcm-pending-approvals --help
+
+# List API users with FCM tokens and pending counts (no send)
+php artisan notifications:test-fcm-pending-approvals --dry-run
+
+# Send FCM now (sync) to every eligible user with pending > 0
+php artisan notifications:test-fcm-pending-approvals
+
+# Only one API user (apm_api_users.user_id)
+php artisan notifications:test-fcm-pending-approvals --user=123
+
+# Same as production: enqueue jobs (requires queue:work)
+php artisan notifications:test-fcm-pending-approvals --queue
+```
+
+Implementation: `app/Console/Commands/TestFcmPendingApprovalsCommand.php`.
+
+### Option B: Production batch command
 
 Send “pending approvals” push to all API users who have a token and have pending items:
 
@@ -63,19 +88,33 @@ Options:
 - `--sync` — send immediately (no queue). Omit to dispatch queued jobs.
 - `--user=123` — only send to API user with `user_id` 123.
 
-Schedule in `app/Console/Kernel.php` (e.g. daily):
+Schedule (add to your app scheduler if not already present):
+
+- Laravel 11: `bootstrap/app.php` → `withSchedule(...)`
+- Or: `app/Providers/ScheduleServiceProvider.php` → `schedule()`
+
+Example:
 
 ```php
-$schedule->command('notifications:send-pending-approvals-fcm')->dailyAt('09:00');
+$schedule->command('notifications:send-pending-approvals-fcm')
+    ->dailyAt('09:00')
+    ->timezone('Africa/Addis_Ababa')
+    ->withoutOverlapping();
 ```
 
-Ensure a queue worker is running if you do not use `--sync`:
+Ensure a queue worker is running when **not** using `--sync`:
 
 ```bash
 php artisan queue:work
 ```
 
-### Option B: From code
+Also ensure **Laravel’s scheduler** runs every minute:
+
+```bash
+* * * * * cd /path/to/apm && php artisan schedule:run >> /dev/null 2>&1
+```
+
+### Option C: From code
 
 Inject `App\Services\FirebaseMessagingService` and call:
 

@@ -233,6 +233,13 @@ curl -X PUT 'http://localhost/staff/apm/api/apm/v1/me/firebase-token' \
   -d '{"token":"dFCM_DEVICE_TOKEN_FROM_CLIENT"}'
 ```
 
+**Server-side testing (Artisan):** After `.env` has `FIREBASE_PROJECT_ID` and credentials, run from `apm/`:
+
+- `php artisan notifications:test-fcm-pending-approvals --dry-run` — who would receive a push (requires pending > 0 to actually send).
+- `php artisan notifications:test-fcm-pending-approvals` — send test pushes synchronously.
+
+See [FIREBASE_PUSH_NOTIFICATIONS.md](./FIREBASE_PUSH_NOTIFICATIONS.md) for full setup and scheduling.
+
 ---
 
 ## Web app URLs (attachments and print)
