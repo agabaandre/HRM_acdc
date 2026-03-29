@@ -1,5 +1,27 @@
 <div class="card shadow-sm p-3 mb-4 border rounded" style="background-color: #f9f9f9;">
     <div class="row g-3 align-items-end">
+        <?php if (!empty($staff_history_mode ?? null)) :
+            $pf = $this->input->get('period_from') ?: ($period_from_default ?? date('Y-01-01'));
+            $pt = $this->input->get('period_to') ?: ($period_to_default ?? date('Y-m-d'));
+            ?>
+        <div class="col-md-12 mb-2">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="period_from" class="form-label fw-bold">Report period from</label>
+                    <input type="date" id="period_from" name="period_from" class="form-control" required
+                           value="<?= html_escape($pf) ?>">
+                </div>
+                <div class="col-md-3">
+                    <label for="period_to" class="form-label fw-bold">Report period to</label>
+                    <input type="date" id="period_to" name="period_to" class="form-control" required
+                           value="<?= html_escape($pt) ?>">
+                </div>
+                <div class="col-md-6 small text-muted align-self-end">
+                    Staff are included if any contract overlaps these dates (start ≤ period end and end ≥ period start, or open-ended contract).
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <div class="col-md-2">
             <label for="lname" class="form-label fw-bold">Name</label>
@@ -127,6 +149,8 @@
             'funder_id' => 'Funder',
             'job_id' => 'Job',
             'grade_id' => 'Grade',
+            'period_from' => 'Period from',
+            'period_to' => 'Period to',
         ];
 
         // Create lookup maps
@@ -202,6 +226,15 @@
                     <i class="fa fa-file-csv me-1"></i> Export CSV
                 </a>
                 <a href="<?= base_url('staff/all_staff/0/1?' . $query_string) ?>" class="btn btn-sm btn-outline-danger">
+                    <i class="fa fa-file-pdf me-1"></i> Export PDF
+                </a>
+            <?php
+            } elseif ($segment2 === 'staff_history') {
+                ?>
+                <a href="<?= base_url('staff/staff_history/1?' . $query_string) ?>" class="btn btn-sm btn-outline-primary">
+                    <i class="fa fa-file-csv me-1"></i> Export CSV
+                </a>
+                <a href="<?= base_url('staff/staff_history/0/1?' . $query_string) ?>" class="btn btn-sm btn-outline-danger">
                     <i class="fa fa-file-pdf me-1"></i> Export PDF
                 </a>
             <?php
