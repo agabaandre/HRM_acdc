@@ -447,6 +447,163 @@ class Staff extends MX_Controller
 		render('all_staff', $data);
 	}
 
+	/**
+	 * Staff History: who had an overlapping contract in [period_from, period_to] (includes separated).
+	 * Export CSV/PDF same pattern as all_staff.
+	 */
+	public function staff_history($csv = false, $pdf = false)
+	{
+		$data['module'] = $this->module;
+		$data['title'] = 'Staff History (by contract period)';
+		$data['staff_history_mode'] = true;
+		$filters = $this->input->get();
+		if (empty($filters['period_from'])) {
+			$filters['period_from'] = date('Y-01-01');
+		}
+		if (empty($filters['period_to'])) {
+			$filters['period_to'] = date('Y-m-d');
+		}
+		$data['period_from_default'] = $filters['period_from'];
+		$data['period_to_default'] = $filters['period_to'];
+		$filters['csv'] = $csv;
+		$filters['pdf'] = $pdf;
+		$data['divisions'] = $this->db->get('divisions')->result();
+		$data['duty_stations'] = $this->db->get('duty_stations')->result();
+		$data['jobs'] = Modules::run('lists/jobs');
+		$data['grades'] = Modules::run('lists/grades');
+
+		if ($csv == 1) {
+			$staffs = $this->staff_mdl->get_staff_history_data($filters);
+			$staff = $this->remove_ids($staffs);
+			foreach ($staff as &$staff_member) {
+				if (!empty($staff_member['date_of_birth'])) {
+					$staff_member['age'] = calculate_age($staff_member['date_of_birth']);
+				} else {
+					$staff_member['age'] = 'N/A';
+				}
+				$staff_member['years_of_tenure'] = years_of_tenure($staff_member['initiation_date'] ?? null);
+				$staff_member['report_period_from'] = $filters['period_from'];
+				$staff_member['report_period_to'] = $filters['period_to'];
+			}
+			unset($staff_member);
+			$staff = $this->reorder_staff_export_columns($staff);
+			$file_name = 'Staff-History_' . $filters['period_from'] . '_to_' . $filters['period_to'] . '_' . date('d-m-Y-H-i') . '.csv';
+			render_csv_data($staff, $file_name, true);
+			return;
+		}
+		if ($pdf == 1) {
+			$data['staffs'] = $this->staff_mdl->get_staff_history_data($filters);
+			$data['history_period_label'] = $filters['period_from'] . ' → ' . $filters['period_to'];
+			$pdf_name = 'Staff-History_' . date('d-m-Y-H-i') . '.pdf';
+			pdf_print_data($data, $pdf_name, 'L', 'pdfs/staff');
+			return;
+		}
+
+		$data['staffs'] = [];
+		$data['records'] = 0;
+		$data['links'] = '';
+		render('staff_history', $data);
+	}
+
+	public function get_staff_history_data_ajax()
+	{
+		if (ob_get_level()) {
+			ob_end_clean();
+		}
+		ob_start();
+		try {
+			$page = (int) ($this->input->post('page') ?: 0);
+			$per_page = (int) ($this->input->post('per_page') ?: 20);
+			if ($per_page < 20) {
+				$per_page = 20;
+			}
+			if ($per_page > 100) {
+				$per_page = 100;
+			}
+			$start = $page * $per_page;
+			$filters = $this->input->post();
+			unset($filters['page'], $filters['per_page']);
+			$csrf_token_name = $this->security->get_csrf_token_name();
+			if (isset($filters[$csrf_token_name])) {
+				unset($filters[$csrf_token_name]);
+			}
+			if (empty($filters['period_from'])) {
+				$filters['period_from'] = date('Y-01-01');
+			}
+			if (empty($filters['period_to'])) {
+				$filters['period_to'] = date('Y-m-d');
+			}
+
+			$count = $this->staff_mdl->get_staff_history_count($filters);
+			$staffs = $this->staff_mdl->get_staff_history_data($filters, $per_page, $start);
+			$data['staffs'] = $staffs;
+			$data['records'] = $count;
+			$data['page'] = $page;
+			$data['per_page'] = $per_page;
+			$data['period_from'] = $filters['period_from'];
+			$data['period_to'] = $filters['period_to'];
+
+			ob_start();
+			$html_content = $this->load->view('staff_history_table', $data, true);
+			$view_output = ob_get_clean();
+			if ($view_output) {
+				$html_content = $view_output . $html_content;
+			}
+			$csrf_hash = $this->security->get_csrf_hash();
+			if (ob_get_level()) {
+				ob_end_clean();
+			}
+			$sanitize_utf8 = function ($value) use (&$sanitize_utf8) {
+				if (is_array($value)) {
+					return array_map($sanitize_utf8, $value);
+				}
+				if (is_object($value)) {
+					$result = new stdClass();
+					foreach ($value as $key => $val) {
+						$result->$key = $sanitize_utf8($val);
+					}
+					return $result;
+				}
+				if (is_string($value) && function_exists('iconv')) {
+					$value = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+				}
+				return $value;
+			};
+			$response = $sanitize_utf8([
+				'html' => $html_content,
+				'total' => $count,
+				'page' => $page,
+				'per_page' => $per_page,
+				'records' => $count,
+				'csrf_hash' => $csrf_hash,
+			]);
+			$json_output = json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if ($json_output === false) {
+				throw new Exception('JSON encoding failed: ' . json_last_error_msg());
+			}
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output($json_output);
+		} catch (Throwable $e) {
+			log_message('error', 'get_staff_history_data_ajax: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+			while (ob_get_level()) {
+				ob_end_clean();
+			}
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Error loading data: ' . $e->getMessage(),
+					'html' => '<tr><td colspan="25" class="text-center text-danger">Error loading data. Please try again.</td></tr>',
+					'total' => 0,
+					'page' => 0,
+					'per_page' => 20,
+					'records' => 0,
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+		}
+	}
+
 	// AJAX endpoint for all_staff data
 	public function get_all_staff_data_ajax()
 	{

@@ -283,6 +283,293 @@ class Staff_mdl extends CI_Model
 	
 		return ($csv == 1) ? $query->result_array() : $query->result();
 	}
+
+	/**
+	 * Staff History: staff who had at least one contract overlapping [period_from, period_to].
+	 * Includes separated and all contract statuses. If multiple contracts overlap, picks the one
+	 * with the largest overlap (days) with the window, then highest staff_contract_id.
+	 *
+	 * @param array $filters period_from, period_to (Y-m-d), plus same keys as get_all_staff_data
+	 * @return object[]|array[]
+	 */
+	public function get_staff_history_data($filters = [], $limit = false, $start = false)
+	{
+		$period = $this->_normalize_staff_history_period($filters);
+		if ($period === null) {
+			return (!empty($filters['csv']) && (int) $filters['csv'] === 1) ? [] : [];
+		}
+		list($period_from, $period_to) = $period;
+
+		@$csv = $filters['csv'];
+		@$pdf = $filters['pdf'];
+
+		if (($csv == 1 || $pdf == 1) || $limit === false) {
+			$rows = $this->_staff_history_query_overlapping_rows($filters, $period_from, $period_to, false);
+			$picked = $this->_staff_history_pick_best_contract_per_staff($rows, $period_from, $period_to);
+			usort($picked, function ($a, $b) {
+				$fa = strtolower($a->fname ?? '');
+				$fb = strtolower($b->fname ?? '');
+				if ($fa !== $fb) {
+					return strcmp($fa, $fb);
+				}
+				return strcmp(strtolower($a->lname ?? ''), strtolower($b->lname ?? ''));
+			});
+			return ($csv == 1) ? $this->_staff_history_rows_to_array($picked) : $picked;
+		}
+
+		$count = $this->count_staff_history($filters, $period_from, $period_to);
+		if ($count === 0) {
+			return [];
+		}
+
+		$page_ids = $this->_staff_history_paginated_staff_ids($filters, $period_from, $period_to, $limit, $start);
+		if (empty($page_ids)) {
+			return [];
+		}
+
+		$rows = $this->_staff_history_query_overlapping_rows($filters, $period_from, $period_to, $page_ids);
+		$picked = $this->_staff_history_pick_best_contract_per_staff($rows, $period_from, $period_to);
+		$by_id = [];
+		foreach ($picked as $r) {
+			$by_id[(int) $r->staff_id] = $r;
+		}
+		$ordered = [];
+		foreach ($page_ids as $sid) {
+			if (isset($by_id[$sid])) {
+				$ordered[] = $by_id[$sid];
+			}
+		}
+
+		return $ordered;
+	}
+
+	public function count_staff_history($filters, $period_from, $period_to)
+	{
+		$this->db->reset_query();
+		$this->_staff_history_joins_and_filters($filters, $period_from, $period_to);
+		$this->db->select('COUNT(DISTINCT s.staff_id) AS cnt', false);
+		$query = $this->db->get();
+		if ($query === false) {
+			log_message('error', 'Staff history count query failed: ' . json_encode($this->db->error()));
+
+			return 0;
+		}
+		$row = $query->row();
+
+		return $row ? (int) $row->cnt : 0;
+	}
+
+	public function get_staff_history_count($filters)
+	{
+		$period = $this->_normalize_staff_history_period($filters);
+		if ($period === null) {
+			return 0;
+		}
+
+		return $this->count_staff_history($filters, $period[0], $period[1]);
+	}
+
+	private function _normalize_staff_history_period($filters)
+	{
+		$from = isset($filters['period_from']) ? trim((string) $filters['period_from']) : '';
+		$to = isset($filters['period_to']) ? trim((string) $filters['period_to']) : '';
+		if ($from === '' || $to === '') {
+			return null;
+		}
+		$tsFrom = strtotime($from);
+		$tsTo = strtotime($to);
+		if ($tsFrom === false || $tsTo === false) {
+			return null;
+		}
+		$from = date('Y-m-d', $tsFrom);
+		$to = date('Y-m-d', $tsTo);
+		if ($from > $to) {
+			return null;
+		}
+
+		return [$from, $to];
+	}
+
+	private function _staff_history_overlap_where($period_from, $period_to)
+	{
+		$pf = $this->db->escape($period_from);
+		$pt = $this->db->escape($period_to);
+		$this->db->where('sc.start_date <= ' . $pt, null, false);
+		// Open-ended: NULL or zero-date; else must extend into the report window (avoid comparing DATE to '' — breaks strict SQL modes)
+		$this->db->where('(sc.end_date IS NULL OR sc.end_date = \'0000-00-00\' OR sc.end_date >= ' . $pf . ')', null, false);
+	}
+
+	private function _staff_history_joins_and_filters($filters, $period_from, $period_to)
+	{
+		$this->db->from('staff s');
+		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'inner');
+		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
+		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+		$this->db->join('funders f', 'f.funder_id = sc.funder_id', 'left');
+		$this->db->join('contracting_institutions ci', 'ci.contracting_institution_id = sc.contracting_institution_id', 'left');
+		$this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
+		$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
+		$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
+		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+
+		$this->_staff_history_overlap_where($period_from, $period_to);
+
+		if (!empty($filters['division_id'])) {
+			$this->db->where_in('sc.division_id', $filters['division_id']);
+		}
+		if (!empty($filters['duty_station_id'])) {
+			$this->db->where_in('sc.duty_station_id', $filters['duty_station_id']);
+		}
+		if (!empty($filters['funder_id'])) {
+			$this->db->where_in('sc.funder_id', $filters['funder_id']);
+		}
+		if (!empty($filters['job_id'])) {
+			$this->db->where_in('sc.job_id', $filters['job_id']);
+		}
+		if (!empty($filters['grade_id'])) {
+			$this->db->where_in('sc.grade_id', $filters['grade_id']);
+		}
+		if (!empty($filters['contract_status_id'])) {
+			$this->db->where_in('sc.status_id', (array) $filters['contract_status_id']);
+		}
+
+		@$lname = $filters['lname'] ?? null;
+		$filter_copy = $filters;
+		unset($filter_copy['lname'], $filter_copy['csv'], $filter_copy['pdf'], $filter_copy['division_id'], $filter_copy['duty_station_id'], $filter_copy['funder_id'], $filter_copy['job_id'], $filter_copy['grade_id'], $filter_copy['period_from'], $filter_copy['period_to'], $filter_copy['contract_status_id']);
+
+		if (!empty($filter_copy)) {
+			foreach ($filter_copy as $key => $value) {
+				if (!is_string($key) || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key)) {
+					continue;
+				}
+				if (!empty($value) && $key !== 'staff_id') {
+					$this->db->where('s.' . $key, $value);
+				} elseif ($key === 'staff_id' && $value !== '' && $value !== null) {
+					$this->db->where('s.staff_id', $value);
+				}
+			}
+		}
+		if (!empty($lname)) {
+			$this->db->group_start();
+			$this->db->like('s.lname', $lname, 'both');
+			$this->db->or_like('s.fname', $lname, 'both');
+			$this->db->group_end();
+		}
+	}
+
+	private function _staff_history_query_overlapping_rows($filters, $period_from, $period_to, $staff_ids = false)
+	{
+		$this->db->reset_query();
+		$this->db->select('
+			s.SAPNO,s.title, s.fname,
+			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth,
+			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting,
+			ci.contracting_institution, ci.contracting_institution_id,
+			ct.contract_type, n.nationality, d.division_name,
+			sc.first_supervisor, sc.second_supervisor,f.funder,f.funder_id, ds.duty_station_name,
+			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
+			s.email_status, s.email_disabled_at, s.email_disabled_by,
+			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.photo,s.signature,
+			s.private_email, s.physical_location,s.created_at as staff_created_at,s.updated_at as staff_updated_at, sc.created_at as contract_created_at, sc.updated_at as contract_updated_at,
+			sc.other_associated_divisions, sc.staff_contract_id
+		', false);
+		$this->_staff_history_joins_and_filters($filters, $period_from, $period_to);
+		if (is_array($staff_ids) && !empty($staff_ids)) {
+			$this->db->where_in('s.staff_id', $staff_ids);
+		}
+		$this->db->order_by('s.fname', 'ASC');
+		$this->db->order_by('sc.staff_contract_id', 'DESC');
+
+		$query = $this->db->get();
+		if ($query === false) {
+			log_message('error', 'Staff history overlapping rows query failed: ' . json_encode($this->db->error()));
+
+			return [];
+		}
+
+		return $query->result();
+	}
+
+	private function _staff_history_paginated_staff_ids($filters, $period_from, $period_to, $limit, $start)
+	{
+		$this->db->reset_query();
+		$this->_staff_history_joins_and_filters($filters, $period_from, $period_to);
+		$this->db->select('s.staff_id', false);
+		$this->db->group_by(['s.staff_id', 's.fname', 's.lname']);
+		$this->db->order_by('s.fname', 'ASC');
+		$this->db->order_by('s.lname', 'ASC');
+		if ($limit !== false) {
+			$this->db->limit((int) $limit, (int) $start);
+		}
+		$query = $this->db->get();
+		if ($query === false) {
+			log_message('error', 'Staff history paginated ids query failed: ' . json_encode($this->db->error()));
+
+			return [];
+		}
+		$rows = $query->result();
+		$ids = [];
+		foreach ($rows as $r) {
+			$ids[] = (int) $r->staff_id;
+		}
+
+		return $ids;
+	}
+
+	private function _staff_history_overlap_days($row, $period_from, $period_to)
+	{
+		$cs = $row->start_date ?? '';
+		$ce = $row->end_date ?? '';
+		if ($cs === '' || $cs === '0000-00-00') {
+			return -1;
+		}
+		if ($ce === '' || $ce === null || $ce === '0000-00-00') {
+			$ce = '9999-12-31';
+		}
+		if ($cs > $period_to || $ce < $period_from) {
+			return -1;
+		}
+		$a = max(strtotime($cs), strtotime($period_from));
+		$b = min(strtotime($ce), strtotime($period_to));
+		if ($a === false || $b === false || $b < $a) {
+			return -1;
+		}
+
+		return (int) floor(($b - $a) / 86400) + 1;
+	}
+
+	private function _staff_history_pick_best_contract_per_staff($rows, $period_from, $period_to)
+	{
+		$by_staff = [];
+		foreach ($rows as $row) {
+			$days = $this->_staff_history_overlap_days($row, $period_from, $period_to);
+			if ($days < 0) {
+				continue;
+			}
+			$sid = (int) $row->staff_id;
+			$tie = ($days * 10000000) + (int) ($row->staff_contract_id ?? 0);
+			if (!isset($by_staff[$sid]) || $tie > $by_staff[$sid]['tie']) {
+				$by_staff[$sid] = ['tie' => $tie, 'row' => $row];
+			}
+		}
+
+		return array_values(array_map(function ($x) {
+			return $x['row'];
+		}, $by_staff));
+	}
+
+	private function _staff_history_rows_to_array($rows)
+	{
+		$out = [];
+		foreach ($rows as $r) {
+			$out[] = (array) $r;
+		}
+
+		return $out;
+	}
+
 	// Get staff contracts with pagination support
 	public function get_staff_contracts($id, $limit = FALSE, $start = FALSE, $for_export = FALSE)
 	{

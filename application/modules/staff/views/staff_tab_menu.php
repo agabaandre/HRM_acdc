@@ -48,6 +48,11 @@ $staff_id = $this->session->userdata('user')->staff_id;
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <a class="nav-link <?= ($current_uri == 'staff_history') ? 'active' : '' ?>" href="<?= base_url('staff/staff_history') ?>">
+                        <i class="fa fa-history"></i> Staff History
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
                     <a class="nav-link <?= ($current_uri == 'index') ? 'active' : '' ?>" href="<?= base_url('staff/index') ?>">
                         <i class="fa fa-address-book"></i> Current Staff
                     </a>

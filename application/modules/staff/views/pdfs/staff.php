@@ -28,6 +28,9 @@
         <img src="<?= FCPATH . 'assets/images/AU_CDC_Logo-800.png' ?>" alt="AU CDC Logo" style="height:120px;">
         </div>
         <div class="title"><?php echo $title?></div>
+        <?php if (!empty($history_period_label)) : ?>
+        <div class="title" style="font-size:14px;font-weight:normal;margin-top:6px;">Report period: <?= html_escape($history_period_label) ?></div>
+        <?php endif; ?>
         <div class="table-container">
             <table>
                 <thead>
@@ -45,8 +48,8 @@
                         <th>Second Supervisor</th>
                         <th>Funder</th>
                         <th>Initiation Date</th>
-                        <th>Current Contract Start Date</th>
-                        <th>Current Contract End Date</th>
+                        <th><?= !empty($history_period_label) ? 'Contract start (filtered)' : 'Current Contract Start Date' ?></th>
+                        <th><?= !empty($history_period_label) ? 'Contract end (filtered)' : 'Current Contract End Date' ?></th>
                         <th>Years of Tenure</th>
                         <th>Email</th>
                     </tr>
