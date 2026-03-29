@@ -112,7 +112,7 @@ paths:
       description: |
         Authenticate with email and password. Returns JWT, user data, and divisions.
         Passwords use Argon2i (same as staff app). User object includes role flags, associated_divisions,
-        and staff_image_base64 (and photo_data) when the staff profile has a photo.
+        and staff_photo_url (absolute URL to GET /me/photo with the same JWT) when a staff photo can be resolved.
       operationId: login
       requestBody:
         required: true
@@ -156,7 +156,7 @@ paths:
         Authenticate with Microsoft (Azure AD / Entra). For mobile app: send either the Microsoft **access_token**
         (from MSAL) or **code** + **redirect_uri** (after Microsoft redirect). API validates token / exchanges code,
         gets user email from Graph /me, finds APM user by email, and returns same payload as email login
-        (JWT, user with staff_image_base64/photo_data when photo exists, divisions).
+        (JWT, user with staff_photo_url when photo exists, divisions).
       operationId: microsoftLogin
       requestBody:
         required: true
@@ -287,6 +287,46 @@ paths:
                       divisions: { type: array, items: { $ref: '#/components/schemas/DivisionItem' } }
         '401':
           description: Unauthorized
+
+  /me/photo:
+    get:
+      tags: [Auth]
+      summary: Current user staff photo (binary)
+      description: |
+        Returns the authenticated user's profile image bytes. Requires `Authorization: Bearer <token>`,
+        or for GET only you may pass `?token=<access_token>` (same pattern as document attachments).
+        Omitted from login/me user JSON when no photo is available; this endpoint then returns 404 JSON.
+      operationId: mePhoto
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: token
+          in: query
+          required: false
+          schema: { type: string }
+          description: Optional; same as Authorization Bearer for clients that cannot set headers on image loads.
+      responses:
+        '200':
+          description: Image body
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+            image/gif:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+        '401':
+          description: Unauthorized
+        '404':
+          description: No photo (JSON error body)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  message: { type: string }
 
   /me/firebase-token:
     put:
@@ -2088,14 +2128,13 @@ components:
         is_admin_assistant: { type: boolean }
         is_director: { type: boolean }
         is_finance_officer: { type: boolean }
-        staff_image_base64:
+        staff_photo_url:
           type: string
+          format: uri
           nullable: true
-          description: Staff profile photo as base64 string (no data URI prefix). Omitted if no photo. Use as data URI with e.g. data:image/jpeg;base64,{value}.
-        photo_data:
-          type: string
-          nullable: true
-          description: Same as staff_image_base64; present for compatibility with session/helper.
+          description: |
+            Absolute URL to GET the staff profile photo with Bearer token (or ?token= on GET).
+            Omitted if no photo is available. Not base64—fetch this URL after login.
         job:
           type: object
           nullable: true
