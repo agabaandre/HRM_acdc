@@ -10,6 +10,8 @@ class Notification extends Model
 {
     use HasFactory;
 
+    public const DEFAULT_TITLE = 'APM Approval Notification';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -20,6 +22,7 @@ class Notification extends Model
         'model_id',
         'model_type',
         'message',
+        'title',
         'type',
         'is_read',
         'read_at'

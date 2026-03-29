@@ -20,6 +20,7 @@ class NotificationService
             'model_id' => $data['model_id'] ?? null,
             'model_type' => $data['model_type'] ?? null,
             'message' => $data['message'],
+            'title' => $data['title'] ?? Notification::DEFAULT_TITLE,
             'type' => $data['type'],
             'is_read' => false
         ]);
@@ -80,6 +81,7 @@ class NotificationService
                     'model_id' => null,
                     'model_type' => null,
                     'message' => "You have {$summaryStats['total_pending']} pending approval(s) requiring your attention.",
+                    'title' => 'Pending approvals',
                     'type' => 'daily_pending_approvals',
                     'send_email' => true,
                     'pending_approvals' => $pendingApprovalsService->getPendingApprovals(),

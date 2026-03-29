@@ -2291,6 +2291,9 @@ components:
       description: Row from the APM notifications table for the current staff member.
       properties:
         id: { type: integer }
+        title:
+          type: string
+          description: Short heading for the notification; omitted or empty values are returned as "APM Approval Notification".
         message: { type: string }
         type: { type: string, nullable: true }
         is_read: { type: boolean }
