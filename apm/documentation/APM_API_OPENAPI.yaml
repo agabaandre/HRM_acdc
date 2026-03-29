@@ -39,6 +39,8 @@ tags:
     description: Verify APM document signature hashes via PDF upload (PDF only; session auth)
   - name: Print
     description: Memo print PDF endpoints (web app; session or JWT)
+  - name: Notifications
+    description: In-app notifications for the authenticated staff member
 
 paths:
   /api/documents/verify:
@@ -331,6 +333,127 @@ paths:
           description: Token updated or cleared
         '401':
           description: Unauthorized
+
+  /me/notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications
+      description: |
+        Returns paginated notifications for the staff profile linked to the JWT (`auth_staff_id`).
+        By default only **unread** rows are returned. Pass `unread_only=false` to include read notifications.
+      operationId: meNotificationsIndex
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: unread_only
+          in: query
+          schema: { type: boolean, default: true }
+          description: When true (default), only notifications with is_read=false.
+        - name: per_page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+      responses:
+        '200':
+          description: Paginated notification list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/NotificationItem' }
+                  pagination:
+                    type: object
+                    properties:
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                      per_page: { type: integer }
+                      total: { type: integer }
+                  filters:
+                    type: object
+                    properties:
+                      unread_only: { type: boolean }
+        '401':
+          description: Unauthorized
+        '403':
+          description: No staff profile linked to API user
+
+  /me/notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      description: Sets is_read and read_at for all unread notifications belonging to the current staff member.
+      operationId: meNotificationsReadAllPost
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Count of rows updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  marked_count: { type: integer }
+        '401':
+          description: Unauthorized
+        '403':
+          description: No staff profile linked to API user
+    patch:
+      tags: [Notifications]
+      summary: Mark all notifications as read (alias)
+      operationId: meNotificationsReadAllPatch
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Count of rows updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  marked_count: { type: integer }
+        '401':
+          description: Unauthorized
+        '403':
+          description: No staff profile linked to API user
+
+  /me/notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark one notification as read
+      description: Id must belong to the authenticated staff member.
+      operationId: meNotificationMarkRead
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data: { $ref: '#/components/schemas/NotificationItem' }
+        '401':
+          description: Unauthorized
+        '403':
+          description: No staff profile linked to API user
+        '404':
+          description: Notification not found
 
   /pending-approvals:
     get:
@@ -2123,6 +2246,19 @@ components:
         action: { type: string }
         acted_at: { type: string, format: date-time }
         title: { type: string, nullable: true }
+
+    NotificationItem:
+      type: object
+      description: Row from the APM notifications table for the current staff member.
+      properties:
+        id: { type: integer }
+        message: { type: string }
+        type: { type: string, nullable: true }
+        is_read: { type: boolean }
+        read_at: { type: string, format: date-time, nullable: true }
+        model_id: { type: integer, nullable: true }
+        model_type: { type: string, nullable: true }
+        created_at: { type: string, format: date-time, nullable: true }
 
 security:
   - bearerAuth: []

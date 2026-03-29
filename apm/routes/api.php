@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ApmMemoListController;
 use App\Http\Controllers\Api\ApmReferenceDataController;
 use App\Http\Controllers\Api\ApmSettingsController;
 use App\Http\Controllers\Api\ApmFcmController;
+use App\Http\Controllers\Api\ApmNotificationController;
 use App\Http\Controllers\Api\ApmFundCodeController;
 use App\Http\Controllers\Api\ApmDirectorateController;
 use App\Http\Controllers\Api\ApmDivisionController;
@@ -53,6 +54,11 @@ Route::prefix('apm/v1')->group(function () {
 
         Route::put('me/firebase-token', [ApmFcmController::class, 'updateToken']);
         Route::post('me/firebase-token', [ApmFcmController::class, 'updateToken']);
+
+        Route::get('me/notifications', [ApmNotificationController::class, 'index']);
+        Route::post('me/notifications/read-all', [ApmNotificationController::class, 'readAll']);
+        Route::patch('me/notifications/read-all', [ApmNotificationController::class, 'readAll']);
+        Route::patch('me/notifications/{id}/read', [ApmNotificationController::class, 'markRead'])->where('id', '[0-9]+');
 
         Route::get('pending-approvals', [ApmPendingController::class, 'index']);
         Route::get('pending-approvals/summary', [ApmPendingController::class, 'summary']);

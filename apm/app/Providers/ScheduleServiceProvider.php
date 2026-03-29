@@ -150,5 +150,14 @@ class ScheduleServiceProvider extends ServiceProvider
             ->onFailure(function () {
                 Log::error('fund-codes:deactivate-past-year failed at scheduled time');
             });
+
+        // Remove in-app notification rows older than 4 months (APM notifications table)
+        $schedule->command('notifications:prune-old')
+            ->dailyAt('03:00')
+            ->description('Delete notifications with created_at older than 4 months')
+            ->withoutOverlapping()
+            ->onFailure(function () {
+                Log::error('notifications:prune-old failed at scheduled time');
+            });
     }
 }
