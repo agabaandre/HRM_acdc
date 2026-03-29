@@ -177,6 +177,9 @@ All of these require the `Authorization: Bearer <token>` header.
 | POST | `/auth/refresh` | Refresh JWT |
 | GET | `/auth/me` | Current user and divisions |
 | PUT or POST | `/me/firebase-token` | Register or update FCM device token for push notifications |
+| GET | `/me/notifications` | In-app notifications (default unread only; `?unread_only=false`, `per_page`, `page`) |
+| POST or PATCH | `/me/notifications/read-all` | Mark all unread notifications as read for the current staff member |
+| PATCH | `/me/notifications/{id}/read` | Mark one notification as read (must belong to current staff) |
 | GET | `/pending-approvals` | Pending items with approval trails (optional `?category=all`) |
 | GET | `/pending-approvals/summary` | Summary counts only |
 | GET | `/documents/{type}/{status}` | List documents by type and status (filters: year, quarter, title, document_number, per_page, page) |
@@ -239,6 +242,37 @@ curl -X PUT 'http://localhost/staff/apm/api/apm/v1/me/firebase-token' \
 - `php artisan notifications:test-fcm-pending-approvals` — send test pushes synchronously.
 
 See [FIREBASE_PUSH_NOTIFICATIONS.md](./FIREBASE_PUSH_NOTIFICATIONS.md) for full setup and scheduling.
+
+### In-app notifications
+
+**GET** `/me/notifications`  
+**Auth:** JWT required.
+
+Lists notifications stored for the staff profile linked to the token (`auth_staff_id`). By default only **unread** items are returned. Query parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `unread_only` | boolean | `true` | `false` to include read notifications |
+| `per_page` | integer | `20` | Page size (max 100) |
+| `page` | integer | `1` | Page number |
+
+**Response (200):** `success`, `data` (array of items with `id`, `message`, `type`, `is_read`, `read_at`, `model_id`, `model_type`, `created_at`), `pagination`, `filters`.
+
+**POST** or **PATCH** `/me/notifications/read-all`  
+Marks every unread notification for that staff member as read. **Response (200):** `success`, `message`, `marked_count` (number of rows updated).
+
+**PATCH** `/me/notifications/{id}/read`  
+Marks a single notification as read if it belongs to the current staff. **404** if not found or not owned.
+
+**Example:**
+
+```bash
+curl -s 'http://localhost/staff/apm/api/apm/v1/me/notifications?per_page=10' \
+  -H 'Authorization: Bearer YOUR_JWT'
+
+curl -s -X POST 'http://localhost/staff/apm/api/apm/v1/me/notifications/read-all' \
+  -H 'Authorization: Bearer YOUR_JWT'
+```
 
 ---
 
