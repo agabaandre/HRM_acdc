@@ -395,8 +395,8 @@ class Staff_mdl extends CI_Model
 		$pf = $this->db->escape($period_from);
 		$pt = $this->db->escape($period_to);
 		$this->db->where('sc.start_date <= ' . $pt, null, false);
-		// Open-ended: NULL or zero-date; else must extend into the report window (avoid comparing DATE to '' — breaks strict SQL modes)
-		$this->db->where('(sc.end_date IS NULL OR sc.end_date = \'0000-00-00\' OR sc.end_date >= ' . $pf . ')', null, false);
+		// Open-ended: NULL, legacy zero/invalid dates (no '0000-00-00' literal — MySQL 8 NO_ZERO_DATE / strict mode), or end on/after window start
+		$this->db->where('(sc.end_date IS NULL OR sc.end_date >= ' . $pf . ' OR sc.end_date < \'1900-01-01\')', null, false);
 	}
 
 	private function _staff_history_joins_and_filters($filters, $period_from, $period_to)
@@ -496,8 +496,8 @@ class Staff_mdl extends CI_Model
 	{
 		$this->db->reset_query();
 		$this->_staff_history_joins_and_filters($filters, $period_from, $period_to);
-		$this->db->select('s.staff_id', false);
-		$this->db->group_by(['s.staff_id', 's.fname', 's.lname']);
+		$this->db->distinct();
+		$this->db->select('s.staff_id, s.fname, s.lname', false);
 		$this->db->order_by('s.fname', 'ASC');
 		$this->db->order_by('s.lname', 'ASC');
 		if ($limit !== false) {
