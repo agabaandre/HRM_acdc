@@ -144,6 +144,17 @@ npm run dev:all
 3. Set up queue workers and cron jobs
 4. Configure [Queue Setup](./apm/documentation/QUEUE_SETUP_GUIDE.md)
 5. Set up [Cron Configuration](./apm/documentation/CRON_SETUP.md)
+6. Configure Staff Portal scheduler (single cron entry):
+
+```bash
+* * * * * /usr/bin/php /path/to/staff/index.php jobs/run/tick >> /path/to/staff/application/logs/cron-tick.log 2>&1
+```
+
+Default scheduler timings are configured in `application/modules/jobs/controllers/Run.php`:
+- `performance_notifications` at `07:00`
+- `performance_approval_reminder` at `10:00` (daily pending approvals reminder)
+- `mark_due_contracts` at `23:00`
+- `staff_birthday` at `03:00`
 
 </details>
 
@@ -159,6 +170,7 @@ npm run dev:all
 | [**👥 Staff Portal Docs**](./assets/ENVIRONMENT_VARIABLES.md) | Configuration and setup guides |
 | [**📋 APM Documentation**](./apm/documentation/README.md) | Laravel Approvals Management System |
 | [**📡 APM API Documentation**](./apm/documentation/API_DOCUMENTATION.md) | REST API (JWT), endpoints, approval trails, attachments, Swagger at `/docs` |
+| [**🌱 APM Environment Guide**](./apm/documentation/ENVIRONMENT.md) | `.env` setup and variable reference (`apm/.env.example`) |
 | [**💰 Finance Documentation**](./finance/documentation/README.md) | Node.js/React Finance Module |
 
 </div>
@@ -171,10 +183,16 @@ npm run dev:all
 
 **Infrastructure & Setup:**
 - [Environment Variables](./assets/ENVIRONMENT_VARIABLES.md) - Configuration guide
+- [APM Environment Guide](./apm/documentation/ENVIRONMENT.md) - `.env` setup and examples
 - [APM Queue Setup](./apm/documentation/QUEUE_SETUP_GUIDE.md) - Queue worker configuration
 - [Systemd Queue Guide](./apm/documentation/SYSTEMD_QUEUE_GUIDE.md) - Systemd queue management
 - [Cron Configuration](./apm/documentation/CRON_SETUP.md) - Scheduled tasks
 - [Database Backup System](./apm/README_BACKUP.md) - Automatic database backups and retention policies
+
+**Operations (Staff Portal jobs):**
+- `php index.php jobs/run/tick` - single entry-point scheduler for recurring jobs
+- `php index.php jobs/run/performance_notifications` - queue PPA/Midterm/Endterm reminder emails
+- `php index.php jobs/run/performance_approval_reminder` - queue + send daily performance approval reminder
 
 **Architecture & Development:**
 - [Finance Frontend Architecture](./finance/documentation/FRONTEND_ARCHITECTURE.md) - React app structure
@@ -248,11 +266,14 @@ staff/
 |-----------|----------------|
 | 🔐 **Unified Authentication** | Single sign-on across all modules |
 | 📊 **Approval Workflows** | Multi-level approval processes |
+| 🧾 **Staff History Reporting** | Contract-overlap history report with period filters and CSV/PDF export |
 | 📡 **APM REST API** | JWT API for pending approvals, documents (with approval trails & attachment URLs), actions, memo list |
+| 📲 **APM Notifications API** | `/me/notifications`, `/read-all`, and per-notification read endpoints |
+| ⏰ **Performance Approval Reminder** | Daily reminder at 10:00 to first/second approvers based on pending approvals |
 | 💰 **Financial Management** | Advances, budgets, and tracking |
 | 👥 **Staff Management** | Profiles, contracts, and HR services |
 | 📈 **Performance Tracking** | Task monitoring and reporting |
-| 🔔 **Notifications** | Real-time alerts and updates |
+| 🔔 **Notifications** | Scheduled and event-driven alerts across Staff Portal and APM |
 
 </div>
 

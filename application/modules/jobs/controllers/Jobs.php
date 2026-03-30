@@ -736,9 +736,9 @@ public function notify_supervisors_pending_endterms()
     $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
 }
 
-// Unified reminder for all performance approvals (PPA/Midterm/Endterm) per approver.
+// Reminder for all performance approvals (PPA/Midterm/Endterm) per approver.
 // Uses the same pending logic as performance/pending_approval via per_mdl->get_all_pending_approvals().
-public function notify_supervisors_pending_performance_unified()
+public function notify_supervisors_pending_performance_approval()
 {
     $supervisorSql = "
         SELECT DISTINCT s.staff_id, s.title, s.fname, s.lname, s.work_email
@@ -862,7 +862,7 @@ public function notify_supervisors_pending_performance_unified()
             continue;
         }
 
-        $entryLogId = md5($supervisorId . '-SUPUNIPERFREM-' . $today);
+        $entryLogId = md5($supervisorId . '-SUPPERFAPPREM-' . $today);
         $exists = $this->db->where('entry_id', $entryLogId)->count_all_results('email_notifications');
         if ($exists > 0) {
             continue;
@@ -873,12 +873,12 @@ public function notify_supervisors_pending_performance_unified()
             'generated_on' => $today,
             'pending_list' => $pendingList,
             'type_counts' => $typeCounts,
-            'subject' => 'Reminder: Unified Pending Performance Approvals',
+            'subject' => 'Reminder: Pending Performance Approvals',
             'email_to' => $emailTo,
             'pending_url' => $baseUrl . 'performance/pending_approval',
         ];
 
-        $data['body'] = $this->load->view('supervisor_reminder_performance_unified', $data, true);
+        $data['body'] = $this->load->view('supervisor_reminder_performance_approval', $data, true);
         golobal_log_email(
             'Staff Portal System',
             $data['email_to'],
