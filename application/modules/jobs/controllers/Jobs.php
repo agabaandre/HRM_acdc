@@ -736,6 +736,164 @@ public function notify_supervisors_pending_endterms()
     $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
 }
 
+// Unified reminder for all performance approvals (PPA/Midterm/Endterm) per approver.
+// Uses the same pending logic as performance/pending_approval via per_mdl->get_all_pending_approvals().
+public function notify_supervisors_pending_performance_unified()
+{
+    $supervisorSql = "
+        SELECT DISTINCT s.staff_id, s.title, s.fname, s.lname, s.work_email
+        FROM staff s
+        INNER JOIN (
+            SELECT supervisor_id AS sid FROM ppa_entries WHERE supervisor_id IS NOT NULL
+            UNION
+            SELECT supervisor2_id AS sid FROM ppa_entries WHERE supervisor2_id IS NOT NULL
+            UNION
+            SELECT midterm_supervisor_1 AS sid FROM ppa_entries WHERE midterm_supervisor_1 IS NOT NULL
+            UNION
+            SELECT midterm_supervisor_2 AS sid FROM ppa_entries WHERE midterm_supervisor_2 IS NOT NULL
+            UNION
+            SELECT endterm_supervisor_1 AS sid FROM ppa_entries WHERE endterm_supervisor_1 IS NOT NULL
+            UNION
+            SELECT endterm_supervisor_2 AS sid FROM ppa_entries WHERE endterm_supervisor_2 IS NOT NULL
+        ) x ON x.sid = s.staff_id
+        WHERE s.work_email IS NOT NULL
+          AND s.work_email != ''
+        ORDER BY s.fname ASC, s.lname ASC
+    ";
+    $supervisors = $this->db->query($supervisorSql)->result();
+    $today = date('Y-m-d');
+    $baseUrl = rtrim($_ENV['PRODUCTION_URL'] ?? base_url(), '/') . '/';
+
+    foreach ($supervisors as $supervisor) {
+        $supervisorId = (int) $supervisor->staff_id;
+        $allPending = $this->per_mdl->get_all_pending_approvals($supervisorId);
+        if (empty($allPending)) {
+            continue;
+        }
+
+        $pendingList = [];
+        $staffIdsForCc = [];
+        $typeCounts = ['ppa' => 0, 'midterm' => 0, 'endterm' => 0];
+
+        foreach ($allPending as $row) {
+            $item = is_array($row) ? $row : (array) $row;
+            $status = trim((string) ($item['overall_status'] ?? ''));
+            if ($status !== 'Pending First Supervisor' && $status !== 'Pending Second Supervisor') {
+                continue;
+            }
+
+            $firstSupervisor = (int) ($item['supervisor_id'] ?? 0);
+            $secondSupervisor = (int) ($item['supervisor2_id'] ?? 0);
+            $expectedApprover = ($status === 'Pending Second Supervisor') ? $secondSupervisor : $firstSupervisor;
+            if ($expectedApprover !== $supervisorId) {
+                continue;
+            }
+
+            $approvalType = strtolower((string) ($item['approval_type'] ?? 'ppa'));
+            if (!isset($typeCounts[$approvalType])) {
+                $typeCounts[$approvalType] = 0;
+            }
+            $typeCounts[$approvalType]++;
+
+            $entryId = (string) ($item['entry_id'] ?? '');
+            $staffId = (int) ($item['staff_id'] ?? 0);
+            $staffName = (string) ($item['staff_name'] ?? staff_name($staffId));
+            $period = (string) str_replace('-', ' ', (string) ($item['performance_period'] ?? ''));
+            $submittedAt = (string) ($item['created_at'] ?? '');
+            if ($approvalType === 'midterm' && !empty($item['midterm_created_at'])) {
+                $submittedAt = (string) $item['midterm_created_at'];
+            } elseif ($approvalType === 'endterm' && !empty($item['endterm_created_at'])) {
+                $submittedAt = (string) $item['endterm_created_at'];
+            }
+
+            $reviewUrl = $baseUrl . 'performance/view_ppa/' . rawurlencode($entryId) . '/' . $staffId;
+            if ($approvalType === 'midterm') {
+                $reviewUrl = $baseUrl . 'performance/midterm/midterm_review/' . rawurlencode($entryId) . '/' . $staffId;
+            } elseif ($approvalType === 'endterm') {
+                $reviewUrl = $baseUrl . 'performance/endterm/endterm_review/' . rawurlencode($entryId) . '/' . $staffId;
+            }
+
+            $pendingList[] = [
+                'entry_id' => $entryId,
+                'staff_id' => $staffId,
+                'staff_name' => $staffName,
+                'approval_type' => strtoupper($approvalType),
+                'period' => $period,
+                'status' => $status,
+                'submitted_at' => $submittedAt,
+                'review_url' => $reviewUrl,
+            ];
+
+            if ($staffId > 0) {
+                $staffIdsForCc[] = $staffId;
+            }
+        }
+
+        if (empty($pendingList)) {
+            continue;
+        }
+
+        // CC everyone currently on the pending list (for tracking).
+        $ccEmails = [];
+        $staffIdsForCc = array_values(array_unique(array_map('intval', $staffIdsForCc)));
+        if (!empty($staffIdsForCc)) {
+            $ccRows = $this->db->select('work_email')
+                ->from('staff')
+                ->where_in('staff_id', $staffIdsForCc)
+                ->where('work_email IS NOT NULL', null, false)
+                ->where('work_email !=', '')
+                ->get()
+                ->result();
+            foreach ($ccRows as $r) {
+                $email = trim((string) ($r->work_email ?? ''));
+                if ($email !== '' && strcasecmp($email, (string) $supervisor->work_email) !== 0) {
+                    $ccEmails[] = $email;
+                }
+            }
+        }
+
+        $emailParts = array_filter(array_unique(array_merge(
+            [trim((string) $supervisor->work_email)],
+            $ccEmails,
+            [trim((string) settings()->email)]
+        )));
+        $emailTo = implode(';', $emailParts);
+        if ($emailTo === '') {
+            continue;
+        }
+
+        $entryLogId = md5($supervisorId . '-SUPUNIPERFREM-' . $today);
+        $exists = $this->db->where('entry_id', $entryLogId)->count_all_results('email_notifications');
+        if ($exists > 0) {
+            continue;
+        }
+
+        $data = [
+            'supervisor_name' => trim($supervisor->title . ' ' . $supervisor->fname . ' ' . $supervisor->lname),
+            'generated_on' => $today,
+            'pending_list' => $pendingList,
+            'type_counts' => $typeCounts,
+            'subject' => 'Reminder: Unified Pending Performance Approvals',
+            'email_to' => $emailTo,
+            'pending_url' => $baseUrl . 'performance/pending_approval',
+        ];
+
+        $data['body'] = $this->load->view('supervisor_reminder_performance_unified', $data, true);
+        golobal_log_email(
+            'Staff Portal System',
+            $data['email_to'],
+            $data['body'],
+            $data['subject'],
+            $supervisorId,
+            $today,
+            $today,
+            $entryLogId
+        );
+    }
+
+    $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
+}
+
 // Stage 1: Notify first supervisors
 private function notify_first_supervisors_pending_endterms($current_period, $deadline)
 {
