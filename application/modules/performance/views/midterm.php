@@ -89,6 +89,14 @@ if (!isset($midppa) || empty($midppa)) {
 }
 $midterm_exists = $this->per_mdl->ismidterm_available($ppa->entry_id);
 
+/** True when logged-in user is 1st or 2nd midterm supervisor (for preview button). */
+$isMidtermApprover = false;
+if (!empty($ppa) && is_object($ppa)) {
+    $isMidtermApprover = in_array((int) $session->staff_id, [
+        (int) ($ppa->midterm_supervisor_1 ?? 0),
+        (int) ($ppa->midterm_supervisor_2 ?? 0),
+    ], true);
+}
 
 // ✅ FIXED: define before usage
 $showApprovalBtns = show_midterm_approval_action(@$midppa, @$approval_trail, $session);
@@ -133,6 +141,11 @@ $this->load->view('ppa_tabs');
       <a class="btn btn-outline-success btn-sm" id="mailMidtermBtn" href="mailto:?subject=<?= rawurlencode($mailSubjectMidterm) ?>&body=<?= rawurlencode($mailBodyMidterm) ?>">
         <i class="fa fa-envelope"></i> Mail
       </a>
+      <?php if (!empty($isMidtermApprover)): ?>
+      <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#midtermApproverPreviewModal" id="midtermApproverPreviewBtn">
+        <i class="fa fa-eye"></i> Preview
+      </button>
+      <?php endif; ?>
     </div>
     <small class="text-muted d-block mt-1">Watermark reflects midterm status: draft (1) or pending approval (0).</small>
   </div>
@@ -178,6 +191,7 @@ $this->load->view('ppa_tabs');
 <input type="hidden" name="entry_id" value="<?= $ppa->entry_id ?>">
 <input type="hidden" name="staff_contract_id" value="<?= $staff_contract_id ?>">
 
+<div id="midtermPreviewSource">
 <!-- SECTION A: STAFF DETAILS -->
 <?php $this->load->view('performance/midterm/midterm_section_a', compact('contract', 'ppa','midreadonly')); ?>
 <hr>
@@ -197,11 +211,55 @@ $this->load->view('ppa_tabs');
 <!-- SECTION E: PDP PROGRESS REVIEW -->
 <?php $this->load->view('performance/midterm/midterm_section_e', compact('ppa', 'skills', 'readonly', 'selected_skills','midreadonly')); ?>
 <hr>
+</div><!-- /#midtermPreviewSource — excludes SECTION F (sign-off) and approval UI -->
 
 <!-- SECTION F: SIGN OFF -->
 <?php $this->load->view('performance/midterm/midterm_section_f', compact('ppa', 'ppa_settings', 'session', 'readonly','midreadonly')); ?>
 
 <?php echo form_close(); ?>
+
+<?php if (!empty($isMidtermApprover)): ?>
+<div class="modal fade" id="midtermApproverPreviewModal" tabindex="-1" aria-labelledby="midtermApproverPreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="midtermApproverPreviewModalLabel">Midterm review — preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3 midterm-preview-modal-body" id="midtermPreviewModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modalEl = document.getElementById('midtermApproverPreviewModal');
+  var srcEl = document.getElementById('midtermPreviewSource');
+  var bodyEl = document.getElementById('midtermPreviewModalBody');
+  if (!modalEl || !srcEl || !bodyEl) return;
+
+  modalEl.addEventListener('show.bs.modal', function () {
+    bodyEl.innerHTML = '';
+    var hint = document.createElement('p');
+    hint.className = 'text-muted small mb-2';
+    hint.textContent = 'Sections A–E only. Sign-off and approval actions are not shown here.';
+    bodyEl.appendChild(hint);
+    var clone = srcEl.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+    clone.querySelectorAll('input, select, textarea, button').forEach(function (el) {
+      try {
+        el.disabled = true;
+        el.removeAttribute('name');
+      } catch (e) {}
+    });
+    bodyEl.appendChild(clone);
+  });
+})();
+</script>
+<?php endif; ?>
 
 <!-- Set performance period years for JavaScript validation -->
 <script>

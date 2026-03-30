@@ -74,6 +74,14 @@ if (!isset($ppa) || empty($ppa) || !is_object($ppa)) {
     }
 }
 
+/** True when logged-in user is 1st or 2nd PPA supervisor (for preview button). */
+$isPpaApprover = false;
+if (!empty($ppa) && is_object($ppa)) {
+    $isPpaApprover = in_array((int) $session->staff_id, [
+        (int) ($ppa->supervisor_id ?? 0),
+        (int) ($ppa->supervisor2_id ?? 0),
+    ], true);
+}
 
 @$showApprovalBtns = show_ppa_approval_action(@$ppa, @$approval_trail, $this->session->userdata('user'));
 //sdd($showApprovalBtns);
@@ -160,6 +168,11 @@ if($showApprovalBtns!='show'){
       <a class="btn btn-outline-success btn-sm" id="mailPpaBtn" href="mailto:?subject=<?= rawurlencode($mailSubjectPpa) ?>&body=<?= rawurlencode($mailBodyPpa) ?>">
         <i class="fa fa-envelope"></i> Mail
       </a>
+      <?php if (!empty($isPpaApprover)): ?>
+      <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#ppaApproverPreviewModal" id="ppaApproverPreviewBtn">
+        <i class="fa fa-eye"></i> Preview
+      </button>
+      <?php endif; ?>
     </div>
     <small class="text-muted d-block mt-1">Shows &ldquo;DRAFT&rdquo; or &ldquo;PENDING APPROVAL&rdquo; watermark unless the PPA is fully approved.</small>
   </div>
@@ -205,6 +218,7 @@ if($showApprovalBtns!='show'){
 <input type="hidden" name="staff_id" value="<?=$staff_id?>">
 <input type="hidden" name="staff_contract_id" value="<?=$staff_contract_id?>">
 <input type="hidden" name="performance_period" value="<?= htmlspecialchars($period_for_form ?? '') ?>">
+<div id="ppaPreviewSource">
 <h4>A. Staff Details</h4>
 <table class="form-table table-bordered">
   <tr>
@@ -369,6 +383,7 @@ if($showApprovalBtns!='show'){
 </section>
 
 <hr>
+</div><!-- /#ppaPreviewSource — excludes staff submission, supervisor approval, and signing UI -->
 
 <table class="form-table">
   <!-- <tr>
@@ -409,6 +424,49 @@ if($showApprovalBtns!='show'){
     
 
     <?php echo form_close(); ?>
+
+<?php if (!empty($isPpaApprover)): ?>
+<div class="modal fade" id="ppaApproverPreviewModal" tabindex="-1" aria-labelledby="ppaApproverPreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="ppaApproverPreviewModalLabel">PPA — preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3 ppa-preview-modal-body" id="ppaPreviewModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modalEl = document.getElementById('ppaApproverPreviewModal');
+  var srcEl = document.getElementById('ppaPreviewSource');
+  var bodyEl = document.getElementById('ppaPreviewModalBody');
+  if (!modalEl || !srcEl || !bodyEl) return;
+
+  modalEl.addEventListener('show.bs.modal', function () {
+    bodyEl.innerHTML = '';
+    var hint = document.createElement('p');
+    hint.className = 'text-muted small mb-2';
+    hint.textContent = 'Sections A–C only (staff details, objectives, PDP). Submission, approval, and sign-off are not shown here.';
+    bodyEl.appendChild(hint);
+    var clone = srcEl.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
+    clone.querySelectorAll('input, select, textarea, button').forEach(function (el) {
+      try {
+        el.disabled = true;
+        el.removeAttribute('name');
+      } catch (e) {}
+    });
+    bodyEl.appendChild(clone);
+  });
+})();
+</script>
+<?php endif; ?>
 
 <!-- Set performance period years for JavaScript validation and flatpickr min/max (B. Performance Objectives timelines) -->
 <script>
