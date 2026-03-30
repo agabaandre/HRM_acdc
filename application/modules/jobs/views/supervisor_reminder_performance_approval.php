@@ -23,7 +23,7 @@
 </style>
 
 <div class="container">
-  <div class="title">Unified Performance Approval Reminder</div>
+  <div class="title">Performance Approval Reminder</div>
   <div class="meta">
     Hello <?= htmlspecialchars($supervisor_name) ?>,<br>
     You have pending approvals requiring your action as first or second approver.

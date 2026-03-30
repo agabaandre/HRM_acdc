@@ -21,7 +21,7 @@ class Run extends MX_Controller
      * - send_instant_mails: run every cron invocation (every minute).
      * - send_mails_interval_minutes: full queue pass every N minutes (15 => :00, :15, :30, :45).
      * - performance_notifications: once daily at hour:minute, or false to disable.
-     * - performance_unified_approval_reminder: once daily at hour:minute, or false to disable.
+     * - performance_approval_reminder: once daily at hour:minute, or false to disable.
      * - cron_register: once daily at hour:minute (bundles birthday + accounts + contracts), or false.
      * - mark_due_contracts / staff_birthday: daily at hour:minute, or false.
      * - manage_accounts_hourly_minute: every hour at this minute, or null to disable.
@@ -32,7 +32,7 @@ class Run extends MX_Controller
             'send_instant_mails'           => true,
             'send_mails_interval_minutes'  => 15,
             'performance_notifications'    => ['hour' => 7, 'minute' => 0],
-            'performance_unified_approval_reminder' => ['hour' => 10, 'minute' => 0],
+            'performance_approval_reminder' => ['hour' => 10, 'minute' => 0],
             'cron_register'                => false,
             'mark_due_contracts'           => ['hour' => 23, 'minute' => 0],
             'staff_birthday'               => ['hour' => 3, 'minute' => 0],
@@ -73,9 +73,9 @@ class Run extends MX_Controller
             echo "  → performance_notifications (PPA / Midterm / Endterm queue)\n";
             $this->_run_performance_notifications();
         }
-        if ($this->tick_match_clock($s['performance_unified_approval_reminder'] ?? false, $hour, $minute)) {
-            echo "  → performance_unified_approval_reminder\n";
-            Modules::run('jobs/jobs/notify_supervisors_pending_performance_unified');
+        if ($this->tick_match_clock($s['performance_approval_reminder'] ?? false, $hour, $minute)) {
+            echo "  → performance_approval_reminder\n";
+            Modules::run('jobs/jobs/notify_supervisors_pending_performance_approval');
         }
 
         if ($this->tick_match_clock($s['cron_register'] ?? false, $hour, $minute)) {
@@ -268,18 +268,18 @@ class Run extends MX_Controller
     }
 
     /**
-     * Queue unified performance approval reminders (first/second approver) and send one pass.
+     * Queue performance approval reminders (first/second approver) and send one pass.
      * Scheduled by tick() at 10:00 by default.
      */
-    public function performance_unified_approval_reminder()
+    public function performance_approval_reminder()
     {
         if (!$this->input->is_cli_request()) {
             show_error('CLI only.', 403);
             return;
         }
 
-        echo "--- performance_unified_approval_reminder ---\n";
-        Modules::run('jobs/jobs/notify_supervisors_pending_performance_unified');
+        echo "--- performance_approval_reminder ---\n";
+        Modules::run('jobs/jobs/notify_supervisors_pending_performance_approval');
         echo "--- send_mails (one pass) ---\n";
         Modules::run('jobs/jobs/send_mails');
         echo "Done.\n";
@@ -295,7 +295,7 @@ class Run extends MX_Controller
         echo "jobs/run CLI:\n";
         echo "  php index.php jobs/run/tick                    # single crontab entry (edit tick_schedule() in Run.php)\n";
         echo "  php index.php jobs/run/performance_notifications\n";
-        echo "  php index.php jobs/run/performance_unified_approval_reminder\n";
+        echo "  php index.php jobs/run/performance_approval_reminder\n";
         echo "  php index.php jobs/run/performance_notifications_and_send\n";
         echo "  php index.php jobs/run/test_performance_notifications\n";
         echo "  TEST_EMAIL=you@example.com php index.php jobs/run/test_performance_notifications\n";
