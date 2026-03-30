@@ -220,7 +220,7 @@ $this->load->view('ppa_tabs');
 
 <?php if (!empty($isMidtermApprover)): ?>
 <div class="modal fade" id="midtermApproverPreviewModal" tabindex="-1" aria-labelledby="midtermApproverPreviewModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="midtermApproverPreviewModalLabel">Midterm review — preview</h5>
@@ -233,8 +233,61 @@ $this->load->view('ppa_tabs');
     </div>
   </div>
 </div>
+<style>
+  #midtermApproverPreviewModal .preview-readonly-text { white-space: pre-wrap; word-break: break-word; min-height: 1.2em; }
+</style>
 <script>
 (function () {
+  function flattenPreviewToText(root) {
+    root.querySelectorAll('input[type="hidden"]').forEach(function (n) { n.remove(); });
+    root.querySelectorAll('textarea').forEach(function (el) {
+      var d = document.createElement('div');
+      d.className = 'preview-readonly-text';
+      d.textContent = el.value || '';
+      el.parentNode.replaceChild(d, el);
+    });
+    root.querySelectorAll('select').forEach(function (el) {
+      var d = document.createElement('div');
+      d.className = 'preview-readonly-text';
+      var t = [];
+      if (el.selectedOptions) for (var i = 0; i < el.selectedOptions.length; i++) t.push(el.selectedOptions[i].text);
+      d.textContent = t.length ? t.join(', ') : '—';
+      el.parentNode.replaceChild(d, el);
+    });
+    root.querySelectorAll('input').forEach(function (el) {
+      var type = (el.type || 'text').toLowerCase();
+      if (type === 'hidden') return;
+      if (type === 'button' || type === 'submit' || type === 'reset') { el.remove(); return; }
+      if (type === 'checkbox') {
+        var s = document.createElement('span');
+        s.className = 'preview-readonly-text';
+        s.textContent = el.checked ? 'Yes' : '—';
+        el.parentNode.replaceChild(s, el);
+        return;
+      }
+      if (type === 'radio') {
+        if (el.checked) {
+          var s = document.createElement('span');
+          s.className = 'preview-readonly-text';
+          var lab = el.nextElementSibling;
+          s.textContent = (lab && lab.tagName === 'LABEL') ? lab.textContent.trim() : (el.value || '');
+          el.parentNode.replaceChild(s, el);
+          if (lab && lab.tagName === 'LABEL') lab.remove();
+        } else {
+          var lab2 = el.nextElementSibling;
+          el.remove();
+          if (lab2 && lab2.tagName === 'LABEL') lab2.remove();
+        }
+        return;
+      }
+      var s = document.createElement('span');
+      s.className = 'preview-readonly-text';
+      s.textContent = el.value || '—';
+      el.parentNode.replaceChild(s, el);
+    });
+    root.querySelectorAll('button').forEach(function (el) { el.remove(); });
+  }
+
   var modalEl = document.getElementById('midtermApproverPreviewModal');
   var srcEl = document.getElementById('midtermPreviewSource');
   var bodyEl = document.getElementById('midtermPreviewModalBody');
@@ -249,12 +302,7 @@ $this->load->view('ppa_tabs');
     var clone = srcEl.cloneNode(true);
     clone.removeAttribute('id');
     clone.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
-    clone.querySelectorAll('input, select, textarea, button').forEach(function (el) {
-      try {
-        el.disabled = true;
-        el.removeAttribute('name');
-      } catch (e) {}
-    });
+    flattenPreviewToText(clone);
     bodyEl.appendChild(clone);
   });
 })();
