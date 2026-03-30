@@ -2938,6 +2938,14 @@ class MatrixController extends Controller
     public function getMatrixBudgets(Matrix $matrix)
     {
         try {
+            $sanitizeNumber = static function ($value, $default = 0.0): float {
+                if ($value === null || $value === '') {
+                    return (float) $default;
+                }
+                $clean = str_replace(',', '', (string) $value);
+                return is_numeric($clean) ? (float) $clean : (float) $default;
+            };
+
             $intramuralBudget = 0;
             $extramuralBudget = 0;
             $totalBudget = 0;
@@ -2976,15 +2984,10 @@ class MatrixController extends Controller
                         
                         if (is_array($entries)) {
                             foreach ($entries as $item) {
-                                $unitCost = floatval($item['unit_cost'] ?? 0);
-                                $units = floatval($item['units'] ?? 0);
-                                $days = floatval($item['days'] ?? 1);
-                                
-                                if ($days > 1) {
-                                    $itemTotal = $unitCost * $units * $days;
-                                } else {
-                                    $itemTotal = $unitCost * $units;
-                                }
+                                $unitCost = $sanitizeNumber($item['unit_cost'] ?? 0);
+                                $units = $sanitizeNumber($item['units'] ?? 0);
+                                $days = $sanitizeNumber($item['days'] ?? 1, 1);
+                                $itemTotal = $unitCost * $units * $days;
                                 
                                 // Add to total budget
                                 $totalBudget += $itemTotal;

@@ -636,9 +636,9 @@ class ActivityController extends Controller
                         continue;
                     }
                     $item = (array) $item;
-                    $unitCost = (float) ($item['unit_cost'] ?? 0);
-                    $units = (float) ($item['units'] ?? 0);
-                    $days = (float) ($item['days'] ?? 0);
+                    $unitCost = (float) str_replace(',', '', (string) ($item['unit_cost'] ?? 0));
+                    $units = (float) str_replace(',', '', (string) ($item['units'] ?? 0));
+                    $days = (float) str_replace(',', '', (string) ($item['days'] ?? 0));
                     $total += $unitCost * $units * $days;
                 }
                 $currentActivityBudgets[(string) $codeId] = round($total, 2);

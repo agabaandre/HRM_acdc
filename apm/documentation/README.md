@@ -25,6 +25,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 
 ### Infrastructure & Deployment
 
+- **[Environment variables (.env)](./ENVIRONMENT.md)** - Sample `.env` template ([`.env.example`](../.env.example)), setup steps, and variable reference
 - **[Deployment Guide](./DEPLOYMENT.md)** - Production deployment instructions
 - **[Queue Setup Guide](./QUEUE_SETUP_GUIDE.md)** - Laravel queue configuration and setup
 - **[Queue Troubleshooting](./QUEUE_TROUBLESHOOTING.md)** - Common queue issues and solutions

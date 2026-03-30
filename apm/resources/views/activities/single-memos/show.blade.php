@@ -639,20 +639,26 @@
                     }
                 }
 
-                                // Parse budget structure and organize by fund codes
+                                // Parse budget structure and organize by fund codes.
+                                // Always recompute totals from line items (ignore stored grand_total if inconsistent).
                                 $budgetByFundCode = [];
-                                $totalBudget = 0;
+                                $totalBudget = 0.0;
+                                $sanitizeNumber = static function ($value): float {
+                                    if ($value === null || $value === '') {
+                                        return 0.0;
+                                    }
+
+                                    return (float) str_replace(',', '', (string) $value);
+                                };
                                 
                 if (!empty($budget)) {
                     foreach ($budget as $key => $item) {
                                         if ($key === 'grand_total') {
-                                            $totalBudget = floatval($item);
-                                        } elseif (is_array($item)) {
-                                            // Handle array of budget items (like "29" => [{...}])
+                                            continue;
+                                        }
+                                        if (is_array($item)) {
                                             $fundCodeId = $key;
                                             $budgetByFundCode[$fundCodeId] = $item;
-                                        } elseif (is_numeric($item)) {
-                                            $totalBudget += floatval($item);
                                         }
                                     }
                                 }
@@ -664,21 +670,14 @@
                     $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
                 }
 
-                // If no grand_total found, calculate from items with proper days logic
-                                if ($totalBudget == 0 && !empty($budgetByFundCode)) {
+                if (!empty($budgetByFundCode)) {
                                     foreach ($budgetByFundCode as $fundCodeId => $items) {
                                         foreach ($items as $item) {
                                             if (isset($item['unit_cost']) && isset($item['units'])) {
-                                $unitCost = floatval($item['unit_cost']);
-                                $units = floatval($item['units']);
-                                $days = floatval($item['days'] ?? 1);
-
-                                // Use days when greater than 1, otherwise just unit_cost * units
-                                if ($days > 1) {
-                                    $totalBudget += $unitCost * $units * $days;
-                                } else {
-                                    $totalBudget += $unitCost * $units;
-                                }
+                                $unitCost = $sanitizeNumber($item['unit_cost'] ?? 0);
+                                $units = $sanitizeNumber($item['units'] ?? 0);
+                                $days = $sanitizeNumber($item['days'] ?? 1);
+                                $totalBudget += $unitCost * $units * $days;
                                             }
                                         }
                                     }
@@ -1135,16 +1134,10 @@
                                     <tbody>
                                                 @foreach ($items as $item)
                                                     @php
-                                                        $unitCost = floatval($item['unit_cost'] ?? 0);
-                                                        $units = floatval($item['units'] ?? 0);
-                                                        $days = floatval($item['days'] ?? 1);
-
-                                                        // Use days when greater than 1, otherwise just unit_cost * units
-                                                        if ($days > 1) {
-                                                            $total = $unitCost * $units * $days;
-                                                        } else {
-                                                            $total = $unitCost * $units;
-                                                        }
+                                                        $unitCost = $sanitizeNumber($item['unit_cost'] ?? 0);
+                                                        $units = $sanitizeNumber($item['units'] ?? 0);
+                                                        $days = $sanitizeNumber($item['days'] ?? 1);
+                                                        $total = $unitCost * $units * $days;
 
                                                         $groupTotal += $total;
                                                         $grandTotal += $total;

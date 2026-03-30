@@ -537,6 +537,13 @@
                                     <td class="px-3 py-3 text-center">
                                         @php
                                             $budget = is_array($memo->budget_breakdown) ? $memo->budget_breakdown : json_decode($memo->budget_breakdown , true);
+                                            $sanitizeNumber = static function ($value): float {
+                                                if ($value === null || $value === '') {
+                                                    return 0.0;
+                                                }
+
+                                                return (float) str_replace(',', '', (string) $value);
+                                            };
                                             $totalBudget = 0;
 
                                             if (is_array($budget)) {
@@ -546,16 +553,10 @@
 
                                                     if (is_array($entries)) {
                                                         foreach ($entries as $item) {
-                                                            $unitCost = floatval($item['unit_cost'] ?? 0);
-                                                            $units = floatval($item['units'] ?? 0);
-                                                            $days = floatval($item['days'] ?? 1);
-                                                            
-                                                            // Use days when greater than 1, otherwise just unit_cost * units
-                                                            if ($days > 1) {
-                                                                $itemTotal = $unitCost * $units * $days;
-                                                            } else {
-                                                                $itemTotal = $unitCost * $units;
-                                                            }
+                                                            $unitCost = $sanitizeNumber($item['unit_cost'] ?? 0);
+                                                            $units = $sanitizeNumber($item['units'] ?? 0);
+                                                            $days = $sanitizeNumber($item['days'] ?? 1);
+                                                            $itemTotal = $unitCost * $units * $days;
                                                             
                                                             $totalBudget += $itemTotal;
                                                         }
@@ -1328,7 +1329,7 @@ function renderActivities(activities) {
     initializeTooltips();
 }
 
-// Calculate budget from breakdown (same logic as activities edit/show: use grand_total/total when present, else sum from items)
+// Calculate budget from breakdown by recomputing line items (do not trust stored grand_total/total)
 function calculateBudget(budgetBreakdown) {
     if (!budgetBreakdown) return 0;
     
@@ -1344,37 +1345,37 @@ function calculateBudget(budgetBreakdown) {
     if (Array.isArray(budget)) return 0;
     if (!budget || typeof budget !== 'object') return 0;
 
-    // Use stored grand_total or total when present (fix for Intramural and other activities that store the total here)
-    const grandTotal = budget.grand_total;
-    if (grandTotal != null && grandTotal !== '' && !Array.isArray(grandTotal)) {
-        const n = parseFloat(grandTotal);
-        if (!isNaN(n)) return n;
-    }
-    const total = budget.total;
-    if (total != null && total !== '' && !Array.isArray(total)) {
-        const n = parseFloat(total);
-        if (!isNaN(n)) return n;
-    }
-
     let totalBudget = 0;
+    const sanitizeNumber = (value, fallback = 0) => {
+        if (value == null || value === '') return fallback;
+        const n = parseFloat(String(value).replace(/,/g, ''));
+        return Number.isFinite(n) ? n : fallback;
+    };
+
     Object.keys(budget).forEach(key => {
         if (key === 'grand_total' || key === 'total') return;
 
         const entries = budget[key];
         if (Array.isArray(entries)) {
             entries.forEach(item => {
-                const unitCost = parseFloat(item.unit_cost ?? item.unit_price ?? 0) || 0;
-                const units = parseFloat(item.units ?? item.quantity ?? 0) || 0;
-                const days = parseFloat(item.days ?? 1) || 1;
-
-                if (days > 1) {
-                    totalBudget += unitCost * units * days;
-                } else {
-                    totalBudget += unitCost * units;
-                }
+                const unitCost = sanitizeNumber(item.unit_cost ?? item.unit_price ?? 0);
+                const units = sanitizeNumber(item.units ?? item.quantity ?? 0);
+                const days = sanitizeNumber(item.days ?? 1, 1);
+                totalBudget += unitCost * units * days;
+            });
+        } else if (entries && typeof entries === 'object') {
+            // Handle keyed-object rows like {"228":{"32":{...},"31":{...}}}
+            Object.values(entries).forEach(item => {
+                if (!item || typeof item !== 'object') return;
+                const unitCost = sanitizeNumber(item.unit_cost ?? item.unit_price ?? 0);
+                const units = sanitizeNumber(item.units ?? item.quantity ?? 0);
+                const days = sanitizeNumber(item.days ?? 1, 1);
+                totalBudget += unitCost * units * days;
             });
         } else if (typeof entries === 'number' && !isNaN(entries)) {
             totalBudget += entries;
+        } else if (typeof entries === 'string' && entries.trim() !== '') {
+            totalBudget += sanitizeNumber(entries);
         }
     });
 
