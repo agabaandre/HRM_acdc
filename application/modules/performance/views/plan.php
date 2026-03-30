@@ -453,14 +453,8 @@ if($showApprovalBtns!='show'){
       d.textContent = el.value || '';
       el.parentNode.replaceChild(d, el);
     });
-    root.querySelectorAll('select').forEach(function (el) {
-      var d = document.createElement('div');
-      d.className = 'preview-readonly-text';
-      var t = [];
-      if (el.selectedOptions) for (var i = 0; i < el.selectedOptions.length; i++) t.push(el.selectedOptions[i].text);
-      d.textContent = t.length ? t.join(', ') : '—';
-      el.parentNode.replaceChild(d, el);
-    });
+    root.querySelectorAll('.select2-container').forEach(function (el) { el.remove(); });
+    root.querySelectorAll('select').forEach(function (el) { el.remove(); });
     root.querySelectorAll('input').forEach(function (el) {
       var type = (el.type || 'text').toLowerCase();
       if (type === 'hidden') return;
