@@ -10,6 +10,7 @@ REST API for the Approvals Management (APM) module. Used by the mobile app, appr
 |----------|----------|
 | **OpenAPI 3.0 spec** | [APM_API_OPENAPI.yaml](./APM_API_OPENAPI.yaml) |
 | **Interactive docs (Swagger UI)** | `/docs` when the app is running (e.g. `http://localhost/staff/apm/docs`) |
+| **Environment / `.env` sample** | [ENVIRONMENT.md](./ENVIRONMENT.md) and [`.env.example`](../.env.example) |
 | **Main docs index** | [README.md](./README.md) |
 
 ---
