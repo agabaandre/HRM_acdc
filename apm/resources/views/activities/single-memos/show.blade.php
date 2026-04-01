@@ -469,6 +469,13 @@
          .summary-table .table tr:nth-child(even) .field-label {
              background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
     }
+
+    /* Single memo: origin label (matrix-derived vs stand-alone) */
+    .single-memo-origin-pill {
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+    }
 </style>
 @endsection
 
@@ -1462,17 +1469,72 @@
                         </div>
                     @endif
 
-                    <!-- Approval trail (single list: promoted matrix steps + single-memo workflow) -->
+                    <!-- Approval Trail: single list (matrix steps are in approval_trails after conversion) -->
+                    @php
+                        $convertedFromMatrix = $activity->activityApprovalTrails && $activity->activityApprovalTrails->count() > 0;
+                        $convertToSingleMemoTrail = null;
+                        if ($convertedFromMatrix && $activity->activityApprovalTrails) {
+                            $convertToSingleMemoTrail = $activity->activityApprovalTrails
+                                ->filter(function ($t) {
+                                    $a = strtolower((string) ($t->action ?? ''));
+                                    return in_array($a, ['convert_to_single_memo', 'converted_to_single_memo'], true);
+                                })
+                                ->sortBy('id')
+                                ->last();
+                        }
+                        $singleMemoConvertedByName = null;
+                        $singleMemoConvertedAt = null;
+                        if ($convertToSingleMemoTrail) {
+                            $convApprover = $convertToSingleMemoTrail->oicStaff ?? $convertToSingleMemoTrail->staff;
+                            $singleMemoConvertedByName = $convApprover
+                                ? trim(($convApprover->title ?? '') . ' ' . ($convApprover->fname ?? '') . ' ' . ($convApprover->lname ?? '') . ' ' . ($convApprover->oname ?? ''))
+                                : null;
+                            if ($singleMemoConvertedByName === '' || $singleMemoConvertedByName === null) {
+                                $singleMemoConvertedByName = $convApprover && isset($convApprover->staff_id)
+                                    ? 'Staff #' . $convApprover->staff_id
+                                    : null;
+                            }
+                            $singleMemoConvertedAt = $convertToSingleMemoTrail->created_at;
+                        }
+                    @endphp
                     <div class="row">
                         <div class="col-12">
                             @if (isset($activity->approvalTrails) && $activity->approvalTrails->count() > 0)
                                 <div class="card sidebar-card border-0">
                                     <div class="card-header bg-transparent border-0 py-3">
-                                        <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
-                                            <i class="bx bx-file-text"></i>
-                                            Approval trail
-                                        </h6>
-                                        <small class="text-muted">Full approval history for this memo (includes steps from the matrix, now kept in this trail)</small>
+                                        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                                            <div class="flex-grow-1" style="min-width: 200px;">
+                                                <h6 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                                                    <i class="bx bx-list-check text-secondary"></i>
+                                                    Approval history
+                                                </h6>
+                                                <small class="text-muted d-block">
+                                                    Full chronological record for this memo, including any steps carried over from matrix review.
+                                                </small>
+                                                @if ($convertedFromMatrix && $singleMemoConvertedByName)
+                                                    <div class="mt-2 d-flex align-items-start gap-2 small">
+                                                        <i class="bx bx-transfer-alt text-secondary mt-1"></i>
+                                                        <span class="text-secondary">
+                                                            Converted to single memo by <span class="fw-semibold text-dark">{{ $singleMemoConvertedByName }}</span>
+                                                            @if ($singleMemoConvertedAt)
+                                                                <span class="text-muted">&middot; {{ $singleMemoConvertedAt->format('j') }}<sup>{{ $singleMemoConvertedAt->format('S') }}</sup> {{ $singleMemoConvertedAt->format('M Y, g:i a') }}</span>
+                                                            @endif
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            @if ($convertedFromMatrix)
+                                                <span class="single-memo-origin-pill align-self-center text-nowrap rounded-pill px-3 py-2 border bg-white text-secondary shadow-sm">
+                                                    <i class="bx bx-grid-alt me-1 align-middle"></i>
+                                                    <span class="align-middle">Originally a matrix line item</span>
+                                                </span>
+                                            @else
+                                                <span class="single-memo-origin-pill align-self-center text-nowrap rounded-pill px-3 py-2 border bg-white text-muted shadow-sm">
+                                                    <i class="bx bx-file-blank me-1 align-middle"></i>
+                                                    <span class="align-middle">Created as a single memo</span>
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
                                     <div class="card-body">
                                         @include('partials.approval-trail', ['resource' => $activity])
@@ -1481,11 +1543,39 @@
                             @else
                                 <div class="card sidebar-card border-0">
                                     <div class="card-header bg-transparent border-0 py-3">
-                                        <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
-                                            <i class="bx bx-file-text"></i>
-                                            Approval trail
-                                        </h6>
-                                        <small class="text-muted">Full approval history for this memo</small>
+                                        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                                            <div class="flex-grow-1" style="min-width: 200px;">
+                                                <h6 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                                                    <i class="bx bx-list-check text-secondary"></i>
+                                                    Approval history
+                                                </h6>
+                                                <small class="text-muted d-block">
+                                                    Approvals and returns will appear here after you submit this memo.
+                                                </small>
+                                                @if ($convertedFromMatrix && $singleMemoConvertedByName)
+                                                    <div class="mt-2 d-flex align-items-start gap-2 small">
+                                                        <i class="bx bx-transfer-alt text-secondary mt-1"></i>
+                                                        <span class="text-secondary">
+                                                            Converted to single memo by <span class="fw-semibold text-dark">{{ $singleMemoConvertedByName }}</span>
+                                                            @if ($singleMemoConvertedAt)
+                                                                <span class="text-muted">&middot; {{ $singleMemoConvertedAt->format('j') }}<sup>{{ $singleMemoConvertedAt->format('S') }}</sup> {{ $singleMemoConvertedAt->format('M Y, g:i a') }}</span>
+                                                            @endif
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            @if ($convertedFromMatrix)
+                                                <span class="single-memo-origin-pill align-self-center text-nowrap rounded-pill px-3 py-2 border bg-white text-secondary shadow-sm">
+                                                    <i class="bx bx-grid-alt me-1 align-middle"></i>
+                                                    <span class="align-middle">Originally a matrix line item</span>
+                                                </span>
+                                            @else
+                                                <span class="single-memo-origin-pill align-self-center text-nowrap rounded-pill px-3 py-2 border bg-white text-muted shadow-sm">
+                                                    <i class="bx bx-file-blank me-1 align-middle"></i>
+                                                    <span class="align-middle">Created as a single memo</span>
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
                                     <div class="card-body">
                                         <div class="text-center text-muted py-4">
