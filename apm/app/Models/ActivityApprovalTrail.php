@@ -94,6 +94,47 @@ class ActivityApprovalTrail extends Model
     }
 
     /**
+     * Map activity_approval_trails.action when promoting rows to approval_trails (convert to single memo).
+     * Matrix activity trails use "passed"; single-memo workflow expects "approved".
+     * The convert action is stored as "convert_to_single_memo"; promoted trail should read as "returned".
+     */
+    public static function mapActionForPromotionToApprovalTrail(?string $action): string
+    {
+        $normalized = strtolower((string) $action);
+
+        return match ($normalized) {
+            'passed' => 'approved',
+            'convert_to_single_memo', 'converted_to_single_memo' => 'returned',
+            default => $action ?? '',
+        };
+    }
+
+    /**
+     * Insert a row into approval_trails when promoting matrix activity trails to single-memo workflow.
+     * Preserves created_at / updated_at from the source activity trail.
+     */
+    public static function createPromotedApprovalTrail(int $activityId, self $t): ApprovalTrail
+    {
+        $trail = new ApprovalTrail([
+            'model_id' => $activityId,
+            'model_type' => Activity::class,
+            'matrix_id' => $t->matrix_id,
+            'staff_id' => $t->staff_id,
+            'oic_staff_id' => $t->oic_staff_id,
+            'action' => self::mapActionForPromotionToApprovalTrail($t->action),
+            'remarks' => $t->remarks,
+            'approval_order' => $t->approval_order,
+            'forward_workflow_id' => $t->forward_workflow_id,
+            'is_archived' => $t->is_archived ?? 0,
+        ]);
+        $trail->created_at = $t->created_at;
+        $trail->updated_at = $t->updated_at ?? $t->created_at;
+        $trail->save(['timestamps' => false]);
+
+        return $trail;
+    }
+
+    /**
      * Scope to get non-archived approval trails.
      */
     public function scopeActive($query)

@@ -71,6 +71,43 @@ php artisan approval:manage-trails archive --matrix-id=123 --days=30
 php artisan approval:manage-trails cleanup --days=180 --force
 ```
 
+### 3. Fix single-memo promoted approval trails (`apm:fix-single-memo-promoted-approval-trails`)
+
+When an approver **converts** a matrix line item to a **single memo**, the system copies `activity_approval_trails` into morph `approval_trails` for the `Activity`. Older conversions may still have matrix-style actions (`passed`, `convert_to_single_memo`) or wrong timestamps. This command repairs **existing** data.
+
+**Run from the `apm/` directory.**
+
+```bash
+# Preview changes (recommended first)
+php artisan apm:fix-single-memo-promoted-approval-trails --dry-run
+
+# Apply for all single-memo activities
+php artisan apm:fix-single-memo-promoted-approval-trails
+
+# One activity only
+php artisan apm:fix-single-memo-promoted-approval-trails --activity-id=118 --dry-run
+php artisan apm:fix-single-memo-promoted-approval-trails --activity-id=118
+```
+
+**Options**
+
+| Option | Description |
+|--------|-------------|
+| `--dry-run` | List what would change; no writes |
+| `--activity-id=` | Limit to one activity |
+
+**Behaviour summary**
+
+- Targets rows where `activities.is_single_memo` is true.
+- Pairs `activity_approval_trails` with `approval_trails` (same activity, `model_type` = `Activity`) by **ascending `id`**, for the first *N* rows where *N* = min(counts).
+- Maps actions: `passed` → `approved`; `convert_to_single_memo` / `converted_to_single_memo` → `returned`.
+- Restores `created_at` / `updated_at` from the paired activity trail.
+- Bumps the **returned** (convert) row’s timestamp if needed so it sorts as the **latest** among that promoted batch (correct “last action on top” in descending date order).
+
+**Note:** If extra `approval_trails` were inserted before or between promoted rows, index pairing may not match reality—use `--activity-id` and `--dry-run` to validate. New conversions use `ActivityApprovalTrail::createPromotedApprovalTrail()` so timestamps and mapped actions are written correctly at convert time.
+
+See also: [Jobs and Commands documentation](./JOBS_AND_COMMANDS_DOCUMENTATION.md) (same command, full reference).
+
 ## Job: ArchiveOldApprovalTrailsJob
 
 ### Purpose

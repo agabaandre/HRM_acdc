@@ -74,7 +74,8 @@ The Approvals Management (APM) system is a Laravel-based application for managin
 
 ### Core Documentation
 
-- **[Approval Trail Management](./documentation/APPROVAL_TRAIL_MANAGEMENT.md)** - Approval trail tracking and management
+- **[Approval Trail Management](./documentation/APPROVAL_TRAIL_MANAGEMENT.md)** - Approval trail tracking and management (incl. `apm:fix-single-memo-promoted-approval-trails`)
+- **[Jobs and Commands](./documentation/JOBS_AND_COMMANDS_DOCUMENTATION.md)** - Artisan commands, jobs, and schedules
 - **[Document Numbering System](./documentation/DOCUMENT_NUMBERING_SYSTEM.md)** - Document number generation
 - **[Queue Setup Guide](./documentation/QUEUE_SETUP_GUIDE.md)** - Laravel queue configuration
 - **[Deployment Guide](./documentation/DEPLOYMENT.md)** - Production deployment

@@ -16,7 +16,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 
 ### Core Features
 
-- **[Approval Trail Management](./APPROVAL_TRAIL_MANAGEMENT.md)** - Complete guide to approval trail tracking and management
+- **[Approval Trail Management](./APPROVAL_TRAIL_MANAGEMENT.md)** - Complete guide to approval trail tracking and management (includes fixing promoted single-memo trails: `apm:fix-single-memo-promoted-approval-trails`)
 - **[Approval Trail Archiving](./APPROVAL_TRAIL_ARCHIVING.md)** - How to archive old approval trails and manage storage
 - **[Document Numbering System](./DOCUMENT_NUMBERING_SYSTEM.md)** - Document number generation and management
 - **[Document Number Management](./DOCUMENT_NUMBER_MANAGEMENT.md)** - Advanced document numbering features
@@ -43,6 +43,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 
 - **[Sync Improvements](./SYNC_IMPROVEMENTS.md)** - Data synchronization enhancements
 - **[System Updates](./SYSTEM_UPDATES.md)** - Changelog of new features and updates (signature verification, etc.)
+- **[Jobs and Commands](./JOBS_AND_COMMANDS_DOCUMENTATION.md)** - Background jobs, schedulers, and Artisan command reference (including `apm:fix-single-memo-promoted-approval-trails`)
 
 ## 🚀 Quick Commands
 
@@ -82,6 +83,16 @@ php artisan cache:clear
 php artisan config:clear
 php artisan route:clear
 php artisan view:clear
+```
+
+### Single memo / matrix promotion trail fix
+
+From the `apm/` directory. Repairs `approval_trails` for activities already converted to single memos (action labels and timestamps from `activity_approval_trails`). Full detail: [Jobs and Commands → `apm:fix-single-memo-promoted-approval-trails`](./JOBS_AND_COMMANDS_DOCUMENTATION.md#apmfix-single-memo-promoted-approval-trails).
+
+```bash
+php artisan apm:fix-single-memo-promoted-approval-trails --dry-run
+php artisan apm:fix-single-memo-promoted-approval-trails
+php artisan apm:fix-single-memo-promoted-approval-trails --activity-id=118 --dry-run
 ```
 
 ### Firebase (FCM) pending-approval pushes
