@@ -193,6 +193,23 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 - **Usage**: `php artisan approval:manage-trails`
 - **Output**: Provides approval trail management options
 
+#### `apm:fix-single-memo-promoted-approval-trails`
+- **Purpose**: One-time / maintenance fix for activities already converted from a **matrix memo** to a **single memo**. It realigns rows in `approval_trails` (morph `Activity`) with the source `activity_approval_trails` after promotion.
+- **When to use**: Historical data where promoted trails still store matrix-style actions (`passed`, `convert_to_single_memo`, `converted_to_single_memo`) instead of single-memo workflow actions (`approved`, `returned`), or where `created_at` / `updated_at` were lost on copy.
+- **What it does** (for each `is_single_memo` activity, pairing the first *N* rows by `id` order, *N* = min(activity trails, approval trails)):
+  - Sets `approval_trails.action` using the same mapping as live conversion: `passed` → `approved`; `convert_to_single_memo` / `converted_to_single_memo` → `returned`; other actions unchanged.
+  - Copies `created_at` and `updated_at` from the paired `activity_approval_trails` row.
+  - Ensures the **returned** row (from convert-to-single-memo) has a timestamp **strictly after** every other paired row so it appears **first** when sorting trails by `created_at` descending (last action on top).
+- **Caveat**: Pairing assumes promoted `approval_trails` were inserted **before** any later single-memo workflow rows, in the same order as `activity_approval_trails`. If counts differ, only the first *N* pairs are updated; review with `--dry-run`.
+- **Usage** (run from the `apm/` directory):
+  - `php artisan apm:fix-single-memo-promoted-approval-trails --dry-run` — report changes only
+  - `php artisan apm:fix-single-memo-promoted-approval-trails` — apply fixes
+  - `php artisan apm:fix-single-memo-promoted-approval-trails --activity-id=118` — limit to one activity (optional with `--dry-run`)
+- **Options**:
+  - `--dry-run` — no database writes
+  - `--activity-id=` — process only that activity ID
+- **Related code**: `ActivityApprovalTrail::mapActionForPromotionToApprovalTrail()`, `ActivityApprovalTrail::createPromotedApprovalTrail()` (new conversions preserve source timestamps automatically).
+
 ### System Health Commands
 
 #### `system:health-check`
@@ -456,5 +473,5 @@ For issues or questions regarding jobs and commands:
 
 ---
 
-*Last Updated: October 10, 2025*
-*Version: 1.0*
+*Last updated: March 30, 2026*
+*Version: 1.1*

@@ -1494,18 +1494,7 @@ class ActivityController extends Controller
                 ->orderBy('id')
                 ->get();
             foreach ($activityTrails as $t) {
-                ApprovalTrail::create([
-                    'model_id' => $activity->id,
-                    'model_type' => Activity::class,
-                    'matrix_id' => $t->matrix_id,
-                    'staff_id' => $t->staff_id,
-                    'oic_staff_id' => $t->oic_staff_id,
-                    'action' => $t->action,
-                    'remarks' => $t->remarks,
-                    'approval_order' => $t->approval_order,
-                    'forward_workflow_id' => $t->forward_workflow_id,
-                    'is_archived' => $t->is_archived ?? 0,
-                ]);
+                ActivityApprovalTrail::createPromotedApprovalTrail($activity->id, $t);
             }
 
             // next_approval_level from mother matrix at time of return
