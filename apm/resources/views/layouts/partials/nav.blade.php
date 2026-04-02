@@ -64,6 +64,11 @@
             'title' => 'Cost Items',
         ],
         [
+            'route' => 'apm-api-users.index',
+            'icon' => 'fas fa-key',
+            'title' => 'API users',
+        ],
+        [
             'route' => 'jobs.index',
             'icon' => 'fas fa-tasks',
             'title' => 'Jobs',
@@ -295,7 +300,7 @@
             <!-- Settings -->
             @if (in_array(89, user_session('permissions', [])))
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') ? 'active' : '' }}"
+                    <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('apm-api-users*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') ? 'active' : '' }}"
                         href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                         <div class="menu-title">Settings</div>

@@ -208,6 +208,10 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     
     // Staff resource routes
     Route::resource('staff', App\Http\Controllers\StaffController::class);
+
+    Route::get('apm-api-users', [App\Http\Controllers\ApmApiUserController::class, 'index'])->name('apm-api-users.index');
+    Route::patch('apm-api-users/{apmApiUser}', [App\Http\Controllers\ApmApiUserController::class, 'updateAllowEmailLogin'])->name('apm-api-users.update-allow-email-login');
+
     Route::resource('request-types', App\Http\Controllers\RequestTypeController::class);
     Route::get('locations/ajax', [App\Http\Controllers\LocationController::class, 'getLocationsAjax'])->name('locations.ajax');
     Route::resource('locations', App\Http\Controllers\LocationController::class)->except(['destroy']);
