@@ -32,6 +32,7 @@ class ApmApiUser extends Authenticatable implements JWTSubject
         'is_verfied',
         'langauge',
         'email',
+        'allow_email_login',
         'last_used_at',
         'firebase_token',
         'remember_token',
@@ -48,6 +49,7 @@ class ApmApiUser extends Authenticatable implements JWTSubject
     {
         return [
             'status' => 'boolean',
+            'allow_email_login' => 'boolean',
             'last_used_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',

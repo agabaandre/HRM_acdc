@@ -39,6 +39,12 @@ class ApmAuthController extends Controller
             ]);
         }
 
+        if (!$user->allow_email_login) {
+            throw ValidationException::withMessages([
+                'email' => ['Email/password sign-in is not enabled for this account. Use Microsoft sign-in or ask an administrator to enable it.'],
+            ]);
+        }
+
         $user->update(['last_used_at' => now()]);
 
         $token = auth('api')->login($user);
@@ -304,6 +310,7 @@ class ApmAuthController extends Controller
             'user_id' => $user->user_id,
             'auth_staff_id' => $user->auth_staff_id,
             'email' => $user->email,
+            'allow_email_login' => (bool) $user->allow_email_login,
             'name' => $session['name'],
             'division_id' => $session['division_id'],
             'associated_divisions' => $associatedDivisions,

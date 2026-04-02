@@ -97,6 +97,7 @@ class SyncUsersCommand extends Command
                         'is_verfied' => (int) ($row['is_verfied'] ?? 0),
                         'langauge' => $this->truncate($row['langauge'] ?? 'en', 100),
                         'email' => $this->truncate($row['email'] ?? null, 255),
+                        'allow_email_login' => !empty($row['allow_email_login']),
                         'updated_at' => now(),
                     ];
 
