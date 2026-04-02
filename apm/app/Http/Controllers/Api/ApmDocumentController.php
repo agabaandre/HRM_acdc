@@ -855,10 +855,24 @@ class ApmDocumentController extends Controller
     }
 
     /**
+     * Human-readable name for API (first + last), or null.
+     */
+    private function formatStaffDisplayName(?Staff $staff): ?string
+    {
+        if ($staff === null) {
+            return null;
+        }
+        $name = trim(($staff->fname ?? '') . ' ' . ($staff->lname ?? ''));
+
+        return $name !== '' ? $name : null;
+    }
+
+    /**
      * Current workflow step and role for document API payloads.
      * Matrix line items (activity, is_single_memo = 0): matrix approval_level + matrix workflow definition.
      * Single memo: activity approval_level + activity workflow definition.
      * Other types: that model's approval_level + its workflow_definition accessor.
+     * Approver name comes from the same model's current_actor accessor (matrix for matrix activities).
      *
      * @param  string  $documentType  API document_type value (activity, single_memo, matrix, …).
      */
@@ -866,11 +880,13 @@ class ApmDocumentController extends Controller
     {
         $approvalOrder = null;
         $def = null;
+        $actorSource = null;
 
         if ($documentType === 'matrix' && $model instanceof Matrix) {
             $model->loadMissing('division');
             $approvalOrder = $model->approval_level;
             $def = $model->workflow_definition;
+            $actorSource = $model;
         } elseif (($documentType === 'activity' || $documentType === 'single_memo') && $model instanceof Activity) {
             if (!$model->is_single_memo) {
                 $model->loadMissing('matrix.division');
@@ -878,38 +894,51 @@ class ApmDocumentController extends Controller
                 if ($matrix) {
                     $approvalOrder = $matrix->approval_level;
                     $def = $matrix->workflow_definition;
+                    $actorSource = $matrix;
                 }
             } else {
                 $model->loadMissing('division');
                 $approvalOrder = $model->approval_level;
                 $def = $model->workflow_definition;
+                $actorSource = $model;
             }
         } elseif ($documentType === 'special_memo' && $model instanceof SpecialMemo) {
             $model->loadMissing('division');
             $approvalOrder = $model->approval_level;
             $def = $model->workflow_definition;
+            $actorSource = $model;
         } elseif ($documentType === 'non_travel_memo' && $model instanceof NonTravelMemo) {
             $model->loadMissing('division');
             $approvalOrder = $model->approval_level;
             $def = $model->workflow_definition;
+            $actorSource = $model;
         } elseif ($documentType === 'service_request' && $model instanceof ServiceRequest) {
             $model->loadMissing('division');
             $approvalOrder = $model->approval_level;
             $def = $model->workflow_definition;
+            $actorSource = $model;
         } elseif ($documentType === 'arf' && $model instanceof RequestARF) {
             $model->loadMissing('division');
             $approvalOrder = $model->approval_level;
             $def = $model->workflow_definition;
+            $actorSource = $model;
         } elseif ($documentType === 'change_request' && $model instanceof ChangeRequest) {
             $model->loadMissing('division');
             $approvalOrder = $model->approval_level;
             $def = $model->workflow_definition;
+            $actorSource = $model;
+        }
+
+        $actor = $actorSource !== null ? $actorSource->current_actor : null;
+        if (!$actor instanceof Staff) {
+            $actor = null;
         }
 
         return [
             'approval_order' => $approvalOrder !== null ? (int) $approvalOrder : null,
             'approval_role' => $def?->role,
             'workflow_definition_id' => $def?->id !== null ? (int) $def->id : null,
+            'approver_name' => $this->formatStaffDisplayName($actor),
         ];
     }
 

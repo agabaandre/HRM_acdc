@@ -281,9 +281,9 @@ class NonTravelMemoController extends Controller
     {
         //dd($request->all());
 
-        // Get fund type to determine validation rules
-        $fundTypeId = (int) $request->input('fund_type_id', 1);
-        
+        // Forms submit `fund_type`; rules/DB use `fund_type_id` (default 1 was wrong when only `fund_type` sent).
+        $fundTypeId = $this->requestFundTypeId($request);
+
         $validationRules = [
             //'staff_id'                     => 'required|exists:staff,id',
             'date_required'                => 'required|date',
@@ -312,6 +312,11 @@ class NonTravelMemoController extends Controller
         }
         
         $data = $request->validate($validationRules);
+
+        $resolvedFundType = $data['fund_type_id'] ?? $request->input('fund_type_id', $request->input('fund_type'));
+        if ($resolvedFundType !== null && $resolvedFundType !== '') {
+            $data['fund_type_id'] = (int) $resolvedFundType;
+        }
 
         $data['staff_id'] = user_session('staff_id');
         $data['division_id'] = user_session('division_id');
@@ -362,10 +367,12 @@ class NonTravelMemoController extends Controller
            }
        }
 
-        // Prepare JSON columns
+        // Prepare JSON columns (external source may omit budget fields entirely)
         $locationJson = json_encode($data['location_id']);
-        $budgetIdJson = json_encode($data['budget_codes']);
-        $budgetBreakdownJson = json_encode($data['budget_breakdown']);
+        $budgetCodesPayload = $data['budget_codes'] ?? [];
+        $budgetBreakdownPayload = $data['budget_breakdown'] ?? [];
+        $budgetIdJson = json_encode(is_array($budgetCodesPayload) ? $budgetCodesPayload : []);
+        $budgetBreakdownJson = json_encode(is_array($budgetBreakdownPayload) ? $budgetBreakdownPayload : []);
         $attachmentsJson = json_encode($attachments);
 
         // Determine status based on action
@@ -655,9 +662,8 @@ class NonTravelMemoController extends Controller
                 ->with('error', 'You do not have permission to edit this memo.');
         }
 
-        // Get fund type to determine validation rules
-        $fundTypeId = (int) $request->input('fund_type_id', 1);
-        
+        $fundTypeId = $this->requestFundTypeId($request);
+
         $validationRules = [
             'memo_date'                    => 'required|date',
             'location_id'                  => 'required|array|min:1',
@@ -682,6 +688,11 @@ class NonTravelMemoController extends Controller
         }
         
         $data = $request->validate($validationRules);
+
+        $resolvedFundType = $data['fund_type_id'] ?? $request->input('fund_type_id', $request->input('fund_type'));
+        if ($resolvedFundType !== null && $resolvedFundType !== '') {
+            $data['fund_type_id'] = (int) $resolvedFundType;
+        }
 
         // For non-travel memos: staff_id (creator) is the responsible person and should never be changed
         // We don't include staff_id or responsible_person_id in validation rules to prevent updates
@@ -1782,5 +1793,18 @@ class NonTravelMemoController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Create/edit blades use select name="fund_type"; API and model use fund_type_id.
+     */
+    private function requestFundTypeId(Request $request): int
+    {
+        $v = $request->input('fund_type_id', $request->input('fund_type'));
+        if ($v === null || $v === '') {
+            return 1;
+        }
+
+        return (int) $v;
     }
 }
