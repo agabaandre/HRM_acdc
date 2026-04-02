@@ -247,6 +247,7 @@ class ApmDocumentController extends Controller
         $data['print_url'] = $this->getPrintUrl('special_memo', $memo);
         $data['budget_information'] = $this->buildBudgetInformation($memo, 'special_memo');
         $data = array_merge($data, $this->enrichDocumentRelations($memo, 'special_memo'));
+        $data = $this->mergeCurrentApprovalIntoDocument($data, $memo, 'special_memo');
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -264,6 +265,7 @@ class ApmDocumentController extends Controller
         $data['document_type'] = 'matrix';
         $data['approval_trails'] = $this->formatApprovalTrails($matrix->matrixApprovalTrails ?? collect());
         $data['print_url'] = $this->getPrintUrl('matrix', $matrix);
+        $data = $this->mergeCurrentApprovalIntoDocument($data, $matrix, 'matrix');
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -294,6 +296,7 @@ class ApmDocumentController extends Controller
         $data['print_url'] = $this->getPrintUrl($activity->is_single_memo ? 'single_memo' : 'activity', $activity);
         $data['budget_information'] = $this->buildBudgetInformation($activity, $activity->is_single_memo ? 'single_memo' : 'activity');
         $data = array_merge($data, $this->enrichDocumentRelations($activity, $data['document_type']));
+        $data = $this->mergeCurrentApprovalIntoDocument($data, $activity, $data['document_type']);
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -312,6 +315,7 @@ class ApmDocumentController extends Controller
         $data['print_url'] = $this->getPrintUrl('non_travel_memo', $memo);
         $data['budget_information'] = $this->buildBudgetInformation($memo, 'non_travel_memo');
         $data = array_merge($data, $this->enrichDocumentRelations($memo, 'non_travel_memo'));
+        $data = $this->mergeCurrentApprovalIntoDocument($data, $memo, 'non_travel_memo');
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -343,7 +347,7 @@ class ApmDocumentController extends Controller
         $data['approval_trails'] = $this->formatApprovalTrails($doc->approvalTrails ?? collect());
         $data['attachments'] = $this->buildAttachmentsWithUrls($doc, 'service_request', $id);
         $data['print_url'] = $this->getPrintUrl('service_request', $doc);
-        return $data;
+        return $this->mergeCurrentApprovalIntoDocument($data, $doc, 'service_request');
     }
 
     private function arf(int $id): JsonResponse
@@ -361,6 +365,7 @@ class ApmDocumentController extends Controller
         $data['print_url'] = $this->getPrintUrl('arf', $doc);
         $data['budget_information'] = $this->buildBudgetInformation($doc, 'arf');
         $data = array_merge($data, $this->enrichDocumentRelations($doc, 'arf'));
+        $data = $this->mergeCurrentApprovalIntoDocument($data, $doc, 'arf');
         return response()->json(['success' => true, 'data' => $data]);
     }
 
@@ -399,7 +404,7 @@ class ApmDocumentController extends Controller
         $data['print_url'] = $this->getPrintUrl('change_request', $doc);
         $data['budget_information'] = $this->buildBudgetInformation($doc, 'change_request');
         $data = array_merge($data, $this->enrichDocumentRelations($doc, 'change_request'));
-        return $data;
+        return $this->mergeCurrentApprovalIntoDocument($data, $doc, 'change_request');
     }
 
     /**
@@ -846,7 +851,71 @@ class ApmDocumentController extends Controller
             $data = array_merge($data, $this->enrichDocumentRelations($model, $docType));
         }
 
-        return $data;
+        return $this->mergeCurrentApprovalIntoDocument($data, $model, $docType);
+    }
+
+    /**
+     * Current workflow step and role for document API payloads.
+     * Matrix line items (activity, is_single_memo = 0): matrix approval_level + matrix workflow definition.
+     * Single memo: activity approval_level + activity workflow definition.
+     * Other types: that model's approval_level + its workflow_definition accessor.
+     *
+     * @param  string  $documentType  API document_type value (activity, single_memo, matrix, …).
+     */
+    private function currentApprovalApiFields(object $model, string $documentType): array
+    {
+        $approvalOrder = null;
+        $def = null;
+
+        if ($documentType === 'matrix' && $model instanceof Matrix) {
+            $model->loadMissing('division');
+            $approvalOrder = $model->approval_level;
+            $def = $model->workflow_definition;
+        } elseif (($documentType === 'activity' || $documentType === 'single_memo') && $model instanceof Activity) {
+            if (!$model->is_single_memo) {
+                $model->loadMissing('matrix.division');
+                $matrix = $model->matrix;
+                if ($matrix) {
+                    $approvalOrder = $matrix->approval_level;
+                    $def = $matrix->workflow_definition;
+                }
+            } else {
+                $model->loadMissing('division');
+                $approvalOrder = $model->approval_level;
+                $def = $model->workflow_definition;
+            }
+        } elseif ($documentType === 'special_memo' && $model instanceof SpecialMemo) {
+            $model->loadMissing('division');
+            $approvalOrder = $model->approval_level;
+            $def = $model->workflow_definition;
+        } elseif ($documentType === 'non_travel_memo' && $model instanceof NonTravelMemo) {
+            $model->loadMissing('division');
+            $approvalOrder = $model->approval_level;
+            $def = $model->workflow_definition;
+        } elseif ($documentType === 'service_request' && $model instanceof ServiceRequest) {
+            $model->loadMissing('division');
+            $approvalOrder = $model->approval_level;
+            $def = $model->workflow_definition;
+        } elseif ($documentType === 'arf' && $model instanceof RequestARF) {
+            $model->loadMissing('division');
+            $approvalOrder = $model->approval_level;
+            $def = $model->workflow_definition;
+        } elseif ($documentType === 'change_request' && $model instanceof ChangeRequest) {
+            $model->loadMissing('division');
+            $approvalOrder = $model->approval_level;
+            $def = $model->workflow_definition;
+        }
+
+        return [
+            'approval_order' => $approvalOrder !== null ? (int) $approvalOrder : null,
+            'approval_role' => $def?->role,
+            'workflow_definition_id' => $def?->id !== null ? (int) $def->id : null,
+        ];
+    }
+
+    private function mergeCurrentApprovalIntoDocument(array $data, object $model, string $documentType): array
+    {
+        return array_merge($data, $this->currentApprovalApiFields($model, $documentType));
     }
 
     /**
