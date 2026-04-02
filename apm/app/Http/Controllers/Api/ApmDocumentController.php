@@ -965,6 +965,65 @@ class ApmDocumentController extends Controller
         };
     }
 
+    /**
+     * Collect fund_code primary keys from budget_breakdown keys, model budget_id, and activity activity_budget rows.
+     *
+     * @param  array<int|string>  $breakdownFundCodeIds
+     * @return array<int>
+     */
+    private function mergeFundCodeIdsForBudget(object $model, array $breakdownFundCodeIds): array
+    {
+        $ids = [];
+        foreach ($breakdownFundCodeIds as $id) {
+            if (is_numeric($id) && (int) $id > 0) {
+                $ids[] = (int) $id;
+            }
+        }
+        $budgetId = $model->budget_id ?? null;
+        if (is_string($budgetId)) {
+            $budgetId = json_decode($budgetId, true);
+        }
+        if (is_array($budgetId)) {
+            foreach ($budgetId as $bid) {
+                if (is_numeric($bid) && (int) $bid > 0) {
+                    $ids[] = (int) $bid;
+                }
+            }
+        }
+        if (method_exists($model, 'activity_budget')) {
+            $rows = $model->relationLoaded('activity_budget')
+                ? $model->activity_budget
+                : null;
+            if ($rows) {
+                foreach ($rows as $row) {
+                    $fc = $row->fund_code ?? null;
+                    if (is_numeric($fc) && (int) $fc > 0) {
+                        $ids[] = (int) $fc;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($ids, fn ($id) => $id > 0)));
+    }
+
+    /** @return array{id: int, code: mixed, activity: mixed, fund_type_name: mixed, funder_name: mixed, partner_name: mixed}|null */
+    private function fundCodeToBudgetApiArray(?FundCode $fc): ?array
+    {
+        if (!$fc) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $fc->id,
+            'code' => $fc->code,
+            'activity' => $fc->activity ?? null,
+            'fund_type_name' => $fc->fundType->name ?? null,
+            'funder_name' => $fc->funder->name ?? null,
+            'partner_name' => $fc->partner->name ?? null,
+        ];
+    }
+
     /** Travel-style: budget_breakdown keyed by fund_code_id, items have cost, unit_cost, units, days, description. */
     private function buildBudgetTravelStyle(object $model, $fundType): array
     {
@@ -985,7 +1044,7 @@ class ApmDocumentController extends Controller
             if (!is_array($item)) {
                 continue;
             }
-            $fundCodeId = is_numeric($key) ? (int) $key : $key;
+            $fundCodeId = is_numeric($key) ? (int) $key : 0;
             $items = [];
             $groupTotal = 0;
             foreach ($item as $row) {
@@ -1008,7 +1067,7 @@ class ApmDocumentController extends Controller
             }
             $total += $groupTotal;
             $byFundCode[] = [
-                'fund_code_id' => $fundCodeId,
+                'fund_code_id' => $fundCodeId > 0 ? $fundCodeId : null,
                 'items' => $items,
                 'group_total' => round($groupTotal, 2),
             ];
@@ -1016,30 +1075,32 @@ class ApmDocumentController extends Controller
         if ($total == 0 && !empty($byFundCode)) {
             $total = array_sum(array_column($byFundCode, 'group_total'));
         }
-        $fundCodeIds = array_unique(array_column($byFundCode, 'fund_code_id'));
-        $fundCodes = FundCode::with(['fundType', 'funder', 'partner'])->whereIn('id', $fundCodeIds)->get()->keyBy('id');
+        $breakdownIds = array_filter(array_column($byFundCode, 'fund_code_id'), fn ($id) => $id !== null && (int) $id > 0);
+        $allFundCodeIds = $this->mergeFundCodeIdsForBudget($model, $breakdownIds);
+        $fundCodesByIntId = collect();
+        if (!empty($allFundCodeIds)) {
+            $fundCodesByIntId = FundCode::with(['fundType', 'funder', 'partner'])
+                ->whereIn('id', $allFundCodeIds)
+                ->get()
+                ->keyBy(fn (FundCode $fc) => (int) $fc->id);
+        }
         $fundCodesList = [];
         foreach ($byFundCode as &$group) {
-            $fc = $fundCodes->get($group['fund_code_id']);
-            $group['fund_code'] = $fc ? [
-                'id' => $fc->id,
-                'code' => $fc->code,
-                'activity' => $fc->activity ?? null,
-                'fund_type_name' => $fc->fundType->name ?? null,
-                'funder_name' => $fc->funder->name ?? null,
-                'partner_name' => $fc->partner->name ?? null,
-            ] : null;
-            if ($fc && !isset($fundCodesList[$fc->id])) {
-                $fundCodesList[$fc->id] = [
-                    'id' => $fc->id,
-                    'code' => $fc->code,
-                    'activity' => $fc->activity ?? null,
-                    'fund_type_name' => $fc->fundType->name ?? null,
-                    'funder_name' => $fc->funder->name ?? null,
-                    'partner_name' => $fc->partner->name ?? null,
-                ];
+            $fid = isset($group['fund_code_id']) && is_numeric($group['fund_code_id']) ? (int) $group['fund_code_id'] : 0;
+            $fc = $fid > 0 ? $fundCodesByIntId->get($fid) : null;
+            if (!$fc && $fid > 0) {
+                $fc = FundCode::with(['fundType', 'funder', 'partner'])->find($fid);
+                if ($fc) {
+                    $fundCodesByIntId->put($fid, $fc);
+                }
+            }
+            $group['fund_code'] = $this->fundCodeToBudgetApiArray($fc);
+            if ($fc) {
+                $fundCodesList[(int) $fc->id] = $this->fundCodeToBudgetApiArray($fc);
             }
         }
+        unset($group);
+
         return [
             'total' => round($total, 2),
             'by_fund_code' => array_values($byFundCode),
@@ -1059,20 +1120,27 @@ class ApmDocumentController extends Controller
             $raw = [];
         }
         unset($raw['grand_total']);
-        $budgetIds = $model->budget_id ?? [];
-        if (is_string($budgetIds)) {
-            $budgetIds = json_decode($budgetIds, true) ?? [];
+        $breakdownKeyIds = [];
+        foreach (array_keys($raw) as $key) {
+            if (is_numeric($key) && (int) $key > 0) {
+                $breakdownKeyIds[] = (int) $key;
+            }
         }
-        $allCodeIds = array_unique(array_merge($budgetIds, array_map('intval', array_keys($raw))));
-        $allCodeIds = array_filter($allCodeIds, fn ($id) => $id > 0);
-        $fundCodes = FundCode::with(['fundType', 'funder', 'partner'])->whereIn('id', $allCodeIds)->get()->keyBy('id');
+        $allCodeIds = $this->mergeFundCodeIdsForBudget($model, $breakdownKeyIds);
+        $fundCodesByIntId = collect();
+        if (!empty($allCodeIds)) {
+            $fundCodesByIntId = FundCode::with(['fundType', 'funder', 'partner'])
+                ->whereIn('id', $allCodeIds)
+                ->get()
+                ->keyBy(fn (FundCode $fc) => (int) $fc->id);
+        }
         $byFundCode = [];
         $total = 0;
         foreach ($raw as $key => $items) {
             if (!is_array($items)) {
                 continue;
             }
-            $fundCodeId = is_numeric($key) ? (int) $key : $key;
+            $fundCodeId = is_numeric($key) ? (int) $key : 0;
             $rows = [];
             $groupTotal = 0;
             foreach ($items as $row) {
@@ -1092,33 +1160,29 @@ class ApmDocumentController extends Controller
                 ];
             }
             $total += $groupTotal;
-            $fc = $fundCodes->get($fundCodeId);
+            $fid = $fundCodeId > 0 ? $fundCodeId : 0;
+            $fc = $fid > 0 ? $fundCodesByIntId->get($fid) : null;
+            if (!$fc && $fid > 0) {
+                $fc = FundCode::with(['fundType', 'funder', 'partner'])->find($fid);
+                if ($fc) {
+                    $fundCodesByIntId->put($fid, $fc);
+                }
+            }
             $byFundCode[] = [
-                'fund_code_id' => $fundCodeId,
-                'fund_code' => $fc ? [
-                    'id' => $fc->id,
-                    'code' => $fc->code,
-                    'activity' => $fc->activity ?? null,
-                    'fund_type_name' => $fc->fundType->name ?? null,
-                    'funder_name' => $fc->funder->name ?? null,
-                    'partner_name' => $fc->partner->name ?? null,
-                ] : null,
+                'fund_code_id' => $fid > 0 ? $fid : null,
+                'fund_code' => $this->fundCodeToBudgetApiArray($fc),
                 'items' => $rows,
                 'group_total' => round($groupTotal, 2),
             ];
         }
-        $fundCodesList = $fundCodes->map(fn ($fc) => [
-            'id' => $fc->id,
-            'code' => $fc->code,
-            'activity' => $fc->activity ?? null,
-            'fund_type_name' => $fc->fundType->name ?? null,
-            'funder_name' => $fc->funder->name ?? null,
-            'partner_name' => $fc->partner->name ?? null,
-        ])->values()->toArray();
+        $fundCodesList = [];
+        foreach ($fundCodesByIntId as $fc) {
+            $fundCodesList[] = $this->fundCodeToBudgetApiArray($fc);
+        }
         return [
             'total' => round($total, 2),
             'by_fund_code' => array_values($byFundCode),
-            'fund_codes' => $fundCodesList,
+            'fund_codes' => array_values($fundCodesList),
             'fund_type' => $fundType ? ['id' => $fundType->id, 'name' => $fundType->name] : null,
         ];
     }

@@ -47,13 +47,29 @@ class ApmAuthController extends Controller
     }
 
     /**
-     * Refresh the JWT. Returns new access token and current user data.
+     * Refresh the JWT. Returns the same payload as login: access_token, token_type, expires_in, user, divisions.
+     * Reloads the API user from the database (with staff) so the user object matches a fresh login; then sets
+     * the new token on the guard so JWT state stays consistent after the old token is blacklisted.
      */
     public function refresh(): JsonResponse
     {
-        $token = auth('api')->refresh();
-        $user = auth('api')->user();
-        return $this->respondWithTokenAndUser($token, $user);
+        $guard = auth('api');
+        $user = $guard->user();
+        if (!$user instanceof ApmApiUser) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $userId = $user->getKey();
+        $token = $guard->refresh();
+
+        $freshUser = ApmApiUser::query()->whereKey($userId)->with('staff')->first();
+        if (!$freshUser) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $guard->setToken($token)->setUser($freshUser);
+
+        return $this->respondWithTokenAndUser($token, $freshUser);
     }
 
     /**
