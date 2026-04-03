@@ -2,18 +2,30 @@
 $next_sort_order = isset($next_sort_order) ? (int) $next_sort_order : 100;
 ?>
 <style>
-  /* Ensure Add module modal body scrolls (centered + theme CSS often breaks modal-dialog-scrollable). */
+  /*
+   * Add module modal: form wraps header/body/footer, so flex must apply to the form (same idea as tall
+   * staff contract edit modals — body scrolls, header/footer stay visible).
+   */
   #cbpModuleCreateModal .modal-dialog {
-    max-height: calc(100vh - 1.5rem);
-    margin: 0.75rem auto;
+    max-height: calc(100vh - 2rem);
+    margin: 1rem auto;
   }
   #cbpModuleCreateModal .modal-content {
-    max-height: calc(100vh - 1.5rem);
+    max-height: calc(100vh - 2rem);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+  }
+  #cbpModuleCreateModal .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
   }
   #cbpModuleCreateModal .modal-body {
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     flex: 1 1 auto;
     min-height: 0;
@@ -142,7 +154,7 @@ $next_sort_order = isset($next_sort_order) ? (int) $next_sort_order : 100;
     <?php endif; ?>
 
     <div class="modal fade" id="cbpModuleCreateModal" tabindex="-1" aria-labelledby="cbpModuleCreateModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
           <?= form_open('settings/cbp_modules_create', ['class' => 'cbp-module-form']) ?>
             <div class="modal-header">
