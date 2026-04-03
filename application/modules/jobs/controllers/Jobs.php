@@ -772,7 +772,6 @@ public function notify_supervisors_pending_performance_approval()
         }
 
         $pendingList = [];
-        $staffIdsForCc = [];
         $typeCounts = ['ppa' => 0, 'midterm' => 0, 'endterm' => 0];
 
         foreach ($allPending as $row) {
@@ -823,40 +822,17 @@ public function notify_supervisors_pending_performance_approval()
                 'submitted_at' => $submittedAt,
                 'review_url' => $reviewUrl,
             ];
-
-            if ($staffId > 0) {
-                $staffIdsForCc[] = $staffId;
-            }
         }
 
         if (empty($pendingList)) {
             continue;
         }
 
-        // CC everyone currently on the pending list (for tracking).
-        $ccEmails = [];
-        $staffIdsForCc = array_values(array_unique(array_map('intval', $staffIdsForCc)));
-        if (!empty($staffIdsForCc)) {
-            $ccRows = $this->db->select('work_email')
-                ->from('staff')
-                ->where_in('staff_id', $staffIdsForCc)
-                ->where('work_email IS NOT NULL', null, false)
-                ->where('work_email !=', '')
-                ->get()
-                ->result();
-            foreach ($ccRows as $r) {
-                $email = trim((string) ($r->work_email ?? ''));
-                if ($email !== '' && strcasecmp($email, (string) $supervisor->work_email) !== 0) {
-                    $ccEmails[] = $email;
-                }
-            }
-        }
-
-        $emailParts = array_filter(array_unique(array_merge(
-            [trim((string) $supervisor->work_email)],
-            $ccEmails,
-            [trim((string) settings()->email)]
-        )));
+        // Approver only (+ system inbox); do not CC pending staff members.
+        $emailParts = array_filter(array_unique([
+            trim((string) $supervisor->work_email),
+            trim((string) settings()->email),
+        ]));
         $emailTo = implode(';', $emailParts);
         if ($emailTo === '') {
             continue;
