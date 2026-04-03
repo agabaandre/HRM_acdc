@@ -45,7 +45,7 @@
         border-color: currentColor;
     }
     </style>
-    @livewireStyles
+    {!! \Livewire\Mechanisms\FrontendAssets\FrontendAssets::styles() !!}
     @if(env('SHOW_QUOTES', true))
     <style>
     /* Quote Button Styles */
@@ -333,7 +333,7 @@
     @include('layouts.partials.footer')
     
     <!-- Session Expiry Modals (Livewire) -->
-    @livewire('session-expiry-modal')
+    {!! app('livewire')->mount('session-expiry-modal', []) !!}
     
     <!-- Session Monitor Script -->
     <script src="{{ asset('js/session-monitor.js') }}?v={{ time() }}"></script>
@@ -397,7 +397,7 @@
     </script>
     @endif
 
-    @livewireScripts
+    {!! \Livewire\Mechanisms\FrontendAssets\FrontendAssets::scripts() !!}
     <script>
     (function () {
         var preloader = document.getElementById('apm-content-preloader');
