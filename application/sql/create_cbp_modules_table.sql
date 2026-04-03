@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `cbp_modules` (
   `show_in_apm_menu` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 = show link in APM primary navigation',
   `alternate_base_url` varchar(255) DEFAULT NULL COMMENT 'Optional CI path when user role matches alternate_for_role_id',
   `alternate_for_role_id` int unsigned DEFAULT NULL,
-  `target_resolver` varchar(32) NOT NULL DEFAULT 'codeigniter' COMMENT 'codeigniter | staff_app_token | finance_host',
+  `target_resolver` varchar(32) NOT NULL DEFAULT 'codeigniter' COMMENT 'codeigniter | staff_app_token | finance_host | external_microservice',
   `sort_order` int NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

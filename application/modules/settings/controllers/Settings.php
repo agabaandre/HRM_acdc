@@ -570,12 +570,9 @@ public function force_generate_short_names() {
 		$data['title'] = 'CBP modules';
 		$data['table_exists'] = $this->cbp_modules_mdl->table_exists();
 		$data['modules'] = $data['table_exists'] ? $this->cbp_modules_mdl->get_all_ordered() : [];
+		$data['next_sort_order'] = $data['table_exists'] ? $this->cbp_modules_mdl->next_sort_order() : 100;
 		$data['icon_options'] = $this->cbp_fa_icon_options();
-		$data['resolver_options'] = [
-			'codeigniter' => 'Staff portal path (no token)',
-			'staff_app_token' => 'Staff app with session token (like APM)',
-			'finance_host' => 'Finance app (development / production hosts)',
-		];
+		$data['resolver_options'] = Cbp_modules_mdl::target_resolver_labels();
 		render('cbp_modules', $data);
 	}
 
@@ -594,9 +591,12 @@ public function force_generate_short_names() {
 			return;
 		}
 		$post = $this->input->post();
-		$resolvers = ['codeigniter', 'staff_app_token', 'finance_host'];
-		if (isset($post['target_resolver']) && !in_array($post['target_resolver'], $resolvers, true)) {
-			$post['target_resolver'] = 'codeigniter';
+		$validation = $this->cbp_modules_mdl->validate_target_configuration($post);
+		if ($validation !== null) {
+			$msg = ['msg' => $validation, 'type' => 'error'];
+			Modules::run('utility/setFlash', $msg);
+			redirect('settings/cbp_modules');
+			return;
 		}
 		$res = $this->cbp_modules_mdl->update_module($id, $post);
 		$msg = [
@@ -607,9 +607,33 @@ public function force_generate_short_names() {
 		redirect('settings/cbp_modules');
 	}
 
+	public function cbp_modules_create()
+	{
+		if ($this->input->method() !== 'post') {
+			show_404();
+			return;
+		}
+		$this->load->model('cbp_modules_mdl');
+		if (!$this->cbp_modules_mdl->table_exists()) {
+			$msg = ['msg' => 'The cbp_modules table is missing. Run the SQL migration.', 'type' => 'error'];
+			Modules::run('utility/setFlash', $msg);
+			redirect('settings/cbp_modules');
+			return;
+		}
+		$post = $this->input->post();
+		$result = $this->cbp_modules_mdl->insert_module($post);
+		$msg = [
+			'msg' => $result['message'],
+			'type' => $result['ok'] ? 'success' : 'error',
+		];
+		Modules::run('utility/setFlash', $msg);
+		redirect('settings/cbp_modules');
+	}
+
 	private function cbp_fa_icon_options(): array
 	{
 		return [
+			'fa-th' => 'Default grid',
 			'fa-users' => 'Users',
 			'fa-user' => 'User',
 			'fa-sitemap' => 'Sitemap',
@@ -627,6 +651,7 @@ public function force_generate_short_names() {
 			'fa-project-diagram' => 'Project diagram',
 			'fa-envelope' => 'Envelope',
 			'fa-key' => 'Key',
+			'fa-external-link-alt' => 'External link',
 		];
 	}
 
