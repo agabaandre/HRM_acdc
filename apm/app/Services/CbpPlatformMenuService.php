@@ -101,20 +101,23 @@ class CbpPlatformMenuService
         }
 
         if ($resolver === 'staff_app_token') {
-            $token = urlencode(base64_encode(json_encode($sessionForToken)));
             $base = rtrim(self::staffWebBaseUrl(), '/');
             $seg = trim((string) ($row->base_url ?? ''), '/');
             if ($seg === '') {
                 return null;
             }
+            $url = $base.'/'.$seg;
+            if (! empty($row->uses_staff_portal_token)) {
+                $url = self::appendStaffPortalToken($url, $sessionForToken);
+            }
 
-            return $base.'/'.$seg.'?token='.$token;
+            return $url;
         }
 
         if ($resolver === 'finance_host') {
-            $token = urlencode(base64_encode(json_encode($sessionForToken)));
             $host = request()->getHost();
             $isLocal = str_contains($host, 'localhost') || str_contains($host, '127.0.0.1');
+            $url = '';
             if ($isLocal) {
                 $devBase = trim((string) ($row->base_url_development ?? ''), '/');
                 if ($devBase === '') {
@@ -123,23 +126,80 @@ class CbpPlatformMenuService
                 if (! preg_match('#^https?://#i', $devBase)) {
                     $devBase = 'http://'.$devBase;
                 }
-
-                return rtrim($devBase, '/').'?token='.$token;
-            }
-            $scheme = request()->getScheme();
-            $prod = trim((string) ($row->base_url_production ?? ''), '/');
-            if ($prod !== '') {
-                if (preg_match('#^https?://#i', $prod)) {
-                    return rtrim($prod, '/').'?token='.$token;
+                $url = rtrim($devBase, '/');
+            } else {
+                $scheme = request()->getScheme();
+                $prod = trim((string) ($row->base_url_production ?? ''), '/');
+                if ($prod !== '') {
+                    if (preg_match('#^https?://#i', $prod)) {
+                        $url = rtrim($prod, '/');
+                    } else {
+                        $url = $scheme.'://'.$host.'/'.$prod;
+                    }
+                } else {
+                    $url = $scheme.'://'.$host.'/finance';
                 }
-
-                return $scheme.'://'.$host.'/'.$prod.'?token='.$token;
+            }
+            if (! empty($row->uses_staff_portal_token)) {
+                $url = self::appendStaffPortalToken($url, $sessionForToken);
             }
 
-            return $scheme.'://'.$host.'/finance?token='.$token;
+            return $url;
+        }
+
+        if ($resolver === 'external_microservice') {
+            return self::resolveExternalMicroservice($row, $sessionForToken);
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string,mixed>  $sessionForToken
+     */
+    private static function appendStaffPortalToken(string $url, array $sessionForToken): string
+    {
+        $token = urlencode(base64_encode(json_encode($sessionForToken)));
+        $sep = str_contains($url, '?') ? '&' : '?';
+
+        return $url.$sep.'token='.$token;
+    }
+
+    /**
+     * @param  object  $row
+     * @param  array<string,mixed>  $sessionForToken
+     */
+    private static function resolveExternalMicroservice(object $row, array $sessionForToken): ?string
+    {
+        $host = request()->getHost();
+        $isLocal = str_contains($host, 'localhost') || str_contains($host, '127.0.0.1');
+        $url = '';
+        if ($isLocal) {
+            $url = trim((string) ($row->base_url_development ?? ''));
+            if ($url === '') {
+                $url = trim((string) ($row->base_url ?? ''));
+            }
+        } else {
+            $url = trim((string) ($row->base_url_production ?? ''));
+            if ($url === '') {
+                $url = trim((string) ($row->base_url ?? ''));
+            }
+        }
+        if ($url === '') {
+            return null;
+        }
+        if (! preg_match('#^https?://#i', $url)) {
+            $url = 'https://'.ltrim(preg_replace('#^[\\/]+#', '', $url), '/');
+        }
+        $url = rtrim($url, '/');
+        if ($url === '' || preg_match('#^https?:/?$#i', $url)) {
+            return null;
+        }
+        if (! empty($row->uses_staff_portal_token)) {
+            $url = self::appendStaffPortalToken($url, $sessionForToken);
+        }
+
+        return $url;
     }
 
     private static function staffWebBaseUrl(): string

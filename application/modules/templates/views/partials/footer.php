@@ -1,5 +1,14 @@
+<?php
+$CI = &get_instance();
+$__is_cbp_home = ($CI->uri->segment(1) === 'home');
+?>
+<?php if ($__is_cbp_home) : ?>
+            </div>
+        </div>
+<?php else : ?>
 </div>
 </div>
+<?php endif; ?>
 </div>
 </div>
 <!--end page wrapper -->
