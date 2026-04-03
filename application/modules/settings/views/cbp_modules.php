@@ -50,7 +50,7 @@ $next_permission_id_hint = isset($next_permission_id_hint) ? (int) $next_permiss
   </div>
 
   <p class="text-muted small">
-    Home tiles (<code>home/index</code>) and optional APM menu links. Use <strong>External microservice</strong> for APIs and UIs on other hosts; set dev/prod URLs or one shared URL. Enable <strong>Append Staff portal session token</strong> only if that service validates the same token as APM/Finance.
+    Home tiles (<code>home/index</code>) and optional APM menu links. Use <strong>External system</strong> for APIs and UIs on other hosts; set dev/prod URLs or one shared URL. Enable <strong>Append Staff portal session token</strong> only if that system validates the same token as APM/Finance.
     <strong>Production visibility</strong>: when unchecked, only <strong>role ID 10</strong> sees the tile (still requires the permission).
   </p>
 
