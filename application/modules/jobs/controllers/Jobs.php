@@ -477,6 +477,66 @@ public function cron_register(){
      }
  }
 
+    /**
+     * Latest staff_contracts.status_id values eligible for performance reminder emails.
+     * Aligns with Staff module: Active (1), Due (2), Expired (3), Under renewal (7).
+     * Former (4), Re-assigned (5), Renewed (6), etc. are excluded.
+     *
+     * @return int[]
+     */
+    private function performance_reminder_allowed_contract_status_ids()
+    {
+        return [1, 2, 3, 7];
+    }
+
+    /**
+     * @param int[] $staffIds
+     * @return int[] staff_ids whose latest contract has an allowed status
+     */
+    private function filter_staff_ids_by_allowed_latest_contract(array $staffIds)
+    {
+        $staffIds = array_values(array_unique(array_filter(array_map('intval', $staffIds))));
+        if ($staffIds === []) {
+            return [];
+        }
+        $allowedStatuses = $this->performance_reminder_allowed_contract_status_ids();
+        if ($allowedStatuses === []) {
+            return [];
+        }
+
+        $this->db->select('sc.staff_id', false);
+        $this->db->from('staff_contracts sc');
+        $this->db->join(
+            '(SELECT staff_id, MAX(staff_contract_id) AS latest_id FROM staff_contracts GROUP BY staff_id) lc',
+            'lc.staff_id = sc.staff_id AND lc.latest_id = sc.staff_contract_id',
+            'inner',
+            false
+        );
+        $this->db->where_in('sc.staff_id', $staffIds);
+        $this->db->where_in('sc.status_id', $allowedStatuses);
+
+        $out = [];
+        foreach ($this->db->get()->result() as $row) {
+            $out[] = (int) $row->staff_id;
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    /**
+     * Whether this person should receive (or appear on) performance-related reminder emails.
+     */
+    private function staff_has_allowed_contract_for_performance_reminders($staffId)
+    {
+        $staffId = (int) $staffId;
+        if ($staffId <= 0) {
+            return false;
+        }
+        $ok = $this->filter_staff_ids_by_allowed_latest_contract([$staffId]);
+
+        return in_array($staffId, $ok, true);
+    }
+
  public function notify_unsubmitted_ppas()
  {
      $current_period = str_replace(' ', '-', previous_period());
@@ -491,8 +551,16 @@ $days_remaining = days_to_ppa_deadline();
          $staff_list = $this->per_mdl->get_staff_without_ppa($current_period);
 
         // dd($staff_list);
- 
+         $staffIdsForContract = [];
+         foreach ($staff_list as $s) {
+             $staffIdsForContract[] = (int) $s->staff_id;
+         }
+         $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($staffIdsForContract));
+
          foreach ($staff_list as $staff) {
+             if (!isset($allowedStaffFlip[(int) $staff->staff_id])) {
+                 continue;
+             }
              $data = [
                  'name' => $staff->title . ' ' . $staff->fname . ' ' . $staff->lname,
                  'period' => $current_period,
@@ -523,7 +591,16 @@ $days_remaining = days_to_ppa_deadline();
      if ($days_remaining !== null && $days_remaining <= 40) {
          $staff_list = $this->midterm_mdl->get_staff_without_midterm($current_period);
 
+         $staffIdsForContract = [];
+         foreach ($staff_list as $s) {
+             $staffIdsForContract[] = (int) $s->staff_id;
+         }
+         $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($staffIdsForContract));
+
          foreach ($staff_list as $staff) {
+             if (!isset($allowedStaffFlip[(int) $staff->staff_id])) {
+                 continue;
+             }
              $entry_log_id = md5($staff->staff_id . '-empMIDTERMREM-' . date('Y-m-d'));
 
              // Check if a notification for this staff and period has already been logged today using only entry_id
@@ -573,9 +650,28 @@ public function notify_supervisors_pending_ppas()
     
 
     foreach ($supervisors as $supervisor) {
+        if (!$this->staff_has_allowed_contract_for_performance_reminders((int) $supervisor->supervisor_id)) {
+            continue;
+        }
+
         $pending_list = $this->per_mdl->get_pending_by_supervisor_with_staff($supervisor->supervisor_id);
 
-        if (empty($pending_list)) continue;
+        $pendingStaffIds = [];
+        foreach ($pending_list as $row) {
+            $pendingStaffIds[] = (int) $row->staff_id;
+        }
+        $allowedPendingFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($pendingStaffIds));
+        $pendingFiltered = [];
+        foreach ($pending_list as $row) {
+            if (isset($allowedPendingFlip[(int) $row->staff_id])) {
+                $pendingFiltered[] = $row;
+            }
+        }
+        $pending_list = $pendingFiltered;
+
+        if (empty($pending_list)) {
+            continue;
+        }
 
         $data = [
             'supervisor_name' => $supervisor->title . ' ' . $supervisor->fname . ' ' . $supervisor->lname,
@@ -619,9 +715,28 @@ public function notify_supervisors_pending_midterms()
     $supervisors = $this->midterm_mdl->get_supervisors_with_pending_midterms($current_period);
 
     foreach ($supervisors as $supervisor) {
+        if (!$this->staff_has_allowed_contract_for_performance_reminders((int) $supervisor->supervisor_id)) {
+            continue;
+        }
+
         $pending_list = $this->midterm_mdl->get_pending_by_supervisor_with_staff($supervisor->supervisor_id);
 
-        if (empty($pending_list)) continue;
+        $pendingStaffIds = [];
+        foreach ($pending_list as $row) {
+            $pendingStaffIds[] = (int) $row->staff_id;
+        }
+        $allowedPendingFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($pendingStaffIds));
+        $pendingFiltered = [];
+        foreach ($pending_list as $row) {
+            if (isset($allowedPendingFlip[(int) $row->staff_id])) {
+                $pendingFiltered[] = $row;
+            }
+        }
+        $pending_list = $pendingFiltered;
+
+        if (empty($pending_list)) {
+            continue;
+        }
 
         $data = [
             'supervisor_name' => $supervisor->title . ' ' . $supervisor->fname . ' ' . $supervisor->lname,
@@ -677,7 +792,16 @@ public function notify_unsubmitted_endterms()
     if ($days_remaining !== null && $days_remaining <= 40) {
         $staff_list = $this->endterm_mdl->get_staff_without_endterm($period);
 
+        $staffIdsForContract = [];
+        foreach ($staff_list as $s) {
+            $staffIdsForContract[] = (int) $s->staff_id;
+        }
+        $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($staffIdsForContract));
+
         foreach ($staff_list as $staff) {
+            if (!isset($allowedStaffFlip[(int) $staff->staff_id])) {
+                continue;
+            }
             $entry_log_id = md5($staff->staff_id . '-empENDTERMREM-' . $period . '-' . date('Y-m-d'));
 
             // Check if a notification for this staff and period has already been logged today using only entry_id
@@ -761,11 +885,20 @@ public function notify_supervisors_pending_performance_approval()
         ORDER BY s.fname ASC, s.lname ASC
     ";
     $supervisors = $this->db->query($supervisorSql)->result();
+    $supervisorIdsForAllow = [];
+    foreach ($supervisors as $sRow) {
+        $supervisorIdsForAllow[] = (int) $sRow->staff_id;
+    }
+    $allowedSupervisorFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($supervisorIdsForAllow));
+
     $today = date('Y-m-d');
     $baseUrl = rtrim($_ENV['PRODUCTION_URL'] ?? base_url(), '/') . '/';
 
     foreach ($supervisors as $supervisor) {
         $supervisorId = (int) $supervisor->staff_id;
+        if (!isset($allowedSupervisorFlip[$supervisorId])) {
+            continue;
+        }
         $allPending = $this->per_mdl->get_all_pending_approvals($supervisorId);
         if (empty($allPending)) {
             continue;
@@ -822,6 +955,30 @@ public function notify_supervisors_pending_performance_approval()
                 'submitted_at' => $submittedAt,
                 'review_url' => $reviewUrl,
             ];
+        }
+
+        if (!empty($pendingList)) {
+            $pendingStaffIds = [];
+            foreach ($pendingList as $pRow) {
+                $pendingStaffIds[] = (int) ($pRow['staff_id'] ?? 0);
+            }
+            $allowedPendingStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($pendingStaffIds));
+            $pendingFiltered = [];
+            foreach ($pendingList as $pRow) {
+                $sid = (int) ($pRow['staff_id'] ?? 0);
+                if ($sid > 0 && isset($allowedPendingStaffFlip[$sid])) {
+                    $pendingFiltered[] = $pRow;
+                }
+            }
+            $pendingList = $pendingFiltered;
+            $typeCounts = ['ppa' => 0, 'midterm' => 0, 'endterm' => 0];
+            foreach ($pendingList as $pRow) {
+                $t = strtolower((string) ($pRow['approval_type'] ?? 'ppa'));
+                if (!isset($typeCounts[$t])) {
+                    $typeCounts[$t] = 0;
+                }
+                $typeCounts[$t]++;
+            }
         }
 
         if (empty($pendingList)) {
@@ -900,9 +1057,19 @@ private function notify_first_supervisors_pending_endterms($current_period, $dea
     
     $pending_endterms = $this->db->get()->result();
 
+    $contractCheckIds = [];
+    foreach ($pending_endterms as $entry) {
+        $contractCheckIds[] = (int) $entry->staff_id;
+        $contractCheckIds[] = (int) $entry->supervisor_id;
+    }
+    $allowedContractFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($contractCheckIds))));
+
     // Group by supervisor
     $supervisor_pending = [];
     foreach ($pending_endterms as $entry) {
+        if (!isset($allowedContractFlip[(int) $entry->staff_id]) || !isset($allowedContractFlip[(int) $entry->supervisor_id])) {
+            continue;
+        }
         if (!isset($supervisor_pending[$entry->supervisor_id])) {
             $supervisor_pending[$entry->supervisor_id] = [
                 'supervisor_id' => $entry->supervisor_id,
@@ -982,7 +1149,16 @@ private function notify_staff_consent_pending_endterms($current_period, $deadlin
 
     $pending_consent = $this->db->get()->result();
 
+    $consentStaffIds = [];
     foreach ($pending_consent as $entry) {
+        $consentStaffIds[] = (int) $entry->staff_id;
+    }
+    $allowedConsentFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($consentStaffIds))));
+
+    foreach ($pending_consent as $entry) {
+        if (!isset($allowedConsentFlip[(int) $entry->staff_id])) {
+            continue;
+        }
         $entry_log_id = md5($entry->staff_id . '-STAFFCONSENTENDREM-' . $entry->entry_id . '-' . date('Y-m-d'));
         
         $exists = $this->db->where('entry_id', $entry_log_id)
@@ -1055,9 +1231,19 @@ private function notify_second_supervisors_pending_endterms($current_period, $de
 
     $pending_endterms = $this->db->get()->result();
 
+    $contractCheckIds2 = [];
+    foreach ($pending_endterms as $entry) {
+        $contractCheckIds2[] = (int) $entry->staff_id;
+        $contractCheckIds2[] = (int) $entry->supervisor_id;
+    }
+    $allowedContractFlip2 = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($contractCheckIds2))));
+
     // Group by supervisor
     $supervisor_pending = [];
     foreach ($pending_endterms as $entry) {
+        if (!isset($allowedContractFlip2[(int) $entry->staff_id]) || !isset($allowedContractFlip2[(int) $entry->supervisor_id])) {
+            continue;
+        }
         if (!isset($supervisor_pending[$entry->supervisor_id])) {
             $supervisor_pending[$entry->supervisor_id] = [
                 'supervisor_id' => $entry->supervisor_id,
