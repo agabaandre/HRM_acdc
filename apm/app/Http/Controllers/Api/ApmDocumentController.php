@@ -15,6 +15,7 @@ use App\Models\Location;
 use App\Models\NonTravelMemoCategory;
 use App\Models\RequestType;
 use App\Models\Staff;
+use App\Support\StaffApproverPhotoUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -939,6 +940,7 @@ class ApmDocumentController extends Controller
             'approval_role' => $def?->role,
             'workflow_definition_id' => $def?->id !== null ? (int) $def->id : null,
             'approver_name' => $this->formatStaffDisplayName($actor),
+            'approver_image_url' => StaffApproverPhotoUrl::resolve($actor),
         ];
     }
 
@@ -1364,7 +1366,7 @@ class ApmDocumentController extends Controller
 
     /**
      * Format approval trail collection for API (works with ApprovalTrail or ActivityApprovalTrail).
-     * Returns array of { id, action, remarks, approval_order, staff_id, staff_name, oic_staff_id, oic_staff_name, role, created_at, is_archived }.
+     * Returns array of { id, action, remarks, approval_order, staff_id, staff_name, staff_image_url, oic_staff_id, oic_staff_name, oic_staff_image_url, role, created_at, is_archived }.
      */
     private function formatApprovalTrails(Collection $trails): array
     {
@@ -1391,8 +1393,10 @@ class ApmDocumentController extends Controller
                 'approval_order' => $t->approval_order ?? null,
                 'staff_id' => $t->staff_id ?? null,
                 'staff_name' => $staffName,
+                'staff_image_url' => StaffApproverPhotoUrl::resolve($staff instanceof Staff ? $staff : null),
                 'oic_staff_id' => $t->oic_staff_id ?? null,
                 'oic_staff_name' => $oicName,
+                'oic_staff_image_url' => StaffApproverPhotoUrl::resolve($oic instanceof Staff ? $oic : null),
                 'role' => $role,
                 'created_at' => $t->created_at ? (\Carbon\Carbon::parse($t->created_at)->toIso8601String()) : null,
                 'is_archived' => (bool) ($t->is_archived ?? false),

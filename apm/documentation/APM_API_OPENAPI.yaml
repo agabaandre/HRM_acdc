@@ -643,6 +643,8 @@ paths:
       summary: Get document by id
       description: |
         Single document by type and id (regardless of status). Includes approval_trails and attachments.
+        Each approval_trail entry includes **staff_image_url** and **oic_staff_image_url** when a portrait is available.
+        The merged **current_approval** block may include **approver_image_url** for the current workflow actor.
         Each attachment has **url** (API; use with Bearer token or ?token= for in-browser) and **web_view_url**
         (web session; use to open in browser when user is logged in via the web app).
         For listing by status use GET /documents/{type}/{status}.
@@ -2225,8 +2227,18 @@ components:
         approval_order: { type: integer, nullable: true }
         staff_id: { type: integer, nullable: true }
         staff_name: { type: string, nullable: true }
+        staff_image_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Absolute URL for the acting staff member's portrait (APM profile photo or legacy staff upload).
         oic_staff_id: { type: integer, nullable: true }
         oic_staff_name: { type: string, nullable: true }
+        oic_staff_image_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Absolute URL for the OIC staff portrait when an officer-in-charge acted on behalf of the approver.
         role: { type: string, nullable: true }
         created_at: { type: string, format: date-time, nullable: true }
         is_archived: { type: boolean }

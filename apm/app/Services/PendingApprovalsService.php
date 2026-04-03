@@ -14,6 +14,7 @@ use App\Models\WorkflowModel;
 use App\Models\Approver;
 use App\Models\Staff;
 use App\Models\Division;
+use App\Support\StaffApproverPhotoUrl;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -908,7 +909,7 @@ class PendingApprovalsService
 
     /**
      * Format approval trail collection for API (same shape as documents endpoint).
-     * Returns array of { id, action, remarks, approval_order, staff_id, staff_name, oic_staff_id, oic_staff_name, role, created_at, is_archived }.
+     * Returns array of { id, action, remarks, approval_order, staff_id, staff_name, staff_image_url, oic_staff_id, oic_staff_name, oic_staff_image_url, role, created_at, is_archived }.
      */
     public function formatApprovalTrailsForApi(Collection $trails): array
     {
@@ -935,8 +936,10 @@ class PendingApprovalsService
                 'approval_order' => $t->approval_order ?? null,
                 'staff_id' => $t->staff_id ?? null,
                 'staff_name' => $staffName,
+                'staff_image_url' => StaffApproverPhotoUrl::resolve($staff instanceof Staff ? $staff : null),
                 'oic_staff_id' => $t->oic_staff_id ?? null,
                 'oic_staff_name' => $oicName,
+                'oic_staff_image_url' => StaffApproverPhotoUrl::resolve($oic instanceof Staff ? $oic : null),
                 'role' => $role,
                 'created_at' => $t->created_at ? (Carbon::parse($t->created_at)->toIso8601String()) : null,
                 'is_archived' => (bool) ($t->is_archived ?? false),
