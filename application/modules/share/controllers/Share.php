@@ -427,7 +427,7 @@ public function users()
 		try {
 			$limit = (int) $this->input->get('limit');
 			$start = (int) $this->input->get('start');
-			$this->db->select('user.user_id, user.password, user.name, user.role, user.auth_staff_id, user.status, user.created_at, user.changed, user.isChanged, user.photo, user.signature, user.is_approved, user.is_verfied, user.langauge, staff.work_email AS email');
+			$this->db->select('user.user_id, user.password, user.name, user.role, user.auth_staff_id, user.status, user.created_at, user.changed, user.isChanged, user.photo, user.signature, user.is_approved, user.is_verfied, user.langauge, user.allow_email_login, staff.work_email AS email');
 			$this->db->from('user');
 			$this->db->join('staff', 'staff.staff_id = user.auth_staff_id', 'left');
 			$this->db->order_by('user.user_id', 'ASC');

@@ -252,6 +252,22 @@ public function cred_login()
         return;
     }
 
+    // Do not trust allow_email_login on the joined row: SELECT * across staff/user/user_groups drops
+    // duplicate column names in mysqli, so user.allow_email_login may be missing or wrong.
+    $userId = isset($data['users']->user_id) ? (int) $data['users']->user_id : 0;
+    if ($userId <= 0) {
+        $this->session->set_flashdata('error', 'Invalid account.');
+        redirect('auth');
+        return;
+    }
+    $flagRow = $this->db->select('allow_email_login')->from('user')->where('user_id', $userId)->get()->row();
+    $allowEmailLogin = $flagRow && (int) ($flagRow->allow_email_login ?? 0) === 1;
+    if (!$allowEmailLogin) {
+        $this->session->set_flashdata('error', 'Email and password sign-in is not enabled for your account. Use “Sign in with Staff Email” (Microsoft) or contact an administrator.');
+        redirect('auth');
+        return;
+    }
+
     $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->staff_id);
     //dd( $data['contract']);
 
@@ -935,6 +951,7 @@ public function revert()
       $users['auth_staff_id'] = $staff->staff_id;
       $users['password'] =$this->argonhash->make(setting()->default_password);
       $users['role'] = 17;
+      $users['allow_email_login'] = 0;
       $this->db->replace('user', $users);
     endforeach;
      $accts = $this->db->affected_rows();

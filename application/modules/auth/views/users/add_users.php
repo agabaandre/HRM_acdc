@@ -1209,6 +1209,10 @@ $(document).ready(function() {
     
     // Set hidden fields
     $('#modalUserIdHidden').val(user.user_id || '');
+
+    var allowEmail = (user.allow_email_login == 1 || user.allow_email_login === true || user.allow_email_login === '1');
+    $('#modalAllowEmailLoginSwitch').prop('checked', allowEmail);
+    $('#modalAllowEmailLoginField').val(allowEmail ? 1 : 0);
     
     // Update avatar if available
     if (user.photo) {
@@ -1218,6 +1222,10 @@ $(document).ready(function() {
     }
   }
   
+  $('#modalAllowEmailLoginSwitch').on('change', function() {
+    $('#modalAllowEmailLoginField').val($(this).is(':checked') ? 1 : 0);
+  });
+
   // Handle status switch change in modal
   $('#modalStatusSwitch').change(function() {
     var isChecked = $(this).is(':checked');
@@ -1396,6 +1404,22 @@ $(document).ready(function() {
                     </span>
                   </div>
                   <div class="form-text">Toggle user account status</div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-12 mb-3">
+                  <label class="form-label fw-bold">
+                    <i class="fa fa-envelope me-1 text-primary"></i>Email &amp; password sign-in
+                  </label>
+                  <input type="hidden" name="allow_email_login" id="modalAllowEmailLoginField" value="0">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="modalAllowEmailLoginSwitch">
+                    <label class="form-check-label" for="modalAllowEmailLoginSwitch">
+                      Allow this user to sign in with work email and password (Staff + APM API). Microsoft sign-in is always available when enabled for the tenant.
+                    </label>
+                  </div>
+                  <div class="form-text text-muted">Default is off. Run the SQL patch on the Staff database once if this toggle has no effect (see application/sql/add_allow_email_login_to_user.sql).</div>
                 </div>
               </div>
               

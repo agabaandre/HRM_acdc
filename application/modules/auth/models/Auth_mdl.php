@@ -46,7 +46,7 @@ class Auth_mdl extends CI_Model
 			staff.staff_id, staff.fname, staff.lname, staff.title, staff.oname, staff.work_email, 
 			staff.tel_1, staff.tel_2, staff.private_email, staff.whatsapp, staff.photo, staff.signature,
 			staff.date_of_birth, staff.SAPNO,
-			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at,
+			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at, user.allow_email_login,
 			user_groups.id as group_id, user_groups.group_name
 		');
 		$this->db->from('staff'); // Set the main table
@@ -81,7 +81,7 @@ class Auth_mdl extends CI_Model
 			staff.staff_id, staff.fname, staff.lname, staff.title, staff.oname, staff.work_email, 
 			staff.tel_1, staff.tel_2, staff.private_email, staff.whatsapp, staff.photo, staff.signature,
 			staff.date_of_birth, staff.SAPNO, 
-			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at,
+			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at, user.allow_email_login,
 			user_groups.id as group_id, user_groups.group_name,
 			divisions.division_name, jobs.job_name
 		');
@@ -332,21 +332,35 @@ return $qry->num_rows();
 		if (!isset($postdata['user_id'])) {
 			return "User ID is required.";
 		}
-		
-		$uid = $postdata['user_id'];
-		unset($postdata['user_id']); // Remove user_id from update fields
-		
-		$this->db->where('user_id', $uid);
-		$this->db->update('user', $postdata);
 
-		//dd($this->db->last_query());
-		
-		if ($this->db->affected_rows() > 0) {
-			return "User details updated successfully.";
-		} else {
+		$uid = (int) $postdata['user_id'];
+		$allowed = ['name', 'role', 'status', 'allow_email_login'];
+		$data = [];
+		foreach ($allowed as $key) {
+			if (!array_key_exists($key, $postdata)) {
+				continue;
+			}
+			if ($key === 'allow_email_login') {
+				$data[$key] = !empty($postdata[$key]) ? 1 : 0;
+			} elseif ($key === 'status') {
+				$data[$key] = (int) $postdata[$key];
+			} else {
+				$data[$key] = $postdata[$key];
+			}
+		}
+
+		if ($data === []) {
 			return "No changes made or user not found.";
 		}
-		
+
+		$this->db->where('user_id', $uid);
+		$this->db->update($this->table, $data);
+
+		if ($this->db->affected_rows() > 0) {
+			return "User details updated successfully.";
+		}
+
+		return "No changes made or user not found.";
 	}
 	// change password
 	public function changePass($postdata)
