@@ -128,6 +128,25 @@
                 </a>
             </li>
 
+            @if (!empty($cbpPlatformNavItems))
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="parent-icon"><i class="fas fa-th-large"></i></div>
+                        <div class="menu-title">CBP</div>
+                    </a>
+                    <ul class="dropdown-menu">
+                        @foreach ($cbpPlatformNavItems as $item)
+                            <li>
+                                <a class="dropdown-item" href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer"
+                                    title="{{ $item['description'] }}">
+                                    <i class="{{ $item['icon'] }} me-1"></i>{{ $item['title'] }}
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </li>
+            @endif
+
             <!-- Pending Approvals -->
             <li class="nav-item">
                 <a href="{{ route('returned-memos.index') }}" wire:navigate

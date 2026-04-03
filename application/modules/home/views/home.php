@@ -284,68 +284,21 @@ body {
   <h1 class="settings-title">Welcome to Africa CDC Central Business Platform</h1>
   <div class="row g-5 justify-content-center" id="settingsContainer">
     <?php
-    $sessionobj = $this->session->userdata('user');
-    $permissions = $sessionobj->permissions;
-
-    $session = (array) $sessionobj;
-    $session['base_url'] = base_url();
-    $settings = [];
-
-    // HR Dashboard
-    if (in_array('84', $permissions)) {
-      $hrPath = ($session['role'] == 17) ? 'auth/profile' : 'dashboard';
-      $settings[] = [
-        $hrPath,
-        'Staff Portal',
-        'fa-users',
-        false,
-        'Manage staff details, contracts, appraisals and access HR services efficiently.'
-      ];
-    }
-
-    // ap
-    if (in_array('85', $permissions)) {
-      $token = urlencode(base64_encode(json_encode($session)));
-      $settings[] = [
-        $session['base_url'] . 'apm?token=' . $token,
-        'Approvals Management (APM)',
-        'fa-sitemap',
-        true,
-        'Tracks submissions, reviews, and approvals ie requests for Travel Matrix, Single and Special Memos, Change, DSA and ARF requests'
-      ];
-    }
-
-    // Finance Management - Only show if user has permission 92
-    if (in_array('92', $permissions)) {
-      $token = urlencode(base64_encode(json_encode($session)));
-      // Use domain/finance in production (reverse proxy), localhost:3002 in development
-      $host = $_SERVER['HTTP_HOST'] ?? '';
-      if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
-        $financeUrl = 'http://localhost:3002?token=' . $token;
-      } else {
-        // In production, use the domain directly with /finance/ (reverse proxy)
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $financeUrl = $scheme . '://' . $host . '/finance?token=' . $token;
-      }
-      $settings[] = [
-        $financeUrl,
-        'Finance Management',
-        'fa-wallet',
-        true,
-        'Manage financial reports, invoices, budgets, transactions, and vendor information'
-      ];
-    }
-
-    foreach ($settings as [$path, $label, $icon, $absolute, $desc]) :
+    $cbp_home_modules = isset($cbp_home_modules) && is_array($cbp_home_modules) ? $cbp_home_modules : [];
+    foreach ($cbp_home_modules as $mod) :
+      $href = $mod['absolute'] ? $mod['href'] : base_url($mod['href']);
+      $label = $mod['label'];
+      $icon = $mod['icon'];
+      $desc = $mod['desc'];
     ?>
-    <div class="col-12 col-md-6 setting-card-item" data-title="<?= strtolower($label) ?>">
-      <a href="<?= $absolute ? $path : base_url($path) ?>" class="text-decoration-none">
+    <div class="col-12 col-md-6 setting-card-item" data-title="<?= strtolower(htmlspecialchars($label)) ?>">
+      <a href="<?= htmlspecialchars($href) ?>" class="text-decoration-none">
         <div class="settings-card">
           <div>
-            <h6><?= $label ?></h6>
-            <p><?= $desc ?></p>
+            <h6><?= htmlspecialchars($label) ?></h6>
+            <p><?= htmlspecialchars($desc) ?></p>
           </div>
-          <div class="widgets-icons"><i class="fas <?= $icon ?>"></i></div>
+          <div class="widgets-icons"><i class="fas <?= htmlspecialchars($icon) ?>"></i></div>
         </div>
       </a>
     </div>

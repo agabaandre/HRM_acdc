@@ -9,16 +9,16 @@ $usergroups = Modules::run("permissions/getUserGroups");
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <h2 class="h3 mb-0 fw-bold text-dark">
-            <i class="fa fa-users me-2" style="color:#15ca20;"></i>User Management
+            <i class="fa fa-users me-2 text-secondary"></i>User Management
           </h2>
           <p class="text-muted mb-0">Manage system users, permissions, and access controls</p>
         </div>
-        <div class="d-flex gap-2">
-          <a href="<?php echo base_url()?>auth/acdc_users" class="btn btn-outline-success" target="_blank">
-            <i class="fa fa-user-plus me-1"></i>Bulk Create Users
+        <div class="d-flex flex-wrap gap-2">
+          <a href="<?php echo base_url()?>auth/acdc_users" class="btn btn-sm btn-outline-secondary" target="_blank">
+            <i class="fa fa-user-plus me-1"></i>Bulk create
           </a>
-          <button class="btn text-white btn-sm btn-success" id="exportExcel">
-            <i class="fa fa-file-csv me-1"></i>Export to CSV
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="exportExcel">
+            <i class="fa fa-file-csv me-1"></i>Export CSV
           </button>
         </div>
       </div>
@@ -81,14 +81,13 @@ $usergroups = Modules::run("permissions/getUserGroups");
           </select>
         </div>
         <div class="col-md-2 d-flex align-items-end">
-          <div class="d-grid gap-2  d-flex flex-direction-row">
-            <button type="submit" class="btn btn-sm btn-success">
+          <div class="d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-sm btn-primary">
               <i class="fa fa-search me-1"></i>Search
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary clear-filters">
-              <i class="fa fa-refresh me-1"></i>Clear
+              <i class="fa fa-undo me-1"></i>Clear
             </button>
-          
           </div>
         </div>
       </form>
@@ -96,29 +95,26 @@ $usergroups = Modules::run("permissions/getUserGroups");
         </div>
 
       <!-- Users Table -->
-  <div class="card border-0 shadow-lg">
-   
+  <div class="card border shadow-sm users-mgmt-card">
     <div class="card-body p-0">
-      <div class="table-responsive">
-      <div class="d-flex gap-3">
-          <!-- Records Count -->
-          <div class="bg-white bg-opacity-20 rounded-3 px-3 py-2 d-flex align-items-center gap-2" style="font-size: 0.85rem;">
-            <span class="fw-bold" id="totalUsers" style="color: #228B22; font-size: 1rem;">0</span>
-            <span class="fw-medium" style="color: #228B22; font-size: 0.95rem;">Total Users</span>
-          </div>
-          <!-- Filtered Count -->
-          <div class="bg-white bg-opacity-20 rounded-3 px-3 py-2 d-flex align-items-center gap-2" id="filteredCount" style="display: none; font-size: 0.85rem;">
-            <span class="fw-bold" id="filteredUsers" style="color: #15ca20; font-size: 1rem;">0</span>
-            <span class="fw-medium" style="color: #15ca20; font-size: 0.95rem;">Filtered</span>
-          </div>
+      <div class="users-table-toolbar px-3 py-2 border-bottom bg-light d-flex flex-wrap align-items-center gap-3">
+        <div class="d-flex align-items-baseline gap-2 small text-muted">
+          <span class="fw-semibold text-body" id="totalUsers">0</span>
+          <span>total users</span>
         </div>
-        <table class="table table-hover mb-0" id="usersTable">
-          <thead class="table-header">
+        <div class="d-flex align-items-baseline gap-2 small text-muted d-none" id="filteredCount">
+          <span class="fw-semibold text-body" id="filteredUsers">0</span>
+          <span>matching filter</span>
+        </div>
+      </div>
+      <div class="table-responsive users-table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle" id="usersTable">
+          <thead class="table-light users-table-head">
             <tr>
-              <th class="py-3 px-4" style="width: 25%;">User Information</th>
-              <th class="py-3 px-4" style="width: 25%;">Contact Details</th>
-              <th class="py-3 px-4" style="width: 25%;">Role & Status</th>
-              <th class="py-3 px-4" style="width: 25%;">Actions</th>
+              <th class="py-2 px-3">User</th>
+              <th class="py-2 px-3 d-none d-md-table-cell">Contact</th>
+              <th class="py-2 px-3">Role / status</th>
+              <th class="py-2 px-3 text-end" style="min-width: 11rem;">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -141,20 +137,20 @@ $usergroups = Modules::run("permissions/getUserGroups");
         <div class="card-body">
           <ul class="list-unstyled mb-0">
             <li class="mb-2">
-              <i class="fa fa-user-secret text-warning me-2"></i>
+              <i class="fa fa-user-secret text-muted me-2"></i>
               <strong>Impersonate:</strong> Test user access and permissions
             </li>
             <li class="mb-2">
-              <i class="fa fa-edit text-primary me-2"></i>
-              <strong>Edit User:</strong> Modify user details and permissions
+              <i class="fa fa-edit text-muted me-2"></i>
+              <strong>Edit user:</strong> Modify details and permissions
             </li>
             <li class="mb-2">
-              <i class="fa fa-toggle-on text-success me-2"></i>
-              <strong>Status Toggle:</strong> Activate/deactivate user accounts
+              <i class="fa fa-toggle-on text-muted me-2"></i>
+              <strong>Status:</strong> Activate or deactivate accounts
             </li>
             <li class="mb-0">
-              <i class="fa fa-key text-warning me-2"></i>
-              <strong>Reset Password:</strong> Reset user passwords to default
+              <i class="fa fa-key text-muted me-2"></i>
+              <strong>Reset password:</strong> Set password to default
             </li>
           </ul>
         </div>
@@ -171,20 +167,20 @@ $usergroups = Modules::run("permissions/getUserGroups");
       <div class="card-body">
           <ul class="list-unstyled mb-0">
             <li class="mb-2">
-              <i class="fa fa-file-csv text-success me-2"></i>
-              <strong>CSV Export:</strong> Download all users with complete details
+              <i class="fa fa-file-csv text-muted me-2"></i>
+              <strong>CSV export:</strong> Download user list with details
             </li>
             <li class="mb-2">
-              <i class="fa fa-filter text-info me-2"></i>
-              <strong>Filtered Export:</strong> Export only filtered results
+              <i class="fa fa-filter text-muted me-2"></i>
+              <strong>Filtered export:</strong> Export current filter results
             </li>
             <li class="mb-2">
-              <i class="fa fa-search text-primary me-2"></i>
-              <strong>Advanced Search:</strong> Find users by name, email, or group
+              <i class="fa fa-search text-muted me-2"></i>
+              <strong>Search:</strong> By name, email, or group
             </li>
             <li class="mb-0">
-              <i class="fa fa-download text-success me-2"></i>
-              <strong>Real-time Data:</strong> Always export current information
+              <i class="fa fa-download text-muted me-2"></i>
+              <strong>Live data:</strong> Export reflects current data
             </li>
           </ul>
         </div>
@@ -195,135 +191,176 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
 <!-- Custom CSS -->
 <style>
-/* Professional Table Styling */
-/* Table Header */
-.table-header th {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  font-weight: 700;
+.users-mgmt-card {
+  border-color: #dee2e6 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.users-table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#usersTable {
+  min-width: 36rem;
+  table-layout: auto;
+}
+
+.users-table-head th {
+  font-size: 0.7rem;
   text-transform: uppercase;
-  font-size: 0.875rem;
-  letter-spacing: 0.5px;
-  color: #2c3e50;
-  border: none;
-  border-bottom: 3px solid rgba(52, 143, 65, 0.2);
-  position: relative;
-}
-
-.table-header th::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 3px;
-  background: linear-gradient(90deg, rgba(52, 143, 65, 1), rgba(255, 193, 7, 0.8));
-  transition: width 0.3s ease;
-}
-
-.table-header th:hover::after {
-  width: 80%;
-}
-
-/* Table Rows */
-.user-row {
-  transition: all 0.3s ease;
-  border-bottom: 1px solid #f1f3f4;
-}
-
-.user-row:hover {
-  background: linear-gradient(135deg, rgba(52, 143, 65, 0.05) 0%, rgba(255, 193, 7, 0.03) 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: #6c757d;
+  border-bottom: 1px solid #dee2e6;
+  white-space: nowrap;
 }
 
 .user-row td {
   vertical-align: top;
-  border: none;
+  border-color: #f1f3f5;
 }
 
-/* User Avatar */
+.user-row:hover {
+  background-color: #f8f9fa;
+}
+
 .user-avatar img {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   object-fit: cover;
-  border: 2px solid #e9ecef;
+  border: 1px solid #e9ecef;
   border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
 }
 
-.user-row:hover .user-avatar img {
-  border-color: rgba(52, 143, 65, 0.6);
-  box-shadow: 0 4px 16px rgba(52, 143, 65, 0.2);
-}
-
-/* User Name */
 .user-name {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 0.75rem;
-  line-height: 1.2;
+  font-size: 0.8125rem !important;
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 0.35rem;
+  line-height: 1.25;
 }
 
-
-/* Ensure consistent badge sizing for role and status */
-.role-status-content .badge {
-  text-align: center;
-  font-size: 0.8rem !important;
-  padding: 0.5rem 0.75rem !important;
-  border-radius: 0.375rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.user-meta-badge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid #dee2e6;
+  background: #fff;
+  color: #6c757d;
 }
 
-/* Contact Items */
+.role-status-content .user-pill {
+  display: inline-block;
+  max-width: 100%;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid #dee2e6;
+  background: #fff;
+  color: #495057;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.user-pill--role {
+  border-color: #ced4da;
+  background: #f8f9fa;
+}
+
+.user-pill--ok {
+  border-color: #b8d4be;
+  background: #f4faf5;
+  color: #1e4620;
+}
+
+.user-pill--off {
+  border-color: #ddd;
+  background: #f1f3f5;
+  color: #6c757d;
+}
+
 .contact-item {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.35rem;
 }
 
 .contact-text {
   color: #495057;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.78rem;
   word-break: break-word;
 }
 
-
-
-/* Action Button Container */
 .actions-container {
   min-width: 0;
 }
 
-.actions-container .btn {
-  min-width: 60px;
-  white-space: nowrap;
+.user-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
 }
 
+.user-action-btn {
+  padding: 0.15rem 0.4rem !important;
+  font-size: 0.7rem !important;
+  font-weight: 500 !important;
+  line-height: 1.3 !important;
+  border-color: #ced4da !important;
+  color: #495057 !important;
+  background: #fff !important;
+  border-radius: 0.25rem !important;
+  box-shadow: none !important;
+}
 
-/* Pagination styling */
+.user-action-btn:hover,
+.user-action-btn:focus {
+  background: #f8f9fa !important;
+  border-color: #adb5bd !important;
+  color: #212529 !important;
+}
+
+.user-action-btn i {
+  color: #6c757d !important;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 575.98px) {
+  .user-action-btn .btn-text {
+    display: none;
+  }
+  .user-action-btn {
+    padding: 0.2rem 0.35rem !important;
+    min-width: 1.75rem;
+  }
+  .user-avatar img {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 .pagination .page-link {
-  color: #15ca20;
+  color: #495057;
   border-color: #dee2e6;
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.5rem;
 }
 
 .pagination .page-item.active .page-link {
-  background-color: #15ca20;
-  border-color: #15ca20;
-  color: white;
+  background-color: #495057;
+  border-color: #495057;
+  color: #fff;
 }
 
 .pagination .page-item.disabled .page-link {
-  color: #6c757d;
-  background-color: transparent;
-  border-color: #dee2e6;
+  color: #adb5bd;
 }
 
 .pagination .page-link:hover {
-  color: rgba(45, 120, 55, 1);
+  color: #212529;
   background-color: #e9ecef;
   border-color: #dee2e6;
 }
@@ -377,16 +414,13 @@ $usergroups = Modules::run("permissions/getUserGroups");
   transform: scale(1.1);
 }
 
-/* Table Container Enhancements */
-.table-responsive {
-  border-radius: 0.5rem;
-  overflow: hidden;
+.user-details {
+  min-width: 0;
+  max-width: 100%;
 }
 
-/* Ensure table columns are properly balanced */
-#usersTable {
-  table-layout: fixed;
-  width: 100%;
+.min-w-0 {
+  min-width: 0;
 }
 
 #usersTable th,
@@ -395,19 +429,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
   overflow-wrap: break-word;
 }
 
-/* Optimize user information column */
-.user-details {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.user-name {
-  font-size: 0.875rem !important;
-  line-height: 1.2;
-  margin-bottom: 0.5rem;
-}
-
-#usersTable tbody tr:last-child {
+#usersTable tbody tr:last-child td {
   border-bottom: none;
 }
 
@@ -436,70 +458,13 @@ $usergroups = Modules::run("permissions/getUserGroups");
   color: #dee2e6;
 }
 
-/* Count Boxes */
-.bg-white.bg-opacity-20 {
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+#filteredCount:not(.d-none) {
+  animation: usersToolbarFade 0.2s ease-out;
 }
 
-.bg-white.bg-opacity-20 .text-white {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Filtered Count Animation */
-#filteredCount {
-  animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Responsive Design */
-@media (max-width: 1200px) {
-  .user-col { width: 25%; }
-  .contact-col { width: 25%; }
-  .role-col { width: 25%; }
-  .actions-col { width: 25%; }
-}
-
-@media (max-width: 992px) {
-  .professional-table {
-    font-size: 0.875rem;
-  }
-  
-  .user-name {
-    font-size: 0.9rem;
-  }
-  
-  .action-btn {
-    font-size: 0.75rem;
-    padding: 0.4rem 0.6rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .user-col { width: 25%; }
-  .contact-col { width: 25%; }
-  .role-col { width: 25%; }
-  .actions-col { width: 25%; }
-  
-  .user-avatar img {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .action-row {
-    flex-direction: column;
-    gap: 0.25rem;
-  }
+@keyframes usersToolbarFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>
 
@@ -508,6 +473,32 @@ $usergroups = Modules::run("permissions/getUserGroups");
 $(document).ready(function() {
   // Initialize tooltips
   $('[data-bs-toggle="tooltip"]').tooltip();
+
+  const USER_AVATAR_DEFAULT = <?php echo json_encode(base_url('assets/images/pp.png')); ?>;
+  const USER_PHOTO_BASE = <?php echo json_encode(base_url('uploads/staff/')); ?>;
+
+  function escAttr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /** Build staff photo URL from stored filename; empty if none or invalid path segments. */
+  function staffPhotoSrc(filename) {
+    if (filename === undefined || filename === null) return '';
+    var s = String(filename).trim();
+    if (!s) return '';
+    var parts = s.replace(/\\/g, '/').split('/').filter(function (p) {
+      return p.length && p !== '.' && p !== '..';
+    });
+    if (!parts.length) return '';
+    return USER_PHOTO_BASE + parts.map(function (seg) { return encodeURIComponent(seg); }).join('/');
+  }
+
+  function avatarImgHtml(fullName, photoFilename) {
+    var attempted = staffPhotoSrc(photoFilename);
+    var src = attempted || USER_AVATAR_DEFAULT;
+    var alt = escAttr(fullName || 'User');
+    return '<img src="' + escAttr(src) + '" data-avatar-default="' + escAttr(USER_AVATAR_DEFAULT) + '" class="rounded-circle" alt="' + alt + '" onerror="this.onerror=null;this.src=this.getAttribute(\'data-avatar-default\')">';
+  }
   
   // Simple pagination system
   let currentPage = 1;
@@ -576,11 +567,11 @@ $(document).ready(function() {
             // Show filtered count if search/filters are applied
             const hasFilters = $('#search').val() || $('#group_id').val() || $('#statuses').val();
             if (hasFilters) {
-              $('#filteredCount').show();
+              $('#filteredCount').removeClass('d-none');
               $('#filteredUsers').text(parsedResponse.users.length);
               console.log('Showing filtered count:', parsedResponse.users.length);
             } else {
-              $('#filteredCount').hide();
+              $('#filteredCount').addClass('d-none');
               console.log('Hiding filtered count');
             }
           } else {
@@ -589,7 +580,7 @@ $(document).ready(function() {
             totalUsers = parsedResponse.totalUsers || 0;
             renderPagination(totalUsers, pageSize, 1);
             $('#totalUsers').text(totalUsers);
-            $('#filteredCount').hide();
+            $('#filteredCount').addClass('d-none');
           }
         } catch (error) {
           console.error('Error processing response:', error);
@@ -630,107 +621,92 @@ $(document).ready(function() {
         if (user.oname) fullName += ' ' + user.oname;
         fullName = fullName.trim() || 'Unknown User';
       
-      let photoHtml = '';
-      if (user.photo) {
-        photoHtml = `<img src="<?php echo base_url('uploads/staff/'); ?>${user.photo}" class="rounded-circle" width="40" height="40" alt="${fullName}">`;
-      } else {
-        photoHtml = `<img src="<?php echo base_url('assets/images/pp.png'); ?>" class="rounded-circle" width="40" height="40" alt="${fullName}">`;
-      }
-      
-      let statusBadge = '';
-      if (user.status == 1) {
-        statusBadge = `<span class="badge bg-success badge-sm"><i class="fa fa-check-circle me-1"></i>Active</span>`;
-      } else {
-        statusBadge = `<span class="badge bg-danger badge-sm"><i class="fa fa-ban me-1"></i>Inactive</span>`;
-      }
-      
+      var photoHtml = avatarImgHtml(fullName, user.photo);
+
+      const groupLabel = user.group_name ? (user.group_name.charAt(0).toUpperCase() + user.group_name.slice(1)) : '—';
+      const statusPillClass = user.status == 1 ? 'user-pill--ok' : 'user-pill--off';
+      const statusLabel = user.status == 1 ? 'Active' : 'Inactive';
+      const emailLoginOn = parseInt(user.allow_email_login, 10) === 1;
+      const emailPillClass = emailLoginOn ? 'user-pill--ok' : 'user-pill--off';
+      const emailPillLabel = emailLoginOn ? 'Email sign-in on' : 'Email sign-in off';
+      const emailActionAllow = emailLoginOn ? 0 : 1;
+      const emailActionLabel = emailLoginOn ? 'Revoke email' : 'Allow email';
+      const emailActionTitle = emailLoginOn ? 'Disable email and password sign-in' : 'Allow email and password sign-in';
+
               html += `
         <tr class="user-row">
-          <td class="px-3 py-2">
+          <td class="px-2 py-2">
             <div class="d-flex align-items-start">
-              <div class="user-avatar me-2">${photoHtml}</div>
-              <div class="user-details flex-grow-1">
-                <h6 class="user-name mb-1 fw-bold text-dark fs-6">${fullName}</h6>
-                <div class="user-ids d-flex flex-column gap-1">
-                  <span class="badge bg-light text-dark badge-sm">
-                    <i class="fa fa-user-circle me-1"></i>ID: ${user.user_id || 'N/A'}
-                  </span>
-                  <div class="d-flex gap-1">
-                    ${user.staff_id ? `<span class="badge bg-secondary text-white badge-sm"><i class="fa fa-id-card me-1"></i>Staff: ${user.staff_id}</span>` : ''}
-                    ${user.SAPNO ? `<span class="badge bg-dark text-white badge-sm"><i class="fa fa-barcode me-1"></i>SAP: ${user.SAPNO}</span>` : ''}
-      </div>
-    </div>
-  </div>
+              <div class="user-avatar me-2 flex-shrink-0">${photoHtml}</div>
+              <div class="user-details flex-grow-1 min-w-0">
+                <div class="user-name">${fullName}</div>
+                <div class="d-flex flex-wrap gap-1 mb-1">
+                  <span class="user-meta-badge rounded">#${user.user_id || '—'}</span>
+                  ${user.staff_id ? `<span class="user-meta-badge rounded">Staff ${user.staff_id}</span>` : ''}
+                  ${user.SAPNO ? `<span class="user-meta-badge rounded">SAP ${user.SAPNO}</span>` : ''}
+                </div>
+                <div class="d-md-none small text-muted text-break">${user.work_email ? '<i class="fa fa-envelope me-1"></i>' + user.work_email : ''}</div>
+              </div>
             </div>
           </td>
-          <td class="px-3 py-2">
+          <td class="px-2 py-2 d-none d-md-table-cell">
             <div class="contact-details">
-              <div class="contact-item mb-2">
-                <i class="fa fa-envelope text-primary me-2"></i>
-                <span class="contact-text">${user.work_email || 'No email'}</span>
+              <div class="contact-item mb-1">
+                <i class="fa fa-envelope text-muted mt-1"></i>
+                <span class="contact-text">${user.work_email || '—'}</span>
               </div>
-              ${user.tel_1 ? `<div class="contact-item mb-2"><i class="fa fa-phone text-success me-2"></i><span class="contact-text">${user.tel_1}</span></div>` : ''}
-              ${user.tel_2 ? `<div class="contact-item mb-2"><i class="fa fa-phone-alt text-info me-2"></i><span class="contact-text">${user.tel_2}</span></div>` : ''}
+              ${user.tel_1 ? `<div class="contact-item mb-1"><i class="fa fa-phone text-muted mt-1"></i><span class="contact-text">${user.tel_1}</span></div>` : ''}
+              ${user.tel_2 ? `<div class="contact-item mb-1"><i class="fa fa-phone text-muted mt-1"></i><span class="contact-text">${user.tel_2}</span></div>` : ''}
             </div>
           </td>
-          <td class="px-3 py-2">
-            <div class="role-status-content">
-              <div class="role-badge mb-2">
-                <span class="badge bg-primary fs-6 px-3 py-2 w-100">
-                  <i class="fa fa-user-tag me-1"></i>${user.group_name ? user.group_name.charAt(0).toUpperCase() + user.group_name.slice(1) : 'No Group'}
-                </span>
-              </div>
-              <div class="status-container">
-                <span class="badge fs-6 px-3 py-2 w-100 ${user.status == 1 ? 'bg-success' : 'bg-danger'}">
-                  <i class="fa ${user.status == 1 ? 'fa-check-circle' : 'fa-ban'} me-1"></i>${user.status == 1 ? 'Active' : 'Inactive'}
-                </span>
-              </div>
+          <td class="px-2 py-2">
+            <div class="role-status-content d-flex flex-column gap-1">
+              <span class="user-pill user-pill--role"><i class="fa fa-user-tag me-1 opacity-50"></i>${groupLabel}</span>
+              <span class="user-pill ${statusPillClass}">${statusLabel}</span>
+              <span class="user-pill ${emailPillClass}"><i class="fa fa-envelope me-1 opacity-50"></i>${emailPillLabel}</span>
             </div>
           </td>
-          <td class="px-3 py-2">
+          <td class="px-2 py-2 text-end">
             <div class="actions-container">
-              <!-- Action Buttons -->
-              <div class="d-flex flex-column gap-2">
-                <!-- Top Row: Impersonate & Edit -->
-                <div class="d-flex gap-2">
-                  <a href="<?php echo site_url('auth/impersonate/'); ?>${user.user_id}" 
-                     class="btn btn-outline-warning btn-sm flex-fill shadow-sm px-3 py-1 d-flex align-items-center justify-content-center cute-btn"
-                     data-bs-toggle="tooltip" 
+              <div class="user-action-group justify-content-end">
+                  <a href="<?php echo site_url('auth/impersonate/'); ?>${user.user_id}"
+                     class="btn btn-sm user-action-btn"
+                     data-bs-toggle="tooltip"
                      title="Impersonate this user"
-                     style="font-weight:600; font-size:0.95rem; color: #222; border-radius: 0.375rem;">
-                    <i class="fa fa-user-secret me-1 text-warning"></i>
-                    <span style="color:#222;">Impersonate</span>
+                     aria-label="Impersonate">
+                    <i class="fa fa-user-secret"></i><span class="btn-text ms-1">Impersonate</span>
                   </a>
-                  
-                  <button type="button" 
-                          class="btn btn-outline-primary btn-sm flex-fill shadow-sm px-3 py-1 d-flex align-items-center justify-content-center cute-btn edit-user"
+                  <button type="button"
+                          class="btn btn-sm user-action-btn edit-user"
                           data-user-id="${user.user_id}"
                           data-user-data="${encodeURIComponent(JSON.stringify(user))}"
                           data-csrf="<?php echo $this->security->get_csrf_hash(); ?>"
-                          title="Edit user details"
-                          style="font-weight:600; font-size:0.95rem; color: #222; border-radius: 0.375rem;">
-                    <i class="fa fa-edit me-1 text-primary"></i>
-                    <span style="color:#222;">Edit</span>
+                          title="Edit user"
+                          aria-label="Edit user">
+                    <i class="fa fa-edit"></i><span class="btn-text ms-1">Edit</span>
                   </button>
-                </div>
-                
-                <!-- Bottom Row: Status & Reset -->
-                <div class="d-flex gap-2">
                   ${
-                    user.status == 1 ? 
-                    `<button type="button" class="btn btn-outline-danger btn-sm flex-fill shadow-sm px-3 py-1 d-flex align-items-center justify-content-center cute-btn block-user" data-user-id="${user.user_id}" data-user-name="${fullName}" style="font-weight:600; font-size:0.95rem; color: #222; border-radius: 0.375rem;"><i class='fa fa-ban me-1 text-danger'></i><span style='color:#222;'>Block</span></button>` :
-                    `<button type="button" class="btn btn-outline-success btn-sm flex-fill shadow-sm px-3 py-1 d-flex align-items-center justify-content-center cute-btn unblock-user" data-user-id="${user.user_id}" data-user-name="${fullName}" style="font-weight:600; font-size:0.95rem; color: #222; border-radius: 0.375rem;"><i class='fa fa-check me-1 text-success'></i><span style='color:#222;'>Activate</span></button>`
+                    user.status == 1
+                    ? `<button type="button" class="btn btn-sm user-action-btn block-user" data-user-id="${user.user_id}" data-user-name="${fullName}" title="Block user" aria-label="Block"><i class="fa fa-ban"></i><span class="btn-text ms-1">Block</span></button>`
+                    : `<button type="button" class="btn btn-sm user-action-btn unblock-user" data-user-id="${user.user_id}" data-user-name="${fullName}" title="Activate user" aria-label="Activate"><i class="fa fa-check"></i><span class="btn-text ms-1">Activate</span></button>`
                   }
-                  
-                  <button type="button" 
-                          class="btn btn-outline-secondary btn-sm flex-fill shadow-sm px-3 py-1 d-flex align-items-center justify-content-center cute-btn reset-password" 
-                          data-user-id="${user.user_id}" 
+                  <button type="button"
+                          class="btn btn-sm user-action-btn reset-password"
+                          data-user-id="${user.user_id}"
                           data-user-name="${fullName}"
-                          style="font-weight:600; font-size:0.95rem; color: #222; border-radius: 0.375rem;">
-                    <i class="fa fa-key me-1 text-warning"></i>
-                    <span style="color:#222;">Reset</span>
+                          title="Reset password"
+                          aria-label="Reset password">
+                    <i class="fa fa-key"></i><span class="btn-text ms-1">Reset</span>
                   </button>
-                </div>
+                  <button type="button"
+                          class="btn btn-sm user-action-btn toggle-email-login"
+                          data-user-id="${user.user_id}"
+                          data-user-name="${fullName}"
+                          data-allow="${emailActionAllow}"
+                          title="${emailActionTitle}"
+                          aria-label="${emailActionTitle}">
+                    <i class="fa fa-envelope"></i><span class="btn-text ms-1">${emailActionLabel}</span>
+                  </button>
               </div>
             </div>
           </td>
@@ -742,25 +718,15 @@ $(document).ready(function() {
       html = '<tr><td colspan="4" class="text-center py-4 text-danger">Error generating user data. Check console for details.</td></tr>';
     }
     
-    console.log('Generated HTML length:', html.length);
-    console.log('Table element exists:', $('#usersTable tbody').length > 0);
-    console.log('Table tbody element:', $('#usersTable tbody')[0]);
-    
-    try {
-      console.log('Attempting to update table...');
-      console.log('HTML content length:', html.length);
-      console.log('HTML preview:', html.substring(0, 200) + '...');
-      
-      // Test if we can update the table at all
-      $('#usersTable tbody').html('<tr><td colspan="4" class="empty-state text-success"><i class="fa fa-check-circle"></i><br>Test update successful!</td></tr>');
-      console.log('Test update completed');
-      
-      // Now update with actual content
-      $('#usersTable tbody').html(html);
-      console.log('Table updated successfully with user data');
-    } catch (error) {
-      console.error('Error updating table:', error);
-      console.error('Error details:', error.message);
+    $('#usersTable tbody').html(html);
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+      document.querySelectorAll('#usersTable [data-bs-toggle="tooltip"]').forEach(function (el) {
+        var t = bootstrap.Tooltip.getInstance(el);
+        if (t) {
+          t.dispose();
+        }
+        new bootstrap.Tooltip(el);
+      });
     }
   }
   
@@ -770,7 +736,7 @@ $(document).ready(function() {
     let html = '';
     
     if (totalPages > 1) {
-      html = '<div class="card-footer bg-light"><div class="row align-items-center"><div class="col-md-6"><span class="text-muted small">Showing ' + ((currentPage - 1) * pageSize + 1) + ' to ' + Math.min(currentPage * pageSize, total) + ' of ' + total + ' users</span></div><div class="col-md-6"><nav><ul class="pagination justify-content-end mb-0">';
+      html = '<div class="card-footer bg-white border-top py-2 px-3"><div class="row align-items-center g-2"><div class="col-12 col-md-auto me-md-auto"><span class="text-muted small">Showing ' + ((currentPage - 1) * pageSize + 1) + '–' + Math.min(currentPage * pageSize, total) + ' of ' + total + '</span></div><div class="col-12 col-md-auto"><nav class="d-flex justify-content-md-end justify-content-center"><ul class="pagination pagination-sm mb-0 flex-wrap">';
       
       // Previous button
       if (currentPage > 1) {
@@ -870,7 +836,7 @@ $(document).ready(function() {
     $('#search').val('');
     $('#pageSize').val('25');
     pageSize = 25;
-    $('#filteredCount').hide();
+    $('#filteredCount').addClass('d-none');
     loadUsers(1);
   });
   
@@ -952,7 +918,7 @@ $(document).ready(function() {
   
   // Update CSRF tokens on all action buttons
   function updateButtonCSRFTokens(newToken) {
-    $('.block-user, .unblock-user, .reset-password').each(function() {
+    $('.block-user, .unblock-user, .reset-password, .toggle-email-login').each(function() {
       $(this).data('csrf', newToken);
     });
     console.log('Updated CSRF tokens on action buttons');
@@ -1007,6 +973,33 @@ $(document).ready(function() {
   $('#confirmResetPassword').click(function() {
     var userId = $(this).data('user-id');
     resetPassword(userId);
+  });
+
+  $(document).on('click', '.toggle-email-login', function() {
+    var userId = $(this).data('user-id');
+    var userName = $(this).data('user-name');
+    var allow = parseInt($(this).data('allow'), 10);
+    allow = allow === 1 ? 1 : 0;
+
+    $('#confirmEmailLoginUserName').text(userName);
+    if (allow === 1) {
+      $('#emailLoginModalLabelText').text('Allow email sign-in');
+      $('#emailLoginModalDetail').text('This user will be able to sign in with their work email and password on the Staff portal and APM API, in addition to Microsoft sign-in if configured.');
+      $('#confirmEmailLogin').removeClass('btn-danger').addClass('btn-primary').html('<i class="fa fa-envelope me-1"></i>Allow email sign-in');
+    } else {
+      $('#emailLoginModalLabelText').text('Revoke email sign-in');
+      $('#emailLoginModalDetail').text('This user will no longer be able to use email and password. Microsoft sign-in remains available if configured.');
+      $('#confirmEmailLogin').removeClass('btn-primary').addClass('btn-danger').html('<i class="fa fa-envelope me-1"></i>Revoke email sign-in');
+    }
+    $('#confirmEmailLogin').data('user-id', userId).data('allow', allow);
+    new bootstrap.Modal(document.getElementById('emailLoginModal')).show();
+  });
+
+  $('#confirmEmailLogin').click(function() {
+    var userId = $(this).data('user-id');
+    var allow = $(this).data('allow');
+    allow = parseInt(allow, 10) === 1 ? 1 : 0;
+    setAllowEmailLogin(userId, allow);
   });
 
   // AJAX Functions
@@ -1070,6 +1063,35 @@ $(document).ready(function() {
           console.error('Response:', xhr.responseText);
           showNotification('Error activating user: ' + (xhr.responseText || error), 'error');
           // Keep modal open on error so user can try again
+        }
+      });
+    }).catch(function(error) {
+      console.error('Failed to get CSRF token:', error);
+      showNotification('Error: Failed to get security token. Please refresh the page.', 'error');
+    });
+  }
+
+  function setAllowEmailLogin(userId, allow) {
+    getFreshCSRFToken().then(function(csrfToken) {
+      $.ajax({
+        url: '<?= base_url("auth/setAllowEmailLogin") ?>',
+        method: 'POST',
+        data: {
+          user_id: userId,
+          allow_email_login: allow,
+          '<?php echo $this->security->get_csrf_token_name(); ?>': csrfToken
+        },
+        dataType: 'json',
+        success: function(response) {
+          showNotification(response.message || 'Updated successfully', 'success');
+          closeModal('emailLoginModal');
+          setTimeout(function() {
+            loadUsers(currentPage);
+          }, 800);
+        },
+        error: function(xhr, status, error) {
+          console.error('setAllowEmailLogin error:', xhr.status, error, xhr.responseText);
+          showNotification('Error updating email sign-in: ' + (xhr.responseText || error), 'error');
         }
       });
     }).catch(function(error) {
@@ -1214,12 +1236,8 @@ $(document).ready(function() {
     $('#modalAllowEmailLoginSwitch').prop('checked', allowEmail);
     $('#modalAllowEmailLoginField').val(allowEmail ? 1 : 0);
     
-    // Update avatar if available
-    if (user.photo) {
-      $('#modalUserAvatar').attr('src', '<?php echo base_url("uploads/staff/"); ?>' + user.photo);
-    } else {
-      $('#modalUserAvatar').attr('src', '<?php echo base_url("assets/images/pp.png"); ?>');
-    }
+    var modalPhotoSrc = staffPhotoSrc(user.photo) || USER_AVATAR_DEFAULT;
+    $('#modalUserAvatar').attr('src', modalPhotoSrc);
   }
   
   $('#modalAllowEmailLoginSwitch').on('change', function() {
@@ -1318,11 +1336,11 @@ $(document).ready(function() {
 <div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header bg-info text-white">
-        <h5 class="modal-title" id="userDetailsModalLabel">
-          <i class="fa fa-user-edit me-2"></i>Edit User: <span id="modalUserName"></span>
+      <div class="modal-header border-bottom bg-light">
+        <h5 class="modal-title text-dark" id="userDetailsModalLabel">
+          <i class="fa fa-user-edit me-2 text-muted"></i>Edit user: <span id="modalUserName"></span>
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       
       <div class="modal-body">
@@ -1330,9 +1348,11 @@ $(document).ready(function() {
           <!-- User Avatar Section -->
           <div class="col-md-3 text-center mb-3">
             <div class="user-avatar-section">
-              <img src="<?php echo base_url('assets/images/pp.png'); ?>" 
-                   class="rounded-circle mb-3" width="80" height="80" 
-                   id="modalUserAvatar" alt="User Avatar">
+              <img src="<?php echo base_url('assets/images/pp.png'); ?>"
+                   data-avatar-default="<?php echo htmlspecialchars(base_url('assets/images/pp.png'), ENT_QUOTES, 'UTF-8'); ?>"
+                   class="rounded-circle mb-3" width="80" height="80"
+                   id="modalUserAvatar" alt="User Avatar"
+                   onerror="this.onerror=null;this.src=this.getAttribute('data-avatar-default')">
               <h6 class="text-muted" id="modalUserDisplayName"></h6>
               <small class="text-muted">ID: <span id="modalUserId"></span></small>
             </div>
@@ -1464,8 +1484,8 @@ $(document).ready(function() {
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
           <i class="fa fa-times me-1"></i>Cancel
         </button>
-        <button type="submit" form="updateUserForm" class="btn btn-primary">
-          <i class="fa fa-save me-1"></i>Save Changes
+        <button type="submit" form="updateUserForm" class="btn btn-sm btn-primary">
+          <i class="fa fa-save me-1"></i>Save changes
         </button>
       </div>
     </div>
@@ -1476,11 +1496,11 @@ $(document).ready(function() {
 <div class="modal fade" id="blockUserModal" tabindex="-1" aria-labelledby="blockUserModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-md modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title" id="blockUserModalLabel">
-          <i class="fa fa-ban me-2"></i>Block User
+      <div class="modal-header border-bottom bg-light">
+        <h5 class="modal-title text-dark" id="blockUserModalLabel">
+          <i class="fa fa-ban me-2 text-muted"></i>Block user
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <p>Are you sure you want to block <strong id="blockUserName"></strong>?</p>
@@ -1488,8 +1508,8 @@ $(document).ready(function() {
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="confirmBlockUser">
-          <i class="fa fa-ban me-1"></i>Yes, Block User
+        <button type="button" class="btn btn-sm btn-dark" id="confirmBlockUser">
+          <i class="fa fa-ban me-1"></i>Block user
         </button>
       </div>
     </div>
@@ -1500,11 +1520,11 @@ $(document).ready(function() {
 <div class="modal fade" id="unblockUserModal" tabindex="-1" aria-labelledby="unblockUserModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-md modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title" id="unblockUserModalLabel">
-          <i class="fa fa-check me-2"></i>Activate User
+      <div class="modal-header border-bottom bg-light">
+        <h5 class="modal-title text-dark" id="unblockUserModalLabel">
+          <i class="fa fa-check me-2 text-muted"></i>Activate user
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <p>Are you sure you want to activate <strong id="unblockUserName"></strong>?</p>
@@ -1512,8 +1532,8 @@ $(document).ready(function() {
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-success" id="confirmUnblockUser">
-          <i class="fa fa-check me-1"></i>Yes, Activate User
+        <button type="button" class="btn btn-sm btn-primary" id="confirmUnblockUser">
+          <i class="fa fa-check me-1"></i>Activate user
         </button>
       </div>
     </div>
@@ -1524,9 +1544,9 @@ $(document).ready(function() {
 <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-md modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header bg-warning text-dark">
-        <h5 class="modal-title" id="resetPasswordModalLabel">
-          <i class="fa fa-key me-2"></i>Reset Password
+      <div class="modal-header border-bottom bg-light">
+        <h5 class="modal-title text-dark" id="resetPasswordModalLabel">
+          <i class="fa fa-key me-2 text-muted"></i>Reset password
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -1536,8 +1556,32 @@ $(document).ready(function() {
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="confirmResetPassword">
-          <i class="fa fa-key me-1"></i>Yes, Reset Password
+        <button type="button" class="btn btn-sm btn-primary" id="confirmResetPassword">
+          <i class="fa fa-key me-1"></i>Reset password
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Email / password sign-in toggle -->
+<div class="modal fade" id="emailLoginModal" tabindex="-1" aria-labelledby="emailLoginModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header border-bottom bg-light">
+        <h5 class="modal-title text-dark" id="emailLoginModalLabel">
+          <i class="fa fa-envelope me-2 text-muted"></i><span id="emailLoginModalLabelText">Email sign-in</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Apply this to <strong id="confirmEmailLoginUserName"></strong>?</p>
+        <p class="text-muted small mb-0" id="emailLoginModalDetail"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="confirmEmailLogin">
+          <i class="fa fa-envelope me-1"></i>Confirm
         </button>
       </div>
     </div>

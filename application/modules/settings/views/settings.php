@@ -31,6 +31,7 @@
   <div class="row" id="settingsContainer">
   <?php
 $settings = [
+  ['settings/cbp_modules', 'CBP modules', 'bx-grid-alt'],
   ['settings/nationalities', 'Nationalities', 'bx-globe'],
   ['settings/duty_stations', 'Duty Stations', 'bx-map'],
   ['settings/contracting_institutions', 'Contracting Institutions', 'bx-network-chart'],
