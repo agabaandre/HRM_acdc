@@ -190,8 +190,9 @@
                      <div class="d-flex align-items-center mb-2">
                        <i class="fa fa-check-circle text-success me-2"></i>
                        <div>
-                         <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?></span>
-                         <br><small class="text-muted"><?php echo $perm->definition; ?></small>
+                         <?php $permRefId = isset($perm->permission_id) ? (int) $perm->permission_id : (int) ($perm->id ?? 0); ?>
+                         <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?> <span class="text-muted fw-normal">[<?php echo $permRefId; ?>]</span></span>
+                         <br><small class="text-muted"><?php echo htmlspecialchars($perm->definition); ?></small>
                          <br><small class="text-muted text-info">
                            <i class="fa fa-clock me-1"></i>Updated: <?php echo date('M d, Y', strtotime($perm->last_updated)); ?>
                          </small>

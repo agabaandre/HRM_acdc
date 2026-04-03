@@ -142,8 +142,8 @@ foreach ($userPermissions as $up) {
                                    <?php if (in_array($perm->id, $userPermissionIds)) echo "checked"; ?>
                                    disabled>
                             <label class="form-check-label" for="perm_<?php echo $perm->id; ?>">
-                              <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?></span>
-                              <br><small class="text-muted"><?php echo $perm->definition; ?></small>
+                              <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?> <span class="text-muted fw-normal">[<?php echo (int) $perm->id; ?>]</span></span>
+                              <br><small class="text-muted"><?php echo htmlspecialchars($perm->definition); ?></small>
                               <?php if (in_array($perm->id, $userPermissionIds)): ?>
                                 <br><small class="text-success">
                                   <i class="fa fa-check-circle me-1"></i>Currently assigned
@@ -197,11 +197,12 @@ foreach ($userPermissions as $up) {
                     <i class="fa fa-folder me-2"></i><?php echo $category; ?>
                   </h6>
                   <?php foreach ($perms as $perm): ?>
+                    <?php $permRefId = isset($perm->permission_id) ? (int) $perm->permission_id : (int) ($perm->id ?? 0); ?>
                     <div class="d-flex align-items-center mb-2">
                       <i class="fa fa-check-circle text-success me-2"></i>
                       <div>
-                        <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?></span>
-                        <br><small class="text-muted"><?php echo $perm->definition; ?></small>
+                        <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?> <span class="text-muted fw-normal">[<?php echo $permRefId; ?>]</span></span>
+                        <br><small class="text-muted"><?php echo htmlspecialchars($perm->definition); ?></small>
                       </div>
                     </div>
                   <?php endforeach; ?>
