@@ -71,6 +71,16 @@ body {
   background: var(--cbp-primary);
 }
 
+.cbp-home-search {
+  max-width: 420px;
+  margin: 0 auto 1.75rem;
+}
+
+.cbp-home-search .form-control:focus {
+  border-color: var(--cbp-primary);
+  box-shadow: 0 0 0 0.2rem rgba(17, 154, 72, 0.15);
+}
+
 .cbp-home .settings-card {
   min-height: 220px;
   height: 100%;
@@ -225,6 +235,14 @@ body {
 
 <div class="cbp-home">
   <h1 class="cbp-home-title">Welcome to Africa CDC Central Business Platform</h1>
+  <div class="cbp-home-search">
+    <label for="cbpHomeModuleSearch" class="visually-hidden">Search modules</label>
+    <div class="input-group input-group-sm shadow-sm">
+      <span class="input-group-text bg-white border-end-0" aria-hidden="true"><i class="fas fa-search text-muted"></i></span>
+      <input type="search" id="cbpHomeModuleSearch" class="form-control border-start-0" placeholder="Search modules by name or description…" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+  <p id="cbpHomeSearchEmpty" class="text-center text-muted small d-none mb-0">No modules match your search.</p>
   <div class="row row-cols-1 row-cols-md-3 g-4 justify-content-center" id="settingsContainer">
     <?php
     $cbp_home_modules = isset($cbp_home_modules) && is_array($cbp_home_modules) ? $cbp_home_modules : [];
@@ -234,7 +252,13 @@ body {
       $icon = $mod['icon'];
       $desc = $mod['desc'];
     ?>
-    <div class="col setting-card-item" data-title="<?= strtolower(htmlspecialchars($label)) ?>">
+    <?php
+      $modKey = isset($mod['module_key']) ? (string) $mod['module_key'] : '';
+      if ($modKey === '') {
+        $modKey = 'mod_' . md5($href . $label);
+      }
+    ?>
+    <div class="col setting-card-item" data-module-key="<?= htmlspecialchars($modKey) ?>" data-title="<?= strtolower(htmlspecialchars($label)) ?>">
       <a href="<?= htmlspecialchars($href) ?>" class="text-decoration-none d-flex h-100">
         <div class="settings-card w-100">
           <div>
@@ -266,10 +290,70 @@ body {
 </div>
 
 <script>
-document.getElementById("settingsSearch")?.addEventListener("keyup", function () {
-  let filter = this.value.toLowerCase();
-  document.querySelectorAll(".setting-card-item").forEach(function (card) {
-    card.style.display = card.getAttribute("data-title").includes(filter) ? "" : "none";
+(function () {
+  var input = document.getElementById('cbpHomeModuleSearch');
+  var container = document.getElementById('settingsContainer');
+  var emptyMsg = document.getElementById('cbpHomeSearchEmpty');
+  if (!input || !container) return;
+
+  var searchUrl = <?= json_encode(site_url('home/module_search')) ?>;
+
+  function allModuleKeysFromDom() {
+    return Array.prototype.map.call(container.querySelectorAll('.setting-card-item'), function (el) {
+      return el.getAttribute('data-module-key') || '';
+    }).filter(Boolean);
+  }
+
+  function applyModuleKeys(keys) {
+    var set = new Set(keys);
+    var visible = 0;
+    container.querySelectorAll('.setting-card-item').forEach(function (el) {
+      var k = el.getAttribute('data-module-key') || '';
+      var show = k && set.has(k);
+      el.classList.toggle('d-none', !show);
+      if (show) visible++;
+    });
+    if (emptyMsg) {
+      var q = input.value.trim();
+      emptyMsg.classList.toggle('d-none', visible > 0 || q === '');
+    }
+  }
+
+  function runSearch() {
+    var q = input.value.trim();
+    var url = searchUrl + (searchUrl.indexOf('?') >= 0 ? '&' : '?') + 'q=' + encodeURIComponent(q);
+    fetch(url, {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('bad status');
+        return res.json();
+      })
+      .then(function (data) {
+        if (data && data.ok && Array.isArray(data.module_keys)) {
+          applyModuleKeys(data.module_keys);
+        } else {
+          applyModuleKeys(allModuleKeysFromDom());
+        }
+      })
+      .catch(function () {
+        applyModuleKeys(allModuleKeysFromDom());
+      });
+  }
+
+  var debounceTimer;
+  function debouncedSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runSearch, 280);
+  }
+
+  input.addEventListener('input', debouncedSearch);
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') {
+      input.value = '';
+      runSearch();
+    }
   });
-});
+})();
 </script>

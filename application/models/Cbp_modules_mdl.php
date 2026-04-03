@@ -322,7 +322,7 @@ class Cbp_modules_mdl extends CI_Model
 	/**
 	 * @param object $user Session user (role, permissions)
 	 * @param array $sessionArray (array) $user + base_url for token JSON
-	 * @return list<array{href:string,label:string,icon:string,absolute:bool,desc:string}>
+	 * @return list<array{href:string,label:string,icon:string,absolute:bool,desc:string,module_key:string}>
 	 */
 	public function get_home_cards_for_user(object $user, array $sessionArray): array
 	{
@@ -352,12 +352,17 @@ class Cbp_modules_mdl extends CI_Model
 			}
 			$absolute = in_array($row->target_resolver, ['staff_app_token', 'finance_host', 'external_microservice'], true)
 				|| preg_match('#^https?://#i', $resolved);
+			$mkey = trim((string) ($row->module_key ?? ''));
+			if ($mkey === '') {
+				$mkey = 'cbp_module_' . (int) $row->id;
+			}
 			$out[] = [
 				'href' => $resolved,
 				'label' => $row->system_name,
 				'icon' => $row->icon_class,
 				'absolute' => $absolute,
 				'desc' => (string) ($row->description ?? ''),
+				'module_key' => $mkey,
 			];
 		}
 
