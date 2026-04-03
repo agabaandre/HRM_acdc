@@ -511,6 +511,32 @@ return $qry->num_rows();
 		}
 	}
 
+	/**
+	 * Set allow_email_login (Staff + APM API email/password sign-in).
+	 */
+	public function setAllowEmailLogin($postdata)
+	{
+		if (!isset($postdata['user_id']) || $postdata['user_id'] === '') {
+			return 'User ID is required.';
+		}
+		$uid = (int) $postdata['user_id'];
+		if ($uid <= 0) {
+			return 'Invalid user ID.';
+		}
+		$allow = isset($postdata['allow_email_login']) && (int) $postdata['allow_email_login'] === 1 ? 1 : 0;
+		$this->db->where('user_id', $uid);
+		$done = $this->db->update($this->table, array('allow_email_login' => $allow));
+		if ($done && $this->db->affected_rows() > 0) {
+			return $allow
+				? 'Email/password sign-in enabled for this user.'
+				: 'Email/password sign-in disabled for this user.';
+		}
+		if ($done && $this->db->affected_rows() === 0) {
+			return 'No change (already set).';
+		}
+		return 'Failed to update. Ensure column user.allow_email_login exists.';
+	}
+
 
 	public function getPermissions()
 	{

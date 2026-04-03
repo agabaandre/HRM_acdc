@@ -563,7 +563,71 @@ public function force_generate_short_names() {
     redirect('settings/divisions');
 }
 
-	
-		
-	
+	public function cbp_modules()
+	{
+		$this->load->model('cbp_modules_mdl');
+		$data['module'] = $this->module;
+		$data['title'] = 'CBP modules';
+		$data['table_exists'] = $this->cbp_modules_mdl->table_exists();
+		$data['modules'] = $data['table_exists'] ? $this->cbp_modules_mdl->get_all_ordered() : [];
+		$data['icon_options'] = $this->cbp_fa_icon_options();
+		$data['resolver_options'] = [
+			'codeigniter' => 'Staff portal path (no token)',
+			'staff_app_token' => 'Staff app with session token (like APM)',
+			'finance_host' => 'Finance app (development / production hosts)',
+		];
+		render('cbp_modules', $data);
+	}
+
+	public function cbp_modules_save()
+	{
+		if ($this->input->method() !== 'post') {
+			show_404();
+			return;
+		}
+		$this->load->model('cbp_modules_mdl');
+		$id = (int) $this->input->post('id');
+		if ($id < 1 || !$this->cbp_modules_mdl->table_exists()) {
+			$msg = ['msg' => 'Invalid request or the cbp_modules table is missing. Run the SQL migration.', 'type' => 'error'];
+			Modules::run('utility/setFlash', $msg);
+			redirect('settings/cbp_modules');
+			return;
+		}
+		$post = $this->input->post();
+		$resolvers = ['codeigniter', 'staff_app_token', 'finance_host'];
+		if (isset($post['target_resolver']) && !in_array($post['target_resolver'], $resolvers, true)) {
+			$post['target_resolver'] = 'codeigniter';
+		}
+		$res = $this->cbp_modules_mdl->update_module($id, $post);
+		$msg = [
+			'msg' => $res ? 'Module saved.' : 'Could not save module.',
+			'type' => $res ? 'success' : 'error',
+		];
+		Modules::run('utility/setFlash', $msg);
+		redirect('settings/cbp_modules');
+	}
+
+	private function cbp_fa_icon_options(): array
+	{
+		return [
+			'fa-users' => 'Users',
+			'fa-user' => 'User',
+			'fa-sitemap' => 'Sitemap',
+			'fa-wallet' => 'Wallet',
+			'fa-chart-line' => 'Chart line',
+			'fa-building' => 'Building',
+			'fa-briefcase' => 'Briefcase',
+			'fa-cogs' => 'Cogs',
+			'fa-th-large' => 'Grid',
+			'fa-file-alt' => 'File',
+			'fa-globe' => 'Globe',
+			'fa-hand-holding-usd' => 'Hand holding USD',
+			'fa-shield-alt' => 'Shield',
+			'fa-tachometer-alt' => 'Dashboard',
+			'fa-project-diagram' => 'Project diagram',
+			'fa-envelope' => 'Envelope',
+			'fa-key' => 'Key',
+		];
+	}
+
 }

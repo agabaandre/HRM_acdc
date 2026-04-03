@@ -1023,6 +1023,14 @@ public function revert()
     $res = $this->auth_mdl->unblockUser($postdata);
     echo json_encode(['message' => $res]);
   }
+
+  public function setAllowEmailLogin()
+  {
+    $postdata = $this->input->post();
+    $res = $this->auth_mdl->setAllowEmailLogin($postdata);
+    echo json_encode(['message' => $res]);
+  }
+
   public function update_profile()
   {
     $data = $this->input->post();
