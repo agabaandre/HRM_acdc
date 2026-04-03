@@ -35,7 +35,7 @@ class Cbp_modules_mdl extends CI_Model
 			'codeigniter' => 'Staff portal — internal path (no token)',
 			'staff_app_token' => 'Staff host — path with session token (like APM)',
 			'finance_host' => 'Finance app — dev / prod host rules',
-			'external_microservice' => 'External microservice — different server (HTTPS URL)',
+			'external_microservice' => 'External system — different server (HTTPS URL)',
 		];
 	}
 
@@ -57,7 +57,7 @@ class Cbp_modules_mdl extends CI_Model
 			return '“Staff host + token” requires a path segment under the Staff app (e.g. apm).';
 		}
 		if ($resolver === 'external_microservice' && !$this->external_microservice_has_any_url($data)) {
-			return 'External microservice: provide a development URL, production URL, or a single URL for all environments.';
+			return 'External system: provide a development URL, production URL, or a single URL for all environments.';
 		}
 		if ($resolver === 'codeigniter' && trim((string) ($data['base_url'] ?? '')) === ''
 			&& trim((string) ($data['alternate_base_url'] ?? '')) === '') {
@@ -574,7 +574,7 @@ class Cbp_modules_mdl extends CI_Model
 	}
 
 	/**
-	 * External HTTPS microservice: pick dev vs prod URL from host, optional single base_url fallback.
+	 * External HTTPS system: pick dev vs prod URL from host, optional single base_url fallback.
 	 */
 	private function resolve_external_microservice_href(object $row, array $sessionArray): ?string
 	{
