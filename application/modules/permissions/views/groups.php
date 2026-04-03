@@ -123,8 +123,8 @@ $selectedGroup = $this->session->flashdata('group');
                                    <?php if (in_array($perm->id, $gpermissions)) echo "checked"; ?>
                                    disabled>
                             <label class="form-check-label" for="perm_<?php echo $perm->id; ?>">
-                              <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?></span>
-                              <br><small class="text-muted"><?php echo $perm->definition; ?></small>
+                              <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?> <span class="text-muted fw-normal">[<?php echo (int) $perm->id; ?>]</span></span>
+                              <br><small class="text-muted"><?php echo htmlspecialchars($perm->definition); ?></small>
                             </label>
                           </div>
                         <?php endforeach; ?>
@@ -216,10 +216,13 @@ $selectedGroup = $this->session->flashdata('group');
                                 <div class="card-body p-2">
                                   <ul class="list-unstyled mb-0">
                                     <?php foreach ($perms as $perm): ?>
+                                      <?php
+                                      $permRefId = isset($perm->permission_id) ? (int) $perm->permission_id : (int) ($perm->id ?? 0);
+                                      ?>
                                       <li class="mb-1">
                                         <i class="fa fa-check-circle text-success me-2"></i>
-                                        <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?></span>
-                                        <br><small class="text-muted ms-4"><?php echo $perm->definition; ?></small>
+                                        <span class="fw-medium"><?php echo ucwords(str_replace('_', ' ', $perm->name)); ?> <span class="text-muted fw-normal">[<?php echo $permRefId; ?>]</span></span>
+                                        <br><small class="text-muted ms-4"><?php echo htmlspecialchars($perm->definition); ?></small>
                                         <br><small class="text-muted text-info ms-4">
                                           <i class="fa fa-clock me-1"></i>Updated: <?php echo date('M d, Y', strtotime($perm->last_updated)); ?>
                                         </small>
