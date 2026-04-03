@@ -14,6 +14,11 @@ class Cbp_modules_mdl extends CI_Model
 	/** @var list<string> */
 	public const TARGET_RESOLVERS = ['codeigniter', 'staff_app_token', 'finance_host', 'external_microservice'];
 
+	/**
+	 * user_groups.id / user.role for the admin group that receives new CBP module permissions automatically.
+	 */
+	public const CBP_AUTO_ASSIGN_GROUP_ID = 10;
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -206,7 +211,103 @@ class Cbp_modules_mdl extends CI_Model
 	}
 
 	/**
-	 * @return array{ok:bool,message:string}
+	 * Next permissions.id after INSERT (MAX(id)+1) — for UI hint only; actual row uses auto-increment.
+	 */
+	public function next_permission_id_hint(): int
+	{
+		if (!$this->db->table_exists('permissions')) {
+			return 1;
+		}
+		$row = $this->db->select('COALESCE(MAX(id), 0) AS mx', false)->get('permissions')->row();
+
+		return (int) (($row->mx ?? 0) + 1);
+	}
+
+	/**
+	 * Stable permission name from module key: cbp_{module_key}.
+	 */
+	private function permission_name_for_module_key(string $moduleKey): string
+	{
+		$k = strtolower(preg_replace('/[^a-z0-9_]+/', '_', $moduleKey));
+		$k = trim($k, '_');
+		if ($k === '') {
+			$k = 'module';
+		}
+
+		return 'cbp_' . $k;
+	}
+
+	/**
+	 * Insert permissions row and assign it to the admin group (role 10).
+	 *
+	 * @return int new permission id, or 0 on failure
+	 */
+	public function create_permission_and_assign_admin(string $moduleKey, string $systemName): int
+	{
+		if (!$this->db->table_exists('permissions')) {
+			return 0;
+		}
+		$base = $this->permission_name_for_module_key($moduleKey);
+		$candidate = $base;
+		$suffix = 2;
+		while ($this->db->where('name', $candidate)->count_all_results('permissions') > 0) {
+			$candidate = $base . '_' . $suffix;
+			$suffix++;
+		}
+		$def = 'CBP module access: ' . trim($systemName);
+		$def = function_exists('mb_substr') ? mb_substr($def, 0, 255) : substr($def, 0, 255);
+
+		$insert = [
+			'name' => $candidate,
+			'definition' => $def,
+		];
+		if ($this->db->field_exists('module', 'permissions')) {
+			$insert['module'] = 'cbp';
+		}
+		if (!$this->db->insert('permissions', $insert)) {
+			return 0;
+		}
+		$pid = (int) $this->db->insert_id();
+		if ($pid < 1) {
+			return 0;
+		}
+		$this->ensure_permission_in_group($pid, self::CBP_AUTO_ASSIGN_GROUP_ID);
+
+		return $pid;
+	}
+
+	public function ensure_permission_in_group(int $permissionId, int $groupId): void
+	{
+		if ($permissionId < 1 || $groupId < 1 || !$this->db->table_exists('group_permissions')) {
+			return;
+		}
+		$n = (int) $this->db->where('group_id', $groupId)->where('permission_id', $permissionId)->count_all_results('group_permissions');
+		if ($n === 0) {
+			$this->db->insert('group_permissions', [
+				'group_id' => $groupId,
+				'permission_id' => $permissionId,
+			]);
+		}
+	}
+
+	/**
+	 * After saving a module, ensure its permission_code (numeric id) is granted to the admin group.
+	 */
+	public function ensure_module_permission_assigned_to_admin(int $moduleId): void
+	{
+		$row = $this->get_by_id($moduleId);
+		if (!$row) {
+			return;
+		}
+		$pid = (int) $row->permission_code;
+		if ($pid < 1) {
+			return;
+		}
+		$this->ensure_permission_in_group($pid, self::CBP_AUTO_ASSIGN_GROUP_ID);
+	}
+
+	/**
+	 * @return array{ok:bool,message:string,permission_id?:int}
 	 */
 	public function insert_module(array $data): array
 	{
@@ -226,10 +327,6 @@ class Cbp_modules_mdl extends CI_Model
 		if ($name === '') {
 			return ['ok' => false, 'message' => 'System name is required.'];
 		}
-		$perm = isset($data['permission_code']) ? trim((string) $data['permission_code']) : '';
-		if ($perm === '') {
-			return ['ok' => false, 'message' => 'Permission code is required.'];
-		}
 		$validation = $this->validate_target_configuration($data);
 		if ($validation !== null) {
 			return ['ok' => false, 'message' => $validation];
@@ -242,6 +339,17 @@ class Cbp_modules_mdl extends CI_Model
 		if ($icon === '') {
 			$icon = 'fa-th';
 		}
+		$this->db->trans_start();
+
+		$newPermId = $this->create_permission_and_assign_admin($key, $name);
+		if ($newPermId < 1) {
+			$this->db->trans_rollback();
+
+			return ['ok' => false, 'message' => 'Could not create a permission row. Check that the permissions and group_permissions tables exist.'];
+		}
+
+		$permCode = (string) $newPermId;
+
 		$row = [
 			'module_key' => $key,
 			'system_name' => function_exists('mb_substr') ? mb_substr($name, 0, 191) : substr($name, 0, 191),
@@ -250,7 +358,7 @@ class Cbp_modules_mdl extends CI_Model
 			'base_url_development' => $this->nullable_string($data['base_url_development'] ?? null),
 			'base_url_production' => $this->nullable_string($data['base_url_production'] ?? null),
 			'icon_class' => function_exists('mb_substr') ? mb_substr($icon, 0, 128) : substr($icon, 0, 128),
-			'permission_code' => function_exists('mb_substr') ? mb_substr($perm, 0, 32) : substr($perm, 0, 32),
+			'permission_code' => function_exists('mb_substr') ? mb_substr($permCode, 0, 32) : substr($permCode, 0, 32),
 			'uses_staff_portal_token' => !empty($data['uses_staff_portal_token']) ? 1 : 0,
 			'is_production' => !empty($data['is_production']) ? 1 : 0,
 			'is_enabled' => !empty($data['is_enabled']) ? 1 : 0,
@@ -262,13 +370,23 @@ class Cbp_modules_mdl extends CI_Model
 		];
 		$ok = (bool) $this->db->insert($this->table, $row);
 		if (!$ok) {
+			$this->db->trans_rollback();
 			$err = $this->db->error();
 			$msg = !empty($err['message']) ? $err['message'] : 'Insert failed.';
 
 			return ['ok' => false, 'message' => $msg];
 		}
 
-		return ['ok' => true, 'message' => 'Module created.'];
+		$this->db->trans_complete();
+		if ($this->db->trans_status() === false) {
+			return ['ok' => false, 'message' => 'Transaction failed while creating the module.'];
+		}
+
+		return [
+			'ok' => true,
+			'message' => 'Module created. New permission ID ' . $newPermId . ' was added and assigned to admin group (role ' . self::CBP_AUTO_ASSIGN_GROUP_ID . ').',
+			'permission_id' => $newPermId,
+		];
 	}
 
 	private function nullable_string($v): ?string

@@ -573,6 +573,7 @@ public function force_generate_short_names() {
 		$data['next_sort_order'] = $data['table_exists'] ? $this->cbp_modules_mdl->next_sort_order() : 100;
 		$data['icon_options'] = $this->cbp_fa_icon_options();
 		$data['resolver_options'] = Cbp_modules_mdl::target_resolver_labels();
+		$data['next_permission_id_hint'] = $data['table_exists'] ? $this->cbp_modules_mdl->next_permission_id_hint() : 1;
 		render('cbp_modules', $data);
 	}
 
@@ -599,6 +600,9 @@ public function force_generate_short_names() {
 			return;
 		}
 		$res = $this->cbp_modules_mdl->update_module($id, $post);
+		if ($res) {
+			$this->cbp_modules_mdl->ensure_module_permission_assigned_to_admin($id);
+		}
 		$msg = [
 			'msg' => $res ? 'Module saved.' : 'Could not save module.',
 			'type' => $res ? 'success' : 'error',
