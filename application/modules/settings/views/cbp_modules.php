@@ -1,5 +1,6 @@
 <?php
 $next_sort_order = isset($next_sort_order) ? (int) $next_sort_order : 100;
+$next_permission_id_hint = isset($next_permission_id_hint) ? (int) $next_permission_id_hint : 1;
 ?>
 <style>
   /*
@@ -163,6 +164,10 @@ $next_sort_order = isset($next_sort_order) ? (int) $next_sort_order : 100;
             </div>
             <div class="modal-body">
               <p class="text-muted small">Unique <strong>module key</strong> (e.g. <code>learning_hub</code>) — cannot be changed later.</p>
+              <div class="alert alert-light border small mb-3 mb-md-0 py-2">
+                A new row in <code>permissions</code> will be created (next ID is typically <strong><?= (int) $next_permission_id_hint ?></strong>, based on current max).
+                It will be linked to this module and <strong>automatically assigned to the admin group</strong> (role / group ID <strong>10</strong>).
+              </div>
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label">Module key <span class="text-danger">*</span></label>
@@ -172,10 +177,6 @@ $next_sort_order = isset($next_sort_order) ? (int) $next_sort_order : 100;
                 <div class="col-md-6">
                   <label class="form-label">System name <span class="text-danger">*</span></label>
                   <input type="text" name="system_name" class="form-control" required maxlength="191" placeholder="Display name">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Permission code <span class="text-danger">*</span></label>
-                  <input type="text" name="permission_code" class="form-control" required maxlength="32" placeholder="e.g. 84">
                 </div>
                 <div class="col-12">
                   <label class="form-label">Description</label>
