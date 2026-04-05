@@ -15,6 +15,7 @@ use App\Models\Location;
 use App\Models\NonTravelMemoCategory;
 use App\Models\RequestType;
 use App\Models\Staff;
+use App\Support\ApprovalTrailSort;
 use App\Support\StaffApproverPhotoUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -1367,6 +1368,7 @@ class ApmDocumentController extends Controller
 
     /**
      * Format approval trail collection for API (works with ApprovalTrail or ActivityApprovalTrail).
+     * Ordered by created_at descending (latest first), then id descending.
      * Returns array of { id, action, remarks, approval_order, staff_id, staff_name, staff_image_url, oic_staff_id, oic_staff_name, oic_staff_image_url, role, created_at, is_archived }.
      */
     private function formatApprovalTrails(Collection $trails): array
@@ -1374,7 +1376,9 @@ class ApmDocumentController extends Controller
         if ($trails->isEmpty()) {
             return [];
         }
-        return $trails->map(function ($t) {
+        $sorted = ApprovalTrailSort::latestFirst($trails);
+
+        return $sorted->map(function ($t) {
             $staff = $t->relationLoaded('staff') ? $t->staff : null;
             $oic = $t->relationLoaded('oicStaff') ? $t->oicStaff : null;
             $staffName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;

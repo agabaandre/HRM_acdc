@@ -14,6 +14,7 @@ use App\Models\WorkflowModel;
 use App\Models\Approver;
 use App\Models\Staff;
 use App\Models\Division;
+use App\Support\ApprovalTrailSort;
 use App\Support\StaffApproverPhotoUrl;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -128,6 +129,7 @@ class PendingApprovalsService
             'forwardWorkflow',
             'matrixApprovalTrails.staff',
             'matrixApprovalTrails.oicStaff',
+            'matrixApprovalTrails.approver_role',
             // Load activities with relations needed for get_approvable_activities (approval_order / allowed_funders / fund_type)
             'activities' => function ($q) {
                 $q->where('is_single_memo', 0)->whereNotNull('matrix_id')
@@ -909,6 +911,7 @@ class PendingApprovalsService
 
     /**
      * Format approval trail collection for API (same shape as documents endpoint).
+     * Ordered by created_at descending (latest first), then id descending.
      * Returns array of { id, action, remarks, approval_order, staff_id, staff_name, staff_image_url, oic_staff_id, oic_staff_name, oic_staff_image_url, role, created_at, is_archived }.
      */
     public function formatApprovalTrailsForApi(Collection $trails): array
@@ -916,16 +919,42 @@ class PendingApprovalsService
         if ($trails->isEmpty()) {
             return [];
         }
-        return $trails->map(function ($t) {
-            $staff = $t->relationLoaded('staff') ? $t->staff : null;
-            $oic = $t->relationLoaded('oicStaff') ? $t->oicStaff : null;
+        $sorted = ApprovalTrailSort::latestFirst($trails);
+
+        $staffIds = [];
+        foreach ($sorted as $t) {
+            if (!empty($t->staff_id)) {
+                $staffIds[] = (int) $t->staff_id;
+            }
+            if (!empty($t->oic_staff_id)) {
+                $staffIds[] = (int) $t->oic_staff_id;
+            }
+        }
+        $staffIds = array_values(array_unique(array_filter($staffIds)));
+        $staffById = $staffIds !== []
+            ? Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id')
+            : collect();
+
+        return $sorted->map(function ($t) use ($staffById) {
+            $staff = null;
+            if ($t->relationLoaded('staff') && $t->staff) {
+                $staff = $t->staff;
+            } elseif (!empty($t->staff_id)) {
+                $staff = $staffById->get((int) $t->staff_id);
+            }
+            $oic = null;
+            if ($t->relationLoaded('oicStaff') && $t->oicStaff) {
+                $oic = $t->oicStaff;
+            } elseif (!empty($t->oic_staff_id)) {
+                $oic = $staffById->get((int) $t->oic_staff_id);
+            }
             $staffName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
             $oicName = $oic ? trim(($oic->title ?? '') . ' ' . ($oic->fname ?? '') . ' ' . ($oic->lname ?? '') . ' ' . ($oic->oname ?? '')) : null;
             $role = null;
             if ($t->relationLoaded('workflowDefinition') && $t->workflowDefinition) {
                 $role = $t->workflowDefinition->role ?? null;
-            } elseif (isset($t->approver_role)) {
-                $role = $t->approver_role;
+            } elseif ($t->relationLoaded('approver_role') && $t->approver_role) {
+                $role = $t->approver_role->role ?? null;
             } elseif (method_exists($t, 'getApproverRoleNameAttribute')) {
                 $role = $t->approver_role_name ?? null;
             }
