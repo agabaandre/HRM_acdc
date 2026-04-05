@@ -644,7 +644,7 @@ paths:
       description: |
         Single document by type and id (regardless of status). Includes approval_trails and attachments.
         Each approval_trail entry includes **staff_image_url** and **oic_staff_image_url** when a portrait is available.
-        Document payloads merge **approval_order**, **approval_role**, **workflow_definition_id**, **approver_name**, **current_staff_id** (staff_id of the current workflow actor, null if none), and **approver_image_url**.
+        Document payloads merge **approval_order**, **approval_role**, **workflow_definition_id**, **approver_name**, **approver_staff_id** (staff_id of the current workflow actor, null if none), and **approver_image_url**.
         Each attachment has **url** (API; use with Bearer token or ?token= for in-browser) and **web_view_url**
         (web session; use to open in browser when user is logged in via the web app).
         For listing by status use GET /documents/{type}/{status}.
