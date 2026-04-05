@@ -501,7 +501,7 @@ paths:
       summary: Pending approvals (memos with approval trails)
       description: |
         List of documents pending the current user's action, grouped by category (Matrix, Special Memo, etc.).
-        Each item includes approval_trails: the full history of who approved/returned/rejected and when.
+        Each item includes **approval_trails**: full history, sorted by **created_at** descending (most recent first).
         Use this to show pending memos with their approval trail; use GET /documents/{type}/{id} for full document detail.
       operationId: pendingApprovals
       security: [{ bearerAuth: [] }]
@@ -551,7 +551,7 @@ paths:
         Optional query parameter **id** returns a single document when provided.
         When listing (no id), results are ordered **latest first** (year desc, quarter desc, created_at desc)
         and support memo-list style filters and pagination.
-        Each document includes approval_trails and attachments (with url for download).
+        Each document includes approval_trails (sorted by **created_at** descending, most recent first) and attachments (with url for download).
       operationId: listDocumentsByTypeAndStatus
       security: [{ bearerAuth: [] }]
       parameters:
@@ -643,6 +643,7 @@ paths:
       summary: Get document by id
       description: |
         Single document by type and id (regardless of status). Includes approval_trails and attachments.
+        **approval_trails** are sorted by **created_at** descending (latest action first).
         Each approval_trail entry includes **staff_image_url** and **oic_staff_image_url** when a portrait is available.
         Document payloads merge **approval_order**, **approval_role**, **workflow_definition_id**, **approver_name**, **approver_staff_id** (staff_id of the current workflow actor, null if none), and **approver_image_url**.
         Each attachment has **url** (API; use with Bearer token or ?token= for in-browser) and **web_view_url**
@@ -2269,7 +2270,7 @@ components:
 
     PendingApprovalItem:
       type: object
-      description: One pending document; includes approval_trails (history of actions).
+      description: One pending document; includes approval_trails (history of actions, newest first by created_at).
       properties:
         id: { type: integer }
         category: { type: string }
@@ -2287,7 +2288,7 @@ components:
         approval_trails:
           type: array
           items: { $ref: '#/components/schemas/ApprovalTrailItem' }
-          description: Full approval history for this memo/document.
+          description: Full approval history; sorted by created_at descending (latest first).
 
     ApprovedByMeItem:
       type: object
