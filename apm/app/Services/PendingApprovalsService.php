@@ -129,7 +129,7 @@ class PendingApprovalsService
             'forwardWorkflow',
             'matrixApprovalTrails.staff',
             'matrixApprovalTrails.oicStaff',
-            'matrixApprovalTrails.approver_role',
+            'matrixApprovalTrails.workflowDefinition',
             // Load activities with relations needed for get_approvable_activities (approval_order / allowed_funders / fund_type)
             'activities' => function ($q) {
                 $q->where('is_single_memo', 0)->whereNotNull('matrix_id')
@@ -953,7 +953,9 @@ class PendingApprovalsService
             $role = null;
             if ($t->relationLoaded('workflowDefinition') && $t->workflowDefinition) {
                 $role = $t->workflowDefinition->role ?? null;
-            } elseif ($t->relationLoaded('approver_role') && $t->approver_role) {
+            } elseif ($t->relationLoaded('approverRole') && $t->approverRole) {
+                $role = $t->approverRole->role ?? null;
+            } elseif (method_exists($t, 'approver_role') && $t->relationLoaded('approver_role') && $t->approver_role) {
                 $role = $t->approver_role->role ?? null;
             } elseif (method_exists($t, 'getApproverRoleNameAttribute')) {
                 $role = $t->approver_role_name ?? null;
