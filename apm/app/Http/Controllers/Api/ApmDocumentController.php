@@ -873,7 +873,7 @@ class ApmDocumentController extends Controller
      * Matrix line items (activity, is_single_memo = 0): matrix approval_level + matrix workflow definition.
      * Single memo: activity approval_level + activity workflow definition.
      * Other types: that model's approval_level + its workflow_definition accessor.
-     * Approver name comes from the same model's current_actor accessor (matrix for matrix activities).
+     * Approver name and current_staff_id come from the same model's current_actor accessor (matrix for matrix activities).
      *
      * @param  string  $documentType  API document_type value (activity, single_memo, matrix, …).
      */
@@ -940,6 +940,7 @@ class ApmDocumentController extends Controller
             'approval_role' => $def?->role,
             'workflow_definition_id' => $def?->id !== null ? (int) $def->id : null,
             'approver_name' => $this->formatStaffDisplayName($actor),
+            'current_staff_id' => $actor !== null ? (int) $actor->staff_id : null,
             'approver_image_url' => StaffApproverPhotoUrl::resolve($actor),
         ];
     }
