@@ -26,7 +26,7 @@ A Matrix is a planning document that outlines activities and budgets for a speci
    - Click on **"APM Home"** in the main navigation
    - Select **"Matrices"** from the dropdown menu
    
-   ![Screenshot: Navigation to Matrices](APM)
+   ![Create Matrix](./assets/images/create_matrix.png)
 
 2. **Create New Matrix**
    - Click the **"Create Matrix"** button (usually green button with plus icon)
