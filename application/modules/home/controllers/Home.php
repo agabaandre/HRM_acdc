@@ -156,7 +156,7 @@ class Home extends MX_Controller
 		}
 
 		if (in_array('85', $permissions, true) || in_array(85, $permissions, true)) {
-			$token = urlencode(base64_encode(json_encode($session)));
+			$token = rawurlencode($this->build_sso_jwt($session));
 			$settings[] = [
 				'href' => rtrim(base_url(), '/') . '/apm?token=' . $token,
 				'label' => 'Approvals Management (APM)',
@@ -168,7 +168,7 @@ class Home extends MX_Controller
 		}
 
 		if (in_array('92', $permissions, true) || in_array(92, $permissions, true)) {
-			$token = urlencode(base64_encode(json_encode($session)));
+			$token = rawurlencode($this->build_sso_jwt($session));
 			$host = $_SERVER['HTTP_HOST'] ?? '';
 			if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
 				$financeUrl = 'http://localhost:3002?token=' . $token;
@@ -187,5 +187,46 @@ class Home extends MX_Controller
 		}
 
 		return $settings;
+	}
+
+	/**
+	 * Build cross-system SSO token as JWT (HS256).
+	 * Falls back to previous base64 JSON payload only if JWT cannot be generated.
+	 */
+	private function build_sso_jwt(array $session): string
+	{
+		$secret = $this->sso_jwt_secret();
+		if ($secret === '') {
+			return base64_encode(json_encode($session));
+		}
+
+		$now = time();
+		$payload = $session;
+		$payload['iat'] = $now;
+		$payload['exp'] = $now + 7200;
+
+		$header = ['alg' => 'HS256', 'typ' => 'JWT'];
+		$h = $this->base64url_encode(json_encode($header));
+		$p = $this->base64url_encode(json_encode($payload));
+		$sig = hash_hmac('sha256', $h . '.' . $p, $secret, true);
+
+		return $h . '.' . $p . '.' . $this->base64url_encode($sig);
+	}
+
+	private function sso_jwt_secret(): string
+	{
+		$envSecret = $_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET');
+		$envSecret = is_string($envSecret) ? trim($envSecret) : '';
+		if ($envSecret !== '') {
+			return $envSecret;
+		}
+
+		$fallback = (string) $this->config->item('encryption_key');
+		return trim($fallback);
+	}
+
+	private function base64url_encode(string $value): string
+	{
+		return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
 	}
 }

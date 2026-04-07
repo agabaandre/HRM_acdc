@@ -563,14 +563,50 @@ class Cbp_modules_mdl extends CI_Model
 	}
 
 	/**
-	 * Appends Staff session token as query parameter (same encoding as APM / Finance).
+	 * Appends Staff session token (JWT) as query parameter.
 	 */
 	private function append_staff_portal_token_to_url(string $url, array $sessionArray): string
 	{
-		$token = urlencode(base64_encode(json_encode($sessionArray)));
+		$token = rawurlencode($this->build_sso_jwt($sessionArray));
 		$sep = strpos($url, '?') !== false ? '&' : '?';
 
 		return $url . $sep . 'token=' . $token;
+	}
+
+	private function build_sso_jwt(array $session): string
+	{
+		$secret = $this->sso_jwt_secret();
+		if ($secret === '') {
+			return base64_encode(json_encode($session));
+		}
+		$now = time();
+		$payload = $session;
+		$payload['iat'] = $now;
+		$payload['exp'] = $now + 7200;
+
+		$header = ['alg' => 'HS256', 'typ' => 'JWT'];
+		$h = $this->base64url_encode(json_encode($header));
+		$p = $this->base64url_encode(json_encode($payload));
+		$sig = hash_hmac('sha256', $h . '.' . $p, $secret, true);
+
+		return $h . '.' . $p . '.' . $this->base64url_encode($sig);
+	}
+
+	private function sso_jwt_secret(): string
+	{
+		$envSecret = $_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET');
+		$envSecret = is_string($envSecret) ? trim($envSecret) : '';
+		if ($envSecret !== '') {
+			return $envSecret;
+		}
+
+		$fallback = (string) $this->config->item('encryption_key');
+		return trim($fallback);
+	}
+
+	private function base64url_encode(string $value): string
+	{
+		return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
 	}
 
 	/**
