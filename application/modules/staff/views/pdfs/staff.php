@@ -40,6 +40,7 @@
                         <th>Name</th>
                         <th>Gender</th>
                         <th>Nationality</th>
+                        <th>Region</th>
                         <th>Duty Station</th>
                         <th>Division</th>
                         <th>Job</th>
@@ -64,6 +65,7 @@
                             <td><?= $data->lname . ' ' . $data->fname. ' ' . @$data->oname  ?></td>
                             <td><?= $data->gender ?></td>
                             <td><?= $data->nationality ?></td>
+                            <td><?= !empty($data->region_name) ? html_escape($data->region_name) : 'N/A' ?></td>
                             <td><?= $data->duty_station_name ?></td>
                             <td><?= $data->division_name ?></td>
                             <td><?= $data->job_name ?></td>

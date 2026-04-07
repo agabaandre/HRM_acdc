@@ -1,6 +1,6 @@
 <?php
 if (empty($staffs)) {
-    echo '<tr><td colspan="25" class="text-center">No staff found</td></tr>';
+    echo '<tr><td colspan="26" class="text-center">No staff found</td></tr>';
 } else {
     $i = 1;
     $offset = ($page * $per_page);
@@ -31,6 +31,7 @@ if (empty($staffs)) {
         <td><?= !empty($data->date_of_birth) ? $data->date_of_birth : 'N/A' ?></td>
         <td><?php echo !empty($data->date_of_birth) ? calculate_age($data->date_of_birth) : 'N/A'; ?></td>
         <td><?= $data->nationality; ?></td>
+        <td><?= !empty($data->region_name) ? html_escape($data->region_name) : 'N/A'; ?></td>
         <td><?= @$cont->duty_station_name; ?></td>
         <td><?= @$cont->division_name; ?></td>
         <td><?= @$data->grade; ?></td>

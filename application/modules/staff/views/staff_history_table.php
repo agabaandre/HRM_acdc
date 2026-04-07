@@ -7,7 +7,7 @@ if ($offset != '') {
 
 if (empty($staffs)) : ?>
 	<tr>
-		<td colspan="25" class="text-center">No staff had a contract overlapping the selected period.</td>
+		<td colspan="26" class="text-center">No staff had a contract overlapping the selected period.</td>
 	</tr>
 <?php else :
 	foreach ($staffs as $data) :
@@ -35,6 +35,7 @@ if (empty($staffs)) : ?>
 			}
 		?></td>
 		<td><?= $data->nationality; ?></td>
+		<td><?= !empty($data->region_name) ? html_escape($data->region_name) : 'N/A'; ?></td>
 		<td><?= @$data->duty_station_name; ?></td>
 		<td><?= @$data->division_name; ?></td>
 		<td><?= @$data->grade; ?></td>
