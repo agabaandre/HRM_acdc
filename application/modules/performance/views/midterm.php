@@ -108,6 +108,7 @@ $objectives = json_decode(json_encode($objectives_raw), true);
 if (!is_array($objectives)) $objectives = [];
 
 $this->load->view('ppa_tabs');
+$this->load->view('performance/partials/mte_rich_text_assets', ['wrap_midterm_training' => true]);
 
 // ✅ SAFE to use here now
 // helper approval buttons hidden per request
@@ -242,8 +243,12 @@ $this->load->view('ppa_tabs');
     root.querySelectorAll('input[type="hidden"]').forEach(function (n) { n.remove(); });
     root.querySelectorAll('textarea').forEach(function (el) {
       var d = document.createElement('div');
-      d.className = 'preview-readonly-text';
-      d.textContent = el.value || '';
+      d.className = el.classList.contains('ppa-summernote') ? 'preview-readonly-text ppa-html-preview' : 'preview-readonly-text';
+      if (el.classList.contains('ppa-summernote')) {
+        d.innerHTML = (el.value || '').trim() ? el.value : '<span class="text-muted">—</span>';
+      } else {
+        d.textContent = el.value || '';
+      }
       el.parentNode.replaceChild(d, el);
     });
     root.querySelectorAll('select').forEach(function (el) {
@@ -294,6 +299,9 @@ $this->load->view('ppa_tabs');
   if (!modalEl || !srcEl || !bodyEl) return;
 
   modalEl.addEventListener('show.bs.modal', function () {
+    if (typeof window.syncMteSummernoteToTextareas === 'function') {
+      window.syncMteSummernoteToTextareas();
+    }
     bodyEl.innerHTML = '';
     var hint = document.createElement('p');
     hint.className = 'text-muted small mb-2';
@@ -410,7 +418,10 @@ $(document).ready(function() {
   // Attach validation to the main form
   $('#staff_ppa').on('submit', function(e) {
     console.log('Form submission intercepted');
-    
+    if (typeof window.syncMteSummernoteToTextareas === 'function') {
+      window.syncMteSummernoteToTextareas();
+    }
+
     // Always validate, not just on approval
     const errors = validateForm();
     console.log('Validation errors:', errors);
@@ -515,7 +526,9 @@ $(document).ready(function() {
     if (shouldValidate) {
     selfAppraisals.forEach(function(textarea, index) {
         const $textarea = $(textarea);
-        const isEmpty = textarea.value.trim() === '';
+        const isEmpty = typeof window.mteRichTextAreaEmpty === 'function'
+          ? window.mteRichTextAreaEmpty(textarea)
+          : textarea.value.trim() === '';
         console.log(`Self-appraisal ${index + 1}: isEmpty=${isEmpty}, value="${textarea.value}"`);
         if (isEmpty) {
         selfAppraisalFilled = false;
@@ -810,7 +823,10 @@ $(document).ready(function() {
   function saveMainFormData() {
     const mainForm = document.getElementById('staff_ppa');
     if (!mainForm) return;
-    
+    if (typeof window.syncMteSummernoteToTextareas === 'function') {
+      window.syncMteSummernoteToTextareas();
+    }
+
     // Create a temporary form data object
     const formData = new FormData(mainForm);
     

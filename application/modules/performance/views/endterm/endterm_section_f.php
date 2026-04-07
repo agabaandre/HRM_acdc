@@ -8,7 +8,7 @@
         <!-- Always allow comments for endterm staff -->
         <br>
         <label class="fw-semibold">Comments for Submission</label>
-        <textarea name="endterm_comments" class="form-control" rows="3" placeholder="Enter your comments..."><?= htmlspecialchars($ppa->endterm_comments ?? '') ?></textarea>
+        <textarea name="endterm_comments" class="form-control ppa-summernote" rows="3" placeholder="Enter your comments..."><?= $ppa->endterm_comments ?? '' ?></textarea>
         <br>
 
         <?php

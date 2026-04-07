@@ -133,6 +133,7 @@ $objectives = json_decode(json_encode($objectives_raw), true);
 if (!is_array($objectives)) $objectives = [];
 
 $this->load->view('ppa_tabs');
+$this->load->view('performance/partials/mte_rich_text_assets', ['wrap_midterm_training' => false]);
 
 // ✅ SAFE to use here now
 // helper approval buttons hidden per request
@@ -325,8 +326,12 @@ $this->load->view('performance/endterm/endterm_section_a', compact('contract', '
     root.querySelectorAll('input[type="hidden"]').forEach(function (n) { n.remove(); });
     root.querySelectorAll('textarea').forEach(function (el) {
       var d = document.createElement('div');
-      d.className = 'preview-readonly-text';
-      d.textContent = el.value || '';
+      d.className = el.classList.contains('ppa-summernote') ? 'preview-readonly-text ppa-html-preview' : 'preview-readonly-text';
+      if (el.classList.contains('ppa-summernote')) {
+        d.innerHTML = (el.value || '').trim() ? el.value : '<span class="text-muted">—</span>';
+      } else {
+        d.textContent = el.value || '';
+      }
       el.parentNode.replaceChild(d, el);
     });
     root.querySelectorAll('select').forEach(function (el) {
@@ -377,6 +382,9 @@ $this->load->view('performance/endterm/endterm_section_a', compact('contract', '
   if (!modalEl || !srcEl || !bodyEl) return;
 
   modalEl.addEventListener('show.bs.modal', function () {
+    if (typeof window.syncMteSummernoteToTextareas === 'function') {
+      window.syncMteSummernoteToTextareas();
+    }
     bodyEl.innerHTML = '';
     var hint = document.createElement('p');
     hint.className = 'text-muted small mb-2';
@@ -509,6 +517,9 @@ $(document).ready(function() {
   // Attach validation to the main form
   $('#staff_ppa').on('submit', function(e) {
     console.log('Form submission intercepted');
+    if (typeof window.syncMteSummernoteToTextareas === 'function') {
+      window.syncMteSummernoteToTextareas();
+    }
     const errors = validateForm();
     console.log('Validation errors:', errors);
     
@@ -592,7 +603,10 @@ $(document).ready(function() {
     let emptySelfAppraisals = [];
     
     selfAppraisals.forEach(function(textarea, index) {
-      if (textarea.value.trim() === '') {
+      var saEmpty = typeof window.mteRichTextAreaEmpty === 'function'
+        ? window.mteRichTextAreaEmpty(textarea)
+        : textarea.value.trim() === '';
+      if (saEmpty) {
         selfAppraisalFilled = false;
         emptySelfAppraisals.push(index + 1);
         console.log(`Self-appraisal ${index + 1} is empty`);
@@ -669,7 +683,10 @@ $(document).ready(function() {
     const achievementsField = document.getElementById('endterm_achievements');
     if (achievementsField && !achievementsField.readOnly && !achievementsField.disabled) {
       // Field is editable, so user is a supervisor
-      if (achievementsField.value.trim() === '') {
+      var achEmpty = typeof window.mteRichTextAreaEmpty === 'function'
+        ? window.mteRichTextAreaEmpty(achievementsField)
+        : achievementsField.value.trim() === '';
+      if (achEmpty) {
         const errorMsg = 'Please fill in "What has been achieved in relation to the Performance Objectives?"';
         errors.push(errorMsg);
         fieldErrors.push(errorMsg);
@@ -867,7 +884,7 @@ $(document).ready(function() {
   });
   
   // Add real-time validation for achievements field (question 1) - only for supervisors
-  $(document).on('input blur', '#endterm_achievements', function() {
+  $(document).on('input blur change', '#endterm_achievements', function() {
     validateFieldInRealTime(this);
   });
   
@@ -892,7 +909,11 @@ $(document).ready(function() {
   function validateFieldInRealTime(field) {
     const fieldType = field.tagName.toLowerCase();
     const fieldId = field.id || '';
-    const isRequired = fieldType === 'select' ? field.value === '' : field.value.trim() === '';
+    const richEmpty = fieldType === 'textarea' && field.classList && field.classList.contains('ppa-summernote')
+      && typeof window.mteRichTextAreaEmpty === 'function'
+      ? window.mteRichTextAreaEmpty(field)
+      : (fieldType === 'textarea' ? field.value.trim() === '' : false);
+    const isRequired = fieldType === 'select' ? field.value === '' : richEmpty;
     
     // Remove existing validation classes
     $(field).removeClass('is-valid is-invalid');
@@ -959,7 +980,10 @@ $(document).ready(function() {
   function saveMainFormData() {
     const mainForm = document.getElementById('staff_ppa');
     if (!mainForm) return;
-    
+    if (typeof window.syncMteSummernoteToTextareas === 'function') {
+      window.syncMteSummernoteToTextareas();
+    }
+
     // Create a temporary form data object
     const formData = new FormData(mainForm);
     

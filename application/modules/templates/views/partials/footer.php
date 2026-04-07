@@ -703,6 +703,27 @@ $__is_cbp_home = ($CI->uri->segment(1) === 'home');
       globalErrorBox.innerHTML = '';
       globalErrorBox.style.display = 'none';
 
+      if (typeof window.syncMteSummernoteToTextareas === 'function') {
+        window.syncMteSummernoteToTextareas();
+      } else if (typeof jQuery !== 'undefined') {
+        jQuery(form).find('.ppa-summernote').each(function () {
+          var $ta = jQuery(this);
+          if ($ta.next('.note-editor').length) {
+            try {
+              $ta.val($ta.summernote('code'));
+            } catch (err) { /* ignore */ }
+          }
+        });
+      }
+
+      /** Plain text from Summernote/HTML — empty editor is often "<p><br></p>" which must not count as a filled row. */
+      function richTextPlain(html) {
+        if (!html || typeof html !== 'string') return '';
+        const d = document.createElement('div');
+        d.innerHTML = html;
+        return (d.textContent || '').replace(/\u00a0/g, ' ').trim();
+      }
+
       const rows = document.querySelectorAll('#objectives-table-body tr');
       rows.forEach((row, idx) => {
         const objective = row.querySelector('textarea[name*="[objective]"]');
@@ -710,13 +731,11 @@ $__is_cbp_home = ($CI->uri->segment(1) === 'home');
         const indicator = row.querySelector('textarea[name*="[indicator]"]');
         const weightInput = row.querySelector('input[name*="[weight]"]');
 
-        let filled = 0;
-        if (objective?.value.trim()) filled++;
-        if (timeline?.value.trim()) filled++;
-        if (indicator?.value.trim()) filled++;
-        if (weightInput?.value.trim()) filled++;
+        const objPlain = richTextPlain(objective?.value);
+        const indPlain = richTextPlain(indicator?.value);
+        const rowHasContent = objPlain.length > 0 || indPlain.length > 0;
 
-        if (filled > 0) {
+        if (rowHasContent) {
           let rowValid = true;
 
           // if (!objective?.value.trim()) {

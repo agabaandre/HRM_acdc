@@ -1,6 +1,20 @@
 <?php
 // performance/views/staff_midterm_print.php
 $is_draft_print = !empty($performance_draft_watermark_text);
+
+if (!function_exists('ppa_print_html')) {
+	function ppa_print_html($str) {
+		$str = (string) $str;
+		if (trim($str) === '') {
+			return '';
+		}
+		if (preg_match('/<[a-z][\s\S]*>/i', $str)) {
+			return '<div class="ppa-html-content">' . $str . '</div>';
+		}
+
+		return '<div class="ppa-html-content"><p style="white-space:pre-wrap;margin:0;">' . htmlspecialchars($str, ENT_QUOTES, 'UTF-8') . '</p></div>';
+	}
+}
 ?>
 <html>
 
@@ -73,6 +87,11 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       margin-top: 4px;
     }
 
+    .objective-table {
+      table-layout: fixed;
+      width: 100%;
+    }
+
     .objective-table td {
       word-wrap: break-word;
       word-break: break-word;
@@ -98,12 +117,35 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         line-height: 1.6 !important;
         padding: 12px !important;
       }
-      
+      .objective-table td .ppa-html-content,
+      .objective-table td .ppa-html-content * {
+        font-size: 14px !important;
+      }
+
       .objective-table th {
         font-size: 14px !important;
         padding: 12px !important;
       }
     }
+
+    .ppa-html-content {
+      font-family: Arial, Helvetica, sans-serif !important;
+      font-size: 14px !important;
+      line-height: 1.55;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    .objective-table td .ppa-html-content,
+    .objective-table td .ppa-html-content * {
+      font-size: 14px !important;
+    }
+    .ppa-html-content p { margin: 0 0 0.4em 0; }
+    .ppa-html-content p:last-child { margin-bottom: 0; }
+    .ppa-html-content ul, .ppa-html-content ol {
+      margin: 0.25em 0 0.5em 0;
+      padding-left: 1.25em;
+    }
+    .ppa-html-content a { color: #0f172a; text-decoration: underline; }
 
     small {
       font-weight: normal !important;
@@ -177,6 +219,15 @@ $is_draft_print = !empty($performance_draft_watermark_text);
 
   <!-- Midterm Objectives -->
   <table class="objective-table">
+    <colgroup>
+      <col style="width: 4%;">
+      <col style="width: 22%;">
+      <col style="width: 10%;">
+      <col style="width: 14%;">
+      <col style="width: 8%;">
+      <col style="width: 24%;">
+      <col style="width: 18%;">
+    </colgroup>
     <tr style="background-color: #f9fafb;">
       <td colspan="7" style="padding: 12px;">
         <div style="text-align: left; font-weight: bold; color: #0f172a; margin-bottom: 6px;"><strong>B. Midterm Objectives Review</strong></div>
@@ -204,12 +255,12 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       foreach ($objectives as $obj): ?>
         <tr>
           <td><?= $i++ ?></td>
-          <td><?= $obj['objective'] ?? '' ?></td>
-          <td><?= $obj['timeline'] ?? '' ?></td>
-          <td><?= $obj['indicator'] ?? '' ?></td>
-          <td><?= $obj['weight'] ?? '' ?></td>
-          <td><?= $obj['self_appraisal'] ?? '' ?></td>
-          <td><?= $obj['appraiser_rating'] ?? '' ?></td>
+          <td><?= ppa_print_html($obj['objective'] ?? '') ?></td>
+          <td><?= htmlspecialchars((string)($obj['timeline'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= ppa_print_html($obj['indicator'] ?? '') ?></td>
+          <td><?= htmlspecialchars((string)($obj['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= ppa_print_html($obj['self_appraisal'] ?? '') ?></td>
+          <td><?= htmlspecialchars((string)($obj['appraiser_rating'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         </tr>
       <?php endforeach; ?>
     </tbody>
@@ -228,7 +279,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           1. What has been achieved in relation to the Performance Objectives?
         </td>
         <td style="width: 70%;">
-          <?= nl2br(htmlspecialchars(trim($ppa->midterm_achievements ?? ''))) ?>
+          <?= ppa_print_html($ppa->midterm_achievements ?? '') ?>
         </td>
       </tr>
       <tr>
@@ -236,7 +287,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           2. Specify non-achievements in relation to Performance Objectives
         </td>
         <td style="width: 70%;">
-          <?= nl2br(htmlspecialchars(trim($ppa->midterm_non_achievements ?? ''))) ?>
+          <?= ppa_print_html($ppa->midterm_non_achievements ?? '') ?>
         </td>
       </tr>
     </tbody>
@@ -321,7 +372,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           1. Comments on progress made against employee's Personal Development Plan (PDP).
         </td>
         <td style="width: 70%;">
-          <?= nl2br(htmlspecialchars($ppa->midterm_training_review ?? '')) ?>
+          <?= ppa_print_html($ppa->midterm_training_review ?? '') ?>
         </td>
     </tr>
     <tr>
@@ -350,7 +401,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <td style="width: 70%;">
         <?php
           if (!empty($ppa->midterm_recommended_skills_text)) {
-            echo nl2br(htmlspecialchars($ppa->midterm_recommended_skills_text));
+            echo ppa_print_html($ppa->midterm_recommended_skills_text);
           } else {
         $skills_map = [];
         foreach ($skills as $skill) {
@@ -371,7 +422,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           4. How will the recommended training(s) contribute to the staff member's development and the department's work?
         </td>
         <td style="width: 70%;">
-          <?= nl2br(htmlspecialchars($ppa->midterm_training_contributions ?? '')) ?>
+          <?= ppa_print_html($ppa->midterm_training_contributions ?? '') ?>
         </td>
       </tr>
       <tr>
@@ -384,22 +435,22 @@ $is_draft_print = !empty($performance_draft_watermark_text);
             <div style="margin-left: 20px; margin-top: 5px;">
               <div style="margin-bottom: 5px;">
                 <strong>5.1.1</strong><br>
-                <?= nl2br(htmlspecialchars($ppa->midterm_recommended_trainings_1 ?? '')) ?>
+                <?= ppa_print_html($ppa->midterm_recommended_trainings_1 ?? '') ?>
               </div>
               <div style="margin-bottom: 5px;">
                 <strong>5.1.2</strong><br>
-                <?= nl2br(htmlspecialchars($ppa->midterm_recommended_trainings_2 ?? '')) ?>
+                <?= ppa_print_html($ppa->midterm_recommended_trainings_2 ?? '') ?>
               </div>
               <?php if (!empty($ppa->midterm_recommended_trainings)): ?>
               <div style="margin-top: 10px;">
-                <?= nl2br(htmlspecialchars($ppa->midterm_recommended_trainings)) ?>
+                <?= ppa_print_html($ppa->midterm_recommended_trainings) ?>
               </div>
               <?php endif; ?>
             </div>
           </div>
           <div>
             <strong>5.2</strong> Where applicable, please provide details of highly recommendable course(s) for this staff member that are not listed in the AUC L&D Catalogue.<br>
-            <?= nl2br(htmlspecialchars($ppa->midterm_recommended_trainings_details ?? '')) ?>
+            <?= ppa_print_html($ppa->midterm_recommended_trainings_details ?? '') ?>
           </div>
         </td>
       </tr>
