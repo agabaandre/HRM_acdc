@@ -132,7 +132,31 @@ input[type="number"] {
 
   .objective-table th, .objective-table td { text-align: left; padding: 0px; border: 1px solid #ccc; }
 
-  /* Keep Summernote within the table cell (same visual width as Objective column) */
+  /* Fixed layout so column % and colgroup are respected (Summernote cannot stretch cells) */
+  .objective-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .objective-table td {
+    vertical-align: top;
+    overflow: hidden;
+  }
+
+  /* Deliverables/KPI column — keep Summernote narrow */
+  .objective-table td.ppa-deliverables-cell {
+    max-width: 0;
+  }
+  .objective-table td.ppa-deliverables-cell .ppa-summernote + .note-editor {
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+  .objective-table td.ppa-deliverables-cell .note-toolbar {
+    flex-wrap: wrap;
+  }
+
+  /* Other Summernote cells (objective column) */
   .objective-table td .ppa-summernote + .note-editor {
     max-width: 100%;
     box-sizing: border-box;
@@ -311,13 +335,20 @@ if($showApprovalBtns!='show'){
 <small>Individual objectives should be derived from the Departmental Work Plan. There must be a cascading correlation between the two</small>
 <div class="table-responsive"> 
   <table class="table objective-table table-bordered">
+    <colgroup>
+      <col class="ppa-col-num" style="width: 5%;">
+      <col class="ppa-col-objective" style="width: 28%;">
+      <col class="ppa-col-timeline" style="width: 28%;">
+      <col class="ppa-col-deliverables" style="width: 14%;">
+      <col class="ppa-col-weight" style="width: 25%;">
+    </colgroup>
     <thead class="table-light">
       <tr>
-        <th style="width: 5%;">#</th>
-        <th style="width: 20%; white-space: normal;">Objective<br><small class="fw-light d-block text-wrap">Statement of the result that needs to be achieved</small></th>
-        <th style="width: 15%; white-space: normal;">Timeline<br><small class="fw-light d-block text-wrap">Timeframe within which the result is to be achieved</small></th>
-        <th style="width: 20%; white-space: normal;">Deliverables and KPI’s<br><small class="fw-light d-block text-wrap">Deliverables - the evidence that the result has been achieved; KPI’s give an indication of how well the result was achieved</small></th>
-        <th style="width: 10%; white-space: normal;">Weight<br><small class="fw-light d-block text-wrap">The total weight of all objectives should be 100%</small></th>
+        <th class="text-wrap">#</th>
+        <th class="text-wrap">Objective<br><small class="fw-light d-block text-wrap">Statement of the result that needs to be achieved</small></th>
+        <th class="text-wrap">Timeline<br><small class="fw-light d-block text-wrap">Timeframe within which the result is to be achieved</small></th>
+        <th class="text-wrap">Deliverables and KPI’s<br><small class="fw-light d-block text-wrap">Deliverables - the evidence that the result has been achieved; KPI’s give an indication of how well the result was achieved</small></th>
+        <th class="text-wrap">Weight<br><small class="fw-light d-block text-wrap">The total weight of all objectives should be 100%</small></th>
       </tr>
     </thead>
     <tbody id="objectives-table-body">
@@ -342,7 +373,7 @@ if($showApprovalBtns!='show'){
                     ?>" 
                     <?= $isRequired ?>>
             </td>
-            <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control objective-input ppa-summernote" rows="4" <?= $readonly ?> <?= $isRequired ?>><?= $val['indicator'] ?></textarea></td>
+            <td class="ppa-deliverables-cell"><textarea name="objectives[<?= $i ?>][indicator]" class="form-control objective-input ppa-summernote" rows="4" <?= $readonly ?> <?= $isRequired ?>><?= $val['indicator'] ?></textarea></td>
             <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control objective-input" <?= $readonly ?> value="<?php if(empty($val['weight'])&&($i<=3)){ echo 0;}else{ echo $val['weight']; } ?>" <?= $isRequired ?>></td>
           </tr>
     <?php endfor; ?>
