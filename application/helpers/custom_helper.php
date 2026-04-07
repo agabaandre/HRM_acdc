@@ -1030,6 +1030,40 @@ function curl_send_post($url, $body, $headers) {
     }
     
 
+if (!function_exists('ppa_print_html')) {
+    /**
+     * Rich-text fields for PPA / midterm / endterm PDF views: render Summernote HTML or escape plain text.
+     */
+    function ppa_print_html($str)
+    {
+        $str = (string) $str;
+        if (trim($str) === '') {
+            return '';
+        }
+
+        $wrap = static function ($inner) {
+            return '<div class="ppa-html-content">' . $inner . '</div>';
+        };
+
+        if (strip_tags($str) !== $str) {
+            return $wrap($str);
+        }
+
+        if (strpos($str, '&lt;') !== false || strpos($str, '&LT;') !== false) {
+            $decoded = html_entity_decode($str, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($decoded !== $str && strip_tags($decoded) !== $decoded) {
+                return $wrap($decoded);
+            }
+        }
+
+        if (preg_match('/<[a-z][\s\S]*>/i', $str)) {
+            return $wrap($str);
+        }
+
+        return $wrap('<p style="white-space:pre-wrap;margin:0;">' . htmlspecialchars($str, ENT_QUOTES, 'UTF-8') . '</p>');
+    }
+}
+
     if (!function_exists('pdf_print_data')) {
         function pdf_print_data($data, $file_name, $orient, $view)
         {
@@ -1070,15 +1104,11 @@ function curl_send_post($url, $body, $headers) {
             $pdf->SetMargins(10, 10, 10);         // left, top, right margins
             $pdf->SetAutoPageBreak(true, 30);     // allow auto page break with 30mm bottom margin for footer
     
-            // Set timezone and load view content
+            // Set timezone and load view content (do not collapse whitespace — breaks HTML/CSS and rich text)
             date_default_timezone_set("Africa/Nairobi");
             $html = $CI->load->view($view, $data, true);
             $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
-    
-            // Set footer content
-            $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
-         
-            $PDFContent = preg_replace('/\s+/', ' ', $PDFContent); // Clean spaces
+
             $footer = '
             <table width="100%" style="font-size: 9pt; color: #911C39; border:none;">
                 <tr>
