@@ -337,10 +337,10 @@ if($showApprovalBtns!='show'){
   <table class="table objective-table table-bordered">
     <colgroup>
       <col class="ppa-col-num" style="width: 5%;">
-      <col class="ppa-col-objective" style="width: 28%;">
-      <col class="ppa-col-timeline" style="width: 28%;">
-      <col class="ppa-col-deliverables" style="width: 14%;">
-      <col class="ppa-col-weight" style="width: 25%;">
+      <col class="ppa-col-objective" style="width: 25%;">
+      <col class="ppa-col-timeline" style="width: 15%;">
+      <col class="ppa-col-deliverables" style="width: 35%;">
+      <col class="ppa-col-weight" style="width: 10%;">
     </colgroup>
     <thead class="table-light">
       <tr>
