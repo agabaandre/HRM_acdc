@@ -32,6 +32,23 @@
                                 @php
                                     $session = (array) session('user');
                                     $session['base_url'] = session('user.base_url', env('BASE_URL', 'http://localhost/staff'));
+                                    $jwtSecret = trim((string) (env('JWT_SECRET', env('APP_KEY', ''))));
+                                    $base64url = function ($value) {
+                                        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+                                    };
+                                    $buildSsoToken = function (array $payload) use ($jwtSecret, $base64url) {
+                                        if ($jwtSecret === '') {
+                                            return base64_encode(json_encode($payload));
+                                        }
+                                        $now = time();
+                                        $payload['iat'] = $now;
+                                        $payload['exp'] = $now + 7200;
+                                        $header = ['alg' => 'HS256', 'typ' => 'JWT'];
+                                        $h = $base64url(json_encode($header));
+                                        $p = $base64url(json_encode($payload));
+                                        $s = hash_hmac('sha256', $h . '.' . $p, $jwtSecret, true);
+                                        return $h . '.' . $p . '.' . $base64url($s);
+                                    };
                                     // Remove trailing slash and 'apm' if present
                                     $staffBaseUrl = rtrim($session['base_url'], '/');
                                     $staffBaseUrl = str_replace('/apm', '', $staffBaseUrl);
@@ -42,7 +59,7 @@
                                     // Only show Finance link if user has permission 92
                                     $financeUrl = '';
                                     if (in_array(92, $permissions)) {
-                                        $financeToken = urlencode(base64_encode(json_encode($session)));
+                                        $financeToken = rawurlencode($buildSsoToken($session));
                                         $host = request()->getHost();
                                         if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
                                             $financeUrl = 'http://localhost:3002?token=' . $financeToken;
