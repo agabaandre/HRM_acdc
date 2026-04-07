@@ -1,14 +1,14 @@
 @if($allMemos && $allMemos->count() > 0)
 <div class="table-responsive">
-    <table class="table table-hover mb-0">
+    <table class="table table-hover mb-0 special-memo-index-table">
         <thead class="table-primary">
             <tr>
                 <th style="width: 5%;">#</th>
-                <th style="width: 30%;">Title</th>
+                <th style="width: 27%;">Title</th>
                 <th style="width: 7%;">Request Type</th>
                 <th style="width: 10%;">Responsible Person</th>
                 <th style="width: 8%;">Division</th>
-                <th style="width: 8%;">Fund Type</th>
+                <th style="width: 11%;">Fund Type</th>
                 <th style="width: 6%;">Date</th>
                 <th style="width: 8%;">Status</th>
                 <th style="width: 8%;" class="text-center">Actions</th>
@@ -19,13 +19,11 @@
             @foreach($allMemos as $memo)
                 <tr>
                     <td>{{ $count++ }}</td>
-                    <td>
-                        <div class="text-wrap" style="max-width: 280px;">
-                            @if($memo->document_number)
-                                <small class="text-muted d-block">#{{ $memo->document_number }}</small>
-                            @endif
-                            <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 55) }}</div>
-                        </div>
+                    <td class="table-title-cell">
+                        @if($memo->document_number)
+                            <small class="text-muted d-block">#{{ $memo->document_number }}</small>
+                        @endif
+                        <div class="fw-bold text-primary">{!! $memo->activity_title !!}</div>
                     </td>
                     <td>
                         <span class="badge bg-info text-dark">
@@ -47,18 +45,19 @@
                             {{ Str::limit($memo->division->division_name ?? 'N/A', 15) }}
                         </div>
                     </td>
-                    <td>
-                        <span class="badge bg-warning text-dark">
-                            <i class="bx bx-money me-1"></i>
-                            {{ $memo->fundType->name ?? 'N/A' }}
-                        </span>
+                    <td class="fund-type-cell">
                         @php
                             $fundCodes = $memo->fundCodes ?? collect();
                             $budgetCodeLabels = $fundCodes->isNotEmpty() ? $fundCodes->pluck('code')->filter()->unique()->values()->all() : [];
                         @endphp
-                        @if(count($budgetCodeLabels) > 0)
-                            <span class="text-muted small ms-1">({{ implode(', ', $budgetCodeLabels) }})</span>
-                        @endif
+                        <div class="text-start">
+                            <span class="badge bg-warning text-dark mb-1">
+                                <i class="bx bx-money me-1"></i>{{ $memo->fundType->name ?? 'N/A' }}
+                            </span>
+                            @if(count($budgetCodeLabels) > 0)
+                                <small class="text-muted d-block">{{ implode(', ', $budgetCodeLabels) }}</small>
+                            @endif
+                        </div>
                     </td>
                     <td>
                         @if($memo->date_from && $memo->date_to)

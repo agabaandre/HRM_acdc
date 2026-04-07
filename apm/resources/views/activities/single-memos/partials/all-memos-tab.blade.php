@@ -13,11 +13,11 @@
             <thead class="table-primary">
                 <tr>
                     <th style="width: 5%;">#</th>
-                    <th style="width: 30%;">Title</th>
+                    <th style="width: 27%;">Title</th>
                     <th style="width: 10%;">Responsible Person</th>
                     <th style="width: 8%;">Division</th>
                     <th style="width: 6%;">Date Range</th>
-                    <th style="width: 8%;">Fund Type</th>
+                    <th style="width: 11%;">Fund Type</th>
                     <th style="width: 8%;">Status</th>
                     <th style="width: 8%;" class="text-center">Actions</th>
                 </tr>
@@ -55,18 +55,19 @@
                                 {{ $memo->date_to ? $memo->date_to->format('M d, Y') : 'N/A' }}
                             </small>
                         </td>
-                        <td>
-                            <span class="badge bg-warning text-dark">
-                                <i class="bx bx-money me-1"></i>
-                                {{ $memo->fundType->name ?? 'N/A' }}
-                            </span>
+                        <td class="fund-type-cell">
                             @php
                                 $fundCodes = $memo->fundCodes ?? collect();
                                 $budgetCodeLabels = $fundCodes->isNotEmpty() ? $fundCodes->pluck('code')->filter()->unique()->values()->all() : [];
                             @endphp
-                            @if(count($budgetCodeLabels) > 0)
-                                <span class="text-muted small ms-1">({{ implode(', ', $budgetCodeLabels) }})</span>
-                            @endif
+                            <div class="text-start">
+                                <span class="badge bg-warning text-dark mb-1">
+                                    <i class="bx bx-money me-1"></i>{{ $memo->fundType->name ?? 'N/A' }}
+                                </span>
+                                @if(count($budgetCodeLabels) > 0)
+                                    <small class="text-muted d-block">{{ implode(', ', $budgetCodeLabels) }}</small>
+                                @endif
+                            </div>
                         </td>
                         <td>
                             @php

@@ -63,6 +63,35 @@
 #memoFilters select.special-memo-filter-select.select2-hidden-accessible {
     position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important;
 }
+/* Match single-memos list: fixed columns, title + fund type widths */
+.special-memo-index-table {
+    table-layout: fixed;
+}
+.table-title-cell {
+    max-width: 270px;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.4;
+}
+.fund-type-cell {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    vertical-align: top;
+    line-height: 1.3;
+}
+.fund-type-cell .badge {
+    white-space: normal;
+    display: inline-block;
+    max-width: 100%;
+    line-height: 1.35;
+    text-align: left;
+}
+.special-memo-index-table td.fund-type-cell,
+.special-memo-index-table td.table-title-cell {
+    vertical-align: top;
+}
 </style>
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-body py-3 px-4 bg-light rounded-3">
