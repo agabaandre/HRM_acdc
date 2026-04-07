@@ -6,7 +6,7 @@ function Header({ user, onLogout }) {
   // APM is located at baseUrl + '/apm' (e.g., http://localhost/staff/apm)
   const apmUrl = `${baseUrl}/apm`;
   
-  // Generate token for APM (matches CI format: urlencode(base64_encode(json_encode($session))))
+  // Generate token for APM (legacy base64 JSON; APM accepts both JWT and legacy)
   const generateApmToken = () => {
     if (!user) return '';
     try {

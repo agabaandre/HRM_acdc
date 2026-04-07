@@ -11,6 +11,45 @@ const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
 const logger = require('./utils/logger');
 
+const base64UrlDecode = (input) => {
+  const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - (normalized.length % 4)) % 4);
+  return Buffer.from(normalized + padding, 'base64').toString('utf-8');
+};
+
+const decodeSsoToken = (token) => {
+  if (!token || typeof token !== 'string') {
+    throw new Error('Missing token');
+  }
+  const raw = token.trim();
+  const parts = raw.split('.');
+  const jwtSecret = process.env.JWT_SECRET || process.env.APP_KEY || '';
+
+  // Try JWT first
+  if (parts.length === 3 && jwtSecret) {
+    const [h, p, s] = parts;
+    const expected = Buffer.from(
+      require('crypto').createHmac('sha256', jwtSecret).update(`${h}.${p}`).digest('base64')
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, ''),
+      'utf-8'
+    ).toString();
+    if (expected === s) {
+      const payload = JSON.parse(base64UrlDecode(p));
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('Invalid JWT payload');
+      }
+      if (payload.exp && Number(payload.exp) < Math.floor(Date.now() / 1000)) {
+        throw new Error('JWT expired');
+      }
+      return payload;
+    }
+  }
+
+  // Backward-compatible fallback: base64(json)
+  const decodedToken = Buffer.from(raw, 'base64').toString('utf-8');
+  return JSON.parse(decodedToken);
+};
+
 /**
  * Create Express application
  * @returns {express.Application} Configured Express app
@@ -28,13 +67,11 @@ function createApp() {
 
   // Root route handler - handles token processing and SPA serving
   const handleRootRoute = (req, res) => {
-    const base64Token = req.query.token;
+    const rawToken = req.query.token;
 
-    if (base64Token) {
+    if (rawToken) {
       try {
-        // Decode token
-        const decodedToken = Buffer.from(base64Token, 'base64').toString('utf-8');
-        const json = JSON.parse(decodedToken);
+        const json = decodeSsoToken(rawToken);
 
         if (!json) {
           throw new Error('Invalid token format');

@@ -1,38 +1,54 @@
 /**
- * Token decoding utilities for session transfer
- * Matches Laravel APM implementation: token is urlencoded(base64(json_encode($session)))
+ * Token decoding utilities for session transfer.
+ * Supports JWT (current) and base64 JSON (legacy).
  */
 
 /**
- * Decode a base64 token from URL parameter
- * @param {string} base64Token - Base64 encoded token from URL
+ * Decode token from URL parameter.
+ * @param {string} encodedToken - JWT or base64 encoded token from URL
  * @returns {object} Decoded session data
  * @throws {Error} If token is invalid or cannot be decoded
  */
-export const decodeToken = (base64Token) => {
-  if (!base64Token) {
+const decodeBase64Url = (input) => {
+  const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - (normalized.length % 4)) % 4);
+  return atob(normalized + padding);
+};
+
+export const decodeToken = (encodedToken) => {
+  if (!encodedToken) {
     throw new Error('Token is required');
   }
 
   try {
     // Handle URL decoding if needed (token might be double-encoded)
     // URLSearchParams.get() automatically URL decodes (like Laravel's $request->query())
-    let tokenToDecode = base64Token;
+    let tokenToDecode = encodedToken;
     try {
       // Try decoding URL encoding first (in case it's double-encoded)
-      tokenToDecode = decodeURIComponent(base64Token);
+      tokenToDecode = decodeURIComponent(encodedToken);
     } catch (e) {
       // If already decoded, use as is
-      tokenToDecode = base64Token;
+      tokenToDecode = encodedToken;
     }
 
-    // Fix base64 padding if needed (atob requires proper padding)
-    // Base64 strings should have length multiple of 4
+    // JWT path
+    const parts = tokenToDecode.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(decodeBase64Url(parts[1]));
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('Invalid JWT payload');
+      }
+      if (payload.exp && Number(payload.exp) < Math.floor(Date.now() / 1000)) {
+        throw new Error('Token expired');
+      }
+      return payload;
+    }
+
+    // Legacy base64(json) path
     while (tokenToDecode.length % 4) {
       tokenToDecode += '=';
     }
-
-    // Base64 decode (Laravel: base64_decode($base64Token))
     const decodedToken = atob(tokenToDecode);
     
     // Parse JSON (Laravel: json_decode($decodedToken, true))
@@ -45,7 +61,7 @@ export const decodeToken = (base64Token) => {
     return json;
   } catch (error) {
     console.error('Token decode error:', error);
-    console.error('Token value (first 50 chars):', base64Token.substring(0, 50));
+    console.error('Token value (first 50 chars):', encodedToken.substring(0, 50));
     throw new Error(`Failed to decode token: ${error.message}`);
   }
 };
