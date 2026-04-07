@@ -25,7 +25,7 @@ class Staff_mdl extends CI_Model
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 
-			ct.contract_type, n.nationality, d.division_name, 
+			ct.contract_type, n.nationality, reg.region_name, d.division_name, 
 			sc.first_supervisor, sc.second_supervisor,f.funder, f.funder_id, ds.duty_station_name, 
 			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
@@ -40,6 +40,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('funders f','f.funder_id = sc.funder_id');
 		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
 		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
+		$this->db->join('regions reg', 'reg.id = n.region_id', 'left');
 		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
 		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
 		$this->db->join('contracting_institutions ci', 'ci.contracting_institution_id = sc.contracting_institution_id', 'left');
@@ -174,7 +175,7 @@ class Staff_mdl extends CI_Model
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 
-			ct.contract_type, n.nationality, d.division_name, 
+			ct.contract_type, n.nationality, reg.region_name, d.division_name, 
 			sc.first_supervisor, sc.second_supervisor,f.funder,f.funder_id, ds.duty_station_name, 
 			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
@@ -189,6 +190,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
 		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
 		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
+		$this->db->join('regions reg', 'reg.id = n.region_id', 'left');
 		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
 		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
 		$this->db->join('funders f', 'f.funder_id = sc.funder_id', 'left');
@@ -467,7 +469,7 @@ class Staff_mdl extends CI_Model
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth,
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting,
 			ci.contracting_institution, ci.contracting_institution_id,
-			ct.contract_type, n.nationality, d.division_name,
+			ct.contract_type, n.nationality, reg.region_name, d.division_name,
 			sc.first_supervisor, sc.second_supervisor,f.funder,f.funder_id, ds.duty_station_name,
 			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
@@ -848,7 +850,7 @@ class Staff_mdl extends CI_Model
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 
-			ct.contract_type, n.nationality, d.division_name, 
+			ct.contract_type, n.nationality, reg.region_name, d.division_name, 
 			sc.first_supervisor, sc.second_supervisor,f.funder, ds.duty_station_name, 
 			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
@@ -861,6 +863,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
 		$this->db->join('funders f','f.funder_id = sc.funder_id','left');
 		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
+		$this->db->join('regions reg', 'reg.id = n.region_id', 'left');
 		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
 		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
 		$this->db->join('contracting_institutions ci', 'ci.contracting_institution_id = sc.contracting_institution_id', 'left');

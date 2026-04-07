@@ -7,7 +7,7 @@ if ($offset != "") {
 
 if (empty($staffs)) : ?>
     <tr>
-        <td colspan="24" class="text-center">No data available</td>
+        <td colspan="25" class="text-center">No data available</td>
     </tr>
 <?php else :
 foreach ($staffs as $data) :
@@ -39,6 +39,7 @@ foreach ($staffs as $data) :
             }
         ?></td>
         <td><?= $data->nationality; ?></td>
+        <td><?= !empty($data->region_name) ? html_escape($data->region_name) : 'N/A'; ?></td>
         <td><?= @$cont->duty_station_name; ?></td>
         <td><?= @$cont->division_name; ?></td>
         <td><?= @$data->grade; ?></td>
