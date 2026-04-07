@@ -62,6 +62,9 @@ class Staff_mdl extends CI_Model
 			if (!empty($filters['funder_id'])) {
 				$this->db->where_in('sc.funder_id', $filters['funder_id']);
 			}
+			if (isset($filters['region_id']) && $filters['region_id'] !== '' && $filters['region_id'] !== null) {
+				$this->db->where('n.region_id', (int) $filters['region_id']);
+			}
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
@@ -78,6 +81,9 @@ class Staff_mdl extends CI_Model
 		}
 		if (isset($filters['funder_id'])) {
 			unset($filters['funder_id']);
+		}
+		if (isset($filters['region_id'])) {
+			unset($filters['region_id']);
 		}
 	
 		if (!empty($filters)) {
@@ -221,6 +227,9 @@ class Staff_mdl extends CI_Model
 		if (!empty($filters['grade_id'])) {
 			$this->db->where_in('sc.grade_id', $filters['grade_id']);
 		}
+		if (isset($filters['region_id']) && $filters['region_id'] !== '' && $filters['region_id'] !== null) {
+			$this->db->where('n.region_id', (int) $filters['region_id']);
+		}
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
@@ -250,6 +259,9 @@ class Staff_mdl extends CI_Model
 			}
 			if (isset($filters['grade_id'])) {
 				unset($filters['grade_id']);
+			}
+			if (isset($filters['region_id'])) {
+				unset($filters['region_id']);
 			}
 		}
 		
@@ -407,6 +419,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'inner');
 		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
 		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
+		$this->db->join('regions reg', 'reg.id = n.region_id', 'left');
 		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
 		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
 		$this->db->join('funders f', 'f.funder_id = sc.funder_id', 'left');
@@ -436,10 +449,13 @@ class Staff_mdl extends CI_Model
 		if (!empty($filters['contract_status_id'])) {
 			$this->db->where_in('sc.status_id', (array) $filters['contract_status_id']);
 		}
+		if (isset($filters['region_id']) && $filters['region_id'] !== '' && $filters['region_id'] !== null) {
+			$this->db->where('n.region_id', (int) $filters['region_id']);
+		}
 
 		@$lname = $filters['lname'] ?? null;
 		$filter_copy = $filters;
-		unset($filter_copy['lname'], $filter_copy['csv'], $filter_copy['pdf'], $filter_copy['division_id'], $filter_copy['duty_station_id'], $filter_copy['funder_id'], $filter_copy['job_id'], $filter_copy['grade_id'], $filter_copy['period_from'], $filter_copy['period_to'], $filter_copy['contract_status_id']);
+		unset($filter_copy['lname'], $filter_copy['csv'], $filter_copy['pdf'], $filter_copy['division_id'], $filter_copy['duty_station_id'], $filter_copy['funder_id'], $filter_copy['job_id'], $filter_copy['grade_id'], $filter_copy['period_from'], $filter_copy['period_to'], $filter_copy['contract_status_id'], $filter_copy['region_id']);
 
 		if (!empty($filter_copy)) {
 			foreach ($filter_copy as $key => $value) {
@@ -894,6 +910,9 @@ class Staff_mdl extends CI_Model
 		if (!empty($filters['grade_id'])) {
 			$this->db->where_in('sc.grade_id', $filters['grade_id']);
 		}
+		if (isset($filters['region_id']) && $filters['region_id'] !== '' && $filters['region_id'] !== null) {
+			$this->db->where('n.region_id', (int) $filters['region_id']);
+		}
 	
 		if ($this->uri->segment(1) == 'admanager') {
 			if ($this->uri->segment(2) == 'expired_accounts') {
@@ -922,7 +941,7 @@ class Staff_mdl extends CI_Model
 		
 	
 		// Special keys to exclude from dynamic loop
-		$exclude_keys = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto','division_id','duty_station_id','funder_id','job_id','grade_id'];
+		$exclude_keys = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto','division_id','duty_station_id','funder_id','job_id','grade_id','region_id'];
 		
 	
 		foreach ($filters as $key => $value) {

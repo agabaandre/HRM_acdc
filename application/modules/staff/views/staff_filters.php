@@ -23,6 +23,12 @@
         </div>
         <?php endif; ?>
 
+        <?php
+        $regions_list = $this->db->order_by('region_name', 'ASC')->get('regions')->result();
+        $nationalities_list = $this->db->order_by('nationality', 'ASC')->get('nationalities')->result();
+        $region_id_get = $this->input->get('region_id');
+        ?>
+
         <div class="col-md-2">
             <label for="lname" class="form-label fw-bold">Name</label>
             <input type="text" name="lname" class="form-control" value="<?= $this->input->get('lname') ?>" placeholder="Enter Name">
@@ -43,15 +49,27 @@
         </div>
 
         <div class="col-md-2">
-            <label class="form-label fw-bold">Nationality</label>
-            <select class="form-control select2" name="nationality_id">
-                <option value="">Select Nationality</option>
-                <?php 
-				$nationalities = $this->db->get('nationalities')->result();
+            <label class="form-label fw-bold" for="staff_filter_region_id">Region</label>
+            <select class="form-control select2" name="region_id" id="staff_filter_region_id">
+                <option value="">All regions</option>
+                <option value="0" <?= ($region_id_get !== null && $region_id_get !== '' && (int) $region_id_get === 0) ? 'selected' : '' ?>>Rest of World</option>
+                <?php foreach ($regions_list as $rg) : ?>
+                    <option value="<?= (int) $rg->id ?>" <?= ((string) (int) $region_id_get === (string) (int) $rg->id) ? 'selected' : '' ?>>
+                        <?= html_escape($rg->region_name) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
 
-				foreach ($nationalities as $n): ?>
-                    <option value="<?= $n->nationality_id ?>" <?= ($this->input->get('nationality_id') == $n->nationality_id) ? 'selected' : '' ?>>
-                        <?= $n->nationality ?>
+        <div class="col-md-2">
+            <label class="form-label fw-bold" for="staff_filter_nationality_id">Nationality</label>
+            <select class="form-control select2" name="nationality_id" id="staff_filter_nationality_id">
+                <option value="">Select Nationality</option>
+                <?php foreach ($nationalities_list as $n) : ?>
+                    <option value="<?= (int) $n->nationality_id ?>"
+                        data-region-id="<?= (int) $n->region_id ?>"
+                        <?= ($this->input->get('nationality_id') == $n->nationality_id) ? 'selected' : '' ?>>
+                        <?= html_escape($n->nationality) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -143,6 +161,7 @@
             'lname' => 'Name',
             'SAPNO' => 'SAP No',
             'gender' => 'Gender',
+            'region_id' => 'Region',
             'nationality_id' => 'Nationality',
             'division_id' => 'Division',
             'duty_station_id' => 'Duty Station',
@@ -159,16 +178,27 @@
         $funder_map   = array_column($funders, 'funder', 'funder_id');
         $job_map      = !empty($jobs) ? array_column($jobs, 'job_name', 'job_id') : [];
         $grade_map    = !empty($grades) ? array_column($grades, 'grade', 'grade_id') : [];
+        $region_map     = [0 => 'Rest of World'];
+        foreach ($regions_list as $rg) {
+            $region_map[(int) $rg->id] = $rg->region_name;
+        }
 
         foreach ($this->input->get() as $key => $value) {
-            if (!empty($value)) {
-                // Convert label
-                $label = $label_map[$key] ?? ucwords(str_replace('_', ' ', $key));
+            if ($value === '' || $value === null) {
+                continue;
+            }
+            if (is_array($value) && count($value) === 0) {
+                continue;
+            }
+            // Convert label
+            $label = $label_map[$key] ?? ucwords(str_replace('_', ' ', $key));
 
-                // Handle mappings
-                if ($key === 'nationality_id') {
-                    $value = getcountry($value);
-                } elseif ($key === 'division_id') {
+            // Handle mappings
+            if ($key === 'region_id') {
+                $value = $region_map[(int) $value] ?? $value;
+            } elseif ($key === 'nationality_id') {
+                $value = getcountry($value);
+            } elseif ($key === 'division_id') {
                     $value = array_map(fn($id) => $division_map[$id] ?? $id, (array)$value);
                     $value = implode(', ', $value);
                 } elseif ($key === 'duty_station_id') {
@@ -183,12 +213,11 @@
                 } elseif ($key === 'grade_id') {
                     $value = array_map(fn($id) => $grade_map[$id] ?? $id, (array)$value);
                     $value = implode(', ', $value);
-                } elseif (is_array($value)) {
-                    $value = implode(', ', $value);
-                }
-
-                echo "<span class='badge bg-secondary me-1'>$label: $value</span>";
+            } elseif (is_array($value)) {
+                $value = implode(', ', $value);
             }
+
+            echo '<span class="badge bg-secondary me-1">' . html_escape($label) . ': ' . html_escape((string) $value) . '</span>';
         }
         ?>
     </div>
@@ -248,8 +277,8 @@
                     <i class="fa fa-file-pdf me-1"></i> Export PDF
                 </a>
             <?php
-            } elseif ($segment2 == '') {
-                // Index route fallback
+            } elseif ($segment2 == '' || $segment2 === 'index') {
+                // Index (current staff) list
                 ?>
                 <a href="<?= base_url("staff/index/1?" . $query_string) ?>" class="btn btn-sm btn-outline-primary">
                     <i class="fa fa-file-csv me-1"></i> Export CSV
@@ -261,4 +290,45 @@
         </div>
     </div>
 </div>
-
+<script>
+$(function () {
+	var $region = $('#staff_filter_region_id');
+	var $nat = $('#staff_filter_nationality_id');
+	if (!$region.length || !$nat.length) {
+		return;
+	}
+	function syncNationalitiesToRegion() {
+		var rid = $region.val();
+		var cur = String($nat.val() || '');
+		var curOk = false;
+		$nat.find('option').each(function () {
+			var $o = $(this);
+			var v = $o.val();
+			if (!v) {
+				$o.prop('disabled', false);
+				return;
+			}
+			var optRid = String($o.attr('data-region-id'));
+			var ok = rid === '' || rid === null || optRid === String(rid);
+			$o.prop('disabled', !ok);
+			if (ok && String(v) === cur) {
+				curOk = true;
+			}
+		});
+		if (!curOk && cur) {
+			$nat.val('');
+		}
+		if ($nat.hasClass('select2-hidden-accessible')) {
+			$nat.select2('destroy');
+		}
+		$nat.select2({
+			theme: 'bootstrap4',
+			width: $nat.hasClass('w-100') ? '100%' : 'style',
+			placeholder: $nat.data('placeholder'),
+			allowClear: Boolean($nat.data('allow-clear')),
+		});
+	}
+	$region.on('change', syncNationalitiesToRegion);
+	syncNationalitiesToRegion();
+});
+</script>
