@@ -40,15 +40,15 @@
         </tr>
         <tr>
           <th>Training Contributions</th>
-          <td><?= nl2br(htmlspecialchars($ppa->training_contributions ?? '')) ?></td>
+          <td><div class="ppa-html-readonly"><?= $ppa->training_contributions ?? '' ?></div></td>
         </tr>
         <tr>
           <th>Recommended AUC Courses</th>
-          <td><?= nl2br(htmlspecialchars($ppa->recommended_trainings ?? '')) ?></td>
+          <td><div class="ppa-html-readonly"><?= $ppa->recommended_trainings ?? '' ?></div></td>
         </tr>
         <tr>
           <th>Other Courses</th>
-          <td><?= nl2br(htmlspecialchars($ppa->recommended_trainings_details ?? '')) ?></td>
+          <td><div class="ppa-html-readonly"><?= $ppa->recommended_trainings_details ?? '' ?></div></td>
         </tr>
       </tbody>
     </table>
@@ -58,6 +58,6 @@
 <!-- New Endterm PDP Entry Fields -->
 <div class="mb-3">
   <label class="form-label fw-semibold">1. Comments on progress made against employee's PDP</label>
-  <textarea name="endterm_training_review" class="form-control" rows="4" <?= $endreadonly ?>><?= htmlspecialchars($ppa->endterm_training_review ?? '') ?></textarea>
+  <textarea name="endterm_training_review" class="form-control ppa-summernote" rows="4" <?= $endreadonly ?>><?= $ppa->endterm_training_review ?? '' ?></textarea>
 </div>
 

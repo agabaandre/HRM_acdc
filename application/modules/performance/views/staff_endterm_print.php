@@ -1,6 +1,20 @@
 <?php
 // performance/views/staff_endterm_print.php
 $is_draft_print = !empty($performance_draft_watermark_text);
+
+if (!function_exists('ppa_print_html')) {
+	function ppa_print_html($str) {
+		$str = (string) $str;
+		if (trim($str) === '') {
+			return '';
+		}
+		if (preg_match('/<[a-z][\s\S]*>/i', $str)) {
+			return '<div class="ppa-html-content">' . $str . '</div>';
+		}
+
+		return '<div class="ppa-html-content"><p style="white-space:pre-wrap;margin:0;">' . htmlspecialchars($str, ENT_QUOTES, 'UTF-8') . '</p></div>';
+	}
+}
 ?>
 <html>
 
@@ -173,6 +187,31 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       color: #64748b;
       font-size: 12px;
     }
+
+    .objective-table {
+      table-layout: fixed;
+      width: 100%;
+    }
+
+    .ppa-html-content {
+      font-family: Arial, Helvetica, sans-serif !important;
+      font-size: 14px !important;
+      line-height: 1.55;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    .objective-table td .ppa-html-content,
+    .objective-table td .ppa-html-content * {
+      font-size: 14px !important;
+      line-height: 1.55 !important;
+    }
+    .ppa-html-content p { margin: 0 0 0.4em 0; }
+    .ppa-html-content p:last-child { margin-bottom: 0; }
+    .ppa-html-content ul, .ppa-html-content ol {
+      margin: 0.25em 0 0.5em 0;
+      padding-left: 1.25em;
+    }
+    .ppa-html-content a { color: #0f172a; text-decoration: underline; }
   </style>
 </head>
 
@@ -230,6 +269,15 @@ $is_draft_print = !empty($performance_draft_watermark_text);
 
   <!-- Endterm Objectives -->
   <table class="objective-table">
+    <colgroup>
+      <col style="width: 4%;">
+      <col style="width: 22%;">
+      <col style="width: 10%;">
+      <col style="width: 14%;">
+      <col style="width: 8%;">
+      <col style="width: 24%;">
+      <col style="width: 18%;">
+    </colgroup>
     <tr style="background-color: #f9fafb;">
       <td colspan="7" style="padding: 12px;">
         <div style="text-align: left; font-weight: bold; color: #0f172a; margin-bottom: 6px;"><strong>B. Endterm Objectives Review</strong></div>
@@ -262,68 +310,18 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       if (empty($objectives) && !empty($ppa->objectives)) {
         $objectives = is_string($ppa->objectives) ? json_decode($ppa->objectives, true) : (array) $ppa->objectives;
       }
-      // Helper function to process HTML content with proper encoding
-      if (!function_exists('process_html_content')) {
-        function process_html_content($content) {
-          if (empty($content)) {
-            return '';
-          }
-          
-          // Ensure UTF-8 encoding - convert from any encoding to UTF-8
-          if (!mb_check_encoding($content, 'UTF-8')) {
-            $content = mb_convert_encoding($content, 'UTF-8', mb_detect_encoding($content, mb_detect_order(), true) ?: 'UTF-8');
-          }
-          
-          // First decode numeric HTML entities (like &#8226; for bullet, &#8227; for right-pointing angle, etc.)
-          // This handles entities like &#8226; (bullet), &#8227; (right-pointing angle), &#8228; (one dot leader), etc.
-          $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-          
-          // Then decode named HTML entities (like &nbsp;, &amp;, etc.)
-          $content = htmlspecialchars_decode($content, ENT_QUOTES | ENT_HTML5);
-          
-          // Handle common Unicode bullet points and special characters
-          // Replace various bullet point characters with proper HTML entities or keep as-is
-          // Common bullet points: • (U+2022), · (U+00B7), ▪ (U+25AA), ▫ (U+25AB), etc.
-          // We'll keep them as-is since UTF-8 should handle them
-          
-          // Convert common line break patterns to <br>
-          // Handle Windows (\r\n), Unix (\n), and Mac (\r) line breaks
-          // But preserve existing <br> tags
-          $content = preg_replace('/\r\n|\r|\n/', '<br>', $content);
-          
-          // Replace multiple consecutive <br> tags with single ones (but allow double for spacing)
-          $content = preg_replace('/(<br\s*\/?>){3,}/i', '<br><br>', $content);
-          
-          // Clean up any double spaces (but preserve intentional spacing)
-          $content = preg_replace('/[ \t]+/', ' ', $content);
-          
-          // Trim whitespace but preserve structure
-          $content = trim($content);
-          
-          return $content;
-        }
-      }
-      
+
       $i = 1;
-      foreach ($objectives as $obj): 
-        // Process HTML content for objectives, deliverables, and self appraisal
-        $objective = $obj['objective'] ?? '';
-        $indicator = $obj['indicator'] ?? '';
-        $self_appraisal = $obj['self_appraisal'] ?? '';
-        
-        // Process as HTML with proper encoding and formatting
-        $objective_html = process_html_content($objective);
-        $indicator_html = process_html_content($indicator);
-        $self_appraisal_html = process_html_content($self_appraisal);
+      foreach ($objectives as $obj):
       ?>
         <tr>
           <td><?= $i++ ?></td>
-          <td><?= $objective_html ?></td>
+          <td><?= ppa_print_html($obj['objective'] ?? '') ?></td>
           <td><?= htmlspecialchars($obj['timeline'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
-          <td><?= $indicator_html ?></td>
+          <td><?= ppa_print_html($obj['indicator'] ?? '') ?></td>
           <td><?= htmlspecialchars($obj['weight'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
-          <td><?= $self_appraisal_html ?></td>
-          <td><?= htmlspecialchars($obj['appraiser_rating'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= ppa_print_html($obj['self_appraisal'] ?? '') ?></td>
+          <td><?= htmlspecialchars((string)($obj['appraiser_rating'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         </tr>
       <?php endforeach; ?>
     </tbody>
@@ -342,7 +340,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           1. What has been achieved in relation to the Performance Objectives?
         </td>
         <td style="width: 70%;">
-          <?= nl2br(htmlspecialchars(trim($ppa->endterm_achievements ?? ''))) ?>
+          <?= ppa_print_html($ppa->endterm_achievements ?? '') ?>
         </td>
       </tr>
       <tr>
@@ -350,7 +348,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           2. Specify non-achievements in relation to Performance Objectives
         </td>
         <td style="width: 70%;">
-          <?= nl2br(htmlspecialchars(trim($ppa->endterm_non_achievements ?? ''))) ?>
+          <?= ppa_print_html($ppa->endterm_non_achievements ?? '') ?>
         </td>
       </tr>
     </tbody>
@@ -448,19 +446,19 @@ $is_draft_print = !empty($performance_draft_watermark_text);
     </thead>
     <tr>
       <td><b>Staff Comments</b></td>
-      <td><?= $ppa->endterm_comments ?? '' ?></td>
+      <td><?= ppa_print_html($ppa->endterm_comments ?? '') ?></td>
     </tr>
     <tr>
       <td><b>Achievements</b></td>
-      <td><?= trim($ppa->endterm_achievements ?? '') ?></td>
+      <td><?= ppa_print_html($ppa->endterm_achievements ?? '') ?></td>
     </tr>
     <tr>
       <td><b>Non-Achievements</b></td>
-      <td><?= trim($ppa->endterm_non_achievements ?? '') ?></td>
+      <td><?= ppa_print_html($ppa->endterm_non_achievements ?? '') ?></td>
     </tr>
     <tr>
       <td><b>Training Review</b></td>
-      <td><?= $ppa->endterm_training_review ?? '' ?></td>
+      <td><?= ppa_print_html($ppa->endterm_training_review ?? '') ?></td>
     </tr>
   </table>
 

@@ -48,7 +48,16 @@ if (!is_array($objectives)) {
 <p class="text-muted">Fill out the objectives, staff self-appraisal, and appraiser ratings. All objectives must total 100% weight.</p>
 
 <div class="table-responsive">
-  <table class="table table-bordered align-middle text-sm">
+  <table class="table table-bordered align-middle text-sm objective-table">
+    <colgroup>
+      <col style="width: 4%;">
+      <col style="width: 22%;">
+      <col style="width: 10%;">
+      <col style="width: 14%;">
+      <col style="width: 8%;">
+      <col style="width: 24%;">
+      <col style="width: 18%;">
+    </colgroup>
     <thead class="table-light">
       <tr>
         <th>#</th>
@@ -75,23 +84,23 @@ if (!is_array($objectives)) {
         <td><?= $rowNum++ ?></td>
 
         <td>
-          <textarea name="objectives[<?= $i ?>][objective]" rows=5 class="form-control" readonly <?= $endreadonly ?>><?= $val['objective'] ?></textarea>
+          <textarea name="objectives[<?= $i ?>][objective]" rows=5 class="form-control ppa-summernote" readonly <?= $endreadonly ?>><?= $val['objective'] ?></textarea>
         </td>
 
         <td>
-          <input type="text" name="objectives[<?= $i ?>][timeline]" rows=5 class="form-control" value="<?= $val['timeline'] ?>" readonly <?= $endreadonly ?>>
+          <input type="text" name="objectives[<?= $i ?>][timeline]" rows=5 class="form-control" value="<?= htmlspecialchars($val['timeline'] ?? '', ENT_QUOTES, 'UTF-8') ?>" readonly <?= $endreadonly ?>>
+        </td>
+
+        <td class="ppa-deliverables-cell">
+          <textarea name="objectives[<?= $i ?>][indicator]" rows=5 class="form-control ppa-summernote" readonly <?= $endreadonly ?>><?= $val['indicator'] ?></textarea>
         </td>
 
         <td>
-          <textarea name="objectives[<?= $i ?>][indicator]" rows=5 class="form-control" readonly <?= $endreadonly ?>><?= $val['indicator'] ?></textarea>
+          <input type="number" name="objectives[<?= $i ?>][weight]" class="form-control" value="<?= htmlspecialchars((string)($val['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" readonly <?= $endreadonly ?>>
         </td>
 
         <td>
-          <input type="number" name="objectives[<?= $i ?>][weight]" class="form-control" value="<?= $val['weight'] ?>" readonly <?= $endreadonly ?>>
-        </td>
-
-        <td>
-          <textarea name="objectives[<?= $i ?>][self_appraisal]" rows=5 class="form-control" <?= $endreadonly ?>><?= $val['self_appraisal'] ?? '' ?></textarea>
+          <textarea name="objectives[<?= $i ?>][self_appraisal]" rows=5 class="form-control ppa-summernote" <?= $endreadonly ?>><?= $val['self_appraisal'] ?? '' ?></textarea>
         </td>
 
         <td>

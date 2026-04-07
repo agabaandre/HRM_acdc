@@ -8,7 +8,7 @@
         <?php if (intval($ppa_settings->allow_employee_comments) === 1): ?>
           <br>
           <label class="fw-semibold">Comments for Submission</label>
-          <textarea name="midterm_comments" class="form-control" rows="3" placeholder="Enter your comments..."><?= htmlspecialchars($ppa->midterm_comments ?? '') ?></textarea>
+          <textarea name="midterm_comments" class="form-control ppa-summernote" rows="3" placeholder="Enter your comments..."><?= $ppa->midterm_comments ?? '' ?></textarea>
           <br>
         <?php endif; ?>
 

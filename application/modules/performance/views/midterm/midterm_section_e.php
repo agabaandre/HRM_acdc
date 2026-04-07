@@ -40,15 +40,15 @@
         </tr>
         <tr>
           <th>Training Contributions</th>
-          <td><?= nl2br(htmlspecialchars($ppa->training_contributions ?? '')) ?></td>
+          <td><div class="ppa-html-readonly"><?= $ppa->training_contributions ?? '' ?></div></td>
         </tr>
         <tr>
           <th>Recommended AUC Courses</th>
-          <td><?= nl2br(htmlspecialchars($ppa->recommended_trainings ?? '')) ?></td>
+          <td><div class="ppa-html-readonly"><?= $ppa->recommended_trainings ?? '' ?></div></td>
         </tr>
         <tr>
           <th>Other Courses</th>
-          <td><?= nl2br(htmlspecialchars($ppa->recommended_trainings_details ?? '')) ?></td>
+          <td><div class="ppa-html-readonly"><?= $ppa->recommended_trainings_details ?? '' ?></div></td>
         </tr>
       </tbody>
     </table>
@@ -94,7 +94,7 @@ $isMidtermRecommended = !empty($mid_skills) || ($ppa->midterm_training_recommend
   <!-- 3. Recommended Midterm Skills -->
   <div class="mb-3">
     <label class="form-label fw-semibold">3. If yes, in what subject/ skill area(s) is the training recommended for this staff member?</label>
-    <textarea name="midterm_recommended_skills_text" class="form-control" rows="6" <?= $midreadonly ?>><?= htmlspecialchars($ppa->midterm_recommended_skills_text ?? '') ?></textarea>
+    <textarea name="midterm_recommended_skills_text" class="form-control ppa-summernote" rows="6" <?= $midreadonly ?>><?= $ppa->midterm_recommended_skills_text ?? '' ?></textarea>
     <small class="text-muted">You can also select from the skills list below:</small>
     <select name="midterm_recommended_skills[]" class="form-control select2 mt-2" multiple <?= $midreadonly ?>>
       <?php foreach ($skills as $skill): ?>
@@ -108,7 +108,7 @@ $isMidtermRecommended = !empty($mid_skills) || ($ppa->midterm_training_recommend
   <!-- 4. Contributions -->
   <div class="mb-3">
     <label class="form-label fw-semibold">4. How will the recommended training(s) contribute to the staff member's development and the department's work?</label>
-    <textarea name="midterm_training_contributions" class="form-control" rows="6" <?= $midreadonly ?>><?= htmlspecialchars($ppa->midterm_training_contributions ?? '') ?></textarea>
+    <textarea name="midterm_training_contributions" class="form-control ppa-summernote" rows="6" <?= $midreadonly ?>><?= $ppa->midterm_training_contributions ?? '' ?></textarea>
   </div>
 
   <!-- 5. Selection of courses -->
@@ -120,20 +120,20 @@ $isMidtermRecommended = !empty($mid_skills) || ($ppa->midterm_training_recommend
       <label class="form-label">5.1 With reference to the current AUC Learning and Development (L&D) Catalogue, please list the recommended course(s) for this staff member:</label>
       <div class="mb-2">
         <label class="form-label small">5.1.1</label>
-        <textarea name="midterm_recommended_trainings_1" class="form-control" rows="2" <?= $midreadonly ?>><?= htmlspecialchars($ppa->midterm_recommended_trainings_1 ?? '') ?></textarea>
+        <textarea name="midterm_recommended_trainings_1" class="form-control ppa-summernote" rows="2" <?= $midreadonly ?>><?= $ppa->midterm_recommended_trainings_1 ?? '' ?></textarea>
       </div>
       <div class="mb-2">
         <label class="form-label small">5.1.2</label>
-        <textarea name="midterm_recommended_trainings_2" class="form-control" rows="2" <?= $midreadonly ?>><?= htmlspecialchars($ppa->midterm_recommended_trainings_2 ?? '') ?></textarea>
+        <textarea name="midterm_recommended_trainings_2" class="form-control ppa-summernote" rows="2" <?= $midreadonly ?>><?= $ppa->midterm_recommended_trainings_2 ?? '' ?></textarea>
       </div>
       <small class="text-muted">Or use the general field below for multiple courses:</small>
-      <textarea name="midterm_recommended_trainings" class="form-control mt-2" rows="3" <?= $midreadonly ?>><?= htmlspecialchars($ppa->midterm_recommended_trainings ?? '') ?></textarea>
+      <textarea name="midterm_recommended_trainings" class="form-control ppa-summernote mt-2" rows="3" <?= $midreadonly ?>><?= $ppa->midterm_recommended_trainings ?? '' ?></textarea>
   </div>
 
   <!-- 5.2 External Courses -->
   <div class="mb-3">
       <label class="form-label">5.2 Where applicable, please provide details of highly recommendable course(s) for this staff member that are not listed in the AUC L&D Catalogue.</label>
-      <textarea name="midterm_recommended_trainings_details" class="form-control" rows="6" <?= $midreadonly ?>><?= htmlspecialchars($ppa->midterm_recommended_trainings_details ?? '') ?></textarea>
+      <textarea name="midterm_recommended_trainings_details" class="form-control ppa-summernote" rows="6" <?= $midreadonly ?>><?= $ppa->midterm_recommended_trainings_details ?? '' ?></textarea>
     </div>
   </div>
 </div>
