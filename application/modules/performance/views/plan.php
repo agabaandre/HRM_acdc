@@ -131,6 +131,20 @@ input[type="number"] {
   td { padding:6px;}
 
   .objective-table th, .objective-table td { text-align: left; padding: 0px; border: 1px solid #ccc; }
+
+  /* Summernote (PPA rich text) — Arial, 12px */
+  .ppa-summernote + .note-editor .note-editable,
+  .ppa-summernote + .note-editor .note-editable * {
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 12px !important;
+  }
+  #ppaApproverPreviewModal .preview-readonly-text.ppa-html-preview {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    white-space: normal;
+    word-break: break-word;
+  }
+  #ppaApproverPreviewModal .preview-readonly-text.ppa-html-preview p { margin: 0 0 0.5em 0; }
 </style>
 <?php $this->load->view('ppa_tabs')?>
 <?php //$this->load->view('performance/partials/show_mid_endbtns.php')?>
@@ -304,7 +318,7 @@ if($showApprovalBtns!='show'){
         ?>
           <tr>
             <td><?= $i ?></td>
-            <td><textarea name="objectives[<?= $i ?>][objective]" class="form-control objective-input" <?= $readonly ?> <?= $isRequired ?>><?= $val['objective'] ?></textarea></td>
+            <td><textarea name="objectives[<?= $i ?>][objective]" class="form-control objective-input ppa-summernote" rows="4" <?= $readonly ?> <?= $isRequired ?>><?= $val['objective'] ?></textarea></td>
             <td>
               <input type="text" 
                     name="objectives[<?= $i ?>][timeline]" 
@@ -319,7 +333,7 @@ if($showApprovalBtns!='show'){
                     ?>" 
                     <?= $isRequired ?>>
             </td>
-            <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control objective-input" <?= $readonly ?> <?= $isRequired ?>><?= $val['indicator'] ?></textarea></td>
+            <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control objective-input ppa-summernote" rows="4" <?= $readonly ?> <?= $isRequired ?>><?= $val['indicator'] ?></textarea></td>
             <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control objective-input" <?= $readonly ?> value="<?php if(empty($val['weight'])&&($i<=3)){ echo 0;}else{ echo $val['weight']; } ?>" <?= $isRequired ?>></td>
           </tr>
     <?php endfor; ?>
@@ -365,17 +379,17 @@ if($showApprovalBtns!='show'){
     <tr>
       <td><label for="training-contribution" class="form-label"> Explain how the training will contribute to the staff member’s development and the department’s work.</label></td>
       <td>
-        <textarea id="training-contribution" class="form-control" rows="3" name="training_contributions" <?= $readonly ?>><?= $ppa->training_contributions ?? '' ?></textarea>
+        <textarea id="training-contribution" class="form-control ppa-summernote" rows="3" name="training_contributions" <?= $readonly ?>><?= $ppa->training_contributions ?? '' ?></textarea>
       </td>
     </tr>
     <tr>
       <td><label class="form-label">Selection of courses in line with training needs</label></td>
       <td>
       <small>Separate multiple courses using a semicolon (;).	With reference to the current AUC Learning and Development (L&D) Catalogue, please list the recommended course(s) for this staff member:</small>
-        <textarea id="training_courses" class="form-control" rows="3" name="recommended_trainings" <?= $readonly ?>><?= $ppa->recommended_trainings ?? '' ?></textarea>
+        <textarea id="training_courses_catalog" class="form-control ppa-summernote" rows="3" name="recommended_trainings" <?= $readonly ?>><?= $ppa->recommended_trainings ?? '' ?></textarea>
  
         <small>Where applicable, please provide details of highly <b>recommendable course(s)</b> for this staff member that are not listed in the AUC L&D Catalogue</small>
-        <textarea id="training_courses" class="form-control" rows="3" name="recommended_trainings_details" <?= $readonly ?>><?= $ppa->recommended_trainings_details ?? '' ?></textarea>
+        <textarea id="training_courses_extra" class="form-control ppa-summernote" rows="3" name="recommended_trainings_details" <?= $readonly ?>><?= $ppa->recommended_trainings_details ?? '' ?></textarea>
         
       </td>
     </tr>
@@ -449,8 +463,12 @@ if($showApprovalBtns!='show'){
     root.querySelectorAll('input[type="hidden"]').forEach(function (n) { n.remove(); });
     root.querySelectorAll('textarea').forEach(function (el) {
       var d = document.createElement('div');
-      d.className = 'preview-readonly-text';
-      d.textContent = el.value || '';
+      d.className = el.classList.contains('ppa-summernote') ? 'preview-readonly-text ppa-html-preview' : 'preview-readonly-text';
+      if (el.classList.contains('ppa-summernote')) {
+        d.innerHTML = (el.value || '').trim() ? el.value : '<span class="text-muted">—</span>';
+      } else {
+        d.textContent = el.value || '';
+      }
       el.parentNode.replaceChild(d, el);
     });
     root.querySelectorAll('select').forEach(function (el) {
@@ -501,6 +519,14 @@ if($showApprovalBtns!='show'){
   if (!modalEl || !srcEl || !bodyEl) return;
 
   modalEl.addEventListener('show.bs.modal', function () {
+    if (typeof jQuery !== 'undefined') {
+      jQuery('#ppaPreviewSource .ppa-summernote').each(function () {
+        var $t = jQuery(this);
+        if ($t.next('.note-editor').length) {
+          $t.val($t.summernote('code'));
+        }
+      });
+    }
     bodyEl.innerHTML = '';
     var hint = document.createElement('p');
     hint.className = 'text-muted small mb-2';
@@ -674,4 +700,75 @@ if($showApprovalBtns!='show'){
       form.submit();
     }
   }
+</script>
+
+<script>
+$(function () {
+  window.initPpaSummernote = function () {
+    $('.ppa-summernote').each(function () {
+      var $ta = $(this);
+      if ($ta.next('.note-editor').length) {
+        return;
+      }
+      var readOnly = $ta.prop('readonly') || $ta.prop('disabled');
+      $ta.removeAttr('readonly').removeAttr('disabled');
+      $ta.summernote({
+        placeholder: 'Type here…',
+        tabsize: 2,
+        height: 170,
+        dialogsInBody: true,
+        fontNames: ['Arial', 'Arial Black', 'Helvetica', 'sans-serif'],
+        fontNamesIgnoreCheck: ['Arial', 'Arial Black', 'Helvetica', 'sans-serif'],
+        toolbar: [
+          ['style', ['bold', 'italic', 'underline', 'clear']],
+          ['para', ['ul', 'ol', 'paragraph']],
+          ['insert', ['link']],
+          ['view', ['fullscreen', 'codeview']]
+        ],
+        callbacks: {
+          onInit: function () {
+            $(this).next('.note-editor').find('.note-editable').css({
+              fontFamily: 'Arial, Helvetica, sans-serif',
+              fontSize: '12px'
+            });
+          }
+        }
+      });
+      if (readOnly) {
+        $ta.summernote('disable');
+      }
+    });
+  };
+  setTimeout(window.initPpaSummernote, 0);
+  $('#staff_ppa').on('submit', function () {
+    $('.ppa-summernote').each(function () {
+      var $ta = $(this);
+      if ($ta.next('.note-editor').length) {
+        $ta.val($ta.summernote('code'));
+      }
+    });
+  });
+  setTimeout(function () {
+    var _toggleTraining = window.toggleTrainingSection;
+    if (typeof _toggleTraining === 'function' && !_toggleTraining._ppaWrapped) {
+      window.toggleTrainingSection = function (show) {
+        _toggleTraining(show);
+        if (show && typeof window.initPpaSummernote === 'function') {
+          setTimeout(function () {
+            $('#training-section .ppa-summernote').each(function () {
+              var $t = $(this);
+              if ($t.next('.note-editor').length) {
+                try {
+                  $t.summernote('destroy');
+                } catch (e) { /* ignore */ }
+              }
+            });
+            window.initPpaSummernote();
+          }, 80);
+        }
+      };
+      window.toggleTrainingSection._ppaWrapped = true;
+    }
+  }, 0);
+});
 </script>

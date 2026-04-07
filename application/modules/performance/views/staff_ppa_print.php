@@ -1,6 +1,23 @@
 <?php
 // performance/views/print_ppa_view.php
 $is_draft_print = !empty($performance_draft_watermark_text);
+
+if (!function_exists('ppa_print_html')) {
+	/**
+	 * Print/PDF: render stored PPA field — HTML from Summernote, or plain text with escaping.
+	 */
+	function ppa_print_html($str) {
+		$str = (string) $str;
+		if (trim($str) === '') {
+			return '';
+		}
+		if (preg_match('/<[a-z][\s\S]*>/i', $str)) {
+			return '<div class="ppa-html-content">' . $str . '</div>';
+		}
+
+		return '<div class="ppa-html-content"><p style="white-space:pre-wrap;margin:0;">' . htmlspecialchars($str, ENT_QUOTES, 'UTF-8') . '</p></div>';
+	}
+}
 ?>
 <html>
 <head>
@@ -14,7 +31,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
     
     body {
       font-size: 14px;
-      font-family: "freesans", arial, sans-serif;
+      font-family: Arial, Helvetica, "freesans", sans-serif;
       background: #FFFFFF;
       margin: 40px;
       line-height: 1.8 !important;
@@ -96,6 +113,10 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         line-height: 1.6 !important;
         padding: 12px !important;
       }
+      .objective-table td .ppa-html-content,
+      .objective-table td .ppa-html-content * {
+        font-size: 12px !important;
+      }
       
       .objective-table th {
         font-size: 14px !important;
@@ -118,6 +139,25 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       color: #64748b;
       font-size: 12px;
     }
+
+    .ppa-html-content {
+      font-family: Arial, Helvetica, sans-serif !important;
+      font-size: 12px !important;
+      line-height: 1.55;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    .objective-table td .ppa-html-content,
+    .objective-table td .ppa-html-content * {
+      font-size: 12px !important;
+    }
+    .ppa-html-content p { margin: 0 0 0.4em 0; }
+    .ppa-html-content p:last-child { margin-bottom: 0; }
+    .ppa-html-content ul, .ppa-html-content ol {
+      margin: 0.25em 0 0.5em 0;
+      padding-left: 1.25em;
+    }
+    .ppa-html-content a { color: #0f172a; text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -215,10 +255,10 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       foreach ($objectives as $obj): ?>
         <tr>
           <td><?= $i++ ?></td>
-          <td><?= $obj['objective'] ?? '' ?></td>
-          <td><?= $obj['timeline'] ?? '' ?></td>
-          <td><?= $obj['indicator'] ?? '' ?></td>
-          <td><?= $obj['weight'] ?? '' ?></td>
+          <td><?= ppa_print_html($obj['objective'] ?? '') ?></td>
+          <td><?= htmlspecialchars($obj['timeline'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+          <td><?= ppa_print_html($obj['indicator'] ?? '') ?></td>
+          <td><?= htmlspecialchars((string) ($obj['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
         </tr>
       <?php endforeach; ?>
     </tbody>
@@ -309,15 +349,15 @@ $is_draft_print = !empty($performance_draft_watermark_text);
     </tr>
     <tr>
       <td><b>Explain how the training will contribute to the staff member’s development and the department’s work:</b></td>
-      <td><?= $ppa->training_contributions ?></td>
+      <td><?= ppa_print_html($ppa->training_contributions ?? '') ?></td>
     </tr>
     <tr>
       <td><b>Recommended courses from L&D Catalogue:</b></td>
-      <td><?= $ppa->recommended_trainings ?></td>
+      <td><?= ppa_print_html($ppa->recommended_trainings ?? '') ?></td>
     </tr>
     <tr>
       <td><b>Additional course details (if not in the catalogue):</b></td>
-      <td><?= $ppa->recommended_trainings_details ?></td>
+      <td><?= ppa_print_html($ppa->recommended_trainings_details ?? '') ?></td>
     </tr>
   </table>
   <?php endif; ?>
