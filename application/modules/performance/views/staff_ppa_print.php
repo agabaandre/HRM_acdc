@@ -115,7 +115,7 @@ if (!function_exists('ppa_print_html')) {
       }
       .objective-table td .ppa-html-content,
       .objective-table td .ppa-html-content * {
-        font-size: 12px !important;
+        font-size: 14px !important;
       }
       
       .objective-table th {
@@ -142,14 +142,14 @@ if (!function_exists('ppa_print_html')) {
 
     .ppa-html-content {
       font-family: Arial, Helvetica, sans-serif !important;
-      font-size: 12px !important;
+      font-size: 14px !important;
       line-height: 1.55;
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
     .objective-table td .ppa-html-content,
     .objective-table td .ppa-html-content * {
-      font-size: 12px !important;
+      font-size: 14px !important;
     }
     .ppa-html-content p { margin: 0 0 0.4em 0; }
     .ppa-html-content p:last-child { margin-bottom: 0; }
