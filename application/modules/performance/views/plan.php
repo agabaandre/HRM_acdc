@@ -165,15 +165,15 @@ input[type="number"] {
     min-height: 120px;
   }
 
-  /* Summernote (PPA rich text) — Arial, 12px */
+  /* Summernote (PPA rich text) — Arial, 14px */
   .ppa-summernote + .note-editor .note-editable,
   .ppa-summernote + .note-editor .note-editable * {
     font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 12px !important;
+    font-size: 14px !important;
   }
   #ppaApproverPreviewModal .preview-readonly-text.ppa-html-preview {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 12px;
+    font-size: 14px;
     white-space: normal;
     word-break: break-word;
   }
@@ -769,7 +769,7 @@ $(function () {
           onInit: function () {
             $(this).next('.note-editor').find('.note-editable').css({
               fontFamily: 'Arial, Helvetica, sans-serif',
-              fontSize: '12px'
+              fontSize: '14px'
             });
           }
         }
