@@ -1,20 +1,6 @@
 <?php
 // performance/views/staff_endterm_print.php
 $is_draft_print = !empty($performance_draft_watermark_text);
-
-if (!function_exists('ppa_print_html')) {
-	function ppa_print_html($str) {
-		$str = (string) $str;
-		if (trim($str) === '') {
-			return '';
-		}
-		if (preg_match('/<[a-z][\s\S]*>/i', $str)) {
-			return '<div class="ppa-html-content">' . $str . '</div>';
-		}
-
-		return '<div class="ppa-html-content"><p style="white-space:pre-wrap;margin:0;">' . htmlspecialchars($str, ENT_QUOTES, 'UTF-8') . '</p></div>';
-	}
-}
 ?>
 <html>
 
@@ -212,6 +198,14 @@ if (!function_exists('ppa_print_html')) {
       padding-left: 1.25em;
     }
     .ppa-html-content a { color: #0f172a; text-decoration: underline; }
+    .ppa-html-content table { border-collapse: collapse; width: 100%; margin: 0.5em 0; font-size: inherit; }
+    .ppa-html-content th, .ppa-html-content td { border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: top; }
+    .ppa-html-content blockquote { margin: 0.5em 0; padding-left: 1em; border-left: 3px solid #e2e8f0; color: #334155; }
+    .ppa-html-content h1, .ppa-html-content h2, .ppa-html-content h3,
+    .ppa-html-content h4, .ppa-html-content h5, .ppa-html-content h6 { margin: 0.6em 0 0.35em 0; font-weight: 600; line-height: 1.3; }
+    .ppa-html-content pre { white-space: pre-wrap; word-break: break-word; margin: 0.5em 0; padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 0.95em; }
+    .ppa-html-content code { font-family: DejaVu Sans Mono, Courier, monospace; font-size: 0.95em; }
+    .ppa-html-content img { max-width: 100%; height: auto; }
   </style>
 </head>
 
