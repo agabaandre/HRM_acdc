@@ -291,44 +291,85 @@
     </div>
 </div>
 <script>
-$(function () {
-	var $region = $('#staff_filter_region_id');
-	var $nat = $('#staff_filter_nationality_id');
-	if (!$region.length || !$nat.length) {
-		return;
-	}
-	function syncNationalitiesToRegion() {
-		var rid = $region.val();
-		var cur = String($nat.val() || '');
-		var curOk = false;
-		$nat.find('option').each(function () {
-			var $o = $(this);
-			var v = $o.val();
-			if (!v) {
-				$o.prop('disabled', false);
-				return;
-			}
-			var optRid = String($o.attr('data-region-id'));
-			var ok = rid === '' || rid === null || optRid === String(rid);
-			$o.prop('disabled', !ok);
-			if (ok && String(v) === cur) {
-				curOk = true;
-			}
-		});
-		if (!curOk && cur) {
-			$nat.val('');
+(function () {
+	function initStaffRegionNationalityChain() {
+		var $region = $('#staff_filter_region_id');
+		var $nat = $('#staff_filter_nationality_id');
+		if (!$region.length || !$nat.length) {
+			return;
 		}
-		if ($nat.hasClass('select2-hidden-accessible')) {
-			$nat.select2('destroy');
+		if (!window.__staffFilterNationalityMaster) {
+			window.__staffFilterNationalityMaster = [];
+			$nat.find('option').each(function () {
+				var $o = $(this);
+				var v = $o.val();
+				if (v === '' || v === null) {
+					return;
+				}
+				window.__staffFilterNationalityMaster.push({
+					id: String(v),
+					text: $o.text(),
+					regionId: String($o.attr('data-region-id') != null ? $o.attr('data-region-id') : '')
+				});
+			});
 		}
-		$nat.select2({
-			theme: 'bootstrap4',
-			width: $nat.hasClass('w-100') ? '100%' : 'style',
-			placeholder: $nat.data('placeholder'),
-			allowClear: Boolean($nat.data('allow-clear')),
-		});
+		var master = window.__staffFilterNationalityMaster;
+
+		function rebuildNationalityOptions() {
+			var rid = String($region.val() != null ? $region.val() : '');
+			var cur = String($nat.val() != null ? $nat.val() : '');
+			$nat.empty();
+			$nat.append($('<option></option>').attr('value', '').text('Select Nationality'));
+			for (var i = 0; i < master.length; i++) {
+				var row = master[i];
+				if (rid === '' || row.regionId === rid) {
+					$nat.append(
+						$('<option></option>')
+							.attr('value', row.id)
+							.attr('data-region-id', row.regionId)
+							.text(row.text)
+					);
+				}
+			}
+			var hasCur = false;
+			$nat.find('option').each(function () {
+				if ($(this).val() === cur) {
+					hasCur = true;
+				}
+			});
+			$nat.val(hasCur ? cur : '');
+		}
+
+		function refreshNationalitySelect2() {
+			if ($nat.hasClass('select2-hidden-accessible')) {
+				try {
+					$nat.select2('destroy');
+				} catch (e) { /* ignore */ }
+			}
+			$nat.select2({
+				theme: 'bootstrap4',
+				width: $nat.hasClass('w-100') ? '100%' : 'style',
+				placeholder: $nat.data('placeholder'),
+				allowClear: Boolean($nat.data('allow-clear'))
+			});
+		}
+
+		function onRegionChanged() {
+			rebuildNationalityOptions();
+			refreshNationalitySelect2();
+		}
+
+		var chainTimer = null;
+		function scheduleChain() {
+			clearTimeout(chainTimer);
+			chainTimer = setTimeout(onRegionChanged, 0);
+		}
+		$region.off('.staffRegionNatChain').on('change.staffRegionNatChain select2:select.staffRegionNatChain', scheduleChain);
+		onRegionChanged();
 	}
-	$region.on('change', syncNationalitiesToRegion);
-	syncNationalitiesToRegion();
-});
+
+	$(function () {
+		setTimeout(initStaffRegionNationalityChain, 0);
+	});
+})();
 </script>
