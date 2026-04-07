@@ -11,11 +11,27 @@
 @section('content')
 <style>
     .table-title-cell {
-        max-width: 300px;
+        max-width: 270px;
         word-wrap: break-word;
         word-break: break-word;
         white-space: normal;
         line-height: 1.4;
+    }
+
+    /* Fund Type: wrap like Status (narrow column, multi-line badge + codes) */
+    .fund-type-cell {
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        vertical-align: top;
+        line-height: 1.3;
+    }
+    .fund-type-cell .badge {
+        white-space: normal;
+        display: inline-block;
+        max-width: 100%;
+        line-height: 1.35;
+        text-align: left;
     }
     
     .table {
