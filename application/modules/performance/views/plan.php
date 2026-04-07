@@ -132,6 +132,15 @@ input[type="number"] {
 
   .objective-table th, .objective-table td { text-align: left; padding: 0px; border: 1px solid #ccc; }
 
+  /* Keep Summernote within the table cell (same visual width as Objective column) */
+  .objective-table td .ppa-summernote + .note-editor {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .objective-table td .ppa-summernote + .note-editor .note-editable {
+    min-height: 120px;
+  }
+
   /* Summernote (PPA rich text) — Arial, 12px */
   .ppa-summernote + .note-editor .note-editable,
   .ppa-summernote + .note-editor .note-editable * {
@@ -307,7 +316,7 @@ if($showApprovalBtns!='show'){
         <th style="width: 5%;">#</th>
         <th style="width: 20%; white-space: normal;">Objective<br><small class="fw-light d-block text-wrap">Statement of the result that needs to be achieved</small></th>
         <th style="width: 15%; white-space: normal;">Timeline<br><small class="fw-light d-block text-wrap">Timeframe within which the result is to be achieved</small></th>
-        <th style="width: 40%; white-space: normal;">Deliverables and KPI’s<br><small class="fw-light d-block text-wrap">Deliverables - the evidence that the result has been achieved; KPI’s give an indication of how well the result was achieved</small></th>
+        <th style="width: 20%; white-space: normal;">Deliverables and KPI’s<br><small class="fw-light d-block text-wrap">Deliverables - the evidence that the result has been achieved; KPI’s give an indication of how well the result was achieved</small></th>
         <th style="width: 10%; white-space: normal;">Weight<br><small class="fw-light d-block text-wrap">The total weight of all objectives should be 100%</small></th>
       </tr>
     </thead>
