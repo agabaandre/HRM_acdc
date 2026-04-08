@@ -199,7 +199,7 @@
                         <small class="text-muted">Applicable to only World Bank Budget Codes</small>
                     </div>
                 </div>
-                    <div class="alert alert-info">
+                    <div class="alert alert-info" id="budget_items_hint">
                         Select budget codes above to add budget items
                     </div>
                     <div id="budgetCards"></div>
@@ -350,6 +350,8 @@
         // Initial count (e.g. from old() or pre-filled)
         validateTitleField();
 
+        const budgetItemsHint = $('#budget_items_hint');
+
         // Fund type change handler
         $('#fund_type').change(function(event) {
             let selectedText = $('#fund_type option:selected').text().toLowerCase();
@@ -362,8 +364,10 @@
                 $('.activity_code').hide();
                 $('#budget_codes').val("").prop('disabled', true).prop('required', false).closest('.col-md-4').hide();
                 $('.fund_type').removeClass('col-md-2').addClass('col-md-4');
+                budgetItemsHint.hide();
                 return;
             }
+            budgetItemsHint.show();
             if (selectedText.indexOf("intramural") > -1) {
                 $('.fund_type').removeClass('col-md-4').addClass('col-md-2');
             } else {
@@ -407,9 +411,11 @@
                 return;
             }
             if (isExternalSource) {
+                budgetItemsHint.hide();
                 budgetCodesSelect.empty().append('<option disabled selected>Not applicable for external source</option>');
                 return;
             }
+            budgetItemsHint.show();
 
             $wrapper.css({ opacity: 0.6, pointerEvents: 'none', transition: 'opacity 0.2s ease' });
             budgetCodesSelect.prop('disabled', true);
