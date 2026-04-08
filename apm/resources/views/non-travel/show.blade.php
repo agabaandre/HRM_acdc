@@ -334,13 +334,13 @@
             }
 
             // Get locations
-            $locations = [];
+            $locations = collect();
             if (!empty($locationIds)) {
                 $locations = \App\Models\Location::whereIn('id', $locationIds)->get();
             }
 
             // Get budget codes
-            $budgetCodes = [];
+            $budgetCodes = collect();
             if (!empty($nonTravel->budget_id)) {
                 $budgetIds = is_array($nonTravel->budget_id) ? $nonTravel->budget_id : json_decode($nonTravel->budget_id, true);
                 if (is_array($budgetIds)) {
