@@ -493,8 +493,8 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
               </div>
               <div class="col-md-4">
                 <label class="form-label">Passport biodata page</label>
-                <input type="file" name="passport_biodata" class="form-control" accept="image/*,.pdf,application/pdf">
-                <small class="text-muted">Image or PDF, max 4MB.</small>
+                <input type="file" name="passport_biodata" class="form-control" accept="image/*">
+                <small class="text-muted">Image only (JPG, PNG, or GIF), max 4MB.</small>
                 <?php if ($passport_url !== ''): ?>
                   <div class="mt-1"><a href="<?= $passport_url ?>" target="_blank" rel="noopener">Current file</a></div>
                 <?php endif; ?>
