@@ -38,6 +38,16 @@
         gap: 0.25rem;
         align-items: center;
     }
+
+    /* Header avatar: 20% larger than generate_user_avatar default (40px → 48px) */
+    .staff-contracts-header-avatar > img.user-img,
+    .staff-contracts-header-avatar > div.rounded-circle {
+        width: 48px !important;
+        height: 48px !important;
+    }
+    .staff-contracts-header-avatar > div.rounded-circle {
+        font-size: 17px !important;
+    }
 </style>
 
 
@@ -51,7 +61,7 @@
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <div class="row align-items-center">
-                <div class="col-auto me-3">
+                <div class="col-auto me-3 staff-contracts-header-avatar">
                     <?php
                     $surname = $this_staff->lname ?? '';
                     $other_name = $this_staff->fname ?? '';
