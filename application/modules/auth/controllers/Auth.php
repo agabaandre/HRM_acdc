@@ -433,6 +433,9 @@ public function revert()
     $data['second_supervisor'] = $second_supervisor;
     $data['directorate'] = $directorate;
 
+    $flashOld = $this->session->flashdata('profile_old_input');
+    $data['profile_old_input'] = is_array($flashOld) ? $flashOld : [];
+
     render("users/profile", $data);
 
   }
@@ -1038,6 +1041,26 @@ public function revert()
     echo json_encode(['message' => $res]);
   }
 
+  /**
+   * Repopulate profile form after validation/upload errors (next request via flashdata).
+   *
+   * @param array $post
+   */
+  private function _profile_store_old_input(array $post)
+  {
+    $keep = [];
+    $keys = ['staff_id', 'user_id', 'name', 'private_email', 'whatsapp', 'tel_1', 'tel_2', 'langauge', 'residential_address_duty_station', 'number_of_dependants'];
+    foreach ($keys as $k) {
+      if (array_key_exists($k, $post)) {
+        $keep[$k] = $post[$k];
+      }
+    }
+    if (isset($post['next_of_kin']) && is_array($post['next_of_kin'])) {
+      $keep['next_of_kin'] = $post['next_of_kin'];
+    }
+    $this->session->set_flashdata('profile_old_input', $keep);
+  }
+
   public function update_profile()
   {
     $data = $this->input->post();
@@ -1047,6 +1070,7 @@ public function revert()
     if (isset($data['next_of_kin']) && is_array($data['next_of_kin'])) {
       $nokErr = $this->_validate_next_of_kin_profile_post($data['next_of_kin']);
       if ($nokErr !== null) {
+        $this->_profile_store_old_input($data);
         Modules::run('utility/setFlash', array('msg' => $nokErr, 'type' => 'error'));
         redirect('auth/profile');
         return;
@@ -1055,12 +1079,14 @@ public function revert()
 
     $addrDuty = trim((string) ($data['residential_address_duty_station'] ?? ''));
     if ($addrDuty === '') {
+      $this->_profile_store_old_input($data);
       Modules::run('utility/setFlash', array('msg' => 'Residential address (at duty station) is required.', 'type' => 'error'));
       redirect('auth/profile');
       return;
     }
     $depRaw = isset($data['number_of_dependants']) ? trim((string) $data['number_of_dependants']) : '';
     if ($depRaw === '' || !preg_match('/^\d+$/', $depRaw)) {
+      $this->_profile_store_old_input($data);
       Modules::run('utility/setFlash', array('msg' => 'Number of dependants is required (enter a whole number, e.g. 0 if none).', 'type' => 'error'));
       redirect('auth/profile');
       return;
@@ -1140,10 +1166,18 @@ public function revert()
       }
     }
 
+    if (!empty($upload_errors)) {
+      $this->_profile_store_old_input($data);
+      $error_text = implode(' ', $upload_errors);
+      Modules::run('utility/setFlash', array('msg' => $error_text, 'type' => 'error'));
+      redirect('auth/profile');
+      return;
+    }
+
     $res = $this->auth_mdl->updateProfile($data);
 
     $user = $this->session->userdata('user');
-    if ($user) {
+    if ($user && $res === 'Update Successful') {
       if (!empty($data['photo'])) {
         $user->photo = $data['photo'];
       }
@@ -1167,17 +1201,11 @@ public function revert()
       $this->session->set_userdata('user', $user);
     }
 
-    if (!empty($upload_errors)) {
-      $error_text = implode(' ', $upload_errors);
-      Modules::run('utility/setFlash', array('msg' => $error_text, 'type' => 'error'));
-      redirect('auth/profile');
-      return;
-    }
-
-    if ($res) {
-      Modules::run('utility/setFlash', array('msg' => is_string($res) ? $res : 'Profile updated successfully.', 'type' => 'success'));
+    if ($res === 'Update Successful') {
+      Modules::run('utility/setFlash', array('msg' => $res, 'type' => 'success'));
     } else {
-      Modules::run('utility/setFlash', array('msg' => 'Profile update failed. Please try again.', 'type' => 'error'));
+      $this->_profile_store_old_input($data);
+      Modules::run('utility/setFlash', array('msg' => is_string($res) ? $res : 'Profile update failed. Please try again.', 'type' => 'error'));
     }
     redirect('auth/profile');
   }

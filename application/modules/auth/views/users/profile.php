@@ -1,5 +1,6 @@
 <?php
 $staff = $this->session->userdata('user');
+$profile_old = isset($profile_old_input) && is_array($profile_old_input) ? $profile_old_input : [];
 $contract = isset($contract) ? $contract : Modules::run('auth/contract_info', $staff->staff_id);
 $supervisor = isset($supervisor) ? $supervisor : null;
 $second_supervisor = isset($second_supervisor) ? $second_supervisor : null;
@@ -18,6 +19,20 @@ $kin_types = isset($kin_relationship_types) && is_array($kin_relationship_types)
 $kin_name_by_id = [];
 foreach ($kin_types as $kt) {
   $kin_name_by_id[(int) $kt->kin_relationship_id] = $kt->relationship_name;
+}
+if (!function_exists('profile_form_value')) {
+  /**
+   * Prefer last POST (flash) so the form stays filled after validation errors.
+   */
+  function profile_form_value(array $old, $staff, string $key) {
+    if (array_key_exists($key, $old)) {
+      return $old[$key];
+    }
+    if (is_object($staff) && property_exists($staff, $key)) {
+      return $staff->$key;
+    }
+    return '';
+  }
 }
 if (!function_exists('profile_normalize_nok_row')) {
   function profile_normalize_nok_row($row) {
@@ -40,15 +55,23 @@ if (!function_exists('profile_normalize_nok_row')) {
     return $out;
   }
 }
-$nok_list = json_decode(isset($staff->next_of_kin_json) ? $staff->next_of_kin_json : '[]', true);
-if (!is_array($nok_list)) {
-  $nok_list = [];
+if (!empty($profile_old['next_of_kin']) && is_array($profile_old['next_of_kin'])) {
+  $nok_list = array_values($profile_old['next_of_kin']);
+  while (count($nok_list) < 2) {
+    $nok_list[] = [];
+  }
+  $nok_list = array_slice($nok_list, 0, 2);
+} else {
+  $nok_list = json_decode(isset($staff->next_of_kin_json) ? $staff->next_of_kin_json : '[]', true);
+  if (!is_array($nok_list)) {
+    $nok_list = [];
+  }
+  $nok_list = array_values($nok_list);
+  while (count($nok_list) < 2) {
+    $nok_list[] = [];
+  }
+  $nok_list = array_slice($nok_list, 0, 2);
 }
-$nok_list = array_values($nok_list);
-while (count($nok_list) < 2) {
-  $nok_list[] = [];
-}
-$nok_list = array_slice($nok_list, 0, 2);
 $nok_list[0] = profile_normalize_nok_row($nok_list[0] ?? []);
 $nok_list[1] = profile_normalize_nok_row($nok_list[1] ?? []);
 
@@ -411,7 +434,7 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
           <?= form_open_multipart(base_url('auth/update_profile'), ['id' => 'profile']) ?>
           <input type="hidden" name="staff_id" value="<?=$staff->staff_id?>">
           <input type="hidden" name="user_id" value="<?= $staff->user_id?>">
-          <input type="hidden" name="name" value="<?= $staff->title .' '.$staff->fname.' '.$staff->lname ?>">
+          <input type="hidden" name="name" value="<?= htmlspecialchars(array_key_exists('name', $profile_old) ? (string) $profile_old['name'] : ($staff->title . ' ' . $staff->fname . ' ' . $staff->lname)) ?>">
 
           <!-- Section: Contact & language -->
           <div class="profile-form-section border rounded-3 p-3 p-md-4 mb-4 bg-light bg-opacity-50">
@@ -421,24 +444,24 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Private Email <span class="text-danger">*</span></label>
-                <input type="email" name="private_email" value="<?= $staff->private_email ?>" class="form-control" required>
+                <input type="email" name="private_email" value="<?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'private_email')) ?>" class="form-control" required>
                 <small class="text-muted">Your personal email address</small>
               </div>
               <div class="col-md-6">
                 <label class="form-label">WhatsApp Number</label>
-                <input type="text" name="whatsapp" value="<?= $staff->whatsapp ?>" class="form-control" placeholder="+1234567890">
+                <input type="text" name="whatsapp" value="<?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'whatsapp')) ?>" class="form-control" placeholder="+1234567890">
                 <small class="text-muted">Include country code (e.g., +1234567890)</small>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Primary Phone <span class="text-danger">*</span></label>
-                <input type="text" name="tel_1" value="<?= $staff->tel_1 ?>" class="form-control" required>
+                <input type="text" name="tel_1" value="<?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'tel_1')) ?>" class="form-control" required>
                 <small class="text-muted">Your primary contact number</small>
               </div>
               <div class="col-md-6">
                 <label class="form-label">Alternative Number</label>
-                <input type="text" name="tel_2" value="<?= $staff->tel_2 ?>" class="form-control">
+                <input type="text" name="tel_2" value="<?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'tel_2')) ?>" class="form-control">
                 <small class="text-muted">Secondary contact number (optional)</small>
               </div>
             </div>
@@ -446,8 +469,11 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
               <label class="form-label">Preferred Language</label>
               <?php $langs = ['en' => 'English', 'fr' => 'French', 'sw' => 'Swahili', 'ar' => 'Arabic']; ?>
               <select name="langauge" class="form-select">
+                <?php
+                $lang_cur = (string) profile_form_value($profile_old, $staff, 'langauge');
+                ?>
                 <?php foreach ($langs as $k => $v): ?>
-                  <option value="<?= $k ?>" <?= $staff->langauge == $k ? 'selected' : '' ?>><?= $v ?></option>
+                  <option value="<?= $k ?>" <?= ($lang_cur === (string) $k) ? 'selected' : '' ?>><?= $v ?></option>
                 <?php endforeach; ?>
               </select>
               <small class="text-muted">Select your preferred language for the system</small>
@@ -488,13 +514,20 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
             </h6>
             <div class="mb-3">
               <label class="form-label">Residential address (at duty station) <span class="text-danger">*</span></label>
-              <textarea name="residential_address_duty_station" class="form-control" rows="3" placeholder="Street, building, city" required><?= isset($staff->residential_address_duty_station) ? htmlspecialchars($staff->residential_address_duty_station) : '' ?></textarea>
+              <textarea name="residential_address_duty_station" class="form-control" rows="3" placeholder="Street, building, city" required><?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'residential_address_duty_station')) ?></textarea>
             </div>
             <div class="row mb-0">
               <div class="col-md-4">
                 <label class="form-label">Number of dependants <span class="text-danger">*</span></label>
                 <input type="number" name="number_of_dependants" class="form-control" min="0" step="1"
-                       value="<?= (isset($staff->number_of_dependants) && $staff->number_of_dependants !== null && $staff->number_of_dependants !== '') ? (int) $staff->number_of_dependants : '' ?>"
+                       value="<?php
+                       if (array_key_exists('number_of_dependants', $profile_old)) {
+                         echo htmlspecialchars((string) $profile_old['number_of_dependants']);
+                       } else {
+                         echo (isset($staff->number_of_dependants) && $staff->number_of_dependants !== null && $staff->number_of_dependants !== '')
+                           ? htmlspecialchars((string) (int) $staff->number_of_dependants) : '';
+                       }
+                       ?>"
                        placeholder="e.g. 0" required>
               </div>
             </div>
