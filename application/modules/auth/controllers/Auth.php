@@ -1150,10 +1150,10 @@ public function revert()
     if (!empty($passport_biodata['name'])) {
       $ext = pathinfo($passport_biodata['name'], PATHINFO_EXTENSION);
       $safe_name = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9_\-.]/', '', $data['name']));
-      $passport_file_name = $safe_name . '_passport_' . time() . '.' . ($ext ? strtolower($ext) : 'pdf');
+      $passport_file_name = $safe_name . '_passport_' . time() . '.' . ($ext ? strtolower($ext) : 'jpg');
       $config = array(
         'upload_path'   => rtrim($passport_upload_path, '/\\') . '/',
-        'allowed_types' => 'gif|jpg|png|jpeg|pdf',
+        'allowed_types' => 'gif|jpg|png|jpeg',
         'file_name'     => $passport_file_name,
         'max_size'      => 4096,
         'overwrite'     => false
