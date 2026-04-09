@@ -1719,7 +1719,8 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
     }
 
     /**
-     * Daily reminder: email active staff who have not completed extended profile fields.
+     * Daily reminder: email staff who have not completed extended profile fields.
+     * Only includes staff whose latest contract is Active (1), Due (2), or Under renewal (7).
      * Schedule via jobs/run/tick (staff_profile_completion_reminder) or CLI:
      *   php index.php jobs/jobs/notify_staff_incomplete_profile_extension
      */
@@ -1732,10 +1733,18 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
             return;
         }
 
+        $latestContractSub = $this->db->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
         $this->db->select('staff.staff_id, staff.title, staff.fname, staff.lname, staff.work_email,
             staff.passport_biodata_page, staff.residential_address_duty_station, staff.number_of_dependants, staff.next_of_kin_json');
         $this->db->from('staff');
         $this->db->join('user', 'user.auth_staff_id = staff.staff_id');
+        $this->db->join('staff_contracts sc', 'sc.staff_id = staff.staff_id', 'inner');
+        $this->db->where("sc.staff_contract_id IN ($latestContractSub)", null, false);
+        $this->db->where_in('sc.status_id', [1, 2, 7]);
         $this->db->where('user.status', 1);
         $this->db->where('staff.work_email IS NOT NULL', null, false);
         $this->db->where("TRIM(staff.work_email) != ''", null, false);
