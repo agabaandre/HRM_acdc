@@ -48,7 +48,7 @@ foreach ($rows as $s) :
 					<?php
 					$surname = $s->lname ?? '';
 					$other_name = $s->fname ?? '';
-					$image_path = base_url() . 'uploads/staff/' . ($s->photo ?? '');
+					$image_path = staff_secure_upload_url('photo', $s->photo ?? '');
 					echo generate_user_avatar($surname, $other_name, $image_path, $s->photo ?? null);
 					?>
 				</div>

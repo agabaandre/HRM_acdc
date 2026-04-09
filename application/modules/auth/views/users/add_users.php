@@ -475,7 +475,7 @@ $(document).ready(function() {
   $('[data-bs-toggle="tooltip"]').tooltip();
 
   const USER_AVATAR_DEFAULT = <?php echo json_encode(base_url('assets/images/pp.png')); ?>;
-  const USER_PHOTO_BASE = <?php echo json_encode(base_url('uploads/staff/')); ?>;
+  const USER_PHOTO_BASE = <?php echo json_encode(site_url('secure_upload/staff/photo/')); ?>;
 
   function escAttr(s) {
     return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');

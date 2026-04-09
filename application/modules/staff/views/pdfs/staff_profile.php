@@ -196,8 +196,16 @@
     <?php 
         $surname = $data->lname;
         $other_name = $data->fname;
-        $image_path = base_url() . 'uploads/staff/' . @$data->photo;
-        echo generate_user_avatar($surname, $other_name, $image_path, $data->photo);
+        $photoFs = FCPATH . 'uploads/staff/' . ltrim((string) ($data->photo ?? ''), '/');
+        if (!empty($data->photo) && is_file($photoFs) && function_exists('is_valid_image') && is_valid_image($photoFs)) {
+            $mime = function_exists('mime_content_type') ? @mime_content_type($photoFs) : 'image/jpeg';
+            if (!is_string($mime) || $mime === '') {
+                $mime = 'image/jpeg';
+            }
+            echo '<img src="data:' . htmlspecialchars($mime) . ';base64,' . base64_encode((string) file_get_contents($photoFs)) . '" alt="" style="width:120px;height:120px;object-fit:cover;border-radius:50%;" />';
+        } else {
+            echo generate_user_avatar($surname, $other_name, '', null);
+        }
 	?>
     </div>
 

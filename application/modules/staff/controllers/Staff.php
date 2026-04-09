@@ -785,7 +785,7 @@ class Staff extends MX_Controller
 			ob_start();
 			$surname = $staff_info->lname;
 			$other_name = $staff_info->fname;
-			$image_path = base_url() . 'uploads/staff/' . @$staff_info->photo;
+			$image_path = staff_secure_upload_url('photo', $staff_info->photo ?? '');
 			$staff_photo = generate_user_avatar($surname, $other_name, $image_path, $staff_info->photo);
 			$photo_output = ob_get_clean();
 

@@ -209,7 +209,7 @@
 					$name_parts = explode(" ", trim($full_name), 2);
 					$surname = isset($name_parts[1]) ? $name_parts[1] : '';
 					$other_name = $name_parts[0];
-					$image_path = base_url() . 'uploads/staff/' . $this->session->userdata('user')->photo;
+					$image_path = staff_secure_upload_url('photo', $this->session->userdata('user')->photo ?? '');
 					$photo = $this->session->userdata('user')->photo;
 					echo  $staff_photo = generate_user_avatar($other_name, $surname, $image_path, $photo);
 
