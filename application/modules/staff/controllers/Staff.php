@@ -1389,6 +1389,133 @@ class Staff extends MX_Controller
 		render('staff_birthday', $data);
 	}
 
+	/**
+	 * HR report: basic staff details, contacts, duty-station address, dependants, next of kin.
+	 */
+	public function staff_next_of_kin($csv = false, $pdf = false)
+	{
+		$data['module'] = $this->module;
+		$data['title'] = 'Staff Next of Kin';
+		$rows = $this->staff_mdl->get_staff_next_of_kin_report();
+		$kin_name_by_id = [];
+		if ($this->db->table_exists('kin_relationship_types')) {
+			foreach ($this->db->get('kin_relationship_types')->result() as $kt) {
+				$kin_name_by_id[(int) $kt->kin_relationship_id] = $kt->relationship_name;
+			}
+		}
+
+		if ((int) $csv === 1) {
+			$flat = $this->_staff_next_of_kin_csv_rows($rows, $kin_name_by_id);
+			$file_name = 'Staff-Next-of-Kin_' . date('d-m-Y-H-i') . '.csv';
+			render_csv_data($flat, $file_name);
+			return;
+		}
+		if ((int) $pdf === 1) {
+			$data['rows'] = $rows;
+			$data['kin_name_by_id'] = $kin_name_by_id;
+			$pdf_name = 'Staff-Next-of-Kin_' . date('d-m-Y-H-i') . '.pdf';
+			pdf_print_data($data, $pdf_name, 'L', 'pdfs/staff_next_of_kin');
+			return;
+		}
+
+		$data['rows'] = $rows;
+		$data['kin_name_by_id'] = $kin_name_by_id;
+		render('staff_next_of_kin', $data);
+	}
+
+	private function _staff_next_of_kin_normalize_nok_row($row)
+	{
+		$out = ['name' => '', 'relationship_id' => 0, 'phone' => '', 'email' => ''];
+		if (!is_array($row)) {
+			return $out;
+		}
+		$out['name'] = trim((string) ($row['name'] ?? ''));
+		$out['relationship_id'] = (int) ($row['relationship_id'] ?? 0);
+		$out['phone'] = trim((string) ($row['phone'] ?? ''));
+		$out['email'] = trim((string) ($row['email'] ?? ''));
+		if ($out['phone'] === '' && $out['email'] === '' && !empty($row['contact'])) {
+			$c = trim((string) $row['contact']);
+			if ($c !== '' && strpos($c, '@') !== false) {
+				$out['email'] = $c;
+			} elseif ($c !== '') {
+				$out['phone'] = $c;
+			}
+		}
+		return $out;
+	}
+
+	private function _staff_next_of_kin_csv_rows($rows, $kin_name_by_id)
+	{
+		$flat = [];
+		foreach ($rows as $s) {
+			$nok_raw = json_decode(isset($s->next_of_kin_json) ? $s->next_of_kin_json : '[]', true);
+			if (!is_array($nok_raw)) {
+				$nok_raw = [];
+			}
+			$nok_rows = [];
+			foreach ($nok_raw as $nr) {
+				$nok_rows[] = $this->_staff_next_of_kin_normalize_nok_row($nr);
+			}
+			$display_nok = array_values(array_filter($nok_rows, function ($r) {
+				return $r['name'] !== '' || $r['phone'] !== '' || $r['email'] !== '' || $r['relationship_id'] > 0;
+			}));
+			$n1 = $display_nok[0] ?? null;
+			$n2 = $display_nok[1] ?? null;
+			$additional = '';
+			if (count($display_nok) > 2) {
+				$chunks = [];
+				for ($i = 2; $i < count($display_nok); $i++) {
+					$k = $display_nok[$i];
+					$rel = $k['relationship_id'] > 0 && isset($kin_name_by_id[$k['relationship_id']])
+						? $kin_name_by_id[$k['relationship_id']]
+						: '';
+					$chunks[] = trim($k['name'] . ($rel !== '' ? ' (' . $rel . ')' : '') . ': ' . $k['phone'] . ' / ' . $k['email']);
+				}
+				$additional = implode(' | ', array_filter($chunks));
+			}
+			$rel1 = $n1 && $n1['relationship_id'] > 0 && isset($kin_name_by_id[$n1['relationship_id']])
+				? $kin_name_by_id[$n1['relationship_id']] : '';
+			$rel2 = $n2 && $n2['relationship_id'] > 0 && isset($kin_name_by_id[$n2['relationship_id']])
+				? $kin_name_by_id[$n2['relationship_id']] : '';
+			$addr = '';
+			if (isset($s->residential_address_duty_station)) {
+				$addr = trim(preg_replace('/\s+/', ' ', str_replace(["\r\n", "\n", "\r"], ' ', (string) $s->residential_address_duty_station)));
+			}
+			$deps = '';
+			if (isset($s->number_of_dependants) && $s->number_of_dependants !== null && $s->number_of_dependants !== '') {
+				$deps = (string) (int) $s->number_of_dependants;
+			}
+			$full_name = trim(($s->title ?? '') . ' ' . ($s->fname ?? '') . ' ' . ($s->lname ?? '') . ' ' . ($s->oname ?? ''));
+			$flat[] = [
+				'sapno' => (string) ($s->SAPNO ?? ''),
+				'full_name' => $full_name,
+				'contract_status' => (string) ($s->contract_status_label ?? ''),
+				'job' => (string) ($s->job_name ?? ''),
+				'division' => (string) ($s->division_name ?? ''),
+				'duty_station' => (string) ($s->duty_station_name ?? ''),
+				'grade' => (string) ($s->grade ?? ''),
+				'work_email' => (string) ($s->work_email ?? ''),
+				'tel_1' => (string) ($s->tel_1 ?? ''),
+				'tel_2' => (string) ($s->tel_2 ?? ''),
+				'whatsapp' => (string) ($s->whatsapp ?? ''),
+				'private_email' => (string) ($s->private_email ?? ''),
+				'physical_location' => trim(preg_replace('/\s+/', ' ', str_replace(["\r\n", "\n", "\r"], ' ', (string) ($s->physical_location ?? '')))),
+				'residential_address_duty_station' => $addr,
+				'number_of_dependants' => $deps,
+				'nok_1_name' => $n1 ? $n1['name'] : '',
+				'nok_1_relationship' => $rel1,
+				'nok_1_phone' => $n1 ? $n1['phone'] : '',
+				'nok_1_email' => $n1 ? $n1['email'] : '',
+				'nok_2_name' => $n2 ? $n2['name'] : '',
+				'nok_2_relationship' => $rel2,
+				'nok_2_phone' => $n2 ? $n2['phone'] : '',
+				'nok_2_email' => $n2 ? $n2['email'] : '',
+				'nok_additional' => $additional,
+			];
+		}
+		return $flat;
+	}
+
 	public function update_contract()
 	{
 		$data = $this->input->post();

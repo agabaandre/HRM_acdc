@@ -77,6 +77,11 @@ $staff_id = $this->session->userdata('user')->staff_id;
                         <i class="fa fa-sync-alt"></i> Under Renewal
                     </a>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link <?= ($current_uri == 'staff_next_of_kin') ? 'active' : '' ?>" href="<?= base_url('staff/staff_next_of_kin') ?>">
+                        <i class="fa fa-address-card"></i> Next of Kin
+                    </a>
+                </li>
             <?php endif; ?>
         <?php endif; ?>
 
