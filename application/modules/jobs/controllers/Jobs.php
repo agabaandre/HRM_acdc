@@ -1583,6 +1583,209 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
     }
 }
 
+    /**
+     * Staff profile extensions: passport biodata upload path, address, dependants, next-of-kin JSON,
+     * and lookup table for next-of-kin relationships (managed under Settings).
+     * Run once: index.php jobs/jobs/add_staff_profile_extended_fields
+     * Drop:      index.php jobs/jobs/add_staff_profile_extended_fields/1
+     */
+    public function add_staff_profile_extended_fields($drop = false)
+    {
+        if ($drop) {
+            $cols = ['passport_biodata_page', 'residential_address_duty_station', 'number_of_dependants', 'next_of_kin_json'];
+            foreach ($cols as $c) {
+                $exists = $this->db->query("SHOW COLUMNS FROM `staff` LIKE " . $this->db->escape($c))->num_rows();
+                if ($exists > 0) {
+                    $this->db->query('ALTER TABLE `staff` DROP COLUMN `' . $this->db->escape_str($c) . '`');
+                    echo "🗑️ Dropped column: <strong>staff.$c</strong><br>";
+                } else {
+                    echo "⚠️ Column does not exist: <strong>staff.$c</strong><br>";
+                }
+            }
+            if ($this->db->query("SHOW TABLES LIKE 'kin_relationship_types'")->num_rows() > 0) {
+                $this->db->query("DROP TABLE `kin_relationship_types`");
+                echo "🗑️ Dropped table: <strong>kin_relationship_types</strong><br>";
+            }
+            return;
+        }
+
+        if ($this->db->query("SHOW TABLES LIKE 'kin_relationship_types'")->num_rows() === 0) {
+            $sql = "CREATE TABLE `kin_relationship_types` (
+                `kin_relationship_id` int(11) NOT NULL AUTO_INCREMENT,
+                `relationship_name` varchar(150) NOT NULL,
+                `sort_order` int(11) NOT NULL DEFAULT 0,
+                `is_active` tinyint(1) NOT NULL DEFAULT 1,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`kin_relationship_id`),
+                KEY `idx_kin_rel_active_sort` (`is_active`,`sort_order`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+            $this->db->query($sql);
+            echo "✅ Created table: <strong>kin_relationship_types</strong><br>";
+        } else {
+            echo "ℹ️ Table already exists: <strong>kin_relationship_types</strong><br>";
+        }
+
+        if ((int) $this->db->count_all('kin_relationship_types') === 0) {
+            $defaults = ['Spouse', 'Parent', 'Sibling', 'Child', 'Other'];
+            $i = 0;
+            foreach ($defaults as $name) {
+                $this->db->insert('kin_relationship_types', [
+                    'relationship_name' => $name,
+                    'sort_order' => $i++,
+                    'is_active' => 1,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+            echo "✅ Seeded default next-of-kin relationship types<br>";
+        }
+
+        $fields = [
+            'passport_biodata_page' => "VARCHAR(255) DEFAULT NULL",
+            'residential_address_duty_station' => "TEXT DEFAULT NULL",
+            'number_of_dependants' => "INT DEFAULT NULL",
+            'next_of_kin_json' => "LONGTEXT DEFAULT NULL",
+        ];
+
+        $afterCol = 'signature';
+        if ($this->db->query("SHOW COLUMNS FROM `staff` LIKE " . $this->db->escape('signature'))->num_rows() === 0) {
+            $afterCol = 'photo';
+        }
+        if ($this->db->query("SHOW COLUMNS FROM `staff` LIKE " . $this->db->escape($afterCol))->num_rows() === 0) {
+            $afterCol = null;
+        }
+
+        foreach ($fields as $field => $definition) {
+            $exists = $this->db->query("SHOW COLUMNS FROM `staff` LIKE " . $this->db->escape($field))->num_rows();
+            if ($exists === 0) {
+                $sql = $afterCol
+                    ? "ALTER TABLE `staff` ADD `" . $this->db->escape_str($field) . "` $definition AFTER `" . $this->db->escape_str($afterCol) . "`"
+                    : "ALTER TABLE `staff` ADD `" . $this->db->escape_str($field) . "` $definition";
+                $this->db->query($sql);
+                echo "✅ Added column: <strong>staff.$field</strong><br>";
+            } else {
+                echo "ℹ️ Column already exists: <strong>staff.$field</strong><br>";
+            }
+            $afterCol = $field;
+        }
+    }
+
+    /**
+     * Labels for profile fields introduced by add_staff_profile_extended_fields (for reminder emails).
+     */
+    private function staff_profile_extension_missing_labels($staff)
+    {
+        $missing = [];
+        $passDir = FCPATH . 'uploads/staff/passport_biodata/';
+        $fn = isset($staff->passport_biodata_page) ? (string) $staff->passport_biodata_page : '';
+        if ($fn === '' || !is_file($passDir . $fn)) {
+            $missing[] = 'Passport biodata page (upload)';
+        }
+        if (trim((string) ($staff->residential_address_duty_station ?? '')) === '') {
+            $missing[] = 'Residential address (at duty station)';
+        }
+        if (!isset($staff->number_of_dependants) || $staff->number_of_dependants === null || $staff->number_of_dependants === '') {
+            $missing[] = 'Number of dependants';
+        }
+        $decoded = json_decode($staff->next_of_kin_json ?? '[]', true);
+        $validKin = 0;
+        if (is_array($decoded)) {
+            foreach ($decoded as $k) {
+                if (!is_array($k)) {
+                    continue;
+                }
+                $name = trim((string) ($k['name'] ?? ''));
+                $rid = (int) ($k['relationship_id'] ?? 0);
+                $phone = trim((string) ($k['phone'] ?? ''));
+                $email = trim((string) ($k['email'] ?? ''));
+                if ($phone === '' && $email === '' && !empty($k['contact'])) {
+                    $leg = trim((string) $k['contact']);
+                    if (strpos($leg, '@') !== false) {
+                        $email = $leg;
+                    } else {
+                        $phone = $leg;
+                    }
+                }
+                $emailOk = $email === '' || (bool) filter_var($email, FILTER_VALIDATE_EMAIL);
+                if ($name !== '' && $rid > 0 && $phone !== '' && $email !== '' && $emailOk) {
+                    $validKin++;
+                }
+            }
+        }
+        if ($validKin < 1) {
+            $missing[] = 'Next of kin (first): full name, relationship, phone, and email';
+        }
+
+        return $missing;
+    }
+
+    /**
+     * Daily reminder: email active staff who have not completed extended profile fields.
+     * Schedule via jobs/run/tick (staff_profile_completion_reminder) or CLI:
+     *   php index.php jobs/jobs/notify_staff_incomplete_profile_extension
+     */
+    public function notify_staff_incomplete_profile_extension()
+    {
+        $this->load->helper('async_mail');
+
+        if ($this->db->query("SHOW COLUMNS FROM `staff` LIKE 'passport_biodata_page'")->num_rows() === 0) {
+            echo "Column staff.passport_biodata_page missing. Run add_staff_profile_extended_fields first.\n";
+            return;
+        }
+
+        $this->db->select('staff.staff_id, staff.title, staff.fname, staff.lname, staff.work_email,
+            staff.passport_biodata_page, staff.residential_address_duty_station, staff.number_of_dependants, staff.next_of_kin_json');
+        $this->db->from('staff');
+        $this->db->join('user', 'user.auth_staff_id = staff.staff_id');
+        $this->db->where('user.status', 1);
+        $this->db->where('staff.work_email IS NOT NULL', null, false);
+        $this->db->where("TRIM(staff.work_email) != ''", null, false);
+        $rows = $this->db->get()->result();
+
+        $profileUrl = base_url('auth/profile');
+        $cc = '';
+        try {
+            $s = settings();
+            if ($s && !empty($s->email)) {
+                $cc = $s->email;
+            }
+        } catch (Exception $e) {
+            // ignore
+        }
+
+        foreach ($rows as $staff) {
+            $missing = $this->staff_profile_extension_missing_labels($staff);
+            if (empty($missing)) {
+                continue;
+            }
+
+            $entry_log_id = md5($staff->staff_id . '-PROFILEEXT-' . date('Y-m-d'));
+            $exists = $this->db->where('entry_id', $entry_log_id)->count_all_results('email_notifications');
+            if ($exists > 0) {
+                continue;
+            }
+
+            $data = [
+                'name' => trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '')),
+                'missing' => $missing,
+                'profile_url' => $profileUrl,
+                'subject' => 'Complete your staff profile (Africa CDC Staff Portal)',
+                'email_to' => trim($staff->work_email) . ($cc !== '' ? ';' . $cc : ''),
+            ];
+            $data['body'] = $this->load->view('staff_profile_completion_reminder', $data, true);
+
+            golobal_log_email(
+                'Staff Portal System',
+                $data['email_to'],
+                $data['body'],
+                $data['subject'],
+                $staff->staff_id,
+                date('Y-m-d'),
+                date('Y-m-d'),
+                $entry_log_id
+            );
+        }
+    }
+
     
 }
 

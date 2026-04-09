@@ -251,6 +251,13 @@ class Settings_mdl extends CI_Model
                 'staff_id'    => $this->input->post('staff_id'),
                 'division_id' => $this->input->post('division_id'),
             ];
+        } elseif ($table === 'kin_relationship_types') {
+            $data = [
+                'relationship_name' => $this->input->post('relationship_name', true),
+                'sort_order'        => (int) $this->input->post('sort_order', true),
+                'is_active'         => (int) $this->input->post('is_active') ? 1 : 0,
+                'created_at'        => date('Y-m-d H:i:s'),
+            ];
         }
     
         // For all other tables except 'divisions' (already inserted)
@@ -369,6 +376,12 @@ class Settings_mdl extends CI_Model
                 'unit_name'   => $this->input->post('unit_name'),
                 'staff_id'    => $this->input->post('staff_id'),
                 'division_id' => $this->input->post('division_id'),
+            ];
+        } elseif ($table === 'kin_relationship_types') {
+            $data = [
+                'relationship_name' => $this->input->post('relationship_name', true),
+                'sort_order'        => (int) $this->input->post('sort_order', true),
+                'is_active'         => (int) $this->input->post('is_active') ? 1 : 0,
             ];
         }
     
