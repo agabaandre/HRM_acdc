@@ -22,7 +22,7 @@ if (empty($staffs)) {
             <?php 
             $surname = $data->lname;
             $other_name = $data->fname;
-            $image_path = base_url() . 'uploads/staff/' . @$data->photo;
+            $image_path = staff_secure_upload_url('photo', $data->photo ?? '');
             echo generate_user_avatar($surname, $other_name, $image_path, $data->photo);
             ?>
         </td>

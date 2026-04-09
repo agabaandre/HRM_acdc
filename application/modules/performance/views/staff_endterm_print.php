@@ -614,7 +614,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <?php else: ?>
           <div style="margin-top: 20px; margin-bottom: 20px; min-height: 60px;">
             <?php if (!empty($supervisor->signature)): ?>
-              <img src="<?= base_url('uploads/staff/signature/' . $supervisor->signature) ?>" 
+              <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', $supervisor->signature ?? '')) ?>" 
                    style="max-width: 200px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;">
             <?php else: ?>
               <div style=" margin: 0 auto; display: flex; align-items: center; justify-content: center;">
@@ -732,7 +732,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <?php else: ?>
           <div style="margin-top: 20px; margin-bottom: 20px; min-height: 60px;">
             <?php if (!empty($staff->signature)): ?>
-              <img src="<?= base_url('uploads/staff/signature/' . $staff->signature) ?>" 
+              <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', $staff->signature)) ?>" 
                    style="max-width: 200px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;">
             <?php else: ?>
               <div style="border-bottom: 2px solid #ccc; width: 250px; height: 60px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
@@ -869,7 +869,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <?php else: ?>
           <div style="margin-top: 20px; margin-bottom: 20px; min-height: 60px;">
             <?php if (!empty($second_supervisor->signature)): ?>
-              <img src="<?= base_url('uploads/staff/signature/' . $second_supervisor->signature) ?>" 
+              <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', $second_supervisor->signature ?? '')) ?>" 
                    style="max-width: 200px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;">
             <?php else: ?>
               <div style="border-bottom: 2px solid #ccc; width: 250px; height: 60px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">

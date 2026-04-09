@@ -810,6 +810,29 @@ if (!function_exists('staff_details')) {
     }
 }
 
+if (!function_exists('staff_secure_upload_url')) {
+    /**
+     * Public URL for a staff upload (served through Secure_upload after auth).
+     *
+     * @param string $type photo|signature|passport_biodata
+     * @param string|null $filename value from staff table
+     */
+    function staff_secure_upload_url($type, $filename)
+    {
+        if ($filename === null || $filename === '') {
+            return '';
+        }
+        $filename = basename(str_replace('\\', '/', (string) $filename));
+        if ($filename === '' || $filename === '.' || $filename === '..') {
+            return '';
+        }
+        $ci = &get_instance();
+        if (!function_exists('site_url')) {
+            $ci->load->helper('url');
+        }
+        return site_url('secure_upload/staff/' . $type . '/' . rawurlencode($filename));
+    }
+}
 
 if (!function_exists('generate_user_avatar')) {
     function generate_user_avatar($surname, $other_name, $image_path, $photo = false)
@@ -831,15 +854,10 @@ if (!function_exists('generate_user_avatar')) {
         $clean_image_path = '';
         
         if (!empty($photo) && $photo !== null && trim($photo) !== '') {
-            // Clean the image path
-            $relative_path = str_replace(base_url(), '', $image_path);
-            $relative_path = ltrim($relative_path, '/');
-            $absolute_path = FCPATH . $relative_path;
-            
-            // Check if file actually exists on server
+            $absolute_path = FCPATH . 'uploads/staff/' . ltrim((string) $photo, '/');
             if (file_exists($absolute_path) && is_valid_image($absolute_path)) {
                 $photo_exists = true;
-                $clean_image_path = rtrim(base_url(), '/') . '/uploads/staff/' . ltrim($photo, '/');
+                $clean_image_path = staff_secure_upload_url('photo', $photo);
             }
         }
 

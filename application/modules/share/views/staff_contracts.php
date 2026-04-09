@@ -36,11 +36,10 @@
 
     ?>
         <div class="col-lg-10">
-              <img src="<?php if (get_photo($this_staff->staff_id)) {
-                          echo base_url() ?>uploads/staff/<?php echo @get_photo($this_staff->staff_id);
-                                                        } else {
-                                                          echo base_url() ?>uploads/staff/author.png
-          <?php } ?>" class="img-fluid img-thumbnail" alt="user avatar" style="width:180px;">
+              <img src="<?php
+                $ph = get_photo($this_staff->staff_id);
+                echo $ph ? htmlspecialchars(staff_secure_upload_url('photo', $ph)) : base_url('assets/images/pp.png');
+              ?>" class="img-fluid img-thumbnail" alt="user avatar" style="width:180px;">
         </div>
         <div class="col-md-2">
         <a href="<?php echo base_url() ?>staff/new_contract/<?php echo $this_staff->staff_id; ?>" class="btn btn-outline-dark btn-sm btn-bordered ">+ Add New Contract</a>

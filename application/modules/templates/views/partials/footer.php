@@ -965,7 +965,7 @@ $__is_cbp_home = ($CI->uri->segment(1) === 'home');
             <a class="dropdown-item" href="javascript:;">
               <div class="d-flex align-items-center mb-2">
                 <div class="user-online me-2">
-                  <img src="<?php echo base_url() ?>uploads/staff/user.png" class="msg-avatar rounded-circle" alt="avatar" style="width: 35px; height: 35px;">
+                  <img src="<?php echo base_url('assets/images/pp.png') ?>" class="msg-avatar rounded-circle" alt="avatar" style="width: 35px; height: 35px;">
                 </div>
                 <div class="flex-grow-1">
                   <h6 class="msg-name mb-1">${message.trigger}

@@ -65,7 +65,7 @@
                     <?php
                     $surname = $this_staff->lname ?? '';
                     $other_name = $this_staff->fname ?? '';
-                    $image_path = base_url() . 'uploads/staff/' . @$this_staff->photo;
+                    $image_path = staff_secure_upload_url('photo', $this_staff->photo ?? '');
                     echo generate_user_avatar($surname, $other_name, $image_path, $this_staff->photo ?? null);
                     ?>
                 </div>

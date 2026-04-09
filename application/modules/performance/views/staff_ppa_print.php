@@ -381,7 +381,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <?php if ($is_draft_print): ?>
           <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px;"></div>
         <?php elseif (!empty(staff_details($ppa->staff_id)->signature)): ?>
-          <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->staff_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+          <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', staff_details($ppa->staff_id)->signature ?? '')) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
         <?php else: ?>
           <p style="text-decoration:underline;"><?=staff_details($staff_id)->title.' '.staff_details($staff_id)->lname;?></p><br>
         <?php endif; ?>
@@ -392,7 +392,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <?php if ($is_draft_print): ?>
           <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px;"></div>
         <?php elseif (!empty(staff_details($ppa->supervisor_id)->signature)): ?>
-          <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->supervisor_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+          <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', staff_details($ppa->supervisor_id)->signature ?? '')) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
         <?php else: ?>
           <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor_id)->title.' '.staff_details($ppa->supervisor_id)->lname;?></p><br>
         <?php endif; ?>
@@ -432,7 +432,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <?php if ($is_draft_print): ?>
             <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px; max-width: 200px;"></div>
           <?php elseif (!empty(staff_details($ppa->supervisor2_id)->signature)): ?>
-            <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->supervisor2_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+            <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', staff_details($ppa->supervisor2_id)->signature ?? '')) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
           <?php else: ?>
             <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor2_id)->title.' '.staff_details($ppa->supervisor2_id)->lname;?></p><br>
           <?php endif; ?>
