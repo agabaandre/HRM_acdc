@@ -1396,21 +1396,31 @@ class Staff extends MX_Controller
 	{
 		$data['module'] = $this->module;
 		$data['title'] = 'Staff Next of Kin';
-		$rows = $this->staff_mdl->get_staff_next_of_kin_report();
-		$kin_name_by_id = [];
-		if ($this->db->table_exists('kin_relationship_types')) {
-			foreach ($this->db->get('kin_relationship_types')->result() as $kt) {
-				$kin_name_by_id[(int) $kt->kin_relationship_id] = $kt->relationship_name;
-			}
-		}
+		$filters = $this->input->get();
+		$filters['csv'] = $csv;
+		$filters['pdf'] = $pdf;
 
 		if ((int) $csv === 1) {
+			$rows = $this->staff_mdl->get_staff_next_of_kin_report($filters);
+			$kin_name_by_id = [];
+			if ($this->db->table_exists('kin_relationship_types')) {
+				foreach ($this->db->get('kin_relationship_types')->result() as $kt) {
+					$kin_name_by_id[(int) $kt->kin_relationship_id] = $kt->relationship_name;
+				}
+			}
 			$flat = $this->_staff_next_of_kin_csv_rows($rows, $kin_name_by_id);
 			$file_name = 'Staff-Next-of-Kin_' . date('d-m-Y-H-i') . '.csv';
 			render_csv_data($flat, $file_name);
 			return;
 		}
 		if ((int) $pdf === 1) {
+			$rows = $this->staff_mdl->get_staff_next_of_kin_report($filters);
+			$kin_name_by_id = [];
+			if ($this->db->table_exists('kin_relationship_types')) {
+				foreach ($this->db->get('kin_relationship_types')->result() as $kt) {
+					$kin_name_by_id[(int) $kt->kin_relationship_id] = $kt->relationship_name;
+				}
+			}
 			$data['rows'] = $rows;
 			$data['kin_name_by_id'] = $kin_name_by_id;
 			$pdf_name = 'Staff-Next-of-Kin_' . date('d-m-Y-H-i') . '.pdf';
@@ -1418,9 +1428,116 @@ class Staff extends MX_Controller
 			return;
 		}
 
-		$data['rows'] = $rows;
-		$data['kin_name_by_id'] = $kin_name_by_id;
+		$data['divisions'] = $this->db->get('divisions')->result();
+		$data['duty_stations'] = $this->db->get('duty_stations')->result();
+		$data['jobs'] = Modules::run('lists/jobs');
+		$data['grades'] = Modules::run('lists/grades');
 		render('staff_next_of_kin', $data);
+	}
+
+	/**
+	 * Paginated JSON + HTML fragment for Staff Next of Kin report.
+	 */
+	public function get_staff_next_of_kin_ajax()
+	{
+		if (ob_get_level()) {
+			ob_end_clean();
+		}
+		ob_start();
+		try {
+			$page = (int) ($this->input->post('page') ?: 0);
+			$per_page = (int) ($this->input->post('per_page') ?: 20);
+			if ($per_page < 20) {
+				$per_page = 20;
+			}
+			if ($per_page > 100) {
+				$per_page = 100;
+			}
+			$start = $page * $per_page;
+
+			$filters = $this->input->post();
+			unset($filters['page'], $filters['per_page']);
+			$csrf_token_name = $this->security->get_csrf_token_name();
+			if (isset($filters[$csrf_token_name])) {
+				unset($filters[$csrf_token_name]);
+			}
+
+			$count = $this->staff_mdl->count_staff_next_of_kin_report($filters);
+			$rows = $this->staff_mdl->get_staff_next_of_kin_report($filters, $per_page, $start);
+
+			$kin_name_by_id = [];
+			if ($this->db->table_exists('kin_relationship_types')) {
+				foreach ($this->db->get('kin_relationship_types')->result() as $kt) {
+					$kin_name_by_id[(int) $kt->kin_relationship_id] = $kt->relationship_name;
+				}
+			}
+
+			$data = [
+				'rows' => $rows,
+				'kin_name_by_id' => $kin_name_by_id,
+			];
+			ob_start();
+			$html_content = $this->load->view('staff_next_of_kin_cards', $data, true);
+			$view_output = ob_get_clean();
+			if ($view_output) {
+				$html_content = $view_output . $html_content;
+			}
+
+			$csrf_hash = $this->security->get_csrf_hash();
+			if (ob_get_level()) {
+				ob_end_clean();
+			}
+
+			$sanitize_utf8 = function ($value) use (&$sanitize_utf8) {
+				if (is_array($value)) {
+					return array_map($sanitize_utf8, $value);
+				}
+				if (is_object($value)) {
+					$result = new stdClass();
+					foreach ($value as $key => $val) {
+						$result->$key = $sanitize_utf8($val);
+					}
+					return $result;
+				}
+				if (is_string($value) && function_exists('iconv')) {
+					$value = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+				}
+				return $value;
+			};
+
+			$response = $sanitize_utf8([
+				'html' => $html_content,
+				'total' => $count,
+				'page' => $page,
+				'per_page' => $per_page,
+				'records' => $count,
+				'csrf_hash' => $csrf_hash,
+			]);
+			$json_output = json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if ($json_output === false) {
+				throw new Exception('JSON encoding failed: ' . json_last_error_msg());
+			}
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output($json_output);
+		} catch (Throwable $e) {
+			log_message('error', 'get_staff_next_of_kin_ajax: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+			while (ob_get_level()) {
+				ob_end_clean();
+			}
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Error loading data: ' . $e->getMessage(),
+					'html' => '<p class="text-danger">Error loading data. Please try again.</p>',
+					'total' => 0,
+					'page' => 0,
+					'per_page' => 20,
+					'records' => 0,
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+		}
 	}
 
 	private function _staff_next_of_kin_normalize_nok_row($row)

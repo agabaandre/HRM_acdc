@@ -286,6 +286,15 @@
                 <a href="<?= base_url("staff/index/0/1?" . $query_string) ?>" class="btn btn-sm btn-outline-danger">
                     <i class="fa fa-file-pdf me-1"></i> Export PDF
                 </a>
+            <?php
+            } elseif ($segment2 === 'staff_next_of_kin') {
+                ?>
+                <a href="<?= base_url('staff/staff_next_of_kin/1?' . $query_string) ?>" class="btn btn-sm btn-outline-primary">
+                    <i class="fa fa-file-csv me-1"></i> Export CSV
+                </a>
+                <a href="<?= base_url('staff/staff_next_of_kin/0/1?' . $query_string) ?>" class="btn btn-sm btn-outline-danger">
+                    <i class="fa fa-file-pdf me-1"></i> Export PDF
+                </a>
             <?php } ?>
         </div>
     </div>

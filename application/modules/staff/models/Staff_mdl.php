@@ -118,17 +118,136 @@ class Staff_mdl extends CI_Model
 	}
 
 	/**
-	 * Staff contact / address / next-of-kin report: latest contract Active (1), Due (2), or Under renewal (7).
-	 * Extended profile columns are included only when present on staff table.
-	 *
-	 * @return array<object>
+	 * Latest-contract subquery SQL only. Must be compiled before any outer SELECT on $this->db
+	 * because get_compiled_select() resets the query builder.
 	 */
-	public function get_staff_next_of_kin_report()
+	private function _staff_next_of_kin_latest_contract_subquery_sql()
 	{
-		$subquery = $this->db->select('MAX(staff_contract_id)', false)
+		return $this->db->select('MAX(staff_contract_id)', false)
 			->from('staff_contracts')
 			->group_by('staff_id')
 			->get_compiled_select();
+	}
+
+	/**
+	 * Shared FROM / JOIN / WHERE for Staff Next of Kin report (does not set SELECT or ORDER).
+	 *
+	 * @param array $filters
+	 * @param string $latestContractSubSql SQL from _staff_next_of_kin_latest_contract_subquery_sql()
+	 */
+	private function _staff_next_of_kin_joins_and_where($filters, $latestContractSubSql)
+	{
+		$this->db->from('staff s');
+		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+		$this->db->join('funders f', 'f.funder_id = sc.funder_id', 'left');
+		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
+		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+		$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
+		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+		$this->db->where("sc.staff_contract_id IN ($latestContractSubSql)", null, false);
+		$this->db->where_in('sc.status_id', [1, 2, 7]);
+
+		if (!empty($filters['division_id'])) {
+			$this->db->where_in('sc.division_id', $filters['division_id']);
+		}
+		if (!empty($filters['duty_station_id'])) {
+			$this->db->where_in('sc.duty_station_id', $filters['duty_station_id']);
+		}
+		if (!empty($filters['funder_id'])) {
+			$this->db->where_in('sc.funder_id', $filters['funder_id']);
+		}
+		if (!empty($filters['job_id'])) {
+			$this->db->where_in('sc.job_id', $filters['job_id']);
+		}
+		if (!empty($filters['grade_id'])) {
+			$this->db->where_in('sc.grade_id', $filters['grade_id']);
+		}
+		if (isset($filters['region_id']) && $filters['region_id'] !== '' && $filters['region_id'] !== null) {
+			$this->db->where('n.region_id', (int) $filters['region_id']);
+		}
+
+		$lname = $filters['lname'] ?? null;
+		$f = $filters;
+		if (!empty($f)) {
+			if (isset($f['lname'])) {
+				unset($f['lname']);
+			}
+			if (isset($f['csv'])) {
+				unset($f['csv']);
+			}
+			if (isset($f['pdf'])) {
+				unset($f['pdf']);
+			}
+			if (isset($f['division_id'])) {
+				unset($f['division_id']);
+			}
+			if (isset($f['duty_station_id'])) {
+				unset($f['duty_station_id']);
+			}
+			if (isset($f['funder_id'])) {
+				unset($f['funder_id']);
+			}
+			if (isset($f['job_id'])) {
+				unset($f['job_id']);
+			}
+			if (isset($f['grade_id'])) {
+				unset($f['grade_id']);
+			}
+			if (isset($f['region_id'])) {
+				unset($f['region_id']);
+			}
+		}
+
+		if (!empty($f)) {
+			foreach ($f as $key => $value) {
+				if (!empty($value) && $key != 'staff_id') {
+					$this->db->where("s.$key", $value);
+				} elseif ($key == 'staff_id') {
+					$this->db->where("s.$key", $value);
+				}
+			}
+		}
+
+		if (!empty($lname)) {
+			$this->db->group_start();
+			$this->db->like('s.lname', $lname, 'both');
+			$this->db->or_like('s.fname', $lname, 'both');
+			$this->db->group_end();
+		}
+	}
+
+	/**
+	 * @param array $filters
+	 * @return int
+	 */
+	public function count_staff_next_of_kin_report($filters = [])
+	{
+		$this->db->reset_query();
+		$latestSub = $this->_staff_next_of_kin_latest_contract_subquery_sql();
+		$this->db->select('COUNT(*) AS n', false);
+		$this->_staff_next_of_kin_joins_and_where($filters, $latestSub);
+		$row = $this->db->get()->row();
+
+		return (int) ($row->n ?? 0);
+	}
+
+	/**
+	 * Staff contact / address / next-of-kin report: latest contract Active (1), Due (2), or Under renewal (7).
+	 * Extended profile columns are included only when present on staff table.
+	 * Optional $filters match get_all_staff_data (division, duty station, name search, etc.).
+	 * Pass $limit and $start for server-side pagination (both must be int; $limit > 0).
+	 *
+	 * @param array $filters
+	 * @param bool|int $limit
+	 * @param bool|int $start
+	 * @return array<object>
+	 */
+	public function get_staff_next_of_kin_report($filters = [], $limit = false, $start = false)
+	{
+		$this->db->reset_query();
+		$latestSub = $this->_staff_next_of_kin_latest_contract_subquery_sql();
 
 		$extra = '';
 		if ($this->db->field_exists('residential_address_duty_station', 'staff')) {
@@ -149,18 +268,14 @@ class Staff_mdl extends CI_Model
 			' . $extra . '
 		', false);
 
-		$this->db->from('staff s');
-		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
-		$this->db->join('funders f', 'f.funder_id = sc.funder_id');
-		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
-		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
-		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
-		$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
-		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
-		$this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-		$this->db->where_in('sc.status_id', [1, 2, 7]);
+		$this->_staff_next_of_kin_joins_and_where($filters, $latestSub);
+
 		$this->db->order_by('s.lname', 'ASC');
 		$this->db->order_by('s.fname', 'ASC');
+
+		if ($limit !== false && $limit !== null && (int) $limit > 0) {
+			$this->db->limit((int) $limit, (int) $start);
+		}
 
 		return $this->db->get()->result();
 	}

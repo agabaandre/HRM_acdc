@@ -1,148 +1,230 @@
 <?php
-$this->load->view('staff_tab_menu');
-$kin_name_by_id = isset($kin_name_by_id) && is_array($kin_name_by_id) ? $kin_name_by_id : [];
-$rows = isset($rows) ? $rows : [];
+$divisions = isset($divisions) ? $divisions : [];
+$duty_stations = isset($duty_stations) ? $duty_stations : [];
+$jobs = isset($jobs) ? $jobs : [];
+$grades = isset($grades) ? $grades : [];
+?>
+<style>
+	@media print {
+		.hidden { display: none; }
+	}
+	.export-buttons#originalExportButtons {
+		display: none !important;
+	}
+</style>
 
-if (!function_exists('staff_nok_report_normalize_row')) {
-	function staff_nok_report_normalize_row($row) {
-		$out = ['name' => '', 'relationship_id' => 0, 'phone' => '', 'email' => ''];
-		if (!is_array($row)) {
-			return $out;
+<?php $this->load->view('staff_tab_menu'); ?>
+
+<div class="card">
+	<div class="card-body">
+		<?= form_open_multipart(base_url('staff/staff_next_of_kin'), ['id' => 'staff_form', 'class' => 'staff', 'method' => 'get']) ?>
+		<?php $this->load->view('staff_filters'); ?>
+		<?= form_close() ?>
+
+		<div class="row mb-3 align-items-center mt-2">
+			<div class="col-md-4">
+				<div id="paginationLinksTop" class="d-flex align-items-center flex-wrap"></div>
+			</div>
+			<div class="col-md-4 text-center">
+				<div class="d-flex align-items-center justify-content-center gap-2">
+					<label for="recordsPerPageNok" class="mb-0 fw-semibold">Records per page:</label>
+					<select id="recordsPerPageNok" class="form-select form-select-sm" style="width: auto;">
+						<option value="20" selected>20</option>
+						<option value="50">50</option>
+						<option value="75">75</option>
+						<option value="100">100</option>
+					</select>
+				</div>
+			</div>
+			<div class="col-md-4 text-end">
+				<div id="exportButtonsTopNok" class="d-flex gap-2 justify-content-end"></div>
+			</div>
+		</div>
+
+		<div class="container pb-4 px-0">
+			<h4 class="mb-1"><?= htmlspecialchars($title) ?></h4>
+			<p class="text-muted small mb-3">
+				Staff with a latest contract in <strong>Active</strong>, <strong>Due</strong>, or <strong>Under renewal</strong>
+				(same filter fields as All Staff). Residential address and next-of-kin come from each staff member&rsquo;s portal profile where captured.
+				Use <strong>Export CSV / PDF</strong> above to download the <strong>full filtered</strong> list (all pages).
+			</p>
+
+			<div id="staffNextOfKinBody">
+				<div class="text-center py-5 text-muted">
+					<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+					<p class="mt-2 mb-0">Loading report…</p>
+				</div>
+			</div>
+			<div id="paginationInfoNok" class="mt-3 text-end">
+				<div id="paginationLinksNok" class="mt-2"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+(function () {
+	var currentPage = 0;
+	var currentPerPage = 20;
+	var currentFilters = {};
+
+	function filtersFromForm() {
+		var obj = {};
+		$('#staff_form').serializeArray().forEach(function (item) {
+			if (!item.value) {
+				return;
+			}
+			if (obj[item.name]) {
+				if (!Array.isArray(obj[item.name])) {
+					obj[item.name] = [obj[item.name]];
+				}
+				obj[item.name].push(item.value);
+			} else {
+				obj[item.name] = item.value;
+			}
+		});
+		return obj;
+	}
+
+	function updateExportLinksNok() {
+		var filters = Object.assign({}, currentFilters);
+		var queryString = $.param(filters);
+		var baseUrl = '<?= base_url('staff/staff_next_of_kin') ?>';
+		$('#exportButtonsTopNok a').each(function () {
+			var href = $(this).attr('href');
+			if (!href || href.indexOf('staff_next_of_kin') === -1) {
+				return;
+			}
+			if (href.indexOf('/0/1') !== -1) {
+				$(this).attr('href', baseUrl + '/0/1' + (queryString ? '?' + queryString : ''));
+			} else if (href.indexOf('/1') !== -1) {
+				$(this).attr('href', baseUrl + '/1' + (queryString ? '?' + queryString : ''));
+			}
+		});
+		$('.export-buttons a[href*="staff_next_of_kin"]').each(function () {
+			var href = $(this).attr('href');
+			if (!href) {
+				return;
+			}
+			if (href.indexOf('/0/1') !== -1) {
+				$(this).attr('href', baseUrl + '/0/1' + (queryString ? '?' + queryString : ''));
+			} else if (href.indexOf('/1') !== -1 && href.indexOf('/0/1') === -1) {
+				$(this).attr('href', baseUrl + '/1' + (queryString ? '?' + queryString : ''));
+			}
+		});
+	}
+
+	function generatePaginationNok(total, page, perPage, records) {
+		var totalPages = Math.ceil(total / perPage) || 1;
+		var paginationHtml = '<nav><ul class="pagination pagination-sm mb-0">';
+		if (page > 0) {
+			paginationHtml += '<li class="page-item"><a class="page-link" href="#" data-page-nok="' + (page - 1) + '">Previous</a></li>';
+		} else {
+			paginationHtml += '<li class="page-item disabled"><span class="page-link">Previous</span></li>';
 		}
-		$out['name'] = trim((string) ($row['name'] ?? ''));
-		$out['relationship_id'] = (int) ($row['relationship_id'] ?? 0);
-		$out['phone'] = trim((string) ($row['phone'] ?? ''));
-		$out['email'] = trim((string) ($row['email'] ?? ''));
-		if ($out['phone'] === '' && $out['email'] === '' && !empty($row['contact'])) {
-			$c = trim((string) $row['contact']);
-			if ($c !== '' && strpos($c, '@') !== false) {
-				$out['email'] = $c;
-			} elseif ($c !== '') {
-				$out['phone'] = $c;
+		var startPage = Math.max(0, page - 2);
+		var endPage = Math.min(totalPages - 1, page + 2);
+		if (startPage > 0) {
+			paginationHtml += '<li class="page-item"><a class="page-link" href="#" data-page-nok="0">1</a></li>';
+			if (startPage > 1) {
+				paginationHtml += '<li class="page-item disabled"><span class="page-link">…</span></li>';
 			}
 		}
-		return $out;
+		for (var i = startPage; i <= endPage; i++) {
+			if (i === page) {
+				paginationHtml += '<li class="page-item active"><span class="page-link">' + (i + 1) + '</span></li>';
+			} else {
+				paginationHtml += '<li class="page-item"><a class="page-link" href="#" data-page-nok="' + i + '">' + (i + 1) + '</a></li>';
+			}
+		}
+		if (endPage < totalPages - 1) {
+			if (endPage < totalPages - 2) {
+				paginationHtml += '<li class="page-item disabled"><span class="page-link">…</span></li>';
+			}
+			paginationHtml += '<li class="page-item"><a class="page-link" href="#" data-page-nok="' + (totalPages - 1) + '">' + totalPages + '</a></li>';
+		}
+		if (page < totalPages - 1) {
+			paginationHtml += '<li class="page-item"><a class="page-link" href="#" data-page-nok="' + (page + 1) + '">Next</a></li>';
+		} else {
+			paginationHtml += '<li class="page-item disabled"><span class="page-link">Next</span></li>';
+		}
+		paginationHtml += '</ul></nav>';
+		var recordsText = '<span class="text-muted ms-3"><strong>' + (records || 0) + '</strong> matching staff</span>';
+		$('#paginationLinksTop').html(paginationHtml + recordsText);
+		$('#paginationLinksNok').html(paginationHtml);
 	}
-}
-?>
-<div class="container pb-4">
-  <div class="card rounded-1">
-    <div class="card-body">
-      <h4 class="mb-1"><?= htmlspecialchars($title) ?></h4>
-      <p class="text-muted small mb-2">
-        Staff with a latest contract in <strong>Active</strong>, <strong>Due</strong>, or <strong>Under renewal</strong>.
-        Residential address and next-of-kin come from each staff member&rsquo;s portal profile where captured.
-      </p>
-      <div class="d-flex flex-wrap gap-2 mb-4">
-        <a href="<?= base_url('staff/staff_next_of_kin/1') ?>" class="btn btn-sm btn-outline-primary">
-          <i class="fa fa-file-csv me-1"></i> Export CSV
-        </a>
-        <a href="<?= base_url('staff/staff_next_of_kin/0/1') ?>" class="btn btn-sm btn-outline-danger">
-          <i class="fa fa-file-pdf me-1"></i> Export PDF
-        </a>
-      </div>
 
-      <?php if (empty($rows)) : ?>
-        <p class="text-muted mb-0">No matching staff records.</p>
-      <?php else : ?>
-        <?php foreach ($rows as $s) :
-          $nok_raw = json_decode(isset($s->next_of_kin_json) ? $s->next_of_kin_json : '[]', true);
-          if (!is_array($nok_raw)) {
-            $nok_raw = [];
-          }
-          $nok_rows = [];
-          foreach ($nok_raw as $nr) {
-            $nok_rows[] = staff_nok_report_normalize_row($nr);
-          }
-          $display_nok = array_values(array_filter($nok_rows, function ($r) {
-            return $r['name'] !== '' || $r['phone'] !== '' || $r['email'] !== '' || $r['relationship_id'] > 0;
-          }));
-          $full_name = trim(($s->title ?? '') . ' ' . ($s->fname ?? '') . ' ' . ($s->lname ?? '') . ' ' . ($s->oname ?? ''));
-          ?>
-          <div class="card border mb-3 shadow-sm">
-            <div class="card-header bg-light py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
-              <div>
-                <strong>
-                  <a href="<?= base_url('staff/staff_contracts/' . (int) $s->staff_id) ?>"><?= htmlspecialchars(trim($full_name)) ?></a>
-                </strong>
-                <?php if (!empty($s->SAPNO)) : ?>
-                  <span class="text-muted ms-2">SAP: <?= htmlspecialchars((string) $s->SAPNO) ?></span>
-                <?php endif; ?>
-              </div>
-              <span class="badge bg-secondary"><?= htmlspecialchars((string) ($s->contract_status_label ?? '')) ?></span>
-            </div>
-            <div class="card-body">
-              <div class="row g-3 small mb-3">
-                <div class="col-md-4">
-                  <div class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Assignment</div>
-                  <div><?= htmlspecialchars((string) ($s->job_name ?? '—')) ?></div>
-                  <div class="text-muted"><?= htmlspecialchars((string) ($s->division_name ?? '—')) ?></div>
-                  <div class="text-muted"><?= htmlspecialchars((string) ($s->duty_station_name ?? '—')) ?></div>
-                  <?php if (!empty($s->grade)) : ?>
-                    <div class="text-muted">Grade: <?= htmlspecialchars((string) $s->grade) ?></div>
-                  <?php endif; ?>
-                </div>
-                <div class="col-md-4">
-                  <div class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Contact</div>
-                  <div><span class="text-muted">Work email:</span> <?= htmlspecialchars((string) ($s->work_email ?? '—')) ?></div>
-                  <div><span class="text-muted">Tel 1:</span> <?= htmlspecialchars((string) ($s->tel_1 ?? '—')) ?></div>
-                  <div><span class="text-muted">Tel 2:</span> <?= htmlspecialchars((string) ($s->tel_2 ?? '—')) ?></div>
-                  <div><span class="text-muted">WhatsApp:</span> <?= htmlspecialchars((string) ($s->whatsapp ?? '—')) ?></div>
-                  <div><span class="text-muted">Private email:</span> <?= htmlspecialchars((string) ($s->private_email ?? '—')) ?></div>
-                  <?php if (!empty($s->physical_location)) : ?>
-                    <div><span class="text-muted">Physical / office:</span> <?= nl2br(htmlspecialchars((string) $s->physical_location)) ?></div>
-                  <?php endif; ?>
-                </div>
-                <div class="col-md-4">
-                  <div class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Address &amp; household</div>
-                  <?php if (property_exists($s, 'residential_address_duty_station')) : ?>
-                    <div class="mb-1"><?= nl2br(htmlspecialchars(trim((string) ($s->residential_address_duty_station ?? ''))) ?: '—') ?></div>
-                  <?php else : ?>
-                    <div class="text-muted">—</div>
-                  <?php endif; ?>
-                  <?php if (property_exists($s, 'number_of_dependants')) : ?>
-                    <div><span class="text-muted">Dependants:</span>
-                      <?= isset($s->number_of_dependants) && $s->number_of_dependants !== null && $s->number_of_dependants !== '' ? (int) $s->number_of_dependants : '—' ?>
-                    </div>
-                  <?php endif; ?>
-                </div>
-              </div>
+	function loadStaffNextOfKinData() {
+		$('#staffNextOfKinBody').html(
+			'<div class="text-center py-5 text-muted">' +
+			'<div class="spinner-border text-primary" role="status"></div>' +
+			'<p class="mt-2 mb-0">Loading report…</p></div>'
+		);
 
-              <div class="text-uppercase text-muted fw-bold small mb-2">Next of kin</div>
-              <?php if (empty($display_nok)) : ?>
-                <p class="text-muted small mb-0">No next-of-kin details on file.</p>
-              <?php else : ?>
-                <div class="table-responsive">
-                  <table class="table table-sm table-bordered mb-0">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Name</th>
-                        <th>Relationship</th>
-                        <th>Phone</th>
-                        <th>Email</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <?php foreach ($display_nok as $k) :
-                        $rel = $k['relationship_id'] > 0 && isset($kin_name_by_id[$k['relationship_id']])
-                          ? $kin_name_by_id[$k['relationship_id']]
-                          : '—';
-                        ?>
-                        <tr>
-                          <td><?= htmlspecialchars($k['name'] ?: '—') ?></td>
-                          <td><?= htmlspecialchars($rel) ?></td>
-                          <td><?= htmlspecialchars($k['phone'] ?: '—') ?></td>
-                          <td><?= htmlspecialchars($k['email'] ?: '—') ?></td>
-                        </tr>
-                      <?php endforeach; ?>
-                    </tbody>
-                  </table>
-                </div>
-              <?php endif; ?>
-            </div>
-          </div>
-        <?php endforeach; ?>
-      <?php endif; ?>
-    </div>
-  </div>
-</div>
+		var postData = Object.assign({}, currentFilters);
+		postData.page = currentPage;
+		postData.per_page = currentPerPage;
+		postData['<?= $this->security->get_csrf_token_name() ?>'] = '<?= $this->security->get_csrf_hash() ?>';
+
+		$.ajax({
+			url: '<?= base_url('staff/get_staff_next_of_kin_ajax') ?>',
+			method: 'POST',
+			data: postData,
+			dataType: 'json',
+			success: function (response) {
+				if (response.html !== undefined) {
+					$('#staffNextOfKinBody').html(response.html);
+				}
+				if (response.csrf_hash) {
+					$('input[name="<?= $this->security->get_csrf_token_name() ?>"]').val(response.csrf_hash);
+				}
+				generatePaginationNok(response.total || 0, response.page || 0, response.per_page || currentPerPage, response.records || 0);
+			},
+			error: function (xhr) {
+				$('#staffNextOfKinBody').html('<p class="text-danger">Error loading report. Please try again.</p>');
+			}
+		});
+	}
+
+	$(document).ready(function () {
+		var exportClone = $('#originalExportButtons').clone();
+		if (exportClone.length && exportClone.html().trim() !== '') {
+			$('#exportButtonsTopNok').html(exportClone.html());
+			$('#originalExportButtons').hide();
+		} else {
+			var qs = window.location.search || '';
+			$('#exportButtonsTopNok').html(
+				'<a href="<?= base_url('staff/staff_next_of_kin/1') ?>' + qs + '" class="btn btn-sm btn-outline-primary"><i class="fa fa-file-csv me-1"></i> Export CSV</a>' +
+				'<a href="<?= base_url('staff/staff_next_of_kin/0/1') ?>' + qs + '" class="btn btn-sm btn-outline-danger"><i class="fa fa-file-pdf me-1"></i> Export PDF</a>'
+			);
+		}
+
+		currentFilters = filtersFromForm();
+		updateExportLinksNok();
+		loadStaffNextOfKinData();
+
+		$('#recordsPerPageNok').on('change', function () {
+			currentPerPage = parseInt($(this).val(), 10) || 20;
+			currentPage = 0;
+			loadStaffNextOfKinData();
+		});
+
+		$('#staff_form').on('submit', function (e) {
+			e.preventDefault();
+			currentPage = 0;
+			currentFilters = filtersFromForm();
+			updateExportLinksNok();
+			loadStaffNextOfKinData();
+		});
+
+		$(document).on('click', '[data-page-nok]', function (e) {
+			e.preventDefault();
+			var p = $(this).data('page-nok');
+			if (p !== undefined) {
+				currentPage = parseInt(p, 10);
+				loadStaffNextOfKinData();
+			}
+		});
+	});
+})();
+</script>
