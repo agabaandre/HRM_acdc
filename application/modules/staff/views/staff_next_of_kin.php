@@ -23,7 +23,7 @@ $grades = isset($grades) ? $grades : [];
 			'duty_stations' => $duty_stations,
 			'jobs' => $jobs,
 			'grades' => $grades,
-			'staff_filters_hide_apply' => !empty($staff_filters_hide_apply),
+			'staff_filters_auto_apply' => !empty($staff_filters_auto_apply),
 		]); ?>
 		<?= form_close() ?>
 
@@ -73,40 +73,9 @@ $grades = isset($grades) ? $grades : [];
 (function () {
 	var currentPage = 0;
 	var currentPerPage = 20;
-	var currentFilters = {};
-
-	function filtersFromForm() {
-		var obj = {};
-		$('#staff_form').serializeArray().forEach(function (item) {
-			if (!item.value) {
-				return;
-			}
-			if (item.name === 'lname' || item.name === 'SAPNO') {
-				var t = String(item.value).trim();
-				if (t.length > 0 && t.length < 3) {
-					return;
-				}
-			}
-			if (obj[item.name]) {
-				if (!Array.isArray(obj[item.name])) {
-					obj[item.name] = [obj[item.name]];
-				}
-				obj[item.name].push(item.value);
-			} else {
-				obj[item.name] = item.value;
-			}
-		});
-		return obj;
-	}
-
-	function applyFiltersNow() {
-		currentPage = 0;
-		currentFilters = filtersFromForm();
-		updateExportLinksNok();
-		loadStaffNextOfKinData();
-	}
-
-	var textFilterDebounceTimer = null;
+	var currentFilters = typeof window.staffFiltersAutoApplyCollect === 'function'
+		? window.staffFiltersAutoApplyCollect($('#staff_form'))
+		: {};
 
 	function updateExportLinksNok() {
 		var filters = Object.assign({}, currentFilters);
@@ -221,7 +190,9 @@ $grades = isset($grades) ? $grades : [];
 			);
 		}
 
-		currentFilters = filtersFromForm();
+		currentFilters = typeof window.staffFiltersAutoApplyCollect === 'function'
+			? window.staffFiltersAutoApplyCollect($('#staff_form'))
+			: currentFilters;
 		updateExportLinksNok();
 		loadStaffNextOfKinData();
 
@@ -231,21 +202,16 @@ $grades = isset($grades) ? $grades : [];
 			loadStaffNextOfKinData();
 		});
 
-		$('#staff_form').on('submit', function (e) {
-			e.preventDefault();
-			applyFiltersNow();
-		});
-
-		$('#staff_form').on('input', 'input[name="lname"], input[name="SAPNO"]', function () {
-			clearTimeout(textFilterDebounceTimer);
-			textFilterDebounceTimer = setTimeout(function () {
-				applyFiltersNow();
-			}, 400);
-		});
-
-		$('#staff_form').on('change', 'select', function () {
-			applyFiltersNow();
-		});
+		if (typeof window.staffFiltersAutoApplyInstall === 'function') {
+			window.staffFiltersAutoApplyInstall({
+				onApply: function () {
+					currentPage = 0;
+					currentFilters = window.staffFiltersAutoApplyCollect($('#staff_form'));
+					updateExportLinksNok();
+					loadStaffNextOfKinData();
+				}
+			});
+		}
 
 		$(document).on('click', '[data-page-nok]', function (e) {
 			e.preventDefault();

@@ -143,12 +143,16 @@
             </select>
         </div>
 
-        <?php if (empty($staff_filters_hide_apply ?? null)) : ?>
+        <?php if (empty($staff_filters_auto_apply ?? null)) : ?>
         <!-- Apply Button -->
         <div class="col-md-2 ms-auto text-end">
             <button type="submit" class="btn btn-success w-100">
                 <i class="fa fa-filter me-1"></i> Apply Filters
             </button>
+        </div>
+        <?php else : ?>
+        <div class="col-12 small text-muted mb-0">
+            Filters apply when you change a dropdown or date, or when <strong>Name</strong> / <strong>SAP NO</strong> is cleared or has at least <strong>3</strong> characters.
         </div>
         <?php endif; ?>
 
@@ -384,3 +388,67 @@
 	});
 })();
 </script>
+<?php if (!empty($staff_filters_auto_apply ?? null)) : ?>
+<script>
+(function ($) {
+	'use strict';
+	window.staffFiltersAutoApplyCollect = function ($form) {
+		$form = $form && $form.length ? $form : $('#staff_form');
+		if (!$form.length) {
+			return {};
+		}
+		var obj = {};
+		$form.serializeArray().forEach(function (item) {
+			if (!item.value) {
+				return;
+			}
+			if (item.name === 'lname' || item.name === 'SAPNO') {
+				var t = String(item.value).trim();
+				if (t.length > 0 && t.length < 3) {
+					return;
+				}
+			}
+			if (obj[item.name]) {
+				if (!Array.isArray(obj[item.name])) {
+					obj[item.name] = [obj[item.name]];
+				}
+				obj[item.name].push(item.value);
+			} else {
+				obj[item.name] = item.value;
+			}
+		});
+		return obj;
+	};
+	/**
+	 * @param {{ onApply: function(), debounceMs?: number }} options
+	 */
+	window.staffFiltersAutoApplyInstall = function (options) {
+		options = options || {};
+		var debounceMs = options.debounceMs != null ? options.debounceMs : 400;
+		var onApply = options.onApply;
+		if (typeof onApply !== 'function') {
+			return;
+		}
+		var timer = null;
+		function runNow() {
+			clearTimeout(timer);
+			timer = null;
+			onApply();
+		}
+		function debounced() {
+			clearTimeout(timer);
+			timer = setTimeout(runNow, debounceMs);
+		}
+		var $form = $('#staff_form');
+		$form.off('.staffFiltersAuto');
+		$form.on('submit.staffFiltersAuto', function (e) {
+			e.preventDefault();
+			runNow();
+		});
+		$form.on('input.staffFiltersAuto', 'input[name="lname"], input[name="SAPNO"]', debounced);
+		$form.on('change.staffFiltersAuto', 'select', runNow);
+		$form.on('change.staffFiltersAuto', 'input[type="date"], input[name="period_from"], input[name="period_to"]', runNow);
+	};
+})(jQuery);
+</script>
+<?php endif; ?>
