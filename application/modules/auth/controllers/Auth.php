@@ -1088,7 +1088,7 @@ public function revert()
       $safe_name = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9_\-.]/', '', $data['name']));
       $photo_file_name = $safe_name . '_' . time() . '.' . ($ext ? $ext : 'jpg');
       $config = array(
-        'upload_path'   => './uploads/staff/',
+        'upload_path'   => rtrim($staff_upload_path, '/\\') . '/',
         'allowed_types' => 'gif|jpg|png|jpeg',
         'file_name'     => $photo_file_name,
         'max_size'      => 1024,
@@ -1107,7 +1107,7 @@ public function revert()
       $safe_name = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9_\-.]/', '', $data['name']));
       $signature_file_name = $safe_name . '_sig_' . time() . '.' . ($ext ? $ext : 'png');
       $config = array(
-        'upload_path'   => './uploads/staff/signature/',
+        'upload_path'   => rtrim($signature_upload_path, '/\\') . '/',
         'allowed_types' => 'gif|jpg|png|jpeg',
         'file_name'     => $signature_file_name,
         'max_size'      => 1024,
@@ -1126,7 +1126,7 @@ public function revert()
       $safe_name = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9_\-.]/', '', $data['name']));
       $passport_file_name = $safe_name . '_passport_' . time() . '.' . ($ext ? strtolower($ext) : 'pdf');
       $config = array(
-        'upload_path'   => './uploads/staff/passport_biodata/',
+        'upload_path'   => rtrim($passport_upload_path, '/\\') . '/',
         'allowed_types' => 'gif|jpg|png|jpeg|pdf',
         'file_name'     => $passport_file_name,
         'max_size'      => 4096,
