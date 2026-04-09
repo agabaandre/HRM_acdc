@@ -18,7 +18,13 @@ $grades = isset($grades) ? $grades : [];
 <div class="card">
 	<div class="card-body">
 		<?= form_open_multipart(base_url('staff/staff_next_of_kin'), ['id' => 'staff_form', 'class' => 'staff', 'method' => 'get']) ?>
-		<?php $this->load->view('staff_filters'); ?>
+		<?php $this->load->view('staff_filters', [
+			'divisions' => $divisions,
+			'duty_stations' => $duty_stations,
+			'jobs' => $jobs,
+			'grades' => $grades,
+			'staff_filters_hide_apply' => !empty($staff_filters_hide_apply),
+		]); ?>
 		<?= form_close() ?>
 
 		<div class="row mb-3 align-items-center mt-2">
@@ -46,6 +52,7 @@ $grades = isset($grades) ? $grades : [];
 			<p class="text-muted small mb-3">
 				Staff with a latest contract in <strong>Active</strong>, <strong>Due</strong>, or <strong>Under renewal</strong>
 				(same filter fields as All Staff). Residential address and next-of-kin come from each staff member&rsquo;s portal profile where captured.
+				Filters run automatically when you change a dropdown, or when <strong>Name</strong> / <strong>SAP NO</strong> is empty or has at least <strong>3</strong> characters.
 				Use <strong>Export CSV / PDF</strong> above to download the <strong>full filtered</strong> list (all pages).
 			</p>
 
@@ -74,6 +81,12 @@ $grades = isset($grades) ? $grades : [];
 			if (!item.value) {
 				return;
 			}
+			if (item.name === 'lname' || item.name === 'SAPNO') {
+				var t = String(item.value).trim();
+				if (t.length > 0 && t.length < 3) {
+					return;
+				}
+			}
 			if (obj[item.name]) {
 				if (!Array.isArray(obj[item.name])) {
 					obj[item.name] = [obj[item.name]];
@@ -85,6 +98,15 @@ $grades = isset($grades) ? $grades : [];
 		});
 		return obj;
 	}
+
+	function applyFiltersNow() {
+		currentPage = 0;
+		currentFilters = filtersFromForm();
+		updateExportLinksNok();
+		loadStaffNextOfKinData();
+	}
+
+	var textFilterDebounceTimer = null;
 
 	function updateExportLinksNok() {
 		var filters = Object.assign({}, currentFilters);
@@ -211,10 +233,18 @@ $grades = isset($grades) ? $grades : [];
 
 		$('#staff_form').on('submit', function (e) {
 			e.preventDefault();
-			currentPage = 0;
-			currentFilters = filtersFromForm();
-			updateExportLinksNok();
-			loadStaffNextOfKinData();
+			applyFiltersNow();
+		});
+
+		$('#staff_form').on('input', 'input[name="lname"], input[name="SAPNO"]', function () {
+			clearTimeout(textFilterDebounceTimer);
+			textFilterDebounceTimer = setTimeout(function () {
+				applyFiltersNow();
+			}, 400);
+		});
+
+		$('#staff_form').on('change', 'select', function () {
+			applyFiltersNow();
 		});
 
 		$(document).on('click', '[data-page-nok]', function (e) {

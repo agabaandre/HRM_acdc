@@ -143,12 +143,14 @@
             </select>
         </div>
 
+        <?php if (empty($staff_filters_hide_apply ?? null)) : ?>
         <!-- Apply Button -->
         <div class="col-md-2 ms-auto text-end">
             <button type="submit" class="btn btn-success w-100">
                 <i class="fa fa-filter me-1"></i> Apply Filters
             </button>
         </div>
+        <?php endif; ?>
 
     </div>
 </div>
