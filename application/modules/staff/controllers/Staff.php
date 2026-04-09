@@ -929,7 +929,7 @@ class Staff extends MX_Controller
 		$filters = array('staff_id' => $staff_id);
 		
 		// Get staff info with more details
-		$this->db->select('s.lname, s.fname, s.oname, s.title, s.SAPNO, s.work_email, s.tel_1, s.tel_2, s.whatsapp, s.physical_location, s.gender, s.date_of_birth, s.initiation_date, s.nationality_id, s.private_email, n.nationality');
+		$this->db->select('s.lname, s.fname, s.oname, s.title, s.SAPNO, s.photo, s.work_email, s.tel_1, s.tel_2, s.whatsapp, s.physical_location, s.gender, s.date_of_birth, s.initiation_date, s.nationality_id, s.private_email, n.nationality');
 		$this->db->from('staff s');
 		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
 		$this->db->where('s.staff_id', $staff_id);
@@ -968,7 +968,7 @@ class Staff extends MX_Controller
 		$count = $this->staff_mdl->get_staff_contracts_count($staff_id);
 		
 		// Get staff info with more details
-		$this->db->select('s.lname, s.fname, s.oname, s.title, s.SAPNO, s.work_email, s.tel_1, s.tel_2, s.whatsapp, s.physical_location, s.gender, s.date_of_birth, s.initiation_date, s.nationality_id, s.private_email, n.nationality');
+		$this->db->select('s.lname, s.fname, s.oname, s.title, s.SAPNO, s.photo, s.work_email, s.tel_1, s.tel_2, s.whatsapp, s.physical_location, s.gender, s.date_of_birth, s.initiation_date, s.nationality_id, s.private_email, n.nationality');
 		$this->db->from('staff s');
 		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
 		$this->db->where('s.staff_id', $staff_id);
