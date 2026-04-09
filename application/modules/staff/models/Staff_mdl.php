@@ -116,7 +116,54 @@ class Staff_mdl extends CI_Model
 	
 		return ($csv == 1) ? $query->result_array() : $query->result();
 	}
-	
+
+	/**
+	 * Staff contact / address / next-of-kin report: latest contract Active (1), Due (2), or Under renewal (7).
+	 * Extended profile columns are included only when present on staff table.
+	 *
+	 * @return array<object>
+	 */
+	public function get_staff_next_of_kin_report()
+	{
+		$subquery = $this->db->select('MAX(staff_contract_id)', false)
+			->from('staff_contracts')
+			->group_by('staff_id')
+			->get_compiled_select();
+
+		$extra = '';
+		if ($this->db->field_exists('residential_address_duty_station', 'staff')) {
+			$extra .= ', s.residential_address_duty_station';
+		}
+		if ($this->db->field_exists('number_of_dependants', 'staff')) {
+			$extra .= ', s.number_of_dependants';
+		}
+		if ($this->db->field_exists('next_of_kin_json', 'staff')) {
+			$extra .= ', s.next_of_kin_json';
+		}
+
+		$this->db->select('
+			s.staff_id, s.SAPNO, s.title, s.fname, s.lname, s.oname,
+			s.work_email, s.tel_1, s.tel_2, s.whatsapp, s.private_email, s.physical_location,
+			j.job_name, ds.duty_station_name, d.division_name, st.status AS contract_status_label,
+			g.grade
+			' . $extra . '
+		', false);
+
+		$this->db->from('staff s');
+		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+		$this->db->join('funders f', 'f.funder_id = sc.funder_id');
+		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+		$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
+		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+		$this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+		$this->db->where_in('sc.status_id', [1, 2, 7]);
+		$this->db->order_by('s.lname', 'ASC');
+		$this->db->order_by('s.fname', 'ASC');
+
+		return $this->db->get()->result();
+	}
 
 	public function get_staff_by_division($division_id = false)
 {
