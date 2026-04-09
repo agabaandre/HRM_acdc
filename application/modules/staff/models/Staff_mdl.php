@@ -261,7 +261,7 @@ class Staff_mdl extends CI_Model
 		}
 
 		$this->db->select('
-			s.staff_id, s.SAPNO, s.title, s.fname, s.lname, s.oname,
+			s.staff_id, s.SAPNO, s.title, s.fname, s.lname, s.oname, s.photo,
 			s.work_email, s.tel_1, s.tel_2, s.whatsapp, s.private_email, s.physical_location,
 			j.job_name, ds.duty_station_name, d.division_name, st.status AS contract_status_label,
 			g.grade
