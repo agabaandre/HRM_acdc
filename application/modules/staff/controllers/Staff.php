@@ -1432,6 +1432,7 @@ class Staff extends MX_Controller
 		$data['duty_stations'] = $this->db->get('duty_stations')->result();
 		$data['jobs'] = Modules::run('lists/jobs');
 		$data['grades'] = Modules::run('lists/grades');
+		$data['staff_filters_hide_apply'] = true;
 		render('staff_next_of_kin', $data);
 	}
 
