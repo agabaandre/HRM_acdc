@@ -420,6 +420,13 @@ public function revert()
       $directorate = $this->db->get('directorates')->row();
     }
     
+    $data['kin_relationship_types'] = [];
+    if ($this->db->table_exists('kin_relationship_types')) {
+      $this->db->where('is_active', 1);
+      $this->db->order_by('sort_order', 'ASC');
+      $data['kin_relationship_types'] = $this->db->get('kin_relationship_types')->result();
+    }
+
     // Pass data to view
     $data['contract'] = $contract;
     $data['supervisor'] = $supervisor;
@@ -1037,16 +1044,43 @@ public function revert()
     $upload_errors = array();
     $this->load->library('upload');
 
+    if (isset($data['next_of_kin']) && is_array($data['next_of_kin'])) {
+      $nokErr = $this->_validate_next_of_kin_profile_post($data['next_of_kin']);
+      if ($nokErr !== null) {
+        Modules::run('utility/setFlash', array('msg' => $nokErr, 'type' => 'error'));
+        redirect('auth/profile');
+        return;
+      }
+    }
+
+    $addrDuty = trim((string) ($data['residential_address_duty_station'] ?? ''));
+    if ($addrDuty === '') {
+      Modules::run('utility/setFlash', array('msg' => 'Residential address (at duty station) is required.', 'type' => 'error'));
+      redirect('auth/profile');
+      return;
+    }
+    $depRaw = isset($data['number_of_dependants']) ? trim((string) $data['number_of_dependants']) : '';
+    if ($depRaw === '' || !preg_match('/^\d+$/', $depRaw)) {
+      Modules::run('utility/setFlash', array('msg' => 'Number of dependants is required (enter a whole number, e.g. 0 if none).', 'type' => 'error'));
+      redirect('auth/profile');
+      return;
+    }
+
     $photo = isset($_FILES['photo']) ? $_FILES['photo'] : null;
     $signature = isset($_FILES['signature']) ? $_FILES['signature'] : null;
+    $passport_biodata = isset($_FILES['passport_biodata']) ? $_FILES['passport_biodata'] : null;
 
     $staff_upload_path = FCPATH . 'uploads/staff';
     $signature_upload_path = FCPATH . 'uploads/staff/signature';
+    $passport_upload_path = FCPATH . 'uploads/staff/passport_biodata';
     if (!is_dir($staff_upload_path)) {
       @mkdir($staff_upload_path, 0755, true);
     }
     if (!is_dir($signature_upload_path)) {
       @mkdir($signature_upload_path, 0755, true);
+    }
+    if (!is_dir($passport_upload_path)) {
+      @mkdir($passport_upload_path, 0755, true);
     }
 
     if (!empty($photo['name'])) {
@@ -1087,6 +1121,25 @@ public function revert()
       }
     }
 
+    if (!empty($passport_biodata['name'])) {
+      $ext = pathinfo($passport_biodata['name'], PATHINFO_EXTENSION);
+      $safe_name = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9_\-.]/', '', $data['name']));
+      $passport_file_name = $safe_name . '_passport_' . time() . '.' . ($ext ? strtolower($ext) : 'pdf');
+      $config = array(
+        'upload_path'   => './uploads/staff/passport_biodata/',
+        'allowed_types' => 'gif|jpg|png|jpeg|pdf',
+        'file_name'     => $passport_file_name,
+        'max_size'      => 4096,
+        'overwrite'     => false
+      );
+      $this->upload->initialize($config);
+      if (!$this->upload->do_upload('passport_biodata')) {
+        $upload_errors[] = 'Passport biodata: ' . $this->upload->display_errors('', '');
+      } else {
+        $data['passport_biodata_page'] = $this->upload->data('file_name');
+      }
+    }
+
     $res = $this->auth_mdl->updateProfile($data);
 
     $user = $this->session->userdata('user');
@@ -1097,8 +1150,19 @@ public function revert()
       if (!empty($data['signature'])) {
         $user->signature = $data['signature'];
       }
+      if (!empty($data['passport_biodata_page'])) {
+        $user->passport_biodata_page = $data['passport_biodata_page'];
+      }
       if (isset($data['langauge'])) {
         $user->langauge = $data['langauge'];
+      }
+      if (isset($data['residential_address_duty_station'])) {
+        $user->residential_address_duty_station = $data['residential_address_duty_station'];
+      }
+      if (array_key_exists('number_of_dependants', $data)) {
+        $user->number_of_dependants = ($data['number_of_dependants'] === '' || $data['number_of_dependants'] === null)
+          ? null
+          : (int) $data['number_of_dependants'];
       }
       $this->session->set_userdata('user', $user);
     }
@@ -1117,6 +1181,72 @@ public function revert()
     }
     redirect('auth/profile');
   }
+
+  /**
+   * First next of kin: name, relationship, phone and email are all required.
+   * Second: optional; if any field is filled, name, relationship, and at least one of phone/email are required.
+   *
+   * @param array $rows
+   * @return string|null Error message or null if OK
+   */
+  private function _validate_next_of_kin_profile_post(array $rows)
+  {
+    $r0 = isset($rows[0]) && is_array($rows[0]) ? $rows[0] : [];
+    $n0 = trim((string) ($r0['name'] ?? ''));
+    $rid0 = (int) ($r0['relationship_id'] ?? 0);
+    $ph0 = trim((string) ($r0['phone'] ?? ''));
+    $em0 = trim((string) ($r0['email'] ?? ''));
+    if ($ph0 === '' && $em0 === '' && !empty($r0['contact'])) {
+      $leg = trim((string) $r0['contact']);
+      if (strpos($leg, '@') !== false) {
+        $em0 = $leg;
+      } else {
+        $ph0 = $leg;
+      }
+    }
+    if ($n0 === '' || $rid0 <= 0) {
+      return 'Next of kin (first): please enter full name and select a relationship.';
+    }
+    if ($ph0 === '') {
+      return 'Next of kin (first): phone number is required.';
+    }
+    if ($em0 === '') {
+      return 'Next of kin (first): email is required.';
+    }
+    if (!filter_var($em0, FILTER_VALIDATE_EMAIL)) {
+      return 'Next of kin (first): please enter a valid email address.';
+    }
+
+    $r1 = isset($rows[1]) && is_array($rows[1]) ? $rows[1] : [];
+    $n1 = trim((string) ($r1['name'] ?? ''));
+    $rid1 = (int) ($r1['relationship_id'] ?? 0);
+    $ph1 = trim((string) ($r1['phone'] ?? ''));
+    $em1 = trim((string) ($r1['email'] ?? ''));
+    if ($ph1 === '' && $em1 === '' && !empty($r1['contact'])) {
+      $leg1 = trim((string) $r1['contact']);
+      if (strpos($leg1, '@') !== false) {
+        $em1 = $leg1;
+      } else {
+        $ph1 = $leg1;
+      }
+    }
+    $any1 = ($n1 !== '' || $rid1 > 0 || $ph1 !== '' || $em1 !== '');
+    if (!$any1) {
+      return null;
+    }
+    if ($n1 === '' || $rid1 <= 0) {
+      return 'Next of kin (second): please enter full name and relationship, or clear all second-contact fields.';
+    }
+    if ($ph1 === '' && $em1 === '') {
+      return 'Next of kin (second): please enter at least a phone number or email.';
+    }
+    if ($em1 !== '' && !filter_var($em1, FILTER_VALIDATE_EMAIL)) {
+      return 'Next of kin (second): please enter a valid email address.';
+    }
+
+    return null;
+  }
+
   public function photoMark($imagepath)
   {
     $config['image_library'] = 'gd2';

@@ -170,6 +170,18 @@ class Settings extends MX_Controller
 		render('divisions', $data);
 	}
 
+	public function kin_relationship_types()
+	{
+		$this->load->model('settings_mdl');
+		$data['kin_relationship_types'] = $this->db->table_exists('kin_relationship_types')
+			? $this->settings_mdl->get_content('kin_relationship_types')
+			: null;
+
+		$data['module'] = $this->module;
+		$data['title'] = "Next of kin relationships";
+		render('kin_relationship_types', $data);
+	}
+
 	public function divisions_datatables()
 	{
 		$this->load->model('settings_mdl');

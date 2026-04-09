@@ -24,6 +24,7 @@ class Run extends MX_Controller
      * - performance_approval_reminder: once daily at hour:minute, or false to disable.
      * - cron_register: once daily at hour:minute (bundles birthday + accounts + contracts), or false.
      * - mark_due_contracts / staff_birthday: daily at hour:minute, or false.
+     * - staff_profile_completion_reminder: once daily — email staff missing extended profile fields (passport, address, etc.).
      * - manage_accounts_hourly_minute: every hour at this minute, or null to disable.
      */
     private function tick_schedule()
@@ -36,6 +37,7 @@ class Run extends MX_Controller
             'cron_register'                => false,
             'mark_due_contracts'           => ['hour' => 23, 'minute' => 0],
             'staff_birthday'               => ['hour' => 3, 'minute' => 0],
+            'staff_profile_completion_reminder' => ['hour' => 8, 'minute' => 30],
             'manage_accounts_hourly_minute' => 0,
         ];
     }
@@ -91,6 +93,11 @@ class Run extends MX_Controller
         if ($this->tick_match_clock($s['staff_birthday'] ?? false, $hour, $minute)) {
             echo "  → staff_birthday\n";
             Modules::run('jobs/jobs/staff_birthday');
+        }
+
+        if ($this->tick_match_clock($s['staff_profile_completion_reminder'] ?? false, $hour, $minute)) {
+            echo "  → staff_profile_completion_reminder\n";
+            Modules::run('jobs/jobs/notify_staff_incomplete_profile_extension');
         }
 
         if (isset($s['manage_accounts_hourly_minute']) && $s['manage_accounts_hourly_minute'] !== null && $s['manage_accounts_hourly_minute'] !== '') {
@@ -156,6 +163,22 @@ class Run extends MX_Controller
         echo "\n============================================\n";
         echo ' performance_notifications completed: ' . date('Y-m-d H:i:s') . "\n";
         echo "============================================\n";
+    }
+
+    /**
+     * Queue daily “complete your profile” emails (passport biodata, address, dependants, next of kin).
+     * Crontab (optional standalone instead of tick):
+     *   30 8 * * * /usr/bin/php /path/to/staff/index.php jobs/run/staff_profile_completion_reminder
+     */
+    public function staff_profile_completion_reminder()
+    {
+        if (!$this->input->is_cli_request()) {
+            show_error('CLI only.', 403);
+            return;
+        }
+        echo "--- staff_profile_completion_reminder " . date('Y-m-d H:i:s') . " ---\n";
+        Modules::run('jobs/jobs/notify_staff_incomplete_profile_extension');
+        echo "done.\n";
     }
 
     /**

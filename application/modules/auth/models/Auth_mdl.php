@@ -422,6 +422,61 @@ return $qry->num_rows();
 			if (!empty($data['signature'])) {
 				$staff_data['signature'] = $data['signature'];
 			}
+
+			if (!empty($data['passport_biodata_page'])) {
+				$staff_data['passport_biodata_page'] = $data['passport_biodata_page'];
+			}
+
+			if (isset($data['residential_address_duty_station'])) {
+				$staff_data['residential_address_duty_station'] = $data['residential_address_duty_station'];
+			}
+
+			if (array_key_exists('number_of_dependants', $data)) {
+				$v = $data['number_of_dependants'];
+				$staff_data['number_of_dependants'] = ($v === '' || $v === null) ? null : (int) $v;
+			}
+
+			if (isset($data['next_of_kin']) && is_array($data['next_of_kin'])) {
+				$kins = [];
+				foreach ($data['next_of_kin'] as $row) {
+					if (!is_array($row)) {
+						continue;
+					}
+					$name = trim((string) ($row['name'] ?? ''));
+					$rid = (int) ($row['relationship_id'] ?? 0);
+					$phone = trim((string) ($row['phone'] ?? ''));
+					$email = trim((string) ($row['email'] ?? ''));
+					if ($phone === '' && $email === '' && !empty($row['contact'])) {
+						$legacy = trim((string) $row['contact']);
+						if ($legacy !== '') {
+							if (strpos($legacy, '@') !== false) {
+								$email = $legacy;
+							} else {
+								$phone = $legacy;
+							}
+						}
+					}
+					if ($name === '' && $rid <= 0 && $phone === '' && $email === '') {
+						continue;
+					}
+					if ($name === '' || $rid <= 0 || ($phone === '' && $email === '')) {
+						continue;
+					}
+					if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+						continue;
+					}
+					$kins[] = [
+						'name' => $name,
+						'relationship_id' => $rid,
+						'phone' => $phone,
+						'email' => $email,
+					];
+					if (count($kins) >= 2) {
+						break;
+					}
+				}
+				$staff_data['next_of_kin_json'] = count($kins) > 0 ? json_encode($kins, JSON_UNESCAPED_UNICODE) : null;
+			}
 	        
 			$staff_updated = $this->update_staff_table($staff_data);
 			return $staff_updated ? "Update Successful" : "Staff Update Failed";
@@ -446,10 +501,17 @@ return $qry->num_rows();
 		} else {
 			$session_user = $this->session->userdata('user');
 	
-			foreach (['tel_1', 'tel_2', 'private_email', 'whatsapp', 'langauge'] as $key) {
-				if (!empty($staff_data[$key])) {
+			$session_keys = [
+				'tel_1', 'tel_2', 'private_email', 'whatsapp', 'langauge',
+				'passport_biodata_page', 'residential_address_duty_station', 'next_of_kin_json',
+			];
+			foreach ($session_keys as $key) {
+				if (array_key_exists($key, $staff_data)) {
 					$session_user->$key = $staff_data[$key];
 				}
+			}
+			if (array_key_exists('number_of_dependants', $staff_data)) {
+				$session_user->number_of_dependants = $staff_data['number_of_dependants'];
 			}
 	
 			$this->session->set_userdata('user', $session_user);

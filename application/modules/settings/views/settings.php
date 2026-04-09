@@ -38,6 +38,7 @@ $settings = [
   ['settings/contract_types', 'Contract Types', 'bx-group'],
   ['settings/directorates', 'Directorates', 'bx-git-branch'], 
   ['settings/divisions', 'Divisions', 'bx-sitemap'],
+  ['settings/kin_relationship_types', 'Next of kin relationships', 'bx-group'],
   ['settings/grades', 'Grades', 'bx-bar-chart-alt-2'],
   ['settings/jobs', 'Jobs', 'bx-briefcase'],
   ['settings/jobs_acting', 'Jobs Acting', 'bx-id-card'],

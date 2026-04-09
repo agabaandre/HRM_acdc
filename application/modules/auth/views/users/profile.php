@@ -10,19 +10,73 @@ $signature_url = base_url('uploads/staff/signature/' . @$staff->signature);
 $photo_display = !empty($staff->photo) && file_exists(FCPATH . 'uploads/staff/' . $staff->photo) ? $photo_url : base_url('assets/images/pp.png');
 $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads/staff/signature/' . $staff->signature)) ? $signature_url : base_url('uploads/staff/signature.png');
 
+$passport_fn = isset($staff->passport_biodata_page) ? (string) $staff->passport_biodata_page : '';
+$passport_path = FCPATH . 'uploads/staff/passport_biodata/' . $passport_fn;
+$passport_url = ($passport_fn !== '' && is_file($passport_path)) ? base_url('uploads/staff/passport_biodata/' . rawurlencode($passport_fn)) : '';
+
+$kin_types = isset($kin_relationship_types) && is_array($kin_relationship_types) ? $kin_relationship_types : [];
+$kin_name_by_id = [];
+foreach ($kin_types as $kt) {
+  $kin_name_by_id[(int) $kt->kin_relationship_id] = $kt->relationship_name;
+}
+if (!function_exists('profile_normalize_nok_row')) {
+  function profile_normalize_nok_row($row) {
+    $out = ['name' => '', 'relationship_id' => '', 'phone' => '', 'email' => ''];
+    if (!is_array($row)) {
+      return $out;
+    }
+    $out['name'] = $row['name'] ?? '';
+    $out['relationship_id'] = $row['relationship_id'] ?? '';
+    $out['phone'] = trim((string) ($row['phone'] ?? ''));
+    $out['email'] = trim((string) ($row['email'] ?? ''));
+    if ($out['phone'] === '' && $out['email'] === '' && !empty($row['contact'])) {
+      $c = trim((string) $row['contact']);
+      if ($c !== '' && strpos($c, '@') !== false) {
+        $out['email'] = $c;
+      } elseif ($c !== '') {
+        $out['phone'] = $c;
+      }
+    }
+    return $out;
+  }
+}
+$nok_list = json_decode(isset($staff->next_of_kin_json) ? $staff->next_of_kin_json : '[]', true);
+if (!is_array($nok_list)) {
+  $nok_list = [];
+}
+$nok_list = array_values($nok_list);
+while (count($nok_list) < 2) {
+  $nok_list[] = [];
+}
+$nok_list = array_slice($nok_list, 0, 2);
+$nok_list[0] = profile_normalize_nok_row($nok_list[0] ?? []);
+$nok_list[1] = profile_normalize_nok_row($nok_list[1] ?? []);
+
 // Format dates
 $dob = !empty($staff->date_of_birth) ? date('M d, Y', strtotime($staff->date_of_birth)) : 'N/A';
 $contract_start = !empty($contract->start_date) ? date('M d, Y', strtotime($contract->start_date)) : 'N/A';
 $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract->end_date)) : 'N/A';
 ?>
+<style>
+  /* Sidebar: 5/12 width from md up (col-md-5); full width stacked on extra-small screens */
+  @media (min-width: 768px) {
+    .profile-sidebar-card {
+      position: sticky;
+      top: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow-y: auto;
+    }
+  }
+  .profile-sidebar-card .text-break { word-break: break-word; overflow-wrap: anywhere; }
+</style>
 
 <div class="container-fluid">
-  <div class="row">
+  <div class="row g-3">
     
-    <!-- Left Column: Profile Summary Card -->
-    <div class="col-xl-4 col-lg-5 col-md-12 mb-4">
-      <div class="card shadow-sm">
-        <div class="card-body text-center">
+    <!-- Left column: profile summary + employment + supervisors (5 cols from md up) -->
+    <div class="col-12 col-md-5 mb-md-0">
+      <div class="card shadow-sm h-100 profile-sidebar-card">
+        <div class="card-body text-center px-3 px-lg-3 py-3">
           <img class="img-fluid rounded-circle mb-3 border border-3" 
                style="width: 150px; height: 150px; object-fit: cover; border-color: #119a48 !important;" 
                src="<?= $photo_display ?>" 
@@ -44,6 +98,112 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
 
           <hr>
           
+          <!-- Personal Information -->
+          <h6 class="text-uppercase fw-semibold mb-3 text-start">Personal Information</h6>
+          <ul class="list-unstyled text-start fs-6 mb-4">
+            <li class="mb-2">
+              <i class="fas fa-calendar fa-md text-primary me-2"></i> 
+              <strong>Date of Birth:</strong> <?= $dob ?>
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-globe fa-md text-primary me-2"></i> 
+              <strong>Nationality:</strong> <?= !empty($staff->nationality) ? $staff->nationality : 'N/A' ?>
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-venus-mars fa-md text-primary me-2"></i> 
+              <strong>Gender:</strong> <?= !empty($staff->gender) ? ucfirst($staff->gender) : 'N/A' ?>
+            </li>
+            <?php if (!empty($staff->SAPNO)): ?>
+            <li class="mb-2">
+              <i class="fas fa-id-card fa-md text-primary me-2"></i> 
+              <strong>SAP Number:</strong> <?= $staff->SAPNO ?>
+            </li>
+            <?php endif; ?>
+            </ul>
+
+          <?php
+          $sidebar_has_residential = trim((string) ($staff->residential_address_duty_station ?? '')) !== '';
+          $sidebar_has_dependants = isset($staff->number_of_dependants) && $staff->number_of_dependants !== null && $staff->number_of_dependants !== '';
+          $show_sidebar_address_section = $sidebar_has_residential || $sidebar_has_dependants;
+
+          $sidebar_nok_rows = [];
+          $nok_decode_sidebar = json_decode(isset($staff->next_of_kin_json) ? $staff->next_of_kin_json : '[]', true);
+          if (is_array($nok_decode_sidebar)) {
+            foreach ($nok_decode_sidebar as $nok_i => $nk_raw) {
+              if (!is_array($nk_raw)) {
+                continue;
+              }
+              $nk_norm = profile_normalize_nok_row($nk_raw);
+              $rn = (int) ($nk_raw['relationship_id'] ?? 0);
+              $has_name = trim((string) ($nk_norm['name'] ?? '')) !== '';
+              $has_contact = ($nk_norm['phone'] ?? '') !== '' || ($nk_norm['email'] ?? '') !== '';
+              if ($has_name || $has_contact) {
+                $sidebar_nok_rows[] = [
+                  'index' => (int) $nok_i,
+                  'row' => $nk_norm,
+                  'relationship_id' => $rn,
+                ];
+              }
+            }
+          }
+          $show_sidebar_nok_section = count($sidebar_nok_rows) > 0;
+          ?>
+
+          <?php if ($show_sidebar_address_section): ?>
+          <hr>
+          <h6 class="text-uppercase fw-semibold mb-3 text-start">Address &amp; dependants</h6>
+          <ul class="list-unstyled text-start fs-6 mb-4">
+            <?php if ($sidebar_has_residential): ?>
+            <li class="mb-2 text-start">
+              <i class="fas fa-home fa-md text-primary me-2"></i>
+              <strong>Residential address (at duty station):</strong><br>
+              <span class="ms-4 text-break"><?= nl2br(htmlspecialchars($staff->residential_address_duty_station)) ?></span>
+            </li>
+            <?php endif; ?>
+            <?php if ($sidebar_has_dependants): ?>
+            <li class="mb-2 text-start">
+              <i class="fas fa-users fa-md text-primary me-2"></i>
+              <strong>Number of dependants:</strong><br>
+              <span class="ms-4"><?= (int) $staff->number_of_dependants ?></span>
+            </li>
+            <?php endif; ?>
+          </ul>
+          <?php endif; ?>
+
+          <?php if ($show_sidebar_nok_section): ?>
+          <hr>
+          <h6 class="text-uppercase fw-semibold mb-3 text-start">Next of kin</h6>
+          <ul class="list-unstyled text-start fs-6 mb-4">
+            <?php foreach ($sidebar_nok_rows as $snok): ?>
+              <?php
+                $nk = $snok['row'];
+                $idx = $snok['index'];
+                $rn = $snok['relationship_id'];
+                $rlabel = $kin_name_by_id[$rn] ?? ($rn > 0 ? ('#' . $rn) : '');
+              ?>
+            <li class="mb-2 text-start">
+              <i class="fas fa-user-friends fa-md text-primary me-2"></i>
+              <strong>Next of kin <?= $idx + 1 ?>:</strong>
+              <?php if (trim((string) ($nk['name'] ?? '')) !== ''): ?>
+                <?= htmlspecialchars($nk['name']) ?>
+              <?php endif; ?>
+              <?php if ($rlabel !== ''): ?>
+                <span class="text-muted">(<?= htmlspecialchars($rlabel) ?>)</span>
+              <?php endif; ?>
+              <br>
+              <?php if (($nk['phone'] ?? '') !== ''): ?>
+              <span class="ms-4 d-block"><i class="fas fa-phone me-1"></i><?= htmlspecialchars($nk['phone']) ?></span>
+              <?php endif; ?>
+              <?php if (($nk['email'] ?? '') !== ''): ?>
+              <span class="ms-4 d-block"><i class="fas fa-envelope me-1"></i><?= htmlspecialchars($nk['email']) ?></span>
+              <?php endif; ?>
+            </li>
+            <?php endforeach; ?>
+          </ul>
+          <?php endif; ?>
+
+          <hr>
+
           <!-- Contact Information -->
           <h6 class="text-uppercase fw-semibold mb-3 text-start">Contact Information</h6>
           <ul class="list-unstyled text-start fs-6 mb-4">
@@ -83,43 +243,164 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
           </ul>
 
           <hr>
-          
-          <!-- Personal Information -->
-          <h6 class="text-uppercase fw-semibold mb-3 text-start">Personal Information</h6>
-          <ul class="list-unstyled text-start fs-6 mb-4">
-            <li class="mb-2">
-              <i class="fas fa-calendar fa-md text-primary me-2"></i> 
-              <strong>Date of Birth:</strong> <?= $dob ?>
-            </li>
-            <li class="mb-2">
-              <i class="fas fa-globe fa-md text-primary me-2"></i> 
-              <strong>Nationality:</strong> <?= !empty($staff->nationality) ? $staff->nationality : 'N/A' ?>
-            </li>
-            <li class="mb-2">
-              <i class="fas fa-venus-mars fa-md text-primary me-2"></i> 
-              <strong>Gender:</strong> <?= !empty($staff->gender) ? ucfirst($staff->gender) : 'N/A' ?>
-            </li>
-            <?php if (!empty($staff->SAPNO)): ?>
-            <li class="mb-2">
-              <i class="fas fa-id-card fa-md text-primary me-2"></i> 
-              <strong>SAP Number:</strong> <?= $staff->SAPNO ?>
-            </li>
-            <?php endif; ?>
-            </ul>
 
-          <hr>
+          <!-- Passport biodata (before signature) -->
+          <?php if ($passport_url !== ''): ?>
+          <div class="text-center mb-3">
+            <p class="small text-muted mb-2">Passport biodata page</p>
+            <a href="<?= $passport_url ?>" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-passport me-1"></i> View passport biodata file
+            </a>
+          </div>
+          <?php else: ?>
+          <div class="text-center mb-3">
+            <p class="small text-muted mb-0">Passport biodata: <span class="text-secondary">Not uploaded</span></p>
+          </div>
+          <?php endif; ?>
 
           <!-- Staff Signature -->
           <div class="text-center">
             <img src="<?= $signature_display ?>" alt="Signature" style="max-height: 80px; max-width: 200px;">
             <p class="small mt-2 text-muted">Staff Signature</p>
           </div>
+
+          <hr class="my-3">
+
+          <!-- Employment Information (same styling as Contact / Personal) -->
+          <h6 class="text-uppercase fw-semibold mb-3 text-start">Employment Information</h6>
+          <ul class="list-unstyled text-start fs-6 mb-4">
+            <li class="mb-2">
+              <i class="fas fa-sitemap fa-md text-primary me-2"></i>
+              <strong>Division:</strong><br>
+              <span class="ms-4 text-break"><?= !empty($contract->division_name) ? htmlspecialchars($contract->division_name) : 'N/A' ?></span>
+            </li>
+            <?php if ($directorate): ?>
+            <li class="mb-2">
+              <i class="fas fa-code-branch fa-md text-primary me-2"></i>
+              <strong>Directorate:</strong><br>
+              <span class="ms-4 text-break"><?= htmlspecialchars($directorate->directorate_name) ?></span>
+            </li>
+            <?php endif; ?>
+            <li class="mb-2">
+              <i class="fas fa-map-marker-alt fa-md text-primary me-2"></i>
+              <strong>Duty Station:</strong><br>
+              <span class="ms-4 text-break"><?= !empty($contract->duty_station_name) ? htmlspecialchars($contract->duty_station_name) : 'N/A' ?></span>
+            </li>
+            <?php if (!empty($staff->physical_location)): ?>
+            <li class="mb-2">
+              <i class="fas fa-map-pin fa-md text-primary me-2"></i>
+              <strong>Physical Location:</strong><br>
+              <span class="ms-4 text-break"><?= htmlspecialchars($staff->physical_location) ?></span>
+            </li>
+            <?php endif; ?>
+            <li class="mb-2">
+              <i class="fas fa-briefcase fa-md text-primary me-2"></i>
+              <strong>Job Title:</strong><br>
+              <span class="ms-4 text-break"><?= !empty($contract->job_name) ? htmlspecialchars($contract->job_name) : 'N/A' ?></span>
+            </li>
+            <?php if (!empty($contract->job_acting_name)): ?>
+            <li class="mb-2">
+              <i class="fas fa-user-tie fa-md text-primary me-2"></i>
+              <strong>Acting Position:</strong><br>
+              <span class="ms-4 text-break"><?= htmlspecialchars($contract->job_acting_name) ?></span>
+            </li>
+            <?php endif; ?>
+            <?php if (!empty($contract->grade_name)): ?>
+            <li class="mb-2">
+              <i class="fas fa-layer-group fa-md text-primary me-2"></i>
+              <strong>Grade:</strong><br>
+              <span class="ms-4 text-break"><?= htmlspecialchars($contract->grade_name) ?></span>
+            </li>
+            <?php endif; ?>
+            <li class="mb-2">
+              <i class="fas fa-file-signature fa-md text-primary me-2"></i>
+              <strong>Contract Type:</strong><br>
+              <span class="ms-4 text-break"><?= !empty($contract->contract_type_name) ? htmlspecialchars($contract->contract_type_name) : 'N/A' ?></span>
+            </li>
+            <?php if (!empty($contract->contracting_institution_name)): ?>
+            <li class="mb-2">
+              <i class="fas fa-university fa-md text-primary me-2"></i>
+              <strong>Contracting Institution:</strong><br>
+              <span class="ms-4 text-break"><?= htmlspecialchars($contract->contracting_institution_name) ?></span>
+            </li>
+            <?php endif; ?>
+            <?php if (!empty($contract->funder_name)): ?>
+            <li class="mb-2">
+              <i class="fas fa-hand-holding-usd fa-md text-primary me-2"></i>
+              <strong>Funder:</strong><br>
+              <span class="ms-4 text-break"><?= htmlspecialchars($contract->funder_name) ?></span>
+            </li>
+            <?php endif; ?>
+            <li class="mb-2">
+              <i class="fas fa-calendar-check fa-md text-primary me-2"></i>
+              <strong>Contract Start Date:</strong><br>
+              <span class="ms-4"><?= htmlspecialchars($contract_start) ?></span>
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-calendar-alt fa-md text-primary me-2"></i>
+              <strong>Contract End Date:</strong><br>
+              <span class="ms-4"><?= htmlspecialchars($contract_end) ?></span>
+            </li>
+            <?php if (!empty($contract->status_name)): ?>
+            <li class="mb-2">
+              <i class="fas fa-info-circle fa-md text-primary me-2"></i>
+              <strong>Contract Status:</strong><br>
+              <span class="ms-4">
+                <span class="badge bg-<?= $contract->status_name == 'Active' ? 'success' : 'secondary' ?>"><?= htmlspecialchars($contract->status_name) ?></span>
+              </span>
+            </li>
+            <?php endif; ?>
+          </ul>
+
+          <?php if ($supervisor || $second_supervisor): ?>
+          <hr class="my-3">
+          <h6 class="text-uppercase fw-semibold mb-3 text-start">Supervisor Information</h6>
+          <ul class="list-unstyled text-start fs-6 mb-0">
+            <?php if ($supervisor): ?>
+            <li class="mb-3">
+              <i class="fas fa-user-tie fa-md text-primary me-2"></i>
+              <strong>Primary Supervisor:</strong><br>
+              <div class="ms-4 d-flex align-items-center text-start mt-1">
+                <?php if (!empty($supervisor->photo) && file_exists(FCPATH . 'uploads/staff/' . $supervisor->photo)): ?>
+                  <img src="<?= base_url('uploads/staff/' . htmlspecialchars($supervisor->photo)) ?>"
+                       class="rounded-circle me-2 flex-shrink-0"
+                       style="width: 40px; height: 40px; object-fit: cover;"
+                       alt="Primary supervisor">
+                <?php endif; ?>
+                <div class="min-w-0">
+                  <div class="fw-semibold text-break"><?= htmlspecialchars($supervisor->title . ' ' . $supervisor->fname . ' ' . $supervisor->lname) ?></div>
+                  <small class="text-muted text-break d-block"><?= htmlspecialchars($supervisor->work_email) ?></small>
+                </div>
+              </div>
+            </li>
+            <?php endif; ?>
+            <?php if ($second_supervisor): ?>
+            <li class="mb-0">
+              <i class="fas fa-user-tie fa-md text-secondary me-2"></i>
+              <strong>Secondary Supervisor:</strong><br>
+              <div class="ms-4 d-flex align-items-center text-start mt-1">
+                <?php if (!empty($second_supervisor->photo) && file_exists(FCPATH . 'uploads/staff/' . $second_supervisor->photo)): ?>
+                  <img src="<?= base_url('uploads/staff/' . htmlspecialchars($second_supervisor->photo)) ?>"
+                       class="rounded-circle me-2 flex-shrink-0"
+                       style="width: 40px; height: 40px; object-fit: cover;"
+                       alt="Secondary supervisor">
+                <?php endif; ?>
+                <div class="min-w-0">
+                  <div class="fw-semibold text-break"><?= htmlspecialchars($second_supervisor->title . ' ' . $second_supervisor->fname . ' ' . $second_supervisor->lname) ?></div>
+                  <small class="text-muted text-break d-block"><?= htmlspecialchars($second_supervisor->work_email) ?></small>
+                </div>
+              </div>
+            </li>
+            <?php endif; ?>
+          </ul>
+          <?php endif; ?>
+
         </div>
       </div>
     </div>
 
-    <!-- Right Column: Detailed Information and Edit Form -->
-    <div class="col-xl-8 col-lg-7 col-md-12">
+    <!-- Right column: edit form (7 cols from md up) -->
+    <div class="col-12 col-md-7">
       
       <!-- Edit Personal Details Card -->
       <div class="card shadow-sm mb-4">
@@ -132,54 +413,131 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
           <input type="hidden" name="user_id" value="<?= $staff->user_id?>">
           <input type="hidden" name="name" value="<?= $staff->title .' '.$staff->fname.' '.$staff->lname ?>">
 
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Private Email <span class="text-danger">*</span></label>
-              <input type="email" name="private_email" value="<?= $staff->private_email ?>" class="form-control" required>
-              <small class="text-muted">Your personal email address</small>
+          <!-- Section: Contact & language -->
+          <div class="profile-form-section border rounded-3 p-3 p-md-4 mb-4 bg-light bg-opacity-50">
+            <h6 class="text-uppercase text-secondary fw-bold small mb-3 pb-2 border-bottom">
+              <i class="fas fa-address-book me-2 text-success"></i>Contact &amp; language
+            </h6>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Private Email <span class="text-danger">*</span></label>
+                <input type="email" name="private_email" value="<?= $staff->private_email ?>" class="form-control" required>
+                <small class="text-muted">Your personal email address</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">WhatsApp Number</label>
+                <input type="text" name="whatsapp" value="<?= $staff->whatsapp ?>" class="form-control" placeholder="+1234567890">
+                <small class="text-muted">Include country code (e.g., +1234567890)</small>
+              </div>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">WhatsApp Number</label>
-              <input type="text" name="whatsapp" value="<?= $staff->whatsapp ?>" class="form-control" placeholder="+1234567890">
-              <small class="text-muted">Include country code (e.g., +1234567890)</small>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Primary Phone <span class="text-danger">*</span></label>
+                <input type="text" name="tel_1" value="<?= $staff->tel_1 ?>" class="form-control" required>
+                <small class="text-muted">Your primary contact number</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Alternative Number</label>
+                <input type="text" name="tel_2" value="<?= $staff->tel_2 ?>" class="form-control">
+                <small class="text-muted">Secondary contact number (optional)</small>
+              </div>
+            </div>
+            <div class="mb-0">
+              <label class="form-label">Preferred Language</label>
+              <?php $langs = ['en' => 'English', 'fr' => 'French', 'sw' => 'Swahili', 'ar' => 'Arabic']; ?>
+              <select name="langauge" class="form-select">
+                <?php foreach ($langs as $k => $v): ?>
+                  <option value="<?= $k ?>" <?= $staff->langauge == $k ? 'selected' : '' ?>><?= $v ?></option>
+                <?php endforeach; ?>
+              </select>
+              <small class="text-muted">Select your preferred language for the system</small>
             </div>
           </div>
 
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Primary Phone <span class="text-danger">*</span></label>
-              <input type="text" name="tel_1" value="<?= $staff->tel_1 ?>" class="form-control" required>
-              <small class="text-muted">Your primary contact number</small>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Alternative Number</label>
-              <input type="text" name="tel_2" value="<?= $staff->tel_2 ?>" class="form-control">
-              <small class="text-muted">Secondary contact number (optional)</small>
+          <!-- Section: Documents -->
+          <div class="profile-form-section border rounded-3 p-3 p-md-4 mb-4 bg-light bg-opacity-50">
+            <h6 class="text-uppercase text-secondary fw-bold small mb-3 pb-2 border-bottom">
+              <i class="fas fa-file-image me-2 text-success"></i>Photo, passport &amp; signature
+            </h6>
+            <div class="row g-3 mb-0">
+              <div class="col-md-4">
+                <label class="form-label">Upload New Photo</label>
+                <input type="file" name="photo" class="form-control" accept="image/*">
+                <small class="text-muted">Max 1MB. Square image (150×150px) recommended.</small>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Passport biodata page</label>
+                <input type="file" name="passport_biodata" class="form-control" accept="image/*,.pdf,application/pdf">
+                <small class="text-muted">Image or PDF, max 4MB.</small>
+                <?php if ($passport_url !== ''): ?>
+                  <div class="mt-1"><a href="<?= $passport_url ?>" target="_blank" rel="noopener">Current file</a></div>
+                <?php endif; ?>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Upload Signature</label>
+                <input type="file" name="signature" class="form-control" accept="image/*">
+                <small class="text-muted">Max 1MB. PNG with transparent background recommended.</small>
+              </div>
             </div>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label">Preferred Language</label>
-            <?php $langs = ['en' => 'English', 'fr' => 'French', 'sw' => 'Swahili', 'ar' => 'Arabic']; ?>
-            <select name="langauge" class="form-select">
-              <?php foreach ($langs as $k => $v): ?>
-                <option value="<?= $k ?>" <?= $staff->langauge == $k ? 'selected' : '' ?>><?= $v ?></option>
-              <?php endforeach; ?>
-            </select>
-            <small class="text-muted">Select your preferred language for the system</small>
+          <!-- Section: Address & household -->
+          <div class="profile-form-section border rounded-3 p-3 p-md-4 mb-4 bg-light bg-opacity-50">
+            <h6 class="text-uppercase text-secondary fw-bold small mb-3 pb-2 border-bottom">
+              <i class="fas fa-home me-2 text-success"></i>Address &amp; dependants
+            </h6>
+            <div class="mb-3">
+              <label class="form-label">Residential address (at duty station) <span class="text-danger">*</span></label>
+              <textarea name="residential_address_duty_station" class="form-control" rows="3" placeholder="Street, building, city" required><?= isset($staff->residential_address_duty_station) ? htmlspecialchars($staff->residential_address_duty_station) : '' ?></textarea>
+            </div>
+            <div class="row mb-0">
+              <div class="col-md-4">
+                <label class="form-label">Number of dependants <span class="text-danger">*</span></label>
+                <input type="number" name="number_of_dependants" class="form-control" min="0" step="1"
+                       value="<?= (isset($staff->number_of_dependants) && $staff->number_of_dependants !== null && $staff->number_of_dependants !== '') ? (int) $staff->number_of_dependants : '' ?>"
+                       placeholder="e.g. 0" required>
+              </div>
+            </div>
+            <p class="small text-muted mb-0 mt-2">Use <strong>0</strong> if you have no dependants.</p>
           </div>
 
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Upload New Photo</label>
-              <input type="file" name="photo" class="form-control" accept="image/*">
-              <small class="text-muted">Max size: 1MB. Recommended: Square image (150x150px)</small>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Upload Signature</label>
-              <input type="file" name="signature" class="form-control" accept="image/*">
-              <small class="text-muted">Max size: 1MB. Recommended: PNG with transparent background</small>
-            </div>
+          <!-- Section: Next of kin -->
+          <div class="profile-form-section border rounded-3 p-3 p-md-4 mb-4 bg-light bg-opacity-50">
+            <h6 class="text-uppercase text-secondary fw-bold small mb-3 pb-2 border-bottom">
+              <i class="fas fa-user-friends me-2 text-success"></i>Next of kin
+            </h6>
+            <p class="small text-muted mb-3">The <strong>first</strong> next of kin is required (name, relationship, phone, and email). You may add a <strong>second</strong> contact optionally. Relationship types are managed under <strong>Settings → Next of kin relationships</strong>.</p>
+            <?php foreach ([0 => 'First next of kin', 1 => 'Second next of kin (optional)'] as $idx => $label): ?>
+              <?php $row = $nok_list[$idx] ?? profile_normalize_nok_row([]); ?>
+              <?php $req = ($idx === 0); ?>
+              <div class="border rounded p-3 mb-3 bg-white">
+                <div class="fw-semibold mb-2"><?= htmlspecialchars($label) ?><?php if ($req): ?> <span class="text-danger">*</span><?php endif; ?></div>
+                <div class="row g-2">
+                  <div class="col-md-6 col-lg-4">
+                    <label class="form-label small">Full name<?php if ($req): ?> <span class="text-danger">*</span><?php endif; ?></label>
+                    <input type="text" name="next_of_kin[<?= $idx ?>][name]" class="form-control form-control-sm" value="<?= htmlspecialchars($row['name'] ?? '') ?>" <?= $req ? 'required' : '' ?>>
+                  </div>
+                  <div class="col-md-6 col-lg-4">
+                    <label class="form-label small">Relationship<?php if ($req): ?> <span class="text-danger">*</span><?php endif; ?></label>
+                    <select name="next_of_kin[<?= $idx ?>][relationship_id]" class="form-select form-select-sm" <?= $req ? 'required' : '' ?>>
+                      <option value="">— Select —</option>
+                      <?php foreach ($kin_types as $kt): ?>
+                        <option value="<?= (int) $kt->kin_relationship_id ?>" <?= ((int)($row['relationship_id'] ?? 0) === (int) $kt->kin_relationship_id) ? 'selected' : '' ?>><?= htmlspecialchars($kt->relationship_name) ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                  <div class="w-100"></div>
+                  <div class="col-md-6">
+                    <label class="form-label small">Phone number<?php if ($req): ?> <span class="text-danger">*</span><?php endif; ?></label>
+                    <input type="text" name="next_of_kin[<?= $idx ?>][phone]" class="form-control form-control-sm" value="<?= htmlspecialchars($row['phone'] ?? '') ?>" <?= $req ? 'required' : '' ?> placeholder="+251…">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small">Email<?php if ($req): ?> <span class="text-danger">*</span><?php endif; ?></label>
+                    <input type="email" name="next_of_kin[<?= $idx ?>][email]" class="form-control form-control-sm" value="<?= htmlspecialchars($row['email'] ?? '') ?>" <?= $req ? 'required' : '' ?> placeholder="name@example.com">
+                  </div>
+                </div>
+              </div>
+            <?php endforeach; ?>
           </div>
 
           <div class="alert alert-info">
@@ -195,134 +553,6 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
           <?= form_close(); ?>
         </div>
       </div>
-      
-      <!-- Employment Information Card -->
-      <div class="card shadow-sm mb-4">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-briefcase me-2"></i>Employment Information</h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Division</label>
-              <div class="form-control-plaintext"><?= !empty($contract->division_name) ? $contract->division_name : 'N/A' ?></div>
-            </div>
-            <?php if ($directorate): ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Directorate</label>
-              <div class="form-control-plaintext"><?= $directorate->directorate_name ?></div>
-            </div>
-            <?php endif; ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Duty Station</label>
-              <div class="form-control-plaintext"><?= !empty($contract->duty_station_name) ? $contract->duty_station_name : 'N/A' ?></div>
-            </div>
-            <?php if (!empty($staff->physical_location)): ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Physical Location</label>
-              <div class="form-control-plaintext"><?= $staff->physical_location ?></div>
-            </div>
-            <?php endif; ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Job Title</label>
-              <div class="form-control-plaintext"><?= !empty($contract->job_name) ? $contract->job_name : 'N/A' ?></div>
-            </div>
-            <?php if (!empty($contract->job_acting_name)): ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Acting Position</label>
-              <div class="form-control-plaintext"><?= $contract->job_acting_name ?></div>
-            </div>
-            <?php endif; ?>
-            <?php if (!empty($contract->grade_name)): ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Grade</label>
-              <div class="form-control-plaintext"><?= $contract->grade_name ?></div>
-            </div>
-            <?php endif; ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Contract Type</label>
-              <div class="form-control-plaintext"><?= !empty($contract->contract_type_name) ? $contract->contract_type_name : 'N/A' ?></div>
-            </div>
-            <?php if (!empty($contract->contracting_institution_name)): ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Contracting Institution</label>
-              <div class="form-control-plaintext"><?= $contract->contracting_institution_name ?></div>
-            </div>
-            <?php endif; ?>
-            <?php if (!empty($contract->funder_name)): ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Funder</label>
-              <div class="form-control-plaintext"><?= $contract->funder_name ?></div>
-            </div>
-            <?php endif; ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Contract Start Date</label>
-              <div class="form-control-plaintext"><?= $contract_start ?></div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Contract End Date</label>
-              <div class="form-control-plaintext"><?= $contract_end ?></div>
-            </div>
-            <?php if (!empty($contract->status_name)): ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Contract Status</label>
-              <div class="form-control-plaintext">
-                <span class="badge bg-<?= $contract->status_name == 'Active' ? 'success' : 'secondary' ?>">
-                  <?= $contract->status_name ?>
-                </span>
-              </div>
-            </div>
-            <?php endif; ?>
-          </div>
-        </div>
-      </div>
-
-      <!-- Supervisor Information Card -->
-      <?php if ($supervisor || $second_supervisor): ?>
-      <div class="card shadow-sm mb-4">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-user-tie me-2"></i>Supervisor Information</h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <?php if ($supervisor): ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Primary Supervisor</label>
-              <div class="d-flex align-items-center">
-                <?php if (!empty($supervisor->photo) && file_exists(FCPATH . 'uploads/staff/' . $supervisor->photo)): ?>
-                  <img src="<?= base_url('uploads/staff/' . $supervisor->photo) ?>" 
-                       class="rounded-circle me-2" 
-                       style="width: 40px; height: 40px; object-fit: cover;" 
-                       alt="Supervisor">
-                <?php endif; ?>
-                <div>
-                  <div class="fw-semibold"><?= $supervisor->title .' '.$supervisor->fname . ' ' . $supervisor->lname ?></div>
-                  <small class="text-muted"><?= $supervisor->work_email ?></small>
-                </div>
-              </div>
-            </div>
-            <?php endif; ?>
-            <?php if ($second_supervisor): ?>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold text-muted">Secondary Supervisor</label>
-              <div class="d-flex align-items-center">
-                <?php if (!empty($second_supervisor->photo) && file_exists(FCPATH . 'uploads/staff/' . $second_supervisor->photo)): ?>
-                  <img src="<?= base_url('uploads/staff/' . $second_supervisor->photo) ?>" 
-                       class="rounded-circle me-2" 
-                       style="width: 40px; height: 40px; object-fit: cover;" 
-                       alt="Supervisor">
-                <?php endif; ?>
-                <div>
-                  <div class="fw-semibold"><?= $second_supervisor->title .' '.$second_supervisor->fname . ' ' . $second_supervisor->lname ?></div>
-                  <small class="text-muted"><?= $second_supervisor->work_email ?></small>
-                </div>
-              </div>
-            </div>
-            <?php endif; ?>
-          </div>
-        </div>
-      </div>
-      <?php endif; ?>
 
     </div>
   </div>
