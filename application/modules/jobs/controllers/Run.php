@@ -24,7 +24,7 @@ class Run extends MX_Controller
      * - performance_approval_reminder: once daily at hour:minute, or false to disable.
      * - cron_register: once daily at hour:minute (bundles birthday + accounts + contracts), or false.
      * - mark_due_contracts / staff_birthday: daily at hour:minute, or false.
-     * - staff_profile_completion_reminder: once daily — email staff missing extended profile fields (passport, address, etc.).
+     * - staff_profile_completion_reminder: once daily — email staff (latest contract Active, Due, or Under renewal) missing extended profile fields.
      * - manage_accounts_hourly_minute: every hour at this minute, or null to disable.
      */
     private function tick_schedule()
@@ -167,6 +167,7 @@ class Run extends MX_Controller
 
     /**
      * Queue daily “complete your profile” emails (passport biodata, address, dependants, next of kin).
+     * Recipients: active portal users whose latest contract is Active, Due, or Under renewal only.
      * Crontab (optional standalone instead of tick):
      *   30 8 * * * /usr/bin/php /path/to/staff/index.php jobs/run/staff_profile_completion_reminder
      */
