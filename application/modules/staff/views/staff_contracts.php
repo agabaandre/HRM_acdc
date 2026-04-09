@@ -96,8 +96,8 @@
                     <a href="<?php echo base_url() ?>staff/staff_contracts/<?php echo $staff_id; ?>/1" class="btn btn-sm btn-outline-secondary d-block">
                         <i class="fa fa-file-excel me-1"></i> Export to Excel
                     </a>
-        </div>
-    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -110,7 +110,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-center">
-                    <img id="modalImage" src="" style="width:150px; height:auto; border-radius:10px;">
+                    <img id="modalImage" src="" alt="Employee photo" class="rounded shadow-sm" style="max-width: 100%; max-height: 75vh; width: auto; height: auto; object-fit: contain;">
                 </div>
             </div>
         </div>
