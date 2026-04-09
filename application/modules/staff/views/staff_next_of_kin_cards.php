@@ -43,15 +43,25 @@ foreach ($rows as $s) :
 	?>
 	<div class="card border mb-3 shadow-sm">
 		<div class="card-header bg-light py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
-			<div>
-				<strong>
-					<a href="<?= base_url('staff/staff_contracts/' . (int) $s->staff_id) ?>"><?= htmlspecialchars(trim($full_name)) ?></a>
-				</strong>
-				<?php if (!empty($s->SAPNO)) : ?>
-					<span class="text-muted ms-2">SAP: <?= htmlspecialchars((string) $s->SAPNO) ?></span>
-				<?php endif; ?>
+			<div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
+				<div class="flex-shrink-0">
+					<?php
+					$surname = $s->lname ?? '';
+					$other_name = $s->fname ?? '';
+					$image_path = base_url() . 'uploads/staff/' . ($s->photo ?? '');
+					echo generate_user_avatar($surname, $other_name, $image_path, $s->photo ?? null);
+					?>
+				</div>
+				<div class="min-w-0">
+					<strong>
+						<a href="<?= base_url('staff/staff_contracts/' . (int) $s->staff_id) ?>"><?= htmlspecialchars(trim($full_name)) ?></a>
+					</strong>
+					<?php if (!empty($s->SAPNO)) : ?>
+						<span class="text-muted ms-2">SAP: <?= htmlspecialchars((string) $s->SAPNO) ?></span>
+					<?php endif; ?>
+				</div>
 			</div>
-			<span class="badge bg-secondary"><?= htmlspecialchars((string) ($s->contract_status_label ?? '')) ?></span>
+			<span class="badge bg-secondary flex-shrink-0"><?= htmlspecialchars((string) ($s->contract_status_label ?? '')) ?></span>
 		</div>
 		<div class="card-body">
 			<div class="row g-3 small mb-3">
