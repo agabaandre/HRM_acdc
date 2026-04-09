@@ -671,7 +671,9 @@ $(document).ready(function() {
 
 	// Staff Index AJAX Data Loading
 	var currentPage = 0;
-	var currentFilters = {};
+	var currentFilters = typeof window.staffFiltersAutoApplyCollect === 'function'
+		? window.staffFiltersAutoApplyCollect($('#staff_form'))
+		: {};
 	var currentPerPage = 20;
 
 	// Move export buttons to top right on page load and hide originals
@@ -708,28 +710,16 @@ $(document).ready(function() {
 	loadStaffIndexData();
 	updateExportLinks(); // Initialize export links
 
-	// Handle filter form submission
-	$('#staff_form').on('submit', function(e) {
-		e.preventDefault();
-		currentPage = 0;
-		// Get all form data
-		currentFilters = $(this).serializeArray().reduce(function(obj, item) {
-			if (item.value) {
-				if (obj[item.name]) {
-					// If key already exists, convert to array
-					if (!Array.isArray(obj[item.name])) {
-						obj[item.name] = [obj[item.name]];
-					}
-					obj[item.name].push(item.value);
-				} else {
-					obj[item.name] = item.value;
-				}
+	if (typeof window.staffFiltersAutoApplyInstall === 'function') {
+		window.staffFiltersAutoApplyInstall({
+			onApply: function () {
+				currentPage = 0;
+				currentFilters = window.staffFiltersAutoApplyCollect($('#staff_form'));
+				updateExportLinks();
+				loadStaffIndexData();
 			}
-			return obj;
-		}, {});
-		updateExportLinks(); // Update export links with new filters
-		loadStaffIndexData();
-	});
+		});
+	}
 
 	// Update export links in staff_filters when filters change
 	function updateExportLinks() {

@@ -672,7 +672,6 @@ $(document).ready(function() {
 
 	// Staff History AJAX
 	var currentPage = 0;
-	var currentFilters = {};
 	var currentPerPage = 20;
 
 	function staffHistoryFormToFilters($form) {
@@ -691,9 +690,15 @@ $(document).ready(function() {
 		}, {});
 	}
 
+	var currentFilters = typeof window.staffFiltersAutoApplyCollect === 'function'
+		? window.staffFiltersAutoApplyCollect($('#staff_form'))
+		: staffHistoryFormToFilters($('#staff_form'));
+
 	// Move export buttons to top right on page load and hide originals
 	$(document).ready(function() {
-		currentFilters = staffHistoryFormToFilters($('#staff_form'));
+		currentFilters = typeof window.staffFiltersAutoApplyCollect === 'function'
+			? window.staffFiltersAutoApplyCollect($('#staff_form'))
+			: staffHistoryFormToFilters($('#staff_form'));
 		var exportButtons = $('#originalExportButtons').clone();
 		if (exportButtons.length && exportButtons.html().trim() !== '') {
 			$('#exportButtonsTop').html(exportButtons.html());
@@ -723,31 +728,19 @@ $(document).ready(function() {
 	});
 
 	// Load data on page load
-		loadStaffHistoryData();
-		updateExportLinks(); // Initialize export links
+	loadStaffHistoryData();
+	updateExportLinks(); // Initialize export links
 
-	// Handle filter form submission
-	$('#staff_form').on('submit', function(e) {
-		e.preventDefault();
-		currentPage = 0;
-		// Get all form data
-		currentFilters = $(this).serializeArray().reduce(function(obj, item) {
-			if (item.value) {
-				if (obj[item.name]) {
-					// If key already exists, convert to array
-					if (!Array.isArray(obj[item.name])) {
-						obj[item.name] = [obj[item.name]];
-					}
-					obj[item.name].push(item.value);
-				} else {
-					obj[item.name] = item.value;
-				}
+	if (typeof window.staffFiltersAutoApplyInstall === 'function') {
+		window.staffFiltersAutoApplyInstall({
+			onApply: function () {
+				currentPage = 0;
+				currentFilters = window.staffFiltersAutoApplyCollect($('#staff_form'));
+				updateExportLinks();
+				loadStaffHistoryData();
 			}
-			return obj;
-		}, {});
-		updateExportLinks(); // Update export links with new filters
-		loadStaffHistoryData();
-	});
+		});
+	}
 
 	// Update export links in staff_filters when filters change
 	function updateExportLinks() {
