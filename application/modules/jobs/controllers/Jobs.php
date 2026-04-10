@@ -1819,6 +1819,56 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
         }
     }
 
+    /**
+     * CLI: queue one sample profile-completion reminder to verify the profile link (uses _portal_profile_edit_url).
+     *
+     *   php index.php jobs/jobs/test_staff_profile_completion_reminder
+     *   TEST_EMAIL=andrewa@africacdc.org php index.php jobs/jobs/test_staff_profile_completion_reminder
+     */
+    public function test_staff_profile_completion_reminder()
+    {
+        if (!$this->input->is_cli_request()) {
+            show_error('CLI only.', 403);
+            return;
+        }
+
+        $candidate = getenv('TEST_EMAIL');
+        $email = ($candidate && filter_var($candidate, FILTER_VALIDATE_EMAIL))
+            ? $candidate
+            : 'andrewa@africacdc.org';
+
+        $this->load->helper('async_mail');
+
+        $profileUrl = $this->_portal_profile_edit_url();
+        $data = [
+            'name' => 'Test recipient (link verification)',
+            'missing' => [
+                'Passport biodata page (upload)',
+                'Residential address (duty station)',
+                'Next of kin',
+            ],
+            'profile_url' => $profileUrl,
+            'subject' => '[TEST] Complete your staff profile (Africa CDC Staff Portal)',
+            'email_to' => $email,
+        ];
+        $data['body'] = $this->load->view('staff_profile_completion_reminder', $data, true);
+        $entry_log_id = md5('PROFILEEXT-TEST-' . $email . microtime(true));
+
+        golobal_log_email(
+            'Staff Portal System (TEST)',
+            $email,
+            $data['body'],
+            $data['subject'],
+            0,
+            date('Y-m-d'),
+            date('Y-m-d'),
+            $entry_log_id
+        );
+
+        echo "Queued test profile reminder → {$email}\n";
+        echo "Profile URL in email: {$profileUrl}\n";
+    }
+
     
 }
 
