@@ -45,6 +45,7 @@ $settings = [
   ['settings/au_values', 'AU Values', 'bx-star'],
   ['settings/funders', 'Funders', 'bx-dollar'],
   ['settings/leave_types', 'Leave Types', 'bx-time-five'],
+  ['settings/staff_jobs', 'Staff jobs (schedule)', 'bx-timer'],
   ['settings/sysvariables', 'System Variables', 'bx-cog'],
   ['settings/training_skills', 'Training Skills', 'bx-book'],
   ['settings/regions', 'Regions', 'bx-compass'],

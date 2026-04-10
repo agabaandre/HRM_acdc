@@ -16,7 +16,10 @@ class Run extends MX_Controller
     }
 
     /**
-     * Wall-clock schedule for tick(). Change values here only.
+     * Wall-clock schedule for tick().
+     *
+     * Defaults live in staff_jobs_schedule_helper; Settings → Staff jobs can persist overrides to
+     * application/cache/staff_jobs_schedule.json (merged at runtime).
      *
      * - send_instant_mails: run every cron invocation (every minute).
      * - send_mails_interval_minutes: full queue pass every N minutes (15 => :00, :15, :30, :45).
@@ -29,17 +32,9 @@ class Run extends MX_Controller
      */
     private function tick_schedule()
     {
-        return [
-            'send_instant_mails'           => true,
-            'send_mails_interval_minutes'  => 15,
-            'performance_notifications'    => ['hour' => 7, 'minute' => 0],
-            'performance_approval_reminder' => ['hour' => 10, 'minute' => 0],
-            'cron_register'                => false,
-            'mark_due_contracts'           => ['hour' => 23, 'minute' => 0],
-            'staff_birthday'               => ['hour' => 3, 'minute' => 0],
-            'staff_profile_completion_reminder' => ['hour' => 8, 'minute' => 30],
-            'manage_accounts_hourly_minute' => 0,
-        ];
+        $this->load->helper('staff_jobs_schedule');
+
+        return staff_jobs_schedule_resolved();
     }
 
     /**
