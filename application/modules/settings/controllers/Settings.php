@@ -671,4 +671,176 @@ public function force_generate_short_names() {
 		];
 	}
 
+	/** Same permission as Settings menu (nav permission id 15). */
+	private function _require_settings_access()
+	{
+		$user = $this->session->userdata('user');
+		if (!$user) {
+			show_error('You must be signed in.', 403);
+		}
+		$perms = isset($user->permissions) ? (array) $user->permissions : [];
+		$permStrings = array_map('strval', $perms);
+		if (!in_array('15', $permStrings, true)) {
+			show_error('You do not have permission to access this page.', 403);
+		}
+	}
+
+	/**
+	 * Jobs that can be triggered once from the browser (maps to jobs/jobs methods).
+	 * Add entries here as new jobs are exposed.
+	 */
+	private function staff_jobs_instant_definitions()
+	{
+		return [
+			'notify_staff_profile_extension' => [
+				'label' => 'Profile completion reminder emails',
+				'route' => 'jobs/jobs/notify_staff_incomplete_profile_extension',
+			],
+			'staff_birthday' => [
+				'label' => 'Staff birthday',
+				'route' => 'jobs/jobs/staff_birthday',
+			],
+			'mark_due_contracts' => [
+				'label' => 'Mark due contracts',
+				'route' => 'jobs/jobs/mark_due_contracts',
+			],
+			'cron_register' => [
+				'label' => 'Cron register (bundle)',
+				'route' => 'jobs/jobs/cron_register',
+			],
+			'send_instant_mails' => [
+				'label' => 'Instant mail queue (one pass)',
+				'route' => 'jobs/jobs/send_instant_mails',
+			],
+			'send_mails' => [
+				'label' => 'Full mail queue (one pass)',
+				'route' => 'jobs/jobs/send_mails',
+			],
+			'manage_accounts' => [
+				'label' => 'Manage accounts',
+				'route' => 'jobs/jobs/manage_accounts',
+			],
+			'performance_approval_reminder' => [
+				'label' => 'Performance approval reminders',
+				'route' => 'jobs/jobs/notify_supervisors_pending_performance_approval',
+			],
+			'performance_notifications_bundle' => [
+				'label' => 'Performance notifications (PPA, Midterm, Endterm)',
+				'bundle' => 'performance_notifications',
+			],
+		];
+	}
+
+	private function _staff_jobs_run_performance_notifications_bundle()
+	{
+		foreach ([
+			'jobs/jobs/notify_supervisors_pending_ppas',
+			'jobs/jobs/notify_supervisors_pending_midterms',
+			'jobs/jobs/notify_supervisors_pending_endterms',
+		] as $route) {
+			Modules::run($route);
+		}
+	}
+
+	public function staff_jobs()
+	{
+		$this->_require_settings_access();
+		$this->load->helper('staff_jobs_schedule');
+		$data['module'] = $this->module;
+		$data['title'] = 'Staff jobs (schedule & run)';
+		$data['schedule'] = staff_jobs_schedule_resolved();
+		$data['schedule_path'] = staff_jobs_schedule_path();
+		$data['daily_jobs_meta'] = [
+			'staff_profile_completion_reminder' => [
+				'label' => 'Profile completion reminder',
+				'help' => 'Email staff (eligible contracts) who are missing extended profile fields.',
+			],
+			'staff_birthday' => [
+				'label' => 'Staff birthday',
+				'help' => 'Birthday notifications.',
+			],
+			'mark_due_contracts' => [
+				'label' => 'Mark due contracts',
+				'help' => 'Updates contract due status.',
+			],
+			'performance_notifications' => [
+				'label' => 'Performance notifications (PPA / Mid / End)',
+				'help' => 'Queues supervisor reminder emails for PPA, midterm, and endterm.',
+			],
+			'performance_approval_reminder' => [
+				'label' => 'Performance approval reminders',
+				'help' => 'Pending performance approval reminders to supervisors.',
+			],
+			'cron_register' => [
+				'label' => 'Cron register bundle',
+				'help' => 'Legacy bundle (birthday, accounts, contracts).',
+			],
+		];
+		$data['instant_jobs'] = $this->staff_jobs_instant_definitions();
+		render('staff_jobs', $data);
+	}
+
+	public function staff_jobs_save_schedule()
+	{
+		$this->_require_settings_access();
+		if ($this->input->method() !== 'post') {
+			show_404();
+			return;
+		}
+		$this->load->helper('staff_jobs_schedule');
+		$payload = staff_jobs_schedule_from_post($this->input->post());
+		if (staff_jobs_schedule_write($payload)) {
+			Modules::run('utility/setFlash', [
+				'msg' => 'Schedule saved. The next cron tick will use these values.',
+				'type' => 'success',
+			]);
+		} else {
+			Modules::run('utility/setFlash', [
+				'msg' => 'Could not save schedule. Ensure application/cache is writable by the web server.',
+				'type' => 'error',
+			]);
+		}
+		redirect('settings/staff_jobs');
+	}
+
+	public function staff_jobs_run_now()
+	{
+		$this->_require_settings_access();
+		if ($this->input->method() !== 'post') {
+			show_404();
+			return;
+		}
+		$key = (string) $this->input->post('job_key', true);
+		$defs = $this->staff_jobs_instant_definitions();
+		if ($key === '' || !isset($defs[$key])) {
+			Modules::run('utility/setFlash', ['msg' => 'Unknown job.', 'type' => 'error']);
+			redirect('settings/staff_jobs');
+			return;
+		}
+		$out = '';
+		ob_start();
+		try {
+			if (!empty($defs[$key]['bundle']) && $defs[$key]['bundle'] === 'performance_notifications') {
+				$this->_staff_jobs_run_performance_notifications_bundle();
+			} else {
+				Modules::run($defs[$key]['route']);
+			}
+			$out = ob_get_clean();
+		} catch (Exception $e) {
+			if (ob_get_level() > 0) {
+				ob_end_clean();
+			}
+			log_message('error', 'staff_jobs_run_now: ' . $e->getMessage());
+			Modules::run('utility/setFlash', ['msg' => 'Job failed: ' . $e->getMessage(), 'type' => 'error']);
+			redirect('settings/staff_jobs');
+			return;
+		}
+		log_message('debug', 'staff_jobs_run_now ' . $key . ': ' . $out);
+		Modules::run('utility/setFlash', [
+			'msg' => 'Ran: ' . $defs[$key]['label'] . '.',
+			'type' => 'success',
+		]);
+		redirect('settings/staff_jobs');
+	}
+
 }
