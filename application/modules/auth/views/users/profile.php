@@ -14,6 +14,8 @@ $signature_display = $signature_url !== '' ? $signature_url : base_url('assets/i
 $passport_fn = isset($staff->passport_biodata_page) ? (string) $staff->passport_biodata_page : '';
 $passport_path = FCPATH . 'uploads/staff/passport_biodata/' . $passport_fn;
 $passport_url = ($passport_fn !== '' && is_file($passport_path)) ? staff_secure_upload_url('passport_biodata', $passport_fn) : '';
+$passport_ext = $passport_fn !== '' ? strtolower(pathinfo($passport_fn, PATHINFO_EXTENSION)) : '';
+$passport_image_preview = $passport_url !== '' && !in_array($passport_ext, ['pdf'], true);
 
 $kin_types = isset($kin_relationship_types) && is_array($kin_relationship_types) ? $kin_relationship_types : [];
 $kin_name_by_id = [];
@@ -91,6 +93,33 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
     }
   }
   .profile-sidebar-card .text-break { word-break: break-word; overflow-wrap: anywhere; }
+  .profile-doc-preview-box {
+    margin-top: 0.5rem;
+    padding: 0.4rem;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    max-width: 132px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .profile-doc-preview-box .profile-doc-preview-label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+  .profile-doc-preview-box img {
+    display: block;
+    width: 100%;
+    max-height: 88px;
+    object-fit: contain;
+    border-radius: 0.25rem;
+    vertical-align: middle;
+  }
+  .profile-doc-preview-box a.img-link { display: block; line-height: 0; }
+  .profile-doc-preview-sig img { max-height: 52px; }
 </style>
 
 <div class="container-fluid">
@@ -267,17 +296,19 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
 
           <hr>
 
-          <!-- Passport biodata (before signature) -->
+          <!-- Passport biodata (before signature) — used for travel purposes -->
           <?php if ($passport_url !== ''): ?>
           <div class="text-center mb-3">
-            <p class="small text-muted mb-2">Passport biodata page</p>
+            <p class="small text-muted mb-1 fw-semibold">Passport biodata (for travel purposes)</p>
+            <p class="small text-muted mb-2">Photo page with your details, for official travel.</p>
             <a href="<?= $passport_url ?>" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
               <i class="fas fa-passport me-1"></i> View passport biodata file
             </a>
           </div>
           <?php else: ?>
           <div class="text-center mb-3">
-            <p class="small text-muted mb-0">Passport biodata: <span class="text-secondary">Not uploaded</span></p>
+            <p class="small text-muted mb-1 fw-semibold">Passport biodata (for travel purposes)</p>
+            <p class="small text-muted mb-0"><span class="text-secondary">Not uploaded</span> — please add an image of your passport biodata page for travel.</p>
           </div>
           <?php endif; ?>
 
@@ -483,26 +514,51 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
           <!-- Section: Documents -->
           <div class="profile-form-section border rounded-3 p-3 p-md-4 mb-4 bg-light bg-opacity-50">
             <h6 class="text-uppercase text-secondary fw-bold small mb-3 pb-2 border-bottom">
-              <i class="fas fa-file-image me-2 text-success"></i>Photo, passport &amp; signature
+              <i class="fas fa-file-image me-2 text-success"></i>Photo, passport (travel) &amp; signature
             </h6>
             <div class="row g-3 mb-0">
               <div class="col-md-4">
                 <label class="form-label">Upload New Photo</label>
                 <input type="file" name="photo" class="form-control" accept="image/*">
                 <small class="text-muted">Max 1MB. Square image (150×150px) recommended.</small>
+                <?php if ($photo_url !== ''): ?>
+                <div class="profile-doc-preview-box">
+                  <div class="profile-doc-preview-label">Current photo</div>
+                  <a href="<?= htmlspecialchars($photo_url) ?>" target="_blank" rel="noopener" class="img-link">
+                    <img src="<?= htmlspecialchars($photo_url) ?>" alt="Current profile photo" loading="lazy">
+                  </a>
+                </div>
+                <?php endif; ?>
               </div>
               <div class="col-md-4">
-                <label class="form-label">Passport biodata page</label>
+                <label class="form-label">Passport biodata page <span class="text-muted fw-normal">(for travel purposes)</span></label>
                 <input type="file" name="passport_biodata" class="form-control" accept="image/*">
-                <small class="text-muted">Image only (JPG, PNG, or GIF), max 4MB.</small>
+                <small class="text-muted">Used for official travel arrangements. Image only (JPG, PNG, or GIF), max 4MB.</small>
                 <?php if ($passport_url !== ''): ?>
-                  <div class="mt-1"><a href="<?= $passport_url ?>" target="_blank" rel="noopener">Current file</a></div>
+                <div class="profile-doc-preview-box">
+                  <div class="profile-doc-preview-label">Current file</div>
+                  <?php if ($passport_image_preview): ?>
+                  <a href="<?= htmlspecialchars($passport_url) ?>" target="_blank" rel="noopener" class="img-link">
+                    <img src="<?= htmlspecialchars($passport_url) ?>" alt="Passport biodata preview" loading="lazy">
+                  </a>
+                  <?php else: ?>
+                  <a href="<?= htmlspecialchars($passport_url) ?>" target="_blank" rel="noopener" class="small">Open PDF / file</a>
+                  <?php endif; ?>
+                </div>
                 <?php endif; ?>
               </div>
               <div class="col-md-4">
                 <label class="form-label">Upload Signature</label>
                 <input type="file" name="signature" class="form-control" accept="image/*">
                 <small class="text-muted">Max 1MB. PNG with transparent background recommended.</small>
+                <?php if ($signature_url !== ''): ?>
+                <div class="profile-doc-preview-box profile-doc-preview-sig">
+                  <div class="profile-doc-preview-label">Current signature</div>
+                  <a href="<?= htmlspecialchars($signature_url) ?>" target="_blank" rel="noopener" class="img-link">
+                    <img src="<?= htmlspecialchars($signature_url) ?>" alt="Current signature" loading="lazy" style="background: linear-gradient(45deg, #f1f3f5 25%, transparent 25%), linear-gradient(-45deg, #f1f3f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f3f5 75%), linear-gradient(-45deg, transparent 75%, #f1f3f5 75%); background-size: 8px 8px; background-position: 0 0, 0 4px, 4px -4px, -4px 0;">
+                  </a>
+                </div>
+                <?php endif; ?>
               </div>
             </div>
           </div>
