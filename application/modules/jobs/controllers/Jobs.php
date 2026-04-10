@@ -1678,7 +1678,7 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
         $passDir = FCPATH . 'uploads/staff/passport_biodata/';
         $fn = isset($staff->passport_biodata_page) ? (string) $staff->passport_biodata_page : '';
         if ($fn === '' || !is_file($passDir . $fn)) {
-            $missing[] = 'Passport biodata page (upload)';
+            $missing[] = 'Passport biodata page for travel purposes (upload)';
         }
         if (trim((string) ($staff->residential_address_duty_station ?? '')) === '') {
             $missing[] = 'Residential address (at duty station)';
@@ -1719,6 +1719,30 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
     }
 
     /**
+     * Absolute profile URL for emails and CLI jobs (base_url() is wrong when HTTP_HOST / SCRIPT_NAME are missing).
+     * Uses CI_BASE_URL, BASE_URL, or PRODUCTION_URL from .env when set.
+     */
+    private function _portal_profile_edit_url()
+    {
+        $base = trim((string) (getenv('CI_BASE_URL') ?: (isset($_ENV['CI_BASE_URL']) ? $_ENV['CI_BASE_URL'] : '')));
+        if ($base === '') {
+            $base = trim((string) (getenv('BASE_URL') ?: (isset($_ENV['BASE_URL']) ? $_ENV['BASE_URL'] : '')));
+        }
+        if ($base === '') {
+            $base = trim((string) (getenv('PRODUCTION_URL') ?: (isset($_ENV['PRODUCTION_URL']) ? $_ENV['PRODUCTION_URL'] : '')));
+        }
+        if ($base !== '') {
+            $base = rtrim($base, '/');
+            if (strpos($base, 'http://') !== 0 && strpos($base, 'https://') !== 0) {
+                $base = 'https://' . ltrim($base, '/');
+            }
+            return $base . '/auth/profile';
+        }
+        $this->load->helper('url');
+        return site_url('auth/profile');
+    }
+
+    /**
      * Daily reminder: email staff who have not completed extended profile fields.
      * Only includes staff whose latest contract is Active (1), Due (2), or Under renewal (7).
      * Schedule via jobs/run/tick (staff_profile_completion_reminder) or CLI:
@@ -1750,7 +1774,7 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
         $this->db->where("TRIM(staff.work_email) != ''", null, false);
         $rows = $this->db->get()->result();
 
-        $profileUrl = base_url('auth/profile');
+        $profileUrl = $this->_portal_profile_edit_url();
         $cc = '';
         try {
             $s = settings();

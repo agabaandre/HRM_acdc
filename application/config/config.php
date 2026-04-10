@@ -22,22 +22,38 @@ defined('BASEPATH') or exit('No direct script access allowed');
 | If you need to allow multiple domains, remember that this file is still
 | a PHP script and you can easily do that on your own.
 |
+| Priority: CI_BASE_URL, BASE_URL, PRODUCTION_URL (.env). If none set and HTTP_HOST
+| is missing (CLI/cron), the default staff portal URL below is used.
+|
 */
-$root = (isset($_SERVER["HTTPS"]) ? "https://" : "http://") . $_SERVER["HTTP_HOST"];
-$root .= str_replace(basename($_SERVER["SCRIPT_NAME"]), "", $_SERVER["SCRIPT_NAME"]);
-$config["base_url"] = $root;
-
-$https = false;
-if (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] == 'on' || $_SERVER['HTTPS'] == 1) || isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') {
-    $protocol = 'https://';
-} else {
-    $protocol = 'http://';
+$env_base = trim((string) (getenv('CI_BASE_URL') ?: (isset($_ENV['CI_BASE_URL']) ? $_ENV['CI_BASE_URL'] : '')));
+if ($env_base === '') {
+	$env_base = trim((string) (getenv('BASE_URL') ?: (isset($_ENV['BASE_URL']) ? $_ENV['BASE_URL'] : '')));
 }
-
-$dirname = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/';
-$root = $protocol . $_SERVER['HTTP_HOST'] . $dirname;
-
-$config["base_url"] = $root;
+if ($env_base === '') {
+	$env_base = trim((string) (getenv('PRODUCTION_URL') ?: (isset($_ENV['PRODUCTION_URL']) ? $_ENV['PRODUCTION_URL'] : '')));
+}
+$default_staff_portal_base = 'https://cbp.africacdc.org/staff';
+if ($env_base !== '') {
+	$env_base = rtrim($env_base, '/');
+	if (strpos($env_base, 'http://') !== 0 && strpos($env_base, 'https://') !== 0) {
+		$env_base = 'https://' . ltrim($env_base, '/');
+	}
+	$config['base_url'] = $env_base . '/';
+} else {
+	if (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] == 'on' || $_SERVER['HTTPS'] == 1) || isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') {
+		$protocol = 'https://';
+	} else {
+		$protocol = 'http://';
+	}
+	$host = isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '';
+	if ($host !== '' && !empty($_SERVER['SCRIPT_NAME'])) {
+		$dirname = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\') . '/';
+		$config['base_url'] = $protocol . $host . $dirname;
+	} else {
+		$config['base_url'] = $default_staff_portal_base . '/';
+	}
+}
 
 /*
 |--------------------------------------------------------------------------
