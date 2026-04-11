@@ -492,6 +492,14 @@
                             <span>Edit Memo</span>
                         </a>
                     @endif
+
+                    @if (can_convert_returned_memo_to_non_travel($specialMemo))
+                        <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;"
+                            data-bs-toggle="modal" data-bs-target="#convertSpecialMemoToNonTravelModal" title="Use when this should have been a non-travel memo">
+                            <i class="bx bx-transfer"></i>
+                            <span>Convert to non-travel</span>
+                        </button>
+                    @endif
                     
                     @php
                         $isAdmin = user_session('role') == 10;
@@ -1514,6 +1522,13 @@
         </div>
     </div>
 </div>
+
+@if (can_convert_returned_memo_to_non_travel($specialMemo))
+    @include('partials.convert-to-non-travel-modal', [
+        'modalId' => 'convertSpecialMemoToNonTravelModal',
+        'formAction' => route('special-memo.convert-to-non-travel', $specialMemo),
+    ])
+@endif
 
 {{-- Modal for preview --}}
 <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
