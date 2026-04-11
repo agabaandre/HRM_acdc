@@ -16,7 +16,8 @@
                 <div class="modal-body">
                     <div class="alert alert-warning mb-3">
                         <strong>This cannot be undone.</strong> The current memo will be removed and replaced by a new non-travel memo.
-                        Approval history will be kept. Fund transactions (if any) stay linked to the new memo without restoring balances.
+                        Approval history will be kept. Budget lines are <strong>not</strong> copied (non-travel uses a different format): you must enter the budget again on the new memo.
+                        For single memos that had fund reservations, those amounts are returned to the fund codes so you can allocate again correctly.
                     </div>
                     <div class="mb-3">
                         <label for="{{ $modalId }}_category" class="form-label">Non-travel category <span class="text-danger">*</span></label>

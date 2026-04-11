@@ -13,6 +13,7 @@ use App\Models\ParticipantSchedule;
 use App\Models\RequestARF;
 use App\Models\ServiceRequest;
 use App\Models\SpecialMemo;
+use App\Models\FundCode;
 use App\Models\FundCodeTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,8 @@ use RuntimeException;
 
 /**
  * Converts a returned single memo (Activity) or special memo into a Non-Travel memo,
- * migrates approval trails, repoints fund transactions, and removes the source record.
+ * migrates approval trails, and removes the source record.
+ * Budget lines are not copied (formats differ); single-memo fund reservations are released on the fund codes.
  *
  * The new memo always has document_number null so {@see \App\Traits\HasDocumentNumber} assigns
  * a non-travel sequence; the source single-memo or special-memo document number is never copied.
@@ -41,8 +43,7 @@ class ConvertMemoToNonTravelMemoService
             $oldActivityId = $activity->id;
             $memo = $this->createNonTravelFromActivity($activity, $categoryId);
             $this->migrateTrailsFromActivity($activity, $memo);
-            $this->repointFundTransactionsFromActivity($activity->id, $memo->id);
-            $this->deleteActivityBudgetsWithoutRestoring($activity->id);
+            $this->restoreFundBalancesAndRemoveSingleMemoBudget($activity);
             ParticipantSchedule::where('activity_id', $activity->id)->delete();
             $this->updateChangeRequestsFromActivity($activity, $memo);
             $this->deleteApprovalTrailsForActivity($activity->id);
@@ -137,14 +138,6 @@ class ConvertMemoToNonTravelMemoService
         if (is_string($location)) {
             $location = json_decode($location, true) ?: [];
         }
-        $budgetId = $activity->budget_id;
-        if (is_string($budgetId)) {
-            $budgetId = json_decode($budgetId, true) ?: [];
-        }
-        $breakdown = $activity->budget_breakdown;
-        if (is_string($breakdown)) {
-            $breakdown = json_decode($breakdown, true) ?: [];
-        }
         $attachment = $activity->attachment;
         if (is_string($attachment)) {
             $attachment = json_decode($attachment, true) ?: [];
@@ -164,16 +157,16 @@ class ConvertMemoToNonTravelMemoService
             'memo_date' => $activity->date_from ?? now()->toDateString(),
             'location_id' => is_array($location) ? $location : [],
             'non_travel_memo_category_id' => $categoryId,
-            'budget_id' => is_array($budgetId) ? $budgetId : [],
+            'budget_id' => [],
             'activity_title' => $activity->activity_title,
             'background' => $activity->background ?? '',
             'activity_request_remarks' => $activity->activity_request_remarks ?? '',
             'justification' => '',
-            'budget_breakdown' => is_array($breakdown) ? $breakdown : [],
+            'budget_breakdown' => [],
             'attachment' => is_array($attachment) ? $attachment : [],
             'is_draft' => strtolower((string) $activity->overall_status) === 'draft',
             'document_number' => null,
-            'available_budget' => $activity->available_budget,
+            'available_budget' => null,
         ]);
     }
 
@@ -182,14 +175,6 @@ class ConvertMemoToNonTravelMemoService
         $location = $specialMemo->location_id;
         if (is_string($location)) {
             $location = json_decode($location, true) ?: [];
-        }
-        $budgetId = $specialMemo->budget_id;
-        if (is_string($budgetId)) {
-            $budgetId = json_decode($budgetId, true) ?: [];
-        }
-        $breakdown = $specialMemo->budget_breakdown;
-        if (is_string($breakdown)) {
-            $breakdown = json_decode($breakdown, true) ?: [];
         }
         $attachment = $specialMemo->attachment;
         if (is_string($attachment)) {
@@ -210,16 +195,16 @@ class ConvertMemoToNonTravelMemoService
             'memo_date' => $specialMemo->date_from ?? now()->toDateString(),
             'location_id' => is_array($location) ? $location : [],
             'non_travel_memo_category_id' => $categoryId,
-            'budget_id' => is_array($budgetId) ? $budgetId : [],
+            'budget_id' => [],
             'activity_title' => $specialMemo->activity_title,
             'background' => $specialMemo->background ?? '',
             'activity_request_remarks' => $specialMemo->activity_request_remarks ?? '',
             'justification' => $specialMemo->justification ?? '',
-            'budget_breakdown' => is_array($breakdown) ? $breakdown : [],
+            'budget_breakdown' => [],
             'attachment' => is_array($attachment) ? $attachment : [],
             'is_draft' => (bool) ($specialMemo->is_draft ?? false),
             'document_number' => null,
-            'available_budget' => $specialMemo->available_budget,
+            'available_budget' => null,
         ]);
     }
 
@@ -285,22 +270,42 @@ class ConvertMemoToNonTravelMemoService
         }
     }
 
-    private function repointFundTransactionsFromActivity(int $activityId, int $nonTravelMemoId): void
-    {
-        FundCodeTransaction::where('activity_id', $activityId)->update([
-            'activity_id' => $nonTravelMemoId,
-            'matrix_id' => null,
-            'activity_budget_id' => null,
-            'channel' => 'non_travel',
-        ]);
-    }
-
     /**
-     * Balances stay reduced; rows are removed without restoring fund codes (transactions still point at new memo id).
+     * Same pattern as ActivityController::destroySingleMemo: restore fund code balances, clear
+     * fund_code_transactions tied to activity budgets, then remove activity_budget rows.
+     * Any remaining transactions for this activity_id are removed so the new non-travel memo starts with no ledger rows.
      */
-    private function deleteActivityBudgetsWithoutRestoring(int $activityId): void
+    private function restoreFundBalancesAndRemoveSingleMemoBudget(Activity $activity): void
     {
-        ActivityBudget::where('activity_id', $activityId)->delete();
+        $activityBudgets = ActivityBudget::where('activity_id', $activity->id)->get();
+        $createdBy = function_exists('user_session') ? user_session('staff_id') : null;
+
+        foreach ($activityBudgets as $budget) {
+            $fundCode = FundCode::find($budget->fund_code);
+            if ($fundCode) {
+                $fundCode->budget_balance = floatval($fundCode->budget_balance ?? 0) + floatval($budget->total ?? 0);
+                $fundCode->save();
+
+                FundCodeTransaction::create([
+                    'fund_code_id' => $budget->fund_code,
+                    'amount' => floatval($budget->total ?? 0),
+                    'description' => 'Single memo converted to non-travel (budget cleared): ' . ($activity->activity_title ?? '') . ' - Fund Code: ' . $fundCode->code,
+                    'activity_id' => $activity->id,
+                    'matrix_id' => $activity->matrix_id,
+                    'activity_budget_id' => $budget->id,
+                    'balance_before' => floatval($fundCode->budget_balance ?? 0) - floatval($budget->total ?? 0),
+                    'balance_after' => floatval($fundCode->budget_balance ?? 0),
+                    'is_reversal' => true,
+                    'created_by' => $createdBy,
+                ]);
+            }
+
+            FundCodeTransaction::where('activity_budget_id', $budget->id)->delete();
+        }
+
+        ActivityBudget::where('activity_id', $activity->id)->delete();
+
+        FundCodeTransaction::where('activity_id', $activity->id)->delete();
     }
 
     private function updateChangeRequestsFromActivity(Activity $activity, NonTravelMemo $memo): void
