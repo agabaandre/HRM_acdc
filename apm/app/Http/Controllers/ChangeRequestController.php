@@ -375,12 +375,13 @@ class ChangeRequestController extends Controller
      */
     public function edit(ChangeRequest $changeRequest): RedirectResponse
     {
-        // Check if change request is in draft or rejected status
-        $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED];
-        if (!in_array($changeRequest->overall_status, $allowedStatuses)) {
+        // Allow editing saved drafts, rejected, returned, or in-progress (pending) without resetting workflow on parent memo save
+        $crStatus = strtolower(trim((string) $changeRequest->overall_status));
+        $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED, 'returned', 'pending'];
+        if (!in_array($crStatus, $allowedStatuses, true)) {
             return redirect()
                 ->route('change-requests.show', $changeRequest)
-                ->with('error', 'Only draft or rejected change requests can be edited.');
+                ->with('error', 'This change request cannot be edited in its current status.');
         }
 
         // Check if current user is the owner or responsible person
@@ -493,10 +494,11 @@ class ChangeRequestController extends Controller
                 if ($isUpdate) {
                     $changeRequest = ChangeRequest::findOrFail($changeRequestId);
                     
-                    // Check if change request is in draft or rejected status
-                    $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED];
-                    if (!in_array($changeRequest->overall_status, $allowedStatuses)) {
-                        throw new \Exception('Only draft or rejected change requests can be updated.');
+                    // Allow updates while draft, rejected, returned, or pending (same as edit gate)
+                    $crStatus = strtolower(trim((string) $changeRequest->overall_status));
+                    $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED, 'returned', 'pending'];
+                    if (!in_array($crStatus, $allowedStatuses, true)) {
+                        throw new \Exception('This change request cannot be updated in its current status.');
                     }
                     
                     // Check if current user is the owner or responsible person

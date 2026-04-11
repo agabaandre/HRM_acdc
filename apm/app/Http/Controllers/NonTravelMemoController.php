@@ -803,7 +803,7 @@ class NonTravelMemoController extends Controller
         $budgetBreakdownJson = json_encode($newBreakdown);
         $attachmentsJson = json_encode($attachments);
 
-        // Update the memo
+        // Content-only update: never change overall_status / approval workflow here (returned & pending memos stay in chain until resubmit).
         $nonTravel->update([
             'memo_date' => $data['memo_date'],
             'location_id' => $locationJson,

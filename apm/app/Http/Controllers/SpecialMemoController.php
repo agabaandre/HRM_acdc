@@ -1111,10 +1111,22 @@ class SpecialMemoController extends Controller
                 $attachments = $existingAttachments;
             }
 
-            // Determine status based on action
+            // Determine status based on action (save button sends action=draft)
             $action = $request->input('action', 'draft');
-            $isDraft = ($action === 'draft');
-            $overallStatus = $isDraft ? 'draft' : 'pending';
+            $isDraftAction = ($action === 'draft');
+            $previousOverall = strtolower(trim((string) $specialMemo->overall_status));
+
+            // While a memo is returned or in workflow (pending), saving content must not reset it to draft.
+            $preserveWorkflowOnSave = $isDraftAction
+                && in_array($previousOverall, ['returned', 'pending'], true);
+
+            if ($preserveWorkflowOnSave) {
+                $isDraft = false;
+                $overallStatus = $previousOverall;
+            } else {
+                $isDraft = $isDraftAction;
+                $overallStatus = $isDraft ? 'draft' : 'pending';
+            }
 
             // Note: staff_id (creator) is preserved and never changed
             $updateData = [
@@ -1145,8 +1157,12 @@ class SpecialMemoController extends Controller
             ];
 
            // dd($updateData);
-            // Add workflow fields only when submitting for approval
-            if (!$isDraft) {
+            if ($preserveWorkflowOnSave) {
+                // Keep existing workflow columns (forward_workflow_id, approval_level, next_approval_level)
+                $updateData['forward_workflow_id'] = $specialMemo->forward_workflow_id;
+                $updateData['approval_level'] = $specialMemo->approval_level;
+                $updateData['next_approval_level'] = $specialMemo->next_approval_level;
+            } elseif (!$isDraft) {
                 // Get assigned workflow ID for SpecialMemo model
                 $assignedWorkflowId = 1; // Default workflow ID
                 Log::warning('No workflow assignment found for SpecialMemo model in update, using default workflow ID: 1');
@@ -1189,7 +1205,9 @@ class SpecialMemoController extends Controller
     
             DB::commit();
     
-            $message = 'Special Memo updated and saved as draft successfully.';
+            $message = $preserveWorkflowOnSave
+                ? 'Special memo updated successfully. Approval status unchanged — use Resubmit when ready to send back up the chain.'
+                : 'Special Memo updated and saved as draft successfully.';
     
             return redirect()->route('special-memo.index')->with([
                 'msg' => $message,

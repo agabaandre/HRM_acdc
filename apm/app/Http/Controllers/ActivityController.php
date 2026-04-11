@@ -1031,7 +1031,11 @@ class ActivityController extends Controller
 
                 // Update the activity record
                 // Note: staff_id (creator) is preserved and never changed
-                $activity->update([
+                $prevOverall = strtolower(trim((string) $activity->overall_status));
+                $preserveSingleMemoWorkflow = (int) ($activity->is_single_memo ?? 0) === 1
+                    && in_array($prevOverall, ['returned', 'pending'], true);
+
+                $updatePayload = [
                     'workplan_activity_code' => $request->input('activity_code'),
                     'responsible_person_id' => $request->input('responsible_person_id'),
                     'date_from' => $request->input('date_from', now()->toDateString()),
@@ -1048,12 +1052,19 @@ class ActivityController extends Controller
                     'budget_id' => json_encode($budgetCodes),
                     'budget_breakdown' => json_encode($budgetItems),
                     'attachment' => json_encode($attachments),
-                    'overall_status' => 'draft',
-                    'approval_level' => 0,
-                    'is_single_memo' => $activity->is_single_memo??0, // Preserve single memo status
-                    'forward_workflow_id' => null,
-                    'is_draft' => 1,
-                ]);
+                    'is_single_memo' => $activity->is_single_memo ?? 0,
+                ];
+
+                if ($preserveSingleMemoWorkflow) {
+                    // Keep approval state so HOD can resubmit to the previous level; do not reset to draft on edit.
+                } else {
+                    $updatePayload['overall_status'] = 'draft';
+                    $updatePayload['approval_level'] = 0;
+                    $updatePayload['forward_workflow_id'] = null;
+                    $updatePayload['is_draft'] = 1;
+                }
+
+                $activity->update($updatePayload);
 
                 // Persist internal_participants explicitly so it is always written (avoids cast/dirty-check issues)
                 $internalParticipantsJson = json_encode($internalParticipants);
@@ -1069,7 +1080,9 @@ class ActivityController extends Controller
                 $this->storeBudget($budgetCodes, $budgetItems, $activity);
 
                 $successMessage = 'Activity updated successfully.';
-                $redirectUrl = route('matrices.activities.show', [$matrix, $activity]);
+                $redirectUrl = (int) ($activity->is_single_memo ?? 0) === 1
+                    ? route('activities.single-memos.show', $activity)
+                    : route('matrices.activities.show', [$matrix, $activity]);
                 
                 if ($request->ajax()) {
                     return response()->json([
