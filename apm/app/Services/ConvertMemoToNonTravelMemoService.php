@@ -21,8 +21,8 @@ use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * Converts a returned single memo (Activity) or special memo into a Non-Travel memo,
- * migrates approval trails, and removes the source record.
+ * Converts a returned single memo (Activity) or special memo into a Non-Travel memo and removes the source record.
+ * The new memo starts as draft (overall_status draft, forward_workflow_id null, approval_level 0); approval trails are not copied.
  * Budget lines are not copied (formats differ); single-memo fund reservations are released on the fund codes.
  *
  * The new memo always has document_number null so {@see \App\Traits\HasDocumentNumber} assigns
@@ -42,7 +42,6 @@ class ConvertMemoToNonTravelMemoService
         return DB::transaction(function () use ($activity, $categoryId) {
             $oldActivityId = $activity->id;
             $memo = $this->createNonTravelFromActivity($activity, $categoryId);
-            $this->migrateTrailsFromActivity($activity, $memo);
             $this->restoreFundBalancesAndRemoveSingleMemoBudget($activity);
             ParticipantSchedule::where('activity_id', $activity->id)->delete();
             $this->updateChangeRequestsFromActivity($activity, $memo);
@@ -68,7 +67,6 @@ class ConvertMemoToNonTravelMemoService
         return DB::transaction(function () use ($specialMemo, $categoryId) {
             $oldSpecialId = $specialMemo->id;
             $memo = $this->createNonTravelFromSpecialMemo($specialMemo, $categoryId);
-            $this->migrateTrailsFromSpecialMemo($specialMemo, $memo);
             $this->updateChangeRequestsFromSpecialMemo($specialMemo, $memo);
             $this->deleteApprovalTrailsForSpecialMemo($specialMemo->id);
             $specialMemo->delete();
@@ -144,12 +142,12 @@ class ConvertMemoToNonTravelMemoService
         }
 
         return NonTravelMemo::create([
-            'forward_workflow_id' => $activity->forward_workflow_id,
-            'reverse_workflow_id' => $activity->reverse_workflow_id,
-            'overall_status' => $activity->overall_status,
-            'approval_level' => $activity->approval_level,
-            'next_approval_level' => $activity->next_approval_level,
-            'approval_order_map' => $activity->approval_order_map,
+            'forward_workflow_id' => null,
+            'reverse_workflow_id' => null,
+            'overall_status' => 'draft',
+            'approval_level' => 0,
+            'next_approval_level' => 1,
+            'approval_order_map' => null,
             'workplan_activity_code' => $activity->workplan_activity_code,
             'staff_id' => $activity->staff_id,
             'division_id' => $activity->division_id,
@@ -164,7 +162,7 @@ class ConvertMemoToNonTravelMemoService
             'justification' => '',
             'budget_breakdown' => [],
             'attachment' => is_array($attachment) ? $attachment : [],
-            'is_draft' => strtolower((string) $activity->overall_status) === 'draft',
+            'is_draft' => true,
             'document_number' => null,
             'available_budget' => null,
         ]);
@@ -182,12 +180,12 @@ class ConvertMemoToNonTravelMemoService
         }
 
         return NonTravelMemo::create([
-            'forward_workflow_id' => $specialMemo->forward_workflow_id,
-            'reverse_workflow_id' => $specialMemo->reverse_workflow_id ?? null,
-            'overall_status' => $specialMemo->overall_status,
-            'approval_level' => $specialMemo->approval_level,
-            'next_approval_level' => $specialMemo->next_approval_level,
-            'approval_order_map' => $specialMemo->approval_order_map,
+            'forward_workflow_id' => null,
+            'reverse_workflow_id' => null,
+            'overall_status' => 'draft',
+            'approval_level' => 0,
+            'next_approval_level' => 1,
+            'approval_order_map' => null,
             'workplan_activity_code' => $specialMemo->workplan_activity_code,
             'staff_id' => $specialMemo->staff_id,
             'division_id' => $specialMemo->division_id,
@@ -202,72 +200,10 @@ class ConvertMemoToNonTravelMemoService
             'justification' => $specialMemo->justification ?? '',
             'budget_breakdown' => [],
             'attachment' => is_array($attachment) ? $attachment : [],
-            'is_draft' => (bool) ($specialMemo->is_draft ?? false),
+            'is_draft' => true,
             'document_number' => null,
             'available_budget' => null,
         ]);
-    }
-
-    private function migrateTrailsFromActivity(Activity $activity, NonTravelMemo $memo): void
-    {
-        $morph = ApprovalTrail::query()
-            ->where('model_id', $activity->id)
-            ->where(function ($q) {
-                $q->where('model_type', Activity::class)
-                    ->orWhere('model_type', 'App\\Models\\Activity');
-            })
-            ->orderBy('id')
-            ->get();
-
-        if ($morph->isNotEmpty()) {
-            foreach ($morph as $trail) {
-                $new = $trail->replicate();
-                $new->model_id = $memo->id;
-                $new->model_type = NonTravelMemo::class;
-                $new->matrix_id = null;
-                $new->save();
-            }
-            return;
-        }
-
-        $raw = ActivityApprovalTrail::where('activity_id', $activity->id)->orderBy('id')->get();
-        foreach ($raw as $t) {
-            $at = new ApprovalTrail([
-                'model_id' => $memo->id,
-                'model_type' => NonTravelMemo::class,
-                'matrix_id' => null,
-                'staff_id' => $t->staff_id,
-                'oic_staff_id' => $t->oic_staff_id,
-                'action' => ActivityApprovalTrail::mapActionForPromotionToApprovalTrail($t->action),
-                'remarks' => $t->remarks,
-                'approval_order' => $t->approval_order,
-                'forward_workflow_id' => $t->forward_workflow_id,
-                'is_archived' => $t->is_archived ?? 0,
-            ]);
-            $at->created_at = $t->created_at;
-            $at->updated_at = $t->updated_at ?? $t->created_at;
-            $at->save(['timestamps' => false]);
-        }
-    }
-
-    private function migrateTrailsFromSpecialMemo(SpecialMemo $specialMemo, NonTravelMemo $memo): void
-    {
-        $trails = ApprovalTrail::query()
-            ->where('model_id', $specialMemo->id)
-            ->where(function ($q) {
-                $q->where('model_type', SpecialMemo::class)
-                    ->orWhere('model_type', 'App\\Models\\SpecialMemo');
-            })
-            ->orderBy('id')
-            ->get();
-
-        foreach ($trails as $trail) {
-            $new = $trail->replicate();
-            $new->model_id = $memo->id;
-            $new->model_type = NonTravelMemo::class;
-            $new->matrix_id = null;
-            $new->save();
-        }
     }
 
     /**
