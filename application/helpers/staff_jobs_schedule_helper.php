@@ -4,6 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 if (!function_exists('staff_jobs_schedule_defaults')) {
     /**
      * Default wall-clock schedule for jobs/run/tick (must stay in sync with Run.php comments).
+     * Note: staff_profile_completion_reminder runs the job daily; Jobs::notify_staff_incomplete_profile_extension dedupes per staff every 2 days.
      */
     function staff_jobs_schedule_defaults()
     {
