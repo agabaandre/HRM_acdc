@@ -803,8 +803,11 @@ class NonTravelMemoController extends Controller
         $budgetBreakdownJson = json_encode($newBreakdown);
         $attachmentsJson = json_encode($attachments);
 
-        // Content-only update: never change overall_status / approval workflow here (returned & pending memos stay in chain until resubmit).
-        $nonTravel->update([
+        // Content update: explicitly keep workflow when memo is returned or in approval (creator / HOD / responsible).
+        $ntStatus = strtolower(trim((string) $statusBeforeUpdate));
+        $preserveNtWorkflow = in_array($ntStatus, ['returned', 'pending'], true);
+
+        $ntUpdate = [
             'memo_date' => $data['memo_date'],
             'location_id' => $locationJson,
             'non_travel_memo_category_id' => $data['non_travel_memo_category_id'],
@@ -816,7 +819,18 @@ class NonTravelMemoController extends Controller
             'budget_breakdown' => $budgetBreakdownJson,
             'budget_id' => $budgetIdJson,
             'attachment' => $attachmentsJson,
-        ]);
+        ];
+        if ($preserveNtWorkflow) {
+            $ntUpdate['overall_status'] = $nonTravel->getOriginal('overall_status');
+            $ntUpdate['approval_level'] = $nonTravel->getOriginal('approval_level');
+            $ntUpdate['next_approval_level'] = $nonTravel->getOriginal('next_approval_level');
+            $ntUpdate['forward_workflow_id'] = $nonTravel->getOriginal('forward_workflow_id');
+            $ntUpdate['reverse_workflow_id'] = $nonTravel->getOriginal('reverse_workflow_id');
+            $ntUpdate['approval_order_map'] = $nonTravel->getOriginal('approval_order_map');
+            $ntUpdate['is_draft'] = $nonTravel->getOriginal('is_draft');
+        }
+
+        $nonTravel->update($ntUpdate);
 
         // Process fund code balance adjustments on edit: only apply the delta (restore old, then deduct new).
         // When memo was draft, nothing was ever deducted — treat old totals as 0 so we only deduct new.

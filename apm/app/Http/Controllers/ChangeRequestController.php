@@ -627,9 +627,13 @@ class ChangeRequestController extends Controller
                     'has_status_changed' => $changes['status'],
                     'has_fund_type_id_changed' => $changes['fund_type_id'],
                     
-                    // Document and workflow fields
-                    'forward_workflow_id' => $parentMemo->forward_workflow_id ?? null,
-                    'matrix_id' => $parentMemo->matrix_id ?? null,
+                    // Document and workflow fields (on update, keep the change request's workflow — not the parent's)
+                    'forward_workflow_id' => $isUpdate
+                        ? $changeRequest->getOriginal('forward_workflow_id')
+                        : ($parentMemo->forward_workflow_id ?? null),
+                    'matrix_id' => $isUpdate
+                        ? $changeRequest->getOriginal('matrix_id')
+                        : ($parentMemo->matrix_id ?? null),
                     'division_id' => $parentMemo->division_id ?? $userDivisionId,
                     'staff_id' => $userStaffId,
                     'responsible_person_id' => $request->input('responsible_person_id'),
@@ -660,9 +664,11 @@ class ChangeRequestController extends Controller
                     'status' => $isUpdate ? ($changeRequest->getRawOriginal('status') ?: ChangeRequest::STATUS_DRAFT) : ChangeRequest::STATUS_DRAFT,
                     'fund_type_id' => $request->input('fund_type', $parentMemo->fund_type_id ?? 1),
                     'activity_ref' => $parentMemo->activity_ref ?? null,
-                    'approval_level' => $isUpdate ? $changeRequest->approval_level : 0,
-                    'next_approval_level' => $isUpdate ? $changeRequest->next_approval_level : null,
-                    'overall_status' => $isUpdate ? $changeRequest->overall_status : ChangeRequest::STATUS_DRAFT,
+                    'approval_level' => $isUpdate ? $changeRequest->getOriginal('approval_level') : 0,
+                    'next_approval_level' => $isUpdate ? $changeRequest->getOriginal('next_approval_level') : null,
+                    'overall_status' => $isUpdate
+                        ? ($changeRequest->getOriginal('overall_status') ?? ChangeRequest::STATUS_DRAFT)
+                        : ChangeRequest::STATUS_DRAFT,
                 ];
 
                 // Create or update the change request
