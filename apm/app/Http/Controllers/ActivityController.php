@@ -1056,7 +1056,13 @@ class ActivityController extends Controller
                 ];
 
                 if ($preserveSingleMemoWorkflow) {
-                    // Keep approval state so HOD can resubmit to the previous level; do not reset to draft on edit.
+                    // Re-assert workflow from DB originals so creator / responsible / HOD edits never clear the chain.
+                    $updatePayload['overall_status'] = $activity->getOriginal('overall_status');
+                    $updatePayload['approval_level'] = $activity->getOriginal('approval_level');
+                    $updatePayload['next_approval_level'] = $activity->getOriginal('next_approval_level');
+                    $updatePayload['forward_workflow_id'] = $activity->getOriginal('forward_workflow_id');
+                    $updatePayload['reverse_workflow_id'] = $activity->getOriginal('reverse_workflow_id');
+                    $updatePayload['approval_order_map'] = $activity->getOriginal('approval_order_map');
                 } else {
                     $updatePayload['overall_status'] = 'draft';
                     $updatePayload['approval_level'] = 0;

@@ -1158,10 +1158,11 @@ class SpecialMemoController extends Controller
 
            // dd($updateData);
             if ($preserveWorkflowOnSave) {
-                // Keep existing workflow columns (forward_workflow_id, approval_level, next_approval_level)
-                $updateData['forward_workflow_id'] = $specialMemo->forward_workflow_id;
-                $updateData['approval_level'] = $specialMemo->approval_level;
-                $updateData['next_approval_level'] = $specialMemo->next_approval_level;
+                // Keep existing workflow from originals (creator / responsible / HOD content edits must not reset the chain)
+                $updateData['forward_workflow_id'] = $specialMemo->getOriginal('forward_workflow_id');
+                $updateData['approval_level'] = $specialMemo->getOriginal('approval_level');
+                $updateData['next_approval_level'] = $specialMemo->getOriginal('next_approval_level');
+                $updateData['approval_order_map'] = $specialMemo->getOriginal('approval_order_map');
             } elseif (!$isDraft) {
                 // Get assigned workflow ID for SpecialMemo model
                 $assignedWorkflowId = 1; // Default workflow ID
