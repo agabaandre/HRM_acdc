@@ -1850,7 +1850,7 @@ class NonTravelMemoController extends Controller
             );
 
             return redirect()->route('non-travel.show', $memo)
-                ->with('success', 'The single memo was converted to a non-travel memo. Approval history was kept; the old memo record was removed.');
+                ->with('success', 'The single memo was converted to a non-travel memo. Approval history was kept; budget was cleared so you can re-enter it in non-travel format. Prior fund reservations were released back to the fund codes.');
         } catch (InvalidArgumentException|RuntimeException $e) {
             return redirect()->back()->with('error', $e->getMessage());
         } catch (Throwable $e) {
@@ -1885,7 +1885,7 @@ class NonTravelMemoController extends Controller
             );
 
             return redirect()->route('non-travel.show', $memo)
-                ->with('success', 'The special memo was converted to a non-travel memo. Approval history was kept; the old memo record was removed.');
+                ->with('success', 'The special memo was converted to a non-travel memo. Approval history was kept; budget was not copied—please complete the non-travel budget on the new memo.');
         } catch (InvalidArgumentException|RuntimeException $e) {
             return redirect()->back()->with('error', $e->getMessage());
         } catch (Throwable $e) {

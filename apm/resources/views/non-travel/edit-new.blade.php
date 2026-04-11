@@ -1,5 +1,32 @@
 @extends('layouts.app')
 
+@php
+    // Decode JSON fields if they are strings (model casts may already provide arrays).
+    // Kept at file scope so @push('scripts') can use the same values.
+    $attachments = is_string($nonTravel->attachment)
+        ? json_decode($nonTravel->attachment, true)
+        : $nonTravel->attachment;
+    $attachments = is_array($attachments) ? $attachments : [];
+
+    $locationIds = $nonTravel->location_id;
+    if (is_string($locationIds)) {
+        $locationIds = json_decode($locationIds, true);
+    }
+    $locationIds = is_array($locationIds) ? $locationIds : [];
+
+    $budgetBreakdownForJs = $nonTravel->budget_breakdown;
+    if (is_string($budgetBreakdownForJs)) {
+        $budgetBreakdownForJs = json_decode($budgetBreakdownForJs, true);
+    }
+    $budgetBreakdownForJs = is_array($budgetBreakdownForJs) ? $budgetBreakdownForJs : [];
+
+    $budgetIdsForJs = $nonTravel->budget_id;
+    if (is_string($budgetIdsForJs)) {
+        $budgetIdsForJs = json_decode($budgetIdsForJs, true);
+    }
+    $budgetIdsForJs = is_array($budgetIdsForJs) ? $budgetIdsForJs : [];
+@endphp
+
 @section('title', 'Edit Non-Travel Memo')
 @section('header', 'Edit Request')
 
@@ -10,16 +37,6 @@
 @endsection
 
 @section('content')
-    @php
-        // Decode JSON fields if they are strings
-        $attachments = is_string($nonTravel->attachment) 
-            ? json_decode($nonTravel->attachment, true) 
-            : $nonTravel->attachment;
-        
-        // Ensure variables are arrays
-        $attachments = is_array($attachments) ? $attachments : [];
-    @endphp
-    
     <div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
             <h5 class="mb-0 text-dark">
@@ -74,7 +91,7 @@
                                         class="form-select border-success select2 @error('location_id') is-invalid @enderror" 
                                         multiple required>
                                     @foreach($locations as $loc)
-                                        <option value="{{ $loc->id }}" {{ in_array($loc->id, old('location_id', $nonTravel->location_id ? json_decode($nonTravel->location_id, true) : [])) ? 'selected' : '' }}>
+                                        <option value="{{ $loc->id }}" {{ in_array($loc->id, old('location_id', $locationIds)) ? 'selected' : '' }}>
                                             {{ $loc->name }}
                                         </option>
                                     @endforeach
@@ -404,8 +421,8 @@
 
 
         // Populate existing budget data
-        const existingBudget = @json($nonTravel->budget_breakdown ? json_decode($nonTravel->budget_breakdown, true) : []);
-        const existingBudgetCodes = @json($nonTravel->budget_id ? json_decode($nonTravel->budget_id, true) : []);
+        const existingBudget = @json($budgetBreakdownForJs);
+        const existingBudgetCodes = @json($budgetIdsForJs);
         
         if (existingBudgetCodes.length > 0 && existingBudget.length > 0) {
             // Enable budget codes select
