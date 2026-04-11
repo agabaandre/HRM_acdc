@@ -672,7 +672,46 @@ if (!function_exists('user_session')) {
             return false;
         }
      }
-     
+
+    if (!function_exists('can_convert_returned_memo_to_non_travel')) {
+        /**
+         * Whether the current user may convert a returned single memo or special memo to a non-travel memo.
+         * Allowed roles: memo creator (staff_id), responsible person, or head of the memo's division (HOD).
+         */
+        function can_convert_returned_memo_to_non_travel($memo, $user = null): bool
+        {
+            if ($user === null) {
+                $userSession = session('user', []);
+                if (empty($userSession) || !isset($userSession['staff_id'])) {
+                    return false;
+                }
+                $user = (object) $userSession;
+            }
+
+            if (!isset($user->staff_id) || $user->staff_id === '' || $user->staff_id === null) {
+                return false;
+            }
+
+            if (strtolower((string) ($memo->overall_status ?? '')) !== 'returned') {
+                return false;
+            }
+
+            $isOwner = isset($memo->staff_id) && (int) $memo->staff_id === (int) $user->staff_id;
+
+            $isResponsible = isset($memo->responsible_person_id)
+                && $memo->responsible_person_id !== null
+                && $memo->responsible_person_id !== ''
+                && (int) $memo->responsible_person_id === (int) $user->staff_id;
+
+            $isDivisionHead = false;
+            if (isset($memo->division_id)) {
+                $divisionIds = Division::where('division_head', $user->staff_id)->pluck('id')->toArray();
+                $isDivisionHead = in_array((int) $memo->division_id, array_map('intval', $divisionIds), true);
+            }
+
+            return $isOwner || $isResponsible || $isDivisionHead;
+        }
+    }
 
      if (!function_exists('can_submit_for_approval')) {
         function can_submit_for_approval($memo) {

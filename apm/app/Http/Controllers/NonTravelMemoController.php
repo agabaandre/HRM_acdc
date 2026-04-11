@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Activity;
 use App\Models\NonTravelMemo;
 use App\Models\NonTravelMemoCategory;
+use App\Models\SpecialMemo;
 use App\Models\Staff;
 use App\Models\Location;
 use App\Models\FundType;
@@ -23,6 +25,10 @@ use App\Models\WorkflowDefinition;
 use App\Models\FundCodeTransaction;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use App\Services\ConvertMemoToNonTravelMemoService;
+use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 
 class NonTravelMemoController extends Controller
 {
@@ -1820,5 +1826,76 @@ class NonTravelMemoController extends Controller
         }
 
         return (int) $v;
+    }
+
+    /**
+     * Convert a returned single memo (Activity) into a non-travel memo; migrates trails and fund rows, deletes the activity.
+     */
+    public function convertReturnedSingleMemoToNonTravel(Request $request, Activity $activity): RedirectResponse
+    {
+        if (!(int) ($activity->is_single_memo ?? 0)
+            || strtolower((string) $activity->overall_status) !== 'returned'
+            || !can_convert_returned_memo_to_non_travel($activity)) {
+            abort(403);
+        }
+
+        $request->validate([
+            'non_travel_memo_category_id' => 'required|integer|exists:non_travel_memo_categories,id',
+        ]);
+
+        try {
+            $memo = app(ConvertMemoToNonTravelMemoService::class)->fromSingleMemoActivity(
+                $activity,
+                (int) $request->input('non_travel_memo_category_id')
+            );
+
+            return redirect()->route('non-travel.show', $memo)
+                ->with('success', 'The single memo was converted to a non-travel memo. Approval history was kept; the old memo record was removed.');
+        } catch (InvalidArgumentException|RuntimeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            Log::error('convertReturnedSingleMemoToNonTravel failed', [
+                'activity_id' => $activity->id,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'Conversion could not be completed. Please try again or contact support.');
+        }
+    }
+
+    /**
+     * Convert a returned special memo into a non-travel memo; migrates trails, deletes the special memo.
+     */
+    public function convertReturnedSpecialMemoToNonTravel(Request $request, SpecialMemo $specialMemo): RedirectResponse
+    {
+        if (strtolower((string) $specialMemo->overall_status) !== 'returned'
+            || !can_convert_returned_memo_to_non_travel($specialMemo)) {
+            abort(403);
+        }
+
+        $request->validate([
+            'non_travel_memo_category_id' => 'required|integer|exists:non_travel_memo_categories,id',
+        ]);
+
+        try {
+            $memo = app(ConvertMemoToNonTravelMemoService::class)->fromSpecialMemo(
+                $specialMemo,
+                (int) $request->input('non_travel_memo_category_id')
+            );
+
+            return redirect()->route('non-travel.show', $memo)
+                ->with('success', 'The special memo was converted to a non-travel memo. Approval history was kept; the old memo record was removed.');
+        } catch (InvalidArgumentException|RuntimeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            Log::error('convertReturnedSpecialMemoToNonTravel failed', [
+                'special_memo_id' => $specialMemo->id,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'Conversion could not be completed. Please try again or contact support.');
+        }
     }
 }
