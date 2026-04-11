@@ -1743,8 +1743,9 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
     }
 
     /**
-     * Daily reminder: email staff who have not completed extended profile fields.
+     * Reminder email for staff who have not completed extended profile fields (at most once per 2 days per staff).
      * Only includes staff whose latest contract is Active (1), Due (2), or Under renewal (7).
+     * Cron may still run daily; deduplication uses a 48-hour bucket on entry_id.
      * Schedule via jobs/run/tick (staff_profile_completion_reminder) or CLI:
      *   php index.php jobs/jobs/notify_staff_incomplete_profile_extension
      */
@@ -1775,15 +1776,19 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
         $rows = $this->db->get()->result();
 
         $profileUrl = $this->_portal_profile_edit_url();
-        $cc = '';
+        // Appended after staff work_email; mail layer sends these as BCC (see async_mail_helper push_email).
+        $systemBcc = '';
         try {
             $s = settings();
             if ($s && !empty($s->email)) {
-                $cc = $s->email;
+                $systemBcc = $s->email;
             }
         } catch (Exception $e) {
             // ignore
         }
+
+        $profileReminderPeriodSeconds = 2 * 24 * 3600;
+        $profileReminderBucket = (int) floor(time() / $profileReminderPeriodSeconds);
 
         foreach ($rows as $staff) {
             $missing = $this->staff_profile_extension_missing_labels($staff);
@@ -1791,7 +1796,7 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
                 continue;
             }
 
-            $entry_log_id = md5($staff->staff_id . '-PROFILEEXT-' . date('Y-m-d'));
+            $entry_log_id = md5($staff->staff_id . '-PROFILEEXT-' . $profileReminderBucket);
             $exists = $this->db->where('entry_id', $entry_log_id)->count_all_results('email_notifications');
             if ($exists > 0) {
                 continue;
@@ -1802,7 +1807,7 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
                 'missing' => $missing,
                 'profile_url' => $profileUrl,
                 'subject' => 'Complete your staff profile (Africa CDC Staff Portal)',
-                'email_to' => trim($staff->work_email) . ($cc !== '' ? ';' . $cc : ''),
+                'email_to' => trim($staff->work_email) . ($systemBcc !== '' ? ';' . $systemBcc : ''),
             ];
             $data['body'] = $this->load->view('staff_profile_completion_reminder', $data, true);
 

@@ -28,17 +28,15 @@ $mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
 // Set email details
 $mailer->setFrom($settings->mail_username, $settings->title);
 
-// Split the $to string by ";" and add each email address
+// Split the $to string by ";" — first = To, rest = BCC (system copy must not appear in CC)
 $emails = explode(';', $to);
 if (count($emails) > 0) {
-    // Add the first email as the main recipient
     $primaryEmail = trim($emails[0]);
     $mailer->addAddress($primaryEmail);
-    
-    // Add the rest as CC recipients
+
     for ($i = 1; $i < count($emails); $i++) {
         $email = trim($emails[$i]);
-        if (!empty($email)) {
+        if ($email !== '') {
             $mailer->addBCC($email);
         }
     }
@@ -92,15 +90,15 @@ if (!function_exists('push_email_smtp')) {
             // Set email details
             $mailer->setFrom($settings->mail_username, $settings->title);
 
-            // Process recipients: first address as main, others as CC
+            // First address = To; additional (e.g. system inbox) = BCC, not CC
             $emails = explode(';', $to);
             if (count($emails) > 0) {
                 $primaryEmail = trim($emails[0]);
                 $mailer->addAddress($primaryEmail);
                 for ($i = 1; $i < count($emails); $i++) {
                     $email = trim($emails[$i]);
-                    if (!empty($email)) {
-                        $mailer->addCC($email);
+                    if ($email !== '') {
+                        $mailer->addBCC($email);
                     }
                 }
             }
@@ -509,33 +507,28 @@ if (!function_exists('send_email_async')) {
                     return;
                 }
 
-                // Handle semicolon-separated emails in $to (like SMTP functions)
-                // First email is primary recipient, rest should be separate
+                // Semicolon-separated: first = To; system inbox + any extra addresses = BCC (not CC)
                 $toEmails = strpos($to, ';') !== false ? explode(';', $to) : explode(',', $to);
                 $primaryTo = trim($toEmails[0]);
-                
-                // Build CC array - include system@africacdc.org and any additional emails from $to
-                $ccArray = [$mail_cc_address]; // Always CC system@africacdc.org
-                
-                // Add any additional emails from $to to CC (if there are multiple)
+
+                $bccArray = [];
+                if ($mail_cc_address !== '' && filter_var($mail_cc_address, FILTER_VALIDATE_EMAIL)) {
+                    $bccArray[] = $mail_cc_address;
+                }
                 if (count($toEmails) > 1) {
                     for ($i = 1; $i < count($toEmails); $i++) {
                         $email = trim($toEmails[$i]);
                         if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                            $ccArray[] = $email;
+                            $bccArray[] = $email;
                         }
                     }
                 }
-                
-                // Clean up arrays
-                $ccArray = array_filter(array_map('trim', $ccArray));
-                $ccArray = array_unique($ccArray);
-                $bccArray = [];
+                $bccArray = array_values(array_unique(array_filter(array_map('trim', $bccArray))));
+                $ccArray = [];
 
                 // Determine if message is HTML
                 $isHtml = (strpos($message, '<html') !== false || strpos($message, '<body') !== false || strpos($message, '<p') !== false);
 
-                // Send email with primary recipient in $to and additional recipients in CC
                 $result = exchange_send_email(
                     $primaryTo,
                     $subject,
@@ -579,33 +572,28 @@ if (!function_exists('push_email')) {
                 return false;
             }
 
-            // Handle semicolon-separated emails in $to (like SMTP functions)
-            // First email is primary recipient, rest should be separate
+            // First = To; system + semicolon extras = BCC (not CC)
             $toEmails = strpos($to, ';') !== false ? explode(';', $to) : explode(',', $to);
             $primaryTo = trim($toEmails[0]);
-            
-            // Build CC array - include system@africacdc.org and any additional emails from $to
-            $ccArray = [$mail_cc_address]; // Always CC system@africacdc.org
-            
-            // Add any additional emails from $to to CC (if there are multiple)
+
+            $bccArray = [];
+            if ($mail_cc_address !== '' && filter_var($mail_cc_address, FILTER_VALIDATE_EMAIL)) {
+                $bccArray[] = $mail_cc_address;
+            }
             if (count($toEmails) > 1) {
                 for ($i = 1; $i < count($toEmails); $i++) {
                     $email = trim($toEmails[$i]);
                     if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        $ccArray[] = $email;
+                        $bccArray[] = $email;
                     }
                 }
             }
-            
-            // Clean up arrays
-            $ccArray = array_filter(array_map('trim', $ccArray));
-            $ccArray = array_unique($ccArray);
-            $bccArray = [];
+            $bccArray = array_values(array_unique(array_filter(array_map('trim', $bccArray))));
+            $ccArray = [];
 
             // Determine if message is HTML
             $isHtml = (strpos($message, '<html') !== false || strpos($message, '<body') !== false || strpos($message, '<p') !== false);
 
-            // Send email with primary recipient in $to and additional recipients in CC
             $result = exchange_send_email(
                 $primaryTo,
                 $subject,
@@ -658,54 +646,46 @@ function exchange_email($to, $from, $subject, $message, $cc = '', $bcc = '', $at
             return false;
         }
 
-        // Handle semicolon-separated emails in $to (like SMTP functions)
-        // First email is primary recipient, rest should be separate
         $toEmails = strpos($to, ';') !== false ? explode(';', $to) : explode(',', $to);
         $primaryTo = trim($toEmails[0]);
-        
-        // Convert comma/semicolon-separated strings to arrays for CC and BCC
+
         $ccArray = !empty($cc) ? (strpos($cc, ';') !== false ? explode(';', $cc) : explode(',', $cc)) : [];
         $bccArray = !empty($bcc) ? (strpos($bcc, ';') !== false ? explode(';', $bcc) : explode(',', $bcc)) : [];
-        
-        // Always CC system@africacdc.org on all emails
-        $ccArray[] = $mail_cc_address;
-        
-        // Add any additional emails from $to to CC (if there are multiple)
+
+        // System inbox + semicolon “copy” addresses go to BCC, not CC
+        if ($mail_cc_address !== '' && filter_var($mail_cc_address, FILTER_VALIDATE_EMAIL)) {
+            $bccArray[] = $mail_cc_address;
+        }
         if (count($toEmails) > 1) {
             for ($i = 1; $i < count($toEmails); $i++) {
                 $email = trim($toEmails[$i]);
                 if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $ccArray[] = $email;
+                    $bccArray[] = $email;
                 }
             }
         }
-        
-        // Clean up arrays
-        $ccArray = array_filter(array_map('trim', $ccArray));
-        $bccArray = array_filter(array_map('trim', $bccArray));
-        
-        // Remove duplicates from CC array
-        $ccArray = array_unique($ccArray);
+
+        $ccArray = array_values(array_unique(array_filter(array_map('trim', $ccArray))));
+        $bccArray = array_values(array_unique(array_filter(array_map('trim', $bccArray))));
 
         // Determine if message is HTML
         $isHtml = (strpos($message, '<html') !== false || strpos($message, '<body') !== false || strpos($message, '<p') !== false);
 
-        // Send email with primary recipient in $to and additional recipients in CC
         $result = exchange_send_email(
             $primaryTo,
             $subject,
             $message,
             $isHtml,
-            $from, // Use the from parameter as sender
-            null,  // Use default from name
+            $from,
+            null,
             $ccArray,
             $bccArray,
             $attachments
         );
 
         if ($result) {
-            $ccList = !empty($ccArray) ? ' (CC: ' . implode(', ', $ccArray) . ')' : '';
-            error_log("Exchange Email: Successfully sent email to $to$ccList");
+            $bccList = !empty($bccArray) ? ' (BCC: ' . implode(', ', $bccArray) . ')' : '';
+            error_log("Exchange Email: Successfully sent email to $to$bccList");
         } else {
             error_log("Exchange Email: Failed to send email to $to");
         }
@@ -769,7 +749,7 @@ function exchange_test_email($testEmail = null)
                     <li><strong>Security:</strong> Bearer Token Authentication</li>
                     <li><strong>Sent At:</strong> ' . date('Y-m-d H:i:s T') . '</li>
                     <li><strong>Recipient:</strong> ' . htmlspecialchars($testEmail) . '</li>
-                    <li><strong>Auto-CC:</strong> ' . $mail_cc_address . '</li>
+                    <li><strong>Auto-BCC:</strong> ' . htmlspecialchars($mail_cc_address) . '</li>
                     <li><strong>Service:</strong> Exchange Email Integration</li>
                 </ul>
                 
@@ -783,7 +763,7 @@ function exchange_test_email($testEmail = null)
         </body>
         </html>';
 
-        $testResults['success'] = exchange_send_email($testEmail, $subject, $body, true, $mail_from_address, null, [$mail_cc_address], [], []);
+        $testResults['success'] = exchange_send_email($testEmail, $subject, $body, true, $mail_from_address, null, [], [$mail_cc_address], []);
         
         if (!$testResults['success']) {
             $testResults['error'] = 'Failed to send test email';

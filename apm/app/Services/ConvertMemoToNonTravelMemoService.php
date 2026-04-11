@@ -22,6 +22,9 @@ use RuntimeException;
 /**
  * Converts a returned single memo (Activity) or special memo into a Non-Travel memo,
  * migrates approval trails, repoints fund transactions, and removes the source record.
+ *
+ * The new memo always has document_number null so {@see \App\Traits\HasDocumentNumber} assigns
+ * a non-travel sequence; the source single-memo or special-memo document number is never copied.
  */
 class ConvertMemoToNonTravelMemoService
 {
