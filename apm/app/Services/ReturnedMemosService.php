@@ -108,8 +108,8 @@ class ReturnedMemosService
                 'type' => 'Matrix',
                 'title' => $matrix->activity_title ?? 'Untitled Matrix',
                 'document_number' => $matrix->document_number ?? 'N/A',
-                'division' => $matrix->division->division_name ?? 'N/A',
-                'submitted_by' => $matrix->staff->fname . ' ' . $matrix->staff->lname,
+                'division' => $matrix->division?->division_name ?? 'N/A',
+                'submitted_by' => $this->formatSubmittedBy($matrix),
                 'date_received' => $matrix->updated_at,
                 'overall_status' => $matrix->overall_status,
                 'view_url' => route('matrices.show', $matrix),
@@ -150,7 +150,7 @@ class ReturnedMemosService
                 'type' => 'Special Memo',
                 'title' => $memo->activity_title ?? 'Untitled Special Memo',
                 'document_number' => $memo->document_number ?? 'N/A',
-                'division' => $memo->division->division_name ?? 'N/A',
+                'division' => $memo->division?->division_name ?? 'N/A',
                 'submitted_by' => $this->formatSubmittedBy($memo),
                 'date_received' => $memo->updated_at,
                 'overall_status' => $memo->overall_status,
@@ -192,7 +192,7 @@ class ReturnedMemosService
                 'type' => 'Non-Travel Memo',
                 'title' => $memo->activity_title ?? 'Untitled Non-Travel Memo',
                 'document_number' => $memo->document_number ?? 'N/A',
-                'division' => $memo->division->division_name ?? 'N/A',
+                'division' => $memo->division?->division_name ?? 'N/A',
                 'submitted_by' => $this->formatSubmittedBy($memo),
                 'date_received' => $memo->updated_at,
                 'overall_status' => $memo->overall_status,
@@ -237,7 +237,7 @@ class ReturnedMemosService
                 'type' => 'Single Memo',
                 'title' => $memo->activity_title ?? 'Untitled Single Memo',
                 'document_number' => $memo->document_number ?? 'N/A',
-                'division' => $memo->division->division_name ?? 'N/A',
+                'division' => $memo->division?->division_name ?? 'N/A',
                 'submitted_by' => $this->formatSubmittedBy($memo),
                 'date_received' => $memo->updated_at,
                 'overall_status' => $memo->overall_status,
@@ -279,7 +279,7 @@ class ReturnedMemosService
                 'type' => 'Service Request',
                 'title' => $request->service_title ?? 'Untitled Service Request',
                 'document_number' => $request->document_number ?? 'N/A',
-                'division' => $request->division->division_name ?? 'N/A',
+                'division' => $request->division?->division_name ?? 'N/A',
                 'submitted_by' => $this->formatSubmittedBy($request),
                 'date_received' => $request->updated_at,
                 'overall_status' => $request->overall_status,
@@ -321,7 +321,7 @@ class ReturnedMemosService
                 'type' => 'ARF',
                 'title' => $request->activity_title ?? 'Untitled ARF Request',
                 'document_number' => $request->arf_number ?? 'N/A',
-                'division' => $request->division->division_name ?? 'N/A',
+                'division' => $request->division?->division_name ?? 'N/A',
                 'submitted_by' => $this->formatSubmittedBy($request),
                 'date_received' => $request->updated_at,
                 'overall_status' => $request->overall_status,
@@ -363,7 +363,7 @@ class ReturnedMemosService
                 'type' => 'Change Request',
                 'title' => $request->change_title ?? 'Untitled Change Request',
                 'document_number' => $request->document_number ?? 'N/A',
-                'division' => $request->division->division_name ?? 'N/A',
+                'division' => $request->division?->division_name ?? 'N/A',
                 'submitted_by' => $this->formatSubmittedBy($request),
                 'date_received' => $request->updated_at,
                 'overall_status' => $request->overall_status,
@@ -449,18 +449,45 @@ class ReturnedMemosService
      */
     protected function formatSubmittedBy($memo): string
     {
-        $submitter = $memo->staff->fname . ' ' . $memo->staff->lname;
-        
+        $submitter = $this->formatStaffFullName($memo->staff ?? null, $memo->staff_id ?? null);
+
         // For memos that have a responsible person different from the submitter
-        if (isset($memo->responsible_person_id) && $memo->responsible_person_id && $memo->responsible_person_id != $memo->staff_id) {
-            $responsiblePerson = \App\Models\Staff::find($memo->responsible_person_id);
+        if (!empty($memo->responsible_person_id)
+            && (int) $memo->responsible_person_id !== (int) ($memo->staff_id ?? 0)) {
+            $responsiblePerson = Staff::find($memo->responsible_person_id);
             if ($responsiblePerson) {
-                $responsibleName = $responsiblePerson->fname . ' ' . $responsiblePerson->lname;
-                return $submitter . '<br><small class="text-muted">Responsible: ' . $responsibleName . '</small>';
+                $responsibleName = $this->formatStaffFullName($responsiblePerson, null);
+                if ($responsibleName !== 'N/A') {
+                    return $submitter . '<br><small class="text-muted">Responsible: ' . $responsibleName . '</small>';
+                }
             }
         }
-        
+
         return $submitter;
+    }
+
+    /**
+     * Submitter display name when staff relation is missing or staff row was deleted.
+     */
+    private function formatStaffFullName(?Staff $staff, $staffId): string
+    {
+        if ($staff instanceof Staff) {
+            $name = trim(($staff->fname ?? '') . ' ' . ($staff->lname ?? ''));
+            if ($name !== '') {
+                return $name;
+            }
+        }
+        if ($staffId !== null && $staffId !== '') {
+            $resolved = Staff::find($staffId);
+            if ($resolved) {
+                $name = trim(($resolved->fname ?? '') . ' ' . ($resolved->lname ?? ''));
+                if ($name !== '') {
+                    return $name;
+                }
+            }
+        }
+
+        return 'N/A';
     }
 
     /**
