@@ -326,6 +326,10 @@ if (!function_exists('generate_pdf')) {
             exit;
         }
 
+        // Large HTML + mPDF/CSS parsing can exceed default PCRE backtrack limits (symptom: WriteHTML fails).
+        @ini_set('pcre.backtrack_limit', (string) max(10_000_000, (int) ini_get('pcre.backtrack_limit')));
+        @ini_set('pcre.recursion_limit', (string) max(10_000_000, (int) ini_get('pcre.recursion_limit')));
+
       // mPDF font configuration with Arial + safe fallback
 $defaultConfig      = (new \Mpdf\Config\ConfigVariables())->getDefaults();
 $fontDirs           = $defaultConfig['fontDir'];
@@ -378,13 +382,7 @@ $mpdf = new \Mpdf\Mpdf([
 
         // Set PDF margins exactly like CodeIgniter
         $mpdf->SetMargins(10, 10, 35);         // left, top, right margins
-        $mpdf->SetAutoPageBreak(true, 30);
-
-        $logoFile = public_path('assets/images/logo.png');
-        $logoSrc = (is_file($logoFile) && is_readable($logoFile))
-            ? $logoFile
-            : asset('assets/images/logo.png');
-
+        $mpdf->SetAutoPageBreak(true, 30); 
         $header = '<div style="width: 100%; text-align: center; padding-bottom: 5px;">
             <div style="width: 100%; padding-bottom: 5px;">
                 <div style="width: 100%; padding: 10px 0;">
@@ -392,7 +390,7 @@ $mpdf = new \Mpdf\Mpdf([
                     <div style="display:flex; justify-content: space-between; align-items: center;">
                         <!-- Left: Logo -->
                         <div style="width: 60%; text-align: left; float:left;">
-                            <img src="' . $logoSrc . '" alt="Africa CDC Logo" style="height: 80px;">
+                            <img src="' . asset('assets/images/logo.png') . '" alt="Africa CDC Logo" style="height: 80px;">
                         </div>
                         <!-- Right: Tagline -->
                         <div style="text-align: right; width: 35%; float:right; margin-top:10px;">
@@ -437,8 +435,7 @@ $mpdf = new \Mpdf\Mpdf([
             Log::error('mPDF WriteHTML failed', [
                 'view' => $view,
                 'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'html_bytes' => strlen($html),
             ]);
             $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
             $mpdf->WriteHTML($simpleHtml);

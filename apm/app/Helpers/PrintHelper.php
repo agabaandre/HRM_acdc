@@ -58,50 +58,65 @@ class PrintHelper
     }
 
     /**
-     * Strip outer &lt;html&gt;/&lt;head&gt;/&lt;body&gt; from a full memo PDF template so it can be embedded
-     * inside another mPDF document (nested full documents break WriteHTML).
+     * Turn a full HTML document (e.g. memo-pdf-simple) into a fragment safe to embed inside another
+     * PDF template: all &lt;style&gt; blocks plus &lt;body&gt; inner HTML only. Avoids nested &lt;html&gt;
+     * documents and avoids PCRE (.*) over huge strings, which triggers backtrack limits in mPDF/PHP.
      */
-    public static function embeddablePdfHtmlFragment(string $html): string
+    public static function htmlFullDocumentToEmbedFragment(string $html): string
     {
-        $html = trim($html);
         if ($html === '') {
             return '';
         }
 
-        libxml_use_internal_errors(true);
-        $dom = new \DOMDocument();
-        $loaded = @$dom->loadHTML('<?xml encoding="UTF-8">' . $html);
-        libxml_clear_errors();
+        // Already a fragment (e.g. second pass or pre-processed embed). Avoid duplicating &lt;style&gt; blocks.
+        if (stripos($html, '<html') === false) {
+            return $html;
+        }
 
-        if (!$loaded) {
-            if (preg_match('/<body[^>]*>(.*)<\/body>/is', $html, $m)) {
-                $styles = '';
-                if (preg_match_all('/<style\b[^>]*>.*?<\/style>/is', $html, $sm)) {
-                    $styles = implode('', $sm[0]);
-                }
+        $out = '';
+        $pos = 0;
+        $len = strlen($html);
+        $maxStyleBytes = 2_000_000;
+        $styleBytes = 0;
 
-                return $styles . $m[1];
+        while ($pos < $len) {
+            $styleOpen = stripos($html, '<style', $pos);
+            if ($styleOpen === false) {
+                break;
             }
-
-            return $html;
+            $gt = strpos($html, '>', $styleOpen);
+            if ($gt === false) {
+                break;
+            }
+            $cssStart = $gt + 1;
+            $styleClose = stripos($html, '</style>', $cssStart);
+            if ($styleClose === false) {
+                break;
+            }
+            $chunkLen = $styleClose - $cssStart;
+            if ($styleBytes + $chunkLen > $maxStyleBytes) {
+                break;
+            }
+            $out .= '<style>' . substr($html, $cssStart, $chunkLen) . '</style>';
+            $styleBytes += $chunkLen;
+            $pos = $styleClose + 8;
         }
 
-        $styles = '';
-        foreach ($dom->getElementsByTagName('style') as $styleNode) {
-            $styles .= $dom->saveHTML($styleNode);
+        $bodyOpen = stripos($html, '<body');
+        if ($bodyOpen === false) {
+            return $out . $html;
+        }
+        $gt = strpos($html, '>', $bodyOpen);
+        if ($gt === false) {
+            return $out . $html;
+        }
+        $innerStart = $gt + 1;
+        $bodyClose = stripos($html, '</body>', $innerStart);
+        if ($bodyClose === false) {
+            return $out . trim(substr($html, $innerStart));
         }
 
-        $body = $dom->getElementsByTagName('body')->item(0);
-        if (!$body) {
-            return $html;
-        }
-
-        $inner = '';
-        foreach ($body->childNodes as $child) {
-            $inner .= $dom->saveHTML($child);
-        }
-
-        return $styles . $inner;
+        return $out . trim(substr($html, $innerStart, $bodyClose - $innerStart));
     }
 
     /**
