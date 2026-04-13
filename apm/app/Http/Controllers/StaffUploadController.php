@@ -20,7 +20,7 @@ class StaffUploadController extends Controller
             abort(404);
         }
 
-        if (!Staff::query()->where('photo', $filename)->exists()) {
+        if (!self::authorizedForStaffPortrait($filename)) {
             abort(403);
         }
 
@@ -55,5 +55,47 @@ class StaffUploadController extends Controller
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=3600',
         ]);
+    }
+
+    /**
+     * Any staff row may reference this filename (CI3 secure_upload behaviour), or the logged-in user
+     * must match the file (session/JWT photo or staff.photo) so nav avatars work when DB/session edge cases differ.
+     */
+    private static function authorizedForStaffPortrait(string $filename): bool
+    {
+        if (Staff::query()->where('photo', $filename)->exists()) {
+            return true;
+        }
+
+        $user = session('user');
+        if ($user === null) {
+            return false;
+        }
+
+        $staffId = is_array($user)
+            ? (int) ($user['staff_id'] ?? 0)
+            : (int) ($user->staff_id ?? 0);
+
+        if ($staffId > 0) {
+            $dbPhoto = Staff::query()->where('staff_id', $staffId)->value('photo');
+            if (is_string($dbPhoto) && $dbPhoto !== '') {
+                $base = basename(str_replace('\\', '/', $dbPhoto));
+                if ($base === $filename) {
+                    return true;
+                }
+            }
+        }
+
+        $sessionPhoto = is_array($user)
+            ? trim((string) ($user['photo'] ?? ''))
+            : trim((string) ($user->photo ?? ''));
+        if ($sessionPhoto !== '') {
+            $base = basename(str_replace('\\', '/', $sessionPhoto));
+            if ($base === $filename) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
