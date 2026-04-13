@@ -4,6 +4,7 @@ info:
   description: |
     REST API for the Approvals Management module. Used by approver apps to list pending approvals,
     view documents, perform actions (approve/reject/return/cancel), and access memo lists.
+    **Other memos** (catalogue types under *Other memos* in the web app) appear in pending approvals as category **Other Memo**, document type path **other_memo**, and `item_type` **OtherMemo**.
     Authentication is JWT (Bearer token). API users are synced from the staff app `user` table;
     password verification supports Argon2i hashes.
   version: 1.0.0
@@ -500,9 +501,10 @@ paths:
       tags: [Pending]
       summary: Pending approvals (memos with approval trails)
       description: |
-        List of documents pending the current user's action, grouped by category (Matrix, Special Memo, etc.).
+        List of documents pending the current user's action, grouped by category (Matrix, Special Memo, **Other Memo**, etc.).
+        **Other Memo** items use `item_type` **OtherMemo** and a configurable approver chain (not workflow definitions).
         Each item includes **approval_trails**: full history, sorted by **created_at** descending (most recent first).
-        Use this to show pending memos with their approval trail; use GET /documents/{type}/{id} for full document detail.
+        Use this to show pending memos with their approval trail; use GET /documents/other_memo/{id} for full other-memo detail.
       operationId: pendingApprovals
       security: [{ bearerAuth: [] }]
       parameters:
@@ -524,7 +526,7 @@ paths:
                     properties:
                       pending:
                         type: object
-                        description: Keys are category names (e.g. "Special Memo", "Matrix"); values are arrays of pending items, each with approval_trails.
+                        description: Keys are category names (e.g. "Special Memo", "Matrix", "Other Memo"); values are arrays of pending items, each with approval_trails.
                         additionalProperties:
                           type: array
                           items: { $ref: '#/components/schemas/PendingApprovalItem' }
@@ -548,6 +550,7 @@ paths:
       summary: List documents by type and status
       description: |
         Returns all documents of the given type with the given overall_status (from mother models).
+        **other_memo** uses the `other_memos` table (catalogue-driven memos); attachments are typically empty; **print_url** is set when approved.
         Optional query parameter **id** returns a single document when provided.
         When listing (no id), results are ordered **latest first** (year desc, quarter desc, created_at desc)
         and support memo-list style filters and pagination.
@@ -560,7 +563,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [special_memo, matrix, activity, non_travel_memo, service_request, arf, change_request]
+            enum: [special_memo, matrix, activity, non_travel_memo, service_request, arf, change_request, other_memo]
         - name: status
           in: path
           required: true
@@ -586,7 +589,7 @@ paths:
           in: query
           required: false
           schema: { type: string }
-          description: Search in title/activity_title (LIKE %value%). Service request uses title and service_title.
+          description: Search in title/activity_title (LIKE %value%). Service request uses title and service_title. **other_memo** uses memo_type_name_snapshot.
         - name: document_number
           in: query
           required: false
@@ -646,6 +649,7 @@ paths:
         **approval_trails** are sorted by **created_at** descending (latest action first).
         Each approval_trail entry includes **staff_image_url** and **oic_staff_image_url** when a portrait is available.
         Document payloads merge **approval_order**, **approval_role**, **workflow_definition_id**, **approver_name**, **approver_staff_id** (staff_id of the current workflow actor, null if none), and **approver_image_url**.
+        For **other_memo**, **workflow_definition_id** is always null; **approval_order** is the active step in the configured approver chain; **approval_role** is the step label from approver configuration.
         Each attachment has **url** (API; use with Bearer token or ?token= for in-browser) and **web_view_url**
         (web session; use to open in browser when user is logged in via the web app).
         For listing by status use GET /documents/{type}/{status}.
@@ -657,7 +661,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [special_memo, matrix, activity, non_travel_memo, service_request, arf, change_request]
+            enum: [special_memo, matrix, activity, non_travel_memo, service_request, arf, change_request, other_memo]
         - name: id
           in: path
           required: true
@@ -712,7 +716,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [special_memo, matrix, activity, non_travel_memo, service_request, arf, change_request]
+            enum: [special_memo, matrix, activity, non_travel_memo, service_request, arf, change_request, other_memo]
         - name: id
           in: path
           required: true
@@ -905,6 +909,7 @@ paths:
         Submit an approval action for a **single** document (memo, matrix, activity, etc.).
         Does not return the document or approval trails; use GET /documents/{type}/{id} to fetch the updated document with approval_trails after applying an action.
         **Actions:** approved, rejected, returned, cancelled (cancelled = HOD return for special memo only; for other types use "returned").
+        **other_memo:** use type **other_memo**. **approved** advances the configured approver chain; **returned**, **rejected**, or **cancelled** return the memo to the creator (remarks required, up to 5000 chars). Does not use the generic `approval_trails` table.
       operationId: action
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -917,7 +922,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: [special_memo, non_travel_memo, single_memo, matrix, service_request, arf, change_request]
+                  enum: [special_memo, non_travel_memo, single_memo, matrix, service_request, arf, change_request, other_memo]
                   description: Document type (use same as in pending-approvals item_type or documents path).
                 id: { type: integer, description: Document ID }
                 action:
@@ -957,10 +962,11 @@ paths:
       tags: [Actions]
       summary: Resubmit document for approval
       description: |
-        Resubmit a **returned**, **pending**, or **draft** document for approval. Works for all document types
+        Resubmit a **returned**, **pending**, or **draft** document for approval. Works for workflow-based document types
         (special_memo, non_travel_memo, single_memo, matrix, service_request, arf, change_request).
         The document is sent back to the **previous level it came from** (the level that returned it),
         same behaviour as non-travel memo resubmit. Only division heads or the creator (when document is at level 0) can resubmit.
+        **other_memo:** only **returned** memos are resubmitted here; the **creator** (`staff_id`) sends the memo back to the approver at `returned_at_sequence`. Use type **other_memo** and optional **comment** (trail remarks).
       operationId: resubmit
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -973,7 +979,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: [special_memo, non_travel_memo, single_memo, matrix, service_request, arf, change_request]
+                  enum: [special_memo, non_travel_memo, single_memo, matrix, service_request, arf, change_request, other_memo]
                   description: Document type (same as in pending-approvals / documents).
                 id: { type: integer, description: Document ID }
                 comment: { type: string, maxLength: 1000, description: Optional remarks for the resubmission trail }
@@ -1008,7 +1014,9 @@ paths:
     get:
       tags: [Approved by me]
       summary: Documents approved by me
-      description: List of documents the current user has approved/rejected, plus average approval time (same as dashboard).
+      description: |
+        List of documents the current user has approved/rejected, plus average approval time (same as dashboard).
+        Rows come from the main **approval_trails** table; **other_memo** approvals are stored in **other_memos_approval_trails** and are not included in this list yet (use pending-approvals and document detail for other memos).
       operationId: approvedByMe
       security: [{ bearerAuth: [] }]
       parameters:
@@ -2274,7 +2282,7 @@ components:
       properties:
         id: { type: integer }
         category: { type: string }
-        type: { type: string, description: "e.g. SpecialMemo, Matrix, Activity" }
+        type: { type: string, description: "e.g. SpecialMemo, Matrix, Activity, OtherMemo" }
         status: { type: string }
         title: { type: string }
         division: { type: string }

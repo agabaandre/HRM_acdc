@@ -107,7 +107,7 @@ Route::get('oauth/callback', [App\Http\Controllers\Api\ApmAuthController::class,
 // Document attachment stream: session or JWT (Bearer or ?token=) so mobile and in-browser can access.
 Route::get('documents/attachments/{type}/{id}/{index}', [App\Http\Controllers\Api\ApmDocumentController::class, 'streamAttachment'])
     ->name('documents.attachments.stream')
-    ->where('type', 'special_memo|matrix|activity|non_travel_memo|service_request|arf|change_request')
+    ->where('type', 'special_memo|matrix|activity|non_travel_memo|service_request|arf|change_request|other_memo')
     ->where('index', '[0-9]+')
     ->middleware(['accept.token.in.query', 'auth.session.or.jwt']);
 

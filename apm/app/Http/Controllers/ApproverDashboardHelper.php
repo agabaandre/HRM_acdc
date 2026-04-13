@@ -169,6 +169,7 @@ trait ApproverDashboardHelper
                         'non_travel' => 0,
                         'single_memos' => 0,
                         'special' => 0,
+                        'other_memo' => 0,
                         'memos' => 0,
                         'arf' => 0,
                         'requests_for_service' => 0,
@@ -288,6 +289,7 @@ trait ApproverDashboardHelper
             'non_travel' => 0,
             'single_memos' => 0,
             'special' => 0,
+            'other_memo' => 0,
             'memos' => 0,
             'arf' => 0,
             'requests_for_service' => 0,
@@ -398,6 +400,25 @@ trait ApproverDashboardHelper
         foreach ($activities as $activity) {
             if ($approvalService->canTakeAction($activity, $staffId)) {
                 $counts['single_memos']++;
+            }
+        }
+
+        // Pending other memos (explicit approver chain, not workflow definitions)
+        $query = \App\Models\OtherMemo::query()
+            ->where('overall_status', \App\Models\OtherMemo::STATUS_PENDING)
+            ->whereNotNull('current_approver_staff_id');
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+        foreach ($query->get() as $otherMemo) {
+            if ($approvalService->canTakeAction($otherMemo, $staffId)) {
+                $counts['other_memo']++;
             }
         }
 
@@ -512,6 +533,7 @@ trait ApproverDashboardHelper
             'non_travel' => 0,
             'single_memos' => 0,
             'special' => 0,
+            'other_memo' => 0,
             'memos' => 0,
             'arf' => 0,
             'requests_for_service' => 0,
@@ -602,6 +624,20 @@ trait ApproverDashboardHelper
             foreach ($activities as $activity) {
                 if ($approvalService->canTakeAction($activity, $staffId)) {
                     $counts['single_memos']++;
+                }
+            }
+        }
+
+        if (! $docType) {
+            $query = \App\Models\OtherMemo::query()
+                ->where('overall_status', \App\Models\OtherMemo::STATUS_PENDING)
+                ->whereNotNull('current_approver_staff_id');
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
+            }
+            foreach ($query->get() as $otherMemo) {
+                if ($approvalService->canTakeAction($otherMemo, $staffId)) {
+                    $counts['other_memo']++;
                 }
             }
         }

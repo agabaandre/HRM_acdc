@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ApprovalTrail;
 use App\Models\FundCode;
+use App\Models\OtherMemo;
 use App\Models\WorkflowDefinition;
 use App\Models\Approver;
 use App\Models\Staff;
@@ -18,6 +19,23 @@ class ApprovalService
     
     public function canTakeAction(Model $model, int $userId):bool
     {
+          if ($model instanceof OtherMemo) {
+              if (empty($userId)) {
+                  return false;
+              }
+              if (in_array($model->overall_status, ['approved', 'draft', 'cancelled'], true)) {
+                  return false;
+              }
+              if ($model->overall_status === 'returned') {
+                  return false;
+              }
+              if ($model->overall_status !== OtherMemo::STATUS_PENDING) {
+                  return false;
+              }
+
+              return (int) $model->current_approver_staff_id === (int) $userId;
+          }
+
           // Use the userId parameter instead of session data
           if (empty($userId) || $this->hasUserApproved($model, $userId) || in_array($model->overall_status,['approved','draft'])) {
               return false;

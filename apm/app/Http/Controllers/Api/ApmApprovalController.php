@@ -11,11 +11,14 @@ use App\Models\NonTravelMemo;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
 use App\Models\ChangeRequest;
+use App\Models\OtherMemo;
 use App\Models\WorkflowModel;
 use App\Services\ApprovalService;
+use App\Services\OtherMemoApiApprovalService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ApmApprovalController extends Controller
 {
@@ -25,6 +28,17 @@ class ApmApprovalController extends Controller
      */
     public function action(Request $request): JsonResponse
     {
+        $sessionData = $request->attributes->get('api_user_session');
+        if (!$sessionData) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $staffId = (int) ($sessionData['staff_id'] ?? 0);
+
+        if ($request->input('type') === 'other_memo') {
+            return $this->otherMemoAction($request, $staffId);
+        }
+
         $request->validate([
             'type' => 'required|string|in:special_memo,non_travel_memo,single_memo,matrix,service_request,arf,change_request',
             'id' => 'required|integer',
@@ -32,13 +46,6 @@ class ApmApprovalController extends Controller
             'comment' => 'nullable|string|max:1000',
             'available_budget' => 'nullable|numeric|min:0',
         ]);
-
-        $sessionData = $request->attributes->get('api_user_session');
-        if (!$sessionData) {
-            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
-        }
-
-        $staffId = (int) ($sessionData['staff_id'] ?? 0);
         $modelType = $this->modelTypeFor($request->type);
         $modelId = (int) $request->id;
         $action = $request->action;
@@ -74,6 +81,56 @@ class ApmApprovalController extends Controller
         ]);
     }
 
+    private function otherMemoAction(Request $request, int $staffId): JsonResponse
+    {
+        $request->validate([
+            'type' => 'required|string|in:other_memo',
+            'id' => 'required|integer',
+            'action' => 'required|string|in:approved,rejected,returned,cancelled',
+            'comment' => [
+                'nullable',
+                'string',
+                'max:5000',
+                Rule::requiredIf(fn () => in_array($request->input('action'), ['returned', 'rejected', 'cancelled'], true)),
+            ],
+        ]);
+
+        $memo = OtherMemo::find((int) $request->id);
+        if (! $memo) {
+            return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
+        }
+
+        $approvalService = app(ApprovalService::class);
+        if (! $approvalService->canTakeAction($memo, $staffId)) {
+            return response()->json(['success' => false, 'message' => 'You are not authorized to perform this action.'], 403);
+        }
+
+        $rawAction = $request->input('action');
+        $comment = (string) ($request->input('comment') ?? $request->input('remarks') ?? '');
+
+        if ($rawAction === 'approved') {
+            OtherMemoApiApprovalService::approve($memo, $staffId, $comment !== '' ? $comment : null);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Action applied successfully.',
+                'data' => ['action' => 'approved', 'document_type' => 'other_memo', 'document_id' => (int) $request->id],
+            ]);
+        }
+
+        if (trim($comment) === '') {
+            return response()->json(['success' => false, 'message' => 'Remarks are required when returning an other memo.'], 422);
+        }
+
+        OtherMemoApiApprovalService::returnToCreator($memo, $staffId, $comment);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Action applied successfully.',
+            'data' => ['action' => 'returned', 'document_type' => 'other_memo', 'document_id' => (int) $request->id],
+        ]);
+    }
+
     private function resolveModel(string $modelType, int $id): ?Model
     {
         $modelClass = "App\\Models\\{$modelType}";
@@ -104,18 +161,22 @@ class ApmApprovalController extends Controller
      */
     public function resubmit(Request $request): JsonResponse
     {
-        $request->validate([
-            'type' => 'required|string|in:special_memo,non_travel_memo,single_memo,matrix,service_request,arf,change_request',
-            'id' => 'required|integer',
-            'comment' => 'nullable|string|max:1000',
-        ]);
-
         $sessionData = $request->attributes->get('api_user_session');
         if (!$sessionData) {
             return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
         }
 
         $staffId = (int) ($sessionData['staff_id'] ?? 0);
+
+        if ($request->input('type') === 'other_memo') {
+            return $this->otherMemoResubmit($request, $staffId);
+        }
+
+        $request->validate([
+            'type' => 'required|string|in:special_memo,non_travel_memo,single_memo,matrix,service_request,arf,change_request',
+            'id' => 'required|integer',
+            'comment' => 'nullable|string|max:1000',
+        ]);
         $modelType = $this->modelTypeFor($request->type);
         $modelId = (int) $request->id;
 
@@ -182,6 +243,41 @@ class ApmApprovalController extends Controller
                 'document_type' => $request->type,
                 'document_id' => $modelId,
                 'approval_level' => $model->approval_level,
+            ],
+        ]);
+    }
+
+    private function otherMemoResubmit(Request $request, int $staffId): JsonResponse
+    {
+        $request->validate([
+            'type' => 'required|string|in:other_memo',
+            'id' => 'required|integer',
+            'comment' => 'nullable|string|max:5000',
+        ]);
+
+        $memo = OtherMemo::find((int) $request->id);
+        if (! $memo) {
+            return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
+        }
+
+        if ($memo->overall_status !== OtherMemo::STATUS_RETURNED || $memo->returned_at_sequence === null) {
+            return response()->json(['success' => false, 'message' => 'Only returned other memos can be resubmitted via this endpoint.'], 422);
+        }
+
+        if ((int) $memo->staff_id !== $staffId) {
+            return response()->json(['success' => false, 'message' => 'You are not authorized to resubmit this document.'], 403);
+        }
+
+        OtherMemoApiApprovalService::resubmit($memo, $staffId, $request->input('comment'));
+        $memo = $memo->fresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document resubmitted for approval.',
+            'data' => [
+                'document_type' => 'other_memo',
+                'document_id' => (int) $request->id,
+                'approval_level' => (int) ($memo->active_sequence ?? 0),
             ],
         ]);
     }

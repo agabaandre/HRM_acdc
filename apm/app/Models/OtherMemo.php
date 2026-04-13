@@ -63,6 +63,16 @@ class OtherMemo extends Model
         return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
     }
 
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
+    }
+
+    public function division(): BelongsTo
+    {
+        return $this->belongsTo(Division::class, 'division_id');
+    }
+
     public function currentApprover(): BelongsTo
     {
         return $this->belongsTo(Staff::class, 'current_approver_staff_id', 'staff_id');

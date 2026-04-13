@@ -170,10 +170,11 @@ class PendingApprovalsController extends Controller
             ];
         }
         
-        // Memos (Special Memo + Non-Travel Memo + Single Memo)
-        $memoCount = (count($pendingApprovals['Special Memo'] ?? []) + 
-                     count($pendingApprovals['Non-Travel Memo'] ?? []) + 
-                     count($pendingApprovals['Single Memo'] ?? []));
+        // Memos (Special Memo + Non-Travel Memo + Single Memo + Other Memo)
+        $memoCount = (count($pendingApprovals['Special Memo'] ?? []) +
+                     count($pendingApprovals['Non-Travel Memo'] ?? []) +
+                     count($pendingApprovals['Single Memo'] ?? []) +
+                     count($pendingApprovals['Other Memo'] ?? []));
         if ($memoCount > 0) {
             $categories[] = [
                 'value' => 'memos',
@@ -220,7 +221,8 @@ class PendingApprovalsController extends Controller
                 return [
                     'Special Memo' => $pendingApprovals['Special Memo'] ?? [],
                     'Non-Travel Memo' => $pendingApprovals['Non-Travel Memo'] ?? [],
-                    'Single Memo' => $pendingApprovals['Single Memo'] ?? []
+                    'Single Memo' => $pendingApprovals['Single Memo'] ?? [],
+                    'Other Memo' => $pendingApprovals['Other Memo'] ?? [],
                 ];
                 
             case 'requests':

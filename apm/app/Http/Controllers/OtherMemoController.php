@@ -8,40 +8,163 @@ use App\Models\OtherMemo;
 use App\Models\OtherMemoApprovalTrail;
 use App\Models\Staff;
 use App\Models\WorkflowDefinition;
+use App\Services\OtherMemoApproverNotifier;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class OtherMemoController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
-        $staffId = $this->staffId();
-        $q = OtherMemo::query()->with(['creator', 'approvalTrails'])->orderByDesc('updated_at');
+        $currentStaffId = $this->staffId();
 
-        if ($request->get('filter') === 'pending_me') {
-            $q->where('overall_status', OtherMemo::STATUS_PENDING)
-                ->where('current_approver_staff_id', $staffId);
-        } elseif ($request->get('filter') === 'mine') {
-            $q->where('staff_id', $staffId);
-        } elseif ($request->get('filter') === 'all') {
-            // no extra constraint
-        } else {
-            $q->where(function ($w) use ($staffId) {
-                $w->where('staff_id', $staffId)
-                    ->orWhere(function ($w2) use ($staffId) {
-                        $w2->where('overall_status', OtherMemo::STATUS_PENDING)
-                            ->where('current_approver_staff_id', $staffId);
-                    });
-            });
+        $staff = Cache::remember('other_memos_index_staff', 60 * 60, fn () => Staff::active()->orderBy('lname')->orderBy('fname')->get());
+        $divisions = Cache::remember('other_memos_index_divisions', 60 * 60, fn () => Division::query()->orderBy('division_name')->get());
+
+        $year = $this->resolveOtherMemoYearString($request);
+
+        if ($request->ajax() && $request->filled('tab')) {
+            $tab = $request->get('tab', '');
+            $yearApplied = $this->resolveOtherMemoYearString($request);
+
+            [$mySubmittedMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
+
+            $countMySubmitted = $mySubmittedMemos->total();
+            $countAllMemos = $allMemos instanceof LengthAwarePaginator ? $allMemos->total() : $allMemos->count();
+
+            $html = match ($tab) {
+                'mySubmitted' => view('other-memos.partials.my-submitted-tab', compact('mySubmittedMemos'))->render(),
+                'allMemos' => view('other-memos.partials.all-memos-tab', compact('allMemos'))->render(),
+                default => '',
+            };
+
+            return response()->json([
+                'html' => $html,
+                'year_applied' => $yearApplied,
+                'count_my_submitted' => $countMySubmitted,
+                'count_all_memos' => $countAllMemos,
+            ]);
         }
 
-        $memos = $q->paginate(20)->withQueryString();
+        [$mySubmittedMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
 
-        return view('other-memos.index', compact('memos'));
+        $currentYear = (int) date('Y');
+        $minYear = max(2025, $currentYear - 10);
+        $yearRange = range($currentYear, $minYear);
+        $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
+
+        return view('other-memos.index', compact(
+            'mySubmittedMemos',
+            'allMemos',
+            'staff',
+            'divisions',
+            'year',
+            'years',
+            'currentStaffId',
+        ));
+    }
+
+    /**
+     * @return array{0: LengthAwarePaginator, 1: LengthAwarePaginator|\Illuminate\Support\Collection}
+     */
+    private function paginateOtherMemoTabs(Request $request, int $currentStaffId): array
+    {
+        $mySubmittedMemos = $this->buildOtherMemoMySubmittedQuery($request, $currentStaffId)
+            ->orderByDesc('updated_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        $allMemos = collect();
+        if (in_array(87, user_session('permissions', []))) {
+            $allMemos = $this->buildOtherMemoAllQuery($request)
+                ->orderByDesc('updated_at')
+                ->paginate(20)
+                ->withQueryString();
+        }
+
+        return [$mySubmittedMemos, $allMemos];
+    }
+
+    private function buildOtherMemoMySubmittedQuery(Request $request, int $currentStaffId): Builder
+    {
+        $q = OtherMemo::query()
+            ->with(['creator', 'division', 'staff', 'currentApprover'])
+            ->where('staff_id', $currentStaffId);
+        $this->applyOtherMemoIndexFilters($q, $request);
+
+        return $q;
+    }
+
+    private function buildOtherMemoAllQuery(Request $request): Builder
+    {
+        $q = OtherMemo::query()->with(['creator', 'division', 'staff', 'currentApprover']);
+        $this->applyOtherMemoIndexFilters($q, $request);
+
+        return $q;
+    }
+
+    private function applyOtherMemoIndexFilters(Builder $query, Request $request): void
+    {
+        $year = $this->resolveOtherMemoYearString($request);
+        if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+            $query->whereYear('created_at', (int) $year);
+        }
+        if ($request->filled('document_number')) {
+            $query->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+        if ($request->filled('staff_id')) {
+            $query->where('staff_id', (int) $request->staff_id);
+        }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', (int) $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $status = (string) $request->status;
+            if ($status === 'rejected') {
+                $query->where('overall_status', OtherMemo::STATUS_CANCELLED);
+            } else {
+                $query->where('overall_status', $status);
+            }
+        }
+        if ($request->filled('search')) {
+            $this->applyOtherMemoSearchFilter($query, $request->string('search')->toString());
+        }
+    }
+
+    private function applyOtherMemoSearchFilter(Builder $query, string $term): void
+    {
+        $term = trim($term);
+        if ($term === '') {
+            return;
+        }
+        $like = '%' . addcslashes($term, '%_\\') . '%';
+        $query->where(function (Builder $q) use ($like) {
+            $q->where('memo_type_name_snapshot', 'like', $like)
+                ->orWhere('document_number', 'like', $like)
+                ->orWhere('payload->title', 'like', $like);
+        });
+    }
+
+    private function resolveOtherMemoYearString(Request $request): string
+    {
+        $currentYear = (int) date('Y');
+        $year = $request->get('year');
+        if ($year === null || $year === '') {
+            $year = (string) $currentYear;
+        }
+        $year = (string) $year;
+        if ($year !== 'all' && is_numeric($year) && (int) $year === 0) {
+            $year = (string) $currentYear;
+        }
+
+        return $year;
     }
 
     public function staffLookup(Request $request): JsonResponse
@@ -91,7 +214,7 @@ class OtherMemoController extends Controller
     public function show(OtherMemo $other_memo): View
     {
         $this->authorizeView($other_memo);
-        $other_memo->load(['approvalTrails.staff', 'creator', 'currentApprover']);
+        $other_memo->load(['approvalTrails.staff', 'approvalTrails.otherMemo', 'creator', 'currentApprover']);
 
         return view('other-memos.show', [
             'memo' => $other_memo,
@@ -155,8 +278,13 @@ class OtherMemoController extends Controller
         }
 
         $schema = $other_memo->fields_schema_snapshot ?? [];
-        $payload = $this->validatePayloadForSchema($request, $schema);
-        $approvers = $this->normalizeApprovers($request);
+        if ($request->boolean('use_stored_memo_content')) {
+            $payload = $other_memo->payload ?? [];
+            $approvers = $other_memo->approvers_config ?? [];
+        } else {
+            $payload = $this->validatePayloadForSchema($request, $schema);
+            $approvers = $this->normalizeApprovers($request);
+        }
 
         if (count($approvers) < 1) {
             return back()->withInput()->with('msg', 'Add at least one approver in sequence.')->with('type', 'danger');
@@ -222,6 +350,8 @@ class OtherMemoController extends Controller
 
         $other_memo->save();
 
+        OtherMemoApproverNotifier::notifyCurrentApprover($other_memo->current_approver_staff_id, $other_memo->fresh());
+
         return redirect()->route('other-memos.show', $other_memo)
             ->with('msg', $isResubmit ? 'Resubmitted for approval.' : 'Submitted for approval.')
             ->with('type', 'success');
@@ -257,6 +387,13 @@ class OtherMemoController extends Controller
         }
 
         $other_memo->save();
+
+        if ($other_memo->overall_status === OtherMemo::STATUS_PENDING && $other_memo->current_approver_staff_id) {
+            OtherMemoApproverNotifier::notifyCurrentApprover(
+                (int) $other_memo->current_approver_staff_id,
+                $other_memo->fresh()
+            );
+        }
 
         return redirect()->route('other-memos.show', $other_memo)
             ->with('msg', 'Approval recorded.')

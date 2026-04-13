@@ -10,6 +10,7 @@ use App\Models\NonTravelMemo;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
 use App\Models\ChangeRequest;
+use App\Models\OtherMemo;
 use App\Models\FundCode;
 use App\Models\Location;
 use App\Models\NonTravelMemoCategory;
@@ -228,9 +229,81 @@ class ApmDocumentController extends Controller
                 return $this->arf($id);
             case 'change_request':
                 return $this->changeRequest($id);
+            case 'other_memo':
+                return $this->otherMemo($id);
             default:
                 return response()->json(['success' => false, 'message' => 'Unknown document type.'], 400);
         }
+    }
+
+    private function otherMemo(int $id): JsonResponse
+    {
+        $memo = OtherMemo::with([
+            'staff', 'division', 'creator', 'approvalTrails.staff', 'currentApprover',
+        ])->find($id);
+        if (! $memo) {
+            return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->buildOtherMemoDocumentData($memo, $id),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildOtherMemoDocumentData(OtherMemo $memo, int $id): array
+    {
+        $memo->loadMissing(['staff', 'division', 'creator', 'approvalTrails.staff', 'currentApprover']);
+        $data = $memo->toArray();
+        $data['document_type'] = 'other_memo';
+        $data['activity_title'] = $memo->memo_type_name_snapshot;
+        $data['approval_trails'] = $this->formatOtherMemoApprovalTrails($memo);
+        $data['attachments'] = [];
+        $data['print_url'] = $this->getPrintUrl('other_memo', $memo);
+
+        return $this->mergeCurrentApprovalIntoDocument($data, $memo, 'other_memo');
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function formatOtherMemoApprovalTrails(OtherMemo $memo): array
+    {
+        $trails = $memo->approvalTrails ?? collect();
+        if ($trails->isEmpty()) {
+            return [];
+        }
+        $sorted = ApprovalTrailSort::latestFirst($trails);
+
+        return $sorted->map(function ($t) use ($memo) {
+            $staff = $t->relationLoaded('staff') ? $t->staff : null;
+            $staffName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
+            $order = (int) ($t->approval_order ?? 0);
+            $role = null;
+            if ($order > 0) {
+                $row = $memo->approverAtSequence($order);
+                $role = is_array($row) ? ($row['role_label'] ?? null) : null;
+            }
+
+            return [
+                'id' => $t->id,
+                'action' => $t->action ?? null,
+                'remarks' => $t->remarks ?? null,
+                'approval_order' => $t->approval_order ?? null,
+                'staff_id' => $t->staff_id ?? null,
+                'staff_name' => $staffName,
+                'staff_image_url' => StaffApproverPhotoUrl::resolve($staff instanceof Staff ? $staff : null),
+                'oic_staff_id' => null,
+                'oic_staff_name' => null,
+                'oic_staff_image_url' => null,
+                'role' => $role,
+                'created_at' => $t->created_at ? (\Carbon\Carbon::parse($t->created_at)->toIso8601String()) : null,
+                'is_archived' => false,
+            ];
+        })->values()->toArray();
     }
 
     private function specialMemo(int $id): JsonResponse
@@ -495,6 +568,7 @@ class ApmDocumentController extends Controller
                 'service_request' => route('service-requests.print', ['serviceRequest' => $model->id]),
                 'arf' => route('request-arf.print', ['requestARF' => $model->id]),
                 'change_request' => route('change-requests.print', ['changeRequest' => $model->id]),
+                'other_memo' => route('other-memos.print', ['other_memo' => $model->id]),
                 default => null,
             };
         } catch (\Throwable $e) {
@@ -535,6 +609,9 @@ class ApmDocumentController extends Controller
             ])->where('overall_status', $status),
             'change_request' => ChangeRequest::with([
                 'staff', 'division', 'fundType', 'requestType', 'nonTravelMemoCategory', 'matrix', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
+            ])->where('overall_status', $status),
+            'other_memo' => OtherMemo::with([
+                'staff', 'division', 'creator', 'approvalTrails.staff', 'currentApprover',
             ])->where('overall_status', $status),
             default => null,
         };
@@ -739,6 +816,25 @@ class ApmDocumentController extends Controller
             return;
         }
 
+        if ($type === 'other_memo') {
+            if ($year !== null) {
+                $query->whereYear('created_at', $year);
+            }
+            if ($quarter !== null && in_array($quarter, ['Q1', 'Q2', 'Q3', 'Q4'], true)) {
+                $qNum = (int) substr($quarter, 1);
+                $query->whereRaw('QUARTER(created_at) = ?', [$qNum]);
+            }
+            if ($title !== null) {
+                $esc = addcslashes($title, '%_\\');
+                $query->where('memo_type_name_snapshot', 'like', '%' . $esc . '%');
+            }
+            if ($documentNumber !== null) {
+                $query->where('document_number', 'like', '%' . addcslashes($documentNumber, '%_\\') . '%');
+            }
+
+            return;
+        }
+
         if ($type === 'activity' || $type === 'single_memo') {
             if ($year !== null || $quarter !== null) {
                 $query->whereHas('matrix', function ($q) use ($year, $quarter) {
@@ -822,6 +918,9 @@ class ApmDocumentController extends Controller
         }
         if ($type === 'change_request' && $model instanceof ChangeRequest) {
             return $this->buildChangeRequestDocumentData($model, $id);
+        }
+        if ($type === 'other_memo' && $model instanceof OtherMemo) {
+            return $this->buildOtherMemoDocumentData($model, $id);
         }
 
         $data = $this->normalizeMemoJsonFields($model->toArray());
@@ -929,6 +1028,23 @@ class ApmDocumentController extends Controller
             $approvalOrder = $model->approval_level;
             $def = $model->workflow_definition;
             $actorSource = $model;
+        } elseif ($documentType === 'other_memo' && $model instanceof OtherMemo) {
+            $model->loadMissing('currentApprover');
+            $seq = (int) $model->active_sequence;
+            $row = $seq > 0 ? $model->approverAtSequence($seq) : null;
+            $actor = $model->currentApprover;
+            if (! $actor instanceof Staff) {
+                $actor = null;
+            }
+
+            return [
+                'approval_order' => $seq > 0 ? $seq : null,
+                'approval_role' => is_array($row) ? ($row['role_label'] ?? null) : null,
+                'workflow_definition_id' => null,
+                'approver_name' => $this->formatStaffDisplayName($actor),
+                'approver_staff_id' => $actor !== null ? (int) $actor->staff_id : null,
+                'approver_image_url' => StaffApproverPhotoUrl::resolve($actor),
+            ];
         }
 
         $actor = $actorSource !== null ? $actorSource->current_actor : null;
@@ -954,7 +1070,7 @@ class ApmDocumentController extends Controller
     /**
      * Resolve document model by type and id.
      */
-    private function resolveDocument(string $type, int $id): SpecialMemo|Matrix|Activity|NonTravelMemo|ServiceRequest|RequestARF|ChangeRequest|null
+    private function resolveDocument(string $type, int $id): SpecialMemo|Matrix|Activity|NonTravelMemo|ServiceRequest|RequestARF|ChangeRequest|OtherMemo|null
     {
         return match ($type) {
             'special_memo' => SpecialMemo::find($id),
@@ -964,6 +1080,7 @@ class ApmDocumentController extends Controller
             'service_request' => ServiceRequest::find($id),
             'arf' => RequestARF::find($id),
             'change_request' => ChangeRequest::find($id),
+            'other_memo' => OtherMemo::find($id),
             default => null,
         };
     }

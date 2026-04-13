@@ -39,4 +39,24 @@ class OtherMemoApprovalTrail extends Model
     {
         return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
     }
+
+    /**
+     * Label for the timeline (matches approval_trails.approver_role_name usage in matrices partial).
+     */
+    public function getApproverRoleNameAttribute(): ?string
+    {
+        $order = (int) $this->approval_order;
+        if ($order === 0) {
+            return 'Creator';
+        }
+
+        $memo = $this->relationLoaded('otherMemo') ? $this->otherMemo : $this->otherMemo()->first();
+        if (! $memo) {
+            return 'Approver';
+        }
+
+        $row = $memo->approverAtSequence($order);
+
+        return is_array($row) ? (string) ($row['role_label'] ?? 'Approver') : 'Approver';
+    }
 }
