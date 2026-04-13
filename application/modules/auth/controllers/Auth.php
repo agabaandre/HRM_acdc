@@ -1153,7 +1153,7 @@ public function revert()
       $passport_file_name = $safe_name . '_passport_' . time() . '.' . ($ext ? strtolower($ext) : 'jpg');
       $config = array(
         'upload_path'   => rtrim($passport_upload_path, '/\\') . '/',
-        'allowed_types' => 'gif|jpg|png|jpeg',
+        'allowed_types' => 'gif|jpg|png|jpeg|pdf',
         'file_name'     => $passport_file_name,
         'max_size'      => 4096,
         'overwrite'     => false
