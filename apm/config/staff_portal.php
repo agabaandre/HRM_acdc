@@ -2,7 +2,8 @@
 
 /**
  * Paths shared with the CodeIgniter staff portal (sibling app).
- * Signature files live under uploads/staff/signature/ and are no longer web-public (secure_upload).
+ * Staff files live under uploads/staff/ (photos), uploads/staff/signature/, etc.
+ * CI3 blocks direct /uploads/staff/*; APM serves photos via staff-uploads/photo (session/JWT).
  */
 return [
     'uploads_root' => env(

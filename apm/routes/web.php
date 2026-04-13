@@ -111,6 +111,11 @@ Route::get('documents/attachments/{type}/{id}/{index}', [App\Http\Controllers\Ap
     ->where('index', '[0-9]+')
     ->middleware(['accept.token.in.query', 'auth.session.or.jwt']);
 
+// Staff portraits: ?f=basename only (CI3 blocks direct /uploads/staff/*).
+Route::get('staff-uploads/photo', [App\Http\Controllers\StaffUploadController::class, 'photo'])
+    ->name('staff-uploads.photo')
+    ->middleware(['accept.token.in.query', 'auth.session.or.jwt']);
+
 // Public FAQ, Help and Documentation (no login required; no system menu)
 Route::get('/faq', [App\Http\Controllers\FaqController::class, 'publicPage'])->name('faq.index');
 Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');

@@ -119,8 +119,8 @@
                     $approver = $trail->oicStaff ?? $trail->staff;
                     $approverName = $approver ? ($approver->name ?? trim(($approver->title ?? '') . ' ' . ($approver->fname ?? '') . ' ' . ($approver->lname ?? '') . ' ' . ($approver->oname ?? ''))) : 'N/A';
                     $initials = $approver ? strtoupper(substr($approver->fname ?? '', 0, 1) . substr($approver->lname ?? '', 0, 1)) : '?';
-                    $hasPhoto = $approver && !empty(trim($approver->photo ?? ''));
-                    $photoUrl = $hasPhoto ? rtrim(user_session('base_url') ?? url('/'), '/') . '/uploads/staff/' . $approver->photo : '';
+                    $photoUrl = $approver ? \App\Support\StaffPhotoRoute::url($approver->photo ?? '') : '';
+                    $hasPhoto = $photoUrl !== '';
                 @endphp
                 <li class="timeline-item">
                     <div class="timeline-avatar-cell">

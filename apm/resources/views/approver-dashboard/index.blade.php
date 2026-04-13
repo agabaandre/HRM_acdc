@@ -345,6 +345,7 @@ var filterOptions = {};
 var userDivisionId = {{ $userDivisionId ?? 'null' }};
 var hasPermission88 = {{ $hasPermission88 ? 'true' : 'false' }};
 var baseUrl = '{{ user_session("base_url") ?? url("/") }}';
+var staffPhotoRoute = @json(route('staff-uploads.photo'));
 var pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
 var dashboardApiUrl = '{{ route("approver-dashboard.api") }}';
 
@@ -716,8 +717,7 @@ function initializeDataTable() {
                     const hasPhoto = row.photo && row.photo !== null && row.photo !== '' && row.photo.trim() !== '';
         
         if (hasPhoto) {
-            const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-                        const photoUrl = cleanBaseUrl + '/uploads/staff/' + row.photo;
+                        const photoUrl = staffPhotoRoute + '?f=' + encodeURIComponent(row.photo);
             avatarHtml = `<div style="position: relative; width: 40px; height: 40px;">
                             <img src="${photoUrl}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;" alt="${row.approver_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.nextElementSibling.style.zIndex='1';" onload="this.nextElementSibling.style.display='none';">
                             <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="display: none; width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 0;">${initials}</div>
