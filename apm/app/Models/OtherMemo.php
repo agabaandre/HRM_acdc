@@ -45,6 +45,7 @@ class OtherMemo extends Model
     {
         return [
             'fields_schema_snapshot' => 'array',
+            'attachment' => 'array',
             'payload' => 'array',
             'approvers_config' => 'array',
             'active_sequence' => 'integer',
