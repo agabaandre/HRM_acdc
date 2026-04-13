@@ -362,10 +362,38 @@
 </script>
 
 <script>
-  // Initialize Summernote (single init for all .summernote textareas) - https://summernote.org/getting-started/
-  $(document).ready(function() {
-    if ($('.summernote').length === 0) return;
-    $('.summernote').summernote({
+  function uploadImage(file, editor) {
+    var data = new FormData();
+    data.append("file", file);
+
+    // Append CSRF token for Laravel
+    data.append('_token', '{{ csrf_token() }}');
+
+    $.ajax({
+      url: '{{ route("image.upload") }}', // Define this route in your Laravel web.php
+      type: 'POST',
+      data: data,
+      cache: false,
+      contentType: false,
+      processData: false,
+      success: function(response) {
+        // Assuming your server returns a JSON object with the image URL as { url: "..." }
+        var imageUrl = response.url || response;
+        // Insert image at the current cursor position
+        $(editor).summernote('insertImage', imageUrl);
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        console.error("Image upload failed: " + textStatus + " " + errorThrown);
+      }
+    });
+  }
+
+  /**
+   * Shared Summernote options (full toolbar, tables, fonts, line height, undo/redo).
+   * Used by layout init, other-memo dynamic fields, and memo-type catalogue preview.
+   */
+  window.apmSummernoteOptions = function (overrides) {
+    var base = {
       placeholder: 'Type here…',
       height: 300,
       minHeight: 200,
@@ -386,6 +414,7 @@
       tableClassName: 'table table-bordered table-sm',
 
       toolbar: [
+        ['misc', ['undo', 'redo']],
         ['style', ['style']],
         ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
         ['fontname', ['fontname']],
@@ -419,13 +448,11 @@
           });
         },
         onCreateLink: function (link) {
-          return link; /* do not add target="_blank" - only prints open in new tab */
+          return link;
         },
         onImageUpload: function (files) {
           for (var i = 0; i < files.length; i++) {
-            if (typeof uploadImage === 'function') {
-              uploadImage(files[i], this);
-            }
+            uploadImage(files[i], this);
           }
         },
         onPaste: function (e) {
@@ -442,34 +469,19 @@
           }
         }
       }
+    };
+    return $.extend(true, {}, base, overrides || {});
+  };
+
+  $(document).ready(function () {
+    $('.summernote').each(function () {
+      var $el = $(this);
+      if ($el.next('.note-editor').length) {
+        return;
+      }
+      $el.summernote(window.apmSummernoteOptions());
     });
   });
-
-  function uploadImage(file, editor) {
-    var data = new FormData();
-    data.append("file", file);
-
-    // Append CSRF token for Laravel
-    data.append('_token', '{{ csrf_token() }}');
-
-    $.ajax({
-      url: '{{ route("image.upload") }}', // Define this route in your Laravel web.php
-      type: 'POST',
-      data: data,
-      cache: false,
-      contentType: false,
-      processData: false,
-      success: function(response) {
-        // Assuming your server returns a JSON object with the image URL as { url: "..." }
-        var imageUrl = response.url || response;
-        // Insert image at the current cursor position
-        $(editor).summernote('insertImage', imageUrl);
-      },
-      error: function(jqXHR, textStatus, errorThrown) {
-        console.error("Image upload failed: " + textStatus + " " + errorThrown);
-      }
-    });
-  }
 </script>
 
 </body>

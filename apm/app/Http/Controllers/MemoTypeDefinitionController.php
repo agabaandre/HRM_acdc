@@ -98,6 +98,35 @@ class MemoTypeDefinitionController extends Controller
         ]);
     }
 
+    /**
+     * Enable or disable multiple memo types for the other-memo create list (is_active).
+     */
+    public function ajaxBulkSetActive(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:memo_type_definitions,id',
+            'is_active' => 'required|boolean',
+        ]);
+
+        $ids = array_values(array_unique(array_map('intval', $validated['ids'])));
+        $active = filter_var($validated['is_active'], FILTER_VALIDATE_BOOLEAN);
+
+        $updated = MemoTypeDefinition::query()
+            ->whereIn('id', $ids)
+            ->update(['is_active' => $active]);
+
+        $label = $active ? 'enabled' : 'disabled';
+
+        return response()->json([
+            'success' => true,
+            'message' => $updated === 1
+                ? "1 memo type {$label} for create."
+                : "{$updated} memo types {$label} for create.",
+            'updated' => $updated,
+        ]);
+    }
+
     public function ajaxDestroy(MemoTypeDefinition $memoTypeDefinition): JsonResponse
     {
         if ($memoTypeDefinition->is_system) {

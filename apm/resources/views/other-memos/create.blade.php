@@ -130,6 +130,14 @@
 
     function renderFields(schema) {
         var host = document.getElementById('memo-dynamic-fields');
+        if (typeof jQuery !== 'undefined') {
+            jQuery(host).find('textarea.summernote').each(function() {
+                var $t = jQuery(this);
+                if ($t.next('.note-editor').length && typeof $t.summernote === 'function') {
+                    try { $t.summernote('destroy'); } catch (e) {}
+                }
+            });
+        }
         host.innerHTML = '';
         if (!schema || !schema.length) {
             host.innerHTML = '<p class="text-muted mb-0">No fields configured for this type.</p>';
@@ -189,16 +197,15 @@
             wrap.appendChild(inp);
             host.appendChild(wrap);
         });
-        if (typeof jQuery !== 'undefined') {
+        if (typeof jQuery !== 'undefined' && typeof window.apmSummernoteOptions === 'function') {
             jQuery(host).find('textarea.summernote').each(function() {
-                if (!jQuery(this).next('.note-editor').length) {
-                    jQuery(this).summernote({ height: 200, dialogsInBody: true, toolbar: [
-                        ['style', ['style']],
-                        ['font', ['bold', 'italic', 'underline', 'clear']],
-                        ['para', ['ul', 'ol']],
-                        ['insert', ['link', 'picture']],
-                        ['view', ['codeview', 'help']]
-                    ]});
+                var $ta = jQuery(this);
+                if (!$ta.next('.note-editor').length) {
+                    $ta.summernote(window.apmSummernoteOptions({
+                        height: 260,
+                        minHeight: 200,
+                        placeholder: 'Type here…'
+                    }));
                 }
             });
         }
