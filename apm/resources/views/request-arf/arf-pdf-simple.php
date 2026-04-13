@@ -443,8 +443,13 @@
         echo '<div style="line-height: 1.2;">';
         
         if (isset($staff['signature']) && !empty($staff['signature'])) {
+            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staff['signature']);
             echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+            if ($sigSrc !== '') {
+                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+            } else {
+                echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+            }
         } else {
             echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
         }
@@ -479,7 +484,12 @@
             echo '<div style="line-height: 1.2;">';
             echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
             if (!empty($person['signature'])) {
-                echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $person['signature']) . '" alt="Signature">';
+                $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($person['signature']);
+                if ($sigSrc !== '') {
+                    echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+                } else {
+                    echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($person['work_email'] ?? 'Email not available') . '</small>';
+                }
             } else {
                 echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($person['work_email'] ?? 'Email not available') . '</small>';
             }
@@ -528,7 +538,12 @@
         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
         
         if (!empty($staff->signature)) {
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff->signature) . '" alt="Signature">';
+            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staff->signature);
+            if ($sigSrc !== '') {
+                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+            } else {
+                echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
+            }
         } else {
               echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
         }
@@ -586,7 +601,12 @@
             
             // Add signature if available
             if (!empty($staff['signature'])) {
-                echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+                $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staff['signature']);
+                if ($sigSrc !== '') {
+                    echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+                } else {
+                    echo '<div class="signature-placeholder">_________________</div>';
+                }
             } else {
                 echo '<div class="signature-placeholder">_________________</div>';
             }
@@ -1380,7 +1400,13 @@
                             echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
                             $signature = is_array($staff) ? ($staff['signature'] ?? null) : ($staff->signature ?? null);
                             if (!empty($signature)) {
-                                echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $signature) . '" alt="Signature">';
+                                $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($signature);
+                                if ($sigSrc !== '') {
+                                    echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+                                } else {
+                                    $workEmail = is_array($staff) ? ($staff['work_email'] ?? 'Email not available') : ($staff->work_email ?? 'Email not available');
+                                    echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($workEmail) . '</small>';
+                                }
                             } else {
                                 $workEmail = is_array($staff) ? ($staff['work_email'] ?? 'Email not available') : ($staff->work_email ?? 'Email not available');
                                 echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($workEmail) . '</small>';
@@ -1424,7 +1450,12 @@
                         echo '<div style="line-height: 1.2;">';
                         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
                         if (!empty($staffModel->signature)) {
-                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staffModel->signature) . '" alt="Signature">';
+                            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staffModel->signature);
+                            if ($sigSrc !== '') {
+                                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+                            } else {
+                                echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staffModel->work_email ?? 'Email not available') . '</small>';
+                            }
                         } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staffModel->work_email ?? 'Email not available') . '</small>';
                         }
@@ -1493,8 +1524,13 @@
                         echo '<div style="line-height: 1.2;">';
                         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
                         if (!empty($staff['signature'])) {
-                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
-             } else {
+                            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staff['signature']);
+                            if ($sigSrc !== '') {
+                                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+                            } else {
+                                echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+                            }
+                        } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
                         // Use created_at from approval trail if available, otherwise use current date
@@ -1521,7 +1557,12 @@
                         echo '<div style="line-height: 1.2;">';
                         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
                         if (!empty($staff->signature)) {
-                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff->signature) . '" alt="Signature">';
+                            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staff->signature);
+                            if ($sigSrc !== '') {
+                                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+                            } else {
+                                echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
+                            }
                         } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
                         }
@@ -1587,8 +1628,13 @@
                         echo '<div style="line-height: 1.2;">';
                         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
                         if (!empty($staff['signature'])) {
-                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
-            } else {
+                            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staff['signature']);
+                            if ($sigSrc !== '') {
+                                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+                            } else {
+                                echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+                            }
+                        } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
                         // Use created_at from approval trail if available, otherwise use current date
@@ -1615,7 +1661,12 @@
                         echo '<div style="line-height: 1.2;">';
                         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
                         if (!empty($staff->signature)) {
-                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff->signature) . '" alt="Signature">';
+                            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staff->signature);
+                            if ($sigSrc !== '') {
+                                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+                            } else {
+                                echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
+                            }
                         } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
                         }

@@ -2,10 +2,61 @@
 
 namespace App\Helpers;
 
+use App\Models\Staff;
 use Illuminate\Support\Str;
 
 class PrintHelper
 {
+    /**
+     * Embed staff signature in mPDF HTML: CI3 blocks direct /uploads/staff/signature/* and
+     * server-side PDF generation cannot use session-cookie URLs. Read from disk + data URI.
+     */
+    public static function signatureDataUriForPdf(?string $filename): string
+    {
+        if ($filename === null || $filename === '') {
+            return '';
+        }
+
+        $filename = basename(str_replace('\\', '/', $filename));
+        if ($filename === '' || $filename === '.' || $filename === '..'
+            || !preg_match('/^[a-zA-Z0-9_.-]+$/', $filename)) {
+            return '';
+        }
+
+        $uploadsRoot = (string) config('staff_portal.uploads_root', dirname(base_path()) . DIRECTORY_SEPARATOR . 'uploads');
+        $full = rtrim($uploadsRoot, DIRECTORY_SEPARATOR)
+            . DIRECTORY_SEPARATOR . 'staff'
+            . DIRECTORY_SEPARATOR . 'signature'
+            . DIRECTORY_SEPARATOR . $filename;
+
+        if (!is_file($full) || !is_readable($full)) {
+            return '';
+        }
+
+        if (!Staff::query()->where('signature', $filename)->exists()) {
+            return '';
+        }
+
+        $blob = @file_get_contents($full);
+        if ($blob === false || $blob === '') {
+            return '';
+        }
+
+        $mime = 'image/png';
+        if (function_exists('finfo_open')) {
+            $f = @finfo_open(FILEINFO_MIME_TYPE);
+            if ($f) {
+                $detected = @finfo_buffer($f, $blob);
+                finfo_close($f);
+                if (is_string($detected) && str_starts_with($detected, 'image/')) {
+                    $mime = $detected;
+                }
+            }
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($blob);
+    }
+
     /**
      * Safely get staff email from approver data
      */
@@ -215,8 +266,13 @@ class PrintHelper
         
         // Always show signature image if available (even if not yet signed)
         if (isset($staff['signature']) && !empty($staff['signature'])) {
+            $sigSrc = self::signatureDataUriForPdf($staff['signature']);
             echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+            if ($sigSrc !== '') {
+                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+            } else {
+                echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+            }
         } else {
             echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
         }
@@ -316,7 +372,12 @@ class PrintHelper
         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
         
         if (!empty($staff->signature)) {
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff->signature) . '" alt="Signature">';
+            $sigSrc = self::signatureDataUriForPdf($staff->signature);
+            if ($sigSrc !== '') {
+                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+            } else {
+                echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
+            }
         } else {
             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
         }
