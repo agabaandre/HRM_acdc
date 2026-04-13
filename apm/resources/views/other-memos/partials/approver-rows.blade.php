@@ -6,7 +6,10 @@
     $staffOptions = $staffOptions ?? collect();
     $roleExamples = $roleExamples ?? [];
     $otherMemoStaffJobMap = $staffOptions->mapWithKeys(function ($s) {
-        return [(string) $s->staff_id => trim((string) ($s->job_name ?? ''))];
+        $raw = trim((string) ($s->job_name ?? ''));
+        $decoded = html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return [(string) $s->staff_id => $decoded];
     })->all();
 @endphp
 @if (count($roleExamples))
@@ -32,7 +35,7 @@
                         @php
                             $sid = (int) $st->staff_id;
                             $optLabel = trim(($st->title ? $st->title . ' ' : '') . $st->fname . ' ' . $st->lname);
-                            $jobName = trim((string) ($st->job_name ?? ''));
+                            $jobName = html_entity_decode(trim((string) ($st->job_name ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
                         @endphp
                         <option value="{{ $sid }}" data-job-name="{{ e($jobName) }}" @selected((int) old('approvers.' . $idx . '.staff_id', $row['staff_id'] ?? 0) === $sid)>{{ $optLabel }} (#{{ $sid }})</option>
                     @endforeach
@@ -61,7 +64,7 @@
                         @php
                             $sid = (int) $st->staff_id;
                             $optLabel = trim(($st->title ? $st->title . ' ' : '') . $st->fname . ' ' . $st->lname);
-                            $jobName = trim((string) ($st->job_name ?? ''));
+                            $jobName = html_entity_decode(trim((string) ($st->job_name ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
                         @endphp
                         <option value="{{ $sid }}" data-job-name="{{ e($jobName) }}">{{ $optLabel }} (#{{ $sid }})</option>
                     @endforeach
@@ -134,6 +137,23 @@ window.otherMemoStaffJobById = @json($otherMemoStaffJobMap);
         });
     }
 
+    /** Undo HTML entity encoding (e.g. &amp; → &) for plain-text role field */
+    function decodeJobDisplayString(s) {
+        if (s == null || s === '') return '';
+        var str = String(s);
+        var prev;
+        do {
+            prev = str;
+            str = str.replace(/&amp;/gi, '&');
+        } while (str !== prev);
+        return str
+            .replace(/&lt;/gi, '<')
+            .replace(/&gt;/gi, '>')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#0*39;/g, "'")
+            .replace(/&#0*34;/g, '"');
+    }
+
     function findOptionByValue(selectEl, val) {
         if (val === undefined || val === null || val === '') return null;
         var s = String(val);
@@ -148,17 +168,17 @@ window.otherMemoStaffJobById = @json($otherMemoStaffJobMap);
     function jobOrLabelFromOption(opt) {
         if (!opt || !opt.value) return '';
         var j = (opt.getAttribute('data-job-name') || '').trim();
-        if (j) return j;
+        if (j) return decodeJobDisplayString(j);
         var map = window.otherMemoStaffJobById;
         if (map && typeof map === 'object') {
             var fromMap = (map[opt.value] !== undefined && map[opt.value] !== null)
                 ? String(map[opt.value]).trim()
                 : '';
-            if (fromMap) return fromMap;
+            if (fromMap) return decodeJobDisplayString(fromMap);
         }
         var t = (opt.textContent || '').trim();
         var m = t.match(/^(.+?)\s*\(#\d+\)\s*$/);
-        return m ? m[1].trim() : t;
+        return decodeJobDisplayString(m ? m[1].trim() : t);
     }
 
     function readJobForStaffId(selectEl, staffId) {

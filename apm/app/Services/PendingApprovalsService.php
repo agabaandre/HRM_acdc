@@ -9,6 +9,7 @@ use App\Models\NonTravelMemo;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
 use App\Models\ChangeRequest;
+use App\Models\OtherMemo;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowModel;
 use App\Models\Approver;
@@ -100,6 +101,9 @@ class PendingApprovalsService
 
         // Get pending non-travel memos
         $pendingItems = $pendingItems->merge($this->getPendingNonTravelMemos($isAdminAssistant, $adminAssistantApproverIds));
+
+        // Get pending other memos (configurable approver chain, not workflow definitions)
+        $pendingItems = $pendingItems->merge($this->getPendingOtherMemos($isAdminAssistant, $adminAssistantApproverIds));
 
         // Get pending single memos (activities with is_single_memo = true)
         $pendingItems = $pendingItems->merge($this->getPendingSingleMemos($isAdminAssistant, $adminAssistantApproverIds));
@@ -414,6 +418,74 @@ class PendingApprovalsService
                 'approval_trails' => $this->formatApprovalTrailsForApi($memo->approvalTrails ?? collect()),
             ], $isAdminAssistantView);
         });
+    }
+
+    /**
+     * Pending other memos: current approver is explicit (current_approver_staff_id), not workflow levels.
+     */
+    protected function getPendingOtherMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
+    {
+        $query = OtherMemo::query()
+            ->with(['creator', 'staff', 'division', 'approvalTrails.staff', 'currentApprover'])
+            ->where('overall_status', OtherMemo::STATUS_PENDING)
+            ->whereNotNull('current_approver_staff_id');
+
+        return $query->orderByDesc('updated_at')->get()->filter(function (OtherMemo $memo) use ($isAdminAssistant, $adminAssistantApproverIds) {
+            if ($this->isCurrentApprover($memo)) {
+                return true;
+            }
+            if ($isAdminAssistant && ! empty($adminAssistantApproverIds)) {
+                return $this->isCurrentApproverForAny($memo, $adminAssistantApproverIds);
+            }
+
+            return false;
+        })->map(function (OtherMemo $memo) use ($isAdminAssistant) {
+            $isAdminAssistantView = $isAdminAssistant && ! $this->isCurrentApprover($memo);
+            $creator = $memo->creator ?? $memo->staff;
+            $submittedBy = $creator
+                ? trim(($creator->fname ?? '') . ' ' . ($creator->lname ?? ''))
+                : 'N/A';
+            $payloadTitle = $memo->payload['title'] ?? null;
+            $titleLine = is_string($payloadTitle) && trim(strip_tags($payloadTitle)) !== ''
+                ? trim(strip_tags($payloadTitle))
+                : ($memo->memo_type_name_snapshot ?? 'Other memo');
+            $title = ($memo->document_number ? $memo->document_number . ' — ' : '') . $titleLine;
+
+            return $this->formatPendingItem($memo, 'Other Memo', [
+                'title' => $title,
+                'division' => $memo->division->division_name ?? 'N/A',
+                'submitted_by' => $submittedBy !== '' ? $submittedBy : 'N/A',
+                'date_received' => $this->getOtherMemoDateReceivedForCurrentStep($memo),
+                'view_url' => url(route('other-memos.show', $memo, false)),
+                'approval_level' => (int) $memo->active_sequence,
+                'workflow_role' => $this->getOtherMemoApproverRoleLabel($memo),
+                'item_id' => $memo->id,
+                'item_type' => 'OtherMemo',
+                'approval_trails' => $this->formatApprovalTrailsForApi($memo->approvalTrails ?? collect()),
+            ], $isAdminAssistantView);
+        });
+    }
+
+    protected function getOtherMemoDateReceivedForCurrentStep(OtherMemo $memo): ?Carbon
+    {
+        $seq = (int) $memo->active_sequence;
+        if ($seq <= 1) {
+            return $memo->submitted_at ?? $memo->created_at;
+        }
+        $trail = $memo->approvalTrails()
+            ->where('action', 'approved')
+            ->where('approval_order', $seq - 1)
+            ->orderByDesc('id')
+            ->first();
+
+        return $trail?->created_at ?? $memo->submitted_at ?? $memo->created_at;
+    }
+
+    protected function getOtherMemoApproverRoleLabel(OtherMemo $memo): string
+    {
+        $row = $memo->approverAtSequence((int) $memo->active_sequence);
+
+        return is_array($row) ? (string) ($row['role_label'] ?? 'Approver') : 'Approver';
     }
 
     /**

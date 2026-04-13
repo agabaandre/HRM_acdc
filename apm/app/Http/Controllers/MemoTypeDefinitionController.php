@@ -71,19 +71,15 @@ class MemoTypeDefinitionController extends Controller
 
     public function ajaxUpdate(Request $request, MemoTypeDefinition $memoTypeDefinition): JsonResponse
     {
-        if ($memoTypeDefinition->is_system) {
-            return response()->json([
-                'success' => false,
-                'message' => 'System memo types cannot be edited.',
-            ], 403);
-        }
-
         $validated = $this->validatePayload($request, $memoTypeDefinition->id);
         $validated['fields_schema'] = MemoTypeDefinition::normalizeFieldsSchemaRows($validated['fields_schema']);
         if (array_key_exists('is_division_specific', $validated)) {
             $validated['is_division_specific'] = filter_var($validated['is_division_specific'], FILTER_VALIDATE_BOOLEAN);
         }
-        if (($validated['slug'] ?? '') === '') {
+        if ($memoTypeDefinition->is_system) {
+            unset($validated['slug']);
+            $validated['is_system'] = true;
+        } elseif (($validated['slug'] ?? '') === '') {
             unset($validated['slug']);
         } elseif (isset($validated['slug'])) {
             $validated['slug'] = $this->uniqueSlug($validated['slug'], $memoTypeDefinition->id);

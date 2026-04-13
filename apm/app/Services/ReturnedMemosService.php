@@ -9,6 +9,7 @@ use App\Models\NonTravelMemo;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
 use App\Models\ChangeRequest;
+use App\Models\OtherMemo;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowModel;
 use App\Models\Approver;
@@ -56,6 +57,9 @@ class ReturnedMemosService
 
         // Get returned non-travel memos
         $returnedItems = $returnedItems->merge($this->getReturnedNonTravelMemos());
+
+        // Get returned other memos (creator only)
+        $returnedItems = $returnedItems->merge($this->getReturnedOtherMemos());
 
         // Get returned single memos (activities with is_single_memo = true)
         $returnedItems = $returnedItems->merge($this->getReturnedSingleMemos());
@@ -204,6 +208,43 @@ class ReturnedMemosService
                 'workflow_role' => $this->getWorkflowRole($memo, 'Non-Travel Memo'),
                 'approval_level' => $memo->approval_level ?? 0,
                 'model' => $memo
+            ];
+        });
+    }
+
+    /**
+     * Other memos returned to the creator for revision.
+     */
+    protected function getReturnedOtherMemos(): Collection
+    {
+        $query = OtherMemo::with(['division', 'staff']);
+
+        $query->where('overall_status', OtherMemo::STATUS_RETURNED)
+            ->where('staff_id', $this->currentStaffId);
+
+        return $query->orderBy('updated_at', 'desc')->get()->map(function (OtherMemo $memo) {
+            $payloadTitle = $memo->payload['title'] ?? null;
+            $titleLine = is_string($payloadTitle) && trim(strip_tags($payloadTitle)) !== ''
+                ? trim(strip_tags($payloadTitle))
+                : ($memo->memo_type_name_snapshot ?? 'Other memo');
+
+            return [
+                'id' => $memo->id,
+                'type' => 'Other Memo',
+                'title' => ($memo->document_number ? $memo->document_number . ' — ' : '') . $titleLine,
+                'document_number' => $memo->document_number ?? 'N/A',
+                'division' => $memo->division?->division_name ?? 'N/A',
+                'submitted_by' => $this->formatSubmittedBy($memo),
+                'date_received' => $memo->updated_at,
+                'overall_status' => $memo->overall_status,
+                'view_url' => route('other-memos.show', $memo),
+                'edit_url' => route('other-memos.edit', $memo),
+                'delete_url' => null,
+                'can_edit' => true,
+                'can_delete' => false,
+                'workflow_role' => 'Creator',
+                'approval_level' => 0,
+                'model' => $memo,
             ];
         });
     }

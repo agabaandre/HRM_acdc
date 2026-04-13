@@ -787,6 +787,9 @@ function initializeDataTable() {
                     if (row.pending_counts.special > 0) {
                         html += `<a href="${pendingApprovalsBaseUrl}?category=Special Memo&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Special Memos">Special: ${row.pending_counts.special}</a>`;
                     }
+                    if ((row.pending_counts.other_memo || 0) > 0) {
+                        html += `<a href="${pendingApprovalsBaseUrl}?category=Other Memo&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Other Memos">Other memo: ${row.pending_counts.other_memo || 0}</a>`;
+                    }
                     if (row.pending_counts.arf > 0) {
                         html += `<a href="${pendingApprovalsBaseUrl}?category=ARF&staff_id=${row.staff_id}${filterParams}" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="ARF Requests">ARF: ${row.pending_counts.arf}</a>`;
                     }

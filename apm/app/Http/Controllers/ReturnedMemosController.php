@@ -85,10 +85,11 @@ class ReturnedMemosController extends Controller
             ];
         }
         
-        // Memos (Special Memo + Non-Travel Memo + Single Memo)
-        $memoCount = (count($returnedMemos['Special Memo'] ?? []) + 
-                     count($returnedMemos['Non-Travel Memo'] ?? []) + 
-                     count($returnedMemos['Single Memo'] ?? []));
+        // Memos (Special Memo + Non-Travel Memo + Single Memo + Other Memo)
+        $memoCount = (count($returnedMemos['Special Memo'] ?? []) +
+                     count($returnedMemos['Non-Travel Memo'] ?? []) +
+                     count($returnedMemos['Single Memo'] ?? []) +
+                     count($returnedMemos['Other Memo'] ?? []));
         if ($memoCount > 0) {
             $categories[] = [
                 'value' => 'memos',
@@ -140,6 +141,7 @@ class ReturnedMemosController extends Controller
                 $filtered['Special Memo'] = $returnedMemos['Special Memo'] ?? [];
                 $filtered['Non-Travel Memo'] = $returnedMemos['Non-Travel Memo'] ?? [];
                 $filtered['Single Memo'] = $returnedMemos['Single Memo'] ?? [];
+                $filtered['Other Memo'] = $returnedMemos['Other Memo'] ?? [];
                 break;
             case 'requests':
                 $filtered['Service Request'] = $returnedMemos['Service Request'] ?? [];

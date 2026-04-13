@@ -58,7 +58,7 @@
         </div>
     </div>
     <div class="card-footer small text-muted">
-        System memo types are preloaded and cannot be edited or deleted. Uncheck <strong>Available on create</strong> when editing a custom type to hide it from the other memo create page.
+        System types cannot be deleted (slug is fixed). Use <strong>Edit</strong> to turn <strong>Available on other memo create</strong> on or off and to adjust fields. Custom types can also be deleted.
     </div>
 </div>
 
@@ -120,7 +120,8 @@
                         <div class="col-md-4">
                             <label class="form-label">Slug</label>
                             <input type="text" class="form-control" id="memo-type-form-slug" placeholder="auto from name if empty" maxlength="191" pattern="[a-z0-9]+(?:-[a-z0-9]+)*">
-                            <div class="form-text">Lowercase letters, numbers, hyphens.</div>
+                            <div class="form-text" id="memo-type-form-slug-hint-custom">Lowercase letters, numbers, hyphens.</div>
+                            <div class="form-text text-muted" id="memo-type-form-slug-hint-system" style="display:none">System types: slug cannot be changed.</div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Reference prefix</label>
@@ -192,6 +193,14 @@
         return d.innerHTML;
     }
 
+    function setFormSystemSlugMode(isSystem) {
+        var slugEl = document.getElementById('memo-type-form-slug');
+        slugEl.readOnly = !!isSystem;
+        slugEl.classList.toggle('bg-light', !!isSystem);
+        document.getElementById('memo-type-form-slug-hint-custom').style.display = isSystem ? 'none' : '';
+        document.getElementById('memo-type-form-slug-hint-system').style.display = isSystem ? '' : 'none';
+    }
+
     function destroySummernoteIn($root) {
         if (typeof jQuery === 'undefined') return;
         $root.find('textarea.memo-type-sn').each(function() {
@@ -247,8 +256,8 @@
                     var scopeBadge = m.is_division_specific ? '<span class="badge bg-warning text-dark">Division</span>' : '<span class="badge bg-light text-dark">Org-wide</span>';
                     var createBadge = m.is_active ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">Disabled</span>';
                     var actions = '<button type="button" class="btn btn-sm btn-outline-info me-1 memo-type-btn-view" data-id="' + m.id + '">View</button>';
+                    actions += '<button type="button" class="btn btn-sm btn-outline-primary me-1 memo-type-btn-edit" data-id="' + m.id + '">Edit</button>';
                     if (!m.is_system) {
-                        actions += '<button type="button" class="btn btn-sm btn-outline-primary me-1 memo-type-btn-edit" data-id="' + m.id + '">Edit</button>';
                         actions += '<button type="button" class="btn btn-sm btn-outline-danger memo-type-btn-del" data-id="' + m.id + '">Delete</button>';
                     }
                     var trClass = m.is_active ? '' : ' class="table-light text-muted"';
@@ -424,6 +433,7 @@
                     (m.fields_schema || []).forEach(function(f) {
                         addFieldEditorRow(f.field, f.display, f.field_type, f.required, f.enabled);
                     });
+                    setFormSystemSlugMode(!!m.is_system);
                     new bootstrap.Modal(document.getElementById('memo-type-form-modal')).show();
                 });
             return;
@@ -451,12 +461,14 @@
         document.getElementById('memo-type-form').reset();
         document.getElementById('memo-type-form-id').value = '';
         document.getElementById('memo-type-form-division-specific').checked = false;
+        setFormSystemSlugMode(false);
         jQuery('#memo-type-fields-editor tbody').empty();
     });
 
     document.getElementById('memo-type-add-btn').addEventListener('click', function() {
         document.getElementById('memo-type-form-title').textContent = 'Add memo type';
         document.getElementById('memo-type-form-id').value = '';
+        setFormSystemSlugMode(false);
         fillSignatureSelect(jQuery('#memo-type-form-signature'), 'top_right');
         jQuery('#memo-type-fields-editor tbody').empty();
         document.getElementById('memo-type-form-division-specific').checked = false;

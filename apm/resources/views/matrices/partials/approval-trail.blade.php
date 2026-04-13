@@ -83,6 +83,10 @@
     border-color:rgb(17, 166, 211);
     color:rgb(27, 143, 216);
 }
+.timeline-badge.resubmitted {
+    border-color: #17a2b8;
+    color: #138496;
+}
 .timeline-content {
     flex: 1;
     min-width: 0;
@@ -114,11 +118,27 @@
             @endphp
             @forelse($trailsSorted as $trail)
                 @php
-                    $approver = $trail->oicStaff ?? $trail->staff;
+                    $oic = null;
+                    if (array_key_exists('oic_staff_id', $trail->getAttributes()) && $trail->oic_staff_id) {
+                        $oic = $trail->oicStaff;
+                    }
+                    $approver = $oic ?? $trail->staff;
                     $approverName = $approver ? trim(($approver->title ?? '') . ' ' . ($approver->fname ?? '') . ' ' . ($approver->lname ?? '') . ' ' . ($approver->oname ?? '')) : 'N/A';
                     $initials = $approver ? strtoupper(substr($approver->fname ?? '', 0, 1) . substr($approver->lname ?? '', 0, 1)) : '?';
                     $photoUrl = $approver ? \App\Support\StaffPhotoRoute::url($approver->photo ?? '') : '';
                     $hasPhoto = $photoUrl !== '';
+                    $act = strtolower((string) ($trail->action ?? ''));
+                    if (in_array($act, ['approved', 'passed'], true)) {
+                        $actionBadgeClass = 'success';
+                    } elseif (in_array($act, ['rejected', 'flagged'], true)) {
+                        $actionBadgeClass = 'danger';
+                    } elseif ($act === 'returned') {
+                        $actionBadgeClass = 'warning';
+                    } elseif (in_array($act, ['submitted', 'resubmitted'], true)) {
+                        $actionBadgeClass = 'info';
+                    } else {
+                        $actionBadgeClass = 'secondary';
+                    }
                 @endphp
                 <li class="timeline-item">
                     <div class="timeline-avatar-cell">
@@ -130,15 +150,19 @@
                         @endif
                     </div>
                     <div class="timeline-badge-cell">
-                        <div class="timeline-badge {{ strtolower($trail->action) }}">
-                            @if(strtolower($trail->action) === 'approved' || strtolower($trail->action) === 'passed')
+                        <div class="timeline-badge {{ $act }}">
+                            @if($act === 'approved' || $act === 'passed')
                                 <i class="bx bx-check"></i>
-                            @elseif(strtolower($trail->action) === 'rejected' || strtolower($trail->action) === 'flagged')
+                            @elseif($act === 'rejected' || $act === 'flagged')
                                 <i class="bx bx-x"></i>
-                            @elseif(strtolower($trail->action) === 'submitted')
+                            @elseif($act === 'submitted')
                                 <i class="bx bx-time"></i>
+                            @elseif($act === 'resubmitted')
+                                <i class="bx bx-refresh"></i>
+                            @elseif($act === 'returned')
+                                <i class="bx bx-revision"></i>
                             @else
-                                <i class="bx bx-x"></i>
+                                <i class="bx bx-dots-horizontal-rounded"></i>
                             @endif
                         </div>
                     </div>
@@ -149,7 +173,7 @@
                         <div class="timeline-title">
                             {{ $approverName }}
                             <span class="text-muted">({{ $trail->approver_role_name ?? 'Focal Person' }})</span>
-                            <span class="badge bg-{{ strtolower($trail->action) === 'approved' || strtolower($trail->action) === 'passed' ? 'success' : (strtolower($trail->action) === 'rejected' || strtolower($trail->action) === 'flagged' ? 'danger' : 'warning') }}">
+                            <span class="badge bg-{{ $actionBadgeClass }}">
                                 {{ ucfirst($trail->action) }}
                             </span>
                         </div>
