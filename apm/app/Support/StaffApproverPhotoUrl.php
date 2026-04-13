@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Absolute portrait URL for staff used in approval UIs/APIs.
- * Matches ApmAuthController sources: APM public disk profile_photo, else Staff portal uploads/staff/{photo}.
+ * APM public disk profile_photo when present; else authenticated staff-uploads/photo URL for legacy CI3 files.
  */
 class StaffApproverPhotoUrl
 {
@@ -36,32 +36,9 @@ class StaffApproverPhotoUrl
         if ($photo === '') {
             return null;
         }
-        $filename = basename($photo);
-        if ($filename === '' || str_contains($filename, '..')) {
-            return null;
-        }
 
-        foreach (self::staffPortalBaseUrls() as $base) {
-            if ($base !== '') {
-                return rtrim($base, '/') . '/uploads/staff/' . rawurlencode($filename);
-            }
-        }
+        $url = StaffPhotoRoute::url($photo);
 
-        return null;
-    }
-
-    /**
-     * @return list<string>
-     */
-    public static function staffPortalBaseUrls(): array
-    {
-        $appUrl = rtrim((string) config('app.url'), '/');
-        $staffBaseUrl = rtrim((string) config('services.staff_api.base_url', ''), '/');
-        $urls = array_filter([$staffBaseUrl, $appUrl], fn ($u) => $u !== '');
-        if ($appUrl !== '' && str_ends_with($appUrl, '/apm')) {
-            $urls[] = preg_replace('#/apm$#', '', $appUrl);
-        }
-
-        return array_values(array_unique($urls));
+        return $url !== '' ? $url : null;
     }
 }

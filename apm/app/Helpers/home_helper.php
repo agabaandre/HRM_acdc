@@ -15,6 +15,7 @@ use App\Models\SpecialMemo;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
 use App\Models\Division;
+use App\Support\StaffPhotoRoute;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -43,8 +44,7 @@ if (!function_exists('user_info')) {
 
         $photo = $user->photo ?? '';
         $photoData = $user->photo_data ?? null; // Base64 encoded photo from API
-        $baseUrl = $user->base_url ?? '';
-        
+
         // Generate initials for fallback avatar
         $initials = '';
         if ($firstName && $lastName) {
@@ -89,10 +89,11 @@ if (!function_exists('user_info')) {
                 $imageSrc = 'data:image/' . $imageType . ';base64,' . $photoData;
             }
         } elseif (!empty($photo) && $photo !== null && trim($photo) !== '') {
-            // Try to show photo from filesystem (let browser handle if file doesn't exist)
-            $hasPhoto = true;
-            $cleanBaseUrl = rtrim($baseUrl, '/');
-            $imageSrc = htmlspecialchars($cleanBaseUrl . '/uploads/staff/' . $photo);
+            $portraitUrl = StaffPhotoRoute::url($photo);
+            if ($portraitUrl !== '') {
+                $hasPhoto = true;
+                $imageSrc = htmlspecialchars($portraitUrl);
+            }
         }
 
         ob_start();
