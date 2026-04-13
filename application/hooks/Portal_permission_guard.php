@@ -9,7 +9,21 @@ function portal_permission_guard()
 {
 	$CI = &get_instance();
 
+	if (!is_object($CI)) {
+		return;
+	}
+
 	if (is_cli()) {
+		return;
+	}
+
+	// URI may not be bound yet on some entry paths; load it when possible.
+	if (!isset($CI->uri) || !is_object($CI->uri)) {
+		if (isset($CI->load) && is_object($CI->load)) {
+			$CI->load->library('uri');
+		}
+	}
+	if (!isset($CI->uri) || !is_object($CI->uri) || !method_exists($CI->uri, 'segment')) {
 		return;
 	}
 
