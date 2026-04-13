@@ -27,6 +27,12 @@
         <h5 class="mb-0"><i class="bx bx-file-blank me-2 text-primary"></i>Memo type catalogue</h5>
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <input type="search" id="memo-type-search" class="form-control form-control-sm" style="min-width:220px" placeholder="Search name, slug, ref prefix…" autocomplete="off">
+            <button type="button" class="btn btn-sm btn-outline-success" id="memo-type-bulk-enable" title="Turn on “Available on other memo create” for selected rows">
+                <i class="bx bx-check-double"></i> Enable selected
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="memo-type-bulk-disable" title="Turn off “Available on other memo create” for selected rows">
+                <i class="bx bx-x"></i> Disable selected
+            </button>
             <button type="button" class="btn btn-sm btn-outline-primary" id="memo-type-reload">
                 <i class="bx bx-refresh"></i> Reload
             </button>
@@ -37,6 +43,9 @@
             <table class="table table-hover mb-0" id="memo-type-table">
                 <thead class="table-light">
                     <tr>
+                        <th class="text-center" style="width:40px" title="Select rows for bulk enable / disable on create">
+                            <input type="checkbox" class="form-check-input" id="memo-type-select-all" aria-label="Select all memo types">
+                        </th>
                         <th style="width:48px">#</th>
                         <th class="memo-type-table-col-name">Name</th>
                         <th>On create</th>
@@ -51,7 +60,7 @@
                 </thead>
                 <tbody id="memo-type-tbody">
                     <tr id="memo-type-loading-row">
-                        <td colspan="10" class="text-center py-4 text-muted">
+                        <td colspan="11" class="text-center py-4 text-muted">
                             <span class="spinner-border spinner-border-sm me-2"></span> Loading…
                         </td>
                     </tr>
@@ -60,7 +69,7 @@
         </div>
     </div>
     <div class="card-footer small text-muted">
-        System types cannot be deleted (slug is fixed). Use <strong>Edit</strong> to turn <strong>Available on other memo create</strong> on or off and to adjust fields. Custom types can also be deleted.
+        System types cannot be deleted (slug is fixed). Use checkboxes + <strong>Enable selected</strong> / <strong>Disable selected</strong> to change <strong>On create</strong> for many types at once, or <strong>Edit</strong> for one type and to adjust fields. Custom types can also be deleted.
     </div>
 </div>
 
@@ -185,6 +194,7 @@
 <script>
 (function() {
     var listUrl = @json(route('memo-type-definitions.api.index'));
+    var bulkIsActiveUrl = @json(route('memo-type-definitions.api.bulk-is-active'));
     function apiItemUrl(id) {
         return listUrl.replace(/\/?$/, '') + '/' + encodeURIComponent(id);
     }
@@ -212,6 +222,61 @@
         } else {
             window.alert(message);
         }
+    }
+
+    function syncMemoTypeSelectAllState() {
+        var all = document.querySelectorAll('.memo-type-row-check');
+        var n = all.length;
+        var master = document.getElementById('memo-type-select-all');
+        if (!master) return;
+        if (n === 0) {
+            master.checked = false;
+            master.indeterminate = false;
+            return;
+        }
+        var checked = document.querySelectorAll('.memo-type-row-check:checked').length;
+        master.indeterminate = checked > 0 && checked < n;
+        master.checked = checked === n;
+    }
+
+    function getSelectedMemoTypeIds() {
+        return Array.prototype.map.call(document.querySelectorAll('.memo-type-row-check:checked'), function(cb) {
+            return parseInt(cb.value, 10);
+        }).filter(function(id) { return !isNaN(id); });
+    }
+
+    function bulkSetMemoTypesActive(isActive) {
+        var ids = getSelectedMemoTypeIds();
+        if (!ids.length) {
+            memoTypeNotify('Select at least one memo type using the checkboxes.', 'warning');
+            return;
+        }
+        var verb = isActive ? 'enable' : 'disable';
+        if (!confirm((isActive ? 'Enable' : 'Disable') + ' ' + ids.length + ' memo type(s) on other memo create?')) {
+            return;
+        }
+        fetch(bulkIsActiveUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ ids: ids, is_active: isActive })
+        })
+            .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, status: r.status, j: j }; }); })
+            .then(function(res) {
+                if (res.ok && res.j.success) {
+                    memoTypeNotify(res.j.message || 'Updated.', 'success');
+                    loadList();
+                    return;
+                }
+                memoTypeNotify((res.j && res.j.message) ? res.j.message : 'Bulk update failed.', 'error');
+            })
+            .catch(function() {
+                memoTypeNotify('Network error while updating memo types.', 'error');
+            });
     }
 
     function memoTypeSaveErrorMessage(j) {
@@ -252,18 +317,33 @@
     }
 
     function summernoteOptions() {
+        if (typeof window.apmSummernoteOptions === 'function') {
+            return window.apmSummernoteOptions({
+                placeholder: 'Sample rich text…',
+                height: 200,
+                minHeight: 140
+            });
+        }
         return {
             placeholder: 'Sample rich text…',
-            height: 160,
-            minHeight: 120,
+            height: 200,
+            minHeight: 140,
             dialogsInBody: true,
             toolbar: [
+                ['misc', ['undo', 'redo']],
                 ['style', ['style']],
-                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
                 ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
                 ['insert', ['link', 'picture']],
                 ['view', ['codeview', 'help']]
             ],
+            popover: {
+                table: [
+                    ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+                    ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+                ]
+            },
             callbacks: {
                 onImageUpload: function(files) {
                     for (var i = 0; i < files.length; i++) {
@@ -278,17 +358,17 @@
         var q = (document.getElementById('memo-type-search').value || '').trim();
         var url = listUrl + (q ? ('?q=' + encodeURIComponent(q)) : '');
         var tbody = document.getElementById('memo-type-tbody');
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Loading…</td></tr>';
         fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function(r) { return r.json(); })
             .then(function(json) {
                 if (!json.success || !Array.isArray(json.data)) {
-                    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-danger py-3">Failed to load</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="11" class="text-center text-danger py-3">Failed to load</td></tr>';
                     memoTypeNotify('Could not load memo types.', 'error');
                     return;
                 }
                 if (json.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No memo types found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4">No memo types found.</td></tr>';
                     return;
                 }
                 var rows = json.data.map(function(m, idx) {
@@ -304,6 +384,7 @@
                     }
                     var trClass = m.is_active ? '' : ' class="table-light text-muted"';
                     return '<tr' + trClass + '>' +
+                        '<td class="text-center"><input type="checkbox" class="form-check-input memo-type-row-check" value="' + m.id + '" aria-label="Select for bulk enable or disable"></td>' +
                         '<td>' + (idx + 1) + '</td>' +
                         '<td class="memo-type-table-col-name">' + escHtml(m.name) + ' ' + sysBadge + '</td>' +
                         '<td>' + createBadge + '</td>' +
@@ -317,9 +398,14 @@
                         '</tr>';
                 }).join('');
                 tbody.innerHTML = rows;
+                var master = document.getElementById('memo-type-select-all');
+                if (master) {
+                    master.checked = false;
+                    master.indeterminate = false;
+                }
             })
             .catch(function() {
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-danger py-3">Network error</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" class="text-center text-danger py-3">Network error</td></tr>';
                 memoTypeNotify('Network error while loading memo types.', 'error');
             });
     }
@@ -524,6 +610,16 @@
                 loadList();
                 return;
             }
+            if (e.target.closest('#memo-type-bulk-enable')) {
+                e.preventDefault();
+                bulkSetMemoTypesActive(true);
+                return;
+            }
+            if (e.target.closest('#memo-type-bulk-disable')) {
+                e.preventDefault();
+                bulkSetMemoTypesActive(false);
+                return;
+            }
             if (e.target.closest('#memo-type-form-save')) {
                 e.preventDefault();
                 saveMemoTypeForm();
@@ -616,6 +712,21 @@
                 }).catch(function() {
                     memoTypeNotify('Network error while deleting.', 'error');
                 });
+            }
+        });
+
+        document.addEventListener('change', function(e) {
+            if (!memoTypeCatalogPagePresent()) return;
+            if (e.target && e.target.id === 'memo-type-select-all') {
+                var on = e.target.checked;
+                document.querySelectorAll('.memo-type-row-check').forEach(function(cb) {
+                    cb.checked = on;
+                });
+                e.target.indeterminate = false;
+                return;
+            }
+            if (e.target && e.target.classList.contains('memo-type-row-check')) {
+                syncMemoTypeSelectAllState();
             }
         });
 

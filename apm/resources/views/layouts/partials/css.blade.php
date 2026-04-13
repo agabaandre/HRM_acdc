@@ -141,6 +141,25 @@
         margin: 0.75rem auto;
     }
 
+    /* Summernote editor + rendered other-memo rich text: tables */
+    .note-editable table,
+    .rich-text-content table,
+    .html-content table {
+        max-width: 100%;
+        border-collapse: collapse;
+        margin: 0.5rem 0;
+    }
+    .note-editable table td,
+    .note-editable table th,
+    .rich-text-content table td,
+    .rich-text-content table th,
+    .html-content table td,
+    .html-content table th {
+        border: 1px solid #dee2e6;
+        padding: 0.35rem 0.5rem;
+        vertical-align: top;
+    }
+
     .modal.fade .modal-dialog.modal-bottom {
         transform: translateY(100%);
     }

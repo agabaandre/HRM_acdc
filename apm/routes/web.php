@@ -220,6 +220,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::prefix('memo-type-definitions/api')->group(function () {
         Route::get('/', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxIndex'])->name('memo-type-definitions.api.index');
         Route::post('/', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxStore'])->name('memo-type-definitions.api.store');
+        Route::post('/bulk-is-active', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxBulkSetActive'])->name('memo-type-definitions.api.bulk-is-active');
         Route::get('/{memoTypeDefinition}', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxShow'])->name('memo-type-definitions.api.show');
         Route::put('/{memoTypeDefinition}', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxUpdate'])->name('memo-type-definitions.api.update');
         Route::delete('/{memoTypeDefinition}', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxDestroy'])->name('memo-type-definitions.api.destroy');
