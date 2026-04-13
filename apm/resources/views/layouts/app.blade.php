@@ -429,7 +429,36 @@
         document.addEventListener('livewire:navigated', hidePreloader);
     })();
     </script>
+    <script>
+    (function () {
+        document.addEventListener('livewire:navigating', function () {
+            if (typeof jQuery === 'undefined' || !jQuery.fn || !jQuery.fn.select2) return;
+            try {
+                var $mt = jQuery('#memo_type_slug');
+                if ($mt.length && $mt.hasClass('select2-hidden-accessible')) {
+                    $mt.select2('destroy');
+                }
+            } catch (e) {}
+            jQuery('#approver-rows-container select.approver-staff-id').each(function () {
+                try {
+                    if (jQuery(this).hasClass('select2-hidden-accessible')) {
+                        jQuery(this).select2('destroy');
+                    }
+                } catch (e2) {}
+            });
+            try {
+                jQuery('#memo-type-preview-host textarea.memo-type-sn').each(function () {
+                    var $t = jQuery(this);
+                    if ($t.summernote && $t.next('.note-editor').length) {
+                        $t.summernote('destroy');
+                    }
+                });
+            } catch (e3) {}
+        });
+    })();
+    </script>
     <script src="{{ asset('js/apm-filter-state.js') }}"></script>
+    <script src="{{ asset('js/apm-other-memo-index-livewire.js') }}"></script>
     @stack('scripts')
 
     <script>

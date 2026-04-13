@@ -165,6 +165,7 @@
                                 get_my_returned_matrices_count(user_session('staff_id')) +
                                 get_my_returned_special_memo_count(user_session('staff_id')) +
                                 get_my_returned_non_travel_memo_count(user_session('staff_id')) +
+                                get_my_returned_other_memo_count(user_session('staff_id')) +
                                 get_my_returned_single_memo_count(user_session('staff_id')) +
                                 get_my_returned_service_requests_count(user_session('staff_id')) +
                                 get_my_returned_request_arf_count(user_session('staff_id')) +
@@ -193,7 +194,8 @@
                                 get_pending_single_memo_count(user_session('staff_id')) +
                                 get_pending_service_requests_count(user_session('staff_id')) +
                                 get_pending_request_arf_count(user_session('staff_id')) +
-                                get_pending_change_request_count(user_session('staff_id'));
+                                get_pending_change_request_count(user_session('staff_id')) +
+                                get_pending_other_memo_count(user_session('staff_id'));
                         }
                     @endphp
                     @if ($pendingCount > 0)

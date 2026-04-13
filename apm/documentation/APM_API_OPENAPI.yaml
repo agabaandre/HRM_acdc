@@ -550,7 +550,7 @@ paths:
       summary: List documents by type and status
       description: |
         Returns all documents of the given type with the given overall_status (from mother models).
-        **other_memo** uses the `other_memos` table (catalogue-driven memos); attachments are typically empty; **print_url** is set when approved.
+        **other_memo** uses the `other_memos` table (catalogue-driven memos). When the memo type allows attachments, **attachments** lists files with **url** / **web_view_url** like other document types; **print_url** is set when approved.
         Optional query parameter **id** returns a single document when provided.
         When listing (no id), results are ordered **latest first** (year desc, quarter desc, created_at desc)
         and support memo-list style filters and pagination.
@@ -649,7 +649,7 @@ paths:
         **approval_trails** are sorted by **created_at** descending (latest action first).
         Each approval_trail entry includes **staff_image_url** and **oic_staff_image_url** when a portrait is available.
         Document payloads merge **approval_order**, **approval_role**, **workflow_definition_id**, **approver_name**, **approver_staff_id** (staff_id of the current workflow actor, null if none), and **approver_image_url**.
-        For **other_memo**, **workflow_definition_id** is always null; **approval_order** is the active step in the configured approver chain; **approval_role** is the step label from approver configuration.
+        For **other_memo**, **workflow_definition_id** is always null; **approval_trails** use the same item shape as other types (**role** from approver configuration via **other_memos_approval_trails**, including **Creator** for order 0); **approval_order** on the document is the active step in the configured approver chain; **approval_role** is the current step label from approver configuration.
         Each attachment has **url** (API; use with Bearer token or ?token= for in-browser) and **web_view_url**
         (web session; use to open in browser when user is logged in via the web app).
         For listing by status use GET /documents/{type}/{status}.

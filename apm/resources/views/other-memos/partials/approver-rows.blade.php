@@ -84,8 +84,7 @@
 <button type="button" class="btn btn-sm btn-outline-success" id="approver-add-row"><i class="bx bx-plus"></i> Add approver step</button>
 <p class="small text-muted mt-2 mb-0">Approvals run top-to-bottom in the order listed. Picking a staff member fills the role label with their job title; you can edit it afterward (for example to match one of the workflow role examples above).</p>
 
-@once
-@push('scripts')
+{{-- Inline script: keep in swapped DOM; Select2 loads from layout footer — runApproversWhenSelect2Ready() waits for jQuery.fn.select2. --}}
 <script>
 window.otherMemoStaffJobById = @json($otherMemoStaffJobMap);
 </script>
@@ -320,11 +319,41 @@ window.otherMemoStaffJobById = @json($otherMemoStaffJobMap);
                 onApproverAddClick();
             });
         }
+
+        if (typeof jQuery !== 'undefined' && typeof window.initOtherMemoStaffSelect2 === 'function') {
+            jQuery(container).find('select.approver-staff-id').each(function() {
+                window.initOtherMemoStaffSelect2(jQuery(this));
+            });
+        }
     }
 
-    document.addEventListener('DOMContentLoaded', initOtherMemoApprovers);
-    document.addEventListener('livewire:navigated', initOtherMemoApprovers);
+    function runApproversWhenSelect2Ready() {
+        if (typeof jQuery !== 'undefined' && jQuery.fn && jQuery.fn.select2) {
+            initOtherMemoApprovers();
+            return;
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function waitSelect2() {
+                var tries = 0;
+                (function poll() {
+                    if (typeof jQuery !== 'undefined' && jQuery.fn && jQuery.fn.select2) {
+                        initOtherMemoApprovers();
+                    } else if (tries++ < 240) {
+                        setTimeout(poll, 25);
+                    }
+                })();
+            });
+        } else {
+            var tries = 0;
+            (function poll() {
+                if (typeof jQuery !== 'undefined' && jQuery.fn && jQuery.fn.select2) {
+                    initOtherMemoApprovers();
+                } else if (tries++ < 240) {
+                    setTimeout(poll, 25);
+                }
+            })();
+        }
+    }
+    runApproversWhenSelect2Ready();
 })();
 </script>
-@endpush
-@endonce

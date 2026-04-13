@@ -426,7 +426,7 @@ class PendingApprovalsService
     protected function getPendingOtherMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
         $query = OtherMemo::query()
-            ->with(['creator', 'staff', 'division', 'approvalTrails.staff', 'currentApprover'])
+            ->with(['creator', 'staff', 'division', 'approvalTrails.staff', 'approvalTrails.otherMemo', 'currentApprover'])
             ->where('overall_status', OtherMemo::STATUS_PENDING)
             ->whereNotNull('current_approver_staff_id');
 

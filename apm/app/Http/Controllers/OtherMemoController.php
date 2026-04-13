@@ -117,7 +117,7 @@ class OtherMemoController extends Controller
             $query->whereYear('created_at', (int) $year);
         }
         if ($request->filled('document_number')) {
-            $query->where('document_number', 'like', '%' . $request->document_number . '%');
+            $query->where('document_number', 'like', '%'.$request->document_number.'%');
         }
         if ($request->filled('staff_id')) {
             $query->where('staff_id', (int) $request->staff_id);
@@ -144,7 +144,7 @@ class OtherMemoController extends Controller
         if ($term === '') {
             return;
         }
-        $like = '%' . addcslashes($term, '%_\\') . '%';
+        $like = '%'.addcslashes($term, '%_\\').'%';
         $query->where(function (Builder $q) use ($like) {
             $q->where('memo_type_name_snapshot', 'like', $like)
                 ->orWhere('document_number', 'like', $like)
@@ -177,7 +177,7 @@ class OtherMemoController extends Controller
         if (! $staff) {
             return response()->json(['success' => false, 'name' => null]);
         }
-        $name = trim(($staff->title ? $staff->title . ' ' : '') . $staff->fname . ' ' . $staff->lname);
+        $name = trim(($staff->title ? $staff->title.' ' : '').$staff->fname.' '.$staff->lname);
 
         return response()->json(['success' => true, 'name' => $name, 'email' => $staff->work_email]);
     }
@@ -190,8 +190,16 @@ class OtherMemoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $definition = $this->resolveDefinition($request);
+        $this->assertNoAttachmentsWhenDisabled($request, (bool) $definition->attachments_enabled);
+        if ($definition->attachments_enabled) {
+            $request->validate([
+                'attachments.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
+            ]);
+        }
         $payload = $this->validatePayloadForSchema($request, $definition->fields_schema ?? []);
         $approvers = $this->normalizeApprovers($request);
+
+        $attachmentRows = $this->collectUploadedOtherMemoAttachmentsOnCreate($request, $definition);
 
         $memo = OtherMemo::create([
             'memo_type_slug' => $definition->slug,
@@ -199,6 +207,8 @@ class OtherMemoController extends Controller
             'ref_prefix_snapshot' => $definition->ref_prefix,
             'signature_style_snapshot' => $definition->signature_style,
             'fields_schema_snapshot' => MemoTypeDefinition::normalizeFieldsSchemaRows($definition->fields_schema ?? []),
+            'attachments_enabled_snapshot' => (bool) $definition->attachments_enabled,
+            'attachment' => $attachmentRows,
             'payload' => $payload,
             'approvers_config' => $approvers,
             'staff_id' => $this->staffId(),
@@ -214,7 +224,7 @@ class OtherMemoController extends Controller
     public function show(OtherMemo $other_memo): View
     {
         $this->authorizeView($other_memo);
-        $other_memo->load(['approvalTrails.staff', 'approvalTrails.otherMemo', 'creator', 'currentApprover']);
+        $other_memo->load(['approvalTrails.staff', 'approvalTrails.otherMemo', 'creator', 'currentApprover', 'division']);
 
         return view('other-memos.show', [
             'memo' => $other_memo,
@@ -230,7 +240,7 @@ class OtherMemoController extends Controller
         if (! $this->canEdit($other_memo)) {
             abort(403);
         }
-        $other_memo->load(['creator']);
+        $other_memo->load(['creator', 'memoTypeDefinition']);
 
         return view('other-memos.edit', array_merge(
             ['memo' => $other_memo],
@@ -248,9 +258,20 @@ class OtherMemoController extends Controller
         $payload = $this->validatePayloadForSchema($request, $schema);
         $approvers = $this->normalizeApprovers($request);
 
+        $def = MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
+        $attachEnabledLive = (bool) ($def->attachments_enabled ?? false);
+
+        $attachmentForDb = $other_memo->attachment ?? [];
+        if ($this->otherMemoAttachmentsFormRelevant($other_memo)) {
+            $this->validateOtherMemoAttachmentMultipartRules($request);
+            $attachmentForDb = $this->mergeOtherMemoAttachmentsFromRequest($request, $other_memo);
+        }
+
         $other_memo->update([
             'payload' => $payload,
             'approvers_config' => $approvers,
+            'attachments_enabled_snapshot' => $attachEnabledLive,
+            'attachment' => $attachmentForDb,
         ]);
 
         return redirect()->route('other-memos.show', $other_memo)
@@ -284,6 +305,12 @@ class OtherMemoController extends Controller
         } else {
             $payload = $this->validatePayloadForSchema($request, $schema);
             $approvers = $this->normalizeApprovers($request);
+            if ($this->otherMemoAttachmentsFormRelevant($other_memo)) {
+                $this->validateOtherMemoAttachmentMultipartRules($request);
+                $other_memo->attachment = $this->mergeOtherMemoAttachmentsFromRequest($request, $other_memo);
+            }
+            $defSnap = MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
+            $other_memo->attachments_enabled_snapshot = (bool) ($defSnap->attachments_enabled ?? false);
         }
 
         if (count($approvers) < 1) {
@@ -442,9 +469,9 @@ class OtherMemoController extends Controller
 
         $safe = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $other_memo->document_number ?? 'memo');
 
-        return response($pdf->Output($safe . '.pdf', 'I'), 200, [
+        return response($pdf->Output($safe.'.pdf', 'I'), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $safe . '.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$safe.'.pdf"',
         ]);
     }
 
@@ -486,11 +513,11 @@ class OtherMemoController extends Controller
             }
             $type = $field['field_type'] ?? 'text';
             $required = ! empty($field['required']);
-            $raw = $request->input('payload.' . $key);
+            $raw = $request->input('payload.'.$key);
 
             if ($required && ($raw === null || $raw === '')) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'payload.' . $key => 'The ' . ($field['display'] ?? $key) . ' field is required.',
+                    'payload.'.$key => 'The '.($field['display'] ?? $key).' field is required.',
                 ]);
             }
 
@@ -592,15 +619,15 @@ class OtherMemoController extends Controller
                     'submission_remarks' => 'Division short name could not be resolved for this memo reference.',
                 ]);
             }
-            $pathPrefix = $org . '/' . $divCode . '/' . $im . '/' . $refToken . '/' . $yy . '/';
+            $pathPrefix = $org.'/'.$divCode.'/'.$im.'/'.$refToken.'/'.$yy.'/';
         } else {
-            $pathPrefix = $org . '/' . $im . '/' . $refToken . '/' . $yy . '/';
+            $pathPrefix = $org.'/'.$im.'/'.$refToken.'/'.$yy.'/';
         }
 
         $last = OtherMemo::query()
             ->where('memo_type_slug', $memo->memo_type_slug)
             ->whereNotNull('document_number')
-            ->where('document_number', 'like', $pathPrefix . '%')
+            ->where('document_number', 'like', $pathPrefix.'%')
             ->orderByDesc('document_number')
             ->value('document_number');
 
@@ -614,7 +641,158 @@ class OtherMemoController extends Controller
             }
         }
 
-        return $pathPrefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return $pathPrefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function otherMemoAttachmentsFormRelevant(OtherMemo $memo): bool
+    {
+        $def = MemoTypeDefinition::query()->where('slug', $memo->memo_type_slug)->first();
+        if ($def && $def->attachments_enabled) {
+            return true;
+        }
+        if ($memo->attachments_enabled_snapshot) {
+            return true;
+        }
+        $att = $memo->attachment;
+        if (is_array($att) && count($att) > 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function validateOtherMemoAttachmentMultipartRules(Request $request): void
+    {
+        $request->validate([
+            'attachments' => 'sometimes|array',
+            'attachments.*.type' => 'nullable|string|max:255',
+            'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
+        ]);
+    }
+
+    private function assertNoAttachmentsWhenDisabled(Request $request, bool $enabled): void
+    {
+        if ($enabled || ! $request->hasFile('attachments')) {
+            return;
+        }
+        $files = $request->file('attachments');
+        $list = is_array($files) ? $files : [$files];
+        foreach ($list as $f) {
+            if ($f && $f->isValid()) {
+                throw ValidationException::withMessages([
+                    'attachments' => 'Attachments are not enabled for this memo type.',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function collectUploadedOtherMemoAttachmentsOnCreate(Request $request, MemoTypeDefinition $definition): array
+    {
+        if (! $definition->attachments_enabled || ! $request->hasFile('attachments')) {
+            return [];
+        }
+        $uploadedFiles = $request->file('attachments');
+        if (! is_array($uploadedFiles)) {
+            $uploadedFiles = [$uploadedFiles];
+        }
+        $attachmentTypes = $request->input('attachments', []);
+        $out = [];
+        foreach ($uploadedFiles as $index => $file) {
+            if (! $file || ! $file->isValid()) {
+                continue;
+            }
+            $type = 'Document';
+            if (isset($attachmentTypes[$index]) && is_array($attachmentTypes[$index])) {
+                $t = $attachmentTypes[$index]['type'] ?? null;
+                if (is_string($t) && $t !== '') {
+                    $type = $t;
+                }
+            }
+            $meta = $this->storeOtherMemoAttachmentFile($file);
+            $meta['type'] = $type;
+            $out[] = $meta;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function storeOtherMemoAttachmentFile(\Illuminate\Http\UploadedFile $file): array
+    {
+        $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+        $extension = strtolower($file->getClientOriginalExtension());
+        if (! in_array($extension, $allowedExtensions, true)) {
+            throw ValidationException::withMessages([
+                'attachments' => 'Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.',
+            ]);
+        }
+        $filename = time().'_'.uniqid('', true).'.'.$extension;
+        $path = $file->storeAs('uploads/other-memos', $filename, 'public');
+
+        return [
+            'filename' => $filename,
+            'original_name' => $file->getClientOriginalName(),
+            'path' => $path,
+            'size' => $file->getSize(),
+            'mime_type' => $file->getMimeType(),
+            'uploaded_at' => now()->toDateTimeString(),
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function mergeOtherMemoAttachmentsFromRequest(Request $request, OtherMemo $memo): array
+    {
+        $existingAttachments = $memo->attachment;
+        if (! is_array($existingAttachments)) {
+            $existingAttachments = [];
+        }
+        $attachmentData = $request->input('attachments', []);
+        if (! is_array($attachmentData)) {
+            $attachmentData = [];
+        }
+
+        if ($attachmentData === []) {
+            return $existingAttachments;
+        }
+
+        $attachments = [];
+        foreach ($attachmentData as $index => $attachmentInfo) {
+            if (! is_array($attachmentInfo)) {
+                continue;
+            }
+            $type = $attachmentInfo['type'] ?? 'Document';
+            if (! is_string($type)) {
+                $type = 'Document';
+            }
+            $file = $request->file("attachments.{$index}.file");
+            $shouldReplace = isset($attachmentInfo['replace']) && $attachmentInfo['replace'] == '1';
+            $shouldDelete = isset($attachmentInfo['delete']) && $attachmentInfo['delete'] == '1';
+
+            if ($shouldDelete) {
+                continue;
+            }
+
+            if ($file && $file->isValid()) {
+                $meta = $this->storeOtherMemoAttachmentFile($file);
+                $meta['type'] = $type;
+                $attachments[] = $meta;
+            } elseif ($shouldReplace && isset($existingAttachments[$index])) {
+                continue;
+            } elseif (isset($existingAttachments[$index])) {
+                $row = $existingAttachments[$index];
+                $row['type'] = $type;
+                $attachments[] = $row;
+            }
+        }
+
+        return $attachments;
     }
 
     /**

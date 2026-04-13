@@ -6,7 +6,7 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a wire:navigate href="{{ route('other-memos.create') }}" class="btn btn-success shadow-sm">
+    <a wire:navigate.hover href="{{ route('other-memos.create') }}" class="btn btn-success shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Create New Memo
     </a>
 </div>
@@ -42,6 +42,8 @@
     position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important;
 }
 </style>
+
+<div data-apm-livewire-page="other-memos-index">
 
 @if (session('msg'))
     <div class="alert alert-{{ session('type', 'info') }}">{{ session('msg') }}</div>
@@ -186,184 +188,6 @@
     </div>
 </div>
 
-<script>
-function initOtherMemosPage() {
-    if (!document.getElementById('otherMemoTabs')) return;
-    var filtersEl = document.getElementById('otherMemoFilters');
-    if (!filtersEl) return;
-    if (window.APMFilters) {
-        APMFilters.clearInited('#otherMemoFilters');
-        APMFilters.init('#otherMemoFilters', {
-            fields: [
-                { param: 'year', id: 'year', default: APMFilters.currentYear },
-                { param: 'staff_id', id: 'staff_id' },
-                { param: 'division_id', id: 'division_id' },
-                { param: 'status', id: 'memo_status' },
-                { param: 'document_number', id: 'document_number' },
-                { param: 'search', id: 'search' }
-            ],
-            tabParam: 'filter_tab',
-            tabDefault: 'mySubmitted',
-            selectSelector: '.apm-filter-select'
-        });
-    }
-    function applyFilters() {
-        setTimeout(function() {
-            var activeTab = document.querySelector('#otherMemoTabsContent .tab-pane.active');
-            if (activeTab) loadOtherMemoTabData(activeTab.id);
-        }, 0);
-    }
-    var applyBtn = document.getElementById('applyOtherMemoFilters');
-    if (applyBtn) applyBtn.addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
-    var form = document.getElementById('otherMemoFiltersForm');
-    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
-    ['staff_id', 'division_id', 'memo_status', 'year'].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.addEventListener('change', applyFilters);
-    });
-    if (document.getElementById('document_number')) {
-        var documentNumberTimeout;
-        document.getElementById('document_number').addEventListener('input', function() {
-            clearTimeout(documentNumberTimeout);
-            documentNumberTimeout = setTimeout(applyFilters, 1000);
-        });
-        document.getElementById('document_number').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                clearTimeout(documentNumberTimeout);
-                applyFilters();
-            }
-        });
-    }
-    function getYearValue() {
-        var currentYear = String(new Date().getFullYear());
-        if (typeof $ !== 'undefined' && $('#year').length) {
-            var jqVal = $('#year').val();
-            if (jqVal != null && jqVal !== '') return String(jqVal).trim();
-        }
-        var sel = document.getElementById('year');
-        if (!sel) return currentYear;
-        var idx = sel.selectedIndex;
-        if (idx < 0 || !sel.options[idx]) return currentYear;
-        var v = (sel.options[idx].value || '').trim();
-        return v || currentYear;
-    }
-    function mapPaneIdToTabParam(paneId) {
-        if (paneId === 'otherAllMemos') return 'allMemos';
-        return 'mySubmitted';
-    }
-    function loadOtherMemoTabData(paneId, page) {
-        page = page || 1;
-        var tabParam = mapPaneIdToTabParam(paneId);
-        var currentUrl = new URL(window.location);
-        currentUrl.searchParams.set('page', page);
-        currentUrl.searchParams.set('tab', tabParam);
-        var year = getYearValue();
-        var documentNumber = (document.getElementById('document_number') && document.getElementById('document_number').value) ? document.getElementById('document_number').value.trim() : '';
-        var staffId = document.getElementById('staff_id') ? (document.getElementById('staff_id').value || '') : '';
-        var divisionId = document.getElementById('division_id') ? (document.getElementById('division_id').value || '') : '';
-        var status = document.getElementById('memo_status') ? (document.getElementById('memo_status').value || '') : '';
-        var search = document.getElementById('search') ? (document.getElementById('search').value || '').trim() : '';
-        currentUrl.searchParams.set('year', year);
-        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
-        else currentUrl.searchParams.delete('document_number');
-        if (staffId) currentUrl.searchParams.set('staff_id', staffId);
-        else currentUrl.searchParams.delete('staff_id');
-        if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
-        else currentUrl.searchParams.delete('division_id');
-        if (status) currentUrl.searchParams.set('status', status);
-        else currentUrl.searchParams.delete('status');
-        if (search) currentUrl.searchParams.set('search', search);
-        else currentUrl.searchParams.delete('search');
-        window.history.replaceState({}, '', currentUrl.toString());
-        var tabContent = document.getElementById(paneId);
-        if (tabContent) {
-            tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        }
-        fetch(currentUrl.toString(), {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-            if (data.html && tabContent) {
-                tabContent.innerHTML = '<div class="p-3">' + rebuildOtherMemoTabShell(paneId, data.html) + '</div>';
-                attachOtherMemoPaginationHandlers(paneId);
-            } else if (!data.html && tabContent) {
-                tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
-            }
-            if (data.count_my_submitted !== undefined) {
-                var badgeMy = document.getElementById('badge-other-mySubmitted');
-                if (badgeMy) badgeMy.textContent = data.count_my_submitted;
-            }
-            if (data.count_all_memos !== undefined) {
-                var badgeAll = document.getElementById('badge-other-allMemos');
-                if (badgeAll) badgeAll.textContent = data.count_all_memos;
-            }
-        })
-        .catch(function(error) {
-            console.error('Error loading other memo tab data:', error);
-            if (tabContent) {
-                tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
-            }
-        });
-    }
-    function rebuildOtherMemoTabShell(paneId, innerHtml) {
-        if (paneId === 'otherAllMemos') {
-            return '<div class="d-flex align-items-center justify-content-between mb-3"><div><h6 class="mb-0 text-primary fw-bold"><i class="bx bx-grid me-2"></i> All Other Memos</h6><small class="text-muted">All other memos in the system</small></div></div>' + innerHtml;
-        }
-        return '<div class="d-flex align-items-center justify-content-between mb-3"><div><h6 class="mb-0 text-success fw-bold"><i class="bx bx-file-alt me-2"></i> My Submitted Memos</h6><small class="text-muted">Other memos you have created</small></div></div>' + innerHtml;
-    }
-    function attachOtherMemoPaginationHandlers(paneId) {
-        var tabContent = document.getElementById(paneId);
-        if (!tabContent) return;
-        tabContent.querySelectorAll('.pagination a').forEach(function(link) {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                var url = new URL(this.href);
-                var page = url.searchParams.get('page') || 1;
-                loadOtherMemoTabData(paneId, page);
-            });
-        });
-    }
-    var urlTab = new URLSearchParams(window.location.search).get('tab');
-    if (urlTab) {
-        setTimeout(function() {
-            var tabEl = (urlTab === 'allMemos') ? document.getElementById('otherAllMemos-tab') : document.getElementById('otherMySubmitted-tab');
-            if (tabEl && typeof bootstrap !== 'undefined') {
-                document.querySelectorAll('#otherMemoTabs .nav-link').forEach(function(btn) { btn.classList.remove('active'); });
-                document.querySelectorAll('#otherMemoTabsContent .tab-pane').forEach(function(pane) { pane.classList.remove('active', 'show'); });
-                tabEl.classList.add('active');
-                var pane = document.getElementById(tabEl.getAttribute('aria-controls'));
-                if (pane) { pane.classList.add('active', 'show'); loadOtherMemoTabData(pane.id); }
-            }
-        }, 50);
-    }
-    var filterTabInput = document.getElementById('filter_tab');
-    document.querySelectorAll('#otherMemoTabs [data-bs-toggle="tab"]').forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.querySelectorAll('#otherMemoTabs .nav-link').forEach(function(btn) { btn.classList.remove('active'); });
-            document.querySelectorAll('#otherMemoTabsContent .tab-pane').forEach(function(pane) { pane.classList.remove('active', 'show'); });
-            this.classList.add('active');
-            var tabId = this.getAttribute('aria-controls');
-            if (filterTabInput) filterTabInput.value = mapPaneIdToTabParam(tabId);
-            var tabPane = document.getElementById(tabId);
-            if (tabPane) tabPane.classList.add('active', 'show');
-            loadOtherMemoTabData(tabId);
-        });
-    });
-    var activeTabButton = document.querySelector('#otherMemoTabs .nav-link.active');
-    if (activeTabButton && !urlTab) {
-        loadOtherMemoTabData(activeTabButton.getAttribute('aria-controls'));
-    }
-}
-document.addEventListener('DOMContentLoaded', initOtherMemosPage);
-document.addEventListener('livewire:navigated', function() {
-    if (!document.getElementById('otherMemoTabs')) return;
-    setTimeout(initOtherMemosPage, 0);
-});
-</script>
+</div>
+{{-- Index behaviour: public/js/apm-other-memo-index-livewire.js (livewire:navigated + AbortController) --}}
 @endsection
