@@ -378,7 +378,13 @@ $mpdf = new \Mpdf\Mpdf([
 
         // Set PDF margins exactly like CodeIgniter
         $mpdf->SetMargins(10, 10, 35);         // left, top, right margins
-        $mpdf->SetAutoPageBreak(true, 30); 
+        $mpdf->SetAutoPageBreak(true, 30);
+
+        $logoFile = public_path('assets/images/logo.png');
+        $logoSrc = (is_file($logoFile) && is_readable($logoFile))
+            ? $logoFile
+            : asset('assets/images/logo.png');
+
         $header = '<div style="width: 100%; text-align: center; padding-bottom: 5px;">
             <div style="width: 100%; padding-bottom: 5px;">
                 <div style="width: 100%; padding: 10px 0;">
@@ -386,7 +392,7 @@ $mpdf = new \Mpdf\Mpdf([
                     <div style="display:flex; justify-content: space-between; align-items: center;">
                         <!-- Left: Logo -->
                         <div style="width: 60%; text-align: left; float:left;">
-                            <img src="' . asset('assets/images/logo.png') . '" alt="Africa CDC Logo" style="height: 80px;">
+                            <img src="' . $logoSrc . '" alt="Africa CDC Logo" style="height: 80px;">
                         </div>
                         <!-- Right: Tagline -->
                         <div style="text-align: right; width: 35%; float:right; margin-top:10px;">
@@ -427,8 +433,13 @@ $mpdf = new \Mpdf\Mpdf([
         // Write HTML content exactly like CodeIgniter with error handling
         try {
             $mpdf->WriteHTML($html);
-        } catch (Exception $e) {
-            // If there's an error, try with minimal HTML
+        } catch (\Throwable $e) {
+            Log::error('mPDF WriteHTML failed', [
+                'view' => $view,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
             $mpdf->WriteHTML($simpleHtml);
         }
