@@ -157,7 +157,7 @@ trait ApproverDashboardHelper
                     'approver_id' => $approverObj->approver_id,
                     'approver_name' => $fullName,
                     'approver_email' => $approverObj->work_email,
-                    'photo' => $approverObj->photo ?? null,
+                    'photo' => self::normalizeStaffPhotoBasename($approverObj->photo ?? null),
                     'title' => $title,
                     'fname' => $approverObj->fname ?? '',
                     'lname' => $approverObj->lname ?? '',
@@ -186,6 +186,10 @@ trait ApproverDashboardHelper
             }
             if (!in_array($approverObj->level_no, $approversByStaffId[$staffId]['levels'])) {
                 $approversByStaffId[$staffId]['levels'][] = $approverObj->level_no;
+            }
+
+            if (empty($approversByStaffId[$staffId]['photo']) && !empty($approverObj->photo)) {
+                $approversByStaffId[$staffId]['photo'] = self::normalizeStaffPhotoBasename($approverObj->photo);
             }
             
             // Note: Pending counts, total handled, and avg approval time are now calculated
@@ -227,7 +231,7 @@ trait ApproverDashboardHelper
                 'approver_id' => $data['approver_id'],
                 'approver_name' => $data['approver_name'],
                 'approver_email' => $data['approver_email'],
-                'photo' => !empty($data['photo']) ? $data['photo'] : null, // Ensure photo is included
+                'photo' => self::normalizeStaffPhotoBasename($data['photo'] ?? null),
                 'title' => $data['title'] ?? '',
                 'fname' => $data['fname'] ?? '',
                 'lname' => $data['lname'] ?? '',
@@ -1036,6 +1040,22 @@ trait ApproverDashboardHelper
             Log::error('Error calculating average approval time by workflow: ' . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * Basename for staff-uploads/photo ?f= (matches StaffPhotoRoute / CI3 uploads/staff).
+     */
+    private static function normalizeStaffPhotoBasename($photo): ?string
+    {
+        if ($photo === null || $photo === '') {
+            return null;
+        }
+        $base = basename(str_replace('\\', '/', trim((string) $photo)));
+        if ($base === '' || $base === '.' || $base === '..') {
+            return null;
+        }
+
+        return $base;
     }
 
     protected static function getModelTypeByDocType($docType)

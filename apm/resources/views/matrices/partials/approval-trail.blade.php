@@ -110,7 +110,7 @@
     <div class="card-body">
         <ul class="timeline">
             @php
-                $trailsSorted = $trails ? $trails->sortByDesc('created_at') : collect();
+                $trailsSorted = $trails ? \App\Support\ApprovalTrailSort::timelineAsc($trails) : collect();
             @endphp
             @forelse($trailsSorted as $trail)
                 @php

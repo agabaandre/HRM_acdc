@@ -138,7 +138,11 @@ class Activity extends Model
 
     public function activityApprovalTrails(): HasMany
     {
-        return $this->hasMany(ActivityApprovalTrail::class, 'activity_id')->orderBy('created_at', 'desc');
+        return $this->hasMany(ActivityApprovalTrail::class, 'activity_id')
+            ->orderByRaw('CASE WHEN approval_order IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('approval_order', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc');
     }
 
     public function locations()
