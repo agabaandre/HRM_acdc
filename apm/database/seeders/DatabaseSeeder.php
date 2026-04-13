@@ -33,6 +33,7 @@ class DatabaseSeeder extends Seeder
             FundCodesSeeder::class,      // Then seed cost items
             FaqCategorySeeder::class,    // FAQ categories (before FAQs)
             FaqSeeder::class,            // Seed default FAQs
+            MemoTypeDefinitionsSeeder::class, // Other memo types catalogue (system rows, idempotent)
         ]);
     }
 }
