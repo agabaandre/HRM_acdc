@@ -1,6 +1,10 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
+/**
+ * Staff analytics dashboard. Access requires permission 76 (View dashboard), enforced
+ * pre_controller via hooks/Portal_permission_guard.php and config/portal_segment_permissions.php.
+ */
 class Dashboard extends MX_Controller
 {
     protected $dashmodule;
@@ -11,6 +15,14 @@ class Dashboard extends MX_Controller
         $this->db->query('SET SESSION sql_mode = ""');
 		$this->dashmodule = "dashboard";
 		$this->load->model("dashboard_mdl",'dash_mdl');
+
+		// Controller-level check (hook runs first; this blocks direct calls if hooks are disabled).
+		$user = $this->session->userdata('user');
+		if ($user && !staff_user_has_permission_id(76)) {
+			$this->session->set_flashdata('error', 'You do not have permission to access the dashboard.');
+			redirect('home/index');
+			return;
+		}
 	}
 
 	public function index()

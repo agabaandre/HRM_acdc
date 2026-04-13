@@ -701,6 +701,11 @@ public function revert()
 
   public function users()
   {
+    if (!staff_user_has_permission_id(17)) {
+      $this->session->set_flashdata('error', 'You do not have permission to access this page.');
+      redirect('home/index');
+      return;
+    }
     $searchkey = $this->input->get('search_key');
     if (empty($searchkey)) {
       $searchkey = "";
@@ -880,6 +885,11 @@ public function revert()
 
   public function logs()
   {
+    if (!staff_user_has_permission_id(17)) {
+      $this->session->set_flashdata('error', 'You do not have permission to access this page.');
+      redirect('home/index');
+      return;
+    }
     $searchkey = $this->input->get();
     if (empty($searchkey)) {
       $searchkey = "";

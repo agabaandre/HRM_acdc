@@ -596,6 +596,70 @@ if (!function_exists('can_access')) {
     }
 }
 
+if (!function_exists('staff_user_has_permission_id')) {
+
+    /**
+     * True if the current session user has this permission id (integer compare; matches nav in_array('76', ...)).
+     */
+    function staff_user_has_permission_id($permission_id)
+    {
+        $ci = &get_instance();
+        $user = $ci->session->userdata('user');
+        return staff_user_has_permission_id_for_user($user, $permission_id);
+    }
+}
+
+if (!function_exists('staff_user_has_permission_id_for_user')) {
+
+    function staff_user_has_permission_id_for_user($user, $permission_id)
+    {
+        if (!$user || empty($user->permissions) || !is_array($user->permissions)) {
+            return false;
+        }
+        $needle = (int) $permission_id;
+        foreach ($user->permissions as $p) {
+            if ((int) $p === $needle) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+if (!function_exists('staff_user_satisfies_portal_rule')) {
+
+    /**
+     * @param object      $user Session user object
+     * @param array       $rule From portal_segment_permissions config
+     */
+    function staff_user_satisfies_portal_rule($user, array $rule)
+    {
+        if (empty($rule['permission_ids']) || !is_array($rule['permission_ids'])) {
+            return false;
+        }
+        if (!empty($rule['require_nonzero_staff'])) {
+            if (empty($user->staff_id) || (int) $user->staff_id === 0) {
+                return false;
+            }
+        }
+        $type = isset($rule['type']) ? strtolower((string) $rule['type']) : 'all';
+        if ($type === 'any') {
+            foreach ($rule['permission_ids'] as $pid) {
+                if (staff_user_has_permission_id_for_user($user, $pid)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        foreach ($rule['permission_ids'] as $pid) {
+            if (!staff_user_has_permission_id_for_user($user, $pid)) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
 // Can Access With Array
 if (!function_exists('can_access_multi')) {
 

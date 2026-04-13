@@ -103,7 +103,7 @@ $autoload['helper'] = array('url', 'absent', 'rosta', 'text', 'custom', 'csrf', 
 | config files.  Otherwise, leave it blank.
 |
 */
-$autoload['config'] = array();
+$autoload['config'] = array('portal_segment_permissions');
 
 /*
 | -------------------------------------------------------------------
