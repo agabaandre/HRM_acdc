@@ -1976,16 +1976,9 @@ class ChangeRequestController extends Controller
             'organized_workflow_steps' => $organizedWorkflowSteps,
         ])->render();
 
-        if (preg_match('/<body[^>]*>(.*)<\/body>/is', $html, $bodyMatch)) {
-            $bodyContent = $bodyMatch[1];
-            $styleContent = '';
-            if (preg_match('/<style[^>]*>(.*)<\/style>/is', $html, $styleMatch)) {
-                $styleContent = '<style>' . $styleMatch[1] . '</style>';
-            }
-            return $styleContent . $bodyContent;
-        }
+        $fragment = \App\Helpers\PrintHelper::htmlFullDocumentToEmbedFragment($html);
 
-        return null;
+        return $fragment !== '' ? $fragment : null;
     }
 
     /**
