@@ -58,6 +58,53 @@ class PrintHelper
     }
 
     /**
+     * Strip outer &lt;html&gt;/&lt;head&gt;/&lt;body&gt; from a full memo PDF template so it can be embedded
+     * inside another mPDF document (nested full documents break WriteHTML).
+     */
+    public static function embeddablePdfHtmlFragment(string $html): string
+    {
+        $html = trim($html);
+        if ($html === '') {
+            return '';
+        }
+
+        libxml_use_internal_errors(true);
+        $dom = new \DOMDocument();
+        $loaded = @$dom->loadHTML('<?xml encoding="UTF-8">' . $html);
+        libxml_clear_errors();
+
+        if (!$loaded) {
+            if (preg_match('/<body[^>]*>(.*)<\/body>/is', $html, $m)) {
+                $styles = '';
+                if (preg_match_all('/<style\b[^>]*>.*?<\/style>/is', $html, $sm)) {
+                    $styles = implode('', $sm[0]);
+                }
+
+                return $styles . $m[1];
+            }
+
+            return $html;
+        }
+
+        $styles = '';
+        foreach ($dom->getElementsByTagName('style') as $styleNode) {
+            $styles .= $dom->saveHTML($styleNode);
+        }
+
+        $body = $dom->getElementsByTagName('body')->item(0);
+        if (!$body) {
+            return $html;
+        }
+
+        $inner = '';
+        foreach ($body->childNodes as $child) {
+            $inner .= $dom->saveHTML($child);
+        }
+
+        return $styles . $inner;
+    }
+
+    /**
      * Safely get staff email from approver data
      */
     public static function getStaffEmail($approver)

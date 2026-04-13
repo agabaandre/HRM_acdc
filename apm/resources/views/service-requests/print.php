@@ -381,7 +381,9 @@
                     if ($section === 'to') {
                         $approvalTrails = $srApprovalTrails ?? collect();
                     } else {
-                        $approvalTrails = $sourceData->approval_trails ?? $serviceRequest->serviceRequestApprovalTrails;
+                        $approvalTrails = ($sourceData && isset($sourceData->approval_trails))
+                            ? $sourceData->approval_trails
+                            : $serviceRequest->serviceRequestApprovalTrails;
                     }
                     renderSignature($approver, $order, $approvalTrails, $serviceRequest); 
                     ?>
@@ -496,16 +498,20 @@
  </table>
 
 
+<?php if (!empty($sourceData)): ?>
  <p>
-    Reference is made to the attached approval memo, <a href="<?=$sourceData->memo_link?>" class="text-success text-decoration-underline" style="color:#006633 !important;"><b><?=$sourceData->document_number?></b></a>, concerning <?=$sourceData->activity_title?>, 
+    Reference is made to the attached approval memo, <a href="<?= htmlspecialchars((string) ($sourceData->memo_link ?? '#'), ENT_QUOTES, 'UTF-8') ?>" class="text-success text-decoration-underline" style="color:#006633 !important;"><b><?= htmlspecialchars((string) ($sourceData->document_number ?? ''), ENT_QUOTES, 'UTF-8') ?></b></a>, concerning <?= htmlspecialchars((string) ($sourceData->activity_title ?? ''), ENT_QUOTES, 'UTF-8') ?>,
     <?php if (isset($sourceData->date_from) && isset($sourceData->date_to)): ?>
-        which is scheduled to commence on <?=date('j F Y', strtotime($sourceData->date_from))?>, and conclude on <?=date('j F Y', strtotime($sourceData->date_to))?>.
+        which is scheduled to commence on <?= date('j F Y', strtotime($sourceData->date_from)) ?>, and conclude on <?= date('j F Y', strtotime($sourceData->date_to)) ?>.
     <?php elseif (isset($sourceData->memo_date)): ?>
-        dated <?=date('j F Y', strtotime($sourceData->memo_date))?>.
+        dated <?= date('j F Y', strtotime($sourceData->memo_date)) ?>.
     <?php else: ?>
         for the specified period.
     <?php endif; ?>
 </p>
+<?php else: ?>
+ <p>Reference is made to the attached approval documentation supporting this service request.</p>
+<?php endif; ?>
 
 
 
@@ -1158,10 +1164,10 @@ $dApprovedChanges = $disclaimer['approved_changes_list'] ?? [];
   <div class="page-break"></div>
 <?php endif; ?>
 
-<?php if ($sourcePdfHtml): ?>
+<?php if (!empty($sourcePdfHtml)): ?>
   <!-- Original / Approval Memo (parent memo - shown once after CR when SR is from CR) -->
   <div class="section-label mb-15"><strong>Original Approval Memo</strong></div>
-  <?php echo $sourcePdfHtml; ?>
+  <?php echo \App\Helpers\PrintHelper::embeddablePdfHtmlFragment($sourcePdfHtml); ?>
 <?php endif; ?>
 
 </body>
