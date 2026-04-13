@@ -629,6 +629,15 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+/** Basename for staff-uploads/photo (handles DB paths like uploads/staff/file.jpg). */
+function staffPortraitBasename(photo) {
+    if (photo == null || typeof photo !== 'string') return '';
+    const t = photo.trim().replace(/\\/g, '/');
+    if (!t) return '';
+    const i = t.lastIndexOf('/');
+    return i >= 0 ? t.slice(i + 1) : t;
+}
+
 function initializeDataTable() {
     var $table = $('#approverTable');
     if ($table.length && typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable($table[0])) {
@@ -714,10 +723,11 @@ function initializeDataTable() {
         const bgColor = colors[colorIndex >= 0 ? colorIndex : 0];
         
                     let avatarHtml = '';
-                    const hasPhoto = row.photo && row.photo !== null && row.photo !== '' && row.photo.trim() !== '';
+                    const photoFile = staffPortraitBasename(row.photo);
+                    const hasPhoto = photoFile !== '';
         
         if (hasPhoto) {
-                        const photoUrl = staffPhotoRoute + '?f=' + encodeURIComponent(row.photo);
+                        const photoUrl = staffPhotoRoute + '?f=' + encodeURIComponent(photoFile);
             avatarHtml = `<div style="position: relative; width: 40px; height: 40px;">
                             <img src="${photoUrl}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;" alt="${row.approver_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.nextElementSibling.style.zIndex='1';" onload="this.nextElementSibling.style.display='none';">
                             <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="display: none; width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 0;">${initials}</div>

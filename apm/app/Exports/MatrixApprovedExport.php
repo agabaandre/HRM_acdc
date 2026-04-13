@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Matrix;
+use App\Support\ApprovalTrailSort;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithTitle;
@@ -72,7 +73,7 @@ class MatrixApprovalTrailSheet implements FromCollection, WithHeadings, WithTitl
     {
         $rows = collect();
         $trails = $this->matrix->matrixApprovalTrails ?? collect();
-        $trails = $trails->sortByDesc('created_at')->values();
+        $trails = ApprovalTrailSort::timelineAsc($trails);
         foreach ($trails as $idx => $trail) {
             $approver = $trail->oicStaff ?? $trail->staff;
             $approverName = $approver ? trim(($approver->title ?? '') . ' ' . ($approver->fname ?? '') . ' ' . ($approver->lname ?? '') . ' ' . ($approver->oname ?? '')) : 'N/A';

@@ -3079,7 +3079,7 @@ class MatrixController extends Controller
             $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
         }
 
-        $trails = $matrix->matrixApprovalTrails->sortByDesc('created_at');
+        $trails = \App\Support\ApprovalTrailSort::timelineAsc($matrix->matrixApprovalTrails);
         $baseUrl = rtrim(user_session('base_url') ?? config('app.url'), '/');
         $matrixShowUrl = url()->route('matrices.show', [$matrix]);
 
