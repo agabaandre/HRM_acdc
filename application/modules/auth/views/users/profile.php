@@ -300,7 +300,7 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
           <?php if ($passport_url !== ''): ?>
           <div class="text-center mb-3">
             <p class="small text-muted mb-1 fw-semibold">Passport biodata (for travel purposes)</p>
-            <p class="small text-muted mb-2">Photo page with your details, for official travel.</p>
+            <p class="small text-muted mb-2">Photo page or PDF scan with your details, for official travel.</p>
             <a href="<?= $passport_url ?>" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
               <i class="fas fa-passport me-1"></i> View passport biodata file
             </a>
@@ -308,7 +308,7 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
           <?php else: ?>
           <div class="text-center mb-3">
             <p class="small text-muted mb-1 fw-semibold">Passport biodata (for travel purposes)</p>
-            <p class="small text-muted mb-0"><span class="text-secondary">Not uploaded</span> — please add an image of your passport biodata page for travel.</p>
+            <p class="small text-muted mb-0"><span class="text-secondary">Not uploaded</span> — please add an image or PDF of your passport biodata page for travel.</p>
           </div>
           <?php endif; ?>
 
@@ -532,8 +532,8 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
               </div>
               <div class="col-md-4">
                 <label class="form-label">Passport biodata page <span class="text-muted fw-normal">(for travel purposes)</span></label>
-                <input type="file" name="passport_biodata" class="form-control" accept="image/*">
-                <small class="text-muted">Used for official travel arrangements. Image only (JPG, PNG, or GIF), max 4MB.</small>
+                <input type="file" name="passport_biodata" class="form-control" accept="image/*,application/pdf,.pdf">
+                <small class="text-muted">Used for official travel arrangements. JPG, PNG, GIF, or PDF, max 4MB.</small>
                 <?php if ($passport_url !== ''): ?>
                 <div class="profile-doc-preview-box">
                   <div class="profile-doc-preview-label">Current file</div>
