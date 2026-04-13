@@ -21,7 +21,7 @@ class MemoTypeDefinitionController extends Controller
         $query = MemoTypeDefinition::query()->orderBy('sort_order')->orderBy('name');
 
         if ($request->filled('q')) {
-            $q = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $request->string('q')) . '%';
+            $q = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $request->string('q')).'%';
             $query->where(function ($w) use ($q) {
                 $w->where('name', 'like', $q)
                     ->orWhere('slug', 'like', $q)
@@ -51,6 +51,7 @@ class MemoTypeDefinitionController extends Controller
         $validated = $this->validatePayload($request, null);
         $validated['fields_schema'] = MemoTypeDefinition::normalizeFieldsSchemaRows($validated['fields_schema']);
         $validated['is_division_specific'] = filter_var($validated['is_division_specific'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $validated['attachments_enabled'] = filter_var($validated['attachments_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $slugSource = trim((string) ($validated['slug'] ?? ''));
         $baseSlug = $slugSource !== '' ? $slugSource : Str::slug($validated['name']);
         if ($baseSlug === '') {
@@ -75,6 +76,9 @@ class MemoTypeDefinitionController extends Controller
         $validated['fields_schema'] = MemoTypeDefinition::normalizeFieldsSchemaRows($validated['fields_schema']);
         if (array_key_exists('is_division_specific', $validated)) {
             $validated['is_division_specific'] = filter_var($validated['is_division_specific'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (array_key_exists('attachments_enabled', $validated)) {
+            $validated['attachments_enabled'] = filter_var($validated['attachments_enabled'], FILTER_VALIDATE_BOOLEAN);
         }
         if ($memoTypeDefinition->is_system) {
             unset($validated['slug']);
@@ -127,11 +131,12 @@ class MemoTypeDefinitionController extends Controller
             'description' => 'nullable|string|max:5000',
             'ref_prefix' => 'nullable|string|max:32',
             'is_division_specific' => 'sometimes|boolean',
-            'signature_style' => 'required|string|in:' . $sigStyles,
+            'attachments_enabled' => 'sometimes|boolean',
+            'signature_style' => 'required|string|in:'.$sigStyles,
             'fields_schema' => 'required|array|min:1',
             'fields_schema.*.field' => 'required|string|max:64|regex:/^[a-z][a-z0-9_]*$/',
             'fields_schema.*.display' => 'required|string|max:255',
-            'fields_schema.*.field_type' => 'required|string|in:' . $fieldTypes,
+            'fields_schema.*.field_type' => 'required|string|in:'.$fieldTypes,
             'fields_schema.*.required' => 'sometimes|boolean',
             'fields_schema.*.enabled' => 'sometimes|boolean',
             'sort_order' => 'sometimes|integer|min:0|max:999999',
@@ -148,7 +153,7 @@ class MemoTypeDefinitionController extends Controller
             ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
             ->where('slug', $candidate)
             ->exists()) {
-            $candidate = $base . '-' . $n++;
+            $candidate = $base.'-'.$n++;
         }
 
         return $candidate;

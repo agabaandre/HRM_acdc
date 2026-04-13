@@ -21,6 +21,7 @@
         vertical-align: top;
     }
 </style>
+<div data-apm-livewire-page="memo-type-definitions">
 <div class="card shadow-sm">
     <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h5 class="mb-0"><i class="bx bx-file-blank me-2 text-primary"></i>Memo type catalogue</h5>
@@ -39,6 +40,7 @@
                         <th style="width:48px">#</th>
                         <th class="memo-type-table-col-name">Name</th>
                         <th>On create</th>
+                        <th>Attachments</th>
                         <th>Slug</th>
                         <th>Ref prefix</th>
                         <th>Scope</th>
@@ -49,7 +51,7 @@
                 </thead>
                 <tbody id="memo-type-tbody">
                     <tr id="memo-type-loading-row">
-                        <td colspan="9" class="text-center py-4 text-muted">
+                        <td colspan="10" class="text-center py-4 text-muted">
                             <span class="spinner-border spinner-border-sm me-2"></span> Loading…
                         </td>
                     </tr>
@@ -78,6 +80,8 @@
                     <dd class="col-sm-9" id="memo-type-view-scope"></dd>
                     <dt class="col-sm-3">On create</dt>
                     <dd class="col-sm-9" id="memo-type-view-active"></dd>
+                    <dt class="col-sm-3">Approval attachments</dt>
+                    <dd class="col-sm-9" id="memo-type-view-attachments"></dd>
                     <dt class="col-sm-3">Signature style</dt>
                     <dd class="col-sm-9" id="memo-type-view-sig"></dd>
                     <dt class="col-sm-3">Slug</dt>
@@ -151,6 +155,11 @@
                                 <label class="form-check-label" for="memo-type-form-division-specific">Division-specific reference</label>
                             </div>
                             <p class="small text-muted mb-0">If checked, issued numbers include the creator&rsquo;s division short name: <code>AU/CDC/<em>DIV</em>/IM/<em>REF</em>/YY/####</code>. If unchecked: <code>AU/CDC/IM/<em>REF</em>/YY/####</code> (YY = two-digit year).</p>
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" id="memo-type-form-attachments">
+                                <label class="form-check-label" for="memo-type-form-attachments">Enable approval attachments</label>
+                            </div>
+                            <p class="small text-muted mb-0">When on, creators can attach supporting documents on other memo create/edit (same file rules as matrix activities).</p>
                         </div>
                     </div>
                     <h6 class="mt-4 border-bottom pb-2">Fields <span class="text-danger">*</span></h6>
@@ -171,9 +180,8 @@
         </div>
     </div>
 </div>
-@endsection
+</div>
 
-@push('scripts')
 <script>
 (function() {
     var listUrl = @json(route('memo-type-definitions.api.index'));
@@ -191,6 +199,38 @@
         var d = document.createElement('div');
         d.textContent = s;
         return d.innerHTML;
+    }
+
+    /** Same stack as activities: layouts footer defines show_notification → Lobibox.notify */
+    function memoTypeNotify(message, msgtype) {
+        msgtype = msgtype || 'info';
+        if (msgtype === 'danger') {
+            msgtype = 'error';
+        }
+        if (typeof show_notification === 'function') {
+            show_notification(message, msgtype);
+        } else {
+            window.alert(message);
+        }
+    }
+
+    function memoTypeSaveErrorMessage(j) {
+        var msg = (j && j.message) ? j.message : 'Save failed';
+        if (j && j.errors && typeof j.errors === 'object') {
+            var lines = [];
+            Object.keys(j.errors).forEach(function(k) {
+                var v = j.errors[k];
+                if (Array.isArray(v)) {
+                    lines.push(v.join(' '));
+                } else if (typeof v === 'string') {
+                    lines.push(v);
+                }
+            });
+            if (lines.length) {
+                return lines.slice(0, 6).join(' ');
+            }
+        }
+        return msg;
     }
 
     function setFormSystemSlugMode(isSystem) {
@@ -238,16 +278,17 @@
         var q = (document.getElementById('memo-type-search').value || '').trim();
         var url = listUrl + (q ? ('?q=' + encodeURIComponent(q)) : '');
         var tbody = document.getElementById('memo-type-tbody');
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Loading…</td></tr>';
         fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function(r) { return r.json(); })
             .then(function(json) {
                 if (!json.success || !Array.isArray(json.data)) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">Failed to load</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-danger py-3">Failed to load</td></tr>';
+                    memoTypeNotify('Could not load memo types.', 'error');
                     return;
                 }
                 if (json.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No memo types found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">No memo types found.</td></tr>';
                     return;
                 }
                 var rows = json.data.map(function(m, idx) {
@@ -255,6 +296,7 @@
                     var sysBadge = m.is_system ? '<span class="badge bg-secondary">System</span>' : '<span class="badge bg-info">Custom</span>';
                     var scopeBadge = m.is_division_specific ? '<span class="badge bg-warning text-dark">Division</span>' : '<span class="badge bg-light text-dark">Org-wide</span>';
                     var createBadge = m.is_active ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">Disabled</span>';
+                    var attBadge = m.attachments_enabled ? '<span class="badge bg-primary">On</span>' : '<span class="badge bg-light text-dark">Off</span>';
                     var actions = '<button type="button" class="btn btn-sm btn-outline-info me-1 memo-type-btn-view" data-id="' + m.id + '">View</button>';
                     actions += '<button type="button" class="btn btn-sm btn-outline-primary me-1 memo-type-btn-edit" data-id="' + m.id + '">Edit</button>';
                     if (!m.is_system) {
@@ -265,6 +307,7 @@
                         '<td>' + (idx + 1) + '</td>' +
                         '<td class="memo-type-table-col-name">' + escHtml(m.name) + ' ' + sysBadge + '</td>' +
                         '<td>' + createBadge + '</td>' +
+                        '<td>' + attBadge + '</td>' +
                         '<td><code>' + escHtml(m.slug) + '</code></td>' +
                         '<td>' + escHtml(m.ref_prefix || '—') + '</td>' +
                         '<td>' + scopeBadge + '</td>' +
@@ -276,7 +319,8 @@
                 tbody.innerHTML = rows;
             })
             .catch(function() {
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">Network error</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-danger py-3">Network error</td></tr>';
+                memoTypeNotify('Network error while loading memo types.', 'error');
             });
     }
 
@@ -386,6 +430,7 @@
         document.getElementById('memo-type-view-ref').textContent = m.ref_prefix || '—';
         document.getElementById('memo-type-view-scope').textContent = m.is_division_specific ? 'Division-specific (ref includes division code)' : 'Organisation-wide';
         document.getElementById('memo-type-view-active').textContent = m.is_active ? 'Yes — listed on other memo create' : 'No — disabled for create';
+        document.getElementById('memo-type-view-attachments').textContent = m.attachments_enabled ? 'Yes — file uploads on memo forms' : 'No';
         document.getElementById('memo-type-view-sig').textContent = m.signature_style_label || m.signature_style;
         document.getElementById('memo-type-view-slug').textContent = m.slug;
         var $ftbody = jQuery('#memo-type-view-fields-table tbody');
@@ -399,96 +444,30 @@
         modal.show();
     }
 
-    document.getElementById('memo-type-tbody').addEventListener('click', function(e) {
-        var btnView = e.target.closest('.memo-type-btn-view');
-        if (btnView) {
-            var idV = btnView.getAttribute('data-id');
-            fetch(apiItemUrl(idV), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(function(r) { return r.json(); })
-                .then(function(json) {
-                    if (json.success && json.data) openViewModal(json.data);
-                });
-            return;
-        }
-        var btnEdit = e.target.closest('.memo-type-btn-edit');
-        if (btnEdit) {
-            var id = btnEdit.getAttribute('data-id');
-            fetch(apiItemUrl(id), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(function(r) { return r.json(); })
-                .then(function(json) {
-                    if (!json.success || !json.data) return;
-                    var m = json.data;
-                    document.getElementById('memo-type-form-title').textContent = 'Edit memo type';
-                    document.getElementById('memo-type-form-id').value = m.id;
-                    document.getElementById('memo-type-form-name').value = m.name;
-                    document.getElementById('memo-type-form-slug').value = m.slug;
-                    document.getElementById('memo-type-form-ref').value = m.ref_prefix || '';
-                    document.getElementById('memo-type-form-desc').value = m.description || '';
-                    document.getElementById('memo-type-form-sort').value = m.sort_order;
-                    document.getElementById('memo-type-form-active').checked = !!m.is_active;
-                    document.getElementById('memo-type-form-division-specific').checked = !!m.is_division_specific;
-                    fillSignatureSelect(jQuery('#memo-type-form-signature'), m.signature_style);
-                    var $tb = jQuery('#memo-type-fields-editor tbody');
-                    $tb.empty();
-                    (m.fields_schema || []).forEach(function(f) {
-                        addFieldEditorRow(f.field, f.display, f.field_type, f.required, f.enabled);
-                    });
-                    setFormSystemSlugMode(!!m.is_system);
-                    new bootstrap.Modal(document.getElementById('memo-type-form-modal')).show();
-                });
-            return;
-        }
-        var btnDel = e.target.closest('.memo-type-btn-del');
-        if (btnDel) {
-            if (!confirm('Delete this memo type?')) return;
-            var idDel = btnDel.getAttribute('data-id');
-            fetch(apiItemUrl(idDel), {
-                method: 'DELETE',
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
-            }).then(function(r) { return r.json(); }).then(function(json) {
-                if (json.success) loadList();
-                else alert(json.message || 'Delete failed');
-            });
-        }
-    });
+    function memoTypeCatalogPagePresent() {
+        return !!document.querySelector('[data-apm-livewire-page="memo-type-definitions"]');
+    }
 
-    document.getElementById('memo-type-view-modal').addEventListener('hidden.bs.modal', function() {
-        destroySummernoteIn(jQuery('#memo-type-preview-host'));
-        document.getElementById('memo-type-preview-host').innerHTML = '';
-    });
-
-    document.getElementById('memo-type-form-modal').addEventListener('hidden.bs.modal', function() {
-        document.getElementById('memo-type-form').reset();
-        document.getElementById('memo-type-form-id').value = '';
-        document.getElementById('memo-type-form-division-specific').checked = false;
-        setFormSystemSlugMode(false);
-        jQuery('#memo-type-fields-editor tbody').empty();
-    });
-
-    document.getElementById('memo-type-add-btn').addEventListener('click', function() {
+    function openMemoTypeAddModal() {
         document.getElementById('memo-type-form-title').textContent = 'Add memo type';
         document.getElementById('memo-type-form-id').value = '';
         setFormSystemSlugMode(false);
         fillSignatureSelect(jQuery('#memo-type-form-signature'), 'top_right');
         jQuery('#memo-type-fields-editor tbody').empty();
         document.getElementById('memo-type-form-division-specific').checked = false;
+        document.getElementById('memo-type-form-attachments').checked = false;
         addFieldEditorRow('title', 'Title', 'text', true, true);
         addFieldEditorRow('body', 'Body', 'text_summernote', true, true);
         new bootstrap.Modal(document.getElementById('memo-type-form-modal')).show();
-    });
+    }
 
-    document.getElementById('memo-type-field-add-row').addEventListener('click', function() {
-        addFieldEditorRow('', '', 'text', false, true);
-    });
-
-    jQuery('#memo-type-fields-editor').on('click', '.fld-remove', function() {
-        jQuery(this).closest('tr').remove();
-    });
-
-    document.getElementById('memo-type-form-save').addEventListener('click', function() {
+    function saveMemoTypeForm() {
         var id = document.getElementById('memo-type-form-id').value;
         var fields = readFieldsFromEditor();
-        if (!fields.length) { alert('Add at least one field.'); return; }
+        if (!fields.length) {
+            memoTypeNotify('Add at least one field.', 'warning');
+            return;
+        }
         var payload = {
             name: document.getElementById('memo-type-form-name').value.trim(),
             slug: document.getElementById('memo-type-form-slug').value.trim() || null,
@@ -498,6 +477,7 @@
             sort_order: parseInt(document.getElementById('memo-type-form-sort').value, 10) || 0,
             is_active: document.getElementById('memo-type-form-active').checked,
             is_division_specific: document.getElementById('memo-type-form-division-specific').checked,
+            attachments_enabled: document.getElementById('memo-type-form-attachments').checked,
             fields_schema: fields
         };
         var url = id ? apiItemUrl(id) : listUrl;
@@ -514,32 +494,173 @@
         }).then(function(r) { return r.json().then(function(j) { return { ok: r.ok, j: j }; }); })
           .then(function(res) {
             if (res.ok && res.j.success) {
+                memoTypeNotify(res.j.message || 'Memo type saved.', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('memo-type-form-modal')).hide();
                 loadList();
             } else {
-                var msg = (res.j && res.j.message) ? res.j.message : 'Save failed';
-                if (res.j && res.j.errors) msg += '\n' + JSON.stringify(res.j.errors);
-                alert(msg);
+                memoTypeNotify(memoTypeSaveErrorMessage(res.j), 'error');
             }
+          })
+          .catch(function() {
+            memoTypeNotify('Could not reach the server. Check your connection and try again.', 'error');
           });
-    });
+    }
 
-    document.getElementById('memo-type-reload').addEventListener('click', loadList);
-    document.getElementById('memo-type-search').addEventListener('keyup', function(ev) {
-        if (ev.key === 'Enter') loadList();
-    });
+    /** Single delegated bindings for wire:navigate (new DOM each visit; layout script stacks do not re-run). */
+    function bindMemoTypeCatalogGlobalsOnce() {
+        if (window.__apmMemoTypeCatalogGlobalsBound) return;
+        window.__apmMemoTypeCatalogGlobalsBound = true;
 
-    var viewModalEl = document.getElementById('memo-type-view-modal');
-    viewModalEl.addEventListener('shown.bs.modal', function() {
-        jQuery('#memo-type-preview-host textarea.memo-type-sn').each(function() {
-            if (!jQuery(this).next('.note-editor').length) jQuery(this).summernote(summernoteOptions());
+        document.addEventListener('click', function(e) {
+            if (!memoTypeCatalogPagePresent()) return;
+
+            if (e.target.closest('#memo-type-add-btn')) {
+                e.preventDefault();
+                openMemoTypeAddModal();
+                return;
+            }
+            if (e.target.closest('#memo-type-reload')) {
+                e.preventDefault();
+                loadList();
+                return;
+            }
+            if (e.target.closest('#memo-type-form-save')) {
+                e.preventDefault();
+                saveMemoTypeForm();
+                return;
+            }
+            if (e.target.closest('#memo-type-field-add-row')) {
+                e.preventDefault();
+                addFieldEditorRow('', '', 'text', false, true);
+                return;
+            }
+            var fldRem = e.target.closest('#memo-type-fields-editor .fld-remove');
+            if (fldRem) {
+                e.preventDefault();
+                jQuery(fldRem).closest('tr').remove();
+                return;
+            }
+
+            var inTbody = e.target.closest('#memo-type-tbody');
+            if (!inTbody) return;
+
+            var btnView = e.target.closest('.memo-type-btn-view');
+            if (btnView) {
+                e.preventDefault();
+                var idV = btnView.getAttribute('data-id');
+                fetch(apiItemUrl(idV), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function(r) { return r.json(); })
+                    .then(function(json) {
+                        if (json.success && json.data) {
+                            openViewModal(json.data);
+                        } else {
+                            memoTypeNotify('Could not load memo type details.', 'error');
+                        }
+                    })
+                    .catch(function() {
+                        memoTypeNotify('Network error while loading details.', 'error');
+                    });
+                return;
+            }
+            var btnEdit = e.target.closest('.memo-type-btn-edit');
+            if (btnEdit) {
+                e.preventDefault();
+                var id = btnEdit.getAttribute('data-id');
+                fetch(apiItemUrl(id), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function(r) { return r.json(); })
+                    .then(function(json) {
+                        if (!json.success || !json.data) {
+                            memoTypeNotify('Could not load this memo type for editing.', 'error');
+                            return;
+                        }
+                        var m = json.data;
+                        document.getElementById('memo-type-form-title').textContent = 'Edit memo type';
+                        document.getElementById('memo-type-form-id').value = m.id;
+                        document.getElementById('memo-type-form-name').value = m.name;
+                        document.getElementById('memo-type-form-slug').value = m.slug;
+                        document.getElementById('memo-type-form-ref').value = m.ref_prefix || '';
+                        document.getElementById('memo-type-form-desc').value = m.description || '';
+                        document.getElementById('memo-type-form-sort').value = m.sort_order;
+                        document.getElementById('memo-type-form-active').checked = !!m.is_active;
+                        document.getElementById('memo-type-form-division-specific').checked = !!m.is_division_specific;
+                        document.getElementById('memo-type-form-attachments').checked = !!m.attachments_enabled;
+                        fillSignatureSelect(jQuery('#memo-type-form-signature'), m.signature_style);
+                        var $tb = jQuery('#memo-type-fields-editor tbody');
+                        $tb.empty();
+                        (m.fields_schema || []).forEach(function(f) {
+                            addFieldEditorRow(f.field, f.display, f.field_type, f.required, f.enabled);
+                        });
+                        setFormSystemSlugMode(!!m.is_system);
+                        new bootstrap.Modal(document.getElementById('memo-type-form-modal')).show();
+                    })
+                    .catch(function() {
+                        memoTypeNotify('Network error while loading memo type.', 'error');
+                    });
+                return;
+            }
+            var btnDel = e.target.closest('.memo-type-btn-del');
+            if (btnDel) {
+                e.preventDefault();
+                if (!confirm('Delete this memo type?')) return;
+                var idDel = btnDel.getAttribute('data-id');
+                fetch(apiItemUrl(idDel), {
+                    method: 'DELETE',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(function(r) { return r.json(); }).then(function(json) {
+                    if (json.success) {
+                        memoTypeNotify(json.message || 'Memo type deleted.', 'success');
+                        loadList();
+                    } else {
+                        memoTypeNotify(json.message || 'Delete failed', 'error');
+                    }
+                }).catch(function() {
+                    memoTypeNotify('Network error while deleting.', 'error');
+                });
+            }
         });
-    });
 
-    function boot() { loadList(); }
-    if (document.readyState === 'complete') boot();
-    else document.addEventListener('DOMContentLoaded', boot);
-    document.addEventListener('livewire:navigated', boot);
+        document.addEventListener('keyup', function(ev) {
+            if (!memoTypeCatalogPagePresent()) return;
+            if (ev.target && ev.target.id === 'memo-type-search' && ev.key === 'Enter') loadList();
+        });
+
+        document.addEventListener('hidden.bs.modal', function(ev) {
+            if (ev.target && ev.target.id === 'memo-type-view-modal') {
+                destroySummernoteIn(jQuery('#memo-type-preview-host'));
+                var h = document.getElementById('memo-type-preview-host');
+                if (h) h.innerHTML = '';
+            }
+            if (ev.target && ev.target.id === 'memo-type-form-modal') {
+                var form = document.getElementById('memo-type-form');
+                if (form) form.reset();
+                var fid = document.getElementById('memo-type-form-id');
+                if (fid) fid.value = '';
+                var divSpec = document.getElementById('memo-type-form-division-specific');
+                if (divSpec) divSpec.checked = false;
+                var attEn = document.getElementById('memo-type-form-attachments');
+                if (attEn) attEn.checked = false;
+                setFormSystemSlugMode(false);
+                jQuery('#memo-type-fields-editor tbody').empty();
+            }
+        });
+
+        document.addEventListener('shown.bs.modal', function(ev) {
+            if (ev.target && ev.target.id === 'memo-type-view-modal') {
+                jQuery('#memo-type-preview-host textarea.memo-type-sn').each(function() {
+                    if (!jQuery(this).next('.note-editor').length) jQuery(this).summernote(summernoteOptions());
+                });
+            }
+        });
+    }
+
+    function bootMemoTypeCatalog() {
+        if (!memoTypeCatalogPagePresent()) return;
+        bindMemoTypeCatalogGlobalsOnce();
+        loadList();
+    }
+
+    document.addEventListener('DOMContentLoaded', bootMemoTypeCatalog);
+    document.addEventListener('livewire:navigated', bootMemoTypeCatalog);
 })();
 </script>
-@endpush
+@endsection

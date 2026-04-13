@@ -24,6 +24,8 @@ class OtherMemo extends Model
         'ref_prefix_snapshot',
         'signature_style_snapshot',
         'fields_schema_snapshot',
+        'attachments_enabled_snapshot',
+        'attachment',
         'payload',
         'approvers_config',
         'document_number',
@@ -50,6 +52,7 @@ class OtherMemo extends Model
             'submitted_at' => 'datetime',
             'approved_at' => 'datetime',
             'is_division_specific_snapshot' => 'boolean',
+            'attachments_enabled_snapshot' => 'boolean',
         ];
     }
 

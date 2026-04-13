@@ -25,7 +25,8 @@
 @endpush
 
 @section('content')
-<div class="other-memo-form-page">
+{{-- Page markers + scripts below live inside #apm-content-area so wire:navigate executes them (Livewire docs). --}}
+<div class="other-memo-form-page" data-apm-livewire-page="other-memos-create">
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul class="mb-0">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
@@ -39,7 +40,7 @@
             </h5>
         </div>
         <div class="card-body p-4">
-            <form method="post" action="{{ route('other-memos.store') }}" id="other-memo-create-form">
+            <form method="post" action="{{ route('other-memos.store') }}" id="other-memo-create-form" enctype="multipart/form-data">
                 @csrf
 
                 <div class="mb-4">
@@ -67,6 +68,20 @@
                     <div class="card-body" id="memo-dynamic-fields"></div>
                 </div>
 
+                <div class="card border mb-4 d-none" id="memo-attachments-card">
+                    <div class="card-header bg-light border-bottom py-2">
+                        <span class="fw-semibold text-success"><i class="bx bx-paperclip me-1"></i> Attachments</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex gap-2 mb-3">
+                            <button type="button" class="btn btn-danger btn-sm" id="other-memo-add-attachment">Add New</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="other-memo-remove-attachment">Remove</button>
+                        </div>
+                        <div class="row g-3" id="other-memo-attachment-container"></div>
+                        <p class="small text-muted mt-2 mb-0">Max size 10 MB per file. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX.</p>
+                    </div>
+                </div>
+
                 <div class="card border mb-4 d-none" id="memo-approvers-card">
                     <div class="card-header bg-light border-bottom py-2">
                         <span class="fw-semibold text-success"><i class="bx bx-git-merge me-1"></i> Approval sequence</span>
@@ -90,26 +105,12 @@
         </div>
     </div>
 </div>
-@endsection
 
-@push('scripts')
+{{-- Inline script: must stay in morphed content (not the layout scripts stack) per Livewire navigate. --}}
 <script>
 (function() {
     var apiList = @json(route('memo-type-definitions.api.index')) + '?active_only=1';
     var types = {};
-
-    function destroyOtherMemoSelect2() {
-        if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
-        var $mt = jQuery('#memo_type_slug');
-        if ($mt.length && $mt.hasClass('select2-hidden-accessible')) {
-            $mt.select2('destroy');
-        }
-        jQuery('#approver-rows-container select.approver-staff-id').each(function() {
-            if (jQuery(this).hasClass('select2-hidden-accessible')) {
-                jQuery(this).select2('destroy');
-            }
-        });
-    }
 
     function initMemoTypeSelect2() {
         if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
@@ -209,6 +210,10 @@
         var t = types[sel.value];
         document.getElementById('memo-fields-card').classList.toggle('d-none', !t);
         document.getElementById('memo-approvers-card').classList.toggle('d-none', !t);
+        var attCard = document.getElementById('memo-attachments-card');
+        if (attCard) {
+            attCard.classList.toggle('d-none', !t || !t.attachments_enabled);
+        }
         if (t) renderFields(t.fields_schema || []);
     }
 
@@ -253,18 +258,58 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', boot);
-    document.addEventListener('livewire:navigated', function() {
-        document.getElementById('memo_type_slug')?.removeAttribute('data-apm-other-memo-boot');
-        document.getElementById('other-memo-create-form')?.removeAttribute('data-apm-summernote-submit-bound');
-        boot();
-        if (typeof jQuery !== 'undefined' && typeof window.initOtherMemoStaffSelect2 === 'function') {
-            jQuery('#approver-rows-container select.approver-staff-id').each(function() {
-                window.initOtherMemoStaffSelect2(jQuery(this));
+    boot();
+
+    if (typeof jQuery !== 'undefined') {
+        jQuery(function($) {
+            var otherMemoAttachmentIndex = 1;
+            $('#other-memo-add-attachment').on('click', function() {
+                var newField = '<div class="col-md-4 attachment-block">' +
+                    '<label class="form-label">Document type</label>' +
+                    '<input type="text" name="attachments[' + otherMemoAttachmentIndex + '][type]" class="form-control" required>' +
+                    '<input type="file" name="attachments[]" class="form-control mt-1 other-memo-attachment-input" ' +
+                    'accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" required>' +
+                    '<small class="text-muted">Max size: 10MB</small></div>';
+                $('#other-memo-attachment-container').append(newField);
+                otherMemoAttachmentIndex++;
             });
-        }
-    });
-    document.addEventListener('livewire:navigating', destroyOtherMemoSelect2);
+            $('#other-memo-remove-attachment').on('click', function() {
+                var $blocks = $('#other-memo-attachment-container .attachment-block');
+                if ($blocks.length > 1) {
+                    $blocks.last().remove();
+                    otherMemoAttachmentIndex--;
+                } else if ($blocks.length === 1) {
+                    $blocks.last().remove();
+                    otherMemoAttachmentIndex = 1;
+                }
+            });
+            $(document).on('change', '.other-memo-attachment-input', function() {
+                var fileInput = this;
+                var file = fileInput.files[0];
+                if (!file) return;
+                var maxSize = 10 * 1024 * 1024;
+                var ext = file.name.split('.').pop().toLowerCase();
+                var allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+                if (allowedExtensions.indexOf(ext) === -1) {
+                    if (typeof show_notification === 'function') {
+                        show_notification('Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.', 'warning');
+                    } else {
+                        alert('Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.');
+                    }
+                    $(fileInput).val('');
+                    return;
+                }
+                if (file.size > maxSize) {
+                    if (typeof show_notification === 'function') {
+                        show_notification('File size must be less than 10MB.', 'warning');
+                    } else {
+                        alert('File size must be less than 10MB.');
+                    }
+                    $(fileInput).val('');
+                }
+            });
+        });
+    }
 })();
 </script>
-@endpush
+@endsection

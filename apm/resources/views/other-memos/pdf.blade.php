@@ -49,6 +49,18 @@
         </div>
     @endforeach
 
+    @php
+        $memoAttachmentsPdf = is_array($memo->attachment) ? $memo->attachment : [];
+    @endphp
+    @if (count($memoAttachmentsPdf) > 0)
+        <h2 style="font-size: 12pt; margin-top: 24px;">Attachments</h2>
+        <ul style="font-size: 10pt;">
+            @foreach ($memoAttachmentsPdf as $att)
+                <li>{{ $att['type'] ?? 'Document' }} — {{ $att['original_name'] ?? 'File' }}</li>
+            @endforeach
+        </ul>
+    @endif
+
     <h2 style="font-size: 12pt; margin-top: 24px;">Approval trail</h2>
     <table class="trail">
         <thead>

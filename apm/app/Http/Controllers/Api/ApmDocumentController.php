@@ -239,7 +239,7 @@ class ApmDocumentController extends Controller
     private function otherMemo(int $id): JsonResponse
     {
         $memo = OtherMemo::with([
-            'staff', 'division', 'creator', 'approvalTrails.staff', 'currentApprover',
+            'staff', 'division', 'creator', 'approvalTrails.staff', 'approvalTrails.otherMemo', 'currentApprover',
         ])->find($id);
         if (! $memo) {
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
@@ -256,54 +256,15 @@ class ApmDocumentController extends Controller
      */
     private function buildOtherMemoDocumentData(OtherMemo $memo, int $id): array
     {
-        $memo->loadMissing(['staff', 'division', 'creator', 'approvalTrails.staff', 'currentApprover']);
+        $memo->loadMissing(['staff', 'division', 'creator', 'approvalTrails.staff', 'approvalTrails.otherMemo', 'currentApprover']);
         $data = $memo->toArray();
         $data['document_type'] = 'other_memo';
         $data['activity_title'] = $memo->memo_type_name_snapshot;
-        $data['approval_trails'] = $this->formatOtherMemoApprovalTrails($memo);
-        $data['attachments'] = [];
+        $data['approval_trails'] = $this->formatApprovalTrails($memo->approvalTrails ?? collect());
+        $data['attachments'] = $this->buildAttachmentsWithUrls($memo, 'other_memo', $id);
         $data['print_url'] = $this->getPrintUrl('other_memo', $memo);
 
         return $this->mergeCurrentApprovalIntoDocument($data, $memo, 'other_memo');
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function formatOtherMemoApprovalTrails(OtherMemo $memo): array
-    {
-        $trails = $memo->approvalTrails ?? collect();
-        if ($trails->isEmpty()) {
-            return [];
-        }
-        $sorted = ApprovalTrailSort::latestFirst($trails);
-
-        return $sorted->map(function ($t) use ($memo) {
-            $staff = $t->relationLoaded('staff') ? $t->staff : null;
-            $staffName = $staff ? trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? '')) : null;
-            $order = (int) ($t->approval_order ?? 0);
-            $role = null;
-            if ($order > 0) {
-                $row = $memo->approverAtSequence($order);
-                $role = is_array($row) ? ($row['role_label'] ?? null) : null;
-            }
-
-            return [
-                'id' => $t->id,
-                'action' => $t->action ?? null,
-                'remarks' => $t->remarks ?? null,
-                'approval_order' => $t->approval_order ?? null,
-                'staff_id' => $t->staff_id ?? null,
-                'staff_name' => $staffName,
-                'staff_image_url' => StaffApproverPhotoUrl::resolve($staff instanceof Staff ? $staff : null),
-                'oic_staff_id' => null,
-                'oic_staff_name' => null,
-                'oic_staff_image_url' => null,
-                'role' => $role,
-                'created_at' => $t->created_at ? (\Carbon\Carbon::parse($t->created_at)->toIso8601String()) : null,
-                'is_archived' => false,
-            ];
-        })->values()->toArray();
     }
 
     private function specialMemo(int $id): JsonResponse
@@ -611,7 +572,7 @@ class ApmDocumentController extends Controller
                 'staff', 'division', 'fundType', 'requestType', 'nonTravelMemoCategory', 'matrix', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.workflowDefinition', 'forwardWorkflow',
             ])->where('overall_status', $status),
             'other_memo' => OtherMemo::with([
-                'staff', 'division', 'creator', 'approvalTrails.staff', 'currentApprover',
+                'staff', 'division', 'creator', 'approvalTrails.staff', 'approvalTrails.otherMemo', 'currentApprover',
             ])->where('overall_status', $status),
             default => null,
         };

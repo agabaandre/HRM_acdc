@@ -1,21 +1,22 @@
 <?php
+
 use App\Models\ActivityApprovalTrail;
-use App\Models\Approver;
 use App\Models\ApprovalTrail;
+use App\Models\Approver;
+use App\Models\Division;
 use App\Models\WorkflowDefinition;
 use Carbon\Carbon;
-use App\Models\Division;
 use Illuminate\Support\Facades\DB;
 
-if (!function_exists('user_session')) {
+if (! function_exists('user_session')) {
     /**
      * Get a value from the session('user') array using dot notation.
      *
-     * @param string|null $key
-     * @param mixed $default
+     * @param  string|null  $key
+     * @param  mixed  $default
      * @return mixed
      */
-    if (!function_exists('user_session')) {
+    if (! function_exists('user_session')) {
         /**
          * Get a value from session('user') using dot notation
          */
@@ -24,12 +25,13 @@ if (!function_exists('user_session')) {
             // API context: use request attribute set by SetApmApiUserContext middleware (does not touch web session)
             if (app()->runningInConsole() === false && request()->attributes->get('api_user_session') !== null) {
                 $user = request()->attributes->get('api_user_session');
+
                 return $key === null ? $user : data_get($user, $key, $default);
             }
             $user = session('user', []);
+
             return $key == null ? $user : data_get($user, $key, $default);
         }
-        
 
         function isfocal_person()
         {
@@ -37,25 +39,25 @@ if (!function_exists('user_session')) {
             $staff_id = $user['staff_id'] ?? null;
             $division_id = $user['division_id'] ?? null;
 
-            if (!$staff_id || !$division_id) {
+            if (! $staff_id || ! $division_id) {
                 return false;
             }
 
             $division = Division::find($division_id);
-            //dd($division);
-            if (!$division) {
+            // dd($division);
+            if (! $division) {
                 return false;
             }
-            //dd($division->focal_person);
+            // dd($division->focal_person);
 
             $division_fp_id = $division->focal_person ?? null;
 
             return $staff_id == $division_fp_id;
         }
-        
+
     }
 
-    if (!function_exists('still_with_creator')) {
+    if (! function_exists('still_with_creator')) {
         /**
          * Determine if the activity/matrix is still with the creator or focal person for editing.
          * Returns true if:
@@ -69,29 +71,30 @@ if (!function_exists('user_session')) {
             $user = session('user', []);
             $staffId = $user['staff_id'] ?? null;
 
-            //dd($staffId);
+            // dd($staffId);
 
             // If division head can edit, allow
             if (can_division_head_edit($matrix)) {
-                //dd("here");
+                // dd("here");
                 return true;
             }
 
             // If matrix is in draft or returned
-            if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
-                //=dd("here");
+            if (! in_array($matrix->overall_status, ['draft', 'returned'])) {
+                // =dd("here");
                 return false;
             }
 
             // If matrix is in draft, allow staff, focal person, or responsible staff to edit
             if ($matrix->overall_status == 'draft') {
-                    //dd("here");//  dd($activity);
+                // dd("here");//  dd($activity);
                 $allowedIds = [$matrix->staff_id, $matrix->focal_person_id];
-   
+
                 if ($activity && isset($activity->responsible_person_id)) {
                     $allowedIds[] = $activity->responsible_person_id;
                 }
-                //dd($activity->responsible_person_id);
+
+                // dd($activity->responsible_person_id);
                 return in_array($staffId, $allowedIds);
             }
 
@@ -101,14 +104,13 @@ if (!function_exists('user_session')) {
                 if ($activity && isset($activity->responsible_person_id)) {
                     $allowedIds[] = $activity->responsible_person_id;
                 }
+
                 return in_array($staffId, $allowedIds);
             }
 
             return false;
         }
     }
-
-
 
     // if (!function_exists('still_with_creator')) {
     //     /**
@@ -122,19 +124,18 @@ if (!function_exists('user_session')) {
     //         return  (can_division_head_edit($matrix) ||  ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id,$activity?$activity->responsible_staff_id:null]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
     //     }
 
-        
-
     // }
 
+    if (! function_exists('can_division_head_edit')) {
+        function can_division_head_edit($matrix)
+        {
+            $user = (object) session('user', []);
 
-    if (!function_exists('can_division_head_edit')) {
-        function can_division_head_edit($matrix){
-            $user = (Object) session('user', []);
-            return ($matrix->division->division_head==$user->staff_id && $matrix->approval_level==1 && activities_approved_by_me($matrix) && in_array($matrix->overall_status,['returned']));
+            return $matrix->division->division_head == $user->staff_id && $matrix->approval_level == 1 && activities_approved_by_me($matrix) && in_array($matrix->overall_status, ['returned']);
         }
-     }
+    }
 
-    if (!function_exists('is_admin_assistant')) {
+    if (! function_exists('is_admin_assistant')) {
         /**
          * Check if the current user is an admin assistant
          * Returns true if user is admin assistant in divisions table or approvers table
@@ -144,7 +145,7 @@ if (!function_exists('user_session')) {
             $user = session('user', []);
             $staffId = $user['staff_id'] ?? null;
 
-            if (!$staffId) {
+            if (! $staffId) {
                 return false;
             }
 
@@ -158,7 +159,7 @@ if (!function_exists('user_session')) {
         }
     }
 
-    if (!function_exists('get_admin_assistant_approvers')) {
+    if (! function_exists('get_admin_assistant_approvers')) {
         /**
          * Get list of approver staff IDs that the current admin assistant supports
          * Returns array of staff_ids
@@ -168,7 +169,7 @@ if (!function_exists('user_session')) {
             $user = session('user', []);
             $staffId = $user['staff_id'] ?? null;
 
-            if (!$staffId) {
+            if (! $staffId) {
                 return [];
             }
 
@@ -187,10 +188,10 @@ if (!function_exists('user_session')) {
                 if ($division->finance_officer) {
                     $approverIds[] = $division->finance_officer;
                 }
-                
+
                 // Also include active OIC (Officer in Charge) approvers
                 $today = \Carbon\Carbon::today();
-                
+
                 // Check head OIC
                 if ($division->head_oic_id) {
                     $isOicActive = true;
@@ -204,7 +205,7 @@ if (!function_exists('user_session')) {
                         $approverIds[] = $division->head_oic_id;
                     }
                 }
-                
+
                 // Check director OIC
                 if ($division->director_oic_id) {
                     $isOicActive = true;
@@ -224,7 +225,7 @@ if (!function_exists('user_session')) {
             $approvers = \App\Models\Approver::where('admin_assistant', $staffId)
                 ->with('staff')
                 ->get();
-            
+
             foreach ($approvers as $approver) {
                 if ($approver->staff_id) {
                     $approverIds[] = $approver->staff_id;
@@ -235,51 +236,54 @@ if (!function_exists('user_session')) {
         }
     }
 
-    if (!function_exists('is_finance_officer')) {
+    if (! function_exists('is_finance_officer')) {
         /**
          * Check if the current user is a finance officer for the matrix's division
          */
-        function is_finance_officer($matrix) {
+        function is_finance_officer($matrix)
+        {
             $user = session('user', []);
             $currentUserId = $user['staff_id'] ?? null;
-            
-            if (!$currentUserId || !$matrix->division) {
+
+            if (! $currentUserId || ! $matrix->division) {
                 return false;
             }
-            
+
             // Check if user is the finance officer for the matrix's division
             return $matrix->division->finance_officer == $currentUserId;
         }
     }
 
-     if (!function_exists('can_print_memo')) {
-        function can_print_memo($memo) {
+    if (! function_exists('can_print_memo')) {
+        function can_print_memo($memo)
+        {
             // Only allow if status is approved - anyone can print approved memos
             $isApproved = isset($memo->overall_status) && $memo->overall_status == 'approved';
 
             return $isApproved;
         }
-     }
+    }
 
-     if (!function_exists('can_request_memo_action')) {
+    if (! function_exists('can_request_memo_action')) {
         /**
          * Helper to determine if a user can request a specific action (services or ARF) on a memo.
-         * 
-         * @param object $memo
-         * @param string $type 'services' for intramural, 'arf' for extramural
+         *
+         * @param  object  $memo
+         * @param  string  $type  'services' for intramural, 'arf' for extramural
          * @return bool
          */
-        function can_request_memo_action($memo, $type) {
+        function can_request_memo_action($memo, $type)
+        {
             $user = (object) session('user', []);
 
-          //  dd($type,$memo);
-            
+            //  dd($type,$memo);
+
             // Check if this is a single memo
             $isSingleMemo = isset($memo->is_single_memo) && $memo->is_single_memo;
-            
+
             // Check if this is a non-travel memo (creator is responsible person)
             $isNonTravelMemo = get_class($memo) === 'App\Models\NonTravelMemo';
-            
+
             // Must be responsible person only
             $isResponsible = false;
             if ($isNonTravelMemo) {
@@ -289,13 +293,13 @@ if (!function_exists('user_session')) {
                 // For other memos: check responsible_person_id
                 $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
             }
-            
+
             // Check if user is authorized (only responsible person)
             $isAuthorized = $isResponsible;
-            if (!$isAuthorized) {
+            if (! $isAuthorized) {
                 return false;
             }
-            
+
             // Check approval status
             $isApproved = false;
             if ($isSingleMemo) {
@@ -307,8 +311,8 @@ if (!function_exists('user_session')) {
                 $matrixApproved = isset($memo->matrix) && isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'approved';
                 $isApproved = $memoApproved || $matrixApproved;
             }
-            
-            if (!$isApproved) {
+
+            if (! $isApproved) {
                 return false;
             }
 
@@ -324,33 +328,36 @@ if (!function_exists('user_session')) {
 
             return $isTypeAllowed;
         }
-     }
+    }
 
-     // For backward compatibility, keep the old function names as wrappers
-     if (!function_exists('can_request_services')) {
-        function can_request_services($memo) {
+    // For backward compatibility, keep the old function names as wrappers
+    if (! function_exists('can_request_services')) {
+        function can_request_services($memo)
+        {
             return can_request_memo_action($memo, 'services');
         }
-     }
+    }
 
-     if (!function_exists('can_request_arf')) {
-        function can_request_arf($memo) {
+    if (! function_exists('can_request_arf')) {
+        function can_request_arf($memo)
+        {
             return can_request_memo_action($memo, 'arf');
         }
-     }
+    }
 
     /**
      * Whether the user can create/view ARF from a change request (extramural fund type, parent is memo).
      */
-    if (!function_exists('can_request_arf_for_change_request')) {
-        function can_request_arf_for_change_request($changeRequest) {
+    if (! function_exists('can_request_arf_for_change_request')) {
+        function can_request_arf_for_change_request($changeRequest)
+        {
             $user = (object) session('user', []);
-            if (!$changeRequest || !isset($user->staff_id)) {
+            if (! $changeRequest || ! isset($user->staff_id)) {
                 return false;
             }
             $isResponsible = (isset($changeRequest->staff_id) && $changeRequest->staff_id == $user->staff_id)
                 || (isset($changeRequest->responsible_person_id) && $changeRequest->responsible_person_id == $user->staff_id);
-            if (!$isResponsible) {
+            if (! $isResponsible) {
                 return false;
             }
             if (($changeRequest->overall_status ?? '') !== 'approved') {
@@ -362,6 +369,7 @@ if (!function_exists('user_session')) {
             }
             $parentClass = $changeRequest->parent_memo_model ?? null;
             $memoClasses = ['App\Models\Activity', 'App\Models\SpecialMemo', 'App\Models\NonTravelMemo'];
+
             return $parentClass && in_array($parentClass, $memoClasses, true);
         }
     }
@@ -369,15 +377,16 @@ if (!function_exists('user_session')) {
     /**
      * Whether the user can create/view service request from a change request (intramural fund type, parent is memo).
      */
-    if (!function_exists('can_request_services_for_change_request')) {
-        function can_request_services_for_change_request($changeRequest) {
+    if (! function_exists('can_request_services_for_change_request')) {
+        function can_request_services_for_change_request($changeRequest)
+        {
             $user = (object) session('user', []);
-            if (!$changeRequest || !isset($user->staff_id)) {
+            if (! $changeRequest || ! isset($user->staff_id)) {
                 return false;
             }
             $isResponsible = (isset($changeRequest->staff_id) && $changeRequest->staff_id == $user->staff_id)
                 || (isset($changeRequest->responsible_person_id) && $changeRequest->responsible_person_id == $user->staff_id);
-            if (!$isResponsible) {
+            if (! $isResponsible) {
                 return false;
             }
             if (($changeRequest->overall_status ?? '') !== 'approved') {
@@ -389,6 +398,7 @@ if (!function_exists('user_session')) {
             }
             $parentClass = $changeRequest->parent_memo_model ?? null;
             $memoClasses = ['App\Models\Activity', 'App\Models\SpecialMemo', 'App\Models\NonTravelMemo'];
+
             return $parentClass && in_array($parentClass, $memoClasses, true);
         }
     }
@@ -396,61 +406,63 @@ if (!function_exists('user_session')) {
     /**
      * Build a human-readable list of changes approved in a Change Request (for disclaimer display).
      */
-    if (!function_exists('cr_approved_changes_list')) {
+    if (! function_exists('cr_approved_changes_list')) {
         function cr_approved_changes_list($cr)
         {
-            if (!$cr) {
+            if (! $cr) {
                 return [];
             }
             $decode = function ($text) {
                 if (empty($text)) {
                     return '';
                 }
+
                 return html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
             };
             $list = [];
-            if (!empty($cr->supporting_reasons)) {
-                $list[] = 'Supporting reasons: ' . $decode($cr->supporting_reasons);
+            if (! empty($cr->supporting_reasons)) {
+                $list[] = 'Supporting reasons: '.$decode($cr->supporting_reasons);
             }
-            if (!empty($cr->has_activity_title_changed) && !empty($cr->activity_title)) {
-                $list[] = 'Activity title: ' . $decode($cr->activity_title);
+            if (! empty($cr->has_activity_title_changed) && ! empty($cr->activity_title)) {
+                $list[] = 'Activity title: '.$decode($cr->activity_title);
             }
-            if (!empty($cr->has_budget_breakdown_changed)) {
+            if (! empty($cr->has_budget_breakdown_changed)) {
                 $list[] = 'Budget breakdown: updated';
             }
-            if (!empty($cr->has_budget_id_changed)) {
+            if (! empty($cr->has_budget_id_changed)) {
                 $list[] = 'Budget (cost items): updated';
             }
-            if (!empty($cr->has_internal_participants_changed)) {
+            if (! empty($cr->has_internal_participants_changed)) {
                 $list[] = 'Internal participants: updated';
             }
-            if (!empty($cr->has_number_of_participants_changed) && isset($cr->total_participants)) {
-                $list[] = 'Number of participants: ' . $cr->total_participants;
+            if (! empty($cr->has_number_of_participants_changed) && isset($cr->total_participants)) {
+                $list[] = 'Number of participants: '.$cr->total_participants;
             }
-            if (!empty($cr->has_participant_days_changed) && ($cr->date_from || $cr->date_to)) {
-                $list[] = 'Participant days / dates: ' . ($cr->date_from ? $cr->date_from->format('Y-m-d') : '') . ($cr->date_to ? ' to ' . $cr->date_to->format('Y-m-d') : '');
+            if (! empty($cr->has_participant_days_changed) && ($cr->date_from || $cr->date_to)) {
+                $list[] = 'Participant days / dates: '.($cr->date_from ? $cr->date_from->format('Y-m-d') : '').($cr->date_to ? ' to '.$cr->date_to->format('Y-m-d') : '');
             }
-            if (!empty($cr->has_total_external_participants_changed) && isset($cr->total_external_participants)) {
-                $list[] = 'Total external participants: ' . $cr->total_external_participants;
+            if (! empty($cr->has_total_external_participants_changed) && isset($cr->total_external_participants)) {
+                $list[] = 'Total external participants: '.$cr->total_external_participants;
             }
-            if (!empty($cr->has_location_changed)) {
+            if (! empty($cr->has_location_changed)) {
                 $list[] = 'Location: updated';
             }
-            if (!empty($cr->has_memo_date_changed) && $cr->memo_date) {
-                $list[] = 'Memo date: ' . (\Carbon\Carbon::parse($cr->memo_date)->format('Y-m-d') ?? '');
+            if (! empty($cr->has_memo_date_changed) && $cr->memo_date) {
+                $list[] = 'Memo date: '.(\Carbon\Carbon::parse($cr->memo_date)->format('Y-m-d') ?? '');
             }
-            if (!empty($cr->has_activity_request_remarks_changed) && !empty($cr->activity_request_remarks)) {
-                $list[] = 'Activity request remarks: ' . $decode($cr->activity_request_remarks);
+            if (! empty($cr->has_activity_request_remarks_changed) && ! empty($cr->activity_request_remarks)) {
+                $list[] = 'Activity request remarks: '.$decode($cr->activity_request_remarks);
             }
-            if (!empty($cr->has_request_type_id_changed)) {
+            if (! empty($cr->has_request_type_id_changed)) {
                 $list[] = 'Request type: updated';
             }
-            if (!empty($cr->has_fund_type_id_changed)) {
+            if (! empty($cr->has_fund_type_id_changed)) {
                 $list[] = 'Fund type: updated';
             }
-            if (!empty($cr->has_status_changed)) {
+            if (! empty($cr->has_status_changed)) {
                 $list[] = 'Status: updated';
             }
+
             return $list;
         }
     }
@@ -458,7 +470,7 @@ if (!function_exists('user_session')) {
     /**
      * Build data for "parent-based" disclaimer on ARF and Service Request show/print.
      */
-    if (!function_exists('parent_based_disclaimer_data')) {
+    if (! function_exists('parent_based_disclaimer_data')) {
         function parent_based_disclaimer_data($sourceId, $modelType, $currentType, $currentId)
         {
             $empty = [
@@ -469,7 +481,7 @@ if (!function_exists('user_session')) {
                 'originating_change_request' => null,
                 'approved_changes_list' => [],
             ];
-            if (!$sourceId || !$modelType || !class_exists($modelType)) {
+            if (! $sourceId || ! $modelType || ! class_exists($modelType)) {
                 return $empty;
             }
             try {
@@ -521,6 +533,7 @@ if (!function_exists('user_session')) {
                         $approvedChangesList = cr_approved_changes_list($originatingCr);
                     }
                 }
+
                 return [
                     'parent' => $parentInfo,
                     'previous_arfs' => $prevArfs,
@@ -535,51 +548,53 @@ if (!function_exists('user_session')) {
         }
     }
 
-     if (!function_exists('can_delete_memo')) {
-        function can_delete_memo($memo, $user = null) {
+    if (! function_exists('can_delete_memo')) {
+        function can_delete_memo($memo, $user = null)
+        {
             if ($user === null) {
                 $user = (object) session('user', []);
             }
-            
+
             // Check if user is the owner (staff_id) or responsible person
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
-            
+
             // Get memo status
             $memoStatus = $memo->overall_status ?? null;
-            
+
             // For Matrix and Non-Travel Memo: only staff_id (owner)
             if (isset($memo) && (get_class($memo) === 'App\Models\NonTravelMemo' || get_class($memo) === 'App\Models\Matrix')) {
                 // Always allow if user is owner
                 return $isOwner;
             }
-            
+
             // For other memos: allow if user is responsible person OR creator (if status is 'returned')
             if ($memoStatus === 'returned') {
                 return $isOwner || $isResponsible;
             }
-            
+
             // For normal cases: use responsible_person_id
             return $isResponsible;
         }
     }
 
-    if (!function_exists('can_edit_memo')) {
-        function can_edit_memo($memo, $user = null) {
+    if (! function_exists('can_edit_memo')) {
+        function can_edit_memo($memo, $user = null)
+        {
             if ($user === null) {
                 $userSession = session('user', []);
                 // Check if user is logged in
-                if (empty($userSession) || !isset($userSession['staff_id'])) {
+                if (empty($userSession) || ! isset($userSession['staff_id'])) {
                     return false;
                 }
                 $user = (object) $userSession;
             }
-            
+
             // Additional check: ensure user object has staff_id property
-            if (!isset($user->staff_id) || empty($user->staff_id)) {
+            if (! isset($user->staff_id) || empty($user->staff_id)) {
                 return false;
             }
-            
+
             $session_division_id = isset($user->division_id) ? $user->division_id : null;
 
             // Check if this is a single memo (Activity model with is_single_memo = true)
@@ -588,7 +603,7 @@ if (!function_exists('user_session')) {
             // Check if user is authorized to edit
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
-            
+
             // Check if user is focal person of the memo's division
             $isFocalperson = false;
             if (isset($memo->division_id) && isset($user->staff_id)) {
@@ -597,19 +612,19 @@ if (!function_exists('user_session')) {
                     $isFocalperson = $division->focal_person == $user->staff_id;
                 }
             }
-            
+
             // Check if user is division head of the memo's division
             $isDivisionHead = false;
             if (isset($memo->division_id) && isset($user->staff_id)) {
                 $divisionIds = Division::where('division_head', $user->staff_id)->pluck('id')->toArray();
                 if (in_array($memo->division_id, $divisionIds)) {
-                    $isDivisionHead = true; 
+                    $isDivisionHead = true;
                 }
             }
 
             // User must be authorized
             $isAuthorized = $isOwner || $isResponsible || $isFocalperson || $isDivisionHead;
-            if (!$isAuthorized) {
+            if (! $isAuthorized) {
                 return false;
             }
 
@@ -671,9 +686,9 @@ if (!function_exists('user_session')) {
             // Default: don't allow editing
             return false;
         }
-     }
+    }
 
-    if (!function_exists('can_convert_returned_memo_to_non_travel')) {
+    if (! function_exists('can_convert_returned_memo_to_non_travel')) {
         /**
          * Whether the current user may convert a returned single memo or special memo to a non-travel memo.
          * Allowed roles: memo creator (staff_id), responsible person, or head of the memo's division (HOD).
@@ -682,13 +697,13 @@ if (!function_exists('user_session')) {
         {
             if ($user === null) {
                 $userSession = session('user', []);
-                if (empty($userSession) || !isset($userSession['staff_id'])) {
+                if (empty($userSession) || ! isset($userSession['staff_id'])) {
                     return false;
                 }
                 $user = (object) $userSession;
             }
 
-            if (!isset($user->staff_id) || $user->staff_id === '' || $user->staff_id === null) {
+            if (! isset($user->staff_id) || $user->staff_id === '' || $user->staff_id === null) {
                 return false;
             }
 
@@ -713,41 +728,41 @@ if (!function_exists('user_session')) {
         }
     }
 
-     if (!function_exists('can_submit_for_approval')) {
-        function can_submit_for_approval($memo) {
+    if (! function_exists('can_submit_for_approval')) {
+        function can_submit_for_approval($memo)
+        {
             $user = (object) session('user', []);
             $session_division_id = isset($user->division_id) ? $user->division_id : null;
 
             // Must be owner or responsible person
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
-          //  dd($);.
+            //  dd($);.
             // $isFocalperson = isset($memo->matrix, $memo->matrix->division->focal_person, $user->staff_id) && $memo->matrix->division->focal_person == $user->staff_id;
-           // dd($isFocalperson);
+            // dd($isFocalperson);
             // Only allow if status is draft or returned
-            $isMemoApproved = (isset($memo->overall_status) && ($memo->overall_status == 'draft' || $memo->overall_status == 'returned')) || 
+            $isMemoApproved = (isset($memo->overall_status) && ($memo->overall_status == 'draft' || $memo->overall_status == 'returned')) ||
                              (isset($memo->matrix, $memo->matrix->overall_status) && ($memo->matrix->overall_status == 'returned' || $memo->matrix->overall_status == 'draft'));
 
             // Check if user is division head of the memo's division
             $isDivisionHead = false;
-            
+
             if (isset($memo->division_id)) {
                 // Get all division IDs where the user is the division head
                 $divisionIds = Division::where('division_head', $user->staff_id)->pluck('id')->toArray();
 
                 if (in_array($memo->division_id, $divisionIds)) {
-                    $isDivisionHead = true; 
+                    $isDivisionHead = true;
                 }
             }
 
-            //dd($isOwner,$isResponsible,$isFocalperson,$isDivisionHead,$isApproved);
+            // dd($isOwner,$isResponsible,$isFocalperson,$isDivisionHead,$isApproved);
 
-         return ( ($isOwner || $isResponsible || $isDivisionHead) && $isMemoApproved);
+            return  ($isOwner || $isResponsible || $isDivisionHead) && $isMemoApproved;
         }
-     }
+    }
 
-    
-    if (!function_exists('done_approving')) {
+    if (! function_exists('done_approving')) {
         /**
          * Check if the user's last action at this approval level or higher was 'approved'
          * (caters for returns by considering the latest action)
@@ -755,21 +770,21 @@ if (!function_exists('user_session')) {
         function done_approving($matrix)
         {
             $user = session('user', []);
-            
+
             // Check if user has approved at the current approval level
             $currentLevelApproval = ApprovalTrail::where('model_id', $matrix->id)
-                ->where('model_type', 'App\Models\\' . ucfirst(class_basename($matrix)))
+                ->where('model_type', 'App\Models\\'.ucfirst(class_basename($matrix)))
                 ->where('approval_order', $matrix->approval_level)
                 ->where('staff_id', $user['staff_id'])
                 ->where('is_archived', 0)
                 ->orderByDesc('id')
                 ->first();
-                
+
             return $currentLevelApproval && $currentLevelApproval->action === 'approved';
         }
     }
 
-    if (!function_exists('matrix_has_been_returned')) {
+    if (! function_exists('matrix_has_been_returned')) {
         /**
          * Check if the matrix has been returned back to the focal person by HOD
          * This happens when the matrix status is 'returned' and approval_level is 0
@@ -780,24 +795,24 @@ if (!function_exists('user_session')) {
             if ($matrix->overall_status === 'returned' && $matrix->approval_level == 0) {
                 return true;
             }
-            
+
             // Additional check: Look for recent 'returned' action in approval trail
             $user = session('user', []);
             if (isset($user['staff_id'])) {
                 $recentApproval = ApprovalTrail::where('model_id', $matrix->id)
-                    ->where('model_type', 'App\Models\\' . ucfirst(class_basename($matrix)))
+                    ->where('model_type', 'App\Models\\'.ucfirst(class_basename($matrix)))
                     ->where('action', 'returned')
                     ->orderByDesc('id')
                     ->first();
-                    
+
                 return $recentApproval !== null;
             }
-            
+
             return false;
         }
     }
 
-    if (!function_exists('archive_approval_trails')) {
+    if (! function_exists('archive_approval_trails')) {
         /**
          * Archive approval trails when a matrix or memo is returned to restart approval process
          * For matrices: Only archive when approval_order = 0 (draft/returned state)
@@ -808,38 +823,39 @@ if (!function_exists('user_session')) {
             try {
                 $modelType = get_class($model);
                 $modelId = $model->id;
-                
+
                 // For matrices, only archive when approval_order = 0 (draft/returned state)
                 if ($modelType === 'App\Models\Matrix') {
                     // Only archive if matrix is at approval_order 0 (draft or returned state)
                     if ($model->approval_level != 0) {
-                        \Log::info("Skipping archiving for matrix - not at approval_order 0", [
+                        \Log::info('Skipping archiving for matrix - not at approval_order 0', [
                             'matrix_id' => $modelId,
                             'approval_level' => $model->approval_level,
-                            'overall_status' => $model->overall_status
+                            'overall_status' => $model->overall_status,
                         ]);
+
                         return 0;
                     }
-                    
+
                     // Archive approval trails for the matrix
                     $archivedCount = ApprovalTrail::where('model_id', $modelId)
                         ->where('model_type', $modelType)
                         ->where('is_archived', 0)
                         ->update(['is_archived' => 1]);
-                    
+
                     // Also archive activity approval trails
                     $activityArchivedCount = ActivityApprovalTrail::where('matrix_id', $modelId)
                         ->where('is_archived', 0)
                         ->update(['is_archived' => 1]);
-                    
-                    \Log::info("Archived approval trails for matrix return to draft/returned state", [
+
+                    \Log::info('Archived approval trails for matrix return to draft/returned state', [
                         'matrix_id' => $modelId,
                         'approval_level' => $model->approval_level,
                         'overall_status' => $model->overall_status,
                         'approval_trails_archived' => $archivedCount,
-                        'activity_approval_trails_archived' => $activityArchivedCount
+                        'activity_approval_trails_archived' => $activityArchivedCount,
                     ]);
-                    
+
                     return $archivedCount;
                 } else {
                     // For memos, archive when returned (any approval level)
@@ -847,24 +863,25 @@ if (!function_exists('user_session')) {
                         ->where('model_type', $modelType)
                         ->where('is_archived', 0)
                         ->update(['is_archived' => 1]);
-                    
-                    \Log::info("Archived approval trails for memo return", [
+
+                    \Log::info('Archived approval trails for memo return', [
                         'model_type' => $modelType,
                         'model_id' => $modelId,
                         'approval_level' => $model->approval_level ?? 'N/A',
                         'overall_status' => $model->overall_status ?? 'N/A',
-                        'approval_trails_archived' => $archivedCount
+                        'approval_trails_archived' => $archivedCount,
                     ]);
-                    
+
                     return $archivedCount;
                 }
-                
+
             } catch (\Exception $e) {
-                \Log::error("Failed to archive approval trails", [
+                \Log::error('Failed to archive approval trails', [
                     'model_type' => $modelType ?? 'unknown',
                     'model_id' => $modelId ?? 'unknown',
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
+
                 return 0;
             }
         }
@@ -874,7 +891,7 @@ if (!function_exists('user_session')) {
      * Get funder IDs for an activity from its budget (budget_breakdown fund code IDs or activity_budget).
      * allowed_funders in workflow definition stores funder IDs (exists:funders,id), not fund_type_id.
      */
-    if (!function_exists('get_activity_funder_ids')) {
+    if (! function_exists('get_activity_funder_ids')) {
         function get_activity_funder_ids($activity): array
         {
             $funderIds = [];
@@ -892,11 +909,11 @@ if (!function_exists('user_session')) {
                 $budgetBreakdown = is_string($activity->budget_breakdown)
                     ? json_decode($activity->budget_breakdown, true)
                     : $activity->budget_breakdown;
-                if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
+                if (is_array($budgetBreakdown) && ! empty($budgetBreakdown)) {
                     $fundCodeIds = array_filter(array_keys($budgetBreakdown), function ($k) {
                         return $k !== 'grand_total' && is_numeric($k);
                     });
-                    if (!empty($fundCodeIds)) {
+                    if (! empty($fundCodeIds)) {
                         $funderIds = \App\Models\FundCode::whereIn('id', $fundCodeIds)
                             ->whereNotNull('funder_id')
                             ->pluck('funder_id')
@@ -907,55 +924,59 @@ if (!function_exists('user_session')) {
                     }
                 }
             }
+
             return array_values(array_unique($funderIds));
         }
     }
 
-    if (!function_exists('can_approve_activity')) {
+    if (! function_exists('can_approve_activity')) {
 
-        
-        function can_approve_activity($activity){
+        function can_approve_activity($activity)
+        {
 
-            if ($activity->is_single_memo==1)
-               return false;
-          
-            if($activity->matrix->forward_workflow_id==null)
+            if ($activity->is_single_memo == 1) {
                 return false;
-          
+            }
+
+            if ($activity->matrix->forward_workflow_id == null) {
+                return false;
+            }
+
             $definition = $activity->matrix->workflow_definition ?? null;
-            if (!$definition) {
+            if (! $definition) {
                 return true;
             }
 
             // fund_type and allowed_funders work together: one of the conditions can be true
             $defFundType = $definition->fund_type !== null && $definition->fund_type !== '' ? (int) $definition->fund_type : null;
             $allowedFunders = null;
-            if ($definition->allowed_funders && !empty($definition->allowed_funders)) {
+            if ($definition->allowed_funders && ! empty($definition->allowed_funders)) {
                 $allowedFunders = is_string($definition->allowed_funders)
                     ? json_decode($definition->allowed_funders, true)
                     : $definition->allowed_funders;
                 $allowedFunders = is_array($allowedFunders) ? array_map('intval', array_filter($allowedFunders)) : [];
             }
-            $hasRestriction = $defFundType !== null || !empty($allowedFunders);
+            $hasRestriction = $defFundType !== null || ! empty($allowedFunders);
 
-            if (!$hasRestriction) {
+            if (! $hasRestriction) {
                 return true;
             }
 
             if ($defFundType !== null && (int) $activity->fund_type_id === $defFundType) {
                 return true;
             }
-            if (!empty($allowedFunders)) {
+            if (! empty($allowedFunders)) {
                 $activityFunderIds = get_activity_funder_ids($activity);
-                if (!empty($activityFunderIds) && count(array_intersect($activityFunderIds, $allowedFunders)) > 0) {
+                if (! empty($activityFunderIds) && count(array_intersect($activityFunderIds, $allowedFunders)) > 0) {
                     return true;
                 }
             }
+
             return false;
         }
     }
 
-    if (!function_exists('done_approving_activty')) {
+    if (! function_exists('done_approving_activty')) {
         /**
          *Check wether user approval activity
          */
@@ -977,24 +998,23 @@ if (!function_exists('user_session')) {
 
     }
 
-
-
-    if (!function_exists('has_user_returned_activity_as_single_memo')) {
+    if (! function_exists('has_user_returned_activity_as_single_memo')) {
         /**
          * Check if a user has returned any activity as a single memo in a matrix
          * This helps determine if the user can proceed even if their approvable stack is empty
-         * 
-         * @param object $matrix The matrix to check
-         * @param int|null $userId Optional user ID, defaults to current user
+         *
+         * @param  object  $matrix  The matrix to check
+         * @param  int|null  $userId  Optional user ID, defaults to current user
          * @return bool
          */
-        function has_user_returned_activity_as_single_memo($matrix, $userId = null) {
+        function has_user_returned_activity_as_single_memo($matrix, $userId = null)
+        {
             $userId = $userId ?? user_session('staff_id');
-            
-            if (!$userId) {
+
+            if (! $userId) {
                 return false;
             }
-            
+
             // Check if user has any 'convert_to_single_memo' actions in activity approval trails for this matrix
             return ActivityApprovalTrail::where('matrix_id', $matrix->id)
                 ->where('staff_id', $userId)
@@ -1004,26 +1024,27 @@ if (!function_exists('user_session')) {
         }
     }
 
-    if (!function_exists('can_user_proceed_with_empty_approvable_stack')) {
+    if (! function_exists('can_user_proceed_with_empty_approvable_stack')) {
         /**
          * Check if a user can proceed even when their approvable stack is empty
          * This considers if the user has returned any activities as single memos
          * OR if the user is a division-specific officer with no approvable activities
-         * 
-         * @param object $matrix The matrix to check
-         * @param int|null $userId Optional user ID, defaults to current user
+         *
+         * @param  object  $matrix  The matrix to check
+         * @param  int|null  $userId  Optional user ID, defaults to current user
          * @return bool
          */
-        function can_user_proceed_with_empty_approvable_stack($matrix, $userId = null) {
+        function can_user_proceed_with_empty_approvable_stack($matrix, $userId = null)
+        {
             $userId = $userId ?? user_session('staff_id');
-            
-            if (!$userId) {
+
+            if (! $userId) {
                 return false;
             }
-        
+
             // Check if user has returned any activities as single memos
             $hasReturnedActivities = has_user_returned_activity_as_single_memo($matrix, $userId);
-            
+
             // Check if user is a division-specific officer
             $isDivisionSpecificOfficer = false;
             if ($matrix->division) {
@@ -1033,10 +1054,10 @@ if (!function_exists('user_session')) {
                     $division->focal_person,
                     $division->admin_assistant,
                     $division->finance_officer,
-                    $division->director_id
+                    $division->director_id,
                 ]);
             }
-            
+
             // User can proceed if:
             // 1. They have converted activities to single memos and their approvable stack is empty, OR
             // 2. They are a division-specific officer and their approvable stack is empty
@@ -1048,12 +1069,12 @@ if (!function_exists('user_session')) {
      * Get the workflow definition that the current user is an approver for at the matrix's current approval level.
      * When multiple definitions exist at the same level (e.g. Finance vs PIU/Grants), returns the one the user is assigned to.
      */
-    if (!function_exists('get_user_workflow_definition_for_matrix')) {
+    if (! function_exists('get_user_workflow_definition_for_matrix')) {
         function get_user_workflow_definition_for_matrix($matrix)
         {
             $currentUserId = user_session('staff_id');
             $userDivisionId = user_session('division_id');
-            if (!$currentUserId || !$matrix->forward_workflow_id) {
+            if (! $currentUserId || ! $matrix->forward_workflow_id) {
                 return null;
             }
 
@@ -1071,7 +1092,7 @@ if (!function_exists('user_session')) {
             if ($definitions->count() > 1 && $matrix->division) {
                 $divisionSpecific = $definitions->where('is_division_specific', 1)
                     ->where('category', $matrix->division->category)
-                ->first();
+                    ->first();
                 if ($divisionSpecific && _helper_is_division_specific_approver($matrix, $divisionSpecific, $currentUserId, $userDivisionId)) {
                     return $divisionSpecific;
                 }
@@ -1082,14 +1103,19 @@ if (!function_exists('user_session')) {
                     if (_helper_is_division_specific_approver($matrix, $definition, $currentUserId, $userDivisionId)) {
                         return $definition;
                     }
+
                     continue;
                 }
                 if (\App\Models\Approver::where('workflow_dfn_id', $definition->id)->where('staff_id', $currentUserId)
-                    ->where(function ($q) use ($today) { $q->whereNull('end_date')->orWhere('end_date', '>=', $today); })->exists()) {
+                    ->where(function ($q) use ($today) {
+                        $q->whereNull('end_date')->orWhere('end_date', '>=', $today);
+                    })->exists()) {
                     return $definition;
                 }
                 if (\App\Models\Approver::where('workflow_dfn_id', $definition->id)->where('oic_staff_id', $currentUserId)
-                    ->where(function ($q) use ($today) { $q->whereNull('end_date')->orWhere('end_date', '>=', $today); })->exists()) {
+                    ->where(function ($q) use ($today) {
+                        $q->whereNull('end_date')->orWhere('end_date', '>=', $today);
+                    })->exists()) {
                     return $definition;
                 }
             }
@@ -1107,14 +1133,15 @@ if (!function_exists('user_session')) {
                     return $definitions->first();
                 }
             }
+
             return null;
         }
     }
 
-    if (!function_exists('_helper_is_division_specific_approver')) {
+    if (! function_exists('_helper_is_division_specific_approver')) {
         function _helper_is_division_specific_approver($matrix, $definition, $userStaffId, $userDivisionId)
         {
-            if (!$definition->is_division_specific || !$matrix->division) {
+            if (! $definition->is_division_specific || ! $matrix->division) {
                 return false;
             }
             if ($userDivisionId && (int) $matrix->division_id === (int) $userDivisionId) {
@@ -1122,139 +1149,145 @@ if (!function_exists('user_session')) {
             }
             if ($definition->division_reference_column) {
                 $col = $definition->division_reference_column;
-                if (isset($matrix->division->$col) && $matrix->division->$col == $userStaffId) {
+                if (isset($matrix->division->$col) && $userStaffId == $matrix->division->$col) {
                     return true;
                 }
                 $today = \Carbon\Carbon::today();
                 $oicMap = ['division_head' => 'head_oic_id', 'finance_officer' => 'finance_officer_oic_id', 'director_id' => 'director_oic_id'];
-                $oicCol = $oicMap[$col] ?? $col . '_oic_id';
-                if (isset($matrix->division->$oicCol) && $matrix->division->$oicCol == $userStaffId) {
+                $oicCol = $oicMap[$col] ?? $col.'_oic_id';
+                if (isset($matrix->division->$oicCol) && $userStaffId == $matrix->division->$oicCol) {
                     $startCol = str_replace('_oic_id', '_oic_start_date', $oicCol);
                     $endCol = str_replace('_oic_id', '_oic_end_date', $oicCol);
-                    if ((!isset($matrix->division->$startCol) || $matrix->division->$startCol <= $today)
-                        && (!isset($matrix->division->$endCol) || $matrix->division->$endCol >= $today)) {
+                    if ((! isset($matrix->division->$startCol) || $today >= $matrix->division->$startCol)
+                        && (! isset($matrix->division->$endCol) || $today <= $matrix->division->$endCol)) {
                         return true;
                     }
                 }
             }
+
             return false;
         }
     }
 
-    if (!function_exists('get_approvable_activities')) {
-        function get_approvable_activities($matrix){
-            
+    if (! function_exists('get_approvable_activities')) {
+        function get_approvable_activities($matrix)
+        {
+
             $approvable_activities = collect();
             $currentUserId = user_session('staff_id');
-            
+
             // Only consider approvable list when matrix is not yet approved (same as approval UI)
             if ($matrix->overall_status === 'approved') {
                 return $approvable_activities;
             }
-            
+
             // Cache key v4: fund_type OR allowed_funders (one of the conditions can be true)
             $cacheKey = "approvable_activities_v4_{$matrix->id}_{$currentUserId}_{$matrix->approval_level}";
-            
+
             // Check cache first (cache for 5 minutes)
             if (\Cache::has($cacheKey)) {
                 return \Cache::get($cacheKey);
             }
-            
+
             // Check if user is logged in
-            if (!$currentUserId) {
+            if (! $currentUserId) {
                 return $approvable_activities; // Return empty collection if not logged in
             }
-            
+
             // Use the workflow definition THIS USER is assigned to (not just first at level – PIU vs Finance have different allowed_funders)
             $workflowDefinition = get_user_workflow_definition_for_matrix($matrix);
-            if (!$workflowDefinition) {
+            if (! $workflowDefinition) {
                 return $approvable_activities;
             }
-            
+
             // Filter activities: approvable if (fund_type matches) OR (funder in allowed_funders); neither set = no restriction
             if ($matrix->activities) {
                 $defFundType = $workflowDefinition->fund_type !== null && $workflowDefinition->fund_type !== '' ? (int) $workflowDefinition->fund_type : null;
                 $allowedFunders = null;
-                if ($workflowDefinition->allowed_funders && !empty($workflowDefinition->allowed_funders)) {
-                            $allowedFunders = is_string($workflowDefinition->allowed_funders) 
-                                ? json_decode($workflowDefinition->allowed_funders, true) 
-                                : $workflowDefinition->allowed_funders;
+                if ($workflowDefinition->allowed_funders && ! empty($workflowDefinition->allowed_funders)) {
+                    $allowedFunders = is_string($workflowDefinition->allowed_funders)
+                        ? json_decode($workflowDefinition->allowed_funders, true)
+                        : $workflowDefinition->allowed_funders;
                     $allowedFunders = is_array($allowedFunders) ? array_map('intval', array_filter($allowedFunders)) : [];
                 }
-                $hasRestriction = $defFundType !== null || !empty($allowedFunders);
+                $hasRestriction = $defFundType !== null || ! empty($allowedFunders);
 
                 foreach ($matrix->activities as $activity) {
                     $canApprove = false;
 
-                    if (!$hasRestriction) {
+                    if (! $hasRestriction) {
                         $canApprove = true;
                     } else {
                         // One of the conditions can be true: fund_type match OR funder in allowed_funders
                         if ($defFundType !== null && (int) $activity->fund_type_id === $defFundType) {
                             $canApprove = true;
                         }
-                        if (!$canApprove && !empty($allowedFunders)) {
+                        if (! $canApprove && ! empty($allowedFunders)) {
                             $activityFunderIds = get_activity_funder_ids($activity);
-                            if (!empty($activityFunderIds) && count(array_intersect($activityFunderIds, $allowedFunders)) > 0) {
+                            if (! empty($activityFunderIds) && count(array_intersect($activityFunderIds, $allowedFunders)) > 0) {
                                 $canApprove = true;
                             }
                         }
                     }
 
-                if ($canApprove) {
-                    $canApprove = can_approve_activity($activity);
-                }
-                
-                if ($canApprove) {
-                    $approvable_activities->push($activity);
-                }
+                    if ($canApprove) {
+                        $canApprove = can_approve_activity($activity);
+                    }
+
+                    if ($canApprove) {
+                        $approvable_activities->push($activity);
+                    }
                 }
             }
-            
+
             // Cache the result for 5 minutes
             \Cache::put($cacheKey, $approvable_activities, 300);
-            //dd($approvable_activities);
+
+            // dd($approvable_activities);
             return $approvable_activities;
         }
     }
 
-    if (!function_exists('activities_approved_by_me')) {
-        function activities_approved_by_me($matrix){
+    if (! function_exists('activities_approved_by_me')) {
+        function activities_approved_by_me($matrix)
+        {
             $user = session('user', []);
-            
+
             // Get all activities that the user can approve (based on can_approve_activity logic)
             $approvable_activities = get_approvable_activities($matrix);
-            //dd($approvable_activities);
+            // dd($approvable_activities);
             $has_approved = false;
 
             // If no approvable activities exist, return false
-            if ($approvable_activities->isEmpty())
-                 $has_approved=false;
-            if(can_user_proceed_with_empty_approvable_stack($matrix))
-                 $has_approved=true;
+            if ($approvable_activities->isEmpty()) {
+                $has_approved = false;
+            }
+            if (can_user_proceed_with_empty_approvable_stack($matrix)) {
+                $has_approved = true;
+            }
 
             // For each approvable activity, check if user has at least one 'passed' approval
             foreach ($approvable_activities as $activity) {
-                $has_approved = ActivityApprovalTrail::where("staff_id", $user['staff_id'])
-                    ->where("matrix_id", $matrix->id)
-                    ->where("approval_order", $matrix->approval_level)
-                    ->where("activity_id", $activity->id)
-                    ->where("action", "passed")
-                    ->where("is_archived", 0) // Only consider non-archived trails
+                $has_approved = ActivityApprovalTrail::where('staff_id', $user['staff_id'])
+                    ->where('matrix_id', $matrix->id)
+                    ->where('approval_order', $matrix->approval_level)
+                    ->where('activity_id', $activity->id)
+                    ->where('action', 'passed')
+                    ->where('is_archived', 0) // Only consider non-archived trails
                     ->exists();
 
-                if(!$has_approved)
-                break;
+                if (! $has_approved) {
+                    break;
+                }
             }
 
-           // dd($has_approved);
+            // dd($has_approved);
 
             return $has_approved;
         }
     }
 
-
-    if (!function_exists('can_take_action')) {
+    if (! function_exists('can_take_action')) {
         /**
          * Get a value from session('user') using dot notation
          */
@@ -1262,68 +1295,66 @@ if (!function_exists('user_session')) {
         {
             $user = session('user', []);
 
-            if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft'])) {
+            if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status, ['approved', 'draft'])) {
                 return false;
             }
 
             $still_with_creator = still_with_creator($matrix);
-            //dd($still_with_creator);
+            // dd($still_with_creator);
 
-            if($still_with_creator || !$matrix->forward_workflow_id)
-            {
-               // dd('here');
-            return false;
-        
+            if ($still_with_creator || ! $matrix->forward_workflow_id) {
+                // dd('here');
+                return false;
+
             }
-           
 
             $today = Carbon::today();
 
-            //Check that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
+            // Check that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
             $current_approval_point = WorkflowDefinition::where('approval_order', $matrix->approval_level)
-            ->where('workflow_id',$matrix->forward_workflow_id);
+                ->where('workflow_id', $matrix->forward_workflow_id);
 
-            $workflow_dfns = Approver::where('staff_id',"=", $user['staff_id'])
-            ->whereIn('workflow_dfn_id',$current_approval_point->pluck('id'))
-            ->orWhere(function ($query) use ($today, $user,$current_approval_point) {
-                    $query ->whereIn('workflow_dfn_id',$current_approval_point->pluck('id'))
-                    ->where('oic_staff_id', "=", $user['staff_id'])
-                    ->where('end_date', '>=', $today);
+            $workflow_dfns = Approver::where('staff_id', '=', $user['staff_id'])
+                ->whereIn('workflow_dfn_id', $current_approval_point->pluck('id'))
+                ->orWhere(function ($query) use ($today, $user, $current_approval_point) {
+                    $query->whereIn('workflow_dfn_id', $current_approval_point->pluck('id'))
+                        ->where('oic_staff_id', '=', $user['staff_id'])
+                        ->where('end_date', '>=', $today);
                 })
-            ->orderBy('id','desc')
-            ->pluck('workflow_dfn_id');
+                ->orderBy('id', 'desc')
+                ->pluck('workflow_dfn_id');
 
-           // dd($workflow_dfns);
-           
-            $division_specific_access=false;
-            $is_at_my_approval_level =false;
+            // dd($workflow_dfns);
 
-            
-            //if user is not defined in the approver table, $workflow_dfns will be empty
+            $division_specific_access = false;
+            $is_at_my_approval_level = false;
+
+            // if user is not defined in the approver table, $workflow_dfns will be empty
             if ($workflow_dfns->isEmpty()) {
-                //dd("here");
+                // dd("here");
                 $division_specific_access = false;
 
                 $current_approval_point = $current_approval_point->first();
 
-                if(!$current_approval_point)
-                 return false;
-                
+                if (! $current_approval_point) {
+                    return false;
+                }
+
                 if ($current_approval_point && $current_approval_point->is_division_specific) {
                     $division = $matrix->division;
-                  
-                    //staff holds current approval role in division
+
+                    // staff holds current approval role in division
                     if ($division && $division->{$current_approval_point->division_reference_column} == user_session()['staff_id']) {
                         $division_specific_access = true;
                     }
                 }
                 // dd('here');
-                //how to check approval levels against approver in approvers table???
-                
-            }else{
+                // how to check approval levels against approver in approvers table???
+
+            } else {
                 // User is in approvers table, but check if this is a division-specific role
                 $current_approval_point = $current_approval_point->first();
-                
+
                 if ($current_approval_point && $current_approval_point->is_division_specific) {
                     // For division-specific roles, only allow the actual division person
                     $division = $matrix->division;
@@ -1334,70 +1365,66 @@ if (!function_exists('user_session')) {
                         return false;
                     }
                 } else {
-                // dd("here2");
-                 //dd($current_approval_point);
-               // $current_approval_point = $current_approval_point->where('approval_order',$workflow_dfns[0])->first();
-                $current_approval_point = $current_approval_point->where('id',$workflow_dfns[0])->first();
-               // dd(getFullSql(($current_approval_point)));
-               //dd($current_approval_point);
-                $next_definition = WorkflowDefinition::whereIn('workflow_id', $workflow_dfns->toArray())
-                ->where('approval_order',(int) $matrix->approval_level)
-                ->where('is_enabled',1)
-                ->orderBy('approval_order')
-                ->get();
+                    // dd("here2");
+                    // dd($current_approval_point);
+                    // $current_approval_point = $current_approval_point->where('approval_order',$workflow_dfns[0])->first();
+                    $current_approval_point = $current_approval_point->where('id', $workflow_dfns[0])->first();
+                    // dd(getFullSql(($current_approval_point)));
+                    // dd($current_approval_point);
+                    $next_definition = WorkflowDefinition::whereIn('workflow_id', $workflow_dfns->toArray())
+                        ->where('approval_order', (int) $matrix->approval_level)
+                        ->where('is_enabled', 1)
+                        ->orderBy('approval_order')
+                        ->get();
 
+                    if ($next_definition->count() > 1) {
 
-                if ($next_definition->count() > 1) {
+                        // if any of next_definition has fund_type, then do the if below
+                        $has_fund_type = $next_definition->whereNotNull('fund_type')->count() > 0;
 
-                    //if any of next_definition has fund_type, then do the if below
-                    $has_fund_type = $next_definition->whereNotNull('fund_type')->count() > 0;
-                    
-                    if ($has_fund_type) {
-                        if ($matrix->has_extramural && $matrix->approval_level !== $current_approval_point->approval_order) {
-                            $current_approval_point = $next_definition->where('fund_type', 2)->first();
+                        if ($has_fund_type) {
+                            if ($matrix->has_extramural && $matrix->approval_level !== $current_approval_point->approval_order) {
+                                $current_approval_point = $next_definition->where('fund_type', 2)->first();
+                            } else {
+                                $current_approval_point = $next_definition->where('fund_type', 1)->first();
+                            }
                         } else {
-                            $current_approval_point = $next_definition->where('fund_type', 1)->first();
+
+                            $has_category = $next_definition->whereNotNull('category')->count() > 0;
+
+                            if ($has_category) {
+                                $current_approval_point = $next_definition->where('category', $matrix->division->category)->first();
+                            } else {
+                                $current_approval_point = $next_definition->first();
+                            }
+
                         }
-                    }else{
-
-                        $has_category = $next_definition->whereNotNull('category')->count() > 0;
-
-                        if($has_category){
-                            $current_approval_point = $next_definition->where('category', $matrix->division->category)->first();
-                        }else{
-                            $current_approval_point = $next_definition->first();
-                        }
-
                     }
-                }
 
-                $is_at_my_approval_level = ($current_approval_point) ? 
-                    ($current_approval_point->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level == $current_approval_point->approval_order) : 
-                    false;
+                    $is_at_my_approval_level = ($current_approval_point) ?
+                        ($current_approval_point->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level == $current_approval_point->approval_order) :
+                        false;
                 }
-            }      
+            }
 
-           /**TODO
-            * Factor in approval conditions 
-            */
-            //dd('is_at_my_level'.$is_at_my_approval_level,' stil creator:'.$still_with_creator  );
- 
-            return ( ($is_at_my_approval_level || $still_with_creator || $division_specific_access) && $matrix->overall_status !== 'approved');
+            /**TODO
+             * Factor in approval conditions
+             */
+            // dd('is_at_my_level'.$is_at_my_approval_level,' stil creator:'.$still_with_creator  );
+
+            return  ($is_at_my_approval_level || $still_with_creator || $division_specific_access) && $matrix->overall_status !== 'approved';
         }
-        
+
     }
 
-
-   
-    
 }
 
-if (!function_exists('reduce_fund_code_balance')) {
+if (! function_exists('reduce_fund_code_balance')) {
     /**
      * Reduce the budget_balance in the fund_codes table by a given amount.
      *
-     * @param int $fundCodeId
-     * @param float $amount
+     * @param  int  $fundCodeId
+     * @param  float  $amount
      * @return bool
      */
     function reduce_fund_code_balance($fundCodeId, $amount)
@@ -1407,76 +1434,76 @@ if (!function_exists('reduce_fund_code_balance')) {
                 ->where('id', $fundCodeId)
                 ->decrement('budget_balance', $amount);
         }
+
         return false;
     }
 }
 
-if (!function_exists('isDivisionApprover')) {
+if (! function_exists('isDivisionApprover')) {
     /**
      * Check if the current user is assigned as an approver for division-specific workflow definitions.
      *
-     * @param int|null $staffId Optional staff ID, defaults to current user's staff ID
-     * @return bool
+     * @param  int|null  $staffId  Optional staff ID, defaults to current user's staff ID
      */
     function isDivisionApprover(?int $staffId = null): bool
     {
         $userStaffId = $staffId ?? user_session('staff_id');
-        
-        if (!$userStaffId) {
+
+        if (! $userStaffId) {
             return false;
         }
-        
+
         return \App\Models\Approver::where('staff_id', $userStaffId)
-            ->whereHas('workflowDefinition', function($q) {
+            ->whereHas('workflowDefinition', function ($q) {
                 $q->where('is_division_specific', 1);
             })
             ->exists();
     }
 }
 
-if (!function_exists('allow_print_activity')) {
+if (! function_exists('allow_print_activity')) {
     /**
      * Check if an activity can be printed based on workflow approval status and matrix approval.
      *
-     * @param \App\Models\Activity $activity The activity to check
-     * @return bool
+     * @param  \App\Models\Activity  $activity  The activity to check
      */
     function allow_print_activity($activity): bool
     {
         // Check if the matrix exists and is approved
-        if (!$activity->matrix || $activity->matrix->overall_status !== 'approved') {
+        if (! $activity->matrix || $activity->matrix->overall_status !== 'approved') {
             return false;
         }
-        
+
         // Check if the activity has been passed by the final approver
         // Get the final approval order from the workflow definition
         $finalApprovalOrder = \App\Models\WorkflowDefinition::where('workflow_id', $activity->matrix->forward_workflow_id)
             ->where('is_enabled', 1)
             ->orderBy('approval_order', 'desc')
             ->value('approval_order');
-        
-        if (!$finalApprovalOrder) {
+
+        if (! $finalApprovalOrder) {
             return false;
         }
-        
+
         // Check if there's a 'passed' approval trail entry for the final approval order
         $finalApprovalExists = \App\Models\ActivityApprovalTrail::where('activity_id', $activity->id)
             ->where('approval_order', $finalApprovalOrder)
             ->where('action', 'passed')
             ->where('is_archived', 0) // Only consider non-archived trails
             ->exists();
-        
+
         return $finalApprovalExists;
     }
 }
 
-
-function getFullSql($query) {
+function getFullSql($query)
+{
     $sql = $query->toSql();
     foreach ($query->getBindings() as $binding) {
         $value = is_numeric($binding) ? $binding : "'{$binding}'";
         $sql = preg_replace('/\?/', $value, $sql, 1);
     }
+
     return $sql;
 }
 /**
@@ -1492,6 +1519,7 @@ function generateShortCodeFromDivision(string $name): string
         if (empty($word) || in_array($word, $ignore)) {
             return '';
         }
+
         return strtoupper($word[0]);
     }, $words);
 
@@ -1500,8 +1528,8 @@ function generateShortCodeFromDivision(string $name): string
 
 /**
  * Get the assigned workflow ID for a model
- * 
- * @param string $modelName The model name (e.g., 'Matrix', 'Activity', etc.)
+ *
+ * @param  string  $modelName  The model name (e.g., 'Matrix', 'Activity', etc.)
  * @return int|null The workflow ID or null if not assigned
  */
 function getModelWorkflowId(string $modelName): ?int
@@ -1511,11 +1539,10 @@ function getModelWorkflowId(string $modelName): ?int
 
 /**
  * Set the assigned workflow ID for a model
- * 
- * @param string $modelName The model name
- * @param int $workflowId The workflow ID to assign
- * @param string|null $description Optional description
- * @return \App\Models\WorkflowModel
+ *
+ * @param  string  $modelName  The model name
+ * @param  int  $workflowId  The workflow ID to assign
+ * @param  string|null  $description  Optional description
  */
 function setModelWorkflowId(string $modelName, int $workflowId, ?string $description = null): \App\Models\WorkflowModel
 {
@@ -1526,7 +1553,7 @@ function setModelWorkflowId(string $modelName, int $workflowId, ?string $descrip
  * Generate document number for any model
  * This is the main function to use for generating document numbers
  */
-function generateDocumentNumber($model, string $documentType = null): string
+function generateDocumentNumber($model, ?string $documentType = null): string
 {
     return \App\Services\DocumentNumberService::generateForAnyModel($model);
 }
@@ -1535,7 +1562,7 @@ function generateDocumentNumber($model, string $documentType = null): string
  * Dispatch job to assign document number after model creation
  * This prevents race conditions and ensures unique numbering
  */
-function assignDocumentNumber($model, string $documentType = null): void
+function assignDocumentNumber($model, ?string $documentType = null): void
 {
     \App\Jobs\AssignDocumentNumberJob::dispatch($model, $documentType);
 }
@@ -1543,11 +1570,11 @@ function assignDocumentNumber($model, string $documentType = null): void
 /**
  * Get next document number preview without incrementing counter
  */
-function getNextDocumentNumberPreview(string $documentType, $division = null, int $year = null): string
+function getNextDocumentNumberPreview(string $documentType, $division = null, ?int $year = null): string
 {
     $divisionShortName = null;
     $divisionId = null;
-    
+
     if (is_object($division)) {
         $divisionShortName = $division->division_short_name ?? null;
         $divisionId = $division->id ?? null;
@@ -1556,42 +1583,42 @@ function getNextDocumentNumberPreview(string $documentType, $division = null, in
     } elseif (is_numeric($division)) {
         $divisionId = $division;
     }
-    
+
     return \App\Services\DocumentNumberService::getNextNumberPreview(
-        $documentType, 
-        $divisionShortName, 
-        $divisionId, 
+        $documentType,
+        $divisionShortName,
+        $divisionId,
         $year
     );
 }
 
 /**
  * Display memo status with appropriate badge styling
- * 
+ *
  * Logic:
  * - Single Memos: Show overall_status
- * - Non-Travel/Special Memos: Show overall_status  
+ * - Non-Travel/Special Memos: Show overall_status
  * - Matrix Activities:
  *   - If user is approver: Show their specific approval action with approver name and level
  *   - If user is not approver: Show matrix overall_status
- * 
+ *
  * For matrix activities, when showing approval actions, includes:
  * - Action taken (passed, returned, etc.)
  * - Approver's full name
  * - Approval level/role from workflow definition
- * 
- * @param mixed $memo The memo/activity object
- * @param string $type The memo type ('single_memo', 'non_travel', 'special', 'matrix_activity')
+ *
+ * @param  mixed  $memo  The memo/activity object
+ * @param  string  $type  The memo type ('single_memo', 'non_travel', 'special', 'matrix_activity')
  * @return string HTML badge element
  */
 function display_memo_status($memo, $type)
 {
     $user = session('user', []);
     $staffId = $user['staff_id'] ?? null;
-    
+
     $statusText = '';
     $badgeClass = 'bg-secondary';
-    
+
     // Determine memo type based on passed parameter
     $isMatrixActivity = $type === 'matrix_activity';
     $isNonTravel = $type === 'non_travel';
@@ -1599,8 +1626,23 @@ function display_memo_status($memo, $type)
     $isSingleMemo = $type === 'single_memo';
     $isServiceRequest = $type === 'service_request';
     $isARF = $type === 'arf';
-    
-    if ($isSingleMemo) {
+    $isOtherMemo = $type === 'other_memo';
+
+    if ($isOtherMemo) {
+        $overallStatus = $memo->overall_status ?? 'pending';
+        if ($overallStatus === 'pending' && $memo->currentApprover) {
+            $seq = (int) ($memo->active_sequence ?? 0);
+            $row = method_exists($memo, 'approverAtSequence') ? $memo->approverAtSequence($seq) : null;
+            $role = is_array($row) ? ($row['role_label'] ?? 'Approver') : 'Approver';
+            $a = $memo->currentApprover;
+            $name = trim(($a->fname ?? '').' '.($a->lname ?? ''));
+            $statusText = $name !== '' ? "Pending - {$name} ({$role})" : ucwords($overallStatus);
+            $badgeClass = 'bg-warning';
+        } else {
+            $statusText = ucwords($overallStatus);
+            $badgeClass = get_status_badge_class($overallStatus);
+        }
+    } elseif ($isSingleMemo) {
         // For single memos, show the overall status or current actor if not approved
         $overallStatus = $memo->overall_status ?? 'pending';
         if ($overallStatus !== 'approved') {
@@ -1616,7 +1658,7 @@ function display_memo_status($memo, $type)
             $statusText = ucwords($overallStatus);
             $badgeClass = get_status_badge_class($overallStatus);
         }
-        
+
     } elseif ($isNonTravel || $isSpecialMemo) {
         // For non-travel or special memos, show the overall status or current actor if not approved
         $overallStatus = $memo->overall_status ?? 'pending';
@@ -1633,7 +1675,7 @@ function display_memo_status($memo, $type)
             $statusText = ucwords($overallStatus);
             $badgeClass = get_status_badge_class($overallStatus);
         }
-        
+
     } elseif ($isMatrixActivity) {
         // For matrix activities
         // Check if matrix is approved - if so, show activity's overall_status instead of trail status
@@ -1649,14 +1691,14 @@ function display_memo_status($memo, $type)
                 ->with(['staff', 'workflowDefinition'])
                 ->orderByDesc('id')
                 ->first();
-                
+
             if ($latestApproval && $latestApproval->action) {
                 $action = ucwords($latestApproval->action);
-                $approverName = $latestApproval->staff ? 
-                    $latestApproval->staff->fname . ' ' . $latestApproval->staff->lname : 'Unknown';
-                
+                $approverName = $latestApproval->staff ?
+                    $latestApproval->staff->fname.' '.$latestApproval->staff->lname : 'Unknown';
+
                 // Get approval level from workflow definition
-                $approvalLevel = 'Level ' . $latestApproval->approval_order;
+                $approvalLevel = 'Level '.$latestApproval->approval_order;
                 if ($memo->matrix && $memo->matrix->forward_workflow_id) {
                     $workflowDef = \App\Models\WorkflowDefinition::where('workflow_id', $memo->matrix->forward_workflow_id)
                         ->where('approval_order', $latestApproval->approval_order)
@@ -1665,7 +1707,7 @@ function display_memo_status($memo, $type)
                         $approvalLevel = $workflowDef->role;
                     }
                 }
-                
+
                 $statusText = "{$action} by {$approverName} ({$approvalLevel})";
                 $badgeClass = get_approval_action_badge_class($latestApproval->action);
             } else {
@@ -1709,7 +1751,7 @@ function display_memo_status($memo, $type)
         $statusText = ucwords($memo->overall_status ?? 'pending');
         $badgeClass = get_status_badge_class($memo->overall_status ?? 'pending');
     }
-    
+
     return "<span class=\"badge {$badgeClass}\">{$statusText}</span>";
 }
 
@@ -1755,15 +1797,15 @@ function get_approval_action_badge_class($action)
 
 /**
  * Determine memo type automatically
- * 
- * @param mixed $memo The memo/activity object
+ *
+ * @param  mixed  $memo  The memo/activity object
  * @return string The memo type
  */
 function get_memo_type($memo)
 {
     // Check model class first
     $className = get_class($memo);
-    
+
     switch ($className) {
         case 'App\Models\NonTravelMemo':
             return 'non_travel';
@@ -1774,11 +1816,14 @@ function get_memo_type($memo)
             if (isset($memo->is_single_memo) && $memo->is_single_memo) {
                 return 'single_memo';
             }
+
             return 'matrix_activity';
         case 'App\Models\ServiceRequest':
             return 'service_request';
         case 'App\Models\RequestARF':
             return 'arf';
+        case 'App\Models\OtherMemo':
+            return 'other_memo';
         default:
             // Check memo type field for other models
             if (isset($memo->memo_type)) {
@@ -1791,6 +1836,7 @@ function get_memo_type($memo)
                         return 'matrix_activity';
                 }
             }
+
             return 'matrix_activity';
     }
 }
@@ -1803,7 +1849,7 @@ function getCurrentApproverInfo($memo)
     // Handle different memo types
     $forwardWorkflowId = null;
     $approvalLevel = null;
-    
+
     // Check if this is a single memo (Activity with its own approval workflow)
     if (get_class($memo) === 'App\Models\Activity') {
         // Single memo - always use its own properties, ignore matrix relation
@@ -1818,21 +1864,21 @@ function getCurrentApproverInfo($memo)
         $forwardWorkflowId = $memo->forward_workflow_id ?? null;
         $approvalLevel = $memo->approval_level ?? null;
     }
-    
-    if (!$forwardWorkflowId || !$approvalLevel) {
+
+    if (! $forwardWorkflowId || ! $approvalLevel) {
         return null;
     }
 
     // Get workflow definition for current approval level
     // If there are multiple definitions at the same level (like level 7), use category-based routing
     $workflowDefinition = null;
-    
+
     // Check if there are multiple definitions at this level
     $definitionsAtLevel = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
         ->where('approval_order', $approvalLevel)
         ->where('is_enabled', 1)
         ->count();
-    
+
     if ($definitionsAtLevel > 1) {
         // Multiple definitions at this level - use category-based routing
         $division = null;
@@ -1841,7 +1887,7 @@ function getCurrentApproverInfo($memo)
         } elseif (isset($memo->division)) {
             $division = $memo->division;
         }
-        
+
         if ($division && $division->category) {
             // Find the definition that matches the division category
             $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
@@ -1850,10 +1896,10 @@ function getCurrentApproverInfo($memo)
                 ->where('category', $division->category)
                 ->with(['approvers.staff', 'approvers.oicStaff'])
                 ->first();
-            
-            // If no definition found at current level for this category, 
+
+            // If no definition found at current level for this category,
             // look for the next available level for this category
-            if (!$workflowDefinition) {
+            if (! $workflowDefinition) {
                 $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
                     ->where('approval_order', '>', $approvalLevel)
                     ->where('is_enabled', 1)
@@ -1864,9 +1910,9 @@ function getCurrentApproverInfo($memo)
             }
         }
     }
-    
+
     // If no category-specific definition found, use the first available one
-    if (!$workflowDefinition) {
+    if (! $workflowDefinition) {
         $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
             ->where('approval_order', $approvalLevel)
             ->where('is_enabled', 1)
@@ -1874,12 +1920,12 @@ function getCurrentApproverInfo($memo)
             ->first();
     }
 
-    if (!$workflowDefinition) {
+    if (! $workflowDefinition) {
         return null;
     }
 
     $approverName = 'Unknown';
-    
+
     // Check if this is a division-specific workflow definition
     if ($workflowDefinition->is_division_specific) {
         // For division-specific approvers, get from divisions table
@@ -1889,40 +1935,40 @@ function getCurrentApproverInfo($memo)
         } elseif (isset($memo->division)) {
             $division = $memo->division;
         }
-        
+
         if ($division) {
             // Map workflow roles to division fields
             $roleToFieldMap = [
                 'Finance Officer' => 'finance_officer',
                 'Head of Division' => 'division_head',
-                'Director' => 'director_id'
+                'Director' => 'director_id',
             ];
-            
+
             $approverStaffId = null;
             $roleName = $workflowDefinition->role;
-            
+
             if (isset($roleToFieldMap[$roleName])) {
                 $fieldName = $roleToFieldMap[$roleName];
                 $approverStaffId = $division->{$fieldName};
             }
-            
+
             // Get approver staff details
             if ($approverStaffId) {
                 $approverStaff = \App\Models\Staff::find($approverStaffId);
                 if ($approverStaff) {
-                    $approverName = $approverStaff->fname . ' ' . $approverStaff->lname;
+                    $approverName = $approverStaff->fname.' '.$approverStaff->lname;
                 }
             }
         }
     } else {
         // For non-division-specific approvers, get from approvers table
         $currentApprover = $workflowDefinition->approvers->first();
-        
+
         if ($currentApprover) {
             if ($currentApprover->staff) {
-                $approverName = $currentApprover->staff->fname . ' ' . $currentApprover->staff->lname;
+                $approverName = $currentApprover->staff->fname.' '.$currentApprover->staff->lname;
             } elseif ($currentApprover->oicStaff) {
-                $approverName = $currentApprover->oicStaff->fname . ' ' . $currentApprover->oicStaff->lname;
+                $approverName = $currentApprover->oicStaff->fname.' '.$currentApprover->oicStaff->lname;
             }
         }
     }
@@ -1934,54 +1980,58 @@ function getCurrentApproverInfo($memo)
 
     return [
         'name' => $approverName,
-        'level' => $workflowDefinition->role
+        'level' => $workflowDefinition->role,
     ];
 }
 
 /**
  * Display memo status with automatic type detection
- * 
+ *
  * This is a convenience wrapper that automatically determines the memo type
  * and calls display_memo_status with the appropriate type parameter.
- * 
- * @param mixed $memo The memo/activity object
+ *
+ * @param  mixed  $memo  The memo/activity object
  * @return string HTML badge element
  */
 function display_memo_status_auto($memo)
 {
     $type = get_memo_type($memo);
-    
+
     return display_memo_status($memo, $type);
 }
 
 /**
  * Get memo status text only (without HTML)
- * 
- * @param mixed $memo The memo/activity object
- * @param string $type The memo type
+ *
+ * @param  mixed  $memo  The memo/activity object
+ * @param  string  $type  The memo type
  * @return string Status text only
  */
 function get_memo_status_text($memo, $type)
 {
     $user = session('user', []);
     $staffId = $user['staff_id'] ?? null;
-    
+
     $statusText = '';
-    
+
     // Determine memo type based on passed parameter
     $isMatrixActivity = $type === 'matrix_activity';
     $isNonTravel = $type === 'non_travel';
     $isSpecialMemo = $type === 'special';
     $isSingleMemo = $type === 'single_memo';
-    
+    $isOtherMemo = $type === 'other_memo';
+
     if ($isSingleMemo) {
         // For single memos, show the overall status
         $statusText = ucwords($memo->overall_status ?? 'pending');
-        
+
+    } elseif ($isOtherMemo) {
+        $statusText = ucwords($memo->overall_status ?? 'pending');
+
     } elseif ($isNonTravel || $isSpecialMemo) {
         // For non-travel or special memos, show the overall status
         $statusText = ucwords($memo->overall_status ?? 'pending');
-        
+
     } elseif ($isMatrixActivity) {
         // For matrix activities
         // Check if matrix is approved - if so, show activity's overall_status instead of trail status
@@ -1996,14 +2046,14 @@ function get_memo_status_text($memo, $type)
                 ->with(['staff', 'workflowDefinition'])
                 ->orderByDesc('id')
                 ->first();
-                
+
             if ($latestApproval && $latestApproval->action) {
                 $action = ucwords($latestApproval->action);
-                $approverName = $latestApproval->staff ? 
-                    $latestApproval->staff->fname . ' ' . $latestApproval->staff->lname : 'Unknown';
-                
+                $approverName = $latestApproval->staff ?
+                    $latestApproval->staff->fname.' '.$latestApproval->staff->lname : 'Unknown';
+
                 // Get approval level from workflow definition
-                $approvalLevel = 'Level ' . $latestApproval->approval_order;
+                $approvalLevel = 'Level '.$latestApproval->approval_order;
                 if ($memo->matrix && $memo->matrix->forward_workflow_id) {
                     $workflowDef = \App\Models\WorkflowDefinition::where('workflow_id', $memo->matrix->forward_workflow_id)
                         ->where('approval_order', $latestApproval->approval_order)
@@ -2012,7 +2062,7 @@ function get_memo_status_text($memo, $type)
                         $approvalLevel = $workflowDef->role;
                     }
                 }
-                
+
                 $statusText = "{$action} by {$approverName} ({$approvalLevel})";
             } else {
                 // Get current approver info for pending status
@@ -2035,196 +2085,202 @@ function get_memo_status_text($memo, $type)
         // Fallback
         $statusText = ucwords($memo->overall_status ?? 'pending');
     }
-    
+
     return $statusText;
 }
 
 /**
  * Get memo status text with automatic type detection
- * 
- * @param mixed $memo The memo/activity object
+ *
+ * @param  mixed  $memo  The memo/activity object
  * @return string Status text only
  */
 function get_memo_status_text_auto($memo)
 {
     $type = get_memo_type($memo);
+
     return get_memo_status_text($memo, $type);
 }
 function isdivision_head($memo)
 {
     $user = session('user', []);
     $staffId = $user['staff_id'] ?? null;
+
     return $memo->division->division_head == $staffId;
 }
 
-if (!function_exists('to_sentence_case')) {
+if (! function_exists('to_sentence_case')) {
     /**
      * Convert text to proper sentence case
      * Capitalizes first letter of each word except for conjunctions, prepositions, and articles
      */
-    function to_sentence_case($text) {
+    function to_sentence_case($text)
+    {
         if (empty($text)) {
             return $text;
         }
-        
+
         // Words to keep lowercase (conjunctions, prepositions, articles)
         $lowercase_words = [
-            'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'with', 'yet', 'nor'
+            'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'with', 'yet', 'nor',
         ];
-        
+
         // Split into words
         $words = explode(' ', $text);
         $result = [];
-        
+
         foreach ($words as $word) {
             // Clean the word (remove punctuation for comparison)
             $clean_word = preg_replace('/[^a-zA-Z]/', '', strtolower($word));
-            
+
             // Keep lowercase for conjunctions/prepositions/articles
             if (in_array($clean_word, $lowercase_words)) {
                 $result[] = strtolower($word);
-            } 
+            }
             // Capitalize all other words
             else {
                 $result[] = ucfirst($word);
             }
         }
-        
+
         return implode(' ', $result);
     }
 }
 
-if (!function_exists('to_title_case')) {
+if (! function_exists('to_title_case')) {
     /**
      * Convert text to proper title case
      * Capitalizes first letter of each word except for conjunctions, prepositions, and articles
      * Always capitalizes the first and last word
      */
-    function to_title_case($text) {
+    function to_title_case($text)
+    {
         if (empty($text)) {
             return $text;
         }
-        
+
         // Words to keep lowercase (conjunctions, prepositions, articles)
         $lowercase_words = [
-            'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'with', 'yet', 'nor'
+            'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'with', 'yet', 'nor',
         ];
-        
+
         // Split into words
         $words = explode(' ', trim($text));
         $result = [];
         $wordCount = count($words);
-        
+
         foreach ($words as $index => $word) {
             // Clean the word (remove punctuation for comparison)
             $clean_word = preg_replace('/[^a-zA-Z]/', '', strtolower($word));
-            
+
             // Always capitalize first and last word
             $isFirst = ($index === 0);
             $isLast = ($index === $wordCount - 1);
-            
+
             // Keep lowercase for conjunctions/prepositions/articles (except first and last)
-            if (!$isFirst && !$isLast && in_array($clean_word, $lowercase_words)) {
+            if (! $isFirst && ! $isLast && in_array($clean_word, $lowercase_words)) {
                 $result[] = strtolower($word);
-            } 
+            }
             // Capitalize all other words
             else {
                 $result[] = ucfirst($word);
             }
         }
-        
+
         return implode(' ', $result);
     }
 }
 
-if (!function_exists('clean_unicode')) {
+if (! function_exists('clean_unicode')) {
     /**
      * Remove hidden Unicode characters and control characters from text
      * This includes zero-width spaces, directional marks, and other invisible characters
-     * 
-     * @param string $text The text to clean
+     *
+     * @param  string  $text  The text to clean
      * @return string The cleaned text
      */
-    function clean_unicode($text) {
+    function clean_unicode($text)
+    {
         if (empty($text)) {
             return $text;
         }
-        
+
         // Remove zero-width characters
         $text = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}]/u', '', $text);
-        
+
         // Remove left-to-right and right-to-left marks
         $text = preg_replace('/[\x{200E}\x{200F}]/u', '', $text);
-        
+
         // Remove zero-width joiner and non-joiner
         $text = preg_replace('/[\x{200C}\x{200D}]/u', '', $text);
-        
+
         // Remove other invisible Unicode characters (control characters)
         $text = preg_replace('/[\x{0000}-\x{001F}\x{007F}-\x{009F}]/u', '', $text);
-        
+
         // Remove other problematic Unicode ranges
         $text = preg_replace('/[\x{2060}-\x{206F}]/u', '', $text); // Word joiner, invisible plus, etc.
         $text = preg_replace('/[\x{202A}-\x{202E}]/u', '', $text); // Directional formatting
         $text = preg_replace('/[\x{2066}-\x{2069}]/u', '', $text); // Directional isolates
-        
+
         // Remove soft hyphen (optional, but often unwanted)
         $text = preg_replace('/[\x{00AD}]/u', '', $text);
-        
+
         return trim($text);
     }
 }
 
-if (!function_exists('time_ago')) {
+if (! function_exists('time_ago')) {
     /**
      * Get human-readable time difference from a timestamp
-     * 
-     * @param string|Carbon $timestamp The timestamp to compare
+     *
+     * @param  string|Carbon  $timestamp  The timestamp to compare
      * @return string Human-readable time difference
      */
-    function time_ago($timestamp) {
+    function time_ago($timestamp)
+    {
         $time_ago = strtotime($timestamp);
         $current_time = time();
         $time_difference = $current_time - $time_ago;
         $seconds = $time_difference;
 
         $minutes = round($seconds / 60);           // value 60 is seconds
-        $hours = round($seconds / 3600);           //value 3600 is 60 minutes * 60 sec
-        $days = round($seconds / 86400);          //86400 = 24 * 60 * 60;
+        $hours = round($seconds / 3600);           // value 3600 is 60 minutes * 60 sec
+        $days = round($seconds / 86400);          // 86400 = 24 * 60 * 60;
         $weeks = round($seconds / 604800);          // 7*24*60*60;
-        $months = round($seconds / 2629440);     //((365+365+365+365+366)/5/12)*24*60*60
-        $years = round($seconds / 31553280);     //(365+365+365+365+366)/5 * 24 * 60 * 60
+        $months = round($seconds / 2629440);     // ((365+365+365+365+366)/5/12)*24*60*60
+        $years = round($seconds / 31553280);     // (365+365+365+365+366)/5 * 24 * 60 * 60
 
         if ($seconds <= 60) {
-            return "Just now";
-        } else if ($minutes <= 60) {
+            return 'Just now';
+        } elseif ($minutes <= 60) {
             if ($minutes == 1) {
-                return "1 " . "Minute" . " " . "ago";
+                return '1 '.'Minute'.' '.'ago';
             } else {
-                return $minutes . " " . "Minutes" . " ago";
+                return $minutes.' '.'Minutes'.' ago';
             }
-        } else if ($hours <= 24) {
+        } elseif ($hours <= 24) {
             if ($hours == 1) {
-                return "1 " . "hour" . " " . "ago";
+                return '1 '.'hour'.' '.'ago';
             } else {
-                return $hours . " " . "hours" . " " . "ago";
+                return $hours.' '.'hours'.' '.'ago';
             }
-        } else if ($days <= 30) {
+        } elseif ($days <= 30) {
             if ($days == 1) {
-                return "1 " . "day" . " " . "ago";
+                return '1 '.'day'.' '.'ago';
             } else {
-                return $days . " " . "days" . " " . "ago";
+                return $days.' '.'days'.' '.'ago';
             }
-        } else if ($months <= 12) {
+        } elseif ($months <= 12) {
             if ($months == 1) {
-                return "1 " . "month" . " " . "ago";
+                return '1 '.'month'.' '.'ago';
             } else {
-                return $months . " " . "months" . " " . "ago";
+                return $months.' '.'months'.' '.'ago';
             }
         } else {
             if ($years == 1) {
-                return "1 " . "year" . " " . "ago";
+                return '1 '.'year'.' '.'ago';
             } else {
-                return $years . " " . "years" . " " . "ago";
+                return $years.' '.'years'.' '.'ago';
             }
         }
     }
