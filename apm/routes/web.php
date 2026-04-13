@@ -214,6 +214,17 @@ Route::post('/image/upload', [App\Http\Controllers\ImageController::class, 'uplo
 Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function () {
     // Resource Routes
 Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->except(['destroy']);
+
+    Route::get('memo-type-definitions', [App\Http\Controllers\MemoTypeDefinitionController::class, 'index'])
+        ->name('memo-type-definitions.index');
+    Route::prefix('memo-type-definitions/api')->group(function () {
+        Route::get('/', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxIndex'])->name('memo-type-definitions.api.index');
+        Route::post('/', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxStore'])->name('memo-type-definitions.api.store');
+        Route::get('/{memoTypeDefinition}', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxShow'])->name('memo-type-definitions.api.show');
+        Route::put('/{memoTypeDefinition}', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxUpdate'])->name('memo-type-definitions.api.update');
+        Route::delete('/{memoTypeDefinition}', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxDestroy'])->name('memo-type-definitions.api.destroy');
+    });
+
     Route::resource('partners', App\Http\Controllers\PartnerController::class)->except(['destroy']);
 
     // Fund Codes specific routes (must be before resource route)
@@ -449,6 +460,13 @@ Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoContro
     Route::post('request-arf/{requestARF}/approve', [App\Http\Controllers\RequestARFController::class, 'approve'])->name('request-arf.approve');
     Route::post('request-arf/{requestARF}/submit-for-approval', [App\Http\Controllers\RequestARFController::class, 'submitForApproval'])->name('request-arf.submit-for-approval');
     Route::post('request-arf/{requestARF}/update-status', [App\Http\Controllers\RequestARFController::class, 'updateStatus'])->name('request-arf.update-status');
+
+    Route::get('other-memos/staff-lookup', [App\Http\Controllers\OtherMemoController::class, 'staffLookup'])->name('other-memos.staff-lookup');
+    Route::get('other-memos/{other_memo}/print', [App\Http\Controllers\OtherMemoController::class, 'print'])->name('other-memos.print');
+    Route::post('other-memos/{other_memo}/submit', [App\Http\Controllers\OtherMemoController::class, 'submit'])->name('other-memos.submit');
+    Route::post('other-memos/{other_memo}/approve', [App\Http\Controllers\OtherMemoController::class, 'approve'])->name('other-memos.approve');
+    Route::post('other-memos/{other_memo}/return-memo', [App\Http\Controllers\OtherMemoController::class, 'returnMemo'])->name('other-memos.return-memo');
+    Route::resource('other-memos', App\Http\Controllers\OtherMemoController::class);
 
     Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
 

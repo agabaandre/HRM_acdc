@@ -14,6 +14,11 @@
 
     $settingsMenuItems = [
         [
+            'route' => 'memo-type-definitions.index',
+            'icon' => 'fas fa-file-signature',
+            'title' => 'Other memo types',
+        ],
+        [
             'route' => 'fund-types.index',
             'icon' => 'fas fa-hand-holding-usd',
             'title' => 'Fund Types',
@@ -213,6 +218,7 @@
                     Request::is('special-memo*') ||
                     Request::is('service-requests*') ||
                     Request::is('request-arf*') ||
+                    Request::is('other-memos*') ||
                     Request::is('change-requests*');
             @endphp
             <li class="nav-item dropdown">
@@ -265,6 +271,10 @@
                     <li>
                         <a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}"
                             href="{{ url('request-arf') }}" wire:navigate>Request for ARF</a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('other-memos*') ? 'active' : '' }}"
+                            href="{{ route('other-memos.index') }}" wire:navigate>Other memo types</a>
                     </li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
@@ -319,7 +329,7 @@
             <!-- Settings -->
             @if (in_array(89, user_session('permissions', [])))
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('apm-api-users*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') ? 'active' : '' }}"
+                    <a class="nav-link dropdown-toggle {{ Request::is('memo-type-definitions*') || Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('apm-api-users*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') ? 'active' : '' }}"
                         href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                         <div class="menu-title">Settings</div>
