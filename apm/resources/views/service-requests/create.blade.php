@@ -1457,38 +1457,41 @@ function initServiceRequestCreatePage() {
         updateInternalParticipantOptions();
     }
     
-            // Function to validate and format number input with thousand separators
+            // Validate/format numeric input while preserving decimal typing (e.g. "1.")
             function validateAndFormatNumberInput(input) {
-        let value = input.value.replace(/,/g, ''); // Remove existing commas
-                
-                // Allow only numbers and decimal point
+                let value = (input.value || '').replace(/,/g, '');
+
+                // Keep only digits and dot
                 value = value.replace(/[^0-9.]/g, '');
-                
-                // Ensure only one decimal point
-                const parts = value.split('.');
-                if (parts.length > 2) {
-                    value = parts[0] + '.' + parts.slice(1).join('');
+
+                // Keep first dot only
+                const firstDot = value.indexOf('.');
+                if (firstDot !== -1) {
+                    value = value.substring(0, firstDot + 1) + value.substring(firstDot + 1).replace(/\./g, '');
                 }
-                
-                // Limit decimal places to 1
-                if (parts.length === 2 && parts[1].length > 1) {
-                    value = parts[0] + '.' + parts[1].substring(0, 1);
+
+                // Split integer/decimal and limit decimal to 1 digit
+                const hasDot = value.includes('.');
+                let integerPart = hasDot ? value.split('.')[0] : value;
+                let decimalPart = hasDot ? value.split('.')[1] : '';
+                decimalPart = (decimalPart || '').substring(0, 1);
+
+                // Normalize leading zeros but keep a single zero
+                integerPart = integerPart.replace(/^0+(?=\d)/, '');
+                if (integerPart === '') {
+                    integerPart = '0';
                 }
-                
-        if (value && !isNaN(value)) {
-            let number = parseFloat(value);
-            if (number >= 0) {
-                        // Format with thousand separators
-                input.value = number.toLocaleString('en-US', {
-                    minimumFractionDigits: 0,
-                            maximumFractionDigits: 1,
-                            useGrouping: true
-                });
+
+                // Add grouping to integer part
+                const groupedInt = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+                // Preserve trailing decimal point while user is typing
+                if (hasDot) {
+                    input.value = groupedInt + '.' + decimalPart;
+                } else {
+                    input.value = groupedInt;
+                }
             }
-                } else if (value === '') {
-                    input.value = '';
-        }
-    }
     
     // Update participants summary
     function updateParticipantsSummary() {
