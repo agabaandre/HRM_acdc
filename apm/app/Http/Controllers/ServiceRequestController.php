@@ -500,8 +500,9 @@ class ServiceRequestController extends Controller
                 $total = 0;
                 foreach ($costs as $costId => $costValue) {
                     $costName = $costItemMapping[$costId] ?? $costId;
-                    $costsWithNames[$costName] = floatval($costValue);
-                    $total += floatval($costValue);
+                    $normalizedCost = $this->normalizeCostOneDecimal($costValue);
+                    $costsWithNames[$costName] = $normalizedCost;
+                    $total += $normalizedCost;
                 }
                 
                 $internalCosts[] = [
@@ -544,8 +545,9 @@ class ServiceRequestController extends Controller
                 $total = 0;
                 foreach ($costs as $costId => $costValue) {
                     $costName = $costItemMapping[$costId] ?? $costId;
-                    $costsWithNames[$costName] = floatval($costValue);
-                    $total += floatval($costValue);
+                    $normalizedCost = $this->normalizeCostOneDecimal($costValue);
+                    $costsWithNames[$costName] = $normalizedCost;
+                    $total += $normalizedCost;
                 }
                 
                 $externalCosts[] = [
@@ -576,7 +578,7 @@ class ServiceRequestController extends Controller
         
         foreach ($otherCosts as $cost) {
             if (!empty($cost['cost_type'])) {
-                $unitCost = floatval($cost['unit_cost'] ?? 0);
+                $unitCost = $this->normalizeCostOneDecimal($cost['unit_cost'] ?? 0);
                 $days = intval($cost['days'] ?? 0);
                 $total = $unitCost * $days;
                 
@@ -625,6 +627,22 @@ class ServiceRequestController extends Controller
             'responsible_person_id' => $request->input('responsible_person_id'),
             'budget_id' => $request->input('budget_id'),
         ];
+    }
+
+    /**
+     * Normalize a numeric input to a non-negative value with max 1 decimal place.
+     */
+    private function normalizeCostOneDecimal(mixed $value): float
+    {
+        if (is_string($value)) {
+            $value = str_replace(',', '', $value);
+        }
+        $num = (float) $value;
+        if ($num < 0) {
+            $num = 0.0;
+        }
+
+        return round($num, 1);
     }
 
     /**

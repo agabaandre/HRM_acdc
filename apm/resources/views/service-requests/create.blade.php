@@ -566,8 +566,8 @@
                                             class="form-control border-success cost-input" value="{{ $costVal }}"
                                             data-cost-item="{{ $costItem->name }}"
                                             placeholder="Enter {{ $costItem->name }}"
-                                            pattern="[0-9,]+(\.[0-9]{1,2})?"
-                                            title="Enter a valid number (e.g., 1,000.50)">
+                                            pattern="[0-9,]+(\.[0-9]{1})?"
+                                            title="Enter a valid number (e.g., 1,000.5)">
                                     </td>
                                     @endforeach
                                     <td class="text-end fw-bold total-cell">$0.00</td>
@@ -605,8 +605,8 @@
                                                 class="form-control border-success cost-input" value="0"
                                                data-cost-item="{{ $costItem->name }}"
                                                 placeholder="Enter {{ $costItem->name }}"
-                                                pattern="[0-9,]+(\.[0-9]{1,2})?"
-                                                title="Enter a valid number (e.g., 1,000.50)">
+                                                pattern="[0-9,]+(\.[0-9]{1})?"
+                                                title="Enter a valid number (e.g., 1,000.5)">
                                     </td>
                                                         @endforeach
                                     <td class="text-end fw-bold total-cell">$0.00</td>
@@ -688,8 +688,8 @@
                                             class="form-control border-success cost-input" value="{{ $costVal }}"
                                             data-cost-item="{{ $costItem->name }}"
                                             placeholder="Enter {{ $costItem->name }}"
-                                            pattern="[0-9,]+(\.[0-9]{1,2})?"
-                                            title="Enter a valid number (e.g., 1,000.50)">
+                                            pattern="[0-9,]+(\.[0-9]{1})?"
+                                            title="Enter a valid number (e.g., 1,000.5)">
                                     </td>
                                     @endforeach
                                     <td class="text-end fw-bold total-cell">$0.00</td>
@@ -717,8 +717,8 @@
                                                 class="form-control border-success cost-input" value="0"
                                                data-cost-item="{{ $costItem->name }}"
                                                 placeholder="Enter {{ $costItem->name }}"
-                                                pattern="[0-9,]+(\.[0-9]{1,2})?"
-                                                title="Enter a valid number (e.g., 1,000.50)">
+                                                pattern="[0-9,]+(\.[0-9]{1})?"
+                                                title="Enter a valid number (e.g., 1,000.5)">
                                     </td>
                                 @endforeach
                                     <td class="text-end fw-bold total-cell">$0.00</td>
@@ -793,8 +793,8 @@
                                                 <input type="text" name="other_costs[{{ $index }}][unit_cost]"
                                                     class="form-control border-success cost-input" value="{{ $otherRow ? ($otherRow['unit_cost'] ?? 0) : '0' }}"
                                                     placeholder="Enter unit cost"
-                                                    pattern="[0-9,]+(\.[0-9]{1,2})?"
-                                                    title="Enter a valid number (e.g., 1,000.50)">
+                                                    pattern="[0-9,]+(\.[0-9]{1})?"
+                                                    title="Enter a valid number (e.g., 1,000.5)">
                                         </td>
                                         <td>
                                                 <input type="number" name="other_costs[{{ $index }}][days]"
@@ -1470,9 +1470,9 @@ function initServiceRequestCreatePage() {
                     value = parts[0] + '.' + parts.slice(1).join('');
                 }
                 
-                // Limit decimal places to 2
-                if (parts.length === 2 && parts[1].length > 2) {
-                    value = parts[0] + '.' + parts[1].substring(0, 2);
+                // Limit decimal places to 1
+                if (parts.length === 2 && parts[1].length > 1) {
+                    value = parts[0] + '.' + parts[1].substring(0, 1);
                 }
                 
         if (value && !isNaN(value)) {
@@ -1481,7 +1481,7 @@ function initServiceRequestCreatePage() {
                         // Format with thousand separators
                 input.value = number.toLocaleString('en-US', {
                     minimumFractionDigits: 0,
-                            maximumFractionDigits: 2,
+                            maximumFractionDigits: 1,
                             useGrouping: true
                 });
             }
