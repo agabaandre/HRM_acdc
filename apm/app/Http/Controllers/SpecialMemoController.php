@@ -2078,42 +2078,62 @@ class SpecialMemoController extends Controller
      */
     public function adminUpdate(Request $request, SpecialMemo $specialMemo): JsonResponse
     {
-        // Check if user is system admin (role == 10)
         $user = session('user', []);
         $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        
-        if ($userRole != 10) {
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (!can_manage_memo_owners_for_division((int) $specialMemo->division_id)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized. Only system administrators can perform this action.'
+                'message' => 'Unauthorized. Only system administrators or focal persons for this division can perform this action.'
             ], 403);
         }
 
-        // Validate request
         $request->validate([
-            'staff_id' => 'required|integer|exists:staff,staff_id',
+            'staff_id' => ($isAdmin ? 'required' : 'nullable') . '|integer|exists:staff,staff_id',
             'responsible_person_id' => 'required|integer|exists:staff,staff_id',
         ]);
 
         try {
-            // Store original values for logging
+            $newResponsiblePersonId = (int) $request->input('responsible_person_id');
+            $newCreatorId = (int) $request->input('staff_id', $specialMemo->staff_id);
+
+            if (! $isAdmin) {
+                if ($newCreatorId !== (int) $specialMemo->staff_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Division focal persons can only update Responsible Person, not Creator.',
+                    ], 403);
+                }
+                $responsibleInDivision = Staff::where('staff_id', $newResponsiblePersonId)
+                    ->where('division_id', (int) $specialMemo->division_id)
+                    ->exists();
+                if (! $responsibleInDivision) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Responsible Person must belong to the same division.',
+                    ], 422);
+                }
+            }
+
             $oldStaffId = $specialMemo->staff_id;
             $oldResponsiblePersonId = $specialMemo->responsible_person_id;
-            
-            // Update the special memo
-            $specialMemo->update([
-                'staff_id' => $request->input('staff_id'),
-                'responsible_person_id' => $request->input('responsible_person_id'),
-            ]);
+
+            $payload = ['responsible_person_id' => $newResponsiblePersonId];
+            if ($isAdmin) {
+                $payload['staff_id'] = $newCreatorId;
+            }
+
+            $specialMemo->update($payload);
 
             // Log the admin action
             Log::info('Admin updated special memo creator/responsible person', [
                 'admin_user_id' => $user['user_id'] ?? $user['id'] ?? null,
                 'special_memo_id' => $specialMemo->id,
                 'old_staff_id' => $oldStaffId,
-                'new_staff_id' => $request->input('staff_id'),
+                'new_staff_id' => $isAdmin ? $newCreatorId : $oldStaffId,
                 'old_responsible_person_id' => $oldResponsiblePersonId,
-                'new_responsible_person_id' => $request->input('responsible_person_id'),
+                'new_responsible_person_id' => $newResponsiblePersonId,
             ]);
 
             return response()->json([

@@ -507,14 +507,14 @@
                     @endif
                     
                     @php
-                    //@dd(user_session());
                         $isAdmin = user_session('role') == 10;
+                        $canUpdateOwners = can_manage_memo_owners_for_division((int) ($activity->division_id ?? 0));
                     @endphp
                     
-                    @if($isAdmin)
+                    @if($canUpdateOwners)
                         <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#adminUpdateModal" style="flex-shrink: 0;">
                             <i class="bx bx-user-pin"></i>
-                            <span>Admin: Update Owners</span>
+                            <span>{{ $isAdmin ? 'Admin' : 'Division focal' }}: Update Owners</span>
                         </button>
                     @endif
                     
@@ -1329,7 +1329,8 @@
 @include('activities.partials.admin-update-creator-responsible', [
     'activity' => $activity,
     'matrix' => $matrix,
-    'isAdmin' => $isAdmin ?? false
+    'isAdmin' => $canUpdateOwners ?? false,
+    'isStrictAdmin' => $isAdmin ?? false
 ])
 
 @endsection

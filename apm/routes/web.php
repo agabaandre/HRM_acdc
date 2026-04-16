@@ -426,6 +426,7 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
     Route::get('non-travel/pending-approvals', [App\Http\Controllers\NonTravelMemoController::class, 'pendingApprovals'])->name('non-travel.pending-approvals');
     Route::delete('non-travel/{nonTravel}/remove-attachment', [App\Http\Controllers\NonTravelMemoController::class, 'removeAttachment'])->name('non-travel.remove-attachment');
+    Route::post('non-travel/{nonTravel}/admin-update-owner', [App\Http\Controllers\NonTravelMemoController::class, 'adminUpdateOwner'])->name('non-travel.admin-update-owner');
 
     // Non-Travel Memo Export Routes
     Route::get('non-travel/export/my-submitted', [App\Http\Controllers\NonTravelMemoController::class, 'exportMySubmittedCsv'])->name('non-travel.export.my-submitted');

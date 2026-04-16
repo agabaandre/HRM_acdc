@@ -42,10 +42,14 @@
                     @endif
                 @endif
 
-                @if($isAdmin ?? false)
+                @php
+                    $isStrictAdmin = (bool) ($isAdmin ?? false);
+                    $canUpdateOwners = can_manage_memo_owners_for_division((int) ($changeRequest->division_id ?? 0));
+                @endphp
+                @if($canUpdateOwners)
                     <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#adminUpdateModal">
                         <i class="bx bx-user-pin"></i>
-                        <span>Admin: Update Owners</span>
+                        <span>{{ $isStrictAdmin ? 'Admin' : 'Division focal' }}: Update Owners</span>
                     </button>
                 @endif
 
@@ -1397,7 +1401,8 @@
 @include('activities.partials.admin-update-creator-responsible', [
     'activity' => $changeRequest,
     'matrix' => null,
-    'isAdmin' => $isAdmin ?? false,
+    'isAdmin' => $canUpdateOwners ?? false,
+    'isStrictAdmin' => $isStrictAdmin ?? false,
     'isChangeRequest' => true,
 ])
 

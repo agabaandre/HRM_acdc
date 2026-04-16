@@ -222,6 +222,10 @@
                     <p class="text-muted mb-0">Review and manage memo details</p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
+                    @php
+                        $isStrictAdmin = user_session('role') == 10;
+                        $canUpdateNonTravelOwner = can_manage_memo_owners_for_division((int) ($nonTravel->division_id ?? 0));
+                    @endphp
                     <a wire:navigate href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
@@ -232,6 +236,12 @@
                             <i class="bx bx-edit"></i>
                             <span>Edit Memo</span>
                         </a>
+                    @endif
+                    @if($canUpdateNonTravelOwner)
+                        <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#nonTravelOwnerUpdateModal">
+                            <i class="bx bx-user-pin"></i>
+                            <span>{{ $isStrictAdmin ? 'Admin' : 'Division focal' }}: Update Creator</span>
+                        </button>
                     @endif
                     
                     @php
@@ -1012,6 +1022,54 @@
             
         @endif
 
+@if($canUpdateNonTravelOwner ?? false)
+@php
+    $ownerOptionsQuery = \App\Models\Staff::active()->select(['staff_id', 'fname', 'lname', 'job_name', 'division_id']);
+    if (!($isStrictAdmin ?? false)) {
+        $ownerOptionsQuery->where('division_id', (int) ($nonTravel->division_id ?? 0));
+    }
+    $ownerOptions = $ownerOptionsQuery->orderBy('fname')->orderBy('lname')->get();
+@endphp
+<div class="modal fade" id="nonTravelOwnerUpdateModal" tabindex="-1" aria-labelledby="nonTravelOwnerUpdateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title text-white" id="nonTravelOwnerUpdateModalLabel">
+                    <i class="bx bx-user-pin me-2"></i>{{ ($isStrictAdmin ?? false) ? 'Admin' : 'Division Focal Person' }}: Update Creator
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="nonTravelOwnerUpdateForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bx bx-info-circle me-2"></i>
+                        <strong>Note:</strong> For non-travel memos, the creator is the responsible owner.
+                    </div>
+                    <div class="mb-2">
+                        <label for="non_travel_owner_staff_id" class="form-label fw-semibold">
+                            <i class="bx bx-user me-1 text-primary"></i>Creator (Responsible Owner) <span class="text-danger">*</span>
+                        </label>
+                        <select name="staff_id" id="non_travel_owner_staff_id" class="form-select select2" required style="width:100%;">
+                            <option value="">Select Creator</option>
+                            @foreach($ownerOptions as $staff)
+                                <option value="{{ $staff->staff_id }}" {{ ((int) ($nonTravel->staff_id ?? 0) === (int) $staff->staff_id) ? 'selected' : '' }}>
+                                    {{ $staff->fname }} {{ $staff->lname }} - {{ $staff->job_name ?? 'N/A' }} (ID: {{ $staff->staff_id }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger"><i class="bx bx-save me-1"></i>Update Creator</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- Resubmit Modal --}}
 <div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-md modal-dialog-centered">
@@ -1061,6 +1119,43 @@
 
 @push('scripts')
 <script>
+    @if($canUpdateNonTravelOwner ?? false)
+    $(function () {
+        $('#nonTravelOwnerUpdateModal').on('shown.bs.modal', function () {
+            if ($('#non_travel_owner_staff_id').length) {
+                $('#non_travel_owner_staff_id').select2({ dropdownParent: $('#nonTravelOwnerUpdateModal'), width: '100%' });
+            }
+        });
+
+        $('#nonTravelOwnerUpdateForm').on('submit', function (e) {
+            e.preventDefault();
+            const $btn = $(this).find('button[type="submit"]');
+            const oldHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="bx bx-loader bx-spin me-1"></i> Updating...');
+
+            $.ajax({
+                url: '{{ route("non-travel.admin-update-owner", $nonTravel) }}',
+                method: 'POST',
+                data: $(this).serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        show_notification(response.message || 'Creator updated successfully.', 'success');
+                        $('#nonTravelOwnerUpdateModal').modal('hide');
+                        setTimeout(function () { window.location.reload(); }, 1200);
+                    } else {
+                        show_notification(response.message || 'Failed to update creator.', 'error');
+                        $btn.prop('disabled', false).html(oldHtml);
+                    }
+                },
+                error: function (xhr) {
+                    show_notification(xhr.responseJSON?.message || 'Failed to update creator.', 'error');
+                    $btn.prop('disabled', false).html(oldHtml);
+                }
+            });
+        });
+    });
+    @endif
+
     // Attachment preview (same as single-memos)
     $(document).on('click', '.preview-attachment', function() {
         var fileUrl = $(this).data('file-url');

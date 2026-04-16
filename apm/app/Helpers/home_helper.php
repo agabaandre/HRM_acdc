@@ -583,6 +583,30 @@ if (! function_exists('get_pending_change_request_count')) {
     }
 }
 
+if (! function_exists('can_manage_memo_owners_for_division')) {
+    /**
+     * Admins can manage memo owners globally.
+     * Division focal persons can manage memo owners for their own division only.
+     */
+    function can_manage_memo_owners_for_division(?int $divisionId): bool
+    {
+        $role = user_session('role');
+        if ((int) $role === 10) {
+            return true;
+        }
+
+        $staffId = (int) user_session('staff_id');
+        $divisionId = (int) $divisionId;
+        if ($staffId <= 0 || $divisionId <= 0) {
+            return false;
+        }
+
+        return \App\Models\Division::where('id', $divisionId)
+            ->where('focal_person', $staffId)
+            ->exists();
+    }
+}
+
 if (! function_exists('get_staff_total_pending_count')) {
     /**
      * Get the total count of all pending actions across all modules for the current staff member
