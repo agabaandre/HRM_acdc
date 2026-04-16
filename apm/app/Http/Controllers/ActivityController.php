@@ -3230,33 +3230,51 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
      */
     public function adminUpdate(Request $request, Matrix $matrix, Activity $activity): JsonResponse
     {
-        // Check if user is system admin (role == 10)
         $user = session('user', []);
         $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        
-        if ($userRole != 10) {
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (!can_manage_memo_owners_for_division((int) $matrix->division_id)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized. Only system administrators can perform this action.'
+                'message' => 'Unauthorized. Only system administrators or focal persons for this division can perform this action.'
             ], 403);
         }
 
-        // Validate request
         $request->validate([
-            'staff_id' => 'required|integer|exists:staff,staff_id',
+            'staff_id' => ($isAdmin ? 'required' : 'nullable') . '|integer|exists:staff,staff_id',
             'responsible_person_id' => 'required|integer|exists:staff,staff_id',
         ]);
 
         try {
-            // Store original values for logging
-            $oldStaffId = $activity->staff_id;
-            $oldResponsiblePersonId = $activity->responsible_person_id;
-            
-            // Update the activity
-            $activity->update([
-                'staff_id' => $request->input('staff_id'),
-                'responsible_person_id' => $request->input('responsible_person_id'),
-            ]);
+            $newResponsiblePersonId = (int) $request->input('responsible_person_id');
+            $newCreatorId = (int) $request->input('staff_id', $activity->staff_id);
+
+            if (! $isAdmin) {
+                if ($newCreatorId !== (int) $activity->staff_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Division focal persons can only update Responsible Person, not Creator.',
+                    ], 403);
+                }
+
+                $responsibleInDivision = Staff::where('staff_id', $newResponsiblePersonId)
+                    ->where('division_id', (int) $matrix->division_id)
+                    ->exists();
+                if (! $responsibleInDivision) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Responsible Person must belong to the same division.',
+                    ], 422);
+                }
+            }
+
+            $payload = ['responsible_person_id' => $newResponsiblePersonId];
+            if ($isAdmin) {
+                $payload['staff_id'] = $newCreatorId;
+            }
+
+            $activity->update($payload);
 
             return response()->json([
                 'success' => true,
@@ -3283,33 +3301,50 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
      */
     public function adminUpdateSingleMemo(Request $request, Activity $activity): JsonResponse
     {
-        // Check if user is system admin (role == 10)
         $user = session('user', []);
         $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        
-        if ($userRole != 10) {
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (!can_manage_memo_owners_for_division((int) $activity->division_id)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized. Only system administrators can perform this action.'
+                'message' => 'Unauthorized. Only system administrators or focal persons for this division can perform this action.'
             ], 403);
         }
 
-        // Validate request
         $request->validate([
-            'staff_id' => 'required|integer|exists:staff,staff_id',
+            'staff_id' => ($isAdmin ? 'required' : 'nullable') . '|integer|exists:staff,staff_id',
             'responsible_person_id' => 'required|integer|exists:staff,staff_id',
         ]);
 
         try {
-            // Store original values for logging
-            $oldStaffId = $activity->staff_id;
-            $oldResponsiblePersonId = $activity->responsible_person_id;
-            
-            // Update the activity
-            $activity->update([
-                'staff_id' => $request->input('staff_id'),
-                'responsible_person_id' => $request->input('responsible_person_id'),
-            ]);
+            $newResponsiblePersonId = (int) $request->input('responsible_person_id');
+            $newCreatorId = (int) $request->input('staff_id', $activity->staff_id);
+
+            if (! $isAdmin) {
+                if ($newCreatorId !== (int) $activity->staff_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Division focal persons can only update Responsible Person, not Creator.',
+                    ], 403);
+                }
+                $responsibleInDivision = Staff::where('staff_id', $newResponsiblePersonId)
+                    ->where('division_id', (int) $activity->division_id)
+                    ->exists();
+                if (! $responsibleInDivision) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Responsible Person must belong to the same division.',
+                    ], 422);
+                }
+            }
+
+            $payload = ['responsible_person_id' => $newResponsiblePersonId];
+            if ($isAdmin) {
+                $payload['staff_id'] = $newCreatorId;
+            }
+
+            $activity->update($payload);
 
             return response()->json([
                 'success' => true,

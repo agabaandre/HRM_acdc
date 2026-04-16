@@ -34,12 +34,21 @@
 --}}
 
 @if($isAdmin ?? false)
+@php
+    $isStrictAdmin = (bool) ($isStrictAdmin ?? false);
+    $divisionId = (int) (($activity->division_id ?? ($matrix->division_id ?? 0)) ?: 0);
+    $staffQuery = \App\Models\Staff::active()->select(['id', 'fname', 'lname', 'staff_id', 'job_name', 'division_id']);
+    if (! $isStrictAdmin && $divisionId > 0) {
+        $staffQuery->where('division_id', $divisionId);
+    }
+    $ownerStaffOptions = $staffQuery->orderBy('fname')->orderBy('lname')->get();
+@endphp
 <div class="modal fade" id="adminUpdateModal" tabindex="-1" aria-labelledby="adminUpdateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-md">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title text-white" id="adminUpdateModalLabel">
-                    <i class="bx bx-user-pin me-2"></i>Admin: Update Owners
+                    <i class="bx bx-user-pin me-2"></i>{{ $isStrictAdmin ? 'Admin' : 'Division Focal Person' }}: Update Owners
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -48,16 +57,21 @@
                 <div class="modal-body">
                     <div class="alert alert-warning">
                         <i class="bx bx-info-circle me-2"></i>
-                        <strong>Warning:</strong> This action can only be performed by system administrators. Use with caution.
+                        <strong>Warning:</strong>
+                        @if($isStrictAdmin)
+                            This action can update both Creator and Responsible Person.
+                        @else
+                            You can update Responsible Person for this division only. Creator cannot be changed.
+                        @endif
                     </div>
-                    
+                    @if($isStrictAdmin)
                     <div class="mb-3">
                         <label for="admin_creator_id" class="form-label fw-semibold">
                             <i class="bx bx-user me-1 text-primary"></i>Creator (Staff ID) <span class="text-danger">*</span>
                         </label>
                         <select name="staff_id" id="admin_creator_id" class="form-select select2" required style="width: 100%;">
                             <option value="">Select Creator</option>
-                            @foreach(\App\Models\Staff::active()->select(['id', 'fname', 'lname', 'staff_id', 'job_name'])->get() as $staff)
+                            @foreach($ownerStaffOptions as $staff)
                                 <option value="{{ $staff->staff_id }}" {{ ($activity->staff_id ?? null) == $staff->staff_id ? 'selected' : '' }}>
                                     {{ $staff->fname }} {{ $staff->lname }} - {{ $staff->job_name ?? 'N/A' }} (ID: {{ $staff->staff_id }})
                                 </option>
@@ -65,14 +79,17 @@
                         </select>
                         <small class="text-muted">Current: {{ optional($activity->staff)->fname }} {{ optional($activity->staff)->lname ?? 'Not assigned' }}</small>
                     </div>
-                    
+                    @else
+                        <input type="hidden" name="staff_id" value="{{ $activity->staff_id ?? '' }}">
+                    @endif
+
                     <div class="mb-3">
                         <label for="admin_responsible_person_id" class="form-label fw-semibold">
                             <i class="bx bx-user-check me-1 text-success"></i>Responsible Person (Staff ID) <span class="text-danger">*</span>
                         </label>
                         <select name="responsible_person_id" id="admin_responsible_person_id" class="form-select select2" required style="width: 100%;">
                             <option value="">Select Responsible Person</option>
-                            @foreach(\App\Models\Staff::active()->select(['id', 'fname', 'lname', 'staff_id', 'job_name'])->get() as $staff)
+                            @foreach($ownerStaffOptions as $staff)
                                 <option value="{{ $staff->staff_id }}" {{ ($activity->responsible_person_id ?? null) == $staff->staff_id ? 'selected' : '' }}>
                                     {{ $staff->fname }} {{ $staff->lname }} - {{ $staff->job_name ?? 'N/A' }} (ID: {{ $staff->staff_id }})
                                 </option>
@@ -98,10 +115,13 @@
 <script>
 // Initialize Select2 for admin modal
 $(document).ready(function() {
-    $('#adminUpdateModal').on('shown.bs.modal', function() {
-        $('#admin_creator_id, #admin_responsible_person_id').select2({
+        $('#adminUpdateModal').on('shown.bs.modal', function() {
+        $('#admin_creator_id, #admin_responsible_person_id').each(function() {
+            if (!$(this).length) return;
+            $(this).select2({
             dropdownParent: $('#adminUpdateModal'),
             width: '100%'
+        });
         });
     });
     

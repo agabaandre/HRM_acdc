@@ -985,6 +985,66 @@ class NonTravelMemoController extends Controller
     
     
 
+    /**
+     * Admin or division focal person: update non-travel creator (responsible owner).
+     * Focal person is restricted to selecting staff from the memo's own division.
+     */
+    public function adminUpdateOwner(Request $request, NonTravelMemo $nonTravel): \Illuminate\Http\JsonResponse
+    {
+        if (!can_manage_memo_owners_for_division((int) $nonTravel->division_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Only system administrators or focal persons for this division can perform this action.',
+            ], 403);
+        }
+
+        $isAdmin = ((int) user_session('role')) === 10;
+        $request->validate([
+            'staff_id' => 'required|integer|exists:staff,staff_id',
+        ]);
+
+        $newStaffId = (int) $request->input('staff_id');
+        if (! $isAdmin) {
+            $inDivision = Staff::where('staff_id', $newStaffId)
+                ->where('division_id', (int) $nonTravel->division_id)
+                ->exists();
+            if (! $inDivision) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selected owner must belong to the same division.',
+                ], 422);
+            }
+        }
+
+        try {
+            $oldStaffId = (int) $nonTravel->staff_id;
+            $nonTravel->update(['staff_id' => $newStaffId]);
+
+            Log::info('Non-travel owner updated', [
+                'memo_id' => $nonTravel->id,
+                'updated_by_staff_id' => user_session('staff_id'),
+                'old_staff_id' => $oldStaffId,
+                'new_staff_id' => $newStaffId,
+                'is_admin' => $isAdmin,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Creator (responsible owner) updated successfully.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to update non-travel owner', [
+                'memo_id' => $nonTravel->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update owner. Please try again.',
+            ], 500);
+        }
+    }
+
     /** Delete memo and its files */
     public function destroy(NonTravelMemo $nonTravel): RedirectResponse
     {

@@ -805,24 +805,47 @@ class ChangeRequestController extends Controller
     {
         $user = session('user', []);
         $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
 
-        if ($userRole != 10) {
+        if (!can_manage_memo_owners_for_division((int) $changeRequest->division_id)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized. Only system administrators can perform this action.',
+                'message' => 'Unauthorized. Only system administrators or focal persons for this division can perform this action.',
             ], 403);
         }
 
         $request->validate([
-            'staff_id' => 'required|integer|exists:staff,staff_id',
+            'staff_id' => ($isAdmin ? 'required' : 'nullable') . '|integer|exists:staff,staff_id',
             'responsible_person_id' => 'required|integer|exists:staff,staff_id',
         ]);
 
         try {
-            $changeRequest->update([
-                'staff_id' => $request->input('staff_id'),
-                'responsible_person_id' => $request->input('responsible_person_id'),
-            ]);
+            $newResponsiblePersonId = (int) $request->input('responsible_person_id');
+            $newCreatorId = (int) $request->input('staff_id', $changeRequest->staff_id);
+
+            if (! $isAdmin) {
+                if ($newCreatorId !== (int) $changeRequest->staff_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Division focal persons can only update Responsible Person, not Creator.',
+                    ], 403);
+                }
+                $responsibleInDivision = Staff::where('staff_id', $newResponsiblePersonId)
+                    ->where('division_id', (int) $changeRequest->division_id)
+                    ->exists();
+                if (! $responsibleInDivision) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Responsible Person must belong to the same division.',
+                    ], 422);
+                }
+            }
+
+            $payload = ['responsible_person_id' => $newResponsiblePersonId];
+            if ($isAdmin) {
+                $payload['staff_id'] = $newCreatorId;
+            }
+            $changeRequest->update($payload);
 
             return response()->json([
                 'success' => true,
