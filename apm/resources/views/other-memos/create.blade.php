@@ -221,6 +221,10 @@
         if (attCard) {
             attCard.classList.toggle('d-none', !t || !t.attachments_enabled);
         }
+        if (t && typeof window.initOtherMemoApprovers === 'function') {
+            // Re-init approver Select2 after card becomes visible.
+            window.initOtherMemoApprovers();
+        }
         if (t) renderFields(t.fields_schema || []);
     }
 

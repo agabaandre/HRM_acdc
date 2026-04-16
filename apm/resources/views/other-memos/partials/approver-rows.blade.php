@@ -322,6 +322,9 @@ window.otherMemoStaffJobById = @json($otherMemoStaffJobMap);
 
         if (typeof jQuery !== 'undefined' && typeof window.initOtherMemoStaffSelect2 === 'function') {
             jQuery(container).find('select.approver-staff-id').each(function() {
+                // Normalize first-render selects too (same cleanup used for cloned rows),
+                // otherwise Select2 can keep stale hidden state and show no options.
+                stripStaffSelectToNative(this);
                 window.initOtherMemoStaffSelect2(jQuery(this));
             });
         }
@@ -354,6 +357,7 @@ window.otherMemoStaffJobById = @json($otherMemoStaffJobMap);
             })();
         }
     }
+    window.initOtherMemoApprovers = initOtherMemoApprovers;
     runApproversWhenSelect2Ready();
 })();
 </script>
