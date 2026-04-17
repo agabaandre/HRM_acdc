@@ -16,6 +16,16 @@
                 <i class="bx bx-printer me-1"></i>Print (PDF)
             </a>
         @endif
+        @if (!empty($canEmailPdf) && $canEmailPdf)
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#emailPdfModal" title="Email a PDF copy to yourself">
+                <i class="bx bx-mail-send me-1"></i>Email PDF
+            </button>
+            @include('partials.email-pdf-modal', [
+                'emailPdfFormAction' => route('other-memos.email-pdf', $memo),
+                'emailPdfDocumentLabel' => $memo->document_number ?? $memo->memo_type_name_snapshot,
+                'emailPdfRecipientChoices' => $emailPdfRecipientChoices ?? [],
+            ])
+        @endif
         @if ($canEdit)
             <a href="{{ route('other-memos.edit', $memo) }}" class="btn btn-outline-primary" wire:navigate>
                 <i class="bx bx-edit-alt me-1"></i>Edit @if($memo->overall_status === 'returned')& resubmit @endif

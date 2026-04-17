@@ -465,6 +465,7 @@ Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoContro
 
     Route::get('other-memos/staff-lookup', [App\Http\Controllers\OtherMemoController::class, 'staffLookup'])->name('other-memos.staff-lookup');
     Route::get('other-memos/{other_memo}/print', [App\Http\Controllers\OtherMemoController::class, 'print'])->name('other-memos.print');
+    Route::post('other-memos/{other_memo}/email-pdf', [App\Http\Controllers\OtherMemoController::class, 'emailPdf'])->name('other-memos.email-pdf');
     Route::post('other-memos/{other_memo}/submit', [App\Http\Controllers\OtherMemoController::class, 'submit'])->name('other-memos.submit');
     Route::post('other-memos/{other_memo}/approve', [App\Http\Controllers\OtherMemoController::class, 'approve'])->name('other-memos.approve');
     Route::post('other-memos/{other_memo}/return-memo', [App\Http\Controllers\OtherMemoController::class, 'returnMemo'])->name('other-memos.return-memo');
@@ -502,6 +503,7 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::post('change-requests/{changeRequest}/update-status', [App\Http\Controllers\ChangeRequestController::class, 'updateStatus'])->name('change-requests.update-status');
     Route::post('change-requests/{changeRequest}/resubmit', [App\Http\Controllers\ChangeRequestController::class, 'resubmit'])->name('change-requests.resubmit');
     Route::post('change-requests/{changeRequest}/admin-update', [App\Http\Controllers\ChangeRequestController::class, 'adminUpdate'])->name('change-requests.admin-update');
+    Route::post('change-requests/{changeRequest}/email-pdf', [App\Http\Controllers\ChangeRequestController::class, 'emailPdf'])->name('change-requests.email-pdf');
 
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');

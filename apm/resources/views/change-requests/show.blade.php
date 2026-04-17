@@ -28,6 +28,17 @@
                         <span>Print PDF</span>
                     </a>
                 @endif
+                @if(!empty($canEmailPdf) && $canEmailPdf)
+                    <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#emailPdfModal" title="Email a PDF copy to yourself">
+                        <i class="bx bx-mail-send"></i>
+                        <span>Email PDF</span>
+                    </button>
+                    @include('partials.email-pdf-modal', [
+                        'emailPdfFormAction' => route('change-requests.email-pdf', $changeRequest),
+                        'emailPdfDocumentLabel' => $changeRequest->document_number ?? ('Change request #'.$changeRequest->id),
+                        'emailPdfRecipientChoices' => $emailPdfRecipientChoices ?? [],
+                    ])
+                @endif
 
                 @if($changeRequest->parent_memo_model && $changeRequest->parent_memo_id)
                     @php
