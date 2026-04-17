@@ -40,6 +40,14 @@ Route::prefix('apm/v1')->group(function () {
     // Logout is outside auth middleware so it can be called with or without token (always returns 200)
     Route::post('auth/logout', [ApmAuthController::class, 'logout']);
 
+    /**
+     * Refresh must NOT use auth:api middleware: Laravel would reject expired access tokens before
+     * the controller runs. JWT guard refresh() allows a valid-but-expired token within refresh_ttl.
+     * Same JWT is used after email/password login and Microsoft login — both are supported here.
+     */
+    Route::post('auth/refresh', [ApmAuthController::class, 'refresh'])
+        ->middleware(['accept.token.for.apm.refresh']);
+
     // System settings (public; for branding/app name before login)
     Route::get('settings', [ApmSettingsController::class, 'index']);
 
@@ -54,7 +62,6 @@ Route::prefix('apm/v1')->group(function () {
     });
 
     Route::middleware(['auth:api', 'apm.api.context'])->group(function () {
-        Route::post('auth/refresh', [ApmAuthController::class, 'refresh']);
         Route::get('auth/me', [ApmAuthController::class, 'me']);
 
         Route::put('me/firebase-token', [ApmFcmController::class, 'updateToken']);

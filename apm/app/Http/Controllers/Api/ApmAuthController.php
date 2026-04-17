@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 class ApmAuthController extends Controller
 {
@@ -54,26 +55,48 @@ class ApmAuthController extends Controller
 
     /**
      * Refresh the JWT. Returns the same payload as login: access_token, token_type, expires_in, user, divisions.
-     * Reloads the API user from the database (with staff) so the user object matches a fresh login; then sets
-     * the new token on the guard so JWT state stays consistent after the old token is blacklisted.
+     *
+     * This route is registered without auth:api middleware so an access token that is **past exp** but still
+     * within JWT_REFRESH_TTL (minutes since iat) can be exchanged (tymon/jwt-auth refresh flow). Invalid
+     * signature, blacklisted token, or refresh window exceeded still returns 401.
+     *
+     * Applies to tokens from **email/password login** and **Microsoft login** — both use the same api guard.
      */
     public function refresh(): JsonResponse
     {
         $guard = auth('api');
-        $user = $guard->user();
-        if (!$user instanceof ApmApiUser) {
-            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+
+        try {
+            $token = $guard->refresh();
+        } catch (JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 401);
         }
 
-        $userId = $user->getKey();
-        $token = $guard->refresh();
+        $guard->setToken($token);
+
+        try {
+            $userId = $guard->getPayload()->get('sub');
+        } catch (JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not read refreshed token.',
+            ], 500);
+        }
 
         $freshUser = ApmApiUser::query()->whereKey($userId)->with('staff')->first();
-        if (!$freshUser) {
-            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        if (! $freshUser instanceof ApmApiUser) {
+            return response()->json(['success' => false, 'message' => 'User not found or inactive.'], 401);
         }
 
-        $guard->setToken($token)->setUser($freshUser);
+        if (! $freshUser->is_active) {
+            return response()->json(['success' => false, 'message' => 'User not found or inactive.'], 403);
+        }
+
+        $guard->setUser($freshUser);
+        $freshUser->update(['last_used_at' => now()]);
 
         return $this->respondWithTokenAndUser($token, $freshUser);
     }
