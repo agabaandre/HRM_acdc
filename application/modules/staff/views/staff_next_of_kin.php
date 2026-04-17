@@ -11,6 +11,15 @@ $grades = isset($grades) ? $grades : [];
 	.export-buttons#originalExportButtons {
 		display: none !important;
 	}
+	/* Card header avatars: 50% larger than generate_user_avatar default (40px → 60px) */
+	.staff-nok-card-avatar > img.user-img,
+	.staff-nok-card-avatar > div.rounded-circle {
+		width: 60px !important;
+		height: 60px !important;
+	}
+	.staff-nok-card-avatar > div.rounded-circle {
+		font-size: 21px !important;
+	}
 </style>
 
 <?php $this->load->view('staff_tab_menu'); ?>

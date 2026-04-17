@@ -44,7 +44,7 @@ foreach ($rows as $s) :
 	<div class="card border mb-3 shadow-sm">
 		<div class="card-header bg-light py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
 			<div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
-				<div class="flex-shrink-0">
+				<div class="flex-shrink-0 staff-nok-card-avatar">
 					<?php
 					$surname = $s->lname ?? '';
 					$other_name = $s->fname ?? '';
