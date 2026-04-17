@@ -20,10 +20,11 @@ use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\JsonResponse;
-use App\Mail\DocumentPdfMail;
 use Illuminate\Validation\ValidationException;
+use App\Jobs\SendDocumentPdfEmailJob;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Services\ApprovalService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -1961,24 +1962,39 @@ class ChangeRequestController extends Controller
             $doc = $changeRequest->document_number ?? ('CR-'.$changeRequest->id);
             $subject = "{$prefix}: {$doc} (PDF)";
 
-            Mail::to($validated['recipient_email'])->send(new DocumentPdfMail(
-                $subject,
-                $filename,
-                $binary
-            ));
+            $relative = 'tmp/email-pdf/'.Str::uuid()->toString().'.pdf';
+            Storage::disk('local')->makeDirectory('tmp/email-pdf');
+            if (! Storage::disk('local')->put($relative, $binary)) {
+                throw new \RuntimeException('Could not store the PDF for emailing.');
+            }
+            $absolutePath = Storage::disk('local')->path($relative);
+
+            try {
+                SendDocumentPdfEmailJob::dispatch(
+                    $validated['recipient_email'],
+                    $subject,
+                    $filename,
+                    $absolutePath
+                )->afterResponse();
+            } catch (\Throwable $dispatchError) {
+                if (is_file($absolutePath)) {
+                    @unlink($absolutePath);
+                }
+                throw $dispatchError;
+            }
         } catch (\Throwable $e) {
-            Log::error('Change request email PDF failed', [
+            Log::error('Change request email PDF queue failed', [
                 'change_request_id' => $changeRequest->id,
                 'error' => $e->getMessage(),
             ]);
 
             return redirect()->back()
-                ->with('msg', 'Could not send email: '.$e->getMessage())
+                ->with('msg', 'Could not queue the email: '.$e->getMessage())
                 ->with('type', 'danger');
         }
 
         return redirect()->back()
-            ->with('msg', 'The PDF was sent to your inbox.')
+            ->with('msg', 'Your PDF email has been queued. It should arrive shortly; if not, confirm email settings and that a queue worker is processing jobs.')
             ->with('type', 'success');
     }
 

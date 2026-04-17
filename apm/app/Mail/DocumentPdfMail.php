@@ -16,7 +16,7 @@ class DocumentPdfMail extends Mailable
     public function __construct(
         public string $subjectLine,
         public string $pdfFilename,
-        public string $pdfBinary,
+        public string $pdfAbsolutePath,
     ) {}
 
     public function envelope(): Envelope
@@ -38,12 +38,9 @@ class DocumentPdfMail extends Mailable
      */
     public function attachments(): array
     {
-        $pdfBinary = $this->pdfBinary;
-
         return [
-            Attachment::fromData(static function () use ($pdfBinary) {
-                return $pdfBinary;
-            }, $this->pdfFilename)
+            Attachment::fromPath($this->pdfAbsolutePath)
+                ->as($this->pdfFilename)
                 ->withMime('application/pdf'),
         ];
     }
