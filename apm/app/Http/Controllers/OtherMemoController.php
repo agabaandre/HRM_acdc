@@ -16,8 +16,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use App\Mail\DocumentPdfMail;
 
 class OtherMemoController extends Controller
 {
@@ -226,12 +229,16 @@ class OtherMemoController extends Controller
         $this->authorizeView($other_memo);
         $other_memo->load(['approvalTrails.staff', 'approvalTrails.otherMemo', 'creator', 'currentApprover', 'division']);
 
+        $emailPdfChoices = staff_pdf_mail_recipient_choice_list();
+
         return view('other-memos.show', [
             'memo' => $other_memo,
             'canEdit' => $this->canEdit($other_memo),
             'canSubmit' => $this->canSubmit($other_memo),
             'canApproveOrReturn' => $this->canApproveOrReturn($other_memo),
             'canPrint' => $this->canPrint($other_memo),
+            'emailPdfRecipientChoices' => $emailPdfChoices,
+            'canEmailPdf' => $this->canPrint($other_memo) && count($emailPdfChoices) > 0,
         ]);
     }
 
@@ -461,18 +468,89 @@ class OtherMemoController extends Controller
             abort(403);
         }
 
+        [$pdf, $filename] = $this->buildOtherMemoPdfForOutput($other_memo);
+
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Email the other memo PDF to the logged-in user's own address with an optional HTML message.
+     */
+    public function emailPdf(Request $request, OtherMemo $other_memo): RedirectResponse
+    {
+        if (! $this->canPrint($other_memo)) {
+            abort(403);
+        }
+
+        $allowed = staff_pdf_mail_allowed_recipient_emails_normalized();
+        if ($allowed === []) {
+            return redirect()->route('other-memos.show', $other_memo)
+                ->with('msg', 'No valid email is on file for your account. Update your work email in staff records, then try again.')
+                ->with('type', 'warning');
+        }
+
+        $validated = $request->validate([
+            'recipient_email' => 'required|email|max:255',
+            'message_html' => 'nullable|string|max:50000',
+        ]);
+
+        $norm = strtolower(trim($validated['recipient_email']));
+        if (! in_array($norm, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'recipient_email' => 'You can only send this PDF to your own email address.',
+            ]);
+        }
+
+        try {
+            [$pdf, $filename] = $this->buildOtherMemoPdfForOutput($other_memo);
+            $binary = $pdf->Output($filename, 'S');
+            if (! is_string($binary) || $binary === '') {
+                throw new \RuntimeException('PDF generation returned empty output.');
+            }
+
+            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM');
+            $doc = $other_memo->document_number ?? ('Other-memo-'.$other_memo->id);
+            $subject = "{$prefix}: {$doc} (PDF)";
+
+            Mail::to($validated['recipient_email'])->send(new DocumentPdfMail(
+                $subject,
+                (string) ($validated['message_html'] ?? ''),
+                $filename,
+                $binary
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Other memo email PDF failed', [
+                'other_memo_id' => $other_memo->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('other-memos.show', $other_memo)
+                ->with('msg', 'Could not send email: '.$e->getMessage())
+                ->with('type', 'danger');
+        }
+
+        return redirect()->route('other-memos.show', $other_memo)
+            ->with('msg', 'The PDF was sent to your inbox.')
+            ->with('type', 'success');
+    }
+
+    /**
+     * @return array{0: object, 1: string}
+     */
+    private function buildOtherMemoPdfForOutput(OtherMemo $other_memo): array
+    {
         $other_memo->load(['approvalTrails.staff', 'creator']);
 
         $pdf = mpdf_print('other-memos.pdf', [
             'memo' => $other_memo,
         ], ['preview_html' => false]);
 
-        $safe = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $other_memo->document_number ?? 'memo');
+        $safe = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $other_memo->document_number ?? 'memo').'.pdf';
 
-        return response($pdf->Output($safe.'.pdf', 'I'), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.$safe.'.pdf"',
-        ]);
+        return [$pdf, $safe];
     }
 
     private function staffId(): int

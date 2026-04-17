@@ -990,3 +990,61 @@ if (! function_exists('get_my_returned_change_request_count')) {
         }
     }
 }
+
+if (! function_exists('staff_pdf_mail_recipient_choice_list')) {
+    /**
+     * Distinct valid email addresses the logged-in user may send a memo PDF to (own addresses only).
+     *
+     * @return list<string>
+     */
+    function staff_pdf_mail_recipient_choice_list(): array
+    {
+        $out = [];
+        $push = function (string $e) use (&$out): void {
+            $e = trim($e);
+            if ($e === '' || ! filter_var($e, FILTER_VALIDATE_EMAIL)) {
+                return;
+            }
+            $lower = strtolower($e);
+            foreach ($out as $existing) {
+                if (strtolower($existing) === $lower) {
+                    return;
+                }
+            }
+            $out[] = $e;
+        };
+
+        $sid = (int) user_session('staff_id', 0);
+        if ($sid > 0) {
+            $staff = \App\Models\Staff::query()->where('staff_id', $sid)->first(['work_email', 'private_email']);
+            if ($staff) {
+                $push((string) ($staff->work_email ?? ''));
+                $push((string) ($staff->private_email ?? ''));
+            }
+        }
+        $push((string) user_session('email', ''));
+
+        return $out;
+    }
+}
+
+if (! function_exists('staff_pdf_mail_allowed_recipient_emails_normalized')) {
+    /**
+     * Lowercased unique emails allowed as PDF mail recipients for the current session user.
+     *
+     * @return list<string>
+     */
+    function staff_pdf_mail_allowed_recipient_emails_normalized(): array
+    {
+        return array_values(array_unique(array_map(static fn (string $e): string => strtolower(trim($e)), staff_pdf_mail_recipient_choice_list())));
+    }
+}
+
+if (! function_exists('default_staff_email_for_pdf_mail')) {
+    function default_staff_email_for_pdf_mail(): string
+    {
+        $choices = staff_pdf_mail_recipient_choice_list();
+
+        return $choices[0] ?? '';
+    }
+}

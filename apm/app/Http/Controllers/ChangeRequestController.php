@@ -20,7 +20,10 @@ use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\JsonResponse;
+use App\Mail\DocumentPdfMail;
+use Illuminate\Validation\ValidationException;
 use App\Services\ApprovalService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -784,6 +787,8 @@ class ChangeRequestController extends Controller
 
         $isAdmin = (function_exists('user_session') ? user_session('role') : null) == 10;
 
+        $emailPdfChoices = staff_pdf_mail_recipient_choice_list();
+
         return view('change-requests.show', [
             'changeRequest' => $changeRequest,
             'parentMemo' => $parentMemo,
@@ -794,6 +799,8 @@ class ChangeRequestController extends Controller
             'arfModalData' => $arfModalData,
             'isAdmin' => $isAdmin,
             'currentStaffId' => $currentStaffId,
+            'emailPdfRecipientChoices' => $emailPdfChoices,
+            'canEmailPdf' => can_print_memo($changeRequest) && count($emailPdfChoices) > 0,
         ]);
     }
 
@@ -1907,7 +1914,81 @@ class ChangeRequestController extends Controller
      */
     public function print(ChangeRequest $changeRequest)
     {
-        // Eager load needed relations
+        [$pdf, $filename] = $this->buildChangeRequestPdfForOutput($changeRequest);
+
+        // Return PDF for display in browser using mPDF Output method
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
+    }
+
+    /**
+     * Email the change request PDF to the logged-in user's own address with an optional HTML message.
+     */
+    public function emailPdf(Request $request, ChangeRequest $changeRequest): RedirectResponse
+    {
+        if (! can_print_memo($changeRequest)) {
+            abort(403);
+        }
+
+        $allowed = staff_pdf_mail_allowed_recipient_emails_normalized();
+        if ($allowed === []) {
+            return redirect()->back()
+                ->with('msg', 'No valid email is on file for your account. Update your work email in staff records, then try again.')
+                ->with('type', 'warning');
+        }
+
+        $validated = $request->validate([
+            'recipient_email' => 'required|email|max:255',
+            'message_html' => 'nullable|string|max:50000',
+        ]);
+
+        $norm = strtolower(trim($validated['recipient_email']));
+        if (! in_array($norm, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'recipient_email' => 'You can only send this PDF to your own email address.',
+            ]);
+        }
+
+        try {
+            [$pdf, $filename] = $this->buildChangeRequestPdfForOutput($changeRequest);
+            $binary = $pdf->Output($filename, 'S');
+            if (! is_string($binary) || $binary === '') {
+                throw new \RuntimeException('PDF generation returned empty output.');
+            }
+
+            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM');
+            $doc = $changeRequest->document_number ?? ('CR-'.$changeRequest->id);
+            $subject = "{$prefix}: {$doc} (PDF)";
+
+            Mail::to($validated['recipient_email'])->send(new DocumentPdfMail(
+                $subject,
+                (string) ($validated['message_html'] ?? ''),
+                $filename,
+                $binary
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Change request email PDF failed', [
+                'change_request_id' => $changeRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->with('msg', 'Could not send email: '.$e->getMessage())
+                ->with('type', 'danger');
+        }
+
+        return redirect()->back()
+            ->with('msg', 'The PDF was sent to your inbox.')
+            ->with('type', 'success');
+    }
+
+    /**
+     * @return array{0: object, 1: string}
+     */
+    private function buildChangeRequestPdfForOutput(ChangeRequest $changeRequest): array
+    {
         $changeRequest->load([
             'staff',
             'responsiblePerson',
@@ -1918,46 +1999,36 @@ class ChangeRequestController extends Controller
             'forwardWorkflow',
             'approvalTrails.staff',
             'approvalTrails.oicStaff',
-            'approvalTrails.workflowDefinition'
+            'approvalTrails.workflowDefinition',
         ]);
 
-        // Get the parent memo explicitly
         $parentMemo = $changeRequest->parentMemo ?? $this->getParentMemo(
             $changeRequest->parent_memo_model,
             $changeRequest->parent_memo_id
         );
 
-        // Generate parent memo HTML based on type
         $parentPdfHtml = null;
         if ($parentMemo) {
             $parentPdfHtml = $this->generateParentMemoHtml($parentMemo, $changeRequest->parent_memo_model);
         }
 
-        // Get workflow information for change request
         $workflowInfo = $this->getComprehensiveWorkflowInfo($changeRequest);
         $organizedWorkflowSteps = \App\Helpers\PrintHelper::organizeWorkflowStepsBySection($workflowInfo['workflow_steps'] ?? []);
 
-        // Get list of changes
         $changes = $this->getChangesList($changeRequest, $parentMemo);
 
-        // Use mPDF helper function for change request
-        $print = false;
         $pdf = mpdf_print('change-requests.print', [
             'changeRequest' => $changeRequest,
             'parentMemo' => $parentMemo,
             'parentPdfHtml' => $parentPdfHtml,
             'changes' => $changes,
             'organized_workflow_steps' => $organizedWorkflowSteps,
-        ], ['preview_html' => $print]);
+        ], ['preview_html' => false]);
 
-        // Generate filename
-        $filename = ($changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed ? 'Addendum' : 'Change_Request') . '_' . ($changeRequest->document_number ?? $changeRequest->id) . '_' . now()->format('Y-m-d') . '.pdf';
+        $filename = ($changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed ? 'Addendum' : 'Change_Request')
+            .'_'.($changeRequest->document_number ?? $changeRequest->id).'_'.now()->format('Y-m-d').'.pdf';
 
-        // Return PDF for display in browser using mPDF Output method
-        return response($pdf->Output($filename, 'I'), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"'
-        ]);
+        return [$pdf, $filename];
     }
 
     /**
