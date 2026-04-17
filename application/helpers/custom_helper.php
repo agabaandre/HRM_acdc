@@ -576,14 +576,34 @@ if (!function_exists('is_guest')) {
 
 if (!function_exists('is_valid_image')) {
 
-    function is_valid_image($name, $path = './uploads/staff/')
+    /**
+     * @param string      $path_or_name Absolute filesystem path, or a basename when $relative_root is set
+     * @param string|null $relative_root Optional directory prefix (trailing slash optional)
+     */
+    function is_valid_image($path_or_name, $relative_root = null)
     {
-        $image = $path . $name;
-        if (file_exists($image)) {
-            return TRUE;
+        if ($relative_root !== null && $relative_root !== '') {
+            $absolute_path = rtrim((string) $relative_root, '/\\') . '/' . ltrim((string) $path_or_name, '/\\');
         } else {
-            return FALSE;
+            $absolute_path = (string) $path_or_name;
         }
+        if ($absolute_path === '' || !file_exists($absolute_path)) {
+            return false;
+        }
+
+        $image_type = @exif_imagetype($absolute_path);
+        $valid_types = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+        if (in_array($image_type, $valid_types, true)) {
+            return true;
+        }
+
+        $ext = strtolower(pathinfo($absolute_path, PATHINFO_EXTENSION));
+        if ($ext === 'svg') {
+            $contents = @file_get_contents($absolute_path);
+            return is_string($contents) && stripos($contents, '<svg') !== false;
+        }
+
+        return false;
     }
 }
 if (!function_exists('can_access')) {
@@ -949,28 +969,6 @@ if (!function_exists('generate_user_avatar')) {
     return '#' . substr($hash, 0, 6);
 }
 
-}
-
-
-function is_valid_image($absolute_path)
-{
-    if (!file_exists($absolute_path)) return false;
-
-    // Check by file type
-    $image_type = @exif_imagetype($absolute_path);
-
-    // Standard image types
-    $valid_types = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
-    if (in_array($image_type, $valid_types)) return true;
-
-    // Check SVG manually
-    $ext = strtolower(pathinfo($absolute_path, PATHINFO_EXTENSION));
-    if ($ext === 'svg') {
-        $contents = file_get_contents($absolute_path);
-        return stripos($contents, '<svg') !== false;
-    }
-
-    return false;
 }
 
 

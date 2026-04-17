@@ -25,6 +25,7 @@ class Secure_upload extends CI_Controller
 
 		$filename = $filename !== '' ? rawurldecode($filename) : '';
 		$filename = basename(str_replace('\\', '/', $filename));
+		$filename = trim($filename);
 		if ($filename === '' || $filename === '.' || $filename === '..' || !preg_match('/^[a-zA-Z0-9_.-]+$/', $filename)) {
 			show_404();
 		}
@@ -53,9 +54,7 @@ class Secure_upload extends CI_Controller
 			show_404();
 		}
 
-		$this->db->where($col, $filename);
-		$this->db->limit(1);
-		$owner = $this->db->get('staff')->row();
+		$owner = $this->resolve_staff_upload_owner($col, $type, $filename);
 		if (!$owner) {
 			show_error('Forbidden', 403);
 		}
@@ -90,5 +89,51 @@ class Secure_upload extends CI_Controller
 		$this->output->set_header('Cache-Control: private, max-age=3600');
 		$this->output->set_header('Content-Length: ' . (string) filesize($full));
 		$this->output->set_output(file_get_contents($full));
+	}
+
+	/**
+	 * staff.photo (and similar) may be stored as a bare basename or with a legacy path prefix;
+	 * disk files are always basename-only under uploads/staff/… .
+	 */
+	private function resolve_staff_upload_owner(string $col, string $type, string $filename)
+	{
+		$possible = [$filename, trim($filename)];
+		$photo_prefixes = ['uploads/staff/', './uploads/staff/', '/uploads/staff/'];
+		$sig_prefixes = ['uploads/staff/signature/', './uploads/staff/signature/', '/uploads/staff/signature/'];
+		$pass_prefixes = ['uploads/staff/passport_biodata/', './uploads/staff/passport_biodata/', '/uploads/staff/passport_biodata/'];
+		if ($type === 'photo') {
+			foreach ($photo_prefixes as $p) {
+				$possible[] = $p . $filename;
+			}
+		} elseif ($type === 'signature') {
+			foreach ($sig_prefixes as $p) {
+				$possible[] = $p . $filename;
+			}
+		} elseif ($type === 'passport_biodata') {
+			foreach ($pass_prefixes as $p) {
+				$possible[] = $p . $filename;
+			}
+		}
+		$possible = array_values(array_unique(array_filter($possible, static function ($v) {
+			return $v !== '';
+		})));
+
+		$col_sql = '`' . str_replace('`', '', $col) . '`';
+		$escaped_list = implode(',', array_map(function ($p) {
+			return $this->db->escape($p);
+		}, $possible));
+		$row = $this->db->query("SELECT * FROM staff WHERE TRIM({$col_sql}) IN ({$escaped_list}) LIMIT 1")->row();
+		if ($row) {
+			return $row;
+		}
+
+		// Match by basename when the column still holds a non-normalized path (slashes or stray spaces).
+		$esc = $this->db->escape($filename);
+		$sql = "SELECT * FROM staff WHERE TRIM({$col_sql}) <> '' AND (
+			SUBSTRING_INDEX(REPLACE(TRIM({$col_sql}), CHAR(92), '/'), '/', -1) = {$esc}
+			OR LOWER(SUBSTRING_INDEX(REPLACE(TRIM({$col_sql}), CHAR(92), '/'), '/', -1)) = LOWER({$esc})
+		) LIMIT 1";
+
+		return $this->db->query($sql)->row();
 	}
 }
