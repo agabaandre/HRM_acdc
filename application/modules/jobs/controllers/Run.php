@@ -90,10 +90,10 @@ class Run extends MX_Controller
             Modules::run('jobs/jobs/staff_birthday');
         }
 
-        if ($this->tick_match_clock($s['staff_profile_completion_reminder'] ?? false, $hour, $minute)) {
-            echo "  → staff_profile_completion_reminder\n";
-            Modules::run('jobs/jobs/notify_staff_incomplete_profile_extension');
-        }
+        // if ($this->tick_match_clock($s['staff_profile_completion_reminder'] ?? false, $hour, $minute)) {
+        //     echo "  → staff_profile_completion_reminder\n";
+        //     Modules::run('jobs/jobs/notify_staff_incomplete_profile_extension');
+        // }
 
         if (isset($s['manage_accounts_hourly_minute']) && $s['manage_accounts_hourly_minute'] !== null && $s['manage_accounts_hourly_minute'] !== '') {
             if ($minute === (int) $s['manage_accounts_hourly_minute']) {
