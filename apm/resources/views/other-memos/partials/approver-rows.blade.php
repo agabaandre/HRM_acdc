@@ -51,38 +51,44 @@
             </div>
         </div>
     @empty
-        <div class="row g-2 mb-2 approver-row align-items-end">
-            <div class="col-md-2">
-                <label class="form-label small text-muted mb-0">Step</label>
-                <div class="form-control-plaintext fw-bold approver-step-num">1</div>
-            </div>
-            <div class="col-md-5">
-                <label class="form-label small">Staff <span class="text-danger">*</span></label>
-                <select name="approvers[0][staff_id]" class="form-select approver-staff-id select2 w-100 border-success" style="width: 100%;">
-                    <option value="">— Select staff —</option>
-                    @foreach ($staffOptions as $st)
-                        @php
-                            $sid = (int) $st->staff_id;
-                            $optLabel = trim(($st->title ? $st->title . ' ' : '') . $st->fname . ' ' . $st->lname);
-                            $jobName = html_entity_decode(trim((string) ($st->job_name ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                        @endphp
-                        <option value="{{ $sid }}" data-job-name="{{ e($jobName) }}">{{ $optLabel }} (#{{ $sid }})</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label small">Approver role label</label>
-                <input type="text" name="approvers[0][role_label]" class="form-control approver-role-label" value="" placeholder="Filled from job title when you pick staff" autocomplete="off">
-            </div>
-            <div class="col-md-1">
-                <label class="form-label small d-block mb-0 opacity-0">.</label>
-                <button type="button" class="btn btn-outline-danger btn-sm w-100 approver-remove" title="Remove">&times;</button>
-            </div>
+        <div class="text-muted small py-1" id="approver-empty-hint">
+            No approver added yet. Click <strong>Add approver step</strong> to start from Step 1.
         </div>
     @endforelse
 </div>
 <button type="button" class="btn btn-sm btn-outline-success" id="approver-add-row"><i class="bx bx-plus"></i> Add approver step</button>
 <p class="small text-muted mt-2 mb-0">Approvals run top-to-bottom in the order listed. Picking a staff member fills the role label with their job title; you can edit it afterward (for example to match one of the workflow role examples above).</p>
+
+<template id="approver-row-template">
+    <div class="row g-2 mb-2 approver-row align-items-end">
+        <div class="col-md-2">
+            <label class="form-label small text-muted mb-0">Step</label>
+            <div class="form-control-plaintext fw-bold approver-step-num">1</div>
+        </div>
+        <div class="col-md-5">
+            <label class="form-label small">Staff <span class="text-danger">*</span></label>
+            <select name="approvers[0][staff_id]" class="form-select approver-staff-id select2 w-100 border-success" style="width: 100%;">
+                <option value="">— Select staff —</option>
+                @foreach ($staffOptions as $st)
+                    @php
+                        $sid = (int) $st->staff_id;
+                        $optLabel = trim(($st->title ? $st->title . ' ' : '') . $st->fname . ' ' . $st->lname);
+                        $jobName = html_entity_decode(trim((string) ($st->job_name ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    @endphp
+                    <option value="{{ $sid }}" data-job-name="{{ e($jobName) }}">{{ $optLabel }} (#{{ $sid }})</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small">Approver role label</label>
+            <input type="text" name="approvers[0][role_label]" class="form-control approver-role-label" value="" placeholder="Filled from job title when you pick staff" autocomplete="off">
+        </div>
+        <div class="col-md-1">
+            <label class="form-label small d-block mb-0 opacity-0">.</label>
+            <button type="button" class="btn btn-outline-danger btn-sm w-100 approver-remove" title="Remove">&times;</button>
+        </div>
+    </div>
+</template>
 
 {{-- Inline script: keep in swapped DOM; Select2 loads from layout footer — runApproversWhenSelect2Ready() waits for jQuery.fn.select2. --}}
 <script>
@@ -278,8 +284,14 @@ window.otherMemoStaffJobById = @json($otherMemoStaffJobMap);
         var container = document.getElementById('approver-rows-container');
         if (!container) return;
         var first = container.querySelector('.approver-row');
-        if (!first) return;
-        var clone = first.cloneNode(true);
+        var clone;
+        if (first) {
+            clone = first.cloneNode(true);
+        } else {
+            var tpl = document.getElementById('approver-row-template');
+            if (!tpl || !tpl.content || !tpl.content.firstElementChild) return;
+            clone = tpl.content.firstElementChild.cloneNode(true);
+        }
         clone.removeAttribute('data-approver-bound');
         clone.querySelectorAll('input.approver-role-label').forEach(function(i) { i.value = ''; });
         var sel = clone.querySelector('select.approver-staff-id');
@@ -288,6 +300,8 @@ window.otherMemoStaffJobById = @json($otherMemoStaffJobMap);
             delete sel.dataset.prevStaffIdForRole;
             stripStaffSelectToNative(sel);
         }
+        var emptyHint = document.getElementById('approver-empty-hint');
+        if (emptyHint) emptyHint.remove();
         container.appendChild(clone);
         renumberApprovers();
         if (sel && typeof window.initOtherMemoStaffSelect2 === 'function') {
