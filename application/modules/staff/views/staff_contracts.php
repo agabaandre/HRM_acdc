@@ -39,14 +39,16 @@
         align-items: center;
     }
 
-    /* Header avatar: 50% larger than generate_user_avatar default (40px → 60px) */
+    /* Header photo: portrait frame (+10% on 60px → 66px wide), rounded rect — not circular */
     .staff-contracts-header-avatar > img.user-img,
     .staff-contracts-header-avatar > div.rounded-circle {
-        width: 60px !important;
-        height: 60px !important;
+        width: 66px !important;
+        height: 88px !important;
+        border-radius: 0.5rem !important;
+        object-fit: cover !important;
     }
     .staff-contracts-header-avatar > div.rounded-circle {
-        font-size: 21px !important;
+        font-size: 24px !important;
     }
 </style>
 
