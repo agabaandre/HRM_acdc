@@ -17,10 +17,11 @@ use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use App\Mail\DocumentPdfMail;
+use App\Jobs\SendDocumentPdfEmailJob;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class OtherMemoController extends Controller
 {
@@ -514,24 +515,39 @@ class OtherMemoController extends Controller
             $doc = $other_memo->document_number ?? ('Other-memo-'.$other_memo->id);
             $subject = "{$prefix}: {$doc} (PDF)";
 
-            Mail::to($validated['recipient_email'])->send(new DocumentPdfMail(
-                $subject,
-                $filename,
-                $binary
-            ));
+            $relative = 'tmp/email-pdf/'.Str::uuid()->toString().'.pdf';
+            Storage::disk('local')->makeDirectory('tmp/email-pdf');
+            if (! Storage::disk('local')->put($relative, $binary)) {
+                throw new \RuntimeException('Could not store the PDF for emailing.');
+            }
+            $absolutePath = Storage::disk('local')->path($relative);
+
+            try {
+                SendDocumentPdfEmailJob::dispatch(
+                    $validated['recipient_email'],
+                    $subject,
+                    $filename,
+                    $absolutePath
+                )->afterResponse();
+            } catch (\Throwable $dispatchError) {
+                if (is_file($absolutePath)) {
+                    @unlink($absolutePath);
+                }
+                throw $dispatchError;
+            }
         } catch (\Throwable $e) {
-            Log::error('Other memo email PDF failed', [
+            Log::error('Other memo email PDF queue failed', [
                 'other_memo_id' => $other_memo->id,
                 'error' => $e->getMessage(),
             ]);
 
             return redirect()->route('other-memos.show', $other_memo)
-                ->with('msg', 'Could not send email: '.$e->getMessage())
+                ->with('msg', 'Could not queue the email: '.$e->getMessage())
                 ->with('type', 'danger');
         }
 
         return redirect()->route('other-memos.show', $other_memo)
-            ->with('msg', 'The PDF was sent to your inbox.')
+            ->with('msg', 'Your PDF email has been queued. It should arrive shortly; if not, confirm email settings and that a queue worker is processing jobs.')
             ->with('type', 'success');
     }
 
