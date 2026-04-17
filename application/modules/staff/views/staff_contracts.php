@@ -39,14 +39,14 @@
         align-items: center;
     }
 
-    /* Header avatar: 20% larger than generate_user_avatar default (40px → 48px) */
+    /* Header avatar: 50% larger than generate_user_avatar default (40px → 60px) */
     .staff-contracts-header-avatar > img.user-img,
     .staff-contracts-header-avatar > div.rounded-circle {
-        width: 48px !important;
-        height: 48px !important;
+        width: 60px !important;
+        height: 60px !important;
     }
     .staff-contracts-header-avatar > div.rounded-circle {
-        font-size: 17px !important;
+        font-size: 21px !important;
     }
 </style>
 
