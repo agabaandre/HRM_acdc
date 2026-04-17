@@ -347,9 +347,11 @@ if (! function_exists('generate_pdf')) {
             exit;
         }
 
-        // Large HTML + mPDF/CSS parsing can exceed default PCRE backtrack limits (symptom: WriteHTML fails).
-        @ini_set('pcre.backtrack_limit', (string) max(10_000_000, (int) ini_get('pcre.backtrack_limit')));
-        @ini_set('pcre.recursion_limit', (string) max(10_000_000, (int) ini_get('pcre.recursion_limit')));
+        // Large HTML + mPDF/CSS parsing can exceed default limits (symptom: WriteHTML fails on long rich text).
+        @ini_set('pcre.backtrack_limit', (string) max(50_000_000, (int) ini_get('pcre.backtrack_limit')));
+        @ini_set('pcre.recursion_limit', (string) max(20_000_000, (int) ini_get('pcre.recursion_limit')));
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(180);
 
         // mPDF font configuration with Arial + safe fallback
         $defaultConfig = (new \Mpdf\Config\ConfigVariables)->getDefaults();
@@ -449,9 +451,23 @@ if (! function_exists('generate_pdf')) {
             $mpdf->showWatermarkText = true;
         }
 
-        // Write HTML content exactly like CodeIgniter with error handling
+        // Write HTML content with safer parsing for long documents:
+        // - strip script tags
+        // - split CSS and BODY parser modes for mPDF
         try {
-            $mpdf->WriteHTML($html);
+            $safeHtml = preg_replace('#<script\b[^>]*>.*?</script>#is', '', (string) $html);
+            $safeHtml = preg_replace('#<noscript\b[^>]*>.*?</noscript>#is', '', (string) $safeHtml);
+
+            $css = '';
+            if (preg_match_all('#<style\b[^>]*>(.*?)</style>#is', $safeHtml, $cssMatches)) {
+                $css = trim(implode("\n", $cssMatches[1] ?? []));
+                $safeHtml = preg_replace('#<style\b[^>]*>.*?</style>#is', '', $safeHtml);
+            }
+
+            if ($css !== '') {
+                $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
+            }
+            $mpdf->WriteHTML($safeHtml, \Mpdf\HTMLParserMode::HTML_BODY);
         } catch (\Throwable $e) {
             Log::error('mPDF WriteHTML failed', [
                 'view' => $view,
