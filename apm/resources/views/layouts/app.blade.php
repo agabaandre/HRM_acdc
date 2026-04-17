@@ -459,6 +459,7 @@
     </script>
     <script src="{{ asset('js/apm-filter-state.js') }}"></script>
     <script src="{{ asset('js/apm-other-memo-index-livewire.js') }}"></script>
+    <script src="{{ asset('js/apm-other-memo-create.js') }}"></script>
     @stack('scripts')
 
     <script>
