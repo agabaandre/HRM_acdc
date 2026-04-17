@@ -11,14 +11,16 @@ $grades = isset($grades) ? $grades : [];
 	.export-buttons#originalExportButtons {
 		display: none !important;
 	}
-	/* Card header avatars: 50% larger than generate_user_avatar default (40px → 60px) */
+	/* Card header photo: portrait frame (matches staff contracts), rounded rect — not circular */
 	.staff-nok-card-avatar > img.user-img,
 	.staff-nok-card-avatar > div.rounded-circle {
-		width: 60px !important;
-		height: 60px !important;
+		width: 66px !important;
+		height: 88px !important;
+		border-radius: 0.5rem !important;
+		object-fit: cover !important;
 	}
 	.staff-nok-card-avatar > div.rounded-circle {
-		font-size: 21px !important;
+		font-size: 24px !important;
 	}
 </style>
 
