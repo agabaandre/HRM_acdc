@@ -1941,7 +1941,6 @@ class ChangeRequestController extends Controller
 
         $validated = $request->validate([
             'recipient_email' => 'required|email|max:255',
-            'message_html' => 'nullable|string|max:50000',
         ]);
 
         $norm = strtolower(trim($validated['recipient_email']));
@@ -1964,7 +1963,6 @@ class ChangeRequestController extends Controller
 
             Mail::to($validated['recipient_email'])->send(new DocumentPdfMail(
                 $subject,
-                (string) ($validated['message_html'] ?? ''),
                 $filename,
                 $binary
             ));
