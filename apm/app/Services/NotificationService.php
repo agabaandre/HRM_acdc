@@ -171,7 +171,7 @@ class NotificationService
     {
         $approvers = [];
 
-        // 1. Get division-specific approvers from divisions table
+        // 1. Division-linked roles that receive daily pending-approval digests
         $divisionApprovers = \DB::table('divisions')
             ->select('division_head as staff_id')
             ->whereNotNull('division_head')
@@ -179,6 +179,11 @@ class NotificationService
                 \DB::table('divisions')
                     ->select('focal_person as staff_id')
                     ->whereNotNull('focal_person')
+            )
+            ->union(
+                \DB::table('divisions')
+                    ->select('director_id as staff_id')
+                    ->whereNotNull('director_id')
             )
             ->union(
                 \DB::table('divisions')

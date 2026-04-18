@@ -337,6 +337,9 @@ class ApprovalService
  public function getNextApprover($model){
 
         $division   = $model->division;
+        // When a division has a director, the full directorate chain (orders 2–5+) must run;
+        // external-only category shortcuts would otherwise jump to getCategoryApprover (7/8/9) and skip those levels.
+        $division_has_director = $division && !empty($division->director_id);
         //dd($division);
 
     $current_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
@@ -360,9 +363,9 @@ class ApprovalService
         $should_trigger_category_check = true;
     }
     
-    // For external source only (no intramural or extramural), check category at HOD or Director level
-    if (!$has_extramural && !$has_intramural) {
-        // Check if we're at HOD level (1) or Director level (2)
+    // For external source only (no intramural or extramural), jump to category at HOD/Director — only when
+    // there is no division director (no directorate chain to walk first).
+    if (!$has_extramural && !$has_intramural && !$division_has_director) {
         if ($model->approval_level == 1 || $model->approval_level == 2) {
             $should_trigger_category_check = true;
         }
@@ -370,13 +373,13 @@ class ApprovalService
     
     // Trigger category check after Director Finance level (approval_order >= 6) for other cases
     // But only if we're not already at a category-specific level and not beyond DDG level
-    if ($model->approval_level >= 6 && $model->approval_level <= 8 && !$current_definition->category) {
+    if ($model->approval_level >= 6 && $model->approval_level <= 8 && $current_definition && !$current_definition->category) {
         $should_trigger_category_check = true;
     }
     
     if ($should_trigger_category_check) {
         // Get category-specific approver based on division category
-        $category_definition = $this->getCategoryApprover($model, $division->category);
+        $category_definition = $this->getCategoryApprover($model, (string) ($division->category ?? 'Other'));
         if ($category_definition) {
             return $category_definition;
         }
@@ -537,8 +540,10 @@ class ApprovalService
           ->where('is_enabled',1)
           ->where('approval_order', $definition->approval_order+2)->first();
     }
-    // at Hod level or director and no intramural and no extramural
-    $with_hod_no_intra_extra = ($definition  && !$has_intramural && !$has_extramural && ($definition->approval_order==2|| $definition->approval_order==3));
+    // At next step HOD/Directorate (orders 2–3): external-only category shortcut only if no division director.
+    $with_hod_no_intra_extra = ($definition && !$has_intramural && !$has_extramural
+        && ($definition->approval_order == 2 || $definition->approval_order == 3)
+        && !$division_has_director);
 
     //at finance Director level and no intramural and no extramural
     $withfinance_no_intra_extra = ($definition  && !$has_intramural && !$has_extramural && $definition->approval_order==7);
@@ -547,7 +552,7 @@ class ApprovalService
     //other category, skip by intramural and extramural roles & if the $definition->approval_order==7, skip by other roles
     if($withfinance_no_intra_extra || $with_hod_no_intra_extra){
         // Use the new category approver method
-        return $this->getCategoryApprover($model, $division->category);
+        return $this->getCategoryApprover($model, (string) ($division->category ?? 'Other'));
     }
     
 //dd($definition);
@@ -555,7 +560,226 @@ class ApprovalService
    return $definition;
     }
 
+// public function getNextApprover($model){
 
+//         $division   = $model->division;
+//         //dd($division);
+
+//     $current_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+//        ->where('is_enabled',1)
+//        ->where('approval_order',$model->approval_level)
+//        ->first();
+//       //dd($current_definition);
+
+//     // Check if model has extramural/intramural properties (for matrices/activities)
+//     // Use method_exists to check for accessor methods, not properties
+//     $has_extramural = method_exists($model, 'getHasExtramuralAttribute') ? $model->has_extramural : false;
+//     $has_intramural = method_exists($model, 'getHasIntramuralAttribute') ? $model->has_intramural : true; 
+    
+//     //dd($has_intramural);// Default to true for service requests
+
+//     // Check if we should trigger category check
+//     $should_trigger_category_check = false;
+    
+//     // Trigger category check if current definition has triggers_category_check flag
+//     if ($current_definition && $current_definition->triggers_category_check) {
+//         $should_trigger_category_check = true;
+//     }
+    
+//     // For external source only (no intramural or extramural), check category at HOD or Director level
+//     if (!$has_extramural && !$has_intramural) {
+//         // Check if we're at HOD level (1) or Director level (2)
+//         if ($model->approval_level == 1 || $model->approval_level == 2) {
+//             $should_trigger_category_check = true;
+//         }
+//     }
+    
+//     // Trigger category check after Director Finance level (approval_order >= 6) for other cases
+//     // But only if we're not already at a category-specific level and not beyond DDG level
+//     if ($model->approval_level >= 6 && $model->approval_level <= 8 && !$current_definition->category) {
+//         $should_trigger_category_check = true;
+//     }
+    
+//     if ($should_trigger_category_check) {
+//         // Get category-specific approver based on division category
+//         $category_definition = $this->getCategoryApprover($model, $division->category);
+//         if ($category_definition) {
+//             return $category_definition;
+//         }
+//     }
+//    //dd($current_definition);
+
+//     $nextStepIncrement = 1;
+
+//     //Skip Directorate from HOD if no directorate
+//     if($model->forward_workflow_id==1 && $current_definition && $current_definition->approval_order==1 && !$division->director_id)
+//         $nextStepIncrement = 2;
+//     else if($model->forward_workflow_id>0 && $current_definition && $current_definition->approval_order==1){
+//         $nextStepIncrement = 1;
+//     }
+//     // Skip to DG (12) when at Deputy Chief of Staff (10) – Chief of Staff (11) does not need to approve.
+//     else if($model->forward_workflow_id==1 && $current_definition && $current_definition->approval_order==10){
+//         $nextStepIncrement = 2;
+//     }
+
+
+
+
+//      if(!$model->forward_workflow_id)// null
+//         $model->forward_workflow_id = 1;
+
+//     //dd($model->forward_workflow_id);
+//     $next_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+//        ->where('is_enabled',1)
+//        ->where('approval_order',$model->approval_level +$nextStepIncrement)->get();
+       
+//     // If no next definition found with the increment, look for the next available order
+//     if ($next_definition->isEmpty()) {
+//         $next_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+//            ->where('is_enabled',1)
+//            ->where('approval_order','>',$model->approval_level)
+//            ->orderBy('approval_order','asc')
+//            ->get();
+//     }
+
+//     // Level 9 → 11 when order 10 (Deputy Chief of Staff) is not allowed for this model's division
+//     if ($model->approval_level == 9 && $next_definition->isNotEmpty() && $next_definition->first()->approval_order == 10) {
+//         $definitionFor10 = $next_definition->count() > 1
+//             ? $next_definition->where('fund_type', $has_extramural ? 2 : 1)->first() ?? $next_definition->first()
+//             : $next_definition->first();
+//         if ($definitionFor10 && !$this->isOnlyAllowedForDivisions($definitionFor10, $model)) {
+//             $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+//                 ->where('is_enabled', 1)
+//                 ->where('approval_order', 11) // Chief of Staff
+//                 ->first();
+//             if ($nextApprover) {
+//                 return $nextApprover;
+//             }
+//             // Order 11 disabled: try 12 (DG); otherwise return null so we don't fall through to 10
+//         $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+//             ->where('is_enabled', 1)
+//                 ->where('approval_order', 12)
+//             ->first();
+//         return $nextApprover;
+//     }
+//     }
+
+//    // dd($next_definition);
+
+//     // Multiple definitions for same order (e.g. fund_type 1 and 2): pick by fund_type, then apply division check for order >= 3
+//     if ($next_definition->count() > 1) {
+//         $picked = $has_extramural && $model->approval_level !== $next_definition->first()->approval_order
+//             ? $next_definition->where('fund_type', 2)->first()
+//             : $next_definition->where('fund_type', 1)->first();
+//         $picked = $picked ?? $next_definition->first();
+//         if ($picked && $picked->approval_order >= 3) {
+//             $allowed = $this->skipToNextDefinitionAllowedForDivision($model, $picked, (int) $model->forward_workflow_id);
+//             if ($allowed) {
+//                 return $allowed;
+//             }
+//             return null; // Picked doesn't apply to this division and no later definition does
+//         }
+//         if ($has_extramural && $model->approval_level !== $next_definition->first()->approval_order) {
+//             return $next_definition->where('fund_type', 2);
+//         } 
+//             return $next_definition->where('fund_type', 1);
+//     }
+
+//     $definition = ($next_definition->count()>0)?$next_definition[0]:null;
+//     // For levels >= 3: if this definition has division restrictions and model's division is not allowed, skip to next that applies
+//     if ($definition && $definition->approval_order >= 3) {
+//         $definition = $this->skipToNextDefinitionAllowedForDivision($model, $definition, (int) $model->forward_workflow_id);
+//     }
+//     //dd($definition);
+    
+//     // Check if we're currently at Head of Operations (approval_level = 7) BEFORE other logic
+//     if($model->approval_level == 7){
+//         // For Operations division, go directly to DDG (order 9)
+//         if ($division->category === 'Operations') {
+//             $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+//                 ->where('is_enabled', 1)
+//                 ->where('approval_order', 9) // DDG
+//                 ->first();
+                
+//             if ($nextApprover) {
+//                 return $nextApprover;
+//             }
+//         }
+        
+//         // For other divisions, follow normal flow
+//         $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+//             ->where('is_enabled', 1)
+//             ->where('approval_order', '>', $model->approval_level)
+//             ->orderBy('approval_order', 'asc')
+//             ->first();
+            
+//         return $nextApprover;
+//     }
+    
+
+
+//     // Approvers with allowed_divisions above order 9: at level 10 with allowed divisions go to DG (12); at level 9 or 10 when next is 10 but division not allowed, go to Chief of Staff (11)
+//     if ($definition) {
+//         $allowed_divisions = $this->isOnlyAllowedForDivisions($definition, $model);
+//         if ($model->approval_level == 10 && $allowed_divisions) {
+//             $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+//                 ->where('is_enabled', 1)
+//                 ->where('approval_order', 12) // DG
+//                 ->first();
+//             // Return result even if null (order 12 disabled) so we don't fall through incorrectly
+//             return $nextApprover;
+//         } else if ($definition->approval_order == 10 && !$allowed_divisions) {
+//             // Next would be 10 (Deputy Chief of Staff) but this division is not in allowed list – go to 11 (Chief of Staff)
+//             $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+//                 ->where('is_enabled', 1)
+//                 ->where('approval_order', 11)
+//                 ->first();
+//             if ($nextApprover) {
+//                 return $nextApprover;
+//             }
+//             // Order 11 disabled: try 12 (DG); otherwise return null so we don't fall through to 10
+//             $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+//                 ->where('is_enabled', 1)
+//                 ->where('approval_order', 12)
+//                 ->first();
+//             return $nextApprover;
+//         }
+//     }
+   
+
+
+
+//     // if 
+//     //intramural only, skip extra mural role
+//     if($definition  && !$has_extramural &&  $definition->fund_type==2){
+//       return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+//         ->where('is_enabled',1)
+//         ->where('approval_order',$definition->approval_order+1)->first();
+//     }
+
+//     //only extramural, skip by intramural roles
+//     if($definition  && !$has_intramural &&  $definition->fund_type==1){
+//         return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+//           ->where('is_enabled',1)
+//           ->where('approval_order', $definition->approval_order+2)->first();
+//     }
+//     // at Hod level or director and no intramural and no extramural
+//     $with_hod_no_intra_extra = ($definition  && !$has_intramural && !$has_extramural && ($definition->approval_order==2|| $definition->approval_order==3));
+
+//     //at finance Director level and no intramural and no extramural
+//     $withfinance_no_intra_extra = ($definition  && !$has_intramural && !$has_extramural && $definition->approval_order==7);
+
+
+//     //other category, skip by intramural and extramural roles & if the $definition->approval_order==7, skip by other roles
+//     if($withfinance_no_intra_extra || $with_hod_no_intra_extra){
+//         // Use the new category approver method
+//         return $this->getCategoryApprover($model, $division->category);
+//     }
+    
+// //dd($definition);
+   
+//    return $definition;
+//     }
     /**
      * Get category-specific approver based on division category
      *
