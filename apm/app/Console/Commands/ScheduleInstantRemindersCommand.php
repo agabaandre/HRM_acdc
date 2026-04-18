@@ -164,6 +164,11 @@ class ScheduleInstantRemindersCommand extends Command
             )
             ->union(
                 \DB::table('divisions')
+                    ->select('director_id as staff_id')
+                    ->whereNotNull('director_id')
+            )
+            ->union(
+                \DB::table('divisions')
                     ->select('admin_assistant as staff_id')
                     ->whereNotNull('admin_assistant')
             )
