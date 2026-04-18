@@ -1365,9 +1365,8 @@ class SpecialMemoController extends Controller
             'comment' => 'nullable|string|max:1000'
         ]);
 
-        // Check if the memo is in the correct status for resubmission
-        if (!in_array($specialMemo->overall_status, ['returned', 'pending'])) {
-            return redirect()->back()->with('error', 'Only returned or pending memos can be resubmitted.');
+        if ($specialMemo->overall_status !== 'returned') {
+            return redirect()->back()->with('error', 'Only returned memos can be resubmitted.');
         }
 
         if (!isdivision_head($specialMemo)) {

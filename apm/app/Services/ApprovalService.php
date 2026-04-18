@@ -358,9 +358,11 @@ class ApprovalService
     // Check if we should trigger category check
     $should_trigger_category_check = false;
     
-    // Trigger category check if current definition has triggers_category_check flag
+    // triggers_category_check can jump to category heads — do not fire while still in directorate chain (1–5) if division has a director
     if ($current_definition && $current_definition->triggers_category_check) {
-        $should_trigger_category_check = true;
+        if (!$division_has_director || (int) $model->approval_level >= 6) {
+            $should_trigger_category_check = true;
+        }
     }
     
     // For external source only (no intramural or extramural), jump to category at HOD/Director — only when
@@ -389,7 +391,7 @@ class ApprovalService
     $nextStepIncrement = 1;
 
     //Skip Directorate from HOD if no directorate
-    if($model->forward_workflow_id==1 && $current_definition && $current_definition->approval_order==1 && !$division->director_id)
+    if ($model->forward_workflow_id == 1 && $current_definition && $current_definition->approval_order == 1 && $division && !$division->director_id)
         $nextStepIncrement = 2;
     else if($model->forward_workflow_id>0 && $current_definition && $current_definition->approval_order==1){
         $nextStepIncrement = 1;
@@ -526,31 +528,53 @@ class ApprovalService
 
 
 
-    // if 
-    //intramural only, skip extra mural role
-    if($definition  && !$has_extramural &&  $definition->fund_type==2){
-      return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-        ->where('is_enabled',1)
-        ->where('approval_order',$definition->approval_order+1)->first();
+    // Fund-type skips: align next step with intramural vs extramural funding (e.g. order 3 extramural-only
+    // then order 4 intramural). This is not a shortcut past the directorate chain — it only skips a
+    // fund-type row that does not apply to the memo, and must run even when the division has a director.
+    // Order 3 exception: keep extramural definition if allowed_funders matches the memo's funders
+    // (approver scoped by funder in addition to extramural-only routing).
+    if ($definition && !$has_extramural && $definition->fund_type == 2) {
+        if (!$this->level3ExtramuralAppliesViaAllowedFunders($definition, $model)) {
+            return WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', $definition->approval_order + 1)->first();
+        }
     }
 
-    //only extramural, skip by intramural roles
-    if($definition  && !$has_intramural &&  $definition->fund_type==1){
-        return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-          ->where('is_enabled',1)
-          ->where('approval_order', $definition->approval_order+2)->first();
+    // Level 4 intramural (e.g. PIU): only intramural memos; if allowed_funders is set, memo funders must
+    // intersect (memos with no funder info do not match a restricted row). Otherwise proceed to order 5.
+    if ($definition
+        && (int) $definition->approval_order === 4
+        && (int) ($definition->fund_type ?? 0) === 1
+    ) {
+        if (!$has_intramural || !$this->level4IntramuralFunderGatePasses($definition, $model)) {
+            $next = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 5)
+                ->first();
+
+            return $next
+                ? $this->skipToNextDefinitionAllowedForDivision($model, $next, (int) $model->forward_workflow_id)
+                : $next;
+        }
+    }
+
+    if ($definition && !$has_intramural && $definition->fund_type == 1) {
+        return WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->where('approval_order', $definition->approval_order + 2)->first();
     }
     // At next step HOD/Directorate (orders 2–3): external-only category shortcut only if no division director.
     $with_hod_no_intra_extra = ($definition && !$has_intramural && !$has_extramural
         && ($definition->approval_order == 2 || $definition->approval_order == 3)
         && !$division_has_director);
 
-    //at finance Director level and no intramural and no extramural
-    $withfinance_no_intra_extra = ($definition  && !$has_intramural && !$has_extramural && $definition->approval_order==7);
+    // at finance Director level and no intramural and no extramural — not when directorate chain must run
+    $withfinance_no_intra_extra = ($definition && !$has_intramural && !$has_extramural && $definition->approval_order == 7
+        && !$division_has_director);
 
-
-    //other category, skip by intramural and extramural roles & if the $definition->approval_order==7, skip by other roles
-    if($withfinance_no_intra_extra || $with_hod_no_intra_extra){
+    // other category, skip by intramural and extramural roles & if the $definition->approval_order==7, skip by other roles
+    if ($withfinance_no_intra_extra || $with_hod_no_intra_extra) {
         // Use the new category approver method
         return $this->getCategoryApprover($model, (string) ($division->category ?? 'Other'));
     }
@@ -912,7 +936,78 @@ class ApprovalService
             return $funderIds;
         }
 
+        // NonTravelMemo / similar: fund code IDs as keys in budget_breakdown
+        $breakdown = $model->budget_breakdown ?? null;
+        if (is_string($breakdown)) {
+            $breakdown = json_decode($breakdown, true);
+        }
+        if (is_array($breakdown) && $breakdown !== []) {
+            $codeIds = [];
+            foreach (array_keys($breakdown) as $fundCodeId) {
+                if (is_numeric($fundCodeId)) {
+                    $codeIds[] = (int) $fundCodeId;
+                }
+            }
+            if ($codeIds !== []) {
+                return FundCode::whereIn('id', $codeIds)
+                    ->whereNotNull('funder_id')
+                    ->pluck('funder_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+            }
+        }
+
         return [];
+    }
+
+    /**
+     * At order 3, an extramural (fund_type 2) step may still apply when the memo has no extramural
+     * funding but its funders intersect the definition's allowed_funders list.
+     */
+    private function level3ExtramuralAppliesViaAllowedFunders(WorkflowDefinition $definition, Model $model): bool
+    {
+        if ((int) $definition->approval_order !== 3 || (int) ($definition->fund_type ?? 0) !== 2) {
+            return false;
+        }
+        $allowed = $definition->allowed_funders;
+        if (is_string($allowed)) {
+            $allowed = json_decode($allowed, true);
+        }
+        if (empty($allowed) || !is_array($allowed)) {
+            return false;
+        }
+        $modelFunderIds = $this->getModelFunderIds($model);
+        if (empty($modelFunderIds)) {
+            return false;
+        }
+        $allowed = array_map('intval', array_filter($allowed, fn ($v) => $v !== null && $v !== ''));
+
+        return count(array_intersect($modelFunderIds, $allowed)) > 0;
+    }
+
+    /**
+     * Order 4 intramural row: when allowed_funders is empty, any intramural memo matches.
+     * When allowed_funders is set, the memo must have resolvable funders that intersect the list
+     * (no intersection and no model funders => gate fails).
+     */
+    private function level4IntramuralFunderGatePasses(WorkflowDefinition $definition, Model $model): bool
+    {
+        $allowed = $definition->allowed_funders;
+        if (is_string($allowed)) {
+            $allowed = json_decode($allowed, true);
+        }
+        if (empty($allowed) || !is_array($allowed)) {
+            return true;
+        }
+        $modelFunderIds = $this->getModelFunderIds($model);
+        if (empty($modelFunderIds)) {
+            return false;
+        }
+        $allowed = array_map('intval', array_filter($allowed, fn ($v) => $v !== null && $v !== ''));
+
+        return count(array_intersect($modelFunderIds, $allowed)) > 0;
     }
 
     /**

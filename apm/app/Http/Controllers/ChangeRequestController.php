@@ -1815,10 +1815,9 @@ class ChangeRequestController extends Controller
             'comment' => 'nullable|string|max:1000'
         ]);
 
-        // Check if the change request is in the correct status for resubmission
-        if (!in_array($changeRequest->overall_status, ['returned', 'pending'])) {
+        if ($changeRequest->overall_status !== 'returned') {
             return redirect()->back()->with([
-                'msg' => 'Only returned or pending change requests can be resubmitted.',
+                'msg' => 'Only returned change requests can be resubmitted.',
                 'type' => 'error'
             ]);
         }

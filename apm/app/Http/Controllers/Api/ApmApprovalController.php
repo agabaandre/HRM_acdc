@@ -155,9 +155,8 @@ class ApmApprovalController extends Controller
     }
 
     /**
-     * Resubmit a returned document for approval.
-     * Works for all document types. Sends the document back to the previous level it came from
-     * (the level that returned it), following the same logic as non-travel memo resubmit.
+     * Resubmit a returned document for approval (overall_status must be returned).
+     * Sends the document back to the previous level it came from (the level that returned it).
      */
     public function resubmit(Request $request): JsonResponse
     {
@@ -185,8 +184,8 @@ class ApmApprovalController extends Controller
             return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
         }
 
-        if (!in_array($model->overall_status, ['returned', 'pending', 'draft'])) {
-            return response()->json(['success' => false, 'message' => 'Only returned, pending or draft documents can be resubmitted.'], 422);
+        if ($model->overall_status !== 'returned') {
+            return response()->json(['success' => false, 'message' => 'Only returned documents can be resubmitted.'], 422);
         }
 
         if (!$this->canUserResubmit($model, $staffId)) {

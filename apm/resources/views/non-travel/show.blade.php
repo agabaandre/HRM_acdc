@@ -930,8 +930,8 @@
                     </div>
                 @endif
 
-                <!-- Resubmission Section for HODs when returned -->
-                @if(($nonTravel->overall_status === 'returned' || $nonTravel->overall_status === 'pending') && isdivision_head($nonTravel) && $nonTravel->approval_level <= 1)
+                <!-- Resubmission Section for HODs only after memo is returned (not while merely pending at HOD) -->
+                @if($nonTravel->overall_status === 'returned' && isdivision_head($nonTravel) && $nonTravel->approval_level <= 1)
                     <div class="card sidebar-card border-0 mb-4"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
@@ -963,6 +963,40 @@
         </div>
     </div>
 </div>
+
+@if($nonTravel->overall_status === 'returned' && isdivision_head($nonTravel) && $nonTravel->approval_level <= 1)
+{{-- Resubmit Modal (only when resubmit UI is shown) --}}
+<div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resubmitModalLabel">Resubmit for Approval</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('non-travel.resubmit', $nonTravel) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        <strong>Note:</strong> This will resubmit the memo to the approver who returned it for revision.
+                    </div>
+                    <div class="mb-3">
+                        <label for="resubmitComment" class="form-label">Comments (Optional)</label>
+                        <textarea class="form-control" id="resubmitComment" name="comment" rows="3" 
+                                  placeholder="Add any comments about the changes made..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bx bx-undo me-1"></i>Resubmit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 
         @if($nonTravel->fundType && strtolower($nonTravel->fundType->name) === 'extramural' && $nonTravel->overall_status === 'approved')
             @php
@@ -1069,38 +1103,6 @@
     </div>
 </div>
 @endif
-
-{{-- Resubmit Modal --}}
-<div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-md modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="resubmitModalLabel">Resubmit for Approval</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="{{ route('non-travel.resubmit', $nonTravel) }}" method="POST">
-                @csrf
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="bx bx-info-circle me-2"></i>
-                        <strong>Note:</strong> This will resubmit the memo to the approver who returned it for revision.
-                    </div>
-                    <div class="mb-3">
-                        <label for="resubmitComment" class="form-label">Comments (Optional)</label>
-                        <textarea class="form-control" id="resubmitComment" name="comment" rows="3" 
-                                  placeholder="Add any comments about the changes made..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bx bx-undo me-1"></i>Resubmit for Approval
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
     <!-- Attachment Preview Modal (same as single-memos) -->
     <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">

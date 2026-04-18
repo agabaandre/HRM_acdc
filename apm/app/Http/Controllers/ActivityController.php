@@ -97,6 +97,14 @@ class ActivityController extends Controller
         ini_set('memory_limit', '1024M');
         // Eager load division
         $matrix->load('division');
+
+        // Single-memo creation (matrix pending/approved) is only for the matrix focal person (QM).
+        if (in_array($matrix->overall_status, ['approved', 'pending'], true)) {
+            $sid = (int) (user_session('staff_id') ?? 0);
+            if ($sid === 0 || $sid !== (int) $matrix->focal_person_id) {
+                abort(403, 'Only the matrix focal person can add single memos for this matrix.');
+            }
+        }
       
         // Request Types
         $requestTypes = RequestType::all();
@@ -172,6 +180,19 @@ class ActivityController extends Controller
     
         return DB::transaction(function () use ($request, $matrix, $userStaffId) {
             try {
+                if (in_array($matrix->overall_status, ['approved', 'pending'], true)) {
+                    $sid = (int) (user_session('staff_id') ?? 0);
+                    if ($sid === 0 || $sid !== (int) $matrix->focal_person_id) {
+                        if ($request->ajax()) {
+                            return response()->json([
+                                'success' => false,
+                                'msg' => 'Only the matrix focal person can add single memos for this matrix.',
+                            ], 403);
+                        }
+                        abort(403, 'Only the matrix focal person can add single memos for this matrix.');
+                    }
+                }
+
                 // Validate required fields
                 $validated = $request->validate([
                     'activity_title' => 'required|string|max:200',
@@ -1850,6 +1871,20 @@ class ActivityController extends Controller
         $minYear = max(2025, $currentYear - 10);
         $years = range($currentYear, $minYear);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+
+        // "Create new" single memo: same matrix rules as matrices/show (pending/approved only), but only for the matrix QM (focal_person_id).
+        $createSingleMemoMatrix = null;
+        $canCreateSingleMemo = false;
+        if ($userDivisionId && $currentStaffId) {
+            $createSingleMemoMatrix = Matrix::query()
+                ->where('division_id', $userDivisionId)
+                ->where('year', (int) $selectedYear)
+                ->where('quarter', $selectedQuarter)
+                ->first();
+            if ($createSingleMemoMatrix && in_array($createSingleMemoMatrix->overall_status, ['approved', 'pending'], true)) {
+                $canCreateSingleMemo = (int) $currentStaffId === (int) $createSingleMemoMatrix->focal_person_id;
+            }
+        }
     
         // Handle AJAX requests for tab content only (not initial page load).
         // With Livewire wire:navigate, the first visit can send X-Requested-With and trigger ajax();
@@ -1887,7 +1922,20 @@ class ActivityController extends Controller
             ]);
         }
         
-        return view('activities.single-memos.index', compact('myMemos', 'allMemos', 'sharedMemos', 'staff', 'divisions', 'searchTerm', 'years', 'quarters', 'selectedYear', 'selectedQuarter'));
+        return view('activities.single-memos.index', compact(
+            'myMemos',
+            'allMemos',
+            'sharedMemos',
+            'staff',
+            'divisions',
+            'searchTerm',
+            'years',
+            'quarters',
+            'selectedYear',
+            'selectedQuarter',
+            'createSingleMemoMatrix',
+            'canCreateSingleMemo'
+        ));
     }
 
     /**
@@ -2008,10 +2056,9 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ]);
         }
 
-        // Check if memo is in returned or pending status at level 1 or below
-        if (!in_array($activity->overall_status, ['returned', 'pending']) || $activity->approval_level > 1) {
+        if ($activity->overall_status !== 'returned' || $activity->approval_level > 1) {
             return redirect()->back()->with([
-                'msg' => 'This memo cannot be resubmitted in its current state.',
+                'msg' => 'Only a returned single memo at the correct level can be resubmitted.',
                 'type' => 'error',
             ]);
         }
