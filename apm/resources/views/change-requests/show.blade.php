@@ -1367,7 +1367,8 @@
   </div>
 </div>
 
-{{-- Resubmit Modal --}}
+@if($changeRequest->overall_status === 'returned' && isdivision_head($changeRequest) && $changeRequest->approval_level <= 1)
+{{-- Resubmit Modal (only when resubmit UI is shown) --}}
 <div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-md modal-dialog-centered">
         <div class="modal-content">
@@ -1398,6 +1399,7 @@
         </div>
     </div>
 </div>
+@endif
 
 
 

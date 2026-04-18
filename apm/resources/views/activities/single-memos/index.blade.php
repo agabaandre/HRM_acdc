@@ -5,7 +5,11 @@
 @section('header', 'Single Memos')
 
 @section('header-actions')
-
+    @if(!empty($canCreateSingleMemo) && !empty($createSingleMemoMatrix))
+        <a wire:navigate href="{{ route('matrices.activities.create', $createSingleMemoMatrix) }}" class="btn btn-success btn-sm shadow-sm">
+            <i class="bx bx-plus-circle me-1"></i> Create new
+        </a>
+    @endif
 @endsection
 
 @section('content')

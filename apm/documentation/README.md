@@ -17,6 +17,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 ### Core Features
 
 - **[Approval Trail Management](./APPROVAL_TRAIL_MANAGEMENT.md)** - Complete guide to approval trail tracking and management (includes fixing promoted single-memo trails: `apm:fix-single-memo-promoted-approval-trails`)
+- **[Workflow roles and next approver (`getNextApprover`)](./APPROVAL_WORKFLOW_NEXT_APPROVER.md)** - Default workflow orders, roles, fund-type and funder gates, category shortcuts, and how `ApprovalService` picks the next `WorkflowDefinition`
 - **[Approval Trail Archiving](./APPROVAL_TRAIL_ARCHIVING.md)** - How to archive old approval trails and manage storage
 - **[Document Numbering System](./DOCUMENT_NUMBERING_SYSTEM.md)** - Document number generation and management
 - **[Document Number Management](./DOCUMENT_NUMBER_MANAGEMENT.md)** - Advanced document numbering features

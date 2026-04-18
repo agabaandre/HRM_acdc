@@ -1469,8 +1469,8 @@
             <!-- End container-fluid -->
 
             <div class="col-lg-12">
-                <!-- Resubmission Section for HODs when returned -->
-                @if(($specialMemo->overall_status === 'returned' || $specialMemo->overall_status === 'pending') && isdivision_head($specialMemo) && $specialMemo->approval_level <= 1)
+                <!-- Resubmission Section for HODs only after memo is returned (not while merely pending) -->
+                @if($specialMemo->overall_status === 'returned' && isdivision_head($specialMemo) && $specialMemo->approval_level <= 1)
                     <div class="card sidebar-card border-0 mb-4"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
@@ -1546,7 +1546,8 @@
   </div>
 </div>
 
-{{-- Resubmit Modal --}}
+@if($specialMemo->overall_status === 'returned' && isdivision_head($specialMemo) && $specialMemo->approval_level <= 1)
+{{-- Resubmit Modal (only when resubmit UI is shown) --}}
 <div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-md modal-dialog-centered">
         <div class="modal-content">
@@ -1577,6 +1578,7 @@
         </div>
     </div>
 </div>
+@endif
 
 
         @if($specialMemo->fund_type_id == 2 && $specialMemo->overall_status == 'approved')

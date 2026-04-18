@@ -1631,7 +1631,8 @@
         ])
     @endif
 
-    {{-- Resubmit Modal --}}
+    @if($activity->overall_status === 'returned' && isdivision_head($activity) && $activity->approval_level <= 1)
+    {{-- Resubmit Modal (only when resubmit UI is shown) --}}
     <div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -1666,6 +1667,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural' && $activity->matrix && $activity->matrix->overall_status === 'approved')
         @php
