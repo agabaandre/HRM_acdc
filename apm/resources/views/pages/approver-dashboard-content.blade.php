@@ -37,56 +37,63 @@
         </div>
       </div>
     </div>
-    <div class="card border-0 bg-light mb-0">
-      <div class="card-body py-3">
-        <h6 class="fw-semibold text-dark mb-2">
-          <i class="fa fa-info-circle me-1 text-secondary"></i>How these statistics are calculated
-        </h6>
+    <details class="approver-stats-help-details card border-0 bg-light mb-0">
+      <summary class="fw-semibold text-dark py-3 px-3 mb-0 user-select-none d-flex align-items-center gap-2">
+        <i class="fa fa-chevron-right approver-stats-help-chevron small text-secondary"></i>
+        <span><i class="fa fa-info-circle me-1 text-secondary"></i>How these statistics are calculated</span>
+      </summary>
+      <div class="px-3 pb-3 border-top pt-2">
         <ul class="small text-muted mb-0 ps-3">
           <li><strong>Summary cards</strong> use the same <strong>Division</strong>, <strong>Document type</strong>, <strong>Year</strong>, and <strong>Month</strong> filters as the approver table. Each count is a <strong>document</strong> (or single-memo activity) in that scope: <em>Total Pending</em> and <em>Returned</em> are items currently in workflow at an approval level; <em>Approved</em> completed in the period; <em>Total Approval Requests</em> is pending + approved + returned for the selected filters. Types include matrices, special and non-travel memos, single memos, ARF, service requests, change requests, and other memos (when included in the selected document type).</li>
           <li><strong>Average time to last approver</strong> uses <strong>approved</strong> items only: elapsed time from submission (or the model’s submission timestamp) until the <strong>final</strong> approval, grouped by workflow. Other memos follow submit-to-final-approval on their own trail. The chart defaults to <strong>days</strong>; switch to hours for detail.</li>
           <li>Per-approver columns in the table (pending, handled, average time) use the same action rules as the live approval queues.</li>
         </ul>
       </div>
-    </div>
+    </details>
   </div>
 
-  <!-- Average Time to Last Approver by Workflow (approved documents only) -->
+  <!-- Average Time to Last Approver by Workflow — table (approved documents only) -->
   <div class="card filter-card mb-4">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
       <div>
         <h5 class="mb-0 text-dark">
-          <i class="fa fa-chart-bar me-2"></i>Average Time to Last Approver by Workflow
+          <i class="fa fa-table me-2"></i>Average Time to Last Approver by Workflow
         </h5>
-        <p class="mb-0 mt-1 small text-muted">Includes matrices, memos, ARF, service requests, change requests, and <strong>Other Memos</strong> (Other Memo: submit → final approval). Chart defaults to <strong>days</strong>; switch to hours if needed.</p>
+        <p class="mb-0 mt-1 small text-muted">Includes matrices, memos, ARF, service requests, change requests, and <strong>Other Memos</strong> (Other Memo: submit → final approval). The table and chart below share the same <strong>days / hours</strong> unit.</p>
       </div>
-      <div class="btn-group btn-group-sm" role="group" aria-label="Chart time unit">
+      <div class="btn-group btn-group-sm" role="group" aria-label="Chart and table time unit">
         <button type="button" class="btn btn-outline-secondary active" id="wfChartUnitDays">Days</button>
         <button type="button" class="btn btn-outline-secondary" id="wfChartUnitHours">Hours</button>
       </div>
     </div>
     <div class="card-body">
-      <div class="row">
-        <div class="col-lg-5">
-          <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0" id="workflowStatsTable">
-              <thead>
-                <tr>
-                  <th>Workflow Name</th>
-                  <th class="text-end">Approved Docs</th>
-                  <th class="text-end">Avg. Time to Last Approver</th>
-                </tr>
-              </thead>
-              <tbody id="workflowStatsBody">
-                <tr><td colspan="3" class="text-center text-muted">Loading...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="col-lg-7">
-          <div id="workflowAvgTimeChart" style="min-height: 350px;"></div>
-        </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" id="workflowStatsTable">
+          <thead>
+            <tr>
+              <th>Workflow Name</th>
+              <th class="text-end">Approved Docs</th>
+              <th class="text-end">Avg. Time to Last Approver</th>
+            </tr>
+          </thead>
+          <tbody id="workflowStatsBody">
+            <tr><td colspan="3" class="text-center text-muted">Loading...</td></tr>
+          </tbody>
+        </table>
       </div>
+    </div>
+  </div>
+
+  <!-- Average Time to Last Approver — chart (same filters; unit matches table) -->
+  <div class="card filter-card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0 text-dark">
+        <i class="fa fa-chart-bar me-2"></i>Average Time to Last Approver — Chart
+      </h5>
+      <p class="mb-0 mt-1 small text-muted">Same workflows and filters as the table above. Approved documents only; use <strong>Days</strong> / <strong>Hours</strong> on the table card to change the unit.</p>
+    </div>
+    <div class="card-body">
+      <div id="workflowAvgTimeChart" style="min-height: 350px;"></div>
     </div>
   </div>
 
@@ -210,3 +217,20 @@
         </div>
     </div>
 </div>
+
+<style>
+  .approver-stats-help-details > summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .approver-stats-help-details > summary::-webkit-details-marker {
+    display: none;
+  }
+  .approver-stats-help-chevron {
+    display: inline-block;
+    transition: transform 0.15s ease;
+  }
+  .approver-stats-help-details[open] .approver-stats-help-chevron {
+    transform: rotate(90deg);
+  }
+</style>
