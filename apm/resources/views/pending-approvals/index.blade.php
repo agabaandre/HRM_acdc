@@ -5,19 +5,29 @@
 @section('header', 'Pending Approvals Dashboard')
 
 @section('header-actions')
-<div class="d-flex gap-2">
-    <button type="button" class="btn btn-outline-primary" id="refreshData">
+<div class="d-flex gap-2 flex-wrap">
+    <button type="button" class="btn btn-primary" id="refreshData">
         <i class="fas fa-sync-alt me-1"></i> Refresh
     </button>
-    <button type="button" class="btn btn-outline-info" id="exportData">
+    <button type="button" class="btn btn-outline-secondary" id="exportData">
         <i class="fas fa-download me-1"></i> Export
     </button>
 </div>
 @endsection
 
 @section('content')
+<div class="pending-approvals-page">
 <style>
-  /* Status Cards Styling - Same as Week Tasks */
+  .pending-approvals-page {
+    --pa-primary: #119a48;
+    --pa-primary-dark: #0d7a3a;
+    --pa-surface: #f8faf9;
+    --pa-border: #e2e8e4;
+    --pa-text: #1e293b;
+    --pa-muted: #64748b;
+  }
+
+  /* Status Cards — calmer motion, clearer scan for approvers */
   .stat-item {
     text-align: center;
     padding: 1.5rem 1rem;
@@ -40,8 +50,8 @@
   }
 
   .stat-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
   }
 
   .stat-item.total {
@@ -89,17 +99,10 @@
   }
 
   .stat-icon {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     color: var(--stat-color);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
     display: block;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
   }
 
   @keyframes countUp {
@@ -124,30 +127,131 @@
     overflow: hidden;
   }
 
-  .stat-progress-bar::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-    animation: shimmer 2s infinite;
+  /* Toolbar & category tables */
+  .pa-toolbar-card {
+    border: 1px solid var(--pa-border) !important;
+    border-radius: 12px;
+    background: #fff;
   }
-
-  @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
+  .pa-toolbar-header {
+    background: linear-gradient(135deg, rgba(17, 154, 72, 0.08) 0%, rgba(17, 154, 72, 0.02) 100%);
+    border-bottom: 1px solid var(--pa-border);
+    border-radius: 12px 12px 0 0;
   }
-
-  /* Table Header Styling */
-  .table th {
-    background-color: white !important;
-    color: #2c3f51 !important;
+  .pa-stale-alert {
+    border-radius: 12px;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    background: linear-gradient(90deg, rgba(255, 251, 235, 0.95) 0%, #fff 12%);
+    border-left: 4px solid #f59e0b !important;
+  }
+  .pa-category-card {
+    border: 1px solid var(--pa-border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  }
+  .pa-category-header {
+    background: linear-gradient(135deg, var(--pa-primary-dark) 0%, var(--pa-primary) 100%);
     border: none;
+    padding: 0.85rem 1.25rem;
+  }
+  .pa-category-header .pa-cat-title {
+    font-size: 1.05rem;
     font-weight: 600;
-    padding: 1rem 0.75rem;
-    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+  }
+  .pa-table-approvals thead th {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--pa-muted) !important;
+    font-weight: 600;
+    border-bottom: 2px solid var(--pa-border) !important;
+    padding: 0.65rem 0.75rem;
+    vertical-align: middle;
+    background: #f1f5f4 !important;
+  }
+  .pa-table-approvals tbody td {
+    padding: 0.65rem 0.75rem;
+    vertical-align: middle;
+    border-color: var(--pa-border);
+  }
+  .pa-table-approvals tbody tr:hover {
+    background-color: rgba(17, 154, 72, 0.04);
+  }
+  .pa-table-approvals .pa-title-cell {
+    line-height: 1.35;
+  }
+  .pa-table-approvals .btn-view-open {
+    min-width: 5.5rem;
+    font-weight: 600;
+    border-radius: 8px;
+  }
+  .pa-empty-card {
+    border-radius: 12px;
+    border: 1px dashed var(--pa-border);
+    background: var(--pa-surface);
+  }
+  .pa-help-details > summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .pa-help-details > summary::-webkit-details-marker { display: none; }
+  .pa-help-chevron { transition: transform 0.15s ease; display: inline-block; }
+  .pa-help-details[open] .pa-help-chevron { transform: rotate(90deg); }
+
+  .pa-help-details.card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--pa-border) !important;
+  }
+
+  .pending-approvals-page .btn-primary {
+    background-color: var(--pa-primary);
+    border-color: var(--pa-primary);
+  }
+  .pending-approvals-page .btn-primary:hover,
+  .pending-approvals-page .btn-primary:focus {
+    background-color: var(--pa-primary-dark);
+    border-color: var(--pa-primary-dark);
+  }
+
+  .stat-number-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    color: #0f172a !important;
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+    margin-top: 0.35rem;
+    box-shadow: 0 1px 6px rgba(15, 23, 42, 0.08);
+    background: rgba(255, 255, 255, 0.95);
+  }
+
+  .pa-approver-card {
+    border: 1px solid var(--pa-border);
+    border-radius: 12px;
+    border-left: 4px solid var(--pa-primary);
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
+  }
+  .pa-approver-card .badge-role {
+    font-weight: 500;
+    background: rgba(17, 154, 72, 0.12) !important;
+    color: var(--pa-primary-dark) !important;
+    border: 1px solid rgba(17, 154, 72, 0.25);
+  }
+
+  .pending-approvals-page .table th {
+    background-color: #f1f5f4;
+    color: var(--pa-text) !important;
+    border-color: var(--pa-border);
+    font-weight: 600;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.75rem;
   }
 </style>
 
@@ -160,8 +264,8 @@
 @if($staleCount > 0)
 <div class="row mb-3">
     <div class="col-12">
-        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-start" role="alert">
-            <i class="fas fa-hourglass-end fa-2x me-3 mt-1 text-warning"></i>
+        <div class="alert pa-stale-alert shadow-sm d-flex align-items-start mb-0" role="alert">
+            <i class="fas fa-hourglass-end fa-lg me-3 mt-1 text-warning"></i>
             <div class="flex-grow-1">
                 <h6 class="alert-heading mb-2">Friendly reminder</h6>
                 <p class="mb-2 small">
@@ -185,24 +289,8 @@
 </div>
 @endif
 
-<div class="row mb-4">
+<div class="row mb-4 g-3">
     <!-- Summary Cards -->
-    <style>
-        .stat-number-circle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            color: #032 !important;
-            font-size: 1.6rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            margin-top: 0.5rem;
-            box-shadow: 0 2px 8px rgba(44,63,81,0.08);
-        }
-    </style>
     @php
         $memoCardCount = ($summaryStats['by_category']['Special Memo'] ?? 0)
             + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0)
@@ -213,8 +301,8 @@
             + ($summaryStats['by_category']['Change Request'] ?? 0);
         $totalPending = (int) ($summaryStats['total_pending'] ?? 0);
     @endphp
-    <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="stat-item total">
+    <div class="col-lg-3 col-md-6 col-sm-6 d-flex">
+        <div class="stat-item total w-100">
             <i class="fas fa-clock text-danger stat-icon"></i>
             <span class="stat-number-circle">{{ $summaryStats['total_pending'] }}</span>
             <span class="stat-label">Total Pending</span>
@@ -224,8 +312,8 @@
         </div>
     </div>
     
-    <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="stat-item matrices">
+    <div class="col-lg-3 col-md-6 col-sm-6 d-flex">
+        <div class="stat-item matrices w-100">
             <i class="fas fa-calendar-alt stat-icon"></i>
             <span class="stat-number-circle">{{ $summaryStats['by_category']['Matrix'] ?? 0 }}</span>
             <span class="stat-label">Matrices</span>
@@ -235,8 +323,8 @@
         </div>
     </div>
     
-    <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="stat-item memos">
+    <div class="col-lg-3 col-md-6 col-sm-6 d-flex">
+        <div class="stat-item memos w-100">
             <i class="fas fa-file-alt stat-icon"></i>
             <span class="stat-number-circle">{{ $memoCardCount }}</span>
             <span class="stat-label">Memos</span>
@@ -246,8 +334,8 @@
         </div>
     </div>
     
-    <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="stat-item requests">
+    <div class="col-lg-3 col-md-6 col-sm-6 d-flex">
+        <div class="stat-item requests w-100">
             <i class="fas fa-cogs stat-icon"></i>
             <span class="stat-number-circle">{{ $requestsCardCount }}</span>
             <span class="stat-label">Requests</span>
@@ -258,11 +346,15 @@
     </div>
 </div>
 
-<div class="card border-0 bg-light mb-4">
-    <div class="card-body py-3">
-        <h6 class="fw-semibold text-dark mb-2">
+<details class="pa-help-details card border-0 bg-light mb-4">
+    <summary class="card-body py-3 d-flex align-items-center justify-content-between gap-2 list-unstyled">
+        <span class="fw-semibold text-dark">
+            <span class="pa-help-chevron text-secondary me-2" aria-hidden="true">&#9654;</span>
             <i class="fas fa-info-circle me-1 text-secondary"></i>How these numbers are derived
-        </h6>
+        </span>
+        <span class="small text-muted">Expand for details</span>
+    </summary>
+    <div class="card-body border-top pt-3 pb-3">
         <ul class="small text-muted mb-0 ps-3">
             <li><strong>Total Pending</strong> is the count of every item where <strong>you can take action now</strong> (same rules as the rows below): matrices, memos (special, non-travel, single, and other memos), service requests, ARF, and change requests. Returned items that are back in your queue are included.</li>
             <li><strong>Matrices</strong>, <strong>Memos</strong>, and <strong>Requests</strong> split that total by type. Memos include <strong>Other Memo</strong>. The bars show each group’s share of total pending.</li>
@@ -276,7 +368,7 @@
             <li><strong>Aging reminders</strong> (banner above and email at 11:00 daily) use <strong>approval_warning_days</strong> in System settings (default 7): items are flagged when they have been at your level for <em>more than</em> that many days since they were <em>handed to your step</em> (previous approver’s action or submit to your level). Reminders repeat each day until those items are cleared from your queue.</li>
         </ul>
     </div>
-</div>
+</details>
 
 @if(isset($avgApprovalTimeDisplay) && (float)($avgApprovalTimeHours ?? 0) > 0)
 <div class="row mb-3 justify-content-center">
@@ -298,8 +390,14 @@
 @endif
 
 <!-- Filters -->
-<div class="card mb-4">
-    <div class="card-body">
+<div class="card pa-toolbar-card mb-4 shadow-sm">
+    <div class="card-header pa-toolbar-header py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            <h6 class="mb-0 fw-semibold text-dark"><i class="fas fa-filter me-2" style="color: var(--pa-primary);"></i>Queue filters</h6>
+            <small class="text-muted">Category and division apply immediately when changed.</small>
+        </div>
+    </div>
+    <div class="card-body pt-3 pb-3">
         <div class="row g-3">
             <div class="col-md-4">
                 <label for="categoryFilter" class="form-label">Category</label>
@@ -330,28 +428,28 @@
 
 @if(isset($approverInfo) && $approverInfo)
 <!-- Approver Information -->
-<div class="card mb-4 border-info">
-    <div class="card-body">
-        <div class="d-flex align-items-center">
-            <div class="me-3">
-                <i class="fas fa-user-circle fa-3x text-info"></i>
+<div class="card pa-approver-card mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-start flex-wrap gap-3">
+            <div class="flex-shrink-0">
+                <i class="fas fa-user-circle fa-3x" style="color: var(--pa-primary);"></i>
             </div>
-            <div class="flex-grow-1">
-                <h5 class="mb-1">
-                    <i class="fas fa-user me-2 text-info"></i>
+            <div class="flex-grow-1 min-w-0">
+                <h5 class="mb-1 fw-semibold">
+                    <i class="fas fa-user me-2" style="color: var(--pa-primary);"></i>
                     {{ $approverInfo['name'] }}
                 </h5>
-                <p class="mb-1 text-muted">
+                <p class="mb-1 text-muted small">
                     <i class="fas fa-envelope me-1"></i>{{ $approverInfo['email'] }}
                 </p>
-                <p class="mb-1 text-muted">
+                <p class="mb-1 text-muted small">
                     <i class="fas fa-building me-1"></i>{{ $approverInfo['division_name'] }}
                 </p>
                 @if(!empty($approverInfo['roles']))
-                    <div class="mt-2">
-                        <strong class="me-2">Roles:</strong>
+                    <div class="mt-2 d-flex flex-wrap gap-1 align-items-center">
+                        <span class="small fw-semibold text-muted me-1">Roles:</span>
                         @foreach($approverInfo['roles'] as $role)
-                            <span class="badge bg-info me-1">{{ $role }}</span>
+                            <span class="badge badge-role me-0">{{ $role }}</span>
                         @endforeach
                     </div>
                 @endif
@@ -364,18 +462,20 @@
 <!-- Pending Approvals by Category -->
 @foreach($pendingApprovals as $categoryName => $items)
     @if(count($items) > 0)
-        <div class="card mb-4">
-            <div class="card-header" style="background-color: #a9b8af;">
-                <h5 class="mb-0 text-white">
-                    <i class="fas fa-folder me-2 text-white"></i>
-                    {{ $categoryName }}
-                    <span class="badge bg-white text-success ms-2">{{ count($items) }}</span>
-                </h5>
+        <div class="card pa-category-card mb-4">
+            <div class="card-header pa-category-header text-white">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <h5 class="mb-0 pa-cat-title text-white d-flex align-items-center flex-wrap gap-2">
+                        <i class="fas fa-folder-open opacity-90"></i>
+                        <span>{{ $categoryName }}</span>
+                    </h5>
+                    <span class="badge rounded-pill bg-light text-dark fw-semibold">{{ count($items) }} open</span>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
-                        <thead class="table-light">
+                    <table class="table table-hover table-sm mb-0 pa-table-approvals" style="table-layout: fixed; width: 100%;">
+                        <thead>
                             <tr>
                                 <th style="width: 50px;">#</th>
                                 <th style="width: 250px; max-width: 250px;">Title</th>
@@ -393,8 +493,8 @@
                                     <td style="width: 50px; text-align: center;">
                                         <strong>{{ $loop->iteration }}</strong>
                                     </td>
-                                    <td style="max-width: 250px; width: 250px; word-wrap: break-word; white-space: normal;">
-                                        <div class="fw-semibold" style="word-wrap: break-word; word-break: break-word; max-width: 250px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ to_title_case($item['title']) }}</div>
+                                    <td class="pa-title-cell" style="max-width: 250px; width: 250px; word-wrap: break-word; white-space: normal;">
+                                        <div class="fw-semibold" style="word-wrap: break-word; word-break: break-word; max-width: 250px; white-space: normal; overflow-wrap: break-word;">{{ to_title_case($item['title']) }}</div>
                                         <small class="text-muted">{{ $item['category'] }}</small>
                                     </td>
                                     <td style="max-width: 171px; width: 171px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
@@ -412,8 +512,8 @@
                                         <span class="badge bg-warning" style="word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word; max-width: 100%; display: inline-block;">{{ $item['workflow_role'] }}</span>
                                     </td>
                                     <td>
-                                        <a href="{{ $item['view_url'] }}" class="btn btn-sm btn-outline-primary" wire:navigate>
-                                            <i class="fas fa-eye me-1"></i> View
+                                        <a href="{{ $item['view_url'] }}" class="btn btn-sm btn-primary btn-view-open" wire:navigate>
+                                            <i class="fas fa-arrow-right me-1"></i>Open
                                         </a>
                                         @if(isset($isAdminAssistant) && $isAdminAssistant && isset($item['is_admin_assistant_view']) && $item['is_admin_assistant_view'])
                                             <small class="d-block text-muted mt-1">
@@ -432,16 +532,16 @@
 @endforeach
 
 @if(empty($pendingApprovals) || collect($pendingApprovals)->flatten(1)->isEmpty())
-    <div class="card">
-        <div class="card-body text-center py-5">
-            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-            <h4>No Pending Approvals</h4>
-            <p class="text-muted">You have no pending approvals at this time.</p>
+    <div class="card pa-empty-card shadow-none">
+        <div class="card-body text-center py-5 px-3">
+            <i class="fas fa-check-circle fa-3x mb-3" style="color: var(--pa-primary);"></i>
+            <h4 class="fw-semibold mb-2">No pending approvals</h4>
+            <p class="text-muted mb-0">Nothing in this queue with the current filters. Try another category or division, or check back later.</p>
         </div>
     </div>
 @endif
 
-
+</div>
 @endsection
 
 @push('scripts')
@@ -461,12 +561,20 @@ $(document).ready(function() {
         url.searchParams.set('category', category);
         url.searchParams.set('division', division);
         
-        // Preserve staff_id if it exists
-        const staffId = new URLSearchParams(window.location.search).get('staff_id');
+        const prev = new URLSearchParams(window.location.search);
+        const staffId = prev.get('staff_id');
         if (staffId) {
             url.searchParams.set('staff_id', staffId);
         }
-        
+        const year = prev.get('year');
+        const month = prev.get('month');
+        if (year) {
+            url.searchParams.set('year', year);
+        }
+        if (month) {
+            url.searchParams.set('month', month);
+        }
+
         window.location.href = url.toString();
     });
     
