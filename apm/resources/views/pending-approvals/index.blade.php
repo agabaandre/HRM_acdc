@@ -169,6 +169,16 @@
             box-shadow: 0 2px 8px rgba(44,63,81,0.08);
         }
     </style>
+    @php
+        $memoCardCount = ($summaryStats['by_category']['Special Memo'] ?? 0)
+            + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0)
+            + ($summaryStats['by_category']['Single Memo'] ?? 0)
+            + ($summaryStats['by_category']['Other Memo'] ?? 0);
+        $requestsCardCount = ($summaryStats['by_category']['Service Request'] ?? 0)
+            + ($summaryStats['by_category']['ARF'] ?? 0)
+            + ($summaryStats['by_category']['Change Request'] ?? 0);
+        $totalPending = (int) ($summaryStats['total_pending'] ?? 0);
+    @endphp
     <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="stat-item total">
             <i class="fas fa-clock text-danger stat-icon"></i>
@@ -186,7 +196,7 @@
             <span class="stat-number-circle">{{ $summaryStats['by_category']['Matrix'] ?? 0 }}</span>
             <span class="stat-label">Matrices</span>
             <div class="stat-progress">
-                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? (($summaryStats['by_category']['Matrix'] ?? 0) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
+                <div class="stat-progress-bar" style="width: {{ $totalPending > 0 ? (($summaryStats['by_category']['Matrix'] ?? 0) / $totalPending) * 100 : 0 }}%"></div>
             </div>
         </div>
     </div>
@@ -194,10 +204,10 @@
     <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="stat-item memos">
             <i class="fas fa-file-alt stat-icon"></i>
-            <span class="stat-number-circle">{{ ($summaryStats['by_category']['Special Memo'] ?? 0) + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0) + ($summaryStats['by_category']['Single Memo'] ?? 0) }}</span>
+            <span class="stat-number-circle">{{ $memoCardCount }}</span>
             <span class="stat-label">Memos</span>
             <div class="stat-progress">
-                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? ((($summaryStats['by_category']['Special Memo'] ?? 0) + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0) + ($summaryStats['by_category']['Single Memo'] ?? 0)) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
+                <div class="stat-progress-bar" style="width: {{ $totalPending > 0 ? ($memoCardCount / $totalPending) * 100 : 0 }}%"></div>
             </div>
         </div>
     </div>
@@ -205,12 +215,31 @@
     <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="stat-item requests">
             <i class="fas fa-cogs stat-icon"></i>
-            <span class="stat-number-circle">{{ ($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0) + ($summaryStats['by_category']['Change Request'] ?? 0) }}</span>
+            <span class="stat-number-circle">{{ $requestsCardCount }}</span>
             <span class="stat-label">Requests</span>
             <div class="stat-progress">
-                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? ((($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0) + ($summaryStats['by_category']['Change Request'] ?? 0)) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
+                <div class="stat-progress-bar" style="width: {{ $totalPending > 0 ? ($requestsCardCount / $totalPending) * 100 : 0 }}%"></div>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="card border-0 bg-light mb-4">
+    <div class="card-body py-3">
+        <h6 class="fw-semibold text-dark mb-2">
+            <i class="fas fa-info-circle me-1 text-secondary"></i>How these numbers are derived
+        </h6>
+        <ul class="small text-muted mb-0 ps-3">
+            <li><strong>Total Pending</strong> is the count of every item where <strong>you can take action now</strong> (same rules as the rows below): matrices, memos (special, non-travel, single, and other memos), service requests, ARF, and change requests. Returned items that are back in your queue are included.</li>
+            <li><strong>Matrices</strong>, <strong>Memos</strong>, and <strong>Requests</strong> split that total by type. Memos include <strong>Other Memo</strong>. The bars show each group’s share of total pending.</li>
+            <li>The <strong>category</strong> dropdown only filters the <strong>tables</strong> below; the top counts stay for your <strong>full</strong> queue so you always see workload at a glance.</li>
+            @if(!empty($isAdminAssistant))
+                <li><strong>Admin assistants</strong> also see items for approvers they support; rows marked “View Only” are not assigned to you as the primary approver.</li>
+            @endif
+            @if(isset($avgApprovalTimeDisplay) && (float)($avgApprovalTimeHours ?? 0) > 0)
+                <li><strong>Average approval time</strong> (when shown) blends <strong>completed</strong> approvals with <strong>time elapsed so far</strong> on items still waiting for your action, from when each item reached your current level until you approve (or until now if still open). Optional <strong>year</strong> / <strong>month</strong> query parameters align this with the approver dashboard filters when you open this page from there.</li>
+            @endif
+        </ul>
     </div>
 </div>
 

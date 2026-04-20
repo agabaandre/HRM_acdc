@@ -1062,14 +1062,11 @@ trait ApproverDashboardHelper
                 }
 
                 $avgHours = $count > 0 ? round($totalHours / $count, 2) : 0;
-                $result[] = [
-                    'workflow_name' => $wf->workflow_name,
-                    'workflow_id' => $workflowId,
-                    'memos' => $count,
-                    'avg_hours' => $avgHours,
-                    'avg_display' => $this->formatApprovalTime($avgHours),
-                ];
+                $result[] = $this->formatWorkflowStatRow($wf->workflow_name, (int) $workflowId, $count, $avgHours, []);
             }
+
+            $otherMemoAgg = $this->getOtherMemoApprovalDurationAggregates(null, null, null, null);
+            $this->mergeOtherMemoIntoWorkflowStats($result, $otherMemoAgg);
 
             return $result;
         } catch (\Exception $e) {
@@ -1104,6 +1101,7 @@ trait ApproverDashboardHelper
             'arf' => 'App\\Models\\RequestARF',
             'requests_for_service' => 'App\\Models\\ServiceRequest',
             'change_requests' => 'App\\Models\\ChangeRequest',
+            'other_memo' => 'App\\Models\\OtherMemo',
         ];
         return $map[$docType] ?? null;
     }
@@ -1119,8 +1117,141 @@ trait ApproverDashboardHelper
             'App\\Models\\RequestARF' => 'ARF',
             'App\\Models\\ServiceRequest' => 'Request for Service',
             'App\\Models\\ChangeRequest' => 'Change Request',
+            'App\\Models\\OtherMemo' => 'Other Memo',
         ];
         return $map[$modelType ?? ''] ?? $modelType;
+    }
+
+    /**
+     * One workflow chart/table row including avg_days for chart unit toggle.
+     *
+     * @param  list<string>  $docTypeLabels
+     */
+    protected function formatWorkflowStatRow(string $workflowName, int $workflowId, int $memosCount, float $avgHours, array $docTypeLabels): array
+    {
+        return [
+            'workflow_name' => $workflowName,
+            'workflow_id' => $workflowId,
+            'memos' => $memosCount,
+            'avg_hours' => $avgHours,
+            'avg_days' => $avgHours > 0 ? round($avgHours / 24, 4) : 0,
+            'avg_display' => $this->formatApprovalTime($avgHours),
+            'doc_type_labels' => array_values(array_unique($docTypeLabels)),
+        ];
+    }
+
+    /**
+     * Approved Other Memos: time from submitted_at to approved_at (not on approval_trails).
+     *
+     * @return array{count: int, total_hours: float, workflow_id: int|null}
+     */
+    protected function getOtherMemoApprovalDurationAggregates(?int $divisionId, ?string $docType, ?int $year, ?int $month): array
+    {
+        if ($docType && ! in_array($docType, ['memos', 'other_memo', ''], true)) {
+            return ['count' => 0, 'total_hours' => 0.0, 'workflow_id' => null];
+        }
+
+        $workflowId = \App\Models\WorkflowModel::getWorkflowIdForModel('OtherMemo');
+
+        $q = \App\Models\OtherMemo::query()
+            ->where('overall_status', \App\Models\OtherMemo::STATUS_APPROVED)
+            ->whereNotNull('submitted_at')
+            ->whereNotNull('approved_at');
+
+        if ($divisionId) {
+            $q->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $q->whereYear('submitted_at', $year);
+        }
+        if ($month) {
+            $q->whereMonth('submitted_at', $month);
+        }
+
+        $totalHours = 0.0;
+        $count = 0;
+        foreach ($q->cursor() as $om) {
+            $totalHours += Carbon::parse($om->submitted_at)->diffInSeconds(Carbon::parse($om->approved_at)) / 3600.0;
+            $count++;
+        }
+
+        return [
+            'count' => $count,
+            'total_hours' => $totalHours,
+            'workflow_id' => $workflowId ? (int) $workflowId : null,
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, object>  $workflows
+     * @return list<array<string, mixed>>
+     */
+    protected function getWorkflowStatsOtherMemoOnlyRows($workflows, ?int $divisionId, ?int $year, ?int $month): array
+    {
+        $om = $this->getOtherMemoApprovalDurationAggregates($divisionId, 'other_memo', $year, $month);
+        if (! $om['workflow_id'] || $om['count'] < 1) {
+            return [];
+        }
+        $wf = $workflows->firstWhere('id', (int) $om['workflow_id']);
+        if (! $wf) {
+            return [];
+        }
+        $avgHours = round($om['total_hours'] / $om['count'], 2);
+
+        return [$this->formatWorkflowStatRow($wf->workflow_name, (int) $wf->id, $om['count'], $avgHours, ['Other Memo'])];
+    }
+
+    /**
+     * Merge Other Memo cycle-time stats into the workflow row that owns this model (workflow_models).
+     *
+     * @param  list<array<string, mixed>>  $result
+     */
+    protected function mergeOtherMemoIntoWorkflowStats(array &$result, array $otherAgg): void
+    {
+        if ($otherAgg['count'] < 1 || ! $otherAgg['workflow_id']) {
+            return;
+        }
+
+        $found = false;
+        foreach ($result as $idx => $row) {
+            if ((int) ($row['workflow_id'] ?? 0) !== (int) $otherAgg['workflow_id']) {
+                continue;
+            }
+            $found = true;
+            $c1 = (int) ($row['memos'] ?? 0);
+            $h1 = (float) ($row['avg_hours'] ?? 0) * $c1;
+            $c2 = (int) $otherAgg['count'];
+            $h2 = (float) $otherAgg['total_hours'];
+            $tc = $c1 + $c2;
+            $avgHours = $tc > 0 ? round(($h1 + $h2) / $tc, 2) : 0.0;
+            $labels = $row['doc_type_labels'] ?? [];
+            if (! in_array('Other Memo', $labels, true)) {
+                $labels[] = 'Other Memo';
+            }
+            sort($labels);
+            $result[$idx] = $this->formatWorkflowStatRow(
+                (string) $row['workflow_name'],
+                (int) $row['workflow_id'],
+                $tc,
+                $avgHours,
+                $labels
+            );
+            break;
+        }
+
+        if (! $found) {
+            $wf = DB::table('workflows')->where('id', (int) $otherAgg['workflow_id'])->first();
+            if ($wf) {
+                $avgHours = round($otherAgg['total_hours'] / $otherAgg['count'], 2);
+                $result[] = $this->formatWorkflowStatRow(
+                    (string) $wf->workflow_name,
+                    (int) $wf->id,
+                    (int) $otherAgg['count'],
+                    $avgHours,
+                    ['Other Memo']
+                );
+            }
+        }
     }
 
     /**
@@ -1133,6 +1264,10 @@ trait ApproverDashboardHelper
                 ->select('id', 'workflow_name')
                 ->orderBy('workflow_name')
                 ->get();
+
+            if ($docType === 'other_memo') {
+                return $this->getWorkflowStatsOtherMemoOnlyRows($workflows, $divisionId, $year, $month);
+            }
 
             $modelType = $docType ? self::getModelTypeByDocType($docType) : null;
             $quarter = ($month && $year) ? 'Q' . ceil($month / 3) : null;
@@ -1509,15 +1644,17 @@ trait ApproverDashboardHelper
                 sort($docTypeLabels);
 
                 $avgHours = $count > 0 ? round($totalHours / $count, 2) : 0;
-                $result[] = [
-                    'workflow_name' => $wf->workflow_name,
-                    'workflow_id' => $workflowId,
-                    'memos' => $count,
-                    'avg_hours' => $avgHours,
-                    'avg_display' => $this->formatApprovalTime($avgHours),
-                    'doc_type_labels' => $docTypeLabels,
-                ];
+                $result[] = $this->formatWorkflowStatRow(
+                    $wf->workflow_name,
+                    (int) $workflowId,
+                    $count,
+                    $avgHours,
+                    $docTypeLabels
+                );
             }
+
+            $otherMemoAgg = $this->getOtherMemoApprovalDurationAggregates($divisionId, $docType, $year, $month);
+            $this->mergeOtherMemoIntoWorkflowStats($result, $otherMemoAgg);
 
             return $result;
         } catch (\Exception $e) {
@@ -1607,11 +1744,42 @@ trait ApproverDashboardHelper
             
             $result = $query->select(DB::raw('COUNT(DISTINCT CONCAT(at.model_type, "-", at.model_id)) as total_count'))
                 ->first();
-            
-            return $result->total_count ?? 0;
+
+            $base = (int) ($result->total_count ?? 0);
+
+            return $base + $this->getTotalHandledOtherMemoForApprover((int) $staffId, $divisionId, $year, $month);
             
         } catch (\Exception $e) {
             Log::error('Error calculating total handled for approver (all): ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Other Memo actions (approved/rejected) by this staff on other_memos_approval_trails.
+     */
+    protected function getTotalHandledOtherMemoForApprover(int $staffId, ?int $divisionId, ?int $year, ?int $month): int
+    {
+        try {
+            $q = DB::table('other_memos_approval_trails as t')
+                ->join('other_memos as om', 'om.id', '=', 't.other_memo_id')
+                ->where('t.staff_id', $staffId)
+                ->whereIn('t.action', ['approved', 'rejected']);
+
+            if ($divisionId) {
+                $q->where('om.division_id', $divisionId);
+            }
+            if ($year) {
+                $q->whereYear('t.created_at', $year);
+            }
+            if ($month) {
+                $q->whereMonth('t.created_at', $month);
+            }
+
+            return (int) $q->select(DB::raw('COUNT(DISTINCT om.id) as cnt'))->value('cnt');
+        } catch (\Exception $e) {
+            Log::error('Error calculating total handled other memo for approver: ' . $e->getMessage());
+
             return 0;
         }
     }
@@ -1627,6 +1795,9 @@ trait ApproverDashboardHelper
      *   So e.g. level 9 uses when level 8, 7 or 6 actually approved; level 12 uses when 11 or 10 approved.
      *   We never use submission for order >= 3, so delay at earlier levels is not attributed to this approver.
      * - Approval time: current approver's updated_at (when they took the action).
+     *
+     * Pending items (same scope as pending-approvals / canTakeAction): each open item contributes
+     * elapsed hours from "received at current level" to now, combined with completed actions in one average.
      */
     protected function getAverageApprovalTimeAll($staffId, $divisionId = null, $year = null, $month = null)
     {
@@ -1789,11 +1960,7 @@ trait ApproverDashboardHelper
             
             $results = DB::select($sql, $params);
             
-            if (empty($results)) {
-                return 0;
-            }
-            
-            $totalHours = 0;
+            $totalHours = 0.0;
             $count = 0;
             
             foreach ($results as $result) {
@@ -1817,6 +1984,8 @@ trait ApproverDashboardHelper
                     continue;
                 }
             }
+
+            $this->addPendingApprovalWaitContributions((int) $staffId, $divisionId, $year, $month, $totalHours, $count);
             
             return $count > 0 ? round($totalHours / $count, 2) : 0;
             
@@ -1824,5 +1993,482 @@ trait ApproverDashboardHelper
             Log::error('Error calculating average approval time (all): ' . $e->getMessage());
             return 0;
         }
+    }
+
+    /**
+     * Last submitted trail time for a document (same rules as average-approval SQL for order 1 receipt).
+     */
+    protected function selectLastSubmittedTimeForModel(string $modelType, int $modelId, int $forwardWorkflowId): ?string
+    {
+        $matrixType = 'App\\Models\\Matrix';
+        $activityType = 'App\\Models\\Activity';
+
+        $row = DB::selectOne(
+            "
+            SELECT MAX(sub_at.updated_at) as t
+            FROM approval_trails sub_at
+            WHERE sub_at.model_type = ?
+              AND sub_at.model_id = ?
+              AND (
+                  sub_at.forward_workflow_id = ?
+                  OR (sub_at.forward_workflow_id IS NULL AND ? = ? AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = ? LIMIT 1) = ?)
+                  OR (sub_at.forward_workflow_id IS NULL AND ? = ? AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = ? LIMIT 1) = ?)
+                  OR (sub_at.forward_workflow_id IS NULL AND ? NOT IN (?, ?))
+              )
+              AND sub_at.approval_order = 0
+              AND sub_at.action = 'submitted'
+              AND sub_at.is_archived = 0
+            ",
+            [
+                $modelType, $modelId, $forwardWorkflowId,
+                $modelType, $matrixType, $modelId, $forwardWorkflowId,
+                $modelType, $activityType, $modelId, $forwardWorkflowId,
+                $modelType, $matrixType, $activityType,
+            ]
+        );
+
+        return $row->t ?? null;
+    }
+
+    /**
+     * Latest approved/rejected trail strictly before the given approval order (same workflow).
+     */
+    protected function selectMaxPreviousApprovalBefore(string $modelType, int $modelId, int $forwardWorkflowId, int $approvalOrderExclusive): ?string
+    {
+        $row = DB::selectOne(
+            "
+            SELECT MAX(prev_at.updated_at) as t
+            FROM approval_trails prev_at
+            WHERE prev_at.model_type = ?
+              AND prev_at.model_id = ?
+              AND prev_at.forward_workflow_id = ?
+              AND prev_at.approval_order < ?
+              AND prev_at.action IN ('approved', 'rejected')
+              AND prev_at.is_archived = 0
+            ",
+            [$modelType, $modelId, $forwardWorkflowId, $approvalOrderExclusive]
+        );
+
+        return $row->t ?? null;
+    }
+
+    /**
+     * When the item became actionable at its current approval level (for open / pending items).
+     */
+    protected function getReceivedAtCurrentLevelForModel(\Illuminate\Database\Eloquent\Model $model): ?Carbon
+    {
+        if ($model instanceof \App\Models\OtherMemo) {
+            if ($model->submitted_at) {
+                return Carbon::parse($model->submitted_at);
+            }
+            $t = DB::table('other_memos_approval_trails')
+                ->where('other_memo_id', $model->getKey())
+                ->max('created_at');
+
+            return $t ? Carbon::parse($t) : null;
+        }
+
+        $level = (int) ($model->approval_level ?? 0);
+        $wf = (int) ($model->forward_workflow_id ?? 0);
+        if ($level <= 0 || $wf <= 0) {
+            return null;
+        }
+
+        $type = $model->getMorphClass();
+        $id = (int) $model->getKey();
+
+        if ($level >= 3) {
+            $t = $this->selectMaxPreviousApprovalBefore($type, $id, $wf, $level);
+        } elseif ($level === 2) {
+            $t = $this->selectMaxPreviousApprovalBefore($type, $id, $wf, 2);
+            if ($t === null) {
+                $t = $this->selectLastSubmittedTimeForModel($type, $id, $wf);
+            }
+        } else {
+            $t = $this->selectLastSubmittedTimeForModel($type, $id, $wf);
+        }
+
+        return $t ? Carbon::parse($t) : null;
+    }
+
+    /**
+     * Add open-wait hours for every item this approver can still action (pending-approvals scope).
+     */
+    protected function addPendingApprovalWaitContributions(
+        int $staffId,
+        $divisionId,
+        $year,
+        $month,
+        float &$totalHours,
+        int &$count
+    ): void {
+        $approvalService = app(\App\Services\ApprovalService::class);
+        $now = Carbon::now();
+
+        $applyWait = function (\Illuminate\Database\Eloquent\Model $model) use (&$totalHours, &$count, $now): void {
+            $received = $this->getReceivedAtCurrentLevelForModel($model);
+            if (! $received || $now->lt($received)) {
+                return;
+            }
+            $totalHours += max(0, $now->getTimestamp() - $received->getTimestamp()) / 3600.0;
+            $count++;
+        };
+
+        $query = \App\Models\Matrix::with(['division', 'staff', 'focalPerson', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->whereNotNull('forward_workflow_id')
+            ->where('approval_level', '>', 0);
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $query->where('year', $year);
+        }
+        if ($month) {
+            $query->where('quarter', 'Q' . ceil($month / 3));
+        }
+        foreach ($query->get() as $matrix) {
+            if ($approvalService->canTakeAction($matrix, $staffId)) {
+                $applyWait($matrix);
+            }
+        }
+
+        $query = \App\Models\SpecialMemo::with(['staff', 'division'])
+            ->where('overall_status', 'pending')
+            ->whereNotNull('forward_workflow_id')
+            ->where('approval_level', '>', 0);
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+        foreach ($query->get() as $memo) {
+            if ($approvalService->canTakeAction($memo, $staffId)) {
+                $applyWait($memo);
+            }
+        }
+
+        $query = \App\Models\NonTravelMemo::with(['staff', 'division'])
+            ->where('overall_status', 'pending')
+            ->whereNotNull('forward_workflow_id')
+            ->where('approval_level', '>', 0);
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+        foreach ($query->get() as $memo) {
+            if ($approvalService->canTakeAction($memo, $staffId)) {
+                $applyWait($memo);
+            }
+        }
+
+        $query = \App\Models\Activity::with(['staff', 'division', 'matrix'])
+            ->where('is_single_memo', true)
+            ->where('overall_status', 'pending')
+            ->whereNotNull('forward_workflow_id')
+            ->where('approval_level', '>', 0);
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $query->whereHas('matrix', function ($q) use ($year): void {
+                $q->where('year', $year);
+            });
+        }
+        if ($month) {
+            $quarter = 'Q' . ceil($month / 3);
+            $query->whereHas('matrix', function ($q) use ($quarter): void {
+                $q->where('quarter', $quarter);
+            });
+        }
+        foreach ($query->get() as $activity) {
+            if ($approvalService->canTakeAction($activity, $staffId)) {
+                $applyWait($activity);
+            }
+        }
+
+        $query = \App\Models\OtherMemo::query()
+            ->where('overall_status', \App\Models\OtherMemo::STATUS_PENDING)
+            ->whereNotNull('current_approver_staff_id');
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+        foreach ($query->get() as $otherMemo) {
+            if ($approvalService->canTakeAction($otherMemo, $staffId)) {
+                $applyWait($otherMemo);
+            }
+        }
+
+        $query = \App\Models\RequestARF::with(['staff', 'division', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->whereNotNull('forward_workflow_id')
+            ->where('approval_level', '>', 0);
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+        foreach ($query->get() as $arf) {
+            if ($approvalService->canTakeAction($arf, $staffId)) {
+                $applyWait($arf);
+            }
+        }
+
+        $query = \App\Models\ServiceRequest::with(['staff', 'division', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->whereNotNull('forward_workflow_id')
+            ->where('approval_level', '>', 0);
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+        foreach ($query->get() as $serviceRequest) {
+            if ($approvalService->canTakeAction($serviceRequest, $staffId)) {
+                $applyWait($serviceRequest);
+            }
+        }
+
+        $query = \App\Models\ChangeRequest::with(['staff', 'division', 'forwardWorkflow', 'matrix'])
+            ->where('overall_status', 'pending')
+            ->whereNotNull('forward_workflow_id')
+            ->where('approval_level', '>', 0);
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $query->where(function ($q) use ($year): void {
+                $q->whereHas('matrix', function ($matrixQuery) use ($year): void {
+                    $matrixQuery->where('year', $year);
+                })->orWhereYear('created_at', $year);
+            });
+        }
+        if ($month) {
+            $quarter = 'Q' . ceil($month / 3);
+            $query->where(function ($q) use ($quarter, $month): void {
+                $q->whereHas('matrix', function ($matrixQuery) use ($quarter): void {
+                    $matrixQuery->where('quarter', $quarter);
+                })->orWhereMonth('created_at', $month);
+            });
+        }
+        foreach ($query->get() as $changeRequest) {
+            if ($approvalService->canTakeAction($changeRequest, $staffId)) {
+                $applyWait($changeRequest);
+            }
+        }
+    }
+
+    /**
+     * Dashboard header cards: document counts by status for the selected division / doc type / year / month.
+     * Total approval requests = pending + approved + returned (same scope).
+     */
+    protected function getDashboardSummaryMetrics(?int $divisionId, ?string $docType, ?int $year, ?int $month): array
+    {
+        try {
+            $types = $this->expandDashboardDocTypes($docType);
+            $pending = 0;
+            $approved = 0;
+            $returned = 0;
+            foreach ($types as $t) {
+                $pending += $this->dashboardCountDocumentsByStatus($t, 'pending', $divisionId, $year, $month);
+                $approved += $this->dashboardCountDocumentsByStatus($t, 'approved', $divisionId, $year, $month);
+                $returned += $this->dashboardCountDocumentsByStatus($t, 'returned', $divisionId, $year, $month);
+            }
+
+            return [
+                'total_approval_requests' => $pending + $approved + $returned,
+                'total_pending' => $pending,
+                'total_approved' => $approved,
+                'total_returned' => $returned,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error calculating dashboard summary metrics: ' . $e->getMessage());
+
+            return [
+                'total_approval_requests' => 0,
+                'total_pending' => 0,
+                'total_approved' => 0,
+                'total_returned' => 0,
+            ];
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function expandDashboardDocTypes(?string $docType): array
+    {
+        if ($docType === null || $docType === '') {
+            return ['matrix', 'non_travel', 'special', 'single_memos', 'arf', 'requests_for_service', 'change_requests', 'other_memo'];
+        }
+        if ($docType === 'memos') {
+            return ['non_travel', 'special', 'single_memos', 'other_memo'];
+        }
+
+        return [$docType];
+    }
+
+    protected function dashboardCountDocumentsByStatus(string $type, string $status, ?int $divisionId, ?int $year, ?int $month): int
+    {
+        switch ($type) {
+            case 'matrix':
+                return $this->dashboardCountMatrixLike(\App\Models\Matrix::query(), $status, $divisionId, $year, $month, true);
+            case 'special':
+                return $this->dashboardCountMemoLike(\App\Models\SpecialMemo::query(), $status, $divisionId, $year, $month);
+            case 'non_travel':
+                return $this->dashboardCountMemoLike(\App\Models\NonTravelMemo::query(), $status, $divisionId, $year, $month);
+            case 'single_memos':
+                $q = \App\Models\Activity::query()->where('is_single_memo', true);
+                if ($status === 'pending') {
+                    $q->where('overall_status', 'pending')->whereNotNull('forward_workflow_id')->where('approval_level', '>', 0);
+                } else {
+                    $q->where('overall_status', $status);
+                }
+                if ($divisionId) {
+                    $q->where('division_id', $divisionId);
+                }
+                if ($year) {
+                    $q->whereHas('matrix', function ($mq) use ($year): void {
+                        $mq->where('year', $year);
+                    });
+                }
+                if ($month) {
+                    $quarter = 'Q' . ceil($month / 3);
+                    $q->whereHas('matrix', function ($mq) use ($quarter): void {
+                        $mq->where('quarter', $quarter);
+                    });
+                }
+
+                return (int) $q->count();
+            case 'arf':
+                return $this->dashboardCountMemoLike(\App\Models\RequestARF::query(), $status, $divisionId, $year, $month);
+            case 'requests_for_service':
+                return $this->dashboardCountMemoLike(\App\Models\ServiceRequest::query(), $status, $divisionId, $year, $month);
+            case 'change_requests':
+                $q = \App\Models\ChangeRequest::query();
+                if ($status === 'pending') {
+                    $q->where('overall_status', 'pending')->whereNotNull('forward_workflow_id')->where('approval_level', '>', 0);
+                } else {
+                    $q->where('overall_status', $status);
+                }
+                if ($divisionId) {
+                    $q->where('division_id', $divisionId);
+                }
+                if ($year) {
+                    $q->where(function ($qq) use ($year): void {
+                        $qq->whereHas('matrix', function ($mq) use ($year): void {
+                            $mq->where('year', $year);
+                        })->orWhereYear('created_at', $year);
+                    });
+                }
+                if ($month) {
+                    $quarter = 'Q' . ceil($month / 3);
+                    $q->where(function ($qq) use ($quarter, $month): void {
+                        $qq->whereHas('matrix', function ($mq) use ($quarter): void {
+                            $mq->where('quarter', $quarter);
+                        })->orWhereMonth('created_at', $month);
+                    });
+                }
+
+                return (int) $q->count();
+            case 'other_memo':
+                return $this->dashboardCountOtherMemo($status, $divisionId, $year, $month);
+            default:
+                return 0;
+        }
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Matrix>  $q
+     */
+    protected function dashboardCountMatrixLike($q, string $status, ?int $divisionId, ?int $year, ?int $month, bool $isMatrix): int
+    {
+        if ($status === 'pending') {
+            $q->where('overall_status', 'pending')->whereNotNull('forward_workflow_id')->where('approval_level', '>', 0);
+        } else {
+            $q->where('overall_status', $status);
+        }
+        if ($divisionId) {
+            $q->where('division_id', $divisionId);
+        }
+        if ($year && $isMatrix) {
+            $q->where('year', $year);
+        }
+        if ($month && $isMatrix) {
+            $q->where('quarter', 'Q' . ceil($month / 3));
+        }
+
+        return (int) $q->count();
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<\Illuminate\Database\Eloquent\Model>  $q
+     */
+    protected function dashboardCountMemoLike($q, string $status, ?int $divisionId, ?int $year, ?int $month): int
+    {
+        if ($status === 'pending') {
+            $q->where('overall_status', 'pending')->whereNotNull('forward_workflow_id')->where('approval_level', '>', 0);
+        } else {
+            $q->where('overall_status', $status);
+        }
+        if ($divisionId) {
+            $q->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $q->whereYear('created_at', $year);
+        }
+        if ($month) {
+            $q->whereMonth('created_at', $month);
+        }
+
+        return (int) $q->count();
+    }
+
+    protected function dashboardCountOtherMemo(string $status, ?int $divisionId, ?int $year, ?int $month): int
+    {
+        $q = \App\Models\OtherMemo::query();
+        if ($status === 'pending') {
+            $q->where('overall_status', \App\Models\OtherMemo::STATUS_PENDING)->whereNotNull('current_approver_staff_id');
+        } elseif ($status === 'approved') {
+            $q->where('overall_status', \App\Models\OtherMemo::STATUS_APPROVED);
+        } elseif ($status === 'returned') {
+            $q->where('overall_status', \App\Models\OtherMemo::STATUS_RETURNED);
+        } else {
+            return 0;
+        }
+        if ($divisionId) {
+            $q->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $q->whereYear('created_at', $year);
+        }
+        if ($month) {
+            $q->whereMonth('created_at', $month);
+        }
+
+        return (int) $q->count();
     }
 }

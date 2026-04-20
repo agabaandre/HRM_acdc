@@ -127,6 +127,16 @@
     --stat-color-light: #34ce57;
   }
 
+  .stats-container .stat-item.approved {
+    --stat-color: #198754;
+    --stat-color-light: #20c997;
+  }
+
+  .stats-container .stat-item.returned {
+    --stat-color: #0dcaf0;
+    --stat-color-light: #6ea8fe;
+  }
+
   .stats-container .stat-icon-wrap {
     display: inline-flex;
     align-items: center;
@@ -348,6 +358,8 @@ var baseUrl = '{{ user_session("base_url") ?? url("/") }}';
 var staffPhotoRoute = @json(route('staff-uploads.photo'));
 var pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
 var dashboardApiUrl = '{{ route("approver-dashboard.api") }}';
+var workflowStatsData = [];
+var workflowChartUnit = 'days';
 
 // Table cache: 5 min TTL, cache-first then background refresh
 var CACHE_TTL_MS = 5 * 60 * 1000;
@@ -397,7 +409,7 @@ function setLastUpdatedDisplay(timestamp) {
     if (!el) return;
     if (typeof timestamp !== 'number') timestamp = Date.now();
     var d = new Date(timestamp);
-    el.textContent = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    el.textContent = d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function pendingApprovalsFilterParams() {
@@ -438,6 +450,16 @@ function initApproverDashboard() {
         if (approverTable) approverTable.draw();
         loadWorkflowStats();
     });
+    $('#wfChartUnitDays, #wfChartUnitHours').off('click.approverDashboard').on('click.approverDashboard', function() {
+        workflowChartUnit = this.id === 'wfChartUnitHours' ? 'hours' : 'days';
+        $('#wfChartUnitDays').toggleClass('active', workflowChartUnit === 'days');
+        $('#wfChartUnitHours').toggleClass('active', workflowChartUnit === 'hours');
+        if (workflowStatsData && workflowStatsData.length) {
+            renderWorkflowStats(workflowStatsData);
+        }
+    });
+    $('#wfChartUnitDays').toggleClass('active', workflowChartUnit === 'days');
+    $('#wfChartUnitHours').toggleClass('active', workflowChartUnit === 'hours');
     $('#exportExcel').off('click.approverDashboard').on('click.approverDashboard', function() {
         if (approverTable) approverTable.button('.buttons-excel').trigger();
     });
@@ -548,29 +570,54 @@ function clearWorkflowChart() {
     }
 }
 
+function formatWorkflowAvgCell(row) {
+    var unit = workflowChartUnit || 'days';
+    if (unit === 'hours') {
+        return escapeHtml(row.avg_display || 'No data');
+    }
+    var d = row.avg_days != null ? Number(row.avg_days) : (Number(row.avg_hours || 0) / 24);
+    if (!isFinite(d) || d <= 0) {
+        return '<span class="text-muted">No data</span>';
+    }
+    var rounded = d >= 10 ? Math.round(d * 10) / 10 : Math.round(d * 100) / 100;
+    return escapeHtml(String(rounded)) + ' <span class="text-muted small">days</span>';
+}
+
 function renderWorkflowStats(stats) {
+    workflowStatsData = stats && stats.length ? stats.slice() : [];
     var tbody = $('#workflowStatsBody');
     tbody.empty();
-    if (!stats || stats.length === 0) {
+    if (!workflowStatsData.length) {
         tbody.html('<tr><td colspan="3" class="text-center text-muted">No workflow data</td></tr>');
         clearWorkflowChart();
         return;
     }
-    stats.forEach(function(row) {
+    workflowStatsData.forEach(function(row) {
         var docTypes = (row.doc_type_labels && row.doc_type_labels.length)
             ? row.doc_type_labels.join(', ')
             : '';
         var docTypesHtml = docTypes
             ? '<div class="small text-muted mt-1">' + escapeHtml(docTypes) + '</div>'
             : '';
-        tbody.append('<tr><td><div>' + escapeHtml(row.workflow_name || '-') + '</div>' + docTypesHtml + '</td><td class="text-end">' + (row.memos != null ? row.memos : 0) + '</td><td class="text-end">' + escapeHtml(row.avg_display || 'No data') + '</td></tr>');
+        tbody.append('<tr><td><div>' + escapeHtml(row.workflow_name || '-') + '</div>' + docTypesHtml + '</td><td class="text-end">' + (row.memos != null ? row.memos : 0) + '</td><td class="text-end">' + formatWorkflowAvgCell(row) + '</td></tr>');
     });
 
     // Column chart: defer render so container is in DOM (fixes Livewire/navigation timing)
-    var categories = stats.map(function(s) { return s.workflow_name || 'Unknown'; });
-    var seriesData = stats.map(function(s) { return Math.round((s.avg_hours || 0) * 10) / 10; });
-    var maxHours = seriesData.length ? Math.max.apply(null, seriesData) : 0;
-    var yMax = maxHours > 0 ? Math.ceil(maxHours * 1.15) : 10;
+    var categories = workflowStatsData.map(function(s) { return s.workflow_name || 'Unknown'; });
+    var unit = workflowChartUnit || 'days';
+    var seriesData = workflowStatsData.map(function(s) {
+        if (unit === 'hours') {
+            return Math.round((Number(s.avg_hours) || 0) * 10) / 10;
+        }
+        var days = s.avg_days != null ? Number(s.avg_days) : (Number(s.avg_hours) || 0) / 24;
+        return Math.round(days * 1000) / 1000;
+    });
+    var maxVal = seriesData.length ? Math.max.apply(null, seriesData) : 0;
+    var yMax = maxVal > 0 ? Math.ceil(maxVal * 1.15 * 100) / 100 : (unit === 'hours' ? 10 : 5);
+    var yTitle = unit === 'hours' ? 'Time to last approver (hours)' : 'Time to last approver (days)';
+    var subText = unit === 'hours'
+        ? 'Time from submission to final approval, in hours.'
+        : 'Time from submission to final approval, in days (default).';
 
     function drawChart() {
         var chartEl = document.getElementById('workflowAvgTimeChart');
@@ -583,26 +630,31 @@ function renderWorkflowStats(stats) {
             var chart = Highcharts.chart('workflowAvgTimeChart', {
                 chart: { type: 'column', height: 350 },
                 title: { text: 'Average Time to Last Approver (approved documents only)' },
-                subtitle: { text: 'Time from submission to final approval, in hours.' },
+                subtitle: { text: subText },
                 xAxis: { categories: categories, title: { text: 'Workflow' }, crosshair: true, labels: { rotation: -45 } },
                 yAxis: {
                     min: 0,
                     max: yMax,
-                    title: { text: 'Time to last approver (hours)' },
+                    title: { text: yTitle },
                     allowDecimals: true
                 },
                 tooltip: {
                     headerFormat: '<b>{point.x}</b><br/>',
-                    pointFormat: 'Avg. time to last approver: {point.y} hrs'
+                    pointFormat: unit === 'hours'
+                        ? 'Avg. time to last approver: {point.y} hrs'
+                        : 'Avg. time to last approver: {point.y} days'
                 },
                 plotOptions: {
                     column: {
                         color: 'var(--primary-color, #119a48)',
                         borderRadius: 4,
-                        dataLabels: { enabled: true, format: '{y} hrs' }
+                        dataLabels: {
+                            enabled: true,
+                            format: unit === 'hours' ? '{y} hrs' : '{y} d'
+                        }
                     }
                 },
-                series: [{ name: 'Avg. time to last approver (hrs)', data: seriesData }],
+                series: [{ name: unit === 'hours' ? 'Avg. time (hours)' : 'Avg. time (days)', data: seriesData }],
                 credits: { enabled: false }
             });
             chartEl.__chart = chart;
@@ -908,16 +960,15 @@ function initializeDataTable() {
 
 
 function updateSummaryStats(response) {
-    // Update summary statistics (lastUpdated is set by setLastUpdatedDisplay in ajax/cache path)
-    if (response && response.pagination) {
-        $('#totalApprovers').text(response.pagination.total);
-    }
-    if (response && response.data && response.data.length > 0) {
-        $('#totalPending').text(response.data.reduce(function(sum, approver) { return sum + (approver.total_pending || 0); }, 0));
-    }
-    if (response && response.total_workflows !== undefined) {
-        $('#activeWorkflow').text(response.total_workflows || 0);
-    }
+    var sc = response && response.summary_cards ? response.summary_cards : null;
+    var tr = sc && sc.total_approval_requests != null ? sc.total_approval_requests : 0;
+    var tp = sc && sc.total_pending != null ? sc.total_pending : 0;
+    var ta = sc && sc.total_approved != null ? sc.total_approved : 0;
+    var tret = sc && sc.total_returned != null ? sc.total_returned : 0;
+    $('#totalApprovalRequests').text(tr);
+    $('#totalPending').text(tp);
+    $('#totalApproved').text(ta);
+    $('#totalReturned').text(tret);
 }
 
 function refreshDashboard() {
