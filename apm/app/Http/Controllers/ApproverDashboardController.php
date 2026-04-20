@@ -178,8 +178,12 @@ class ApproverDashboardController extends Controller
                 return $this->exportToPdf($request, $allApproversWithCounts);
             }
 
-            // Get total number of workflows for display
-            $totalWorkflows = Workflow::count();
+            $summaryCards = $this->getDashboardSummaryMetrics(
+                $divisionId ? (int) $divisionId : null,
+                $docType,
+                $year ? (int) $year : null,
+                $month ? (int) $month : null
+            );
 
             // Return response compatible with both DataTables and original format
             return response()->json([
@@ -187,7 +191,7 @@ class ApproverDashboardController extends Controller
                 'data' => $approversWithCounts,
                 'recordsTotal' => $totalCount,
                 'recordsFiltered' => $totalCount,
-                'total_workflows' => $totalWorkflows,
+                'summary_cards' => $summaryCards,
                 'pagination' => [
                     'current_page' => $page,
                     'per_page' => $perPage,

@@ -1,48 +1,69 @@
 <div class="container-fluid">
   <!-- Approver Statistics (quality cards, workplan-style) -->
   <div class="stats-container">
-    <h5 class="mb-4 fw-bold text-center">
-      <i class="fa fa-chart-bar me-2"></i>Approver Dashboard Overview
-    </h5>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+      <h5 class="mb-0 fw-bold">
+        <i class="fa fa-chart-bar me-2"></i>Approver Dashboard Overview
+      </h5>
+      <span class="text-muted small text-nowrap" id="lastUpdatedShell">Last updated: <strong id="lastUpdated">—</strong></span>
+    </div>
     <div class="row g-3">
-      <div class="col-md-3">
+      <div class="col-md-3 col-sm-6">
         <div class="stat-item total">
-          <div class="stat-icon-wrap"><i class="fa fa-users stat-icon"></i></div>
-          <span class="stat-number" id="totalApprovers">0</span>
-          <span class="stat-label">Total Approvers</span>
+          <div class="stat-icon-wrap"><i class="fa fa-inbox stat-icon"></i></div>
+          <span class="stat-number" id="totalApprovalRequests">0</span>
+          <span class="stat-label">Total Approval Requests</span>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3 col-sm-6">
         <div class="stat-item pending">
           <div class="stat-icon-wrap"><i class="fa fa-clock stat-icon"></i></div>
           <span class="stat-number" id="totalPending">0</span>
           <span class="stat-label">Total Pending</span>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="stat-item workflow">
-          <div class="stat-icon-wrap"><i class="fa fa-cogs stat-icon"></i></div>
-          <span class="stat-number" id="activeWorkflow">-</span>
-          <span class="stat-label">Active Workflows</span>
+      <div class="col-md-3 col-sm-6">
+        <div class="stat-item approved">
+          <div class="stat-icon-wrap"><i class="fa fa-check-circle stat-icon"></i></div>
+          <span class="stat-number" id="totalApproved">0</span>
+          <span class="stat-label">Total Requests Approved</span>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="stat-item updated">
-          <div class="stat-icon-wrap"><i class="fa fa-sync-alt stat-icon"></i></div>
-          <span class="stat-number" id="lastUpdated">-</span>
-          <span class="stat-label">Last Updated</span>
+      <div class="col-md-3 col-sm-6">
+        <div class="stat-item returned">
+          <div class="stat-icon-wrap"><i class="fa fa-undo stat-icon"></i></div>
+          <span class="stat-number" id="totalReturned">0</span>
+          <span class="stat-label">Total Returned</span>
         </div>
+      </div>
+    </div>
+    <div class="card border-0 bg-light mb-0">
+      <div class="card-body py-3">
+        <h6 class="fw-semibold text-dark mb-2">
+          <i class="fa fa-info-circle me-1 text-secondary"></i>How these statistics are calculated
+        </h6>
+        <ul class="small text-muted mb-0 ps-3">
+          <li><strong>Summary cards</strong> use the same <strong>Division</strong>, <strong>Document type</strong>, <strong>Year</strong>, and <strong>Month</strong> filters as the approver table. Each count is a <strong>document</strong> (or single-memo activity) in that scope: <em>Total Pending</em> and <em>Returned</em> are items currently in workflow at an approval level; <em>Approved</em> completed in the period; <em>Total Approval Requests</em> is pending + approved + returned for the selected filters. Types include matrices, special and non-travel memos, single memos, ARF, service requests, change requests, and other memos (when included in the selected document type).</li>
+          <li><strong>Average time to last approver</strong> uses <strong>approved</strong> items only: elapsed time from submission (or the model’s submission timestamp) until the <strong>final</strong> approval, grouped by workflow. Other memos follow submit-to-final-approval on their own trail. The chart defaults to <strong>days</strong>; switch to hours for detail.</li>
+          <li>Per-approver columns in the table (pending, handled, average time) use the same action rules as the live approval queues.</li>
+        </ul>
       </div>
     </div>
   </div>
 
   <!-- Average Time to Last Approver by Workflow (approved documents only) -->
   <div class="card filter-card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0 text-dark">
-        <i class="fa fa-chart-bar me-2"></i>Average Time to Last Approver by Workflow
-      </h5>
-      <p class="mb-0 mt-1 small text-muted">Approved documents only. Time from submission to when the final approver approved.</p>
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+      <div>
+        <h5 class="mb-0 text-dark">
+          <i class="fa fa-chart-bar me-2"></i>Average Time to Last Approver by Workflow
+        </h5>
+        <p class="mb-0 mt-1 small text-muted">Includes matrices, memos, ARF, service requests, change requests, and <strong>Other Memos</strong> (Other Memo: submit → final approval). Chart defaults to <strong>days</strong>; switch to hours if needed.</p>
+      </div>
+      <div class="btn-group btn-group-sm" role="group" aria-label="Chart time unit">
+        <button type="button" class="btn btn-outline-secondary active" id="wfChartUnitDays">Days</button>
+        <button type="button" class="btn btn-outline-secondary" id="wfChartUnitHours">Hours</button>
+      </div>
     </div>
     <div class="card-body">
       <div class="row">
