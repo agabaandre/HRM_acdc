@@ -25,11 +25,10 @@
     white-space: normal;
   }
 
-  /* Approver column: +16% min width vs prior 220px baseline; matches <th> on content partial */
-  #approverTable thead th.approver-dashboard-col-approver,
-  #approverTable tbody td.approver-dashboard-col-approver {
-    min-width: calc(220px * 1.16);
-    box-sizing: border-box;
+  /* Approver column: minimum width +15% (14rem baseline → 16.1rem) */
+  #approverTable th.approver-dashboard-approver-col,
+  #approverTable td.approver-dashboard-approver-col {
+    min-width: calc(14rem * 1.15);
   }
 
   /* Approver column: allow long division / email / names to wrap within column width */
@@ -984,7 +983,7 @@ function initializeDataTable() {
             }
         ],
         columnDefs: [
-            { targets: 1, className: 'approver-dashboard-col-approver' },
+            { targets: 1, className: 'approver-dashboard-approver-col' },
             { targets: 3, className: 'approver-role-cell' }
         ],
         pageLength: 25,
