@@ -151,6 +151,40 @@
   }
 </style>
 
+@php
+    $staleList = $stalePendingItems ?? [];
+    $staleCount = is_array($staleList) ? count($staleList) : 0;
+    $warnDays = (int) ($approvalWarningDays ?? 7);
+    $canOpenSystemSettings = in_array(89, user_session('permissions', []), true);
+@endphp
+@if($staleCount > 0)
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-start" role="alert">
+            <i class="fas fa-hourglass-end fa-2x me-3 mt-1 text-warning"></i>
+            <div class="flex-grow-1">
+                <h6 class="alert-heading mb-2">Friendly reminder</h6>
+                <p class="mb-2 small">
+                    You have <strong>{{ $staleCount }}</strong> item(s) that have been waiting at your approval level for at least <strong>{{ $warnDays }}</strong> day(s)
+                    (from when each was received at your current step).
+                    @if($canOpenSystemSettings)
+                        You can change this threshold under
+                        <a href="{{ route('system-settings.index') }}" class="alert-link">System settings</a>
+                        (<strong>approval_warning_days</strong>).
+                    @else
+                        The threshold is set in System settings as <strong>approval_warning_days</strong> (default 7).
+                    @endif
+                </p>
+                <p class="mb-0 small">
+                    When you are ready, please <strong>approve</strong> so the document can proceed to the next person in the approval trail,
+                    or <strong>return</strong> it if it should be corrected or set aside for archiving. Once an item is no longer pending at your level, reminders for that item stop.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="row mb-4">
     <!-- Summary Cards -->
     <style>
@@ -239,6 +273,7 @@
             @if(isset($avgApprovalTimeDisplay) && (float)($avgApprovalTimeHours ?? 0) > 0)
                 <li><strong>Average approval time</strong> (when shown) blends <strong>completed</strong> approvals with <strong>time elapsed so far</strong> on items still waiting for your action, from when each item reached your current level until you approve (or until now if still open). Optional <strong>year</strong> / <strong>month</strong> query parameters align this with the approver dashboard filters when you open this page from there.</li>
             @endif
+            <li><strong>Aging reminders</strong> (banner above and scheduled email) use <strong>approval_warning_days</strong> in System settings (default 7): items are flagged when they have been at your level for at least that many days since <em>received at current step</em>.</li>
         </ul>
     </div>
 </div>

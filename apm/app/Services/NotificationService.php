@@ -96,6 +96,57 @@ class NotificationService
     }
 
     /**
+     * Remind approvers whose queue contains items received at their level at least N days ago (N = approval_warning_days, default 7).
+     *
+     * @return list<Notification>
+     */
+    public function createStalePendingApprovalsReminders(): array
+    {
+        $approvers = $this->getAllApprovers();
+        $notifications = [];
+
+        foreach ($approvers as $approver) {
+            $pendingApprovalsService = new PendingApprovalsService([
+                'staff_id' => $approver['staff_id'],
+                'division_id' => $approver['division_id'],
+                'permissions' => [],
+                'name' => $approver['fname'] . ' ' . $approver['lname'],
+                'email' => $approver['work_email'],
+                'base_url' => config('app.url'),
+            ]);
+
+            $days = $pendingApprovalsService->getApprovalWarningThresholdDays();
+            $stale = $pendingApprovalsService->getStalePendingItems($days);
+
+            if (count($stale) === 0) {
+                continue;
+            }
+
+            $count = count($stale);
+            $pendingUrl = url(route('pending-approvals.index', [], false));
+            $message = "Gentle reminder: {$count} pending item(s) at your level for {$days}+ day(s). Please return for archiving or approve to advance the trail.";
+
+            $notifications[] = $this->createNotification([
+                'staff_id' => $approver['staff_id'],
+                'model_id' => null,
+                'model_type' => null,
+                'message' => $message,
+                'title' => 'Pending approval reminder',
+                'type' => 'stale_pending_approvals_reminder',
+                'send_email' => true,
+                'email_view_context' => [
+                    'stalePendingItems' => $stale,
+                    'approvalWarningDays' => $days,
+                    'pendingApprovalsUrl' => $pendingUrl,
+                    'staleCount' => $count,
+                ],
+            ]);
+        }
+
+        return $notifications;
+    }
+
+    /**
      * Dispatch email notification to queue
      */
     private function dispatchEmailNotification(Notification $notification, array $data): void
@@ -114,17 +165,21 @@ class NotificationService
             // Extract the model from the notification (can be null for daily notifications)
             $model = $this->getModelFromNotification($notification);
 
-            // Use the appropriate template based on notification type
-            $template = $notification->type === 'daily_pending_approvals' 
-                ? 'emails.daily-pending-approvals-notification' 
-                : 'emails.generic-notification';
+            $template = match ($notification->type) {
+                'daily_pending_approvals' => 'emails.daily-pending-approvals-notification',
+                'stale_pending_approvals_reminder' => 'emails.stale-pending-approvals-reminder',
+                default => 'emails.generic-notification',
+            };
+
+            $emailViewContext = $data['email_view_context'] ?? [];
 
             SendNotificationEmailJob::dispatch(
                 $model,
                 $recipient,
                 $notification->type ?? 'notification',
                 $notification->message ?? 'You have a new notification',
-                $template
+                $template,
+                is_array($emailViewContext) ? $emailViewContext : []
             )
                 ->onQueue('default')
                 ->delay(now()->addSeconds(5)); // Small delay to prevent overwhelming the queue
@@ -167,7 +222,7 @@ class NotificationService
     /**
      * Get all staff who are approvers
      */
-    private function getAllApprovers(): array
+    public function getAllApprovers(): array
     {
         $approvers = [];
 

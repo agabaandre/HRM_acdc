@@ -16,11 +16,12 @@ class SystemSettingsController extends Controller
      * Group labels for display.
      */
     private const GROUP_LABELS = [
-        'branding' => 'Branding',
-        'app'      => 'Application',
-        'locale'   => 'Locale & format',
-        'ui'       => 'UI',
-        'general'  => 'Other settings',
+        'branding'   => 'Branding',
+        'app'        => 'Application',
+        'locale'     => 'Locale & format',
+        'ui'         => 'UI',
+        'approvals'  => 'Approvals & reminders',
+        'general'    => 'Other settings',
     ];
 
     /**
@@ -32,7 +33,7 @@ class SystemSettingsController extends Controller
             abort(403, 'Unauthorized access to app settings');
         }
         $grouped = SystemSetting::getGroupedForEditing();
-        $order = ['branding', 'app', 'locale', 'ui', 'general'];
+        $order = ['branding', 'app', 'locale', 'ui', 'approvals', 'general'];
         $groups = [];
         foreach ($order as $g) {
             $groups[$g] = [

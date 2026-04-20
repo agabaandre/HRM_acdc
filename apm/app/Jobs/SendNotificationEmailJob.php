@@ -26,16 +26,22 @@ class SendNotificationEmailJob implements ShouldQueue
     protected $message;
     protected $template;
 
+    /** @var array<string, mixed> */
+    protected array $emailViewContext = [];
+
     /**
      * Create a new job instance.
+     *
+     * @param  array<string, mixed>  $emailViewContext  Extra variables for specific email templates (e.g. stale pending list).
      */
-    public function __construct($model, $recipient, string $type, string $message, string $template = 'emails.generic-notification')
+    public function __construct($model, $recipient, string $type, string $message, string $template = 'emails.generic-notification', array $emailViewContext = [])
     {
         $this->model = $model;
         $this->recipient = $recipient;
         $this->type = $type;
         $this->message = $message;
         $this->template = $template;
+        $this->emailViewContext = $emailViewContext;
     }
 
     /**
@@ -146,6 +152,10 @@ class SendNotificationEmailJob implements ShouldQueue
                     'returnedItems' => $this->getReturnedMemosItems(),
                     'returnedMemosUrl' => config('app.url') . 'returned-memos'
                 ]);
+            }
+
+            if ($this->template === 'emails.stale-pending-approvals-reminder' && $this->emailViewContext !== []) {
+                $viewData = array_merge($viewData, $this->emailViewContext);
             }
 
             $htmlContent = view($this->template, $viewData)->render();

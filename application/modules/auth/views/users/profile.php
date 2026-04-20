@@ -255,7 +255,7 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
           <?php endif; ?>
 
           <hr>
-
+          
           <!-- Contact Information -->
           <h6 class="text-uppercase fw-semibold mb-3 text-start">Contact Information</h6>
           <ul class="list-unstyled text-start fs-6 mb-4">
@@ -295,7 +295,7 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
           </ul>
 
           <hr>
-
+          
           <!-- Passport biodata (before signature) — used for travel purposes -->
           <?php if ($passport_url !== ''): ?>
           <div class="text-center mb-3">
@@ -404,7 +404,7 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
               </span>
             </li>
             <?php endif; ?>
-          </ul>
+            </ul>
 
           <?php if ($supervisor || $second_supervisor): ?>
           <hr class="my-3">
@@ -443,7 +443,7 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
                   <div class="fw-semibold text-break"><?= htmlspecialchars($second_supervisor->title . ' ' . $second_supervisor->fname . ' ' . $second_supervisor->lname) ?></div>
                   <small class="text-muted text-break d-block"><?= htmlspecialchars($second_supervisor->work_email) ?></small>
                 </div>
-              </div>
+          </div>
             </li>
             <?php endif; ?>
           </ul>
@@ -472,42 +472,42 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
             <h6 class="text-uppercase text-secondary fw-bold small mb-3 pb-2 border-bottom">
               <i class="fas fa-address-book me-2 text-success"></i>Contact &amp; language
             </h6>
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label">Private Email <span class="text-danger">*</span></label>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Private Email <span class="text-danger">*</span></label>
                 <input type="email" name="private_email" value="<?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'private_email')) ?>" class="form-control" required>
-                <small class="text-muted">Your personal email address</small>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">WhatsApp Number</label>
+              <small class="text-muted">Your personal email address</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">WhatsApp Number</label>
                 <input type="text" name="whatsapp" value="<?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'whatsapp')) ?>" class="form-control" placeholder="+1234567890">
-                <small class="text-muted">Include country code (e.g., +1234567890)</small>
-              </div>
+              <small class="text-muted">Include country code (e.g., +1234567890)</small>
             </div>
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label">Primary Phone <span class="text-danger">*</span></label>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Primary Phone <span class="text-danger">*</span></label>
                 <input type="text" name="tel_1" value="<?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'tel_1')) ?>" class="form-control" required>
-                <small class="text-muted">Your primary contact number</small>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Alternative Number</label>
-                <input type="text" name="tel_2" value="<?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'tel_2')) ?>" class="form-control">
-                <small class="text-muted">Secondary contact number (optional)</small>
-              </div>
+              <small class="text-muted">Your primary contact number</small>
             </div>
+            <div class="col-md-6">
+              <label class="form-label">Alternative Number</label>
+                <input type="text" name="tel_2" value="<?= htmlspecialchars((string) profile_form_value($profile_old, $staff, 'tel_2')) ?>" class="form-control">
+              <small class="text-muted">Secondary contact number (optional)</small>
+            </div>
+          </div>
             <div class="mb-0">
-              <label class="form-label">Preferred Language</label>
-              <?php $langs = ['en' => 'English', 'fr' => 'French', 'sw' => 'Swahili', 'ar' => 'Arabic']; ?>
-              <select name="langauge" class="form-select">
+            <label class="form-label">Preferred Language</label>
+            <?php $langs = ['en' => 'English', 'fr' => 'French', 'sw' => 'Swahili', 'ar' => 'Arabic']; ?>
+            <select name="langauge" class="form-select">
                 <?php
                 $lang_cur = (string) profile_form_value($profile_old, $staff, 'langauge');
                 ?>
-                <?php foreach ($langs as $k => $v): ?>
+              <?php foreach ($langs as $k => $v): ?>
                   <option value="<?= $k ?>" <?= ($lang_cur === (string) $k) ? 'selected' : '' ?>><?= $v ?></option>
-                <?php endforeach; ?>
-              </select>
-              <small class="text-muted">Select your preferred language for the system</small>
+              <?php endforeach; ?>
+            </select>
+            <small class="text-muted">Select your preferred language for the system</small>
             </div>
           </div>
 
@@ -518,8 +518,8 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
             </h6>
             <div class="row g-3 mb-0">
               <div class="col-md-4">
-                <label class="form-label">Upload New Photo</label>
-                <input type="file" name="photo" class="form-control" accept="image/*">
+              <label class="form-label">Upload New Photo</label>
+              <input type="file" name="photo" class="form-control" accept="image/*">
                 <small class="text-muted">Max 1MB. Square image (150×150px) recommended.</small>
                 <?php if ($photo_url !== ''): ?>
                 <div class="profile-doc-preview-box">
@@ -546,10 +546,10 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
                   <?php endif; ?>
                 </div>
                 <?php endif; ?>
-              </div>
+            </div>
               <div class="col-md-4">
-                <label class="form-label">Upload Signature</label>
-                <input type="file" name="signature" class="form-control" accept="image/*">
+              <label class="form-label">Upload Signature</label>
+              <input type="file" name="signature" class="form-control" accept="image/*">
                 <small class="text-muted">Max 1MB. PNG with transparent background recommended.</small>
                 <?php if ($signature_url !== ''): ?>
                 <div class="profile-doc-preview-box profile-doc-preview-sig">
