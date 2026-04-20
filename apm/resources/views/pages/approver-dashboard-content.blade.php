@@ -206,7 +206,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 30px;">#</th>
-                                <th>Approver</th>
+                                <th class="approver-dashboard-col-approver" style="min-width: calc(220px * 1.16);">Approver</th>
                                 <th>Last approval date</th>
                                 <th style="width: 350px;">Role</th>
                                 <th>Pending Items</th>
