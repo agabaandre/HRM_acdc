@@ -1138,8 +1138,8 @@ class PendingApprovalsService
     }
 
     /**
-     * Pending items at this user's level where "received at current level" is at least $thresholdDays ago.
-     * Excludes admin-assistant view-only rows. Uses the same queue as getPendingApprovals().
+     * Pending items at this user's level where "received at current level" is strictly more than $thresholdDays ago
+     * (e.g. default 7 means the 8th calendar day onward). Excludes admin-assistant view-only rows.
      *
      * @return list<array<string, mixed>>
      */
@@ -1159,7 +1159,7 @@ class PendingApprovalsService
             try {
                 $received = Carbon::parse($dr);
 
-                return $received->diffInDays(now()) >= $days;
+                return $received->diffInDays(now()) > $days;
             } catch (\Throwable $e) {
                 return false;
             }

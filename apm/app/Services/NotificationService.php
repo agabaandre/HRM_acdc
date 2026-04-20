@@ -96,7 +96,8 @@ class NotificationService
     }
 
     /**
-     * Remind approvers whose queue contains items received at their level at least N days ago (N = approval_warning_days, default 7).
+     * Remind approvers whose queue contains items received at their level more than N days ago (N = approval_warning_days, default 7).
+     * Scheduled daily at 11:00; each run only notifies approvers who still have such items (stops once cleared).
      *
      * @return list<Notification>
      */
@@ -124,7 +125,7 @@ class NotificationService
 
             $count = count($stale);
             $pendingUrl = url(route('pending-approvals.index', [], false));
-            $message = "Gentle reminder: {$count} pending item(s) at your level for {$days}+ day(s). Please return for archiving or approve to advance the trail.";
+            $message = "Gentle reminder: {$count} pending item(s) at your level for more than {$days} day(s). Please return for archiving or approve to advance the trail.";
 
             $notifications[] = $this->createNotification([
                 'staff_id' => $approver['staff_id'],
