@@ -29,7 +29,7 @@
         <div class="lead">
             <p style="margin: 0 0 10px 0;">
                 The following {{ $staleCount ?? count($stalePendingItems ?? []) }} item(s) reached your approval level more than
-                <strong>{{ $approvalWarningDays ?? 7 }}</strong> day(s) ago (from when each was received at your current step).
+                <strong>{{ $approvalWarningDays ?? 7 }}</strong> day(s) ago (from when each reached you: previous approver hand-off or submit to your level — not the original document creation date).
                 This reminder is sent daily at 11:00 while any such items remain in your queue.
             </p>
             <p style="margin: 0;">

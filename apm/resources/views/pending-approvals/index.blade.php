@@ -166,7 +166,7 @@
                 <h6 class="alert-heading mb-2">Friendly reminder</h6>
                 <p class="mb-2 small">
                     You have <strong>{{ $staleCount }}</strong> item(s) that have been waiting at your approval level for more than <strong>{{ $warnDays }}</strong> day(s)
-                    (from when each was received at your current step).
+                    (from when each item reached you: last approval or hand-off from the <strong>previous</strong> step, or submission to your level if you are first in line — not the original document creation date).
                     @if($canOpenSystemSettings)
                         You can change this threshold under
                         <a href="{{ route('system-settings.index') }}" class="alert-link">System settings</a>
@@ -273,7 +273,7 @@
             @if(isset($avgApprovalTimeDisplay) && (float)($avgApprovalTimeHours ?? 0) > 0)
                 <li><strong>Average approval time</strong> (when shown) blends <strong>completed</strong> approvals with <strong>time elapsed so far</strong> on items still waiting for your action, from when each item reached your current level until you approve (or until now if still open). Optional <strong>year</strong> / <strong>month</strong> query parameters align this with the approver dashboard filters when you open this page from there.</li>
             @endif
-            <li><strong>Aging reminders</strong> (banner above and email at 11:00 daily) use <strong>approval_warning_days</strong> in System settings (default 7): items are flagged when they have been at your level for <em>more than</em> that many days since <em>received at current step</em>. Reminders repeat each day until those items are cleared from your queue.</li>
+            <li><strong>Aging reminders</strong> (banner above and email at 11:00 daily) use <strong>approval_warning_days</strong> in System settings (default 7): items are flagged when they have been at your level for <em>more than</em> that many days since they were <em>handed to your step</em> (previous approver’s action or submit to your level). Reminders repeat each day until those items are cleared from your queue.</li>
         </ul>
     </div>
 </div>

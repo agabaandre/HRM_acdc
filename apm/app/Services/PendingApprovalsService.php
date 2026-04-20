@@ -891,21 +891,97 @@ class PendingApprovalsService
     }
 
     /**
-     * Get the date when the item was received at the current approval level
+     * When the item became actionable at its current approval level (same rules as ApproverDashboardHelper::getReceivedAtCurrentLevelForModel).
+     * Uses the latest prior approver action / submission — not the document's initial created_at.
      */
     protected function getDateReceivedToCurrentLevel($item): ?Carbon
     {
-        // Get the most recent approval trail entry for this item
-        $approvalTrail = null;
-        
-        if (method_exists($item, 'approvalTrails')) {
-            $approvalTrail = $item->approvalTrails()
-                ->where('approval_order', $item->approval_level)
-                ->orderBy('created_at', 'desc')
-                ->first();
+        if ($item instanceof OtherMemo) {
+            return $this->getOtherMemoDateReceivedForCurrentStep($item);
         }
 
-        return $approvalTrail ? $approvalTrail->created_at : $item->created_at;
+        if (! method_exists($item, 'approvalTrails')) {
+            return $item->created_at ? Carbon::parse($item->created_at) : null;
+        }
+
+        $level = (int) ($item->approval_level ?? 0);
+        $wf = (int) ($item->forward_workflow_id ?? 0);
+        if ($level <= 0 || $wf <= 0) {
+            return $item->created_at ? Carbon::parse($item->created_at) : null;
+        }
+
+        $type = $item->getMorphClass();
+        $id = (int) $item->getKey();
+
+        if ($level >= 3) {
+            $t = $this->selectMaxPreviousApprovalBeforeForPending($type, $id, $wf, $level);
+        } elseif ($level === 2) {
+            $t = $this->selectMaxPreviousApprovalBeforeForPending($type, $id, $wf, 2);
+            if ($t === null) {
+                $t = $this->selectLastSubmittedTimeForPendingItem($type, $id, $wf);
+            }
+        } else {
+            $t = $this->selectLastSubmittedTimeForPendingItem($type, $id, $wf);
+        }
+
+        return $t ? Carbon::parse($t) : null;
+    }
+
+    /**
+     * Last submitted trail time (order 0) for this document/workflow.
+     */
+    protected function selectLastSubmittedTimeForPendingItem(string $modelType, int $modelId, int $forwardWorkflowId): ?string
+    {
+        $matrixType = 'App\\Models\\Matrix';
+        $activityType = 'App\\Models\\Activity';
+
+        $row = DB::selectOne(
+            "
+            SELECT MAX(sub_at.updated_at) as t
+            FROM approval_trails sub_at
+            WHERE sub_at.model_type = ?
+              AND sub_at.model_id = ?
+              AND (
+                  sub_at.forward_workflow_id = ?
+                  OR (sub_at.forward_workflow_id IS NULL AND ? = ? AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = ? LIMIT 1) = ?)
+                  OR (sub_at.forward_workflow_id IS NULL AND ? = ? AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = ? LIMIT 1) = ?)
+                  OR (sub_at.forward_workflow_id IS NULL AND ? NOT IN (?, ?))
+              )
+              AND sub_at.approval_order = 0
+              AND sub_at.action = 'submitted'
+              AND sub_at.is_archived = 0
+            ",
+            [
+                $modelType, $modelId, $forwardWorkflowId,
+                $modelType, $matrixType, $modelId, $forwardWorkflowId,
+                $modelType, $activityType, $modelId, $forwardWorkflowId,
+                $modelType, $matrixType, $activityType,
+            ]
+        );
+
+        return $row->t ?? null;
+    }
+
+    /**
+     * Latest approved/rejected trail strictly before the given approval order (same workflow).
+     */
+    protected function selectMaxPreviousApprovalBeforeForPending(string $modelType, int $modelId, int $forwardWorkflowId, int $approvalOrderExclusive): ?string
+    {
+        $row = DB::selectOne(
+            '
+            SELECT MAX(prev_at.updated_at) as t
+            FROM approval_trails prev_at
+            WHERE prev_at.model_type = ?
+              AND prev_at.model_id = ?
+              AND prev_at.forward_workflow_id = ?
+              AND prev_at.approval_order < ?
+              AND prev_at.action IN (\'approved\', \'rejected\')
+              AND prev_at.is_archived = 0
+            ',
+            [$modelType, $modelId, $forwardWorkflowId, $approvalOrderExclusive]
+        );
+
+        return $row->t ?? null;
     }
 
     /**
