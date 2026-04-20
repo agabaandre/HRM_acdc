@@ -51,6 +51,7 @@
                     <option value="app">Application</option>
                     <option value="locale">Locale</option>
                     <option value="ui">UI</option>
+                    <option value="approvals">Approvals &amp; reminders</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -66,7 +67,7 @@
     @method('PUT')
 
     @php
-        $groupIcons = ['branding' => 'fa-palette', 'app' => 'fa-cog', 'locale' => 'fa-globe', 'ui' => 'fa-desktop', 'general' => 'fa-list'];
+        $groupIcons = ['branding' => 'fa-palette', 'app' => 'fa-cog', 'locale' => 'fa-globe', 'ui' => 'fa-desktop', 'approvals' => 'fa-bell', 'general' => 'fa-list'];
         $typeLabels = ['text' => 'Text', 'password' => 'Password', 'number' => 'Number', 'boolean' => 'Yes/No', 'color' => 'Color'];
         $typeClass = ['text' => 'secondary', 'password' => 'warning', 'number' => 'info', 'boolean' => 'primary', 'color' => 'success'];
     @endphp

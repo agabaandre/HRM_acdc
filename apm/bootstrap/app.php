@@ -49,9 +49,9 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping()
             ->runInBackground();
 
-        // Approvers with items at their level for at least approval_warning_days (system setting, default 7)
+        // Daily while stale: approvers with items at their level longer than approval_warning_days (default 7); email + notification until cleared
         $schedule->command('approvals:send-stale-pending-reminders')
-            ->dailyAt('10:30')
+            ->dailyAt('11:00')
             ->withoutOverlapping()
             ->runInBackground();
             

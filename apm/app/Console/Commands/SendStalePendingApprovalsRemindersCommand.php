@@ -12,7 +12,7 @@ class SendStalePendingApprovalsRemindersCommand extends Command
     protected $signature = 'approvals:send-stale-pending-reminders
                             {--dry-run : List who would be emailed without dispatching}';
 
-    protected $description = 'Notify approvers whose queue has items pending at their level for at least approval_warning_days (default 7)';
+    protected $description = 'Notify approvers whose queue has items pending at their level for more than approval_warning_days (default 7); run daily at 11:00 until cleared';
 
     public function handle(): int
     {

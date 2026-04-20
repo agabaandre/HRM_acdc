@@ -28,8 +28,9 @@
 
         <div class="lead">
             <p style="margin: 0 0 10px 0;">
-                The following {{ $staleCount ?? count($stalePendingItems ?? []) }} item(s) reached your approval level at least
-                <strong>{{ $approvalWarningDays ?? 7 }}</strong> day(s) ago (based on when they were received at your current step).
+                The following {{ $staleCount ?? count($stalePendingItems ?? []) }} item(s) reached your approval level more than
+                <strong>{{ $approvalWarningDays ?? 7 }}</strong> day(s) ago (from when each was received at your current step).
+                This reminder is sent daily at 11:00 while any such items remain in your queue.
             </p>
             <p style="margin: 0;">
                 When you are ready to clear your queue, you may <strong>approve</strong> to send the document to the next person in the approval trail,

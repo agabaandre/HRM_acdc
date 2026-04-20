@@ -96,7 +96,7 @@ class SystemSettingsController extends Controller
         $valid = $request->validate([
             'key'   => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z0-9_\.\-]+$/', Rule::unique('system_settings', 'key')],
             'value' => ['nullable', 'string'],
-            'group' => ['required', 'string', 'max:50', Rule::in(['branding', 'app', 'locale', 'ui', 'general'])],
+            'group' => ['required', 'string', 'max:50', Rule::in(['branding', 'app', 'locale', 'ui', 'approvals', 'general'])],
             'type'  => ['required', 'string', Rule::in(SystemSetting::TYPES)],
         ], [
             'key.regex'   => 'Key may only contain letters, numbers, underscores, dots and hyphens.',
@@ -156,6 +156,7 @@ class SystemSettingsController extends Controller
             'default_currency' => 'locale', 'currency_symbol' => 'locale', 'timezone' => 'locale',
             'date_format' => 'locale', 'date_time_format' => 'locale', 'locale' => 'locale',
             'items_per_page' => 'ui', 'pagination_size' => 'ui', 'maintenance_mode' => 'ui',
+            'approval_warning_days' => 'approvals',
         ];
         return $map[$key] ?? 'general';
     }
