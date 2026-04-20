@@ -101,7 +101,10 @@ class PendingApprovalsController extends Controller
         
         // Get summary statistics
         $summaryStats = $this->pendingApprovalsService->getSummaryStats();
-        
+
+        $approvalWarningDays = $this->pendingApprovalsService->getApprovalWarningThresholdDays();
+        $stalePendingItems = $this->pendingApprovalsService->getStalePendingItems();
+
         // Get divisions for filter dropdown
         $divisions = \App\Models\Division::orderBy('division_name')->get();
         
@@ -142,7 +145,9 @@ class PendingApprovalsController extends Controller
             'avgApprovalTimeDisplay',
             'avgApprovalTimeHours',
             'year',
-            'month'
+            'month',
+            'approvalWarningDays',
+            'stalePendingItems'
         ));
     }
 

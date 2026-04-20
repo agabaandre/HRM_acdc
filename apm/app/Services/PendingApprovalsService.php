@@ -15,6 +15,7 @@ use App\Models\WorkflowModel;
 use App\Models\Approver;
 use App\Models\Staff;
 use App\Models\Division;
+use App\Models\SystemSetting;
 use App\Support\ApprovalTrailSort;
 use App\Support\StaffApproverPhotoUrl;
 use Illuminate\Support\Collection;
@@ -1117,6 +1118,52 @@ class PendingApprovalsService
             'oldest_pending' => $allPending->min('date_received'),
             'newest_pending' => $allPending->max('date_received'),
         ];
+    }
+
+    /**
+     * Days an item may sit at the approver's current level before aging reminders (system setting, default 7).
+     */
+    public function getApprovalWarningThresholdDays(): int
+    {
+        $raw = SystemSetting::get('approval_warning_days', '7');
+        $n = is_numeric($raw) ? (int) $raw : 7;
+        if ($n < 1) {
+            $n = 7;
+        }
+        if ($n > 365) {
+            $n = 365;
+        }
+
+        return $n;
+    }
+
+    /**
+     * Pending items at this user's level where "received at current level" is at least $thresholdDays ago.
+     * Excludes admin-assistant view-only rows. Uses the same queue as getPendingApprovals().
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getStalePendingItems(?int $thresholdDays = null): array
+    {
+        $days = $thresholdDays ?? $this->getApprovalWarningThresholdDays();
+        $flat = collect($this->getPendingApprovals())->flatten(1);
+
+        return $flat->filter(function (array $item) use ($days): bool {
+            if (!empty($item['is_admin_assistant_view'])) {
+                return false;
+            }
+            $dr = $item['date_received'] ?? null;
+            if ($dr === null || $dr === '') {
+                return false;
+            }
+            try {
+                $received = Carbon::parse($dr);
+
+                return $received->diffInDays(now()) >= $days;
+            } catch (\Throwable $e) {
+                return false;
+            }
+        })->values()->all();
     }
 
     /**

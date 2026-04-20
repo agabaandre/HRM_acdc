@@ -41,6 +41,9 @@ class SystemSettingsSeeder extends Seeder
             ['key' => 'items_per_page', 'value' => '15', 'group' => 'ui'],
             ['key' => 'pagination_size', 'value' => '10', 'group' => 'ui'],
             ['key' => 'maintenance_mode', 'value' => '0', 'group' => 'ui'],
+
+            // Approvals (group: approvals) — aging reminder threshold (days at your level)
+            ['key' => 'approval_warning_days', 'value' => '7', 'group' => 'approvals', 'type' => 'number'],
         ];
 
         foreach ($settings as $item) {
@@ -49,6 +52,7 @@ class SystemSettingsSeeder extends Seeder
                 [
                     'value' => $item['value'],
                     'group' => $item['group'],
+                    'type' => $item['type'] ?? 'text',
                 ]
             );
         }

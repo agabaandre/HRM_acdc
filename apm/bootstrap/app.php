@@ -48,6 +48,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->dailyAt('16:00')
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Approvers with items at their level for at least approval_warning_days (system setting, default 7)
+        $schedule->command('approvals:send-stale-pending-reminders')
+            ->dailyAt('10:30')
+            ->withoutOverlapping()
+            ->runInBackground();
             
         // Schedule returned memos reminders at 8 AM, 1 PM, and 5 PM
         $schedule->command('reminders:returned-memos')
