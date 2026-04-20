@@ -217,8 +217,10 @@ trait ApproverDashboardHelper
             // Calculate total handled across ALL workflows and levels for this approver
             $totalHandled = $this->getTotalHandledForApproverAll($staffId, $divisionId, $year, $month);
             
-            // Calculate average approval time across ALL workflows and levels using approval_trails
-            $avgApprovalTime = $this->getAverageApprovalTimeAll($staffId, $divisionId, $year, $month);
+            // Average approval time uses each approver's staff.division_id (same as pending-approvals when opened with ?staff_id=…);
+            // the dashboard division filter does not apply to this metric so values match that page.
+            $avgDivisionForTime = $this->divisionIdForAverageApprovalTime((int) $staffId);
+            $avgApprovalTime = $this->getAverageApprovalTimeAll((int) $staffId, $avgDivisionForTime, $year, $month);
             
             // Sort roles and levels for display
             sort($data['levels']);
@@ -1850,6 +1852,17 @@ trait ApproverDashboardHelper
     }
 
     /**
+     * Division filter for average approval time / open-wait contributions: matches PendingApprovalsController
+     * (staff.division_id for the approver whose queue is being measured — not the dashboard division dropdown).
+     */
+    protected function divisionIdForAverageApprovalTime(int $staffId): ?int
+    {
+        $id = DB::table('staff')->where('staff_id', $staffId)->value('division_id');
+
+        return ($id !== null && (int) $id > 0) ? (int) $id : null;
+    }
+
+    /**
      * Get average approval time for a specific approver across ALL workflows and levels.
      * Calculates time between when item reached approver's level and when they approved it.
      * Level skipping (by 1 or 2 levels) is handled at every level: we use the last approval at ANY lower order.
@@ -1911,19 +1924,34 @@ trait ApproverDashboardHelper
                 $activityExists .= ")";
                 $conditions[] = "({$activityCond} AND {$activityExists})";
                 
-                // For change requests with matrix, filter by matrix year and quarter
+                // Change requests: matrix year/quarter OR document created_at year/month (same as addPendingApprovalWaitContributions)
                 $crCond = "at.model_type = ?";
                 $tempParams[] = $changeRequestType;
-                $crExists = "EXISTS (SELECT 1 FROM change_request cr JOIN matrices m ON m.id = cr.matrix_id WHERE cr.id = at.model_id";
+                $crMatrixMatch = "EXISTS (SELECT 1 FROM matrices m WHERE m.id = cr.matrix_id";
                 if ($year) {
-                    $crExists .= " AND m.year = ?";
+                    $crMatrixMatch .= " AND m.year = ?";
                     $tempParams[] = $year;
                 }
                 if ($quarter) {
-                    $crExists .= " AND m.quarter = ?";
+                    $crMatrixMatch .= " AND m.quarter = ?";
                     $tempParams[] = $quarter;
                 }
-                $crExists .= ")";
+                $crMatrixMatch .= ")";
+                $crCreatedMatch = '';
+                if ($year) {
+                    $crCreatedMatch = "YEAR(cr.created_at) = ?";
+                    $tempParams[] = $year;
+                    if ($month) {
+                        $crCreatedMatch .= " AND MONTH(cr.created_at) = ?";
+                        $tempParams[] = $month;
+                    }
+                } elseif ($month) {
+                    $crCreatedMatch = "MONTH(cr.created_at) = ?";
+                    $tempParams[] = $month;
+                }
+                $crExists = "EXISTS (SELECT 1 FROM change_request cr WHERE cr.id = at.model_id AND ({$crMatrixMatch}";
+                $crExists .= $crCreatedMatch !== '' ? " OR ({$crCreatedMatch})" : '';
+                $crExists .= '))';
                 $conditions[] = "({$crCond} AND {$crExists})";
                 
                 // For other types, filter by created_at year and month
