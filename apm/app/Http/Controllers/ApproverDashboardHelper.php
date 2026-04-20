@@ -1123,6 +1123,28 @@ trait ApproverDashboardHelper
     }
 
     /**
+     * Distinct enabled workflow-definition role names for this workflow, comma-separated (approval order preserved).
+     */
+    protected function getUniqueApproverRolesForWorkflow(int $workflowId): string
+    {
+        try {
+            $roles = DB::table('workflow_definition')
+                ->where('workflow_id', $workflowId)
+                ->where('is_enabled', 1)
+                ->orderBy('approval_order')
+                ->pluck('role')
+                ->unique()
+                ->filter(fn ($r) => $r !== null && $r !== '')
+                ->values()
+                ->all();
+
+            return implode(', ', $roles);
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
+    /**
      * One workflow chart/table row including avg_days for chart unit toggle.
      *
      * @param  list<string>  $docTypeLabels
@@ -1132,6 +1154,7 @@ trait ApproverDashboardHelper
         return [
             'workflow_name' => $workflowName,
             'workflow_id' => $workflowId,
+            'approver_roles' => $this->getUniqueApproverRolesForWorkflow($workflowId),
             'memos' => $memosCount,
             'avg_hours' => $avgHours,
             'avg_days' => $avgHours > 0 ? round($avgHours / 24, 4) : 0,
