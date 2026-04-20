@@ -25,6 +25,26 @@
     white-space: normal;
   }
 
+  /* Approver column: +16% min width vs prior 220px baseline; matches <th> on content partial */
+  #approverTable thead th.approver-dashboard-col-approver,
+  #approverTable tbody td.approver-dashboard-col-approver {
+    min-width: calc(220px * 1.16);
+    box-sizing: border-box;
+  }
+
+  /* Approver column: allow long division / email / names to wrap within column width */
+  #approverTable td .approver-dashboard-approver-text {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+    word-break: break-word;
+  }
+  #approverTable td .approver-division-line {
+    white-space: normal;
+    line-height: 1.35;
+  }
+
   /* Enhanced Approver Dashboard Styling */
   .filter-card {
     border: 1px solid var(--medium-grey);
@@ -828,8 +848,12 @@ function initializeDataTable() {
                 orderable: false,
                 searchable: true,
                 render: function(data, type, row) {
-                    const firstName = row.fname || row.approver_name.split(' ')[0] || 'U';
-                    const lastName = row.lname || row.approver_name.split(' ')[1] || '';
+                    if (type === 'export' || type === 'print' || type === 'pdf') {
+                        var dn = row.division_name || 'N/A';
+                        return (row.approver_name || '') + ' | ' + (row.approver_email || '') + ' | ' + dn;
+                    }
+                    const firstName = row.fname || (row.approver_name || '').split(' ')[0] || 'U';
+                    const lastName = row.lname || (row.approver_name || '').split(' ')[1] || '';
         const initials = (firstName[0] + (lastName ? lastName[0] : '')).toUpperCase();
         const colors = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
         const colorIndex = (firstName.charCodeAt(0) - 65) % colors.length;
@@ -838,23 +862,26 @@ function initializeDataTable() {
                     let avatarHtml = '';
                     const photoFile = staffPortraitBasename(row.photo);
                     const hasPhoto = photoFile !== '';
+                    const nameEsc = escapeHtml(row.approver_name || '');
+                    const emailEsc = escapeHtml(row.approver_email || '');
+                    const divEsc = escapeHtml(row.division_name || 'N/A');
         
         if (hasPhoto) {
                         const photoUrl = staffPhotoRoute + '?f=' + encodeURIComponent(photoFile);
             avatarHtml = `<div style="position: relative; width: 40px; height: 40px;">
-                            <img src="${photoUrl}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;" alt="${row.approver_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.nextElementSibling.style.zIndex='1';" onload="this.nextElementSibling.style.display='none';">
+                            <img src="${photoUrl}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;" alt="${nameEsc}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.nextElementSibling.style.zIndex='1';" onload="this.nextElementSibling.style.display='none';">
                             <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="display: none; width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 0;">${initials}</div>
             </div>`;
         } else {
                         avatarHtml = `<div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px;">${initials}</div>`;
                     }
                     
-                    return `<div class="d-flex align-items-center">
-                        <div class="me-2">${avatarHtml}</div>
-                        <div>
-                            <div class="fw-semibold">${row.approver_name}</div>
-                            <small class="text-muted">${row.approver_email}</small>
-                            <div class="mt-1"><small class="text-muted">${row.division_name || 'N/A'}</small></div>
+                    return `<div class="d-flex align-items-start">
+                        <div class="me-2 flex-shrink-0">${avatarHtml}</div>
+                        <div class="approver-dashboard-approver-text flex-grow-1 min-w-0">
+                            <div class="fw-semibold text-break">${nameEsc}</div>
+                            <small class="text-muted text-break d-block">${emailEsc}</small>
+                            <div class="mt-1 small text-muted approver-division-line text-break">${divEsc}</div>
                             </div>
                     </div>`;
                 }
@@ -957,6 +984,7 @@ function initializeDataTable() {
             }
         ],
         columnDefs: [
+            { targets: 1, className: 'approver-dashboard-col-approver' },
             { targets: 3, className: 'approver-role-cell' }
         ],
         pageLength: 25,
