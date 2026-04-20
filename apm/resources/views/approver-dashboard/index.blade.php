@@ -137,6 +137,27 @@
     --stat-color-light: #6ea8fe;
   }
 
+  /* Workflow stats table — approver flow column */
+  #workflowStatsTable.table-workflow-stats thead th {
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #5c6f82;
+    border-bottom-width: 2px;
+  }
+  #workflowStatsTable.table-workflow-stats tbody tr:hover .workflow-role-step {
+    border-color: rgba(17, 154, 72, 0.45) !important;
+    box-shadow: 0 2px 10px rgba(17, 154, 72, 0.12) !important;
+  }
+  .workflow-pipeline-arrow {
+    align-self: center;
+    opacity: 0.55;
+  }
+  .workflow-hint-icon {
+    cursor: help;
+    font-size: 0.85rem;
+  }
+
   .stats-container .stat-icon-wrap {
     display: inline-flex;
     align-items: center;
@@ -361,6 +382,17 @@ var dashboardApiUrl = '{{ route("approver-dashboard.api") }}';
 var workflowStatsData = [];
 var workflowChartUnit = 'days';
 
+/** Hint keys from ApproverDashboardHelper::getApproverRolesPipelineForWorkflow → FA icon + tooltip */
+var WF_ROLE_HINTS = {
+    fund_type: { icon: 'fa-coins', cls: 'text-warning', title: 'Fund type: this level may only run for certain fund types (others can skip it).' },
+    funder: { icon: 'fa-hand-holding-usd', cls: 'text-info', title: 'Funder filter: limited to configured funders.' },
+    division: { icon: 'fa-building', cls: 'text-primary', title: 'Division-specific: actor resolved from division roles.' },
+    division_field: { icon: 'fa-id-badge', cls: 'text-primary', title: 'Uses a division field (e.g. head, focal person) to pick the approver.' },
+    category: { icon: 'fa-tags', cls: 'text-secondary', title: 'Document category / memo rules apply to this step.' },
+    category_gate: { icon: 'fa-code-branch', cls: 'text-success', title: 'Conditional branch: may be skipped when category checks do not apply.' },
+    division_scope: { icon: 'fa-map-marker-alt', cls: 'text-danger', title: 'Limited to selected division(s).' }
+};
+
 // Table cache: 5 min TTL, cache-first then background refresh
 var CACHE_TTL_MS = 5 * 60 * 1000;
 var CACHE_KEY_PREFIX = 'approverDashboard_';
@@ -570,6 +602,34 @@ function clearWorkflowChart() {
     }
 }
 
+function renderApproverRolesPipeline(row) {
+    var pipeline = row.approver_roles_pipeline;
+    if (pipeline && pipeline.length) {
+        var parts = [];
+        for (var i = 0; i < pipeline.length; i++) {
+            var step = pipeline[i];
+            var hints = step.hints || [];
+            var icons = '';
+            for (var h = 0; h < hints.length; h++) {
+                var meta = WF_ROLE_HINTS[hints[h]];
+                if (!meta) continue;
+                icons += '<i class="fa ' + meta.icon + ' ' + (meta.cls || '') + ' workflow-hint-icon ms-1" title="' + escapeHtml(meta.title) + '" aria-hidden="true"></i>';
+            }
+            parts.push(
+                '<span class="workflow-role-step d-inline-flex align-items-center flex-wrap rounded-3 border bg-white px-2 py-1 me-0 mb-1 shadow-sm">' +
+                '<span class="text-dark" style="font-size:0.9rem;">' + escapeHtml(step.role || '') + '</span>' + icons + '</span>'
+            );
+        }
+        return '<div class="workflow-pipeline d-flex flex-wrap align-items-center">' + parts.join(
+            '<span class="workflow-pipeline-arrow d-inline-flex align-items-center px-1" title="Next step"><i class="fa fa-long-arrow-alt-right" aria-hidden="true"></i></span>'
+        ) + '</div>';
+    }
+    if (row.approver_roles != null && String(row.approver_roles).trim() !== '') {
+        return '<span class="text-break small">' + escapeHtml(String(row.approver_roles)) + '</span>';
+    }
+    return '<span class="text-muted">—</span>';
+}
+
 function formatWorkflowAvgCell(row) {
     var unit = workflowChartUnit || 'days';
     if (unit === 'hours') {
@@ -599,10 +659,8 @@ function renderWorkflowStats(stats) {
         var docTypesHtml = docTypes
             ? '<div class="small text-muted mt-1">' + escapeHtml(docTypes) + '</div>'
             : '';
-        var rolesCell = (row.approver_roles != null && String(row.approver_roles).trim() !== '')
-            ? '<span class="text-break">' + escapeHtml(String(row.approver_roles)) + '</span>'
-            : '<span class="text-muted">—</span>';
-        tbody.append('<tr><td><div>' + escapeHtml(row.workflow_name || '-') + '</div>' + docTypesHtml + '</td><td class="small align-top">' + rolesCell + '</td><td class="text-end">' + (row.memos != null ? row.memos : 0) + '</td><td class="text-end">' + formatWorkflowAvgCell(row) + '</td></tr>');
+        var rolesCell = renderApproverRolesPipeline(row);
+        tbody.append('<tr><td class="align-top"><div class="fw-semibold text-dark">' + escapeHtml(row.workflow_name || '-') + '</div>' + docTypesHtml + '</td><td class="align-top py-2">' + rolesCell + '</td><td class="text-end align-middle fw-semibold">' + (row.memos != null ? row.memos : 0) + '</td><td class="text-end align-middle">' + formatWorkflowAvgCell(row) + '</td></tr>');
     });
 
     // Column chart: defer render so container is in DOM (fixes Livewire/navigation timing)
