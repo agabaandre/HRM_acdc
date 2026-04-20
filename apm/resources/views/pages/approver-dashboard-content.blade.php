@@ -74,18 +74,18 @@
       <div class="px-3 pb-3 small text-muted border-top pt-2">
         <p class="mb-2">In general workflows, some approval levels may be <strong>skipped automatically</strong> depending on conditions such as <strong>fund type</strong>, <strong>funder</strong>, <strong>division category</strong>, and related rules.</p>
         <p class="mb-2">Examples of steps that are often bypassed for certain documents include <strong>Grants</strong>, <strong>PIU</strong>, <strong>Operations</strong> or <strong>Programs</strong>, <strong>Others (DDG)</strong>, <strong>Chief of Staff</strong> or <strong>Deputy Chief of Staff</strong>, and <strong>Finance</strong> for externally funded activities.</p>
-        <p class="mb-0">The <strong>Approver roles</strong> column lists every distinct role defined on the workflow; a given document may not have visited all of them. Average times reflect completed approval trails under your selected filters.</p>
+        <p class="mb-0">The <strong>Approver flow</strong> column shows roles in order; small icons show where routing rules apply (fund type, funder, division, category, etc.). A given document may skip some steps. Average times reflect completed trails under your selected filters.</p>
       </div>
     </details>
     <div class="card-body">
       <div class="table-responsive">
-        <table class="table table-sm table-hover mb-0" id="workflowStatsTable">
-          <thead>
+        <table class="table table-sm table-hover table-workflow-stats mb-0 align-middle" id="workflowStatsTable">
+          <thead class="table-light">
             <tr>
-              <th>Workflow Name</th>
-              <th style="min-width: 12rem;">Approver roles (unique)</th>
-              <th class="text-end">Approved Docs</th>
-              <th class="text-end">Avg. Time to Last Approver</th>
+              <th>Workflow</th>
+              <th style="min-width: 14rem;">Approver flow <span class="fw-normal text-muted text-lowercase">(→ then)</span></th>
+              <th class="text-end">Approved</th>
+              <th class="text-end">Avg. time</th>
             </tr>
           </thead>
           <tbody id="workflowStatsBody">

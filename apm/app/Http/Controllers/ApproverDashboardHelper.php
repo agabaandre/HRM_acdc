@@ -1123,24 +1123,62 @@ trait ApproverDashboardHelper
     }
 
     /**
-     * Distinct enabled workflow-definition role names for this workflow, comma-separated (approval order preserved).
+     * Enabled workflow-definition steps in approval order, with hint keys for UI icons (fund type, funder, division, etc.).
+     *
+     * @return list<array{role: string, hints: list<string>}>
      */
-    protected function getUniqueApproverRolesForWorkflow(int $workflowId): string
+    protected function getApproverRolesPipelineForWorkflow(int $workflowId): array
     {
         try {
-            $roles = DB::table('workflow_definition')
+            $rows = DB::table('workflow_definition')
                 ->where('workflow_id', $workflowId)
                 ->where('is_enabled', 1)
                 ->orderBy('approval_order')
-                ->pluck('role')
-                ->unique()
-                ->filter(fn ($r) => $r !== null && $r !== '')
-                ->values()
-                ->all();
+                ->get(['role', 'approval_order', 'fund_type', 'category', 'is_division_specific', 'triggers_category_check', 'allowed_funders', 'divisions', 'division_reference_column']);
 
-            return implode(', ', $roles);
+            $pipeline = [];
+            foreach ($rows as $row) {
+                $hints = [];
+                if (isset($row->fund_type) && $row->fund_type !== null && $row->fund_type !== '') {
+                    $hints[] = 'fund_type';
+                }
+                $funders = $row->allowed_funders ?? null;
+                if ($funders !== null && $funders !== '') {
+                    $decoded = is_string($funders) ? json_decode($funders, true) : $funders;
+                    if (is_array($decoded) && count($decoded) > 0) {
+                        $hints[] = 'funder';
+                    }
+                }
+                if (! empty($row->is_division_specific)) {
+                    $hints[] = 'division';
+                }
+                if (! empty($row->division_reference_column)) {
+                    $hints[] = 'division_field';
+                }
+                if (! empty($row->category)) {
+                    $hints[] = 'category';
+                }
+                if (! empty($row->triggers_category_check)) {
+                    $hints[] = 'category_gate';
+                }
+                $divs = $row->divisions ?? null;
+                if ($divs !== null && $divs !== '') {
+                    $d = is_string($divs) ? json_decode($divs, true) : $divs;
+                    if (is_array($d) && count($d) > 0) {
+                        $hints[] = 'division_scope';
+                    }
+                }
+                $hints = array_values(array_unique($hints));
+                $role = trim((string) ($row->role ?? ''));
+                if ($role === '') {
+                    continue;
+                }
+                $pipeline[] = ['role' => $role, 'hints' => $hints];
+            }
+
+            return $pipeline;
         } catch (\Exception $e) {
-            return '';
+            return [];
         }
     }
 
@@ -1151,10 +1189,14 @@ trait ApproverDashboardHelper
      */
     protected function formatWorkflowStatRow(string $workflowName, int $workflowId, int $memosCount, float $avgHours, array $docTypeLabels): array
     {
+        $pipeline = $this->getApproverRolesPipelineForWorkflow($workflowId);
+        $rolesPlain = implode(' → ', array_column($pipeline, 'role'));
+
         return [
             'workflow_name' => $workflowName,
             'workflow_id' => $workflowId,
-            'approver_roles' => $this->getUniqueApproverRolesForWorkflow($workflowId),
+            'approver_roles' => $rolesPlain,
+            'approver_roles_pipeline' => $pipeline,
             'memos' => $memosCount,
             'avg_hours' => $avgHours,
             'avg_days' => $avgHours > 0 ? round($avgHours / 24, 4) : 0,
