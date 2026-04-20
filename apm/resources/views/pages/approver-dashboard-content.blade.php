@@ -66,18 +66,30 @@
         <button type="button" class="btn btn-outline-secondary" id="wfChartUnitHours">Hours</button>
       </div>
     </div>
+    <details class="workflow-disclaimer-details border-bottom">
+      <summary class="fw-semibold text-dark py-2 px-3 mb-0 user-select-none d-flex align-items-center gap-2 small">
+        <i class="fa fa-chevron-right workflow-disclaimer-chevron text-secondary"></i>
+        <span>About skipped approval levels (read before interpreting roles)</span>
+      </summary>
+      <div class="px-3 pb-3 small text-muted border-top pt-2">
+        <p class="mb-2">In general workflows, some approval levels may be <strong>skipped automatically</strong> depending on conditions such as <strong>fund type</strong>, <strong>funder</strong>, <strong>division category</strong>, and related rules.</p>
+        <p class="mb-2">Examples of steps that are often bypassed for certain documents include <strong>Grants</strong>, <strong>PIU</strong>, <strong>Operations</strong> or <strong>Programs</strong>, <strong>Others (DDG)</strong>, <strong>Chief of Staff</strong> or <strong>Deputy Chief of Staff</strong>, and <strong>Finance</strong> for externally funded activities.</p>
+        <p class="mb-0">The <strong>Approver roles</strong> column lists every distinct role defined on the workflow; a given document may not have visited all of them. Average times reflect completed approval trails under your selected filters.</p>
+      </div>
+    </details>
     <div class="card-body">
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0" id="workflowStatsTable">
           <thead>
             <tr>
               <th>Workflow Name</th>
+              <th style="min-width: 12rem;">Approver roles (unique)</th>
               <th class="text-end">Approved Docs</th>
               <th class="text-end">Avg. Time to Last Approver</th>
             </tr>
           </thead>
           <tbody id="workflowStatsBody">
-            <tr><td colspan="3" class="text-center text-muted">Loading...</td></tr>
+            <tr><td colspan="4" class="text-center text-muted">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -231,6 +243,21 @@
     transition: transform 0.15s ease;
   }
   .approver-stats-help-details[open] .approver-stats-help-chevron {
+    transform: rotate(90deg);
+  }
+  .workflow-disclaimer-details > summary {
+    list-style: none;
+    cursor: pointer;
+    background: rgba(248, 249, 250, 0.95);
+  }
+  .workflow-disclaimer-details > summary::-webkit-details-marker {
+    display: none;
+  }
+  .workflow-disclaimer-chevron {
+    display: inline-block;
+    transition: transform 0.15s ease;
+  }
+  .workflow-disclaimer-details[open] .workflow-disclaimer-chevron {
     transform: rotate(90deg);
   }
 </style>

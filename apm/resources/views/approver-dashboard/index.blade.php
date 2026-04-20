@@ -550,12 +550,12 @@ function loadWorkflowStats() {
             if (response && response.success && response.data && Array.isArray(response.data)) {
                 renderWorkflowStats(response.data);
             } else {
-                $('#workflowStatsBody').html('<tr><td colspan="3" class="text-center text-muted">No data</td></tr>');
+                $('#workflowStatsBody').html('<tr><td colspan="4" class="text-center text-muted">No data</td></tr>');
                 clearWorkflowChart();
             }
         },
         error: function(xhr) {
-            $('#workflowStatsBody').html('<tr><td colspan="3" class="text-center text-danger">Error loading workflow stats</td></tr>');
+            $('#workflowStatsBody').html('<tr><td colspan="4" class="text-center text-danger">Error loading workflow stats</td></tr>');
             clearWorkflowChart();
         }
     });
@@ -588,7 +588,7 @@ function renderWorkflowStats(stats) {
     var tbody = $('#workflowStatsBody');
     tbody.empty();
     if (!workflowStatsData.length) {
-        tbody.html('<tr><td colspan="3" class="text-center text-muted">No workflow data</td></tr>');
+        tbody.html('<tr><td colspan="4" class="text-center text-muted">No workflow data</td></tr>');
         clearWorkflowChart();
         return;
     }
@@ -599,7 +599,10 @@ function renderWorkflowStats(stats) {
         var docTypesHtml = docTypes
             ? '<div class="small text-muted mt-1">' + escapeHtml(docTypes) + '</div>'
             : '';
-        tbody.append('<tr><td><div>' + escapeHtml(row.workflow_name || '-') + '</div>' + docTypesHtml + '</td><td class="text-end">' + (row.memos != null ? row.memos : 0) + '</td><td class="text-end">' + formatWorkflowAvgCell(row) + '</td></tr>');
+        var rolesCell = (row.approver_roles != null && String(row.approver_roles).trim() !== '')
+            ? '<span class="text-break">' + escapeHtml(String(row.approver_roles)) + '</span>'
+            : '<span class="text-muted">—</span>';
+        tbody.append('<tr><td><div>' + escapeHtml(row.workflow_name || '-') + '</div>' + docTypesHtml + '</td><td class="small align-top">' + rolesCell + '</td><td class="text-end">' + (row.memos != null ? row.memos : 0) + '</td><td class="text-end">' + formatWorkflowAvgCell(row) + '</td></tr>');
     });
 
     // Column chart: defer render so container is in DOM (fixes Livewire/navigation timing)
