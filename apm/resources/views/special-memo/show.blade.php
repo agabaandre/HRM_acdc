@@ -1435,7 +1435,13 @@
                 @endif
 
                 <!-- Submit for Approval Section -->
-                @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id') || $specialMemo->overall_status == 'draft' && $specialMemo->division->division_head == user_session('staff_id'))
+                @if(
+                    $specialMemo->overall_status === 'draft'
+                    && (
+                        $specialMemo->staff_id == user_session('staff_id')
+                        || ($specialMemo->division && $specialMemo->division->division_head == user_session('staff_id'))
+                    )
+                )
                     <div class="card sidebar-card border-0 mt-4"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
