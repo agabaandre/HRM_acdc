@@ -641,9 +641,15 @@
                 </div>
             </div>
         @endif
-         @if(($matrix->activities->count() > 0 && still_with_creator($matrix)))
+        @if(
+            $matrix->activities->count() > 0
+            && (
+                ($matrix->overall_status === 'draft' && $isMatrixQm)
+                || ($matrix->overall_status === 'returned' && can_division_head_edit($matrix))
+            )
+        )
                 <button type="button w-100" class="btn btn-success w-100 text-white" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
-                    @if(can_division_head_edit($matrix))
+                    @if($matrix->overall_status === 'returned' && can_division_head_edit($matrix))
                         <i class="fa fa-envelope"></i> Resubmit Matrix for Approval
                     @else
                         <i class="fa fa-envelope"></i> Submit Matrix for Approval
@@ -679,7 +685,7 @@
            
                 <h5 class="modal-title text-white" id="submitMatrixModalLabel">
                     <i class="bx bx-save me-2"></i> 
-                    @if(can_division_head_edit($matrix))
+                    @if($matrix->overall_status === 'returned' && can_division_head_edit($matrix))
                         Resubmit Matrix for Approval
                     @else
                         Submit Matrix for Approval
@@ -689,7 +695,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                @if(can_division_head_edit($matrix))
+                @if($matrix->overall_status === 'returned' && can_division_head_edit($matrix))
                     <p class="mb-3">Are you sure you want to resubmit this matrix for approval?</p>
                     <div class="alert alert-warning">
                         <i class="bx bx-info-circle me-2"></i>
@@ -703,21 +709,13 @@
                 </div>
                 @endif
                 
-                @if(can_division_head_edit($matrix))
+                @if($matrix->overall_status === 'returned' && can_division_head_edit($matrix))
                     <div class="mb-3">
                         <label for="hodComment" class="form-label">
                             <strong>Comments (Optional):</strong>
                         </label>
                         <textarea class="form-control" id="hodComment" name="hod_comment" rows="3" 
                                   placeholder="Add any comments about the changes made to the matrix..."></textarea>
-                    </div>
-                @elseif($matrix->overall_status === 'returned')
-                    <div class="mb-3">
-                        <label for="focalPersonComment" class="form-label">
-                            <strong>Comments (Optional):</strong>
-                        </label>
-                        <textarea class="form-control" id="focalPersonComment" name="focal_person_comment" rows="3" 
-                                  placeholder="Add any comments about the changes made to address the return feedback..."></textarea>
                     </div>
                 @endif
                 
@@ -742,13 +740,9 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bx bx-x me-1"></i> Cancel
                 </button>
-                @if(can_division_head_edit($matrix))
+                @if($matrix->overall_status === 'returned' && can_division_head_edit($matrix))
                     <button type="button" class="btn btn-success" id="submitWithCommentBtn">
                         <i class="fa fa-envelope"></i> Yes, Resubmit Matrix
-                    </button>
-                @elseif($matrix->overall_status === 'returned')
-                    <button type="button" class="btn btn-success" id="submitWithFocalCommentBtn">
-                        <i class="fa fa-envelope"></i> Yes, Submit Matrix
                     </button>
                 @else
                 <a wire:navigate href="{{ route('matrices.request_approval', $matrix) }}" class="btn btn-success">

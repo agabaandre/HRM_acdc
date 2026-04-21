@@ -1263,7 +1263,13 @@
                 @endif
 
                 <!-- Submit for Approval Section -->
-                @if($changeRequest->overall_status === 'draft' && ($changeRequest->staff_id == user_session('staff_id') || ($changeRequest->division && $changeRequest->division->division_head == user_session('staff_id'))))
+                @if(
+                    $changeRequest->overall_status === 'draft'
+                    && (
+                        $changeRequest->staff_id == user_session('staff_id')
+                        || ($changeRequest->division && $changeRequest->division->division_head == user_session('staff_id'))
+                    )
+                )
                     <div class="card sidebar-card border-0 mt-4"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
