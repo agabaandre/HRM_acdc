@@ -421,6 +421,7 @@
 
 
         // Existing values used to restore edit state reliably across browsers
+        const initialActivityCode = @json($nonTravel->workplan_activity_code ?? '');
         const existingBudget = @json($budgetBreakdownForJs);
         const existingBudgetCodes = (@json($budgetIdsForJs) || []).map(String);
         let hasRestoredInitialBudget = false;
@@ -528,11 +529,101 @@
             });
         });
 
+        function normalizeBudgetItemsToArray(items) {
+            if (!items) return [];
+            if (Array.isArray(items)) return items;
+            if (typeof items === 'object') {
+                return Object.values(items).filter(function (item) {
+                    return item && typeof item === 'object';
+                });
+            }
+            return [];
+        }
+
+        function getExistingBudgetItemsForCode(codeId) {
+            if (!existingBudget) return null;
+            const s = String(codeId);
+            if (existingBudget[s] !== undefined) return existingBudget[s];
+            if (existingBudget[codeId] !== undefined) return existingBudget[codeId];
+            const n = Number(codeId);
+            if (!Number.isNaN(n) && existingBudget[n] !== undefined) return existingBudget[n];
+            return null;
+        }
+
+        function findBudgetCodeOption(codeId) {
+            const s = String(codeId);
+            return $('#budget_codes option').filter(function () {
+                return String($(this).val()) === s;
+            }).first();
+        }
+
+        function createBudgetCardWithData(codeId, label, balance, existingData) {
+            const container = $('#budgetCards');
+            const existingCard = container.find(`.budget-card[data-code="${codeId}"]`);
+            if (existingCard.length > 0) {
+                return;
+            }
+
+            const cardHtml = `
+                <div class="card mt-4 budget-card" data-code="${codeId}">
+                    <div class="card-header bg-light">
+                        <h6 class="fw-semibold">
+                            Budget for: ${label}
+                            <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Unit</th>
+                                    <th>Qty</th>
+                                    <th>Unit Cost</th>
+                                    <th>Total</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="budget-items"></tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-end fw-bold">Subtotal:</td>
+                                    <td class="subtotal fw-bold text-success">0.00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <div class="text-end mt-2">
+                            <button type="button" class="btn btn-primary btn-sm add-budget-row" data-code="${codeId}">
+                                <i class="fas fa-plus"></i> Add Row
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.append(cardHtml);
+
+            const items = normalizeBudgetItemsToArray(existingData);
+            const tbody = container.find(`.budget-card[data-code="${codeId}"] .budget-items`);
+            if (items.length > 0) {
+                items.forEach(function (item, index) {
+                    tbody.append(createBudgetRow(codeId, index, {
+                        description: item.description || '',
+                        unit: item.unit || '',
+                        quantity: item.quantity ?? item.qty ?? item.units ?? 1,
+                        unit_cost: item.unit_cost ?? 0,
+                    }));
+                });
+            } else {
+                tbody.append(createBudgetRow(codeId, 0));
+            }
+        }
+
         // Budget codes change handler
         $('#budget_codes').on('change', function() {
             const selected = $(this).find('option:selected');
             const container = $('#budgetCards');
-            container.empty();
 
             // Activity Code: show when any selected code's funder enables it.
             const isTruthyFlag = function (value) {
@@ -566,64 +657,35 @@
                 $('.activity_code').show();
                 $('#activity_code').prop('required', true);
                 $('.activity_code label .text-danger').show();
+                if (initialActivityCode) {
+                    $('#activity_code').val(initialActivityCode);
+                }
             } else {
                 $('.activity_code').hide();
                 $('#activity_code').val('').prop('required', false);
                 $('.activity_code label .text-danger').hide();
             }
 
-            if (selected.length === 0) {
-                return;
-            }
+            const selectedCodeIds = selected.map(function () { return String($(this).val()); }).get();
+
+            container.find('.budget-card').each(function () {
+                const cardCodeId = String($(this).data('code'));
+                if (selectedCodeIds.indexOf(cardCodeId) === -1) {
+                    $(this).remove();
+                }
+            });
 
             selected.each(function() {
                 const codeId = $(this).val();
                 const label = $(this).text();
                 const balance = $(this).data('balance');
-
-                const cardHtml = `
-                    <div class="card mt-4 budget-card" data-code="${codeId}">
-                        <div class="card-header bg-light">
-                            <h6 class="fw-semibold">
-                                Budget for: ${label}
-                                <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-bordered align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Description</th>
-                                        <th>Unit</th>
-                                        <th>Qty</th>
-                                        <th>Unit Cost</th>
-                                        <th>Total</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="budget-items">
-                                    ${createBudgetRow(codeId, 0)}
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="4" class="text-end fw-bold">Subtotal:</td>
-                                        <td class="subtotal fw-bold text-success">0.00</td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                            <div class="text-end mt-2">
-                                <button type="button" class="btn btn-primary btn-sm add-budget-row" data-code="${codeId}">
-                                    <i class="fas fa-plus"></i> Add Row
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                container.append(cardHtml);
+                const raw = getExistingBudgetItemsForCode(codeId);
+                createBudgetCardWithData(codeId, label, balance, raw);
             });
 
+            if (selected.length === 0) {
+                container.empty();
+            }
             updateGrandTotal();
         });
 
@@ -869,30 +931,8 @@
             }
         });
 
-        // Load existing budget items into already-created budget cards
-        function loadExistingBudgetItems() {
-            if (!existingBudget || Object.keys(existingBudget).length === 0) {
-                return;
-            }
-
-            Object.entries(existingBudget).forEach(([codeId, items]) => {
-                if (codeId === 'grand_total') {
-                    return;
-                }
-                const card = $(`.budget-card[data-code="${codeId}"]`);
-                if (!(card.length && Array.isArray(items) && items.length > 0)) {
-                    return;
-                }
-                const tbody = card.find('.budget-items');
-                tbody.empty();
-                items.forEach((item, index) => {
-                    tbody.append(createBudgetRow(codeId, index, item));
-                });
-                updateSubtotal(card);
-            });
-
-            updateGrandTotal();
-        }
+        // Compatibility no-op: restoration handled in createBudgetCardWithData
+        function loadExistingBudgetItems() {}
 
         // Show server errors to user (Lobibox with 15s for errors so they are visible)
         function show_notification(message, type) {
