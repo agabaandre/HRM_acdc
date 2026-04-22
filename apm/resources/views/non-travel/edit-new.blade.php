@@ -534,19 +534,31 @@
             const container = $('#budgetCards');
             container.empty();
 
-            // World Bank Activity Code: show when any selected code's funder has show_activity_code enabled (control from funders admin)
+            // Activity Code: show when any selected code's funder enables it.
+            const isTruthyFlag = function (value) {
+                return value === true || value === 1 || value === '1' || value === 'true';
+            };
             let hasWorldBankCode = false;
             selected.each(function () {
-                if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
+                const rawFlag = $(this).attr('data-show-activity-code')
+                    ?? $(this).data('show-activity-code')
+                    ?? $(this).data('showActivityCode');
+                if (isTruthyFlag(rawFlag)) {
                     hasWorldBankCode = true;
+                    return false;
                 }
             });
 
             if (hasWorldBankCode) {
                 var firstLabel = 'Activity Code *';
                 selected.each(function () {
-                    if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
-                        var l = $(this).data('activity-code-label') || $(this).data('activityCodeLabel');
+                    const rawFlag = $(this).attr('data-show-activity-code')
+                        ?? $(this).data('show-activity-code')
+                        ?? $(this).data('showActivityCode');
+                    if (isTruthyFlag(rawFlag)) {
+                        var l = $(this).attr('data-activity-code-label')
+                            || $(this).data('activity-code-label')
+                            || $(this).data('activityCodeLabel');
                         if (l) { firstLabel = l; return false; }
                     }
                 });
