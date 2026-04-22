@@ -423,8 +423,11 @@
         // Populate existing budget data
         const existingBudget = @json($budgetBreakdownForJs);
         const existingBudgetCodes = @json($budgetIdsForJs);
+        const hasExistingBudgetData = existingBudget
+            && typeof existingBudget === 'object'
+            && Object.keys(existingBudget).some(key => key !== 'grand_total');
         
-        if (existingBudgetCodes.length > 0 && existingBudget.length > 0) {
+        if (Array.isArray(existingBudgetCodes) && existingBudgetCodes.length > 0 && hasExistingBudgetData) {
             // Enable budget codes select
             $('#budget_codes').prop('disabled', false);
             
@@ -468,7 +471,8 @@
                 $('.fund_type').removeClass('col-md-2').addClass('col-md-4');
             }
             $('.activity_code').hide();
-            $('#activity_code').val("").prop('required', false);
+            // Keep existing value during edit hydration; only drop required state.
+            $('#activity_code').prop('required', false);
             $('#budget_codes').prop('disabled', false).prop('required', true).closest('.col-md-4').show();
         });
 
@@ -566,7 +570,8 @@
                 $('.activity_code label .text-danger').show();
             } else {
                 $('.activity_code').hide();
-                $('#activity_code').val('').prop('required', false);
+                // Preserve any existing saved code even when field is hidden.
+                $('#activity_code').prop('required', false);
                 $('.activity_code label .text-danger').hide();
             }
 
@@ -892,12 +897,18 @@
                         $('#fund_type').val(fundTypeId).trigger('change');
                         console.log('Set fund type to:', fundTypeId);
                         
-                        // Wait for budget codes to load, then select existing codes
-                        setTimeout(() => {
+                        // Wait for budget code options to exist, then select existing codes.
+                        const waitForBudgetOptions = (attempt = 0) => {
                             const budgetSelect = $('#budget_codes');
+                            const optionsCount = budgetSelect.find('option').length;
                             console.log('Budget select found:', budgetSelect.length);
-                            console.log('Budget select options count:', budgetSelect.find('option').length);
-                            
+                            console.log('Budget select options count:', optionsCount);
+
+                            if (optionsCount === 0 && attempt < 20) {
+                                setTimeout(() => waitForBudgetOptions(attempt + 1), 120);
+                                return;
+                            }
+
                             // Select existing budget codes
                             window.existingBudgetCodes.forEach(codeId => {
                                 const option = budgetSelect.find(`option[value="${codeId}"]`);
@@ -918,7 +929,9 @@
                                 console.log('About to call loadExistingBudgetItems...');
                                 window.loadExistingBudgetItems();
                             }, 300);
-                        }, 1000); // Wait 1 second for fund type change to load budget codes
+                        };
+
+                        waitForBudgetOptions();
                     } else {
                         console.log('No fund type found for budget code:', firstBudgetCode);
                     }
