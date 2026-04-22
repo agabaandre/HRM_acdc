@@ -470,7 +470,10 @@
             budgetCodesHelp.text(isExtramural ? 'Select one code (extramural)' : 'Select up to 2 codes (intramural)');
         }
 
+        let fundTypeBudgetCodesRequestId = 0;
+
         $('#fund_type').on('change', function () {
+            const requestId = ++fundTypeBudgetCodesRequestId;
             const fundTypeId = $(this).val();
             const selectedText = $('#fund_type option:selected').text().toLowerCase();
             const isExtramural = selectedText.indexOf('extramural') > -1;
@@ -499,6 +502,9 @@
                 fund_type_id: fundTypeId,
                 division_id: divisionId
             }, function (data) {
+                if (requestId !== fundTypeBudgetCodesRequestId) {
+                    return;
+                }
                 budgetCodesSelect.empty();
                 if (data.length) {
                     data.forEach(code => {
@@ -510,14 +516,28 @@
                     budgetCodesSelect.prop('disabled', false);
                     applyBudgetCodesSelect2(isExtramural);
 
-                    // Restore existing codes and rows once, after options are loaded
+                    // Restore existing codes and rows once, after options are loaded.
+                    // Select2 does not always repaint when only .val([...]).trigger('change') runs
+                    // right after init; mirror special-memo: set native selected + change.select2.
                     if (!hasRestoredInitialBudget && existingBudgetCodes.length > 0) {
                         const selectableCodes = existingBudgetCodes.filter(function (id) {
                             return budgetCodesSelect.find(`option[value="${id}"]`).length > 0;
                         });
-                        budgetCodesSelect.val(selectableCodes).trigger('change');
-                        loadExistingBudgetItems();
-                        hasRestoredInitialBudget = true;
+                        const rid = requestId;
+                        setTimeout(function () {
+                            if (rid !== fundTypeBudgetCodesRequestId) {
+                                return;
+                            }
+                            hasRestoredInitialBudget = true;
+                            budgetCodesSelect.find('option').prop('selected', false);
+                            selectableCodes.forEach(function (id) {
+                                budgetCodesSelect.find('option').filter(function () {
+                                    return String($(this).val()) === String(id);
+                                }).first().prop('selected', true);
+                            });
+                            budgetCodesSelect.trigger('change.select2');
+                            budgetCodesSelect.trigger('change');
+                        }, 0);
                     }
                 } else {
                     budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
@@ -937,8 +957,6 @@
         });
 
         // Compatibility no-op: restoration handled in createBudgetCardWithData
-        function loadExistingBudgetItems() {}
-
         // Show server errors to user (Lobibox with 15s for errors so they are visible)
         function show_notification(message, type) {
             type = type || 'info';
