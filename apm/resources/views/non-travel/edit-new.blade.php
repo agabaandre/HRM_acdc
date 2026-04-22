@@ -618,6 +618,9 @@
             } else {
                 tbody.append(createBudgetRow(codeId, 0));
             }
+
+            const createdCard = container.find(`.budget-card[data-code="${codeId}"]`);
+            updateSubtotal(createdCard);
         }
 
         // Budget codes change handler
@@ -736,7 +739,9 @@
 
         // Remove budget row
         $(document).on('click', '.remove-budget-row', function() {
+            const $card = $(this).closest('.budget-card');
             $(this).closest('tr').remove();
+            updateSubtotal($card);
             updateGrandTotal();
         });
 
