@@ -181,8 +181,8 @@
          
 
             
-                <!-- Budget Section -->
-                <div id="budgetGroupContainer" class="mt-4">
+                <!-- Budget Section: exclude from machine translation (avoids Google Translate DOM recursion with live-updating inputs) -->
+                <div id="budgetGroupContainer" class="mt-4 notranslate" translate="no">
                     <h5 class="fw-bold text-success mb-3">
                         <i class="fas fa-money-bill-wave me-2"></i> Budget Details
                     </h5>
@@ -232,7 +232,7 @@
                 </div>
 
 
-                <div class="d-flex justify-content-end mt-4">
+                <div class="d-flex justify-content-end mt-4 notranslate" translate="no">
                     <div class="border p-4 rounded-3 shadow-sm bg-light">
                         <h5 class="mb-0">
                             <i class="fas fa-coins me-2 text-success"></i>
@@ -585,7 +585,7 @@
             }
 
             const cardHtml = `
-                <div class="card mt-4 budget-card" data-code="${codeId}">
+                <div class="card mt-4 budget-card notranslate" data-code="${codeId}" translate="no">
                     <div class="card-header bg-light">
                         <h6 class="fw-semibold">
                             Budget for: ${label}
@@ -812,11 +812,14 @@
                 $row.find('.total').text(line.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             });
             
+            // Persisted breakdown may be an array or a JSON object with numeric keys — never assume .forEach exists
+            const persistedBudgetItems = normalizeBudgetItemsToArray(getExistingBudgetItemsForCode(codeId));
+
             // Calculate original subtotal from existing items (for change requests)
-            if (isChangeRequest && existingBudget && existingBudget[codeId]) {
-                existingBudget[codeId].forEach(function(item) {
+            if (isChangeRequest && persistedBudgetItems.length > 0) {
+                persistedBudgetItems.forEach(function(item) {
                     const unitCost = parseFloat(item.unit_cost) || 0;
-                    const qty = parseFloat(item.qty) || parseFloat(item.units) || 0;
+                    const qty = parseFloat(item.quantity) || parseFloat(item.qty) || parseFloat(item.units) || 0;
                     originalSubtotal += unitCost * qty;
                 });
             }
@@ -828,10 +831,10 @@
             // If editing, add the current memo's budget for this code to available balance
             let availableBalance = budgetBalance;
             let currentMemoBudget = 0;
-            if (existingBudget && existingBudget[codeId]) {
-                existingBudget[codeId].forEach(function(item) {
+            if (persistedBudgetItems.length > 0) {
+                persistedBudgetItems.forEach(function(item) {
                     const unitCost = parseFloat(item.unit_cost) || 0;
-                    const qty = parseFloat(item.qty) || parseFloat(item.units) || 0;
+                    const qty = parseFloat(item.quantity) || parseFloat(item.qty) || parseFloat(item.units) || 0;
                     currentMemoBudget += unitCost * qty;
                 });
                 availableBalance = budgetBalance + currentMemoBudget;
