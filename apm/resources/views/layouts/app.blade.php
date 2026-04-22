@@ -11,6 +11,7 @@
     <meta name="user-logged-in" content="{{ !empty(session('user')) ? 'true' : 'false' }}">
     <meta name="api-base-url" content="{{ url('/api') }}">
     <meta name="base-url" content="{{ session('user.base_url', env('BASE_URL', 'http://localhost/staff')) }}">
+    @stack('head-meta')
     <title>@yield('title', config('app.name', 'Business Management System'))</title>
 
     @include('layouts.partials.css')

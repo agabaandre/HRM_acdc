@@ -1,5 +1,11 @@
 @extends('layouts.app')
 
+@section('suppress_google_translate', '1')
+
+@push('head-meta')
+    <meta name="google" content="notranslate">
+@endpush
+
 @section('title', 'Create Non-Travel Memo')
 @section('header', 'Fill Request')
 
