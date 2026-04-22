@@ -1,5 +1,12 @@
 @extends('layouts.app')
 
+{{-- Footer skips Google Translate on this screen (avoids translate_http recursion with Summernote + budget JS). --}}
+@section('suppress_google_translate', '1')
+
+@push('head-meta')
+    <meta name="google" content="notranslate">
+@endpush
+
 @php
     // Decode JSON fields if they are strings (model casts may already provide arrays).
     // Kept at file scope so @push('scripts') can use the same values.
