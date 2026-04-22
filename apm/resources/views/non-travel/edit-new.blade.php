@@ -715,9 +715,9 @@
                                class="form-control unit-cost" min="0" step="0.01" value="${unitCost}" required>
                     </td>
                     <td class="total text-center">${total}</td>
-                    <td>
-                        <button type="button" class="btn btn-danger btn-sm remove-budget-row">
-                            <i class="fas fa-trash"></i>
+                    <td class="text-center align-middle">
+                        <button type="button" class="btn btn-danger btn-sm remove-budget-row budget-delete-btn d-inline-flex align-items-center justify-content-center" style="width:32px;height:32px;padding:0;line-height:1;" aria-label="Remove budget row">
+                            <i class="bx bx-trash"></i>
                         </button>
                     </td>
                 </tr>
