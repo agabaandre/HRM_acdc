@@ -747,6 +747,20 @@
             `;
         }
 
+        const ntSaveButtonHtml = ($('#nonTravelForm button[type="submit"]').first().html() || '').trim();
+
+        function parseBudgetInputNumber(raw) {
+            if (raw === undefined || raw === null || raw === '') {
+                return 0;
+            }
+            if (typeof raw === 'number' && !Number.isNaN(raw)) {
+                return raw;
+            }
+            const s = String(raw).trim().replace(/\s/g, '').replace(',', '.');
+            const n = parseFloat(s);
+            return Number.isFinite(n) ? n : 0;
+        }
+
         // Add budget row
         $(document).on('click', '.add-budget-row', function() {
             const codeId = $(this).data('code');
@@ -754,6 +768,8 @@
             const index = $tbody.find('tr').length;
             
             $tbody.append(createBudgetRow(codeId, index));
+            const $card = $(this).closest('.budget-card');
+            updateSubtotal($card);
             updateGrandTotal();
         });
 
@@ -765,27 +781,35 @@
             updateGrandTotal();
         });
 
-        // Calculate row total when values change
-        $(document).on('input', '.quantity, .unit-cost', function() {
-            const $row = $(this).closest('tr');
-            const quantity = parseFloat($row.find('.quantity').val()) || 0;
-            const unitCost = parseFloat($row.find('.unit-cost').val()) || 0;
-            const total = (quantity * unitCost);
-            $row.find('.total').text(total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-            updateSubtotal($row.closest('.budget-card'));
-            updateGrandTotal();
-        });
+        // Recalculate from inputs (do not parse .total text — locale/grouping breaks totals)
+        $('#budgetCards').off('input.ntb change.ntb', '.quantity, .unit-cost')
+            .on('input.ntb change.ntb', '.quantity, .unit-cost', function() {
+                const $card = $(this).closest('.budget-card');
+                if (!$card.length) {
+                    return;
+                }
+                updateSubtotal($card);
+                updateGrandTotal();
+            });
 
         function updateSubtotal($card) {
+            if (!$card || !$card.length) {
+                return;
+            }
             let subtotal = 0;
             let originalSubtotal = 0;
             const codeId = $card.data('code');
             const isChangeRequest = {{ request('change_request') ? 'true' : 'false' }};
             const fundTypeId = parseInt($('#fund_type').val()) || 0;
             
-            // Calculate current subtotal from all rows
-            $card.find('.budget-items tr').each(function() {
-                subtotal += parseFloat($(this).find('.total').text().replace(/,/g, '')) || 0;
+            // Sum from row inputs and keep line totals in sync
+            $card.find('tbody.budget-items tr').each(function() {
+                const $row = $(this);
+                const quantity = parseBudgetInputNumber($row.find('.quantity').val());
+                const unitCost = parseBudgetInputNumber($row.find('.unit-cost').val());
+                const line = quantity * unitCost;
+                subtotal += line;
+                $row.find('.total').text(line.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             });
             
             // Calculate original subtotal from existing items (for change requests)
@@ -837,7 +861,8 @@
                 shouldCheckBudget = subtotal > availableBalance;
             }
             
-            // Format and display subtotal
+            // Format and display subtotal; store raw number for grand total (avoid re-parsing localized text)
+            $card.attr('data-budget-subtotal', String(subtotal));
             $card.find('.subtotal').text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             
             // Check if budget is exceeded (skip for external source)
@@ -870,11 +895,15 @@
             const fundTypeId = parseInt($('#fund_type').val()) || 0;
             
             $('.budget-card').each(function() {
-                const subtotal = parseFloat($(this).find('.subtotal').text().replace(/,/g, '')) || 0;
-                grandTotal += subtotal;
+                const $c = $(this);
+                let sub = parseFloat($c.attr('data-budget-subtotal'));
+                if (!Number.isFinite(sub)) {
+                    sub = 0;
+                }
+                grandTotal += sub;
                 
                 // Check if any card has exceeded budget
-                if ($(this).find('.subtotal').hasClass('text-danger')) {
+                if ($c.find('.subtotal').hasClass('text-danger')) {
                     hasExceededBudget = true;
                 }
             });
@@ -883,12 +912,15 @@
             $('#grandBudgetTotalInput').val(grandTotal.toFixed(2));
             
             // Update submit button state
-            const submitBtn = $('button[type="submit"]');
+            const submitBtn = $('#nonTravelForm').find('button[type="submit"]');
             if (hasExceededBudget && fundTypeId !== 3) {
                 submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
                     .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
             } else {
                 submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success');
+                if (ntSaveButtonHtml) {
+                    submitBtn.html(ntSaveButtonHtml);
+                }
             }
         }
 
