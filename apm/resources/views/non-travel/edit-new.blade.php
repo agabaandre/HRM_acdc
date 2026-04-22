@@ -420,33 +420,10 @@
 
 
 
-        // Populate existing budget data
+        // Existing values used to restore edit state reliably across browsers
         const existingBudget = @json($budgetBreakdownForJs);
-        const existingBudgetCodes = @json($budgetIdsForJs);
-        const hasExistingBudgetData = existingBudget
-            && typeof existingBudget === 'object'
-            && Object.keys(existingBudget).some(key => key !== 'grand_total');
-        
-        if (Array.isArray(existingBudgetCodes) && existingBudgetCodes.length > 0 && hasExistingBudgetData) {
-            // Enable budget codes select
-            $('#budget_codes').prop('disabled', false);
-            
-            // Populate budget codes
-            existingBudgetCodes.forEach(codeId => {
-                const option = $(`#budget_codes option[value="${codeId}"]`);
-                if (option.length) {
-                    option.prop('selected', true);
-                }
-            });
-            
-            // Trigger change event to load budget codes
-            $('#fund_type').trigger('change');
-            
-            // Wait for budget codes to load, then populate budget items
-            setTimeout(() => {
-                populateExistingBudgetItems(existingBudget);
-            }, 500);
-        }
+        const existingBudgetCodes = (@json($budgetIdsForJs) || []).map(String);
+        let hasRestoredInitialBudget = false;
 
         const budgetItemsHint = $('#budget_items_hint');
 
@@ -471,8 +448,7 @@
                 $('.fund_type').removeClass('col-md-2').addClass('col-md-4');
             }
             $('.activity_code').hide();
-            // Keep existing value during edit hydration; only drop required state.
-            $('#activity_code').prop('required', false);
+            $('#activity_code').val("").prop('required', false);
             $('#budget_codes').prop('disabled', false).prop('required', true).closest('.col-md-4').show();
         });
 
@@ -532,6 +508,16 @@
                     });
                     budgetCodesSelect.prop('disabled', false);
                     applyBudgetCodesSelect2(isExtramural);
+
+                    // Restore existing codes and rows once, after options are loaded
+                    if (!hasRestoredInitialBudget && existingBudgetCodes.length > 0) {
+                        const selectableCodes = existingBudgetCodes.filter(function (id) {
+                            return budgetCodesSelect.find(`option[value="${id}"]`).length > 0;
+                        });
+                        budgetCodesSelect.val(selectableCodes).trigger('change');
+                        loadExistingBudgetItems();
+                        hasRestoredInitialBudget = true;
+                    }
                 } else {
                     budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
                     budgetCodesHelp.text('No budget codes found');
@@ -570,8 +556,7 @@
                 $('.activity_code label .text-danger').show();
             } else {
                 $('.activity_code').hide();
-                // Preserve any existing saved code even when field is hidden.
-                $('#activity_code').prop('required', false);
+                $('#activity_code').val('').prop('required', false);
                 $('.activity_code label .text-danger').hide();
             }
 
@@ -872,137 +857,30 @@
             }
         });
 
-        // Initialize existing budget data - moved to global scope
-        window.initializeExistingBudgetData = function() {
-            console.log('Initializing existing budget data...');
-            console.log('Existing budget codes:', window.existingBudgetCodes);
-            console.log('Existing budget breakdown:', window.existingBudgetBreakdown);
-            console.log('Type of existingBudgetBreakdown:', typeof window.existingBudgetBreakdown);
-            console.log('Keys in existingBudgetBreakdown:', window.existingBudgetBreakdown ? Object.keys(window.existingBudgetBreakdown) : 'undefined');
-            
-            if (window.existingBudgetCodes && window.existingBudgetCodes.length > 0) {
-                // First, we need to get the fund type for the existing budget codes
-                // and set it automatically so the budget codes dropdown can be populated
-                const firstBudgetCode = window.existingBudgetCodes[0];
-                console.log('Getting fund type for budget code:', firstBudgetCode);
-                
-                // Get fund type from the budget code
-                $.get('{{ route("budget-codes.get-fund-type") }}', {
-                    budget_code_id: firstBudgetCode
-                }, function(fundTypeId) {
-                    console.log('Retrieved fund type ID:', fundTypeId);
-                    
-                    if (fundTypeId) {
-                        // Set the fund type
-                        $('#fund_type').val(fundTypeId).trigger('change');
-                        console.log('Set fund type to:', fundTypeId);
-                        
-                        // Wait for budget code options to exist, then select existing codes.
-                        const waitForBudgetOptions = (attempt = 0) => {
-                            const budgetSelect = $('#budget_codes');
-                            const optionsCount = budgetSelect.find('option').length;
-                            console.log('Budget select found:', budgetSelect.length);
-                            console.log('Budget select options count:', optionsCount);
-
-                            if (optionsCount === 0 && attempt < 20) {
-                                setTimeout(() => waitForBudgetOptions(attempt + 1), 120);
-                                return;
-                            }
-
-                            // Select existing budget codes
-                            window.existingBudgetCodes.forEach(codeId => {
-                                const option = budgetSelect.find(`option[value="${codeId}"]`);
-                                if (option.length) {
-                                    option.prop('selected', true);
-                                    console.log(`Selected budget code: ${codeId}`);
-                                } else {
-                                    console.log(`Budget code option not found: ${codeId}`);
-                                }
-                            });
-                            
-                            // Trigger change to create budget cards
-                            console.log('Triggering change event on budget select...');
-                            budgetSelect.trigger('change');
-                            
-                            // Load existing budget items after cards are created
-                            setTimeout(() => {
-                                console.log('About to call loadExistingBudgetItems...');
-                                window.loadExistingBudgetItems();
-                            }, 300);
-                        };
-
-                        waitForBudgetOptions();
-                    } else {
-                        console.log('No fund type found for budget code:', firstBudgetCode);
-                    }
-                }).fail(function() {
-                    console.log('Failed to get fund type for budget code:', firstBudgetCode);
-                });
-            } else {
-                console.log('No existing budget codes found');
+        // Load existing budget items into already-created budget cards
+        function loadExistingBudgetItems() {
+            if (!existingBudget || Object.keys(existingBudget).length === 0) {
+                return;
             }
-        };
-        
-        // Load existing budget items into the cards - moved to global scope
-        window.loadExistingBudgetItems = function() {
-            console.log('loadExistingBudgetItems called');
-            console.log('window.existingBudgetBreakdown:', window.existingBudgetBreakdown);
-            console.log('Type of existingBudgetBreakdown:', typeof window.existingBudgetBreakdown);
-            console.log('Keys in existingBudgetBreakdown:', window.existingBudgetBreakdown ? Object.keys(window.existingBudgetBreakdown) : 'undefined');
-            
-            if (window.existingBudgetBreakdown && Object.keys(window.existingBudgetBreakdown).length > 0) {
-                console.log('Loading existing budget items...');
-                
-                try {
-                    Object.entries(window.existingBudgetBreakdown).forEach(([codeId, items]) => {
-                        console.log(`Processing codeId: ${codeId}, items:`, items);
-                        
-                        if (codeId === 'grand_total') {
-                            console.log('Skipping grand_total');
-                            return; // Skip grand total
-                        }
-                        
-                        const card = $(`.budget-card[data-code="${codeId}"]`);
-                        console.log(`Found card for codeId ${codeId}:`, card.length);
-                        
-                        if (card.length && items && items.length > 0) {
-                            console.log(`Loading ${items.length} items for code ${codeId}`);
-                            const tbody = card.find('.budget-items');
-                            tbody.empty(); // Clear existing rows
-                            
-                            items.forEach((item, index) => {
-                                console.log(`Creating budget row for item ${index}:`, item);
-                                console.log('createBudgetRow function exists:', typeof createBudgetRow);
-                                if (typeof createBudgetRow === 'function') {
-                                    const row = createBudgetRow(codeId, index, item);
-                                    console.log('Created row:', row);
-                                    tbody.append(row);
-                                } else {
-                                    console.error('createBudgetRow function not found!');
-                                }
-                            });
-                            
-                            // Update totals
-                            console.log('updateSubtotal function exists:', typeof updateSubtotal);
-                            console.log('updateGrandTotal function exists:', typeof updateGrandTotal);
-                            if (typeof updateSubtotal === 'function') {
-                                updateSubtotal(card);
-                            }
-                            if (typeof updateGrandTotal === 'function') {
-                                updateGrandTotal();
-                            }
-                            console.log(`Loaded ${items.length} budget items for code ${codeId}`);
-                        } else {
-                            console.log(`No card found or no items for codeId ${codeId}. Card length: ${card.length}, Items:`, items);
-                        }
-                    });
-                } catch (error) {
-                    console.error('Error loading existing budget items:', error);
+
+            Object.entries(existingBudget).forEach(([codeId, items]) => {
+                if (codeId === 'grand_total') {
+                    return;
                 }
-            } else {
-                console.log('No existing budget breakdown data found or empty object');
-            }
-        };
+                const card = $(`.budget-card[data-code="${codeId}"]`);
+                if (!(card.length && Array.isArray(items) && items.length > 0)) {
+                    return;
+                }
+                const tbody = card.find('.budget-items');
+                tbody.empty();
+                items.forEach((item, index) => {
+                    tbody.append(createBudgetRow(codeId, index, item));
+                });
+                updateSubtotal(card);
+            });
+
+            updateGrandTotal();
+        }
 
         // Show server errors to user (Lobibox with 15s for errors so they are visible)
         function show_notification(message, type) {
@@ -1085,78 +963,12 @@
                 }
             });
 
-            // Function to populate existing budget items
-            function populateExistingBudgetItems(existingBudget) {
-                const container = $('#budgetCards');
-                container.empty();
-
-                Object.keys(existingBudget).forEach(codeId => {
-                    if (codeId === 'grand_total') return;
-                    
-                    const items = existingBudget[codeId];
-                    if (Array.isArray(items)) {
-                        // Find the budget code option to get label and balance
-                        const option = $(`#budget_codes option[value="${codeId}"]`);
-                        const label = option.length ? option.text() : `Budget Code ${codeId}`;
-                        const balance = option.length ? option.data('balance') : 0;
-
-                        const cardHtml = `
-                            <div class="card mt-4 budget-card" data-code="${codeId}">
-                                <div class="card-header bg-light">
-                                    <h6 class="fw-semibold">
-                                        Budget for: ${label}
-                                        <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <table class="table table-bordered align-middle">
-                                        <thead>
-                                            <tr>
-                                                <th>Description</th>
-                                                <th>Unit</th>
-                                                <th>Qty</th>
-                                                <th>Unit Cost</th>
-                                                <th>Total</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="budget-items">
-                                            ${items.map((item, index) => createBudgetRow(codeId, index, item)).join('')}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colspan="4" class="text-end fw-bold">Subtotal:</td>
-                                                <td class="subtotal fw-bold text-success">0.00</td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                    <button type="button" class="btn btn-sm btn-success add-row" data-code="${codeId}">
-                                        <i class="bx bx-plus"></i> Add Row
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                        container.append(cardHtml);
-                    }
-                });
-
-                // Update totals after populating
-                updateGrandTotal();
-            }
         });
-    });
-    
-    // Initialize existing budget data when document is ready
-    $(document).ready(function() {
-        // Set fund type first if it exists
-        const fundTypeId = $('#fund_type').val();
-        if (fundTypeId) {
+
+        // Initial load for edit page: pull budget codes for selected fund type
+        if ($('#fund_type').val()) {
             $('#fund_type').trigger('change');
         }
-        
-        // Initialize budget data after a short delay to ensure everything is loaded
-        setTimeout(window.initializeExistingBudgetData, 800);
     });
 </script>
 @endpush
