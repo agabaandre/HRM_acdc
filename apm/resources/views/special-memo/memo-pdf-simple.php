@@ -400,8 +400,7 @@
     // Helper function to get latest approval for a specific order
     if (!function_exists('getLatestApprovalForOrder')) {
         function getLatestApprovalForOrder($approvalTrails, $order) {
-            $approvals = $approvalTrails->where('approval_order', $order);
-            return $approvals->sortByDesc('created_at')->first();
+            return \App\Helpers\PrintHelper::getLatestApprovalForOrder($approvalTrails, $order);
         }
     }
 

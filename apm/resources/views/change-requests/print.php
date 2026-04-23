@@ -210,6 +210,9 @@
         $crApprovalTrails = collect($crApprovalTrails);
     }
 
+    // Latest HOD signature on this change request (order 1, approved only — not current division.division_head).
+    $crLatestHodTrail = PrintHelper::getLatestApprovalForOrder($crApprovalTrails, 1);
+
     // Get parent memo document number
     $parentDocNumber = 'N/A';
     if ($parentMemo) {
@@ -241,25 +244,57 @@
         'from' => 'From:'
     ];
 
-    // Ensure "from" section always has at least the division head, even if no approvers found
+    // Ensure "from" section: prefer latest approved HOD from trail (order 1), not current division_head row.
     if (empty($organizedApprovers['from']) && $changeRequest->division_id) {
-        $division = \App\Models\Division::find($changeRequest->division_id);
-        if ($division && $division->division_head) {
-            $divisionHead = \App\Models\Staff::find($division->division_head);
-            if ($divisionHead) {
-                $organizedApprovers['from'] = [[
-                    'staff' => [
-                        'id' => $divisionHead->id,
-                        'name' => $divisionHead->fname . ' ' . $divisionHead->lname,
-                        'title' => $divisionHead->title,
-                        'work_email' => $divisionHead->work_email,
-                        'signature' => $divisionHead->signature
-                    ],
-                    'oic_staff' => null,
-                    'role' => 'Head of Division',
-                    'order' => 'division_head',
-                    'is_oic' => false
-                ]];
+        if ($crLatestHodTrail && ($crLatestHodTrail->staff || $crLatestHodTrail->oicStaff)) {
+            $isOicCrHod = !empty($crLatestHodTrail->oic_staff_id);
+            $packCrStaff = function ($m) {
+                if (!$m) {
+                    return null;
+                }
+                return [
+                    'id' => $m->id,
+                    'staff_id' => $m->staff_id ?? $m->id,
+                    'name' => trim(($m->fname ?? '') . ' ' . ($m->lname ?? '') . ' ' . ($m->oname ?? '')),
+                    'fname' => $m->fname ?? '',
+                    'lname' => $m->lname ?? '',
+                    'oname' => $m->oname ?? '',
+                    'title' => $m->title ?? '',
+                    'work_email' => $m->work_email ?? '',
+                    'signature' => $m->signature ?? '',
+                ];
+            };
+            $crHodApproverRow = [
+                'staff' => $packCrStaff($crLatestHodTrail->staff),
+                'oic_staff' => $isOicCrHod ? $packCrStaff($crLatestHodTrail->oicStaff) : null,
+                'role' => 'Head of Division',
+                'order' => 1,
+                'is_oic' => $isOicCrHod,
+            ];
+            if (!empty($crHodApproverRow['staff']) || !empty($crHodApproverRow['oic_staff'])) {
+                $organizedApprovers['from'] = [$crHodApproverRow];
+            }
+        }
+        if (empty($organizedApprovers['from'])) {
+            $division = \App\Models\Division::find($changeRequest->division_id);
+            if ($division && $division->division_head) {
+                $divisionHead = \App\Models\Staff::find($division->division_head);
+                if ($divisionHead) {
+                    $organizedApprovers['from'] = [[
+                        'staff' => [
+                            'id' => $divisionHead->id,
+                            'staff_id' => $divisionHead->staff_id ?? $divisionHead->id,
+                            'name' => $divisionHead->fname . ' ' . $divisionHead->lname,
+                            'title' => $divisionHead->title,
+                            'work_email' => $divisionHead->work_email,
+                            'signature' => $divisionHead->signature
+                        ],
+                        'oic_staff' => null,
+                        'role' => 'Head of Division',
+                        'order' => 'division_head',
+                        'is_oic' => false
+                    ]];
+                }
             }
         }
     }
@@ -345,10 +380,14 @@
               <?php if ($section === 'from'): ?>
                 <?php
                 $divisionHeadName = '';
-                $divisionHeadId = null;
-                if ($changeRequest->division && $changeRequest->division->division_head) {
-                    $divisionHeadId = $changeRequest->division->division_head;
-                    $divisionHead = \App\Models\Staff::find($divisionHeadId);
+                if ($crLatestHodTrail && ($crLatestHodTrail->staff || $crLatestHodTrail->oicStaff)) {
+                    $signerCr = !empty($crLatestHodTrail->oic_staff_id) ? $crLatestHodTrail->oicStaff : $crLatestHodTrail->staff;
+                    if ($signerCr) {
+                        $divisionHeadName = trim(($signerCr->fname ?? '') . ' ' . ($signerCr->lname ?? ''));
+                    }
+                }
+                if ($divisionHeadName === '' && $changeRequest->division && $changeRequest->division->division_head) {
+                    $divisionHead = \App\Models\Staff::find($changeRequest->division->division_head);
                     if ($divisionHead) {
                         $divisionHeadName = $divisionHead->fname . ' ' . $divisionHead->lname;
                     }
@@ -364,9 +403,37 @@
             <td style="width: 30%; vertical-align: top; text-align: left;">
               <?php if ($section === 'from'): ?>
                 <?php
-                // Try to render signature for division head
-                if ($divisionHeadId) {
-                    // Look for division head in approval trails
+                $crHodSigDone = false;
+                if ($crLatestHodTrail && ($crLatestHodTrail->staff || $crLatestHodTrail->oicStaff)) {
+                    $isOicCrHod = !empty($crLatestHodTrail->oic_staff_id);
+                    $packCrStaffSig = function ($m) {
+                        if (!$m) {
+                            return null;
+                        }
+                        return [
+                            'id' => $m->id,
+                            'staff_id' => $m->staff_id ?? $m->id,
+                            'name' => trim(($m->fname ?? '') . ' ' . ($m->lname ?? '') . ' ' . ($m->oname ?? '')),
+                            'fname' => $m->fname ?? '',
+                            'lname' => $m->lname ?? '',
+                            'oname' => $m->oname ?? '',
+                            'title' => $m->title ?? '',
+                            'work_email' => $m->work_email ?? '',
+                            'signature' => $m->signature ?? '',
+                        ];
+                    };
+                    $crHodPayload = [
+                        'staff' => $packCrStaffSig($crLatestHodTrail->staff),
+                        'oic_staff' => $isOicCrHod ? $packCrStaffSig($crLatestHodTrail->oicStaff) : null,
+                        'is_oic' => $isOicCrHod,
+                    ];
+                    if (!empty($crHodPayload['staff']) || !empty($crHodPayload['oic_staff'])) {
+                        renderSignature($crHodPayload, 1, $crApprovalTrails, $changeRequest);
+                        $crHodSigDone = true;
+                    }
+                }
+                if (!$crHodSigDone && $changeRequest->division && $changeRequest->division->division_head) {
+                    $divisionHeadId = $changeRequest->division->division_head;
                     $divisionHeadTrail = null;
                     foreach ($crApprovalTrails as $trail) {
                         if (isset($trail->staff_id) && $trail->staff_id == $divisionHeadId) {
@@ -411,7 +478,13 @@
         <td style="width: 30%; vertical-align: top; text-align: left;">
           <?php
           $divisionHeadName = '';
-          if ($changeRequest->division && $changeRequest->division->division_head) {
+          if ($crLatestHodTrail && ($crLatestHodTrail->staff || $crLatestHodTrail->oicStaff)) {
+              $signerCr2 = !empty($crLatestHodTrail->oic_staff_id) ? $crLatestHodTrail->oicStaff : $crLatestHodTrail->staff;
+              if ($signerCr2) {
+                  $divisionHeadName = trim(($signerCr2->fname ?? '') . ' ' . ($signerCr2->lname ?? ''));
+              }
+          }
+          if ($divisionHeadName === '' && $changeRequest->division && $changeRequest->division->division_head) {
               $divisionHead = \App\Models\Staff::find($changeRequest->division->division_head);
               if ($divisionHead) {
                   $divisionHeadName = $divisionHead->fname . ' ' . $divisionHead->lname;
@@ -423,7 +496,50 @@
           <div class="approver-title"><?php echo htmlspecialchars($divisionName); ?></div>
         </td>
         <td style="width: 30%; vertical-align: top; text-align: left;">
-          <!-- Signature space -->
+          <?php
+          $crHodSigDone2 = false;
+          if ($crLatestHodTrail && ($crLatestHodTrail->staff || $crLatestHodTrail->oicStaff)) {
+              $isOicCrHod2 = !empty($crLatestHodTrail->oic_staff_id);
+              $packCrStaffSig2 = function ($m) {
+                  if (!$m) {
+                      return null;
+                  }
+                  return [
+                      'id' => $m->id,
+                      'staff_id' => $m->staff_id ?? $m->id,
+                      'name' => trim(($m->fname ?? '') . ' ' . ($m->lname ?? '') . ' ' . ($m->oname ?? '')),
+                      'fname' => $m->fname ?? '',
+                      'lname' => $m->lname ?? '',
+                      'oname' => $m->oname ?? '',
+                      'title' => $m->title ?? '',
+                      'work_email' => $m->work_email ?? '',
+                      'signature' => $m->signature ?? '',
+                  ];
+              };
+              $crHodPayload2 = [
+                  'staff' => $packCrStaffSig2($crLatestHodTrail->staff),
+                  'oic_staff' => $isOicCrHod2 ? $packCrStaffSig2($crLatestHodTrail->oicStaff) : null,
+                  'is_oic' => $isOicCrHod2,
+              ];
+              if (!empty($crHodPayload2['staff']) || !empty($crHodPayload2['oic_staff'])) {
+                  renderSignature($crHodPayload2, 1, $crApprovalTrails, $changeRequest);
+                  $crHodSigDone2 = true;
+              }
+          }
+          if (!$crHodSigDone2 && $changeRequest->division && $changeRequest->division->division_head) {
+              $divisionHeadId2 = $changeRequest->division->division_head;
+              $divisionHeadTrail2 = null;
+              foreach ($crApprovalTrails as $trail) {
+                  if (isset($trail->staff_id) && $trail->staff_id == $divisionHeadId2) {
+                      $divisionHeadTrail2 = $trail;
+                      break;
+                  }
+              }
+              if ($divisionHeadTrail2) {
+                  renderSignature($divisionHeadTrail2, 1, $crApprovalTrails, $changeRequest);
+              }
+          }
+          ?>
         </td>
         <td style="width: 28%; vertical-align: top; text-align: right;">
           <div>
