@@ -445,23 +445,43 @@ class ApprovalService
 
    // dd($next_definition);
 
-    // Multiple definitions for same order (e.g. fund_type 1 and 2): pick by fund_type, then apply division check for order >= 3
+    // Multiple definitions for same order (e.g. fund_type 1 and 2): pick by fund_type, then apply division check for order >= 3.
+    // Important: skipToNextDefinitionAllowedForDivision only walks to higher approval_order, so if the first row at this
+    // order fails division/funder gates it must not return null while another row at the same order still applies
+    // (otherwise the memo is incorrectly marked fully approved — e.g. SR stuck after order 31 when order 32 has two rows).
     if ($next_definition->count() > 1) {
-        $picked = $has_extramural && $model->approval_level !== $next_definition->first()->approval_order
-            ? $next_definition->where('fund_type', 2)->first()
-            : $next_definition->where('fund_type', 1)->first();
-        $picked = $picked ?? $next_definition->first();
-        if ($picked && $picked->approval_order >= 3) {
-            $allowed = $this->skipToNextDefinitionAllowedForDivision($model, $picked, (int) $model->forward_workflow_id);
+        $nextOrder = (int) $next_definition->first()->approval_order;
+        $preferExtramuralRow = $has_extramural && (int) $model->approval_level !== $nextOrder;
+        $preferredFundType = $preferExtramuralRow ? 2 : 1;
+        $otherFundType = $preferredFundType === 2 ? 1 : 2;
+
+        $candidates = $next_definition->sortBy(function ($d) use ($preferredFundType, $otherFundType) {
+            $ft = (int) ($d->fund_type ?? 0);
+            if ($ft === $preferredFundType) {
+                return 0;
+            }
+            if ($ft === $otherFundType) {
+                return 1;
+            }
+
+            return 2;
+        })->values();
+
+        foreach ($candidates as $candidate) {
+            if ($candidate->approval_order < 3) {
+                return $candidate;
+            }
+            $allowed = $this->skipToNextDefinitionAllowedForDivision(
+                $model,
+                $candidate,
+                (int) $model->forward_workflow_id
+            );
             if ($allowed) {
                 return $allowed;
             }
-            return null; // Picked doesn't apply to this division and no later definition does
         }
-        if ($has_extramural && $model->approval_level !== $next_definition->first()->approval_order) {
-            return $next_definition->where('fund_type', 2);
-        } 
-            return $next_definition->where('fund_type', 1);
+
+        return null;
     }
 
     $definition = ($next_definition->count()>0)?$next_definition[0]:null;
