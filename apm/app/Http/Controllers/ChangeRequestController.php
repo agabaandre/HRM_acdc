@@ -1724,6 +1724,15 @@ class ChangeRequestController extends Controller
             ]);
         }
 
+        // If this change request has already gone through workflow and came back for edits,
+        // prevent non-HOD users from submitting directly. HOD controls re-submission to prior level.
+        if ((int) ($changeRequest->approval_level ?? 0) > 0 && !$isDivisionHead) {
+            return redirect()->back()->with([
+                'msg' => 'You can only save your changes at this stage. Re-submission is done by the Head of Division (HOD).',
+                'type' => 'error'
+            ]);
+        }
+
         try {
             // Determine workflow ID based on change type
             $workflowId = $this->determineWorkflowId($changeRequest);
