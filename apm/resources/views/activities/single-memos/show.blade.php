@@ -1330,6 +1330,16 @@
                                         </div>
                                     </div>
                                     @endif
+                                    @if($activity->overall_status === 'returned' && $activity->current_actor)
+                                    <div class="mt-3 p-2 bg-info bg-opacity-10 rounded">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bx bx-user text-info"></i>
+                                            <span class="text-info fw-medium small">
+                                                Returned to: <strong>{{ $activity->current_actor->fname . ' ' . $activity->current_actor->lname }}</strong> (action required)
+                                            </span>
+                                        </div>
+                                    </div>
+                                    @endif
                                 </div>
                             @endif
                         </div>
