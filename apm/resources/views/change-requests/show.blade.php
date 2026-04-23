@@ -1266,7 +1266,12 @@
                 @if(
                     $changeRequest->overall_status === 'draft'
                     && (
-                        $changeRequest->staff_id == user_session('staff_id')
+                        // New change requests (approval_level 0) can be submitted by owner.
+                        // Once workflow has started and it comes back for edits, only HOD should submit/resubmit.
+                        (
+                            $changeRequest->staff_id == user_session('staff_id')
+                            && (int) ($changeRequest->approval_level ?? 0) === 0
+                        )
                         || ($changeRequest->division && $changeRequest->division->division_head == user_session('staff_id'))
                     )
                 )
