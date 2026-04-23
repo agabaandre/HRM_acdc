@@ -50,28 +50,24 @@
                                 'returned' => 'bg-info',
                             ];
                             $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                            
-                            // Get workflow information
-                            $approvalLevel = $memo->approval_level ?? 'N/A';
-                            $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
-                            $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
+                            $statusMeta = in_array($memo->overall_status, ['pending', 'returned'], true)
+                                ? $memo->memoIndexStatusMeta()
+                                : null;
                         @endphp
                         
-                        @if($memo->overall_status === 'pending')
-                            <!-- Structured display for pending status -->
+                        @if($statusMeta)
                             <div class="text-start">
                                 <span class="badge {{ $statusClass }} mb-1">
                                     {{ strtoupper($memo->overall_status) }}
                                 </span>
                                 <br>
-                              
-                                <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                @if($actorName !== 'N/A')
-                                    <small class="text-muted d-block">{{ $actorName }}</small>
+                                <small class="text-muted d-block">Level {{ $statusMeta['level'] }}</small>
+                                <small class="text-muted d-block">{{ $statusMeta['role'] }}</small>
+                                @if($statusMeta['actor_name'] !== 'N/A')
+                                    <small class="text-muted d-block">{{ $statusMeta['actor_name'] }}</small>
                                 @endif
                             </div>
                         @else
-                            <!-- Standard badge for other statuses -->
                             <span class="badge {{ $statusClass }}">
                                 {{ strtoupper($memo->overall_status ?? 'draft') }}
                             </span>

@@ -68,18 +68,36 @@
                         </td>
                         <td>
                             @php
-                                $statusClass = match($memo->overall_status) {
+                                $statusBadgeClass = [
                                     'draft' => 'bg-secondary',
                                     'pending' => 'bg-warning',
                                     'approved' => 'bg-success',
-                                    'returned' => 'bg-danger',
+                                    'rejected' => 'bg-danger',
+                                    'returned' => 'bg-info',
                                     'cancelled' => 'bg-dark',
-                                    default => 'bg-secondary'
-                                };
+                                ];
+                                $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
+                                $statusMeta = in_array($memo->overall_status, ['pending', 'returned'], true)
+                                    ? $memo->memoIndexStatusMeta()
+                                    : null;
                             @endphp
-                            <span class="badge {{ $statusClass }} text-white">
-                                {{ ucfirst($memo->overall_status) }}
-                            </span>
+                            @if($statusMeta)
+                                <div class="text-start">
+                                    <span class="badge {{ $statusClass }} mb-1">
+                                        {{ strtoupper($memo->overall_status) }}
+                                    </span>
+                                    <br>
+                                    <small class="text-muted d-block">Level {{ $statusMeta['level'] }}</small>
+                                    <small class="text-muted d-block">{{ $statusMeta['role'] }}</small>
+                                    @if($statusMeta['actor_name'] !== 'N/A')
+                                        <small class="text-muted d-block">{{ $statusMeta['actor_name'] }}</small>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="badge {{ $statusClass }}">
+                                    {{ ucfirst($memo->overall_status) }}
+                                </span>
+                            @endif
                         </td>
                         <td>
                             <div class="d-flex gap-2 justify-content-center action-buttons-stacked">

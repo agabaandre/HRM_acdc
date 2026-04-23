@@ -9,12 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
+use App\Traits\ProvidesMemoIndexStatusMeta;
 use App\Traits\TrimsSummernoteHtmlFields;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class ChangeRequest extends Model
 {
-    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, TrimsSummernoteHtmlFields;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, ProvidesMemoIndexStatusMeta, TrimsSummernoteHtmlFields;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -203,6 +204,47 @@ class ChangeRequest extends Model
     public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class);
+    }
+
+    /**
+     * Workflow id when forward_workflow_id is missing (aligned with ChangeRequestController::determineWorkflowId).
+     */
+    public function inferWorkflowIdFromChangeFlags(): int
+    {
+        $hasBudgetChanges = $this->has_budget_id_changed || $this->has_budget_breakdown_changed;
+        if ($hasBudgetChanges) {
+            return 1;
+        }
+
+        $hasParticipantChanges = $this->has_internal_participants_changed
+            || $this->has_number_of_participants_changed
+            || $this->has_participant_days_changed
+            || $this->has_total_external_participants_changed;
+
+        $hasDateChanges = $this->has_memo_date_changed;
+        $dateStayedInQuarter = $this->has_date_stayed_quarter;
+
+        if ($hasDateChanges && $dateStayedInQuarter && !$hasParticipantChanges) {
+            return 6;
+        }
+
+        if (($hasDateChanges && !$dateStayedInQuarter) || $hasParticipantChanges) {
+            return 7;
+        }
+
+        return 6;
+    }
+
+    protected function memoIndexResolvedWorkflowId(): ?int
+    {
+        if ($this->forward_workflow_id) {
+            return (int) $this->forward_workflow_id;
+        }
+        if (in_array($this->overall_status, ['returned', 'draft', 'submitted', 'pending'], true)) {
+            return $this->inferWorkflowIdFromChangeFlags();
+        }
+
+        return null;
     }
 
     /**

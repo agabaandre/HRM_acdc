@@ -56,7 +56,7 @@ class SpecialMemoController extends Controller
         // Tab 1: My Submitted Special Memos (memos where current user is creator OR responsible person)
         $mySubmittedQuery = SpecialMemo::with([
             'staff',
-            'division',
+            'division.divisionHead',
             'requestType',
             'fundType',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
@@ -94,7 +94,7 @@ class SpecialMemoController extends Controller
         if (in_array(87, user_session('permissions', []))) {
             $allMemosQuery = SpecialMemo::with([
                 'staff',
-                'division',
+                'division.divisionHead',
                 'requestType',
                 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
@@ -130,7 +130,7 @@ class SpecialMemoController extends Controller
         // Tab 3: Shared Special Memos (memos where current user is added as participant but not creator)
         $sharedMemosQuery = SpecialMemo::with([
             'staff',
-            'division',
+            'division.divisionHead',
             'requestType',
             'fundType',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
@@ -179,7 +179,7 @@ class SpecialMemoController extends Controller
             }
 
             $mySubmittedQueryAjax = SpecialMemo::with([
-                'staff', 'division', 'requestType', 'fundType',
+                'staff', 'division.divisionHead', 'requestType', 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ])->where(function ($q) use ($currentStaffId) {
                 $q->where('staff_id', $currentStaffId)
@@ -208,7 +208,7 @@ class SpecialMemoController extends Controller
             $allMemos = collect();
             if (in_array(87, user_session('permissions', []))) {
                 $allMemosQueryAjax = SpecialMemo::with([
-                    'staff', 'division', 'requestType', 'fundType',
+                    'staff', 'division.divisionHead', 'requestType', 'fundType',
                     'forwardWorkflow.workflowDefinitions.approvers.staff'
                 ]);
                 if ($year !== '' && $year !== 'all' && (int) $year > 0) {
@@ -236,7 +236,7 @@ class SpecialMemoController extends Controller
             }
 
             $sharedMemosQueryAjax = SpecialMemo::with([
-                'staff', 'division', 'requestType', 'fundType',
+                'staff', 'division.divisionHead', 'requestType', 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ])->where('staff_id', '!=', $currentStaffId)->whereJsonContains('internal_participants', $currentStaffId);
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {

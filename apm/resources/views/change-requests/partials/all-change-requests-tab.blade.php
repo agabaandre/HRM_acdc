@@ -147,20 +147,20 @@
                                 'returned' => 'bg-info',
                             ];
                             $statusClass = $statusBadgeClass[$changeRequest->overall_status] ?? 'bg-secondary';
-                            $approvalLevel = $changeRequest->approval_level ?? 'N/A';
-                            $workflowRole = $changeRequest->workflow_definition ? ($changeRequest->workflow_definition->role ?? 'N/A') : 'N/A';
-                            $actorName = $changeRequest->current_actor ? ($changeRequest->current_actor->fname . ' ' . $changeRequest->current_actor->lname) : 'N/A';
+                            $statusMeta = in_array($changeRequest->overall_status, ['submitted', 'pending', 'returned'], true)
+                                ? $changeRequest->memoIndexStatusMeta()
+                                : null;
                         @endphp
-                        @if(in_array($changeRequest->overall_status, ['submitted', 'pending']))
+                        @if($statusMeta)
                             <div class="text-center">
                                 <span class="badge {{ $statusClass }} text-dark mb-1">
                                     {{ strtoupper($changeRequest->overall_status === 'submitted' ? 'Submitted' : $changeRequest->overall_status) }}
                                 </span>
                                 <br>
-                                <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
-                                <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                @if($actorName !== 'N/A')
-                                    <small class="text-muted d-block">{{ $actorName }}</small>
+                                <small class="text-muted d-block">Level {{ $statusMeta['level'] }}</small>
+                                <small class="text-muted d-block">{{ $statusMeta['role'] }}</small>
+                                @if($statusMeta['actor_name'] !== 'N/A')
+                                    <small class="text-muted d-block">{{ $statusMeta['actor_name'] }}</small>
                                 @endif
                             </div>
                         @else
