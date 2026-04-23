@@ -64,7 +64,7 @@ class ChangeRequestController extends Controller
         $baseQuery = ChangeRequest::with([
             'staff',
             'responsiblePerson',
-            'division',
+            'division.divisionHead',
             'requestType',
             'fundType',
             'parentMemo'
@@ -174,7 +174,7 @@ class ChangeRequestController extends Controller
             if ($yearFromQuery !== $selectedYear) {
                 $selectedYear = $yearFromQuery;
                 $baseQuery = ChangeRequest::with([
-                    'staff', 'responsiblePerson', 'division', 'requestType', 'fundType', 'parentMemo'
+                    'staff', 'responsiblePerson', 'division.divisionHead', 'requestType', 'fundType', 'parentMemo'
                 ]);
                 if ($documentNumber) {
                     $baseQuery->where('document_number', 'like', '%' . $documentNumber . '%');
@@ -294,7 +294,7 @@ class ChangeRequestController extends Controller
         // Base query for pending change requests
         $pendingQuery = ChangeRequest::with([
             'staff',
-            'division',
+            'division.divisionHead',
             'requestType',
             'parentMemo'
         ])
@@ -321,7 +321,7 @@ class ChangeRequestController extends Controller
         // Get approved by me change requests
         $approvedByMeQuery = ChangeRequest::with([
             'staff',
-            'division',
+            'division.divisionHead',
             'requestType',
             'parentMemo'
         ])
@@ -1785,34 +1785,7 @@ class ChangeRequestController extends Controller
      */
     private function determineWorkflowId(ChangeRequest $changeRequest): int
     {
-        // Check for budget changes
-        $hasBudgetChanges = $changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed;
-        if ($hasBudgetChanges) {
-            return 1;
-        }
-
-        // Check for participant changes
-        $hasParticipantChanges = $changeRequest->has_internal_participants_changed || 
-                                $changeRequest->has_number_of_participants_changed || 
-                                $changeRequest->has_participant_days_changed || 
-                                $changeRequest->has_total_external_participants_changed;
-
-        // Check for date changes
-        $hasDateChanges = $changeRequest->has_memo_date_changed;
-        $dateStayedInQuarter = $changeRequest->has_date_stayed_quarter;
-
-        // Date change only (same quarter) → workflow_id = 6
-        if ($hasDateChanges && $dateStayedInQuarter && !$hasParticipantChanges) {
-            return 6;
-        }
-
-        // Date change (different quarter) OR/AND participant replacement → workflow_id = 7
-        if (($hasDateChanges && !$dateStayedInQuarter) || $hasParticipantChanges) {
-            return 7;
-        }
-
-        // Default workflow (for other changes) → workflow_id = 6
-        return 6;
+        return $changeRequest->inferWorkflowIdFromChangeFlags();
     }
 
     /**

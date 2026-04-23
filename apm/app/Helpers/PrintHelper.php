@@ -178,9 +178,14 @@ class PrintHelper
         if (is_array($approvalTrails)) {
             $approvalTrails = collect($approvalTrails);
         }
+        // Signing date must follow actual approvals only (e.g. a later "returned" at the same
+        // order must not override the latest approved signature when HOD changes mid-workflow).
         $approvalTrails = $approvalTrails->filter(function ($trail) {
-            $action = strtolower((string)($trail->action ?? ''));
-            return !in_array($action, ['submitted', 'resubmitted', 'cancelled', 'rejected']);
+            if (isset($trail->is_archived) && (int) $trail->is_archived === 1) {
+                return false;
+            }
+            $action = strtolower((string) ($trail->action ?? ''));
+            return in_array($action, ['approved', 'passed'], true);
         });
 
         $approval = null;
@@ -475,6 +480,9 @@ class PrintHelper
         // Latest *signature* at this level: only approved rows (HOD can change mid-workflow;
         // "returned" or other actions must not win over a later approved signature).
         $approvals = $approvalTrails->filter(function ($trail) use ($order) {
+            if (isset($trail->is_archived) && (int) $trail->is_archived === 1) {
+                return false;
+            }
             $trailOrder = (int) ($trail->approval_order ?? 0);
             $action = strtolower((string) ($trail->action ?? ''));
 
@@ -576,6 +584,7 @@ class PrintHelper
         // Fetch approval trails for the model with staff and OIC staff
         $query = \App\Models\ApprovalTrail::where('model_id', $modelId)
             ->where('model_type', $modelType)
+            ->where('is_archived', 0)
             ->with(['staff', 'oicStaff']);
             
         // Add workflow_id filter if provided to avoid mixing up approvers from different workflows
@@ -647,8 +656,8 @@ class PrintHelper
         // Also fetch division head if available (only as fallback when no level 1 approver)
         if (!isset($approvers[1]) && $divisionId) {
             $division = \App\Models\Division::find($divisionId);
-            if ($division && $division->head_of_division_id) {
-                $divisionHead = \App\Models\Staff::find($division->head_of_division_id);
+            if ($division && $division->division_head) {
+                $divisionHead = \App\Models\Staff::find($division->division_head);
                 if ($divisionHead) {
                     // Add division head as a single fallback approver
                     $approvers['division_head'] = [[

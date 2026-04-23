@@ -59,7 +59,7 @@ class NonTravelMemoController extends Controller
         // Tab 1: My Submitted Memos (memos created by current user)
         $mySubmittedQuery = NonTravelMemo::with([
             'staff',
-            'division',
+            'division.divisionHead',
             'nonTravelMemoCategory',
             'fundType',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
@@ -97,7 +97,7 @@ class NonTravelMemoController extends Controller
         if (in_array(87, user_session('permissions', []))) {
             $allMemosQuery = NonTravelMemo::with([
                 'staff',
-                'division',
+                'division.divisionHead',
                 'nonTravelMemoCategory',
                 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
@@ -149,7 +149,7 @@ class NonTravelMemoController extends Controller
             // Rebuild queries with filters for AJAX requests
             $mySubmittedQuery = NonTravelMemo::with([
                 'staff',
-                'division',
+                'division.divisionHead',
                 'nonTravelMemoCategory',
                 'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
@@ -187,7 +187,7 @@ class NonTravelMemoController extends Controller
             if (in_array(87, user_session('permissions', []))) {
                 $allMemosQuery = NonTravelMemo::with([
                     'staff',
-                    'division',
+                    'division.divisionHead',
                     'nonTravelMemoCategory',
                     'fundType',
                     'forwardWorkflow.workflowDefinitions.approvers.staff'

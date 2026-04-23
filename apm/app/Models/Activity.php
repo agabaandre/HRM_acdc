@@ -8,15 +8,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
+use App\Traits\ProvidesMemoIndexStatusMeta;
 use App\Traits\TrimsSummernoteHtmlFields;
 use Illuminate\Support\Str;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 use App\Models\ActivityApprovalTrail;
 use App\Models\ChangeRequest;
-
+use App\Models\Division;
 class Activity extends Model
 {
-    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, TrimsSummernoteHtmlFields;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, ProvidesMemoIndexStatusMeta, TrimsSummernoteHtmlFields;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -536,6 +537,16 @@ class Activity extends Model
     public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class, 'division_id');
+    }
+
+    protected function memoIndexWorkflowModelName(): string
+    {
+        return 'Activity';
+    }
+
+    protected function memoIndexDivisionContext(): ?Division
+    {
+        return $this->division ?? $this->matrix?->division;
     }
 
     public function getResourceUrlAttribute()

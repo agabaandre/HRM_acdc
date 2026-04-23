@@ -1774,7 +1774,14 @@ class ActivityController extends Controller
         // Note: Removed tab-based page reset to allow proper pagination
         
         // Base query for all single memos
-        $baseQuery = Activity::with(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType'])
+        $baseQuery = Activity::with([
+            'staff',
+            'responsiblePerson',
+            'matrix.division.divisionHead',
+            'division.divisionHead',
+            'fundType',
+            'requestType',
+        ])
             ->where('is_single_memo', true)
             ->latest();
 

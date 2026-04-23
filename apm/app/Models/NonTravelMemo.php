@@ -8,12 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
+use App\Traits\ProvidesMemoIndexStatusMeta;
 use App\Traits\TrimsSummernoteHtmlFields;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class NonTravelMemo extends Model
 {
-    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, TrimsSummernoteHtmlFields;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, ProvidesMemoIndexStatusMeta, TrimsSummernoteHtmlFields;
 
     /**
      * The attributes that are mass assignable.
@@ -82,6 +83,11 @@ class NonTravelMemo extends Model
     public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class, 'division_id');
+    }
+
+    protected function memoIndexWorkflowModelName(): string
+    {
+        return 'NonTravelMemo';
     }
 
     public function nonTravelMemoCategory(): BelongsTo

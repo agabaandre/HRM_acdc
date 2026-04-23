@@ -9,12 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\FundCode;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
+use App\Traits\ProvidesMemoIndexStatusMeta;
 use App\Traits\TrimsSummernoteHtmlFields;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class SpecialMemo extends Model
 {
-    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, TrimsSummernoteHtmlFields;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable, ProvidesMemoIndexStatusMeta, TrimsSummernoteHtmlFields;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -97,6 +98,11 @@ class SpecialMemo extends Model
     public function division()
     {
         return $this->belongsTo(Division::class, 'division_id');
+    }
+
+    protected function memoIndexWorkflowModelName(): string
+    {
+        return 'SpecialMemo';
     }
 
     public function locations()
