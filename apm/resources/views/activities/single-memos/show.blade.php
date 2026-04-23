@@ -1272,6 +1272,15 @@
 
 
                             @if ($activity->overall_status !== 'approved')
+                                @php
+                                    $approvalMeta = $activity->memoIndexStatusMeta();
+                                    $approverDisplayName = $activity->current_actor
+                                        ? trim($activity->current_actor->fname . ' ' . $activity->current_actor->lname)
+                                        : (($approvalMeta['actor_name'] ?? 'N/A') !== 'N/A' ? $approvalMeta['actor_name'] : null);
+                                    $approvalRoleDisplay = $activity->workflow_definition
+                                        ? ($activity->workflow_definition->role ?? null)
+                                        : ($approvalMeta['role'] ?? null);
+                                @endphp
                                 <div class="mt-3 p-3"
                                     style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 0.5rem; border: 1px solid #bbf7d0;">
                                     
@@ -1286,12 +1295,18 @@
                                                 <div>
                                                     <div class="fw-semibold text-dark small">Status</div>
                                                     <div class="fw-bold text-purple">{{ ucfirst($activity->overall_status ?? 'draft') }}</div>
+                                                    @if ($activity->overall_status === 'returned' && $approverDisplayName)
+                                                        <div class="small text-muted mt-1 mb-0">Approver: <span class="fw-semibold text-dark">{{ $approverDisplayName }}</span></div>
+                                                    @endif
+                                                    @if (in_array($activity->overall_status, ['returned', 'pending'], true) && isset($approvalMeta['level']))
+                                                        <div class="small text-muted">Level {{ $approvalMeta['level'] }}</div>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </div>
 
                                         <!-- Current Approver -->
-                                        @if ($activity->overall_status !== 'draft' && $activity->current_actor)
+                                        @if ($activity->overall_status !== 'draft' && $approverDisplayName)
                                         <div class="col-md-4">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="p-2" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
@@ -1299,14 +1314,14 @@
                                                 </div>
                                                 <div>
                                                     <div class="fw-semibold text-dark small">Current Approver</div>
-                                                    <div class="fw-bold text-info">{{ $activity->current_actor->fname . ' ' . $activity->current_actor->lname }}</div>
+                                                    <div class="fw-bold text-info">{{ $approverDisplayName }}</div>
                                                 </div>
                                             </div>
                                         </div>
                                         @endif
 
                                         <!-- Approval Role -->
-                                        @if ($activity->workflow_definition)
+                                        @if ($approvalRoleDisplay)
                                         <div class="col-md-4">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="p-2" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
@@ -1314,7 +1329,7 @@
                                                 </div>
                                                 <div>
                                                     <div class="fw-semibold text-dark small">Approval Role</div>
-                                                    <div class="fw-bold text-orange">{{ $activity->workflow_definition->role ?? 'Not specified' }}</div>
+                                                    <div class="fw-bold text-orange">{{ $approvalRoleDisplay }}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1330,12 +1345,16 @@
                                         </div>
                                     </div>
                                     @endif
-                                    @if($activity->overall_status === 'returned' && $activity->current_actor)
+                                    @if($activity->overall_status === 'returned' && $approverDisplayName)
                                     <div class="mt-3 p-2 bg-info bg-opacity-10 rounded">
                                         <div class="d-flex align-items-center gap-2">
                                             <i class="bx bx-user text-info"></i>
                                             <span class="text-info fw-medium small">
-                                                Returned to: <strong>{{ $activity->current_actor->fname . ' ' . $activity->current_actor->lname }}</strong> (action required)
+                                                Returned to: <strong>{{ $approverDisplayName }}</strong>
+                                                @if($approvalRoleDisplay)
+                                                    <span class="text-muted">({{ $approvalRoleDisplay }})</span>
+                                                @endif
+                                                <span class="text-muted">— action required</span>
                                             </span>
                                         </div>
                                     </div>
