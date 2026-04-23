@@ -467,17 +467,20 @@ class PrintHelper
     {
         // Ensure order is an integer for type-safe comparison
         $order = (int)$order;
-        
-        // Filter by approval_order (ensure type-safe comparison)
-        // Also filter out non-signing actions (submitted, resubmitted, cancelled, rejected)
-        $approvals = $approvalTrails->filter(function($trail) use ($order) {
-            $trailOrder = (int)($trail->approval_order ?? 0);
-            $action = strtolower((string)($trail->action ?? ''));
-            $isSigningAction = !in_array($action, ['submitted', 'resubmitted', 'cancelled', 'rejected']);
-            
-            return $trailOrder === $order && $isSigningAction;
+
+        if (is_array($approvalTrails)) {
+            $approvalTrails = collect($approvalTrails);
+        }
+
+        // Latest *signature* at this level: only approved rows (HOD can change mid-workflow;
+        // "returned" or other actions must not win over a later approved signature).
+        $approvals = $approvalTrails->filter(function ($trail) use ($order) {
+            $trailOrder = (int) ($trail->approval_order ?? 0);
+            $action = strtolower((string) ($trail->action ?? ''));
+
+            return $trailOrder === $order && $action === 'approved';
         });
-        
+
         return $approvals->sortByDesc('created_at')->first();
     }
 
@@ -582,9 +585,12 @@ class PrintHelper
         
         $approvalTrails = $query->orderBy('approval_order')
             ->orderBy('created_at', 'desc')
-            ->get();
-        
-        // Group by approval order, taking only the most recent for each order
+            ->get()
+            ->filter(function ($trail) {
+                return strtolower((string) ($trail->action ?? '')) === 'approved';
+            });
+
+        // Group by approval order, taking only the most recent approved row for each order
         $processedOrders = [];
         foreach ($approvalTrails as $trail) {
             $order = $trail->approval_order;

@@ -411,19 +411,35 @@
                 <td style="width: 30%; vertical-align: top; text-align: left;">
                     <?php if ($section === 'from'): ?>
                         <?php
-                        // Get division head name from source memo
+                        // HOD on print: use the person who actually approved at level 1 on the parent memo trail,
+                        // not the current division_head from divisions table (that can change after the memo was signed).
                         $divisionHeadName = '';
                         $divisionName = '';
-                        
-                        if ($sourceData && $sourceData->division && $sourceData->division->division_head) {
-                            // Use source memo's division head
+                        $hodTrailFromMemo = null;
+
+                        if ($sourceData && !empty($sourceData->approval_trails)) {
+                            $__srcTrails = $sourceData->approval_trails instanceof \Illuminate\Support\Collection
+                                ? $sourceData->approval_trails
+                                : collect($sourceData->approval_trails);
+                            $hodTrailFromMemo = PrintHelper::getLatestApprovalForOrder($__srcTrails, 1);
+                        }
+
+                        if ($hodTrailFromMemo) {
+                            $signerModel = !empty($hodTrailFromMemo->oic_staff_id)
+                                ? $hodTrailFromMemo->oicStaff
+                                : $hodTrailFromMemo->staff;
+                            if ($signerModel) {
+                                $divisionHeadName = trim(($signerModel->fname ?? '') . ' ' . ($signerModel->lname ?? ''));
+                            }
+                            $divisionName = ($sourceData->division->division_name ?? '')
+                                ?: ($serviceRequest->division->division_name ?? '');
+                        } elseif ($sourceData && $sourceData->division && $sourceData->division->division_head) {
                             $divisionHead = \App\Models\Staff::find($sourceData->division->division_head);
                             if ($divisionHead) {
                                 $divisionHeadName = $divisionHead->fname . ' ' . $divisionHead->lname;
                             }
                             $divisionName = $sourceData->division->division_name ?? '';
                         } elseif ($serviceRequest->division && $serviceRequest->division->division_head) {
-                            // Fallback to Service Request's division head if no source data
                             $divisionHead = \App\Models\Staff::find($serviceRequest->division->division_head);
                             if ($divisionHead) {
                                 $divisionHeadName = $divisionHead->fname . ' ' . $divisionHead->lname;
@@ -441,26 +457,55 @@
                 <td style="width: 30%; vertical-align: top; text-align: left;">
                     <?php if ($section === 'from'): ?>
                         <?php
-                        // Render signature for division head from source memo
-                        if ($sourceData && $sourceData->approval_trails && $sourceData->division && $sourceData->division->division_head) {
-                            // Find division head in source memo approval trails by staff ID
+                        // Signature: same signer as name — trail at level 1 / approved (not current division_head id).
+                        $hodSigRendered = false;
+                        if ($hodTrailFromMemo && ($hodTrailFromMemo->staff || $hodTrailFromMemo->oicStaff)) {
+                            $isOicHod = !empty($hodTrailFromMemo->oic_staff_id);
+                            $packStaffRow = function ($m) {
+                                if (!$m) {
+                                    return null;
+                                }
+                                return [
+                                    'id' => $m->id,
+                                    'staff_id' => $m->staff_id ?? $m->id,
+                                    'name' => trim(($m->fname ?? '') . ' ' . ($m->lname ?? '') . ' ' . ($m->oname ?? '')),
+                                    'fname' => $m->fname ?? '',
+                                    'lname' => $m->lname ?? '',
+                                    'oname' => $m->oname ?? '',
+                                    'title' => $m->title ?? '',
+                                    'work_email' => $m->work_email ?? '',
+                                    'signature' => $m->signature ?? '',
+                                ];
+                            };
+                            $hodApproverPayload = [
+                                'staff' => $packStaffRow($hodTrailFromMemo->staff),
+                                'oic_staff' => $isOicHod ? $packStaffRow($hodTrailFromMemo->oicStaff) : null,
+                                'is_oic' => $isOicHod,
+                            ];
+                            if (!empty($hodApproverPayload['staff']) || !empty($hodApproverPayload['oic_staff'])) {
+                                $srcTrailsForSig = $sourceData->approval_trails instanceof \Illuminate\Support\Collection
+                                    ? $sourceData->approval_trails
+                                    : collect($sourceData->approval_trails);
+                                renderSignature($hodApproverPayload, 1, $srcTrailsForSig, $serviceRequest);
+                                $hodSigRendered = true;
+                            }
+                        }
+                        if (!$hodSigRendered && $sourceData && $sourceData->approval_trails && $sourceData->division && $sourceData->division->division_head) {
                             $divisionHeadTrail = null;
                             $divisionHeadId = $sourceData->division->division_head;
-                            
                             foreach ($sourceData->approval_trails as $trail) {
                                 if (isset($trail->staff_id) && $trail->staff_id == $divisionHeadId) {
                                     $divisionHeadTrail = $trail;
                                     break;
                                 }
                             }
-                            
                             if ($divisionHeadTrail) {
                                 renderSignature($divisionHeadTrail, 1, $sourceData->approval_trails, $serviceRequest);
                             } else {
-                                echo '<!-- Division head (ID: ' . $divisionHeadId . ') not found in source memo approval trails -->';
+                                echo '<!-- Division head (ID: ' . htmlspecialchars((string) $divisionHeadId) . ') not found in source memo approval trails -->';
                             }
-                        } else {
-                            echo '<!-- No source data approval trails available -->';
+                        } elseif (!$hodSigRendered) {
+                            echo '<!-- No source memo HOD trail or approval trails available -->';
                         }
                         ?>
                     <?php else: ?>
