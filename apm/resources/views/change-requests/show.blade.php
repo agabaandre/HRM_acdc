@@ -167,6 +167,15 @@
                                 @default
                                     <span class="badge bg-light text-dark">{{ ucfirst($changeRequest->overall_status) }}</span>
                             @endswitch
+                            @if($changeRequest->overall_status === 'returned' && $changeRequest->current_actor)
+                                <div class="mt-1">
+                                    <small class="text-muted">
+                                        Returned to:
+                                        <strong>{{ $changeRequest->current_actor->fname . ' ' . $changeRequest->current_actor->lname }}</strong>
+                                        (action required)
+                                    </small>
+                                </div>
+                            @endif
                         </td>
                     </tr>
                     <tr>
