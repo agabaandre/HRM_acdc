@@ -164,6 +164,9 @@
                                 @case('rejected')
                                     <span class="badge bg-danger">Rejected</span>
                                     @break
+                                @case('returned')
+                                    <span class="badge bg-info text-dark">Returned</span>
+                                    @break
                                 @default
                                     <span class="badge bg-light text-dark">{{ ucfirst($changeRequest->overall_status) }}</span>
                             @endswitch

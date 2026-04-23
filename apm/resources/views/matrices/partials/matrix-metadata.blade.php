@@ -163,6 +163,14 @@
                     <i class="bx bx-check text-bold"></i> {{ strtoupper($matrix->overall_status) }}
                 </span>
             @endif
+            @if($matrix->overall_status === 'returned' && $matrix->current_actor)
+                <div class="mt-2">
+                    <small class="text-info fw-medium">
+                        <i class="bx bx-user me-1"></i>
+                        Returned to: <strong>{{ $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname }}</strong> (action required)
+                    </small>
+                </div>
+            @endif
         </div>
     </div>
 </div>
