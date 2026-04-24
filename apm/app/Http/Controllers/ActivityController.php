@@ -98,11 +98,12 @@ class ActivityController extends Controller
         // Eager load division
         $matrix->load('division');
 
-        // Single-memo creation (matrix pending/approved) is only for the matrix focal person (QM).
+        // Single-memo creation for in-workflow/finalized matrices is division-wide.
         if (in_array($matrix->overall_status, ['approved', 'pending'], true)) {
             $sid = (int) (user_session('staff_id') ?? 0);
-            if ($sid === 0 || $sid !== (int) $matrix->focal_person_id) {
-                abort(403, 'Only the matrix focal person can add single memos for this matrix.');
+            $userDivisionId = (int) (user_session('division_id') ?? 0);
+            if ($sid === 0 || $userDivisionId === 0 || $userDivisionId !== (int) $matrix->division_id) {
+                abort(403, 'Only staff from this matrix division can add single memos for this matrix.');
             }
         }
       
@@ -182,14 +183,15 @@ class ActivityController extends Controller
             try {
                 if (in_array($matrix->overall_status, ['approved', 'pending'], true)) {
                     $sid = (int) (user_session('staff_id') ?? 0);
-                    if ($sid === 0 || $sid !== (int) $matrix->focal_person_id) {
+                    $userDivisionId = (int) (user_session('division_id') ?? 0);
+                    if ($sid === 0 || $userDivisionId === 0 || $userDivisionId !== (int) $matrix->division_id) {
                         if ($request->ajax()) {
                             return response()->json([
                                 'success' => false,
-                                'msg' => 'Only the matrix focal person can add single memos for this matrix.',
+                                'msg' => 'Only staff from this matrix division can add single memos for this matrix.',
                             ], 403);
                         }
-                        abort(403, 'Only the matrix focal person can add single memos for this matrix.');
+                        abort(403, 'Only staff from this matrix division can add single memos for this matrix.');
                     }
                 }
 
@@ -1880,7 +1882,7 @@ class ActivityController extends Controller
         $years = range($currentYear, $minYear);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
 
-        // "Create new" single memo: same matrix rules as matrices/show (pending/approved only), but only for the matrix QM (focal_person_id).
+        // "Create new" single memo: show for current division matrix in pending/approved status.
         $createSingleMemoMatrix = null;
         $canCreateSingleMemo = false;
         if ($userDivisionId && $currentStaffId) {
@@ -1890,7 +1892,7 @@ class ActivityController extends Controller
                 ->where('quarter', $selectedQuarter)
                 ->first();
             if ($createSingleMemoMatrix && in_array($createSingleMemoMatrix->overall_status, ['approved', 'pending'], true)) {
-                $canCreateSingleMemo = (int) $currentStaffId === (int) $createSingleMemoMatrix->focal_person_id;
+                $canCreateSingleMemo = (int) $createSingleMemoMatrix->division_id === (int) $userDivisionId;
             }
         }
     
