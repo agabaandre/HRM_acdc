@@ -123,8 +123,10 @@
             $matrixQmStaffId = (int) ($matrix->focal_person_id ?? 0);
             $currentStaffIdForQm = (int) (user_session('staff_id') ?? 0);
             $isMatrixQm = $matrixQmStaffId > 0 && $currentStaffIdForQm === $matrixQmStaffId;
+            $currentDivisionId = (int) (user_session('division_id') ?? 0);
+            $canDivisionAddSingleMemo = $currentDivisionId > 0 && $currentDivisionId === (int) $matrix->division_id;
         @endphp
-        @if($isMatrixQm && ($matrix->overall_status=='approved'|| $matrix->overall_status=='pending'))
+        @if($canDivisionAddSingleMemo && ($matrix->overall_status=='approved'|| $matrix->overall_status=='pending'))
         <a wire:navigate href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Single Memo 
         </a>
