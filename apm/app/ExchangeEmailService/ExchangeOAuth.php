@@ -30,6 +30,9 @@ class ExchangeOAuth
     protected $fromName;
     protected $tokenFile;
 
+    /** Last Graph / token error when sendEmail returns false (for logging upstream). */
+    public ?string $lastSendError = null;
+
     // Supported authentication methods
     const AUTH_AUTHORIZATION_CODE = 'authorization_code';
     const AUTH_CLIENT_CREDENTIALS = 'client_credentials';
@@ -242,6 +245,8 @@ class ExchangeOAuth
      */
     public function sendEmail($to, $subject, $body, $isHtml = true, $fromEmail = null, $fromName = null, $cc = [], $bcc = [], $attachments = [])
     {
+        $this->lastSendError = null;
+
         // Get valid access token
         $accessToken = $this->getAccessToken();
 
@@ -304,7 +309,16 @@ class ExchangeOAuth
             'Content-Type: application/json'
         ]);
 
-        return !isset($response['error']);
+        if (is_array($response) && isset($response['error'])) {
+            $err = $response['error'];
+            $this->lastSendError = is_array($err)
+                ? (string) ($err['message'] ?? json_encode($err))
+                : (string) json_encode($response);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
