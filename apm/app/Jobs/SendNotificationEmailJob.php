@@ -65,20 +65,49 @@ class SendNotificationEmailJob implements ShouldQueue
                 $ccEmails = $this->getAdminAssistantEmails();
             }
 
-            // Use the same Exchange service that works for matrix notifications
-            $result = $this->sendWithExchange($ccEmails, ['system@africacdc.org']);
+            $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM') . ': ';
+            $subject = $subjectPrefix . $this->message;
 
-            if (!$result) {
-                throw new \Exception('Failed to send email notification via Exchange');
+            $viewData = $this->buildNotificationViewData();
+            $htmlContent = view($this->template, $viewData)->render();
+
+            $exchangeError = $this->sendWithExchange($htmlContent, $subject, $ccEmails, ['system@africacdc.org']);
+
+            if ($exchangeError === null) {
+                Log::info('Notification email sent successfully via Exchange', [
+                    'model_id' => $this->model ? $this->model->id : 'null',
+                    'model_type' => $this->model ? get_class($this->model) : 'null',
+                    'recipient_id' => $this->recipient ? $this->recipient->staff_id : 'null',
+                    'email' => $this->recipient ? $this->recipient->work_email : 'null',
+                    'type' => $this->type,
+                ]);
+
+                return;
             }
 
-            Log::info('Notification email sent successfully via Exchange', [
+            Log::warning('Notification email Exchange send failed', [
                 'model_id' => $this->model ? $this->model->id : 'null',
                 'model_type' => $this->model ? get_class($this->model) : 'null',
                 'recipient_id' => $this->recipient ? $this->recipient->staff_id : 'null',
                 'email' => $this->recipient ? $this->recipient->work_email : 'null',
-                'type' => $this->type
+                'exchange_error' => $exchangeError,
             ]);
+
+            if ($this->sendViaSmtpFallback($htmlContent, $subject, $ccEmails, ['system@africacdc.org'])) {
+                Log::info('Notification email sent via SMTP fallback', [
+                    'model_id' => $this->model ? $this->model->id : 'null',
+                    'model_type' => $this->model ? get_class($this->model) : 'null',
+                    'recipient_id' => $this->recipient ? $this->recipient->staff_id : 'null',
+                    'email' => $this->recipient ? $this->recipient->work_email : 'null',
+                    'type' => $this->type,
+                ]);
+
+                return;
+            }
+
+            throw new \RuntimeException(
+                'Failed to send email notification (Exchange: '.$exchangeError.'). SMTP fallback also failed or is disabled.'
+            );
 
         } catch (\Exception $e) {
             Log::error('Failed to send notification email', [
@@ -93,16 +122,60 @@ class SendNotificationEmailJob implements ShouldQueue
     }
 
     /**
-     * Send email using Exchange service (same as matrix notifications)
+     * Build view data for the notification template (shared by Exchange and SMTP paths).
+     *
+     * @return array<string, mixed>
      */
-    private function sendWithExchange(array $cc = [], array $bcc = []): bool
+    private function buildNotificationViewData(): array
+    {
+        $viewData = [
+            'resource' => $this->model,
+            'resource_type' => $this->model ? ucfirst(class_basename($this->model)) : 'System',
+            'staff' => $this->recipient,
+            'recipient' => $this->recipient,
+            'message' => $this->message,
+            'type' => $this->type,
+            'notification' => (object) [
+                'created_at' => now(),
+            ],
+        ];
+
+        if ($this->template === 'emails.daily-pending-approvals-notification') {
+            $viewData = array_merge($viewData, [
+                'approverTitle' => $this->recipient->job_title ?? 'Staff',
+                'approverName' => $this->recipient->fname . ' ' . $this->recipient->lname,
+                'summaryStats' => $this->getSummaryStats(),
+                'pendingApprovals' => $this->getPendingApprovals(),
+            ]);
+        }
+
+        if ($this->template === 'emails.returned-memos-notification') {
+            $viewData = array_merge($viewData, [
+                'staffName' => $this->recipient->fname . ' ' . $this->recipient->lname,
+                'summaryStats' => $this->getReturnedMemosSummaryStats(),
+                'returnedItems' => $this->getReturnedMemosItems(),
+                'returnedMemosUrl' => config('app.url') . 'returned-memos',
+            ]);
+        }
+
+        if ($this->template === 'emails.stale-pending-approvals-reminder' && $this->emailViewContext !== []) {
+            $viewData = array_merge($viewData, $this->emailViewContext);
+        }
+
+        return $viewData;
+    }
+
+    /**
+     * Send via Microsoft Graph (Exchange OAuth). Returns null on success, or an error string on failure.
+     */
+    private function sendWithExchange(string $htmlContent, string $subject, array $cc = [], array $bcc = []): ?string
     {
         try {
             $config = config('exchange-email');
-            
+
             // Use the working implementation from local ExchangeEmailService
             require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
-            
+
             $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
                 $config['tenant_id'],
                 $config['client_id'],
@@ -111,73 +184,78 @@ class SendNotificationEmailJob implements ShouldQueue
                 'https://graph.microsoft.com/.default', // Correct scope for client credentials
                 'client_credentials' // Force client credentials
             );
-            
+
             if (!$oauth->isConfigured()) {
-                Log::error('Exchange service not configured - Exchange is required for all emails');
-                throw new \Exception('Exchange service not configured. Please check your Exchange credentials.');
+                Log::error('Exchange service not configured');
+
+                return 'Exchange OAuth is not configured (tenant_id / client_id / client_secret).';
             }
 
-            // Generate subject
-            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM') . ": ";
-            $subject = $prefix . $this->message;
-
-            // Generate HTML content with appropriate data based on template
-            $viewData = [
-                'resource' => $this->model,
-                'resource_type' => $this->model ? ucfirst(class_basename($this->model)) : 'System',
-                'staff' => $this->recipient, // Template expects $staff variable
-                'recipient' => $this->recipient,
-                'message' => $this->message,
-                'type' => $this->type,
-                'notification' => (object) [
-                    'created_at' => now()
-                ]
-            ];
-
-            // Add specific data for daily pending approvals template
-            if ($this->template === 'emails.daily-pending-approvals-notification') {
-                $viewData = array_merge($viewData, [
-                    'approverTitle' => $this->recipient->job_title ?? 'Staff',
-                    'approverName' => $this->recipient->fname . ' ' . $this->recipient->lname,
-                    'summaryStats' => $this->getSummaryStats(),
-                    'pendingApprovals' => $this->getPendingApprovals()
-                ]);
-            }
-            
-            // Add specific data for returned memos template
-            if ($this->template === 'emails.returned-memos-notification') {
-                $viewData = array_merge($viewData, [
-                    'staffName' => $this->recipient->fname . ' ' . $this->recipient->lname,
-                    'summaryStats' => $this->getReturnedMemosSummaryStats(),
-                    'returnedItems' => $this->getReturnedMemosItems(),
-                    'returnedMemosUrl' => config('app.url') . 'returned-memos'
-                ]);
-            }
-
-            if ($this->template === 'emails.stale-pending-approvals-reminder' && $this->emailViewContext !== []) {
-                $viewData = array_merge($viewData, $this->emailViewContext);
-            }
-
-            $htmlContent = view($this->template, $viewData)->render();
-
-            // Send via Exchange
-            return $oauth->sendEmail(
+            $ok = $oauth->sendEmail(
                 $this->recipient->work_email,
                 $subject,
                 $htmlContent,
-                true, // isHtml
-                null, // fromEmail
-                null, // fromName
-                $cc,  // cc recipients
-                $bcc, // bcc recipients
-                []    // attachments
+                true,
+                null,
+                null,
+                $cc,
+                $bcc,
+                []
             );
 
-        } catch (\Exception $e) {
+            if ($ok) {
+                return null;
+            }
+
+            return $oauth->lastSendError ?? 'Graph sendMail returned failure (no error payload).';
+
+        } catch (\Throwable $e) {
             Log::error('Exchange email sending failed', [
                 'recipient' => $this->recipient ? $this->recipient->work_email : 'null',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
+            return $e->getMessage();
+        }
+    }
+
+    /**
+     * Optional SMTP fallback when Graph fails (uses Laravel "smtp" mailer).
+     */
+    private function sendViaSmtpFallback(string $htmlContent, string $subject, array $cc, array $bcc): bool
+    {
+        if (!filter_var(env('NOTIFICATION_EMAIL_USE_SMTP_FALLBACK', true), FILTER_VALIDATE_BOOLEAN)) {
+            return false;
+        }
+
+        $mailerName = env('NOTIFICATION_EMAIL_FALLBACK_MAILER', 'smtp');
+
+        try {
+            Mail::mailer($mailerName)->html($htmlContent, function ($message) use ($subject, $cc, $bcc) {
+                $message->to($this->recipient->work_email)
+                    ->subject($subject)
+                    ->from(config('mail.from.address'), config('mail.from.name'));
+
+                foreach (array_filter($cc) as $addr) {
+                    if (is_string($addr) && filter_var($addr, FILTER_VALIDATE_EMAIL)) {
+                        $message->cc($addr);
+                    }
+                }
+                foreach (array_filter($bcc) as $addr) {
+                    if (is_string($addr) && filter_var($addr, FILTER_VALIDATE_EMAIL)) {
+                        $message->bcc($addr);
+                    }
+                }
+            });
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('SMTP fallback for notification email failed', [
+                'mailer' => $mailerName,
+                'recipient' => $this->recipient ? $this->recipient->work_email : 'null',
+                'error' => $e->getMessage(),
+            ]);
+
             return false;
         }
     }

@@ -304,12 +304,10 @@ trait HasApprovalWorkflow
             // Check if HOD (level 1) is returning - if so, go to level 0 (focal person)
             if ($this->approval_level == 1) {
                 // HOD returning: go to level 0 (focal person/creator)
-                $this->forward_workflow_id = NULL;
                 $this->approval_level = 0;
                 $this->overall_status = 'draft';
             } else {
                 // Other approvers returning: go to level 1 (HOD)
-                $this->forward_workflow_id = NULL;
                 $this->approval_level = 1;
                 $this->overall_status = 'returned';
             }
