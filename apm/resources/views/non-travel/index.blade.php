@@ -142,6 +142,12 @@
                     <span class="badge bg-success text-white ms-2" id="badge-mySubmitted">{{ $mySubmittedMemos->total() }}</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="myDivision-tab" data-bs-toggle="tab" data-bs-target="#myDivision" type="button" role="tab" aria-controls="myDivision" aria-selected="false">
+                    <i class="bx bx-building me-2"></i> My Division Memos
+                    <span class="badge bg-info text-white ms-2" id="badge-myDivision">{{ $myDivisionMemos->total() }}</span>
+                </button>
+            </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="allMemos-tab" data-bs-toggle="tab" data-bs-target="#allMemos" type="button" role="tab" aria-controls="allMemos" aria-selected="false">
@@ -174,6 +180,20 @@
                     @include('non-travel.partials.my-submitted-tab')
                                             </div>
                                         </div>
+
+            <div class="tab-pane fade" id="myDivision" role="tabpanel" aria-labelledby="myDivision-tab">
+                <div class="p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0 text-info fw-bold">
+                                <i class="bx bx-building me-2"></i> My Division Memos
+                            </h6>
+                            <small class="text-muted">All non-travel memos from your division (latest first)</small>
+                        </div>
+                    </div>
+                    @include('non-travel.partials.my-division-tab')
+                </div>
+            </div>
 
             <!-- All Non-Travel Memos Tab -->
             @if(in_array(87, user_session('permissions', [])))
@@ -317,6 +337,10 @@ function initNonTravelPage() {
             if (data.count_my_submitted !== undefined) {
                 var badgeMy = document.querySelector('#mySubmitted-tab .badge');
                 if (badgeMy) badgeMy.textContent = data.count_my_submitted;
+            }
+            if (data.count_my_division !== undefined) {
+                var badgeDivision = document.querySelector('#myDivision-tab .badge');
+                if (badgeDivision) badgeDivision.textContent = data.count_my_division;
             }
             if (data.count_all_memos !== undefined) {
                 var badgeAll = document.querySelector('#allMemos-tab .badge');

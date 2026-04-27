@@ -89,7 +89,43 @@ class SpecialMemoController extends Controller
 
         $mySubmittedMemos = $mySubmittedQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
-        // Tab 2: All Special Memos (visible to users with permission 87)
+        // Tab 2: My Division Special Memos (latest first)
+        $myDivisionMemosQuery = SpecialMemo::with([
+            'staff',
+            'division.divisionHead',
+            'requestType',
+            'fundType',
+            'forwardWorkflow.workflowDefinitions.approvers.staff'
+        ]);
+        if ($userDivisionId) {
+            $myDivisionMemosQuery->where('division_id', $userDivisionId);
+        } else {
+            $myDivisionMemosQuery->whereRaw('1=0');
+        }
+        if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+            $myDivisionMemosQuery->whereYear('created_at', (int) $year);
+        }
+        if ($request->filled('staff_id')) {
+            $myDivisionMemosQuery->where('staff_id', $request->staff_id);
+        }
+        if ($request->filled('request_type_id')) {
+            $myDivisionMemosQuery->where('request_type_id', $request->request_type_id);
+        }
+        if ($request->filled('division_id')) {
+            $myDivisionMemosQuery->where('division_id', $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $myDivisionMemosQuery->where('overall_status', $request->status);
+        }
+        if ($request->filled('document_number')) {
+            $myDivisionMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+        if ($request->filled('search')) {
+            $myDivisionMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
+        }
+        $myDivisionMemos = $myDivisionMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
+
+        // Tab 3: All Special Memos (visible to users with permission 87)
         $allMemos = collect();
         if (in_array(87, user_session('permissions', []))) {
             $allMemosQuery = SpecialMemo::with([
@@ -127,7 +163,7 @@ class SpecialMemoController extends Controller
             $allMemos = $allMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
         }
 
-        // Tab 3: Shared Special Memos (memos where current user is added as participant but not creator)
+        // Tab 4: Shared Special Memos (memos where current user is added as participant but not creator)
         $sharedMemosQuery = SpecialMemo::with([
             'staff',
             'division.divisionHead',
@@ -205,6 +241,38 @@ class SpecialMemoController extends Controller
             }
             $mySubmittedMemos = $mySubmittedQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
 
+            $myDivisionMemosQueryAjax = SpecialMemo::with([
+                'staff', 'division.divisionHead', 'requestType', 'fundType',
+                'forwardWorkflow.workflowDefinitions.approvers.staff'
+            ]);
+            if ($userDivisionId) {
+                $myDivisionMemosQueryAjax->where('division_id', $userDivisionId);
+            } else {
+                $myDivisionMemosQueryAjax->whereRaw('1=0');
+            }
+            if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+                $myDivisionMemosQueryAjax->whereYear('created_at', (int) $year);
+            }
+            if ($request->filled('staff_id')) {
+                $myDivisionMemosQueryAjax->where('staff_id', $request->staff_id);
+            }
+            if ($request->filled('request_type_id')) {
+                $myDivisionMemosQueryAjax->where('request_type_id', $request->request_type_id);
+            }
+            if ($request->filled('division_id')) {
+                $myDivisionMemosQueryAjax->where('division_id', $request->division_id);
+            }
+            if ($request->filled('status')) {
+                $myDivisionMemosQueryAjax->where('overall_status', $request->status);
+            }
+            if ($request->filled('document_number')) {
+                $myDivisionMemosQueryAjax->where('document_number', 'like', '%' . $request->document_number . '%');
+            }
+            if ($request->filled('search')) {
+                $myDivisionMemosQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
+            }
+            $myDivisionMemos = $myDivisionMemosQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
+
             $allMemos = collect();
             if (in_array(87, user_session('permissions', []))) {
                 $allMemosQueryAjax = SpecialMemo::with([
@@ -263,6 +331,7 @@ class SpecialMemoController extends Controller
             $sharedMemos = $sharedMemosQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
 
             $countMySubmitted = $mySubmittedMemos->total();
+            $countMyDivision = $myDivisionMemos->total();
             $countAllMemos = $allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allMemos->total() : $allMemos->count();
             $countSharedMemos = $sharedMemos->total();
 
@@ -277,6 +346,11 @@ class SpecialMemoController extends Controller
                         'allMemos'
                     ))->render();
                     break;
+                case 'myDivision':
+                    $html = view('special-memo.partials.my-division-memos-tab', compact(
+                        'myDivisionMemos'
+                    ))->render();
+                    break;
                 case 'sharedMemos':
                     $html = view('special-memo.partials.shared-memos-tab', compact(
                         'sharedMemos'
@@ -287,6 +361,7 @@ class SpecialMemoController extends Controller
             return response()->json([
                 'html' => $html,
                 'count_my_submitted' => $countMySubmitted,
+                'count_my_division' => $countMyDivision,
                 'count_all_memos' => $countAllMemos,
                 'count_shared_memos' => $countSharedMemos,
             ]);
@@ -300,6 +375,7 @@ class SpecialMemoController extends Controller
 
         return view('special-memo.index', compact(
             'mySubmittedMemos',
+            'myDivisionMemos',
             'allMemos',
             'sharedMemos',
             'staff',

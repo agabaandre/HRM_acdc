@@ -139,6 +139,12 @@
                     <span class="badge bg-success text-white ms-2" id="badge-mySubmitted">{{ $mySubmittedRequests->total() }}</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="myDivision-tab" data-bs-toggle="tab" data-bs-target="#myDivision" type="button" role="tab" aria-controls="myDivision" aria-selected="false">
+                    <i class="bx bx-building me-2"></i> My Division Requests
+                    <span class="badge bg-info text-white ms-2" id="badge-myDivision">{{ $myDivisionRequests->total() }}</span>
+                </button>
+            </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="allRequests-tab" data-bs-toggle="tab" data-bs-target="#allRequests" type="button" role="tab" aria-controls="allRequests" aria-selected="false">
@@ -169,6 +175,20 @@
                     </div>
                     
                     @include('service-requests.partials.my-submitted-tab')
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="myDivision" role="tabpanel" aria-labelledby="myDivision-tab">
+                <div class="p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0 text-info fw-bold">
+                                <i class="bx bx-building me-2"></i> My Division Service Requests
+                            </h6>
+                            <small class="text-muted">All service requests in your division (latest first)</small>
+                        </div>
+                    </div>
+                    @include('service-requests.partials.my-division-tab')
                 </div>
             </div>
 
@@ -319,6 +339,10 @@ function initServiceRequestsPage() {
                 const b = document.getElementById('badge-mySubmitted');
                 if (b) b.textContent = data.count_my_submitted;
             }
+            if (data.count_my_division !== undefined) {
+                const b = document.getElementById('badge-myDivision');
+                if (b) b.textContent = data.count_my_division;
+            }
             if (data.count_all_requests !== undefined) {
                 const b = document.getElementById('badge-allRequests');
                 if (b) b.textContent = data.count_all_requests;
@@ -332,7 +356,7 @@ function initServiceRequestsPage() {
     }
     
     var urlTab = new URLSearchParams(window.location.search).get('tab');
-    if (urlTab && (urlTab === 'mySubmitted' || urlTab === 'allRequests')) {
+    if (urlTab && (urlTab === 'mySubmitted' || urlTab === 'myDivision' || urlTab === 'allRequests')) {
         setTimeout(function() {
             var tabEl = document.getElementById(urlTab + '-tab');
             if (tabEl && typeof bootstrap !== 'undefined') {

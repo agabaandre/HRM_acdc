@@ -38,13 +38,15 @@ class OtherMemoController extends Controller
             $tab = $request->get('tab', '');
             $yearApplied = $this->resolveOtherMemoYearString($request);
 
-            [$mySubmittedMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
+            [$mySubmittedMemos, $myDivisionMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
 
             $countMySubmitted = $mySubmittedMemos->total();
+            $countMyDivision = $myDivisionMemos->total();
             $countAllMemos = $allMemos instanceof LengthAwarePaginator ? $allMemos->total() : $allMemos->count();
 
             $html = match ($tab) {
                 'mySubmitted' => view('other-memos.partials.my-submitted-tab', compact('mySubmittedMemos'))->render(),
+                'myDivision' => view('other-memos.partials.my-division-tab', compact('myDivisionMemos'))->render(),
                 'allMemos' => view('other-memos.partials.all-memos-tab', compact('allMemos'))->render(),
                 default => '',
             };
@@ -53,11 +55,12 @@ class OtherMemoController extends Controller
                 'html' => $html,
                 'year_applied' => $yearApplied,
                 'count_my_submitted' => $countMySubmitted,
+                'count_my_division' => $countMyDivision,
                 'count_all_memos' => $countAllMemos,
             ]);
         }
 
-        [$mySubmittedMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
+        [$mySubmittedMemos, $myDivisionMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
 
         $currentYear = (int) date('Y');
         $minYear = max(2025, $currentYear - 10);
@@ -66,6 +69,7 @@ class OtherMemoController extends Controller
 
         return view('other-memos.index', compact(
             'mySubmittedMemos',
+            'myDivisionMemos',
             'allMemos',
             'staff',
             'divisions',
@@ -76,11 +80,16 @@ class OtherMemoController extends Controller
     }
 
     /**
-     * @return array{0: LengthAwarePaginator, 1: LengthAwarePaginator|\Illuminate\Support\Collection}
+     * @return array{0: LengthAwarePaginator, 1: LengthAwarePaginator, 2: LengthAwarePaginator|\Illuminate\Support\Collection}
      */
     private function paginateOtherMemoTabs(Request $request, int $currentStaffId): array
     {
         $mySubmittedMemos = $this->buildOtherMemoMySubmittedQuery($request, $currentStaffId)
+            ->orderByDesc('updated_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        $myDivisionMemos = $this->buildOtherMemoMyDivisionQuery($request)
             ->orderByDesc('updated_at')
             ->paginate(20)
             ->withQueryString();
@@ -93,7 +102,7 @@ class OtherMemoController extends Controller
                 ->withQueryString();
         }
 
-        return [$mySubmittedMemos, $allMemos];
+        return [$mySubmittedMemos, $myDivisionMemos, $allMemos];
     }
 
     private function buildOtherMemoMySubmittedQuery(Request $request, int $currentStaffId): Builder
@@ -109,6 +118,20 @@ class OtherMemoController extends Controller
     private function buildOtherMemoAllQuery(Request $request): Builder
     {
         $q = OtherMemo::query()->with(['creator', 'division', 'staff', 'currentApprover']);
+        $this->applyOtherMemoIndexFilters($q, $request);
+
+        return $q;
+    }
+
+    private function buildOtherMemoMyDivisionQuery(Request $request): Builder
+    {
+        $q = OtherMemo::query()->with(['creator', 'division', 'staff', 'currentApprover']);
+        $divisionId = (int) (user_session('division_id') ?? 0);
+        if ($divisionId > 0) {
+            $q->where('division_id', $divisionId);
+        } else {
+            $q->whereRaw('1=0');
+        }
         $this->applyOtherMemoIndexFilters($q, $request);
 
         return $q;

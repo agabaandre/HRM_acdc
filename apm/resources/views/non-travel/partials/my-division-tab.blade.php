@@ -1,0 +1,123 @@
+@if($myDivisionMemos && $myDivisionMemos->count() > 0)
+<div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead class="table-info">
+            <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 28%;">Title</th>
+                <th style="width: 12%;">Responsible Staff</th>
+                <th style="width: 10%;">Division</th>
+                <th style="width: 8%;">Fund Type</th>
+                <th style="width: 8%;">Date</th>
+                <th style="width: 9%;">Status</th>
+                <th style="width: 10%;" class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php $count = ($myDivisionMemos->currentPage() - 1) * $myDivisionMemos->perPage() + 1; @endphp
+            @foreach($myDivisionMemos as $memo)
+                <tr>
+                    <td>{{ $count++ }}</td>
+                    <td>
+                        <div class="text-wrap" style="max-width: 280px;">
+                            @if($memo->document_number)
+                                <small class="text-muted d-block">#{{ $memo->document_number }}</small>
+                            @endif
+                            <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 70) }}</div>
+                            @if($memo->nonTravelMemoCategory)
+                                <small class="text-muted">({{ $memo->nonTravelMemoCategory->name }})</small>
+                            @endif
+                        </div>
+                    </td>
+                    <td>
+                        <div class="text-wrap" style="max-width: 120px;">
+                            @if($memo->staff)
+                                {{ Str::limit($memo->staff->fname . ' ' . $memo->staff->lname, 15) }}
+                            @else
+                                <span class="text-muted">Not assigned</span>
+                            @endif
+                        </div>
+                    </td>
+                    <td>
+                        <div class="text-wrap" style="max-width: 120px;">
+                            {{ Str::limit($memo->division->division_name ?? 'N/A', 15) }}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-warning text-dark">
+                            <i class="bx bx-money me-1"></i>
+                            {{ $memo->fundType->name ?? 'N/A' }}
+                        </span>
+                    </td>
+                    <td>{{ $memo->memo_date ? \Carbon\Carbon::parse($memo->memo_date)->format('M d, Y') : 'N/A' }}</td>
+                    <td>
+                        @php
+                            $statusBadgeClass = [
+                                'draft' => 'bg-secondary',
+                                'pending' => 'bg-warning',
+                                'approved' => 'bg-success',
+                                'rejected' => 'bg-danger',
+                                'returned' => 'bg-info',
+                            ];
+                            $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
+                            $statusMeta = in_array($memo->overall_status, ['pending', 'returned'], true)
+                                ? $memo->memoIndexStatusMeta()
+                                : null;
+                        @endphp
+
+                        @if($statusMeta)
+                            <div class="text-start">
+                                <span class="badge {{ $statusClass }} mb-1">
+                                    {{ strtoupper($memo->overall_status) }}
+                                </span>
+                                <br>
+                                <small class="text-muted d-block">Level {{ $statusMeta['level'] }}</small>
+                                <small class="text-muted d-block">{{ $statusMeta['role'] }}</small>
+                                @if($statusMeta['actor_name'] !== 'N/A')
+                                    <small class="text-muted d-block">{{ $statusMeta['actor_name'] }}</small>
+                                @endif
+                            </div>
+                        @else
+                            <span class="badge {{ $statusClass }}">
+                                {{ strtoupper($memo->overall_status ?? 'draft') }}
+                            </span>
+                        @endif
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group">
+                            <a wire:navigate href="{{ route('non-travel.show', $memo) }}"
+                               class="btn btn-sm btn-outline-info" title="View">
+                                <i class="bx bx-show me-1"></i>View
+                            </a>
+                            @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
+                                <a wire:navigate href="{{ route('non-travel.edit', $memo) }}"
+                                   class="btn btn-sm btn-outline-warning" title="Edit">
+                                    <i class="bx bx-edit me-1"></i>Edit
+                                </a>
+                            @endif
+                            @if($memo->overall_status === 'approved')
+                                <a href="{{ route('non-travel.print', $memo) }}"
+                                   class="btn btn-sm btn-outline-success" title="Print" target="_blank">
+                                    <i class="bx bx-printer me-1"></i>Print
+                                </a>
+                            @endif
+                        </div>
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+
+@if($myDivisionMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $myDivisionMemos->hasPages())
+    <div class="d-flex justify-content-center mt-3">
+        {{ $myDivisionMemos->appends(request()->query())->links() }}
+    </div>
+@endif
+@else
+<div class="text-center py-4 text-muted">
+    <i class="bx bx-building fs-1 text-info opacity-50"></i>
+    <p class="mb-0">No division memos found.</p>
+    <small>Non-travel memos from your division will appear here.</small>
+</div>
+@endif

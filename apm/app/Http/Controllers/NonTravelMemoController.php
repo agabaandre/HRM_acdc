@@ -92,7 +92,44 @@ class NonTravelMemoController extends Controller
 
         $mySubmittedMemos = $mySubmittedQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
-        // Tab 2: All Non-Travel Memos (visible to users with permission 87)
+        // Tab 2: My Division Memos (latest first)
+        $myDivisionMemosQuery = NonTravelMemo::with([
+            'staff',
+            'division.divisionHead',
+            'nonTravelMemoCategory',
+            'fundType',
+            'forwardWorkflow.workflowDefinitions.approvers.staff'
+        ]);
+        if ($userDivisionId) {
+            $myDivisionMemosQuery->where('division_id', $userDivisionId);
+        } else {
+            // If division is unavailable in session, return empty set safely.
+            $myDivisionMemosQuery->whereRaw('1 = 0');
+        }
+        if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+            $myDivisionMemosQuery->whereYear('memo_date', (int) $year);
+        }
+        if ($request->filled('staff_id')) {
+            $myDivisionMemosQuery->where('staff_id', $request->staff_id);
+        }
+        if ($request->filled('category_id')) {
+            $myDivisionMemosQuery->where('non_travel_memo_category_id', $request->category_id);
+        }
+        if ($request->filled('division_id')) {
+            $myDivisionMemosQuery->where('division_id', $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $myDivisionMemosQuery->where('overall_status', $request->status);
+        }
+        if ($request->filled('document_number')) {
+            $myDivisionMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+        if ($request->filled('search')) {
+            $myDivisionMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
+        }
+        $myDivisionMemos = $myDivisionMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
+
+        // Tab 3: All Non-Travel Memos (visible to users with permission 87)
         $allMemos = collect();
         if (in_array(87, user_session('permissions', []))) {
             $allMemosQuery = NonTravelMemo::with([
@@ -182,7 +219,43 @@ class NonTravelMemoController extends Controller
 
             $mySubmittedMemos = $mySubmittedQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
-            // Tab 2: All Non-Travel Memos (visible to users with permission 87)
+            // Tab 2: My Division Memos (latest first)
+            $myDivisionMemosQuery = NonTravelMemo::with([
+                'staff',
+                'division.divisionHead',
+                'nonTravelMemoCategory',
+                'fundType',
+                'forwardWorkflow.workflowDefinitions.approvers.staff'
+            ]);
+            if ($userDivisionId) {
+                $myDivisionMemosQuery->where('division_id', $userDivisionId);
+            } else {
+                $myDivisionMemosQuery->whereRaw('1 = 0');
+            }
+            if ($year !== '' && $year !== 'all' && (int) $year > 0) {
+                $myDivisionMemosQuery->whereYear('memo_date', (int) $year);
+            }
+            if ($request->filled('staff_id')) {
+                $myDivisionMemosQuery->where('staff_id', $request->staff_id);
+            }
+            if ($request->filled('category_id')) {
+                $myDivisionMemosQuery->where('non_travel_memo_category_id', $request->category_id);
+            }
+            if ($request->filled('division_id')) {
+                $myDivisionMemosQuery->where('division_id', $request->division_id);
+            }
+            if ($request->filled('status')) {
+                $myDivisionMemosQuery->where('overall_status', $request->status);
+            }
+            if ($request->filled('document_number')) {
+                $myDivisionMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+            }
+            if ($request->filled('search')) {
+                $myDivisionMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
+            }
+            $myDivisionMemos = $myDivisionMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
+
+            // Tab 3: All Non-Travel Memos (visible to users with permission 87)
             $allMemos = collect();
             if (in_array(87, user_session('permissions', []))) {
                 $allMemosQuery = NonTravelMemo::with([
@@ -221,12 +294,18 @@ class NonTravelMemoController extends Controller
             }
 
             $countMySubmitted = $mySubmittedMemos->total();
+            $countMyDivision = $myDivisionMemos->total();
             $countAllMemos = $allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allMemos->total() : $allMemos->count();
 
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('non-travel.partials.my-submitted-tab', compact(
                         'mySubmittedMemos'
+                    ))->render();
+                    break;
+                case 'myDivision':
+                    $html = view('non-travel.partials.my-division-tab', compact(
+                        'myDivisionMemos'
                     ))->render();
                     break;
                 case 'allMemos':
@@ -240,6 +319,7 @@ class NonTravelMemoController extends Controller
                 'html' => $html,
                 'year_applied' => $yearApplied,
                 'count_my_submitted' => $countMySubmitted,
+                'count_my_division' => $countMyDivision,
                 'count_all_memos' => $countAllMemos,
             ]);
         }
@@ -252,6 +332,7 @@ class NonTravelMemoController extends Controller
 
         return view('non-travel.index', compact(
             'mySubmittedMemos',
+            'myDivisionMemos',
             'allMemos',
             'staff',
             'categories',

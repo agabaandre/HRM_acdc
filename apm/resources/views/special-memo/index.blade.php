@@ -204,6 +204,12 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="myDivision-tab" data-bs-toggle="tab" data-bs-target="#myDivision" type="button" role="tab" aria-controls="myDivision" aria-selected="false">
+                    <i class="bx bx-building me-2"></i> My Division Memos
+                    <span class="badge bg-info text-white ms-2">{{ $myDivisionMemos->total() ?? 0 }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="sharedMemos-tab" data-bs-toggle="tab" data-bs-target="#sharedMemos" type="button" role="tab" aria-controls="sharedMemos" aria-selected="false">
                     <i class="bx bx-share me-2"></i> Shared Special Memos
                     <span class="badge bg-info text-white ms-2">{{ $sharedMemos->total() ?? 0 }}</span>
@@ -239,6 +245,20 @@
                     </div>
 
                     @include('special-memo.partials.my-submitted-tab')
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="myDivision" role="tabpanel" aria-labelledby="myDivision-tab">
+                <div class="p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0 text-info fw-bold">
+                                <i class="bx bx-building me-2"></i> My Division Special Memos
+                            </h6>
+                            <small class="text-muted">All special memos in your division (latest first)</small>
+                        </div>
+                    </div>
+                    @include('special-memo.partials.my-division-memos-tab')
                 </div>
             </div>
 
@@ -400,6 +420,10 @@ function initSpecialMemoPage() {
                 var b = document.querySelector('#mySubmitted-tab .badge');
                 if (b) b.textContent = data.count_my_submitted;
             }
+            if (data.count_my_division !== undefined) {
+                var b = document.querySelector('#myDivision-tab .badge');
+                if (b) b.textContent = data.count_my_division;
+            }
             if (data.count_shared_memos !== undefined) {
                 var b = document.querySelector('#sharedMemos-tab .badge');
                 if (b) b.textContent = data.count_shared_memos;
@@ -436,7 +460,7 @@ function initSpecialMemoPage() {
     if (urlTab) {
         setTimeout(function() {
             var tabEl = document.getElementById(urlTab + '-tab');
-            if (tabEl && (urlTab === 'mySubmitted' || urlTab === 'sharedMemos' || urlTab === 'allMemos')) {
+            if (tabEl && (urlTab === 'mySubmitted' || urlTab === 'myDivision' || urlTab === 'sharedMemos' || urlTab === 'allMemos')) {
                 if (typeof bootstrap !== 'undefined') {
                     document.querySelectorAll('#memoTabs .nav-link').forEach(function(btn) { btn.classList.remove('active'); });
                     document.querySelectorAll('#memoTabsContent .tab-pane').forEach(function(pane) { pane.classList.remove('active', 'show'); });

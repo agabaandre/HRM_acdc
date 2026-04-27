@@ -83,6 +83,15 @@ class ServiceRequestController extends Controller
         // My Submitted Requests (current user's requests)
         $mySubmittedQuery = clone $baseQuery;
         $mySubmittedRequests = $mySubmittedQuery->where('staff_id', $currentStaffId)->paginate(20)->withQueryString();
+
+        // My Division Requests (latest first)
+        $myDivisionQuery = clone $baseQuery;
+        $currentDivisionId = user_session('division_id');
+        if ($currentDivisionId) {
+            $myDivisionRequests = $myDivisionQuery->where('division_id', $currentDivisionId)->paginate(20)->withQueryString();
+        } else {
+            $myDivisionRequests = $myDivisionQuery->whereRaw('1=0')->paginate(20)->withQueryString();
+        }
         
         // All Requests (for users with permission)
         $allRequests = null;
@@ -98,11 +107,15 @@ class ServiceRequestController extends Controller
             $tab = $request->get('tab', '');
             $html = '';
             $countMy = $mySubmittedRequests->total();
+            $countMyDivision = $myDivisionRequests->total();
             $countAll = $allRequests ? $allRequests->total() : 0;
             
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('service-requests.partials.my-submitted-tab', compact('mySubmittedRequests'))->render();
+                    break;
+                case 'myDivision':
+                    $html = view('service-requests.partials.my-division-tab', compact('myDivisionRequests'))->render();
                     break;
                 case 'allRequests':
                     $html = view('service-requests.partials.all-requests-tab', compact('allRequests'))->render();
@@ -112,11 +125,12 @@ class ServiceRequestController extends Controller
             return response()->json([
                 'html' => $html,
                 'count_my_submitted' => $countMy,
+                'count_my_division' => $countMyDivision,
                 'count_all_requests' => $countAll,
             ]);
         }
 
-        return view('service-requests.index', compact('mySubmittedRequests', 'allRequests', 'staff', 'divisions', 'years', 'selectedYear'));
+        return view('service-requests.index', compact('mySubmittedRequests', 'myDivisionRequests', 'allRequests', 'staff', 'divisions', 'years', 'selectedYear'));
     }
 
     /**
