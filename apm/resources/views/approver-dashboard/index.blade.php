@@ -669,7 +669,6 @@ function renderWorkflowStats(stats) {
     var overallAvgEl = $('#workflowStatsOverallAvg');
     var nonWeightedCountEl = $('#workflowStatsNonWeightedCount');
     var nonWeightedAvgEl = $('#workflowStatsNonWeightedAvg');
-    var totalTimeEl = $('#workflowStatsTotalTime');
     tbody.empty();
     if (!workflowStatsData.length) {
         tbody.html('<tr><td colspan="4" class="text-center text-muted">No workflow data</td></tr>');
@@ -677,7 +676,6 @@ function renderWorkflowStats(stats) {
         overallAvgEl.text('No data');
         nonWeightedCountEl.text('0');
         nonWeightedAvgEl.text('No data');
-        totalTimeEl.text('No data');
         clearWorkflowChart();
         return;
     }
@@ -708,7 +706,8 @@ function renderWorkflowStats(stats) {
         }
     });
     overallCountEl.text(String(totalApproved));
-    nonWeightedCountEl.text(String(nonWeightedRows));
+    // "Approved" column should stay document-count based for both summary rows.
+    nonWeightedCountEl.text(String(totalApproved));
     var unit = (workflowChartUnit || 'days');
 
     if (totalApproved > 0 && totalHours > 0) {
@@ -737,18 +736,6 @@ function renderWorkflowStats(stats) {
         }
     } else {
         nonWeightedAvgEl.text('No data');
-    }
-
-    if (totalHours > 0) {
-        if (unit === 'hours') {
-            totalTimeEl.html(escapeHtml(String(Math.round(totalHours * 10) / 10)) + ' <span class="text-muted small">hrs</span>');
-        } else {
-            var totalDays = totalHours / 24;
-            var totalRoundedDays = totalDays >= 10 ? Math.round(totalDays * 10) / 10 : Math.round(totalDays * 100) / 100;
-            totalTimeEl.html(escapeHtml(String(totalRoundedDays)) + ' <span class="text-muted small">days</span>');
-        }
-    } else {
-        totalTimeEl.text('No data');
     }
 
     // Column chart: defer render so container is in DOM (fixes Livewire/navigation timing)
