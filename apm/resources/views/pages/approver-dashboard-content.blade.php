@@ -100,15 +100,9 @@
             </tr>
             <tr>
               <th class="fw-bold">All workflows (non-weighted avg)</th>
-              <th class="text-muted small">Simple average of workflow averages</th>
+              <th class="text-muted small">Simple average of workflow averages (same approved total)</th>
               <th class="text-end fw-bold" id="workflowStatsNonWeightedCount">0</th>
               <th class="text-end fw-bold" id="workflowStatsNonWeightedAvg">No data</th>
-            </tr>
-            <tr>
-              <th class="fw-bold">Summation</th>
-              <th class="text-muted small">Total elapsed time across approved documents</th>
-              <th class="text-end fw-bold">—</th>
-              <th class="text-end fw-bold" id="workflowStatsTotalTime">No data</th>
             </tr>
           </tfoot>
         </table>
