@@ -2198,7 +2198,7 @@ class ChangeRequestController extends Controller
                     $parentLocationIds = json_decode($parentLocationIds, true) ?? [];
                 }
                 if (is_array($parentLocationIds) && !empty($parentLocationIds)) {
-                    $locations = \App\Models\Location::whereIn('id', $parentLocationIds)->pluck('location_name')->toArray();
+                    $locations = \App\Models\Location::whereIn('id', $parentLocationIds)->pluck('name')->toArray();
                     $originalLocation = implode(', ', $locations);
                 }
             }
@@ -2208,7 +2208,7 @@ class ChangeRequestController extends Controller
                 $changedLocationIds = json_decode($changedLocationIds, true) ?? [];
             }
             if (is_array($changedLocationIds) && !empty($changedLocationIds)) {
-                $locations = \App\Models\Location::whereIn('id', $changedLocationIds)->pluck('location_name')->toArray();
+                $locations = \App\Models\Location::whereIn('id', $changedLocationIds)->pluck('name')->toArray();
                 $changedLocation = implode(', ', $locations);
             }
             
