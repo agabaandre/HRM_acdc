@@ -766,11 +766,17 @@ class ChangeRequestController extends Controller
 
         // Show Create ARF / Create Service Request only when: approved + current user is owner or responsible_person
         // ARF = extramural (fund_type_id 2); Service Request = intramural (fund_type_id 1)
-        $currentStaffId = $this->resolveCurrentStaffId();
+        // Resolve current staff id with broad session-key compatibility.
+        $currentStaffId = user_session('staff_id')
+            ?? user_session('auth_staff_id')
+            ?? session('user.staff_id')
+            ?? session('user.auth_staff_id');
         $isApproved = strtolower(trim($changeRequest->overall_status ?? '')) === 'approved';
         $isOwnerOrResponsible = $currentStaffId !== null
-            && ((int) $changeRequest->staff_id === (int) $currentStaffId
-                || (isset($changeRequest->responsible_person_id) && (int) $changeRequest->responsible_person_id === (int) $currentStaffId));
+            && (
+                (string) ($changeRequest->staff_id ?? '') === (string) $currentStaffId
+                || (string) ($changeRequest->responsible_person_id ?? '') === (string) $currentStaffId
+            );
         $ft = $changeRequest->fund_type_id ?? (isset($changeRequest->fundType) ? $changeRequest->fundType->id : null);
         if ($ft === null && $parentMemo) {
             $ft = $parentMemo->fund_type_id ?? (isset($parentMemo->fundType) ? $parentMemo->fundType->id : null);
