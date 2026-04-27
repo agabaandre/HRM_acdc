@@ -665,9 +665,13 @@ function formatWorkflowAvgCell(row) {
 function renderWorkflowStats(stats) {
     workflowStatsData = stats && stats.length ? stats.slice() : [];
     var tbody = $('#workflowStatsBody');
+    var overallCountEl = $('#workflowStatsOverallCount');
+    var overallAvgEl = $('#workflowStatsOverallAvg');
     tbody.empty();
     if (!workflowStatsData.length) {
         tbody.html('<tr><td colspan="4" class="text-center text-muted">No workflow data</td></tr>');
+        overallCountEl.text('0');
+        overallAvgEl.text('No data');
         clearWorkflowChart();
         return;
     }
@@ -681,6 +685,31 @@ function renderWorkflowStats(stats) {
         var rolesCell = renderApproverRolesPipeline(row);
         tbody.append('<tr><td class="align-top"><div class="fw-semibold text-dark">' + escapeHtml(row.workflow_name || '-') + '</div>' + docTypesHtml + '</td><td class="align-top py-2">' + rolesCell + '</td><td class="text-end align-middle fw-semibold">' + (row.memos != null ? row.memos : 0) + '</td><td class="text-end align-middle">' + formatWorkflowAvgCell(row) + '</td></tr>');
     });
+
+    // Weighted overall average across all workflows (weighted by approved count).
+    var totalApproved = 0;
+    var totalHours = 0;
+    workflowStatsData.forEach(function(row) {
+        var count = Number(row.memos || 0);
+        var avgHours = Number(row.avg_hours || 0);
+        if (isFinite(count) && isFinite(avgHours) && count > 0 && avgHours > 0) {
+            totalApproved += count;
+            totalHours += (count * avgHours);
+        }
+    });
+    overallCountEl.text(String(totalApproved));
+    if (totalApproved > 0 && totalHours > 0) {
+        var avgHoursAll = totalHours / totalApproved;
+        if ((workflowChartUnit || 'days') === 'hours') {
+            overallAvgEl.html(escapeHtml(String(Math.round(avgHoursAll * 10) / 10)) + ' <span class="text-muted small">hrs</span>');
+        } else {
+            var avgDaysAll = avgHoursAll / 24;
+            var roundedDays = avgDaysAll >= 10 ? Math.round(avgDaysAll * 10) / 10 : Math.round(avgDaysAll * 100) / 100;
+            overallAvgEl.html(escapeHtml(String(roundedDays)) + ' <span class="text-muted small">days</span>');
+        }
+    } else {
+        overallAvgEl.text('No data');
+    }
 
     // Column chart: defer render so container is in DOM (fixes Livewire/navigation timing)
     var categories = workflowStatsData.map(function(s) { return s.workflow_name || 'Unknown'; });
