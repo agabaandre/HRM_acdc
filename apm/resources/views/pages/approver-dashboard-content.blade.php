@@ -91,6 +91,14 @@
           <tbody id="workflowStatsBody">
             <tr><td colspan="4" class="text-center text-muted">Loading...</td></tr>
           </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <th class="fw-bold">All workflows</th>
+              <th class="text-muted small">Weighted by approved count</th>
+              <th class="text-end fw-bold" id="workflowStatsOverallCount">0</th>
+              <th class="text-end fw-bold" id="workflowStatsOverallAvg">No data</th>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
