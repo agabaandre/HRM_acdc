@@ -517,6 +517,13 @@
                             <span>{{ $isAdmin ? 'Admin' : 'Division focal' }}: Update Owners</span>
                         </button>
                     @endif
+
+                    @if($isAdmin && ($activity->overall_status ?? '') !== 'archived')
+                        <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#archiveActivityModal" style="flex-shrink: 0;">
+                            <i class="bx bx-archive"></i>
+                            <span>Archive</span>
+                        </button>
+                    @endif
                     
                     @php
                         // Check if ARF already exists for this activity
@@ -585,6 +592,34 @@
                         </div>
                     </div>
                 </div>
+
+    @if($isAdmin && ($activity->overall_status ?? '') !== 'archived')
+    <div class="modal fade" id="archiveActivityModal" tabindex="-1" aria-labelledby="archiveActivityModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="archiveActivityModalLabel">Archive Activity</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Are you sure you want to archive this memo?</p>
+                    <p class="text-muted small mb-0">
+                        This removes it from active workflow by setting <code>forward_workflow_id</code> to null and marking status as archived.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="POST" action="{{ route('matrices.activities.archive', [$matrix, $activity]) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bx bx-archive me-1"></i> Archive
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <div class="container-fluid py-4">
 

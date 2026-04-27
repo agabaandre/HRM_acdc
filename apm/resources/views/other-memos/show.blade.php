@@ -38,6 +38,11 @@
                 <button type="submit" class="btn btn-outline-danger"><i class="bx bx-trash"></i> Delete draft</button>
             </form>
         @endif
+        @if (user_session('role') == 10 && ($memo->overall_status ?? '') !== 'archived')
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#archiveOtherMemoModal">
+                <i class="bx bx-archive me-1"></i>Archive
+            </button>
+        @endif
         <a href="{{ route('other-memos.index') }}" class="btn btn-outline-secondary" wire:navigate>Back to list</a>
     </div>
 @endsection
@@ -111,6 +116,30 @@
 <div class="other-memo-show-page">
     @if (session('msg'))
         <div class="alert alert-{{ session('type', 'info') }}">{{ session('msg') }}</div>
+    @endif
+
+    @if (user_session('role') == 10 && ($memo->overall_status ?? '') !== 'archived')
+        <div class="modal fade" id="archiveOtherMemoModal" tabindex="-1" aria-labelledby="archiveOtherMemoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="archiveOtherMemoModalLabel">Archive Other Memo</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">Are you sure you want to archive this memo?</p>
+                        <p class="text-muted small mb-0">This sets <code>forward_workflow_id</code> to null and marks the memo as archived.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <form method="POST" action="{{ route('other-memos.archive', $memo) }}">
+                            @csrf
+                            <button type="submit" class="btn btn-danger"><i class="bx bx-archive me-1"></i> Archive</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     @endif
 
     @php

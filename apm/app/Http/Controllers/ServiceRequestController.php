@@ -88,7 +88,11 @@ class ServiceRequestController extends Controller
         $myDivisionQuery = clone $baseQuery;
         $currentDivisionId = user_session('division_id');
         if ($currentDivisionId) {
-            $myDivisionRequests = $myDivisionQuery->where('division_id', $currentDivisionId)->paginate(20)->withQueryString();
+            $myDivisionRequests = $myDivisionQuery
+                ->where('division_id', $currentDivisionId)
+                ->where('overall_status', '!=', 'archived')
+                ->paginate(20)
+                ->withQueryString();
         } else {
             $myDivisionRequests = $myDivisionQuery->whereRaw('1=0')->paginate(20)->withQueryString();
         }
@@ -2788,5 +2792,24 @@ class ServiceRequestController extends Controller
                 }
             }
         }
+    }
+
+    public function archive(ServiceRequest $serviceRequest): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('service-requests.show', $serviceRequest)
+                ->with('error', 'Only system administrators can archive this memo.');
+        }
+
+        $serviceRequest->forward_workflow_id = null;
+        $serviceRequest->overall_status = 'archived';
+        $serviceRequest->save();
+
+        return redirect()->route('service-requests.show', $serviceRequest)
+            ->with('success', 'Service request archived successfully.');
     }
 }

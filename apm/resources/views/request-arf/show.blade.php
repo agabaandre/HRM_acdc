@@ -441,12 +441,19 @@
                             <p class="text-dark mb-0 fw-medium text-break" style="word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ $displayTitle }}</p>
                         </div>
 
+                           @php $isAdmin = user_session('role') == 10; @endphp
                            <div class="d-flex gap-3 col-md-2 justify-content-end">
                                     <a wire:navigate href="{{ route('request-arf.index') }}"
                                         class="btn btn-outline-secondary d-flex align-items-center gap-2">
                                         <i class="bx bx-arrow-back"></i>
                                         <span>Back to List</span>
-                         </a>
+                                    </a>
+                                    @if($isAdmin && ($requestARF->overall_status ?? '') !== 'archived')
+                                        <button type="button" class="btn btn-outline-danger d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#archiveRequestArfModal">
+                                            <i class="bx bx-archive"></i>
+                                            <span>Archive</span>
+                                        </button>
+                                    @endif
                         </div>
 
                     </div>
@@ -454,6 +461,29 @@
             </div>
 
             <div class="container-fluid py-4">
+                @if(($isAdmin ?? false) && ($requestARF->overall_status ?? '') !== 'archived')
+                    <div class="modal fade" id="archiveRequestArfModal" tabindex="-1" aria-labelledby="archiveRequestArfModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="archiveRequestArfModalLabel">Archive Activity Request</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-2">Are you sure you want to archive this memo?</p>
+                                    <p class="text-muted small mb-0">This sets <code>forward_workflow_id</code> to null and marks the memo as archived.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <form method="POST" action="{{ route('request-arf.archive', $requestARF) }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-danger"><i class="bx bx-archive me-1"></i> Archive</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
                 <div class="row g-4">
                     <!-- Main Content -->
                     <div class="col-lg-8">

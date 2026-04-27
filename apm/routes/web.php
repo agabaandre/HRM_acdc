@@ -372,10 +372,16 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     // Admin-only route to update creator and responsible person
     Route::post('/matrices/{matrix}/activities/{activity}/admin-update', [ActivityController::class, 'adminUpdate'])
         ->name('matrices.activities.admin-update');
+
+    // Admin-only route to archive activity memo
+    Route::post('/matrices/{matrix}/activities/{activity}/archive', [ActivityController::class, 'archive'])
+        ->name('matrices.activities.archive');
     
     // Admin-only route to update creator and responsible person for single memos
     Route::post('/single-memos/{activity}/admin-update', [ActivityController::class, 'adminUpdateSingleMemo'])
         ->name('activities.single-memos.admin-update');
+    Route::post('/single-memos/{activity}/archive', [ActivityController::class, 'archiveSingleMemo'])
+        ->name('activities.single-memos.archive');
     
     // Admin-only route to update creator and responsible person for special memos
     Route::post('/special-memo/{specialMemo}/admin-update', [App\Http\Controllers\SpecialMemoController::class, 'adminUpdate'])
@@ -427,6 +433,7 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     Route::get('non-travel/pending-approvals', [App\Http\Controllers\NonTravelMemoController::class, 'pendingApprovals'])->name('non-travel.pending-approvals');
     Route::delete('non-travel/{nonTravel}/remove-attachment', [App\Http\Controllers\NonTravelMemoController::class, 'removeAttachment'])->name('non-travel.remove-attachment');
     Route::post('non-travel/{nonTravel}/admin-update-owner', [App\Http\Controllers\NonTravelMemoController::class, 'adminUpdateOwner'])->name('non-travel.admin-update-owner');
+    Route::post('non-travel/{nonTravel}/archive', [App\Http\Controllers\NonTravelMemoController::class, 'archive'])->name('non-travel.archive');
 
     // Non-Travel Memo Export Routes
     Route::get('non-travel/export/my-submitted', [App\Http\Controllers\NonTravelMemoController::class, 'exportMySubmittedCsv'])->name('non-travel.export.my-submitted');
@@ -442,6 +449,7 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     Route::get('special-memo/export/my-submitted', [App\Http\Controllers\SpecialMemoController::class, 'exportMySubmittedCsv'])->name('special-memo.export.my-submitted');
 Route::get('special-memo/export/all', [App\Http\Controllers\SpecialMemoController::class, 'exportAllCsv'])->name('special-memo.export.all');
 Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoController::class, 'exportSharedCsv'])->name('special-memo.export.shared');
+Route::post('special-memo/{specialMemo}/archive', [App\Http\Controllers\SpecialMemoController::class, 'archive'])->name('special-memo.archive');
     
     Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
     
@@ -452,6 +460,7 @@ Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoContro
     Route::get('request-arf/pending-approvals', [App\Http\Controllers\RequestARFController::class, 'pendingApprovals'])->name('request-arf.pending-approvals');
     
     Route::post('request-arf/store-from-modal', [App\Http\Controllers\RequestARFController::class, 'storeFromModal'])->name('request-arf.store-from-modal');
+    Route::post('request-arf/{requestARF}/archive', [App\Http\Controllers\RequestARFController::class, 'archive'])->name('request-arf.archive');
     Route::resource('request-arf', App\Http\Controllers\RequestARFController::class);
     Route::get('debug-arf-test', function() { return 'ARF route test successful'; });
     Route::get('debug-arf-controller', [App\Http\Controllers\RequestARFController::class, 'debugTest']);
@@ -469,6 +478,7 @@ Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoContro
     Route::post('other-memos/{other_memo}/submit', [App\Http\Controllers\OtherMemoController::class, 'submit'])->name('other-memos.submit');
     Route::post('other-memos/{other_memo}/approve', [App\Http\Controllers\OtherMemoController::class, 'approve'])->name('other-memos.approve');
     Route::post('other-memos/{other_memo}/return-memo', [App\Http\Controllers\OtherMemoController::class, 'returnMemo'])->name('other-memos.return-memo');
+    Route::post('other-memos/{other_memo}/archive', [App\Http\Controllers\OtherMemoController::class, 'archive'])->name('other-memos.archive');
     Route::resource('other-memos', App\Http\Controllers\OtherMemoController::class);
 
     Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
@@ -489,6 +499,7 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::post('service-requests/get-source-data', [App\Http\Controllers\ServiceRequestController::class, 'getSourceData'])->name('service-requests.get-source-data');
     Route::post('service-requests/store-from-modal', [App\Http\Controllers\ServiceRequestController::class, 'storeFromModal'])->name('service-requests.store-from-modal');
     Route::get('service-requests/cost-items', [App\Http\Controllers\ServiceRequestController::class, 'getCostItems'])->name('service-requests.cost-items');
+    Route::post('service-requests/{serviceRequest}/archive', [App\Http\Controllers\ServiceRequestController::class, 'archive'])->name('service-requests.archive');
     
     // Resource routes
     Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
