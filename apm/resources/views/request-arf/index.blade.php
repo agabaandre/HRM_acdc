@@ -87,6 +87,7 @@
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="approved" {{ request('overall_status') == 'approved' ? 'selected' : '' }}>Approved</option>
                         <option value="returned" {{ request('overall_status') == 'returned' ? 'selected' : '' }}>Rejected</option>
+                        <option value="archived" {{ request('overall_status') == 'archived' ? 'selected' : '' }}>Archived</option>
                     </select>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
