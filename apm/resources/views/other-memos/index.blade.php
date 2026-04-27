@@ -145,6 +145,12 @@
                     <span class="badge bg-success text-white ms-2" id="badge-other-mySubmitted">{{ $mySubmittedMemos->total() }}</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="otherMyDivision-tab" data-bs-toggle="tab" data-bs-target="#otherMyDivision" type="button" role="tab" aria-controls="otherMyDivision" aria-selected="false">
+                    <i class="bx bx-building me-2"></i> My Division Memos
+                    <span class="badge bg-info text-white ms-2" id="badge-other-myDivision">{{ $myDivisionMemos->total() }}</span>
+                </button>
+            </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="otherAllMemos-tab" data-bs-toggle="tab" data-bs-target="#otherAllMemos" type="button" role="tab" aria-controls="otherAllMemos" aria-selected="false">
@@ -167,6 +173,19 @@
                         </div>
                     </div>
                     @include('other-memos.partials.my-submitted-tab')
+                </div>
+            </div>
+            <div class="tab-pane fade" id="otherMyDivision" role="tabpanel" aria-labelledby="otherMyDivision-tab">
+                <div class="p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0 text-info fw-bold">
+                                <i class="bx bx-building me-2"></i> My Division Memos
+                            </h6>
+                            <small class="text-muted">Other memos in your division (latest first)</small>
+                        </div>
+                    </div>
+                    @include('other-memos.partials.my-division-tab')
                 </div>
             </div>
             @if(in_array(87, user_session('permissions', [])))

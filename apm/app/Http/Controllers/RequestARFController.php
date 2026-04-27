@@ -77,6 +77,43 @@ class RequestARFController extends Controller
 
         $mySubmittedArfs = $mySubmittedArfsQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
+        // My Division ARFs (latest first)
+        $currentDivisionId = user_session('division_id');
+        $myDivisionArfsQuery = RequestARF::with([
+            'staff',
+            'division',
+            'source',
+            'forwardWorkflow.workflowDefinitions.approvers.staff'
+        ])
+            ->orderByDesc('created_at');
+        if ($currentDivisionId) {
+            $myDivisionArfsQuery->where('division_id', $currentDivisionId);
+        } else {
+            $myDivisionArfsQuery->whereRaw('1=0');
+        }
+        if ($selectedYear !== '' && $selectedYear !== 'all' && (int) $selectedYear > 0) {
+            $myDivisionArfsQuery->whereYear('created_at', $selectedYear);
+        }
+        if ($request->filled('document_number')) {
+            $myDivisionArfsQuery->where(function($q) use ($request) {
+                $q->where('document_number', 'like', '%' . $request->document_number . '%')
+                  ->orWhere('arf_number', 'like', '%' . $request->document_number . '%');
+            });
+        }
+        if ($request->has('division_id') && $request->division_id) {
+            $myDivisionArfsQuery->where('division_id', $request->division_id);
+        }
+        if ($request->has('staff_id') && $request->staff_id) {
+            $myDivisionArfsQuery->where('staff_id', $request->staff_id);
+        }
+        if ($request->has('status') && $request->status) {
+            $myDivisionArfsQuery->where('overall_status', $request->status);
+        }
+        if ($request->filled('search')) {
+            $myDivisionArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
+        }
+        $myDivisionArfs = $myDivisionArfsQuery->paginate(20)->withQueryString();
+
         // Get All ARFs (only for users with permission 87)
         $allArfs = collect();
         if (in_array(87, user_session('permissions', []))) {
@@ -127,11 +164,15 @@ class RequestARFController extends Controller
             $tab = $request->get('tab', '');
             $html = '';
             $countMy = $mySubmittedArfs->total();
+            $countMyDivision = $myDivisionArfs->total();
             $countAll = $allArfs instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allArfs->total() : 0;
 
             switch($tab) {
                 case 'mySubmitted':
                     $html = view('request-arf.partials.my-submitted-tab', compact('mySubmittedArfs'))->render();
+                    break;
+                case 'myDivision':
+                    $html = view('request-arf.partials.my-division-tab', compact('myDivisionArfs'))->render();
                     break;
                 case 'allArfs':
                     $html = view('request-arf.partials.all-arfs-tab', compact('allArfs'))->render();
@@ -141,11 +182,12 @@ class RequestARFController extends Controller
             return response()->json([
                 'html' => $html,
                 'count_my_submitted' => $countMy,
+                'count_my_division' => $countMyDivision,
                 'count_all_arfs' => $countAll,
             ]);
         }
 
-        return view('request-arf.index', compact('mySubmittedArfs', 'allArfs', 'divisions', 'staff', 'years', 'selectedYear'));
+        return view('request-arf.index', compact('mySubmittedArfs', 'myDivisionArfs', 'allArfs', 'divisions', 'staff', 'years', 'selectedYear'));
     }
 
     /**

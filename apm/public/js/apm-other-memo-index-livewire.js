@@ -63,12 +63,16 @@
 
         function mapPaneIdToTabParam(paneId) {
             if (paneId === 'otherAllMemos') return 'allMemos';
+            if (paneId === 'otherMyDivision') return 'myDivision';
             return 'mySubmitted';
         }
 
         function rebuildOtherMemoTabShell(paneId, innerHtml) {
             if (paneId === 'otherAllMemos') {
                 return '<div class="d-flex align-items-center justify-content-between mb-3"><div><h6 class="mb-0 text-primary fw-bold"><i class="bx bx-grid me-2"></i> All Other Memos</h6><small class="text-muted">All other memos in the system</small></div></div>' + innerHtml;
+            }
+            if (paneId === 'otherMyDivision') {
+                return '<div class="d-flex align-items-center justify-content-between mb-3"><div><h6 class="mb-0 text-info fw-bold"><i class="bx bx-building me-2"></i> My Division Memos</h6><small class="text-muted">Other memos in your division (latest first)</small></div></div>' + innerHtml;
             }
             return '<div class="d-flex align-items-center justify-content-between mb-3"><div><h6 class="mb-0 text-success fw-bold"><i class="bx bx-file-alt me-2"></i> My Submitted Memos</h6><small class="text-muted">Other memos you have created</small></div></div>' + innerHtml;
         }
@@ -119,6 +123,10 @@
                     if (data.count_my_submitted !== undefined) {
                         var badgeMy = document.getElementById('badge-other-mySubmitted');
                         if (badgeMy) badgeMy.textContent = data.count_my_submitted;
+                    }
+                    if (data.count_my_division !== undefined) {
+                        var badgeDivision = document.getElementById('badge-other-myDivision');
+                        if (badgeDivision) badgeDivision.textContent = data.count_my_division;
                     }
                     if (data.count_all_memos !== undefined) {
                         var badgeAll = document.getElementById('badge-other-allMemos');
@@ -197,7 +205,9 @@
         var urlTab = new URLSearchParams(window.location.search).get('tab');
         if (urlTab) {
             setTimeout(function () {
-                var tabEl = (urlTab === 'allMemos') ? document.getElementById('otherAllMemos-tab') : document.getElementById('otherMySubmitted-tab');
+                var tabEl = (urlTab === 'allMemos')
+                    ? document.getElementById('otherAllMemos-tab')
+                    : ((urlTab === 'myDivision') ? document.getElementById('otherMyDivision-tab') : document.getElementById('otherMySubmitted-tab'));
                 if (tabEl && typeof bootstrap !== 'undefined') {
                     document.querySelectorAll('#otherMemoTabs .nav-link').forEach(function (btn) { btn.classList.remove('active'); });
                     document.querySelectorAll('#otherMemoTabsContent .tab-pane').forEach(function (pane) { pane.classList.remove('active', 'show'); });
