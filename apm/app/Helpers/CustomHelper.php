@@ -274,28 +274,22 @@ if (! function_exists('user_session')) {
          */
         function can_request_memo_action($memo, $type)
         {
-            $user = (object) session('user', []);
+            $currentUserId = user_session('staff_id')
+                ?? user_session('auth_staff_id')
+                ?? session('user.staff_id')
+                ?? session('user.auth_staff_id');
+            if ($currentUserId === null || $currentUserId === '') {
+                return false;
+            }
 
             //  dd($type,$memo);
 
             // Check if this is a single memo
             $isSingleMemo = isset($memo->is_single_memo) && $memo->is_single_memo;
 
-            // Check if this is a non-travel memo (creator is responsible person)
-            $isNonTravelMemo = get_class($memo) === 'App\Models\NonTravelMemo';
-
-            // Must be responsible person only
-            $isResponsible = false;
-            if ($isNonTravelMemo) {
-                // For non-travel memos: creator (staff_id) is the responsible person
-                $isResponsible = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
-            } else {
-                // For other memos: check responsible_person_id
-                $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
-            }
-
-            // Check if user is authorized (only responsible person)
-            $isAuthorized = $isResponsible;
+            // Creator OR responsible person can request ARF/Services.
+            $isAuthorized = (string) ($memo->staff_id ?? '') === (string) $currentUserId
+                || (string) ($memo->responsible_person_id ?? '') === (string) $currentUserId;
             if (! $isAuthorized) {
                 return false;
             }
@@ -317,7 +311,7 @@ if (! function_exists('user_session')) {
             }
 
             // Fund type check
-            $fundTypeId = isset($memo->fundType->id) ? $memo->fundType->id : null;
+            $fundTypeId = $memo->fund_type_id ?? (isset($memo->fundType->id) ? $memo->fundType->id : null);
 
             $isTypeAllowed = false;
             if ($type === 'services') {
@@ -351,12 +345,15 @@ if (! function_exists('user_session')) {
     if (! function_exists('can_request_arf_for_change_request')) {
         function can_request_arf_for_change_request($changeRequest)
         {
-            $user = (object) session('user', []);
-            if (! $changeRequest || ! isset($user->staff_id)) {
+            $currentUserId = user_session('staff_id')
+                ?? user_session('auth_staff_id')
+                ?? session('user.staff_id')
+                ?? session('user.auth_staff_id');
+            if (! $changeRequest || $currentUserId === null || $currentUserId === '') {
                 return false;
             }
-            $isResponsible = (isset($changeRequest->staff_id) && $changeRequest->staff_id == $user->staff_id)
-                || (isset($changeRequest->responsible_person_id) && $changeRequest->responsible_person_id == $user->staff_id);
+            $isResponsible = (string) ($changeRequest->staff_id ?? '') === (string) $currentUserId
+                || (string) ($changeRequest->responsible_person_id ?? '') === (string) $currentUserId;
             if (! $isResponsible) {
                 return false;
             }
@@ -380,12 +377,15 @@ if (! function_exists('user_session')) {
     if (! function_exists('can_request_services_for_change_request')) {
         function can_request_services_for_change_request($changeRequest)
         {
-            $user = (object) session('user', []);
-            if (! $changeRequest || ! isset($user->staff_id)) {
+            $currentUserId = user_session('staff_id')
+                ?? user_session('auth_staff_id')
+                ?? session('user.staff_id')
+                ?? session('user.auth_staff_id');
+            if (! $changeRequest || $currentUserId === null || $currentUserId === '') {
                 return false;
             }
-            $isResponsible = (isset($changeRequest->staff_id) && $changeRequest->staff_id == $user->staff_id)
-                || (isset($changeRequest->responsible_person_id) && $changeRequest->responsible_person_id == $user->staff_id);
+            $isResponsible = (string) ($changeRequest->staff_id ?? '') === (string) $currentUserId
+                || (string) ($changeRequest->responsible_person_id ?? '') === (string) $currentUserId;
             if (! $isResponsible) {
                 return false;
             }
