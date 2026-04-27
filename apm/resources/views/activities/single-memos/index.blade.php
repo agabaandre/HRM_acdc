@@ -152,6 +152,7 @@
                         <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
                         <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
                         <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
+                        <option value="archived" {{ request('status') == 'archived' ? 'selected' : '' }}>Archived</option>
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
