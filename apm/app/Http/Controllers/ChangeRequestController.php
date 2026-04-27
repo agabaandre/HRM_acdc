@@ -778,8 +778,9 @@ class ChangeRequestController extends Controller
         $fundTypeId = (int) ($ft ?? 1);
         $isIntramural = ($fundTypeId === 1);
         $isExtramural = ($fundTypeId === 2);
-        $canCreateArf = $isApproved && $isOwnerOrResponsible && !$changeRequest->request_arf_id && $isExtramural;
-        $canCreateServices = $isApproved && $isOwnerOrResponsible && !$changeRequest->service_request_id && $isIntramural;
+        // Use resolved linked records (not just FK values) so stale IDs do not hide Create actions.
+        $canCreateArf = $isApproved && $isOwnerOrResponsible && !$existingArf && $isExtramural;
+        $canCreateServices = $isApproved && $isOwnerOrResponsible && !$existingServiceRequest && $isIntramural;
 
         $arfModalData = null;
         if ($canCreateArf && $parentMemo) {
