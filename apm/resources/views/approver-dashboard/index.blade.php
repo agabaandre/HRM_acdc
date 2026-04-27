@@ -667,15 +667,11 @@ function renderWorkflowStats(stats) {
     var tbody = $('#workflowStatsBody');
     var overallCountEl = $('#workflowStatsOverallCount');
     var overallAvgEl = $('#workflowStatsOverallAvg');
-    var nonWeightedCountEl = $('#workflowStatsNonWeightedCount');
-    var nonWeightedAvgEl = $('#workflowStatsNonWeightedAvg');
     tbody.empty();
     if (!workflowStatsData.length) {
         tbody.html('<tr><td colspan="4" class="text-center text-muted">No workflow data</td></tr>');
         overallCountEl.text('0');
         overallAvgEl.text('No data');
-        nonWeightedCountEl.text('0');
-        nonWeightedAvgEl.text('No data');
         clearWorkflowChart();
         return;
     }
@@ -693,21 +689,15 @@ function renderWorkflowStats(stats) {
     // Weighted overall average across all workflows (weighted by approved count).
     var totalApproved = 0;
     var totalHours = 0;
-    var nonWeightedHoursSum = 0;
-    var nonWeightedRows = 0;
     workflowStatsData.forEach(function(row) {
         var count = Number(row.memos || 0);
         var avgHours = Number(row.avg_hours || 0);
         if (isFinite(count) && isFinite(avgHours) && count > 0 && avgHours > 0) {
             totalApproved += count;
             totalHours += (count * avgHours);
-            nonWeightedHoursSum += avgHours;
-            nonWeightedRows += 1;
         }
     });
     overallCountEl.text(String(totalApproved));
-    // "Approved" column should stay document-count based for both summary rows.
-    nonWeightedCountEl.text(String(totalApproved));
     var unit = (workflowChartUnit || 'days');
 
     if (totalApproved > 0 && totalHours > 0) {
@@ -721,21 +711,6 @@ function renderWorkflowStats(stats) {
         }
     } else {
         overallAvgEl.text('No data');
-    }
-
-    if (nonWeightedRows > 0 && nonWeightedHoursSum > 0) {
-        var nonWeightedHoursAvg = nonWeightedHoursSum / nonWeightedRows;
-        if (unit === 'hours') {
-            nonWeightedAvgEl.html(escapeHtml(String(Math.round(nonWeightedHoursAvg * 10) / 10)) + ' <span class="text-muted small">hrs</span>');
-        } else {
-            var nonWeightedDaysAvg = nonWeightedHoursAvg / 24;
-            var nonWeightedRoundedDays = nonWeightedDaysAvg >= 10
-                ? Math.round(nonWeightedDaysAvg * 10) / 10
-                : Math.round(nonWeightedDaysAvg * 100) / 100;
-            nonWeightedAvgEl.html(escapeHtml(String(nonWeightedRoundedDays)) + ' <span class="text-muted small">days</span>');
-        }
-    } else {
-        nonWeightedAvgEl.text('No data');
     }
 
     // Column chart: defer render so container is in DOM (fixes Livewire/navigation timing)

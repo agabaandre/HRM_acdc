@@ -46,6 +46,11 @@
         <ul class="small text-muted mb-0 ps-3">
           <li><strong>Summary cards</strong> use the same <strong>Division</strong>, <strong>Document type</strong>, <strong>Year</strong>, and <strong>Month</strong> filters as the approver table. Each count is a <strong>document</strong> (or single-memo activity) in that scope: <em>Total Pending</em> and <em>Returned</em> are items currently in workflow at an approval level; <em>Approved</em> completed in the period; <em>Total Approval Requests</em> is pending + approved + returned for the selected filters. Types include matrices, special and non-travel memos, single memos, ARF, service requests, change requests, and other memos (when included in the selected document type).</li>
           <li><strong>Average time to last approver</strong> uses <strong>approved</strong> items only: elapsed time from submission (or the model’s submission timestamp) until the <strong>final</strong> approval, grouped by workflow. Other memos follow submit-to-final-approval on their own trail. The chart defaults to <strong>days</strong>; switch to hours for detail.</li>
+          <li><strong>Formulas used (workflow section):</strong><br>
+            Per-workflow average (hours) = <code>sum(document elapsed hours in workflow) / approved documents in workflow</code>.<br>
+            Weighted overall average (hours) = <code>sum(workflow_avg_hours × workflow_approved_count) / sum(workflow_approved_count)</code>.<br>
+            Days conversion = <code>hours / 24</code>.
+          </li>
           <li>Per-approver columns in the table (pending, handled, average time) use the same action rules as the live approval queues.</li>
         </ul>
       </div>
@@ -97,12 +102,6 @@
               <th class="text-muted small">Weighted by approved count</th>
               <th class="text-end fw-bold" id="workflowStatsOverallCount">0</th>
               <th class="text-end fw-bold" id="workflowStatsOverallAvg">No data</th>
-            </tr>
-            <tr>
-              <th class="fw-bold">All workflows (non-weighted avg)</th>
-              <th class="text-muted small">Simple average of workflow averages (same approved total)</th>
-              <th class="text-end fw-bold" id="workflowStatsNonWeightedCount">0</th>
-              <th class="text-end fw-bold" id="workflowStatsNonWeightedAvg">No data</th>
             </tr>
           </tfoot>
         </table>
