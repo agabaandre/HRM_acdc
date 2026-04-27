@@ -102,6 +102,7 @@ class SpecialMemoController extends Controller
         } else {
             $myDivisionMemosQuery->whereRaw('1=0');
         }
+        $myDivisionMemosQuery->where('overall_status', '!=', 'archived');
         if ($year !== '' && $year !== 'all' && (int) $year > 0) {
             $myDivisionMemosQuery->whereYear('created_at', (int) $year);
         }
@@ -177,6 +178,7 @@ class SpecialMemoController extends Controller
         if ($year !== '' && $year !== 'all' && (int) $year > 0) {
             $sharedMemosQuery->whereYear('created_at', (int) $year);
         }
+        $sharedMemosQuery->where('overall_status', '!=', 'archived');
 
         // Apply filters to shared memos
         if ($request->filled('request_type_id')) {
@@ -250,6 +252,7 @@ class SpecialMemoController extends Controller
             } else {
                 $myDivisionMemosQueryAjax->whereRaw('1=0');
             }
+            $myDivisionMemosQueryAjax->where('overall_status', '!=', 'archived');
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                 $myDivisionMemosQueryAjax->whereYear('created_at', (int) $year);
             }
@@ -310,6 +313,7 @@ class SpecialMemoController extends Controller
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                 $sharedMemosQueryAjax->whereYear('created_at', (int) $year);
             }
+            $sharedMemosQueryAjax->where('overall_status', '!=', 'archived');
             if ($request->filled('request_type_id')) {
                 $sharedMemosQueryAjax->where('request_type_id', $request->request_type_id);
             }
@@ -2228,5 +2232,24 @@ class SpecialMemoController extends Controller
                 'message' => 'Failed to update: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function archive(SpecialMemo $specialMemo): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('special-memo.show', $specialMemo)
+                ->with('error', 'Only system administrators can archive this memo.');
+        }
+
+        $specialMemo->forward_workflow_id = null;
+        $specialMemo->overall_status = 'archived';
+        $specialMemo->save();
+
+        return redirect()->route('special-memo.show', $specialMemo)
+            ->with('success', 'Special memo archived successfully.');
     }
 }

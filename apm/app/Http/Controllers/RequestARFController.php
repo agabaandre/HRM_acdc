@@ -91,6 +91,7 @@ class RequestARFController extends Controller
         } else {
             $myDivisionArfsQuery->whereRaw('1=0');
         }
+        $myDivisionArfsQuery->where('overall_status', '!=', 'archived');
         if ($selectedYear !== '' && $selectedYear !== 'all' && (int) $selectedYear > 0) {
             $myDivisionArfsQuery->whereYear('created_at', $selectedYear);
         }
@@ -1734,5 +1735,24 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             'approvedByMe' => $approvedByMe,
             'divisions' => $divisions
         ]);
+    }
+
+    public function archive(RequestARF $requestARF): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('request-arf.show', $requestARF)
+                ->with('error', 'Only system administrators can archive this memo.');
+        }
+
+        $requestARF->forward_workflow_id = null;
+        $requestARF->overall_status = 'archived';
+        $requestARF->save();
+
+        return redirect()->route('request-arf.show', $requestARF)
+            ->with('success', 'Activity request archived successfully.');
     }
 }

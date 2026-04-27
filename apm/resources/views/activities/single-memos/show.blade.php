@@ -537,6 +537,12 @@
                                 <span>{{ $isAdmin ? 'Admin' : 'Division focal' }}: Update Owners</span>
                             </button>
                         @endif
+                        @if($isAdmin && ($activity->overall_status ?? '') !== 'archived')
+                            <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#archiveSingleMemoModal" style="flex-shrink: 0;">
+                                <i class="bx bx-archive"></i>
+                                <span>Archive</span>
+                            </button>
+                        @endif
                         
                         @if ($activity->overall_status === 'pending')
                             <a wire:navigate href="{{ route('activities.single-memos.status', $activity) }}"
@@ -609,6 +615,30 @@
                         </div>
                         </div>
                     </div>
+
+        @if($isAdmin && ($activity->overall_status ?? '') !== 'archived')
+            <div class="modal fade" id="archiveSingleMemoModal" tabindex="-1" aria-labelledby="archiveSingleMemoModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="archiveSingleMemoModalLabel">Archive Single Memo</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="mb-2">Are you sure you want to archive this memo?</p>
+                            <p class="text-muted small mb-0">This sets <code>forward_workflow_id</code> to null and marks the memo as archived.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <form method="POST" action="{{ route('activities.single-memos.archive', $activity) }}">
+                                @csrf
+                                <button type="submit" class="btn btn-danger"><i class="bx bx-archive me-1"></i> Archive</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <div class="container-fluid py-4">
             @php

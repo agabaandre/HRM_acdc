@@ -132,6 +132,7 @@ class OtherMemoController extends Controller
         } else {
             $q->whereRaw('1=0');
         }
+        $q->where('overall_status', '!=', 'archived');
         $this->applyOtherMemoIndexFilters($q, $request);
 
         return $q;
@@ -1019,5 +1020,24 @@ class OtherMemoController extends Controller
     {
         return $memo->overall_status === OtherMemo::STATUS_APPROVED
             && $memo->staff_id === $this->staffId();
+    }
+
+    public function archive(OtherMemo $other_memo): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('other-memos.show', $other_memo)
+                ->with('error', 'Only system administrators can archive this memo.');
+        }
+
+        $other_memo->forward_workflow_id = null;
+        $other_memo->overall_status = 'archived';
+        $other_memo->save();
+
+        return redirect()->route('other-memos.show', $other_memo)
+            ->with('success', 'Other memo archived successfully.');
     }
 }

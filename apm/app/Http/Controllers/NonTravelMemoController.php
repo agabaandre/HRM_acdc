@@ -106,6 +106,7 @@ class NonTravelMemoController extends Controller
             // If division is unavailable in session, return empty set safely.
             $myDivisionMemosQuery->whereRaw('1 = 0');
         }
+        $myDivisionMemosQuery->where('overall_status', '!=', 'archived');
         if ($year !== '' && $year !== 'all' && (int) $year > 0) {
             $myDivisionMemosQuery->whereYear('memo_date', (int) $year);
         }
@@ -232,6 +233,7 @@ class NonTravelMemoController extends Controller
             } else {
                 $myDivisionMemosQuery->whereRaw('1 = 0');
             }
+            $myDivisionMemosQuery->where('overall_status', '!=', 'archived');
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                 $myDivisionMemosQuery->whereYear('memo_date', (int) $year);
             }
@@ -2040,5 +2042,24 @@ class NonTravelMemoController extends Controller
 
             return redirect()->back()->with('error', 'Conversion could not be completed. Please try again or contact support.');
         }
+    }
+
+    public function archive(NonTravelMemo $nonTravel): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('non-travel.show', $nonTravel)
+                ->with('error', 'Only system administrators can archive this memo.');
+        }
+
+        $nonTravel->forward_workflow_id = null;
+        $nonTravel->overall_status = 'archived';
+        $nonTravel->save();
+
+        return redirect()->route('non-travel.show', $nonTravel)
+            ->with('success', 'Non-travel memo archived successfully.');
     }
 }

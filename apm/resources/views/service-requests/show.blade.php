@@ -279,6 +279,7 @@
                         </div>
                         <div class="col-md-4 text-end">
                             <div class="d-flex align-items-center justify-content-end gap-2 flex-wrap">
+                               @php $isAdmin = user_session('role') == 10; @endphp
                                @if(($serviceRequest->overall_status ?? '') === 'draft' && is_with_creator_generic($serviceRequest))
                                     <div class="d-flex align-items-center gap-2 flex-nowrap flex-shrink-0">
                                         <form action="{{ route('service-requests.submit-for-approval', $serviceRequest) }}" method="POST" class="d-inline mb-0">
@@ -292,6 +293,11 @@
                                         </a>
                                     </div>
                                @endif
+                               @if($isAdmin && ($serviceRequest->overall_status ?? '') !== 'archived')
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#archiveServiceRequestModal">
+                                        <i class="bx bx-archive me-1"></i> Archive
+                                    </button>
+                               @endif
                                {!!display_memo_status_auto($serviceRequest)!!}
                             </div>
                         </div>
@@ -300,6 +306,30 @@
             </div>
         </div>
     </div>
+
+    @if(($isAdmin ?? false) && ($serviceRequest->overall_status ?? '') !== 'archived')
+    <div class="modal fade" id="archiveServiceRequestModal" tabindex="-1" aria-labelledby="archiveServiceRequestModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="archiveServiceRequestModalLabel">Archive Service Request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Are you sure you want to archive this memo?</p>
+                    <p class="text-muted small mb-0">This sets <code>forward_workflow_id</code> to null and marks the memo as archived.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="POST" action="{{ route('service-requests.archive', $serviceRequest) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-danger"><i class="bx bx-archive me-1"></i> Archive</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <div class="row">
         <!-- Main Content -->

@@ -243,6 +243,12 @@
                             <span>{{ $isStrictAdmin ? 'Admin' : 'Division focal' }}: Update Creator</span>
                         </button>
                     @endif
+                    @if($isStrictAdmin && ($nonTravel->overall_status ?? '') !== 'archived')
+                        <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#archiveNonTravelModal">
+                            <i class="bx bx-archive"></i>
+                            <span>Archive</span>
+                        </button>
+                    @endif
                     
                     @php
                         // Check if ARF already exists for this non-travel memo
@@ -309,6 +315,30 @@
             </div>
         </div>
     </div>
+
+    @if($isStrictAdmin && ($nonTravel->overall_status ?? '') !== 'archived')
+        <div class="modal fade" id="archiveNonTravelModal" tabindex="-1" aria-labelledby="archiveNonTravelModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="archiveNonTravelModalLabel">Archive Non-Travel Memo</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">Are you sure you want to archive this memo?</p>
+                        <p class="text-muted small mb-0">This sets <code>forward_workflow_id</code> to null and marks the memo as archived.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <form method="POST" action="{{ route('non-travel.archive', $nonTravel) }}">
+                            @csrf
+                            <button type="submit" class="btn btn-danger"><i class="bx bx-archive me-1"></i> Archive</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <div class="container-fluid py-4">
     

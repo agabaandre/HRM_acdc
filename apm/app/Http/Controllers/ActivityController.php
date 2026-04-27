@@ -1826,6 +1826,7 @@ class ActivityController extends Controller
         if ($userDivisionId) {
             $myMemosQuery->where('activities.division_id', $userDivisionId);
         }
+        $myMemosQuery->where('activities.overall_status', '!=', 'archived');
         
         // Show all single memos regardless of status
         // Removed draft filtering to show all single memos
@@ -1863,6 +1864,7 @@ class ActivityController extends Controller
             // Show all single memos regardless of status
             // Removed draft filtering to show all single memos
         }
+        $sharedMemosQuery->where('activities.overall_status', '!=', 'archived');
         
         // Order by latest entries first
         $sharedMemos = $sharedMemosQuery->orderBy('activities.created_at', 'desc')->paginate(10);
@@ -2363,6 +2365,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                     $matrixQuery->where('division_id', $userDivisionId);
                 })->orWhere('activities.responsible_person_id', $userStaffId); // Include activities where user is responsible
             });
+            // Archived content should not appear in My Division tab.
+            $myDivisionQuery->where('activities.overall_status', '!=', 'archived');
             
             // Sort by most recent quarter and year from matrix, then by created_at
             $myDivisionQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
@@ -2404,6 +2408,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             })->whereHas('matrix', function ($query) use ($userDivisionId) {
                 $query->where('division_id', '!=', $userDivisionId); // From other divisions
             });
+            // Archived content should not appear in Shared tab.
+            $sharedQuery->where('activities.overall_status', '!=', 'archived');
             
             // Sort by most recent quarter and year from matrix, then by created_at
             $sharedQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
@@ -3350,6 +3356,62 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 'message' => 'Failed to update: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Admin-only archive for an activity memo.
+     * Archived activities are removed from approvable flows (forward_workflow_id = null)
+     * and marked via overall_status so listing tabs can scope visibility.
+     */
+    public function archive(Matrix $matrix, Activity $activity): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()
+                ->route('matrices.activities.show', [$matrix, $activity])
+                ->with('error', 'Only system administrators can archive this memo.');
+        }
+
+        if ((int) $activity->matrix_id !== (int) $matrix->id) {
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('error', 'Invalid activity context for archive action.');
+        }
+
+        $activity->forward_workflow_id = null;
+        $activity->overall_status = 'archived';
+        $activity->save();
+
+        return redirect()
+            ->route('matrices.activities.show', [$matrix, $activity])
+            ->with('success', 'Activity archived successfully.');
+    }
+
+    /**
+     * Admin-only archive for single memo (activity with is_single_memo = 1).
+     */
+    public function archiveSingleMemo(Activity $activity): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()
+                ->route('activities.single-memos.show', $activity)
+                ->with('error', 'Only system administrators can archive this memo.');
+        }
+
+        $activity->forward_workflow_id = null;
+        $activity->overall_status = 'archived';
+        $activity->save();
+
+        return redirect()
+            ->route('activities.single-memos.show', $activity)
+            ->with('success', 'Single memo archived successfully.');
     }
 
     /**
