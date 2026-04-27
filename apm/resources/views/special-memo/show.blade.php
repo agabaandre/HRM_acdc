@@ -1367,7 +1367,12 @@
                 </div>
 
                 <!-- Enhanced Approval Actions -->
-                @if(can_take_action_generic($specialMemo) || (isdivision_head($specialMemo) && $specialMemo->overall_status == 'returned'))
+                @php
+                    $isReturnedAtHodLevel = isdivision_head($specialMemo)
+                        && $specialMemo->overall_status == 'returned'
+                        && (int) $specialMemo->approval_level === 1;
+                @endphp
+                @if($isReturnedAtHodLevel || ($specialMemo->overall_status !== 'returned' && can_take_action_generic($specialMemo)))
                     <div class="card border-0 shadow-lg mt-4" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
                         <div class="card-header bg-transparent border-0 py-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px 12px 0 0;">
                             <h6 class="mb-0 fw-bold text-gray-800 d-flex align-items-center gap-2" style="color: #1f2937;">
