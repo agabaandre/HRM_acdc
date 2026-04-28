@@ -34,6 +34,7 @@ class Matrix extends Model
         'approval_level',
         'next_approval_level',
         'overall_status',
+        'previous_overall_status',
         'approval_order_map',
     ];
 

@@ -178,6 +178,7 @@
                                     'approved' => 'bg-success',
                                     'rejected' => 'bg-danger',
                                     'returned' => 'bg-info',
+                                    'archived' => 'bg-dark',
                                     default => 'bg-secondary'
                                 };
                             @endphp
@@ -188,6 +189,7 @@
                                     'rejected' => 'text-danger',
                                     'returned' => 'text-info',
                                     'draft' => 'text-secondary',
+                                    'archived' => 'text-dark',
                                     default => 'text-secondary'
                                 };
                             @endphp

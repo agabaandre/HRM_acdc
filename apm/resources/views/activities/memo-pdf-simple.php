@@ -480,14 +480,42 @@
                         </table>
 
     <?php
-    // Check if any fund code is intramural (1) or extramural (2)
+    // Parse budget breakdown exactly like the activity view:
+    // group line items by fund code key and ignore stored grand_total.
+    $budgetBreakdown = null;
+    if ($activity->budget_breakdown) {
+        $budgetBreakdown = is_string($activity->budget_breakdown)
+            ? json_decode($activity->budget_breakdown, true)
+            : $activity->budget_breakdown;
+    }
+    $budgetBreakdown = is_array($budgetBreakdown ?? []) ? $budgetBreakdown : [];
+
+    $budgetByFundCode = [];
+    foreach ($budgetBreakdown as $key => $item) {
+        if ($key === 'grand_total') {
+            continue;
+        }
+        if (is_array($item)) {
+            $budgetByFundCode[$key] = $item;
+        }
+    }
+
+    $fundCodeIds = array_map('intval', array_keys($budgetByFundCode));
+    $fundCodeMap = !empty($fundCodeIds)
+        ? \App\Models\FundCode::whereIn('id', $fundCodeIds)->with(['fundType', 'funder'])->get()->keyBy('id')
+        : collect();
+
+    // Check if any grouped fund code is intramural/extramural.
     $hasBudgetSection = false;
-    foreach($fundCodes ?? [] as $fundCode) {
-        if($fundCode->fundType->id == 1 || $fundCode->fundType->id == 2) {
+    foreach ($budgetByFundCode as $fundCodeId => $items) {
+        $fundCode = $fundCodeMap->get((int) $fundCodeId);
+        $fundTypeId = (int) ($fundCode->fundType->id ?? 0);
+        if ($fundTypeId === 1 || $fundTypeId === 2) {
             $hasBudgetSection = true;
             break;
         }
     }
+
     // Show Request for Approval even when no budget attached
     if (!$hasBudgetSection):
     ?>
@@ -502,31 +530,25 @@
     if($hasBudgetSection): 
     ?>
              <?php
-                            // Parse budget breakdown once (keyed by fund code id)
-                            $budgetBreakdown = null;
-                            if ($activity->budget_breakdown) {
-                                $budgetBreakdown = is_string($activity->budget_breakdown)
-                                    ? json_decode($activity->budget_breakdown, true)
-                                    : $activity->budget_breakdown;
-                            }
-                            $budgetBreakdown = is_array($budgetBreakdown ?? []) ? $budgetBreakdown : [];
-                            unset($budgetBreakdown['grand_total']);
                             $grandTotal = 0; // For certification section (Estimated cost)
-                            $fundCodesList = $fundCodes ?? [];
                             ?>
-             <?php foreach($fundCodesList as $fundCode): ?>
+             <?php foreach($budgetByFundCode as $fundCodeId => $itemsForThisFund): ?>
                  <?php
                             // New page for every fund code so each starts on its own page
                             echo '<div class="page-break"></div>';
-                            // Only items for THIS fund code (support both int and string keys)
-                            $fundCodeId = $fundCode->id;
-                            $itemsForThisFund = $budgetBreakdown[$fundCodeId] ?? $budgetBreakdown[(string)$fundCodeId] ?? [];
+                            $fundCode = $fundCodeMap->get((int) $fundCodeId);
                             $itemsForThisFund = is_array($itemsForThisFund) ? $itemsForThisFund : [];
                             $fundTotal = 0;
                             $count = 1;
                             ?>
                  <div class="section-label mb-15"><strong>Budget Details</strong></div>
-                 <div class="section-label mb-15"><?php echo htmlspecialchars($fundCode->activity); ?> - <?php echo htmlspecialchars($fundCode->code); ?> - (<?php echo htmlspecialchars($fundCode->fundType->name ?? 'N/A'); ?>)</div>
+                 <div class="section-label mb-15">
+                    <?php if ($fundCode): ?>
+                        <?php echo htmlspecialchars($fundCode->activity); ?> - <?php echo htmlspecialchars($fundCode->code); ?> - <?php echo htmlspecialchars($fundCode->funder->name ?? 'N/A'); ?> - (<?php echo htmlspecialchars($fundCode->fundType->name ?? 'N/A'); ?>)
+                    <?php else: ?>
+                        Budget Code: <?php echo htmlspecialchars((string) $fundCodeId); ?>
+                    <?php endif; ?>
+                 </div>
 
                 <div>
                     <table class="bordered-table mb-15">
@@ -545,14 +567,10 @@
                             <?php
                             if (!empty($itemsForThisFund)) {
                                 foreach ($itemsForThisFund as $item) {
-                                    $unitCost = floatval($item['unit_cost'] ?? 0);
-                                    $units = floatval($item['units'] ?? 0);
-                                    $days = floatval($item['days'] ?? 1);
-                                    if ($days > 1) {
-                                        $itemTotal = $unitCost * $units * $days;
-                                    } else {
-                                        $itemTotal = $unitCost * $units;
-                                    }
+                                    $unitCost = floatval(str_replace(',', '', (string) ($item['unit_cost'] ?? 0)));
+                                    $units = floatval(str_replace(',', '', (string) ($item['units'] ?? 0)));
+                                    $days = floatval(str_replace(',', '', (string) ($item['days'] ?? 1)));
+                                    $itemTotal = $unitCost * $units * $days;
                                     $fundTotal += $itemTotal;
                                     ?>
                                     <tr>
@@ -566,27 +584,6 @@
                                     </tr>
                                     <?php
                                     $count++;
-                                }
-                            } else {
-                                // Fallback: activity_budget filtered by this fund code
-                                foreach ($activity->activity_budget ?? [] as $item) {
-                                    $itemFundCodeId = $item->fund_code_id ?? $item->fund_code ?? null;
-                                    if ($itemFundCodeId == $fundCodeId || (string)$itemFundCodeId === (string)$fundCodeId) {
-                                        $total = $item->unit_cost * $item->units * ($item->days ?? 1);
-                                        $fundTotal += $total;
-                                        ?>
-                                        <tr>
-                                            <td><?php echo $count; ?></td>
-                                            <td class="text-right"><?php echo htmlspecialchars($item->cost ?? ''); ?></td>
-                                            <td class="text-right"><?php echo number_format($item->unit_cost, 2); ?></td>
-                                            <td class="text-right"><?php echo $item->units; ?></td>
-                                            <td class="text-right"><?php echo $item->days ?? 1; ?></td>
-                                            <td class="text-right"><?php echo number_format($total, 2); ?></td>
-                                            <td><?php echo htmlspecialchars($item->description ?? ''); ?></td>
-                                        </tr>
-                                        <?php
-                                        $count++;
-                                    }
                                 }
                             }
                             ?>
@@ -607,7 +604,7 @@
     echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($_arAct !== '' ? $_arAct : 'N/A');
     ?></div>
 
-    <?php if($fundCode->fundType->id == 1): ?>
+    <?php if(((int) ($fundCode->fundType->id ?? 0)) === 1): ?>
     <div class="page-break"></div>
 
     <!-- Right-side memo meta (stacked, borderless) -->

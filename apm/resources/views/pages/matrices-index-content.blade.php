@@ -63,6 +63,18 @@
                         </select>
                     </div>
                 </div>
+                <div class="col-md-2">
+                    <label for="statusFilter" class="form-label fw-semibold mb-1"><i
+                            class="bx bx-archive me-1 text-success"></i> Matrix Status</label>
+                    <div class="input-group w-100">
+                        <span class="input-group-text bg-white"><i class="bx bx-filter-alt"></i></span>
+                        <select class="form-select" id="statusFilter">
+                            <option value="active" {{ ($selectedStatus ?? 'active') === 'active' ? 'selected' : '' }}>Active Only</option>
+                            <option value="archived" {{ ($selectedStatus ?? 'active') === 'archived' ? 'selected' : '' }}>Archived Only</option>
+                            <option value="all" {{ ($selectedStatus ?? 'active') === 'all' ? 'selected' : '' }}>All</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter

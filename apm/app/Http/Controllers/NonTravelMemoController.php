@@ -26,6 +26,7 @@ use App\Models\FundCodeTransaction;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use App\Services\ConvertMemoToNonTravelMemoService;
+use App\Models\ApprovalTrail;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
@@ -2055,11 +2056,72 @@ class NonTravelMemoController extends Controller
                 ->with('error', 'Only system administrators can archive this memo.');
         }
 
-        $nonTravel->forward_workflow_id = null;
+        $nonTravel->previous_overall_status = $this->determineStatusBeforeArchive($nonTravel);
         $nonTravel->overall_status = 'archived';
         $nonTravel->save();
 
         return redirect()->route('non-travel.show', $nonTravel)
             ->with('success', 'Non-travel memo archived successfully.');
+    }
+
+    public function unarchive(NonTravelMemo $nonTravel): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('non-travel.show', $nonTravel)
+                ->with('error', 'Only system administrators can unarchive this memo.');
+        }
+
+        if (($nonTravel->overall_status ?? '') !== 'archived') {
+            return redirect()->route('non-travel.show', $nonTravel)
+                ->with('error', 'This memo is not archived.');
+        }
+
+        if (! $nonTravel->forward_workflow_id) {
+            $restoredWorkflowId = ApprovalTrail::where('model_type', NonTravelMemo::class)
+                ->where('model_id', $nonTravel->id)
+                ->whereNotNull('forward_workflow_id')
+                ->latest('id')
+                ->value('forward_workflow_id');
+            $nonTravel->forward_workflow_id = $restoredWorkflowId ? (int) $restoredWorkflowId : 1;
+        }
+        $nonTravel->overall_status = $nonTravel->previous_overall_status ?: 'returned';
+        $nonTravel->previous_overall_status = null;
+        $nonTravel->save();
+
+        return redirect()->route('non-travel.show', $nonTravel)
+            ->with('success', 'Non-travel memo unarchived successfully.');
+    }
+
+    private function determineStatusBeforeArchive(NonTravelMemo $memo): string
+    {
+        $current = (string) ($memo->overall_status ?? 'returned');
+        if ($current === 'approved') {
+            return 'approved';
+        }
+
+        $workflowId = (int) ($memo->forward_workflow_id ?? 0);
+        if ($workflowId <= 0) {
+            return $current;
+        }
+
+        $finalOrder = (int) WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->max('approval_order');
+
+        if ($finalOrder <= 0) {
+            return $current;
+        }
+
+        $finalApproved = ApprovalTrail::where('model_type', NonTravelMemo::class)
+            ->where('model_id', $memo->id)
+            ->where('approval_order', $finalOrder)
+            ->whereIn('action', ['approved', 'passed'])
+            ->exists();
+
+        return $finalApproved ? 'approved' : $current;
     }
 }

@@ -16,6 +16,7 @@ use App\Models\WorkflowModel;
 use App\Models\WorkflowDefinition;
 use App\Models\Approver;
 use App\Services\ApprovalService;
+use App\Models\ApprovalTrail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -2805,11 +2806,71 @@ class ServiceRequestController extends Controller
                 ->with('error', 'Only system administrators can archive this memo.');
         }
 
-        $serviceRequest->forward_workflow_id = null;
+        $serviceRequest->previous_overall_status = $this->determineStatusBeforeArchive($serviceRequest);
         $serviceRequest->overall_status = 'archived';
         $serviceRequest->save();
 
         return redirect()->route('service-requests.show', $serviceRequest)
             ->with('success', 'Service request archived successfully.');
+    }
+
+    public function unarchive(ServiceRequest $serviceRequest): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('service-requests.show', $serviceRequest)
+                ->with('error', 'Only system administrators can unarchive this memo.');
+        }
+
+        if (($serviceRequest->overall_status ?? '') !== 'archived') {
+            return redirect()->route('service-requests.show', $serviceRequest)
+                ->with('error', 'This memo is not archived.');
+        }
+
+        if (! $serviceRequest->forward_workflow_id) {
+            $restoredWorkflowId = ApprovalTrail::where('model_type', ServiceRequest::class)
+                ->where('model_id', $serviceRequest->id)
+                ->whereNotNull('forward_workflow_id')
+                ->latest('id')
+                ->value('forward_workflow_id');
+            $serviceRequest->forward_workflow_id = $restoredWorkflowId ? (int) $restoredWorkflowId : 1;
+        }
+        $serviceRequest->overall_status = $serviceRequest->previous_overall_status ?: 'returned';
+        $serviceRequest->previous_overall_status = null;
+        $serviceRequest->save();
+
+        return redirect()->route('service-requests.show', $serviceRequest)
+            ->with('success', 'Service request unarchived successfully.');
+    }
+
+    private function determineStatusBeforeArchive(ServiceRequest $memo): string
+    {
+        $current = (string) ($memo->overall_status ?? 'returned');
+        if ($current === 'approved') {
+            return 'approved';
+        }
+
+        $workflowId = (int) ($memo->forward_workflow_id ?? 0);
+        if ($workflowId <= 0) {
+            return $current;
+        }
+
+        $finalOrder = (int) WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->max('approval_order');
+        if ($finalOrder <= 0) {
+            return $current;
+        }
+
+        $finalApproved = ApprovalTrail::where('model_type', ServiceRequest::class)
+            ->where('model_id', $memo->id)
+            ->where('approval_order', $finalOrder)
+            ->whereIn('action', ['approved', 'passed'])
+            ->exists();
+
+        return $finalApproved ? 'approved' : $current;
     }
 }

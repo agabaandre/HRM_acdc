@@ -42,6 +42,10 @@
             <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#archiveOtherMemoModal">
                 <i class="bx bx-archive me-1"></i>Archive
             </button>
+        @elseif (user_session('role') == 10 && ($memo->overall_status ?? '') === 'archived')
+            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#unarchiveOtherMemoModal">
+                <i class="bx bx-reset me-1"></i>Unarchive
+            </button>
         @endif
         <a href="{{ route('other-memos.index') }}" class="btn btn-outline-secondary" wire:navigate>Back to list</a>
     </div>
@@ -135,6 +139,29 @@
                         <form method="POST" action="{{ route('other-memos.archive', $memo) }}">
                             @csrf
                             <button type="submit" class="btn btn-danger"><i class="bx bx-archive me-1"></i> Archive</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+    @if (user_session('role') == 10 && ($memo->overall_status ?? '') === 'archived')
+        <div class="modal fade" id="unarchiveOtherMemoModal" tabindex="-1" aria-labelledby="unarchiveOtherMemoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="unarchiveOtherMemoModalLabel">Unarchive Other Memo</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">Restore this memo to active workflow?</p>
+                        <p class="text-muted small mb-0">This undo action sets status back to <code>returned</code>.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <form method="POST" action="{{ route('other-memos.unarchive', $memo) }}">
+                            @csrf
+                            <button type="submit" class="btn btn-success"><i class="bx bx-reset me-1"></i> Unarchive</button>
                         </form>
                     </div>
                 </div>

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use App\Models\ApprovalTrail;
 
 class RequestARFController extends Controller
 {
@@ -1748,11 +1749,71 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                 ->with('error', 'Only system administrators can archive this memo.');
         }
 
-        $requestARF->forward_workflow_id = null;
+        $requestARF->previous_overall_status = $this->determineStatusBeforeArchive($requestARF);
         $requestARF->overall_status = 'archived';
         $requestARF->save();
 
         return redirect()->route('request-arf.show', $requestARF)
             ->with('success', 'Activity request archived successfully.');
+    }
+
+    public function unarchive(RequestARF $requestARF): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('request-arf.show', $requestARF)
+                ->with('error', 'Only system administrators can unarchive this memo.');
+        }
+
+        if (($requestARF->overall_status ?? '') !== 'archived') {
+            return redirect()->route('request-arf.show', $requestARF)
+                ->with('error', 'This memo is not archived.');
+        }
+
+        if (! $requestARF->forward_workflow_id) {
+            $restoredWorkflowId = ApprovalTrail::where('model_type', RequestARF::class)
+                ->where('model_id', $requestARF->id)
+                ->whereNotNull('forward_workflow_id')
+                ->latest('id')
+                ->value('forward_workflow_id');
+            $requestARF->forward_workflow_id = $restoredWorkflowId ? (int) $restoredWorkflowId : 1;
+        }
+        $requestARF->overall_status = $requestARF->previous_overall_status ?: 'returned';
+        $requestARF->previous_overall_status = null;
+        $requestARF->save();
+
+        return redirect()->route('request-arf.show', $requestARF)
+            ->with('success', 'Activity request unarchived successfully.');
+    }
+
+    private function determineStatusBeforeArchive(RequestARF $memo): string
+    {
+        $current = (string) ($memo->overall_status ?? 'returned');
+        if ($current === 'approved') {
+            return 'approved';
+        }
+
+        $workflowId = (int) ($memo->forward_workflow_id ?? 0);
+        if ($workflowId <= 0) {
+            return $current;
+        }
+
+        $finalOrder = (int) WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->max('approval_order');
+        if ($finalOrder <= 0) {
+            return $current;
+        }
+
+        $finalApproved = ApprovalTrail::where('model_type', RequestARF::class)
+            ->where('model_id', $memo->id)
+            ->where('approval_order', $finalOrder)
+            ->whereIn('action', ['approved', 'passed'])
+            ->exists();
+
+        return $finalApproved ? 'approved' : $current;
     }
 }
