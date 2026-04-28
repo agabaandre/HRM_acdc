@@ -150,7 +150,7 @@
         </div>
         <div class="mt-3">
             @if($matrix->overall_status !== 'approved')
-                <span class="badge {{ config('approval_states')[$matrix->overall_status] }} p-2">
+                <span class="badge {{ config('approval_states')[$matrix->overall_status] ?? 'bg-secondary text-white' }} p-2">
                     <i class="fa fa-clock text-bold"></i>
                     {{ $matrix->workflow_definition && $matrix->approval_level>0 ? $matrix->workflow_definition->role : strtoupper($matrix->overall_status) }}
                     <small class="text-white">
