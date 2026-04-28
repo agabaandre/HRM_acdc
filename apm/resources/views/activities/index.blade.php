@@ -251,6 +251,20 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="col-md-1">
+                        <label for="status" class="form-label fw-semibold mb-1">
+                            <i class="bx bx-info-circle me-1 text-success"></i> Status
+                        </label>
+                        <select name="status" id="status" class="form-select" style="width: 100%;">
+                            <option value="" {{ ($selectedStatus ?? request('status')) === '' ? 'selected' : '' }}>All</option>
+                            <option value="draft" {{ ($selectedStatus ?? request('status')) === 'draft' ? 'selected' : '' }}>Draft</option>
+                            <option value="pending" {{ ($selectedStatus ?? request('status')) === 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="approved" {{ ($selectedStatus ?? request('status')) === 'approved' ? 'selected' : '' }}>Approved</option>
+                            <option value="rejected" {{ ($selectedStatus ?? request('status')) === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                            <option value="returned" {{ ($selectedStatus ?? request('status')) === 'returned' ? 'selected' : '' }}>Returned</option>
+                            <option value="archived" {{ ($selectedStatus ?? request('status')) === 'archived' ? 'selected' : '' }}>Archived</option>
+                        </select>
+                    </div>
                     <div class="col-md-2 d-flex align-items-end">
                         <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
                             <i class="bx bx-search-alt-2 me-1"></i> Filter
@@ -336,6 +350,7 @@ function initActivitiesIndexPage() {
                 { param: 'year', id: 'year', default: APMFilters.currentYear },
                 { param: 'quarter', id: 'quarter', default: APMFilters.currentQuarter },
                 { param: 'division_id', id: 'division_id' },
+                { param: 'status', id: 'status' },
                 { param: 'document_number', id: 'document_number' },
                 { param: 'search', id: 'search' }
             ],
@@ -369,6 +384,10 @@ function initActivitiesIndexPage() {
     
     if (document.getElementById('staff_id')) {
         document.getElementById('staff_id').addEventListener('change', applyFilters);
+    }
+
+    if (document.getElementById('status')) {
+        document.getElementById('status').addEventListener('change', applyFilters);
     }
     
     // Document number filter - apply on Enter key or after 1 second delay
@@ -435,6 +454,7 @@ function initActivitiesIndexPage() {
         const quarter = document.getElementById('quarter')?.value;
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
+        const status = document.getElementById('status')?.value;
         const documentNumber = document.getElementById('document_number')?.value;
         const search = document.getElementById('search')?.value;
         
@@ -442,6 +462,8 @@ function initActivitiesIndexPage() {
         if (quarter) currentUrl.searchParams.set('quarter', quarter);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
+        if (status) currentUrl.searchParams.set('status', status);
+        else currentUrl.searchParams.delete('status');
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (search) currentUrl.searchParams.set('search', search);
 
