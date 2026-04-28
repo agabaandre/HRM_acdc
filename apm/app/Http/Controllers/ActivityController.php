@@ -2277,6 +2277,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $selectedDivisionId = $request->get('division_id', '');
         $selectedDocumentNumber = $request->get('document_number', '');
         $selectedStaffId = $request->get('staff_id', '');
+        $selectedStatus = $request->get('status', '');
         $searchTerm = $request->get('search', '');
         $tab = $request->get('tab', '');
         
@@ -2309,6 +2310,10 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         
         if ($searchTerm) {
             $baseQuery->where('activities.activity_title', 'like', '%' . $searchTerm . '%');
+        }
+
+        if ($selectedStatus !== '') {
+            $baseQuery->where('activities.overall_status', $selectedStatus);
         }
         
         // Debug: Check what matrices are found
@@ -2467,6 +2472,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                         'selectedDivisionId',
                         'selectedDocumentNumber',
                         'selectedStaffId',
+                        'selectedStatus',
                         'searchTerm'
                     ))->render();
                     break;
@@ -2478,6 +2484,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                         'selectedDivisionId',
                         'selectedDocumentNumber',
                         'selectedStaffId',
+                        'selectedStatus',
                         'searchTerm'
                     ))->render();
                     break;
@@ -2489,6 +2496,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                         'selectedDivisionId',
                         'selectedDocumentNumber',
                         'selectedStaffId',
+                        'selectedStatus',
                         'searchTerm'
                     ))->render();
                     break;
@@ -2515,6 +2523,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'selectedDivisionId',
             'selectedDocumentNumber',
             'selectedStaffId',
+            'selectedStatus',
             'searchTerm',
             'userDivisionId'
         ));
