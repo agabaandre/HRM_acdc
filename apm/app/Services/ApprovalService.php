@@ -491,27 +491,52 @@ class ApprovalService
     }
     //dd($definition);
     
-    // Check if we're currently at Head of Operations (approval_level = 7) BEFORE other logic
-    if($model->approval_level == 7){
-        // For Operations division, go directly to DDG (order 9)
-        if ($division->category === 'Operations') {
+    // After Head of Operations (order 7): next step must respect division category.
+    // Programs → 8 (Head of Programs); Operations and Other (and any non-Programs) → 9 (DDG).
+    // Do NOT use "first approval_order > 7" — that always picks 8 and wrongly sends Other/Operations memos to Programs.
+    if ($model->approval_level == 7) {
+        $category = $division ? (string) ($division->category ?? '') : '';
+
+        if (strcasecmp($category, 'Operations') === 0) {
             $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
                 ->where('is_enabled', 1)
-                ->where('approval_order', 9) // DDG
+                ->where('approval_order', 9)
                 ->first();
-                
+
             if ($nextApprover) {
                 return $nextApprover;
             }
         }
-        
-        // For other divisions, follow normal flow
+
+        if (strcasecmp($category, 'Programs') === 0) {
+            $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 8)
+                ->where('category', 'Programs')
+                ->first()
+                ?? WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                    ->where('is_enabled', 1)
+                    ->where('approval_order', 8)
+                    ->first();
+
+            if ($nextApprover) {
+                return $nextApprover;
+            }
+        }
+
+        // Other, unknown category, or missing division: DDG (order 9), prefer category-matched row when possible
         $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
             ->where('is_enabled', 1)
-            ->where('approval_order', '>', $model->approval_level)
-            ->orderBy('approval_order', 'asc')
-            ->first();
-            
+            ->where('approval_order', 9)
+            ->when($category !== '', function ($q) use ($category) {
+                $q->where('category', $category);
+            })
+            ->first()
+            ?? WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 9)
+                ->first();
+
         return $nextApprover;
     }
     
