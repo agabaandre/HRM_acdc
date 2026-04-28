@@ -63,7 +63,15 @@ Other document types may use a different **`workflow_id`** via `WorkflowModel::g
 
 7. **Single next row:** For orders **≥ 3**, still run **`skipToNextDefinitionAllowedForDivision()`** so **`divisions`** and **`allowed_funders`** on the candidate (and forward candidates) are respected.
 
-8. **Special level 7:** If current **`approval_level` is 7** (Head of Operations step), **Operations** divisions jump next to order **9** (DDG); others take the first enabled definition with `approval_order > 7`.
+8. **Special level 7 (after Head of Operations):** If current **`approval_level` is 7**, the next step **must follow division `category`**, not the lowest `approval_order` greater than 7 (that would always be **8 — Head of Programs** and would wrongly send **Other** memos to Programs).
+
+   | Division `category` (case-insensitive) | Next `approval_order` | Typical role |
+   |----------------------------------------|-------------------------|---------------|
+   | **Operations** | **9** | DDG (skips Programs at 8) |
+   | **Programs** | **8** | Head of Programs (prefers `workflow_definition.category = Programs`, then any enabled row at 8) |
+   | **Other**, unknown, or missing division | **9** | DDG (prefers a row whose `category` matches the division when set, then any enabled row at 9) |
+
+   This aligns with **category rows 7–9** in the table above: Operations use order **7** then **9**; Programs use **8**; Other uses **9**.
 
 9. **Special level 10 / divisions:** If next is order **10** and divisions allow this memo, next may jump to **12** (DG). If next is **10** and divisions **disallow**, next is **11** (or **12** fallback).
 

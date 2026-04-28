@@ -4,6 +4,30 @@ This document lists notable features, improvements, and changes to the APM (Appr
 
 ---
 
+## Routing after Head of Operations (order 7), matrices & activities UX, memo PDF budgets (2026-04-29)
+
+### Next approver (division category)
+
+- **`ApprovalService::getNextApprover()`** after **`approval_level` 7** no longer picks the next row as “first `approval_order > 7`” (which always selected **8 — Programs**).
+- Next step is now explicit: **Operations** → order **9** (DDG); **Programs** → **8** (Head of Programs, with category-aware lookup); **Other** / unknown / missing division → **9** (DDG, with sensible fallbacks).
+- Full behaviour is documented in **[APPROVAL_WORKFLOW_NEXT_APPROVER.md](./APPROVAL_WORKFLOW_NEXT_APPROVER.md)** (high-level flow, item 8).
+
+### Matrices
+
+- **Archive / unarchive** at matrix level (admin), plus **matrix list filter** for active / archived / all (`status` query param on matrices index).
+- **`config/approval_states.php`**: added **`archived`** (and **`rejected`**) so matrix metadata badges do not error when `overall_status` is `archived`.
+- Migration **`2026_04_27_144500_add_previous_overall_status_to_memo_tables.php`** also adds **`previous_overall_status`** on **`matrices`** for unarchive restore (run migrations if not already applied).
+
+### Activities index
+
+- **Status** filter on **`/apm/activities`** (draft, pending, approved, rejected, returned, archived, or all), included in AJAX tab reloads.
+
+### Activity memo PDF (multi fund code)
+
+- **`activities/memo-pdf-simple.php`**: budget line items are grouped **per fund code** from **`budget_breakdown`** (same idea as the activity show page), instead of flattening into one table when multiple fund codes are used.
+
+---
+
 ## APM API (v1) and Swagger documentation
 
 **Added:** REST API for the APM module with JWT authentication and OpenAPI/Swagger documentation.
