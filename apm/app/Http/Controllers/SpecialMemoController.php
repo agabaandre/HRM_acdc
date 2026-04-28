@@ -26,6 +26,7 @@ use App\Models\Workflow;
 use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Models\FundCodeTransaction;
+use App\Models\ApprovalTrail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 
@@ -2245,11 +2246,71 @@ class SpecialMemoController extends Controller
                 ->with('error', 'Only system administrators can archive this memo.');
         }
 
-        $specialMemo->forward_workflow_id = null;
+        $specialMemo->previous_overall_status = $this->determineStatusBeforeArchive($specialMemo);
         $specialMemo->overall_status = 'archived';
         $specialMemo->save();
 
         return redirect()->route('special-memo.show', $specialMemo)
             ->with('success', 'Special memo archived successfully.');
+    }
+
+    public function unarchive(SpecialMemo $specialMemo): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('special-memo.show', $specialMemo)
+                ->with('error', 'Only system administrators can unarchive this memo.');
+        }
+
+        if (($specialMemo->overall_status ?? '') !== 'archived') {
+            return redirect()->route('special-memo.show', $specialMemo)
+                ->with('error', 'This memo is not archived.');
+        }
+
+        if (! $specialMemo->forward_workflow_id) {
+            $restoredWorkflowId = ApprovalTrail::where('model_type', SpecialMemo::class)
+                ->where('model_id', $specialMemo->id)
+                ->whereNotNull('forward_workflow_id')
+                ->latest('id')
+                ->value('forward_workflow_id');
+            $specialMemo->forward_workflow_id = $restoredWorkflowId ? (int) $restoredWorkflowId : 1;
+        }
+        $specialMemo->overall_status = $specialMemo->previous_overall_status ?: 'returned';
+        $specialMemo->previous_overall_status = null;
+        $specialMemo->save();
+
+        return redirect()->route('special-memo.show', $specialMemo)
+            ->with('success', 'Special memo unarchived successfully.');
+    }
+
+    private function determineStatusBeforeArchive(SpecialMemo $memo): string
+    {
+        $current = (string) ($memo->overall_status ?? 'returned');
+        if ($current === 'approved') {
+            return 'approved';
+        }
+
+        $workflowId = (int) ($memo->forward_workflow_id ?? 0);
+        if ($workflowId <= 0) {
+            return $current;
+        }
+
+        $finalOrder = (int) WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->max('approval_order');
+        if ($finalOrder <= 0) {
+            return $current;
+        }
+
+        $finalApproved = ApprovalTrail::where('model_type', SpecialMemo::class)
+            ->where('model_id', $memo->id)
+            ->where('approval_order', $finalOrder)
+            ->whereIn('action', ['approved', 'passed'])
+            ->exists();
+
+        return $finalApproved ? 'approved' : $current;
     }
 }

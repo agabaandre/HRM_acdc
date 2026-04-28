@@ -109,6 +109,7 @@ class MatrixController extends Controller
         // Get selected values from request, use defaults only if not provided at all
         $selectedYear = $request->get('year', '');
         $selectedQuarter = $request->get('quarter', '');
+        $selectedStatus = $request->get('status', 'active');
         
         // Use defaults only on initial page load (no filters provided)
         if (empty($selectedYear) && !$request->has('year')) {
@@ -132,6 +133,12 @@ class MatrixController extends Controller
     
         if ($request->filled('division')) {
             $query->where('division_id', $request->division);
+        }
+
+        if ($selectedStatus === 'archived') {
+            $query->where('overall_status', 'archived');
+        } elseif ($selectedStatus === 'active') {
+            $query->where('overall_status', '!=', 'archived');
         }
 
        //  dd(getFullSql($query));
@@ -195,6 +202,12 @@ class MatrixController extends Controller
             $myDivisionQuery->where('division_id', $request->division);
         }
 
+        if ($selectedStatus === 'archived') {
+            $myDivisionQuery->where('overall_status', 'archived');
+        } elseif ($selectedStatus === 'active') {
+            $myDivisionQuery->where('overall_status', '!=', 'archived');
+        }
+
         $this->applyMatrixListOrdering($myDivisionQuery, $currentQuarter, $selectedYear, $currentYear);
         $myDivisionMatrices = $myDivisionQuery->paginate(24, ['*'], 'my_division_page');
 
@@ -228,6 +241,12 @@ class MatrixController extends Controller
                 $allMatricesQuery->where('division_id', $request->division);
             }
 
+            if ($selectedStatus === 'archived') {
+                $allMatricesQuery->where('overall_status', 'archived');
+            } elseif ($selectedStatus === 'active') {
+                $allMatricesQuery->where('overall_status', '!=', 'archived');
+            }
+
             $this->applyMatrixListOrdering($allMatricesQuery, $currentQuarter, $selectedYear, $currentYear);
             $allMatrices = $allMatricesQuery->paginate(24, ['*'], 'all_matrices_page');
         }
@@ -247,12 +266,12 @@ class MatrixController extends Controller
             switch($tab) {
                 case 'myDivision':
                     $html = view('matrices.partials.my-division-tab', compact(
-                        'myDivisionMatrices', 'selectedYear', 'selectedQuarter'
+                        'myDivisionMatrices', 'selectedYear', 'selectedQuarter', 'selectedStatus'
                     ))->render();
                     break;
                 case 'allMatrices':
                     $html = view('matrices.partials.all-matrices-tab', compact(
-                        'allMatrices', 'selectedYear', 'selectedQuarter'
+                        'allMatrices', 'selectedYear', 'selectedQuarter', 'selectedStatus'
                     ))->render();
                     break;
             }
@@ -272,6 +291,7 @@ class MatrixController extends Controller
             'focalPersons' => \App\Models\Staff::active()->get(),
             'selectedYear' => $selectedYear,
             'selectedQuarter' => $selectedQuarter,
+            'selectedStatus' => $selectedStatus,
         ]);
     }
 
@@ -3149,5 +3169,86 @@ class MatrixController extends Controller
         $export = new \App\Exports\MatrixApprovedExport($matrix, $divisionStaff, $activities, $approvedSingleMemos);
         $filename = 'matrix_' . $matrix->id . '_' . strtoupper($matrix->quarter) . '_' . $matrix->year . '_' . now()->format('Y-m-d') . '.xlsx';
         return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
+    }
+
+    public function archive(Matrix $matrix): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('matrices.show', $matrix)
+                ->with('error', 'Only system administrators can archive this matrix.');
+        }
+
+        $matrix->previous_overall_status = $this->determineStatusBeforeArchive($matrix);
+        $matrix->overall_status = 'archived';
+        $matrix->save();
+
+        return redirect()->route('matrices.show', $matrix)
+            ->with('success', 'Matrix archived successfully.');
+    }
+
+    public function unarchive(Matrix $matrix): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('matrices.show', $matrix)
+                ->with('error', 'Only system administrators can unarchive this matrix.');
+        }
+
+        if (($matrix->overall_status ?? '') !== 'archived') {
+            return redirect()->route('matrices.show', $matrix)
+                ->with('error', 'This matrix is not archived.');
+        }
+
+        if (! $matrix->forward_workflow_id) {
+            $restoredWorkflowId = ApprovalTrail::where('model_type', Matrix::class)
+                ->where('model_id', $matrix->id)
+                ->whereNotNull('forward_workflow_id')
+                ->latest('id')
+                ->value('forward_workflow_id');
+            $matrix->forward_workflow_id = $restoredWorkflowId ? (int) $restoredWorkflowId : 1;
+        }
+
+        $matrix->overall_status = $matrix->previous_overall_status ?: 'returned';
+        $matrix->previous_overall_status = null;
+        $matrix->save();
+
+        return redirect()->route('matrices.show', $matrix)
+            ->with('success', 'Matrix unarchived successfully.');
+    }
+
+    private function determineStatusBeforeArchive(Matrix $matrix): string
+    {
+        $current = (string) ($matrix->overall_status ?? 'returned');
+        if ($current === 'approved') {
+            return 'approved';
+        }
+
+        $workflowId = (int) ($matrix->forward_workflow_id ?? 0);
+        if ($workflowId <= 0) {
+            return $current;
+        }
+
+        $finalOrder = (int) WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->max('approval_order');
+
+        if ($finalOrder <= 0) {
+            return $current;
+        }
+
+        $finalApproved = ApprovalTrail::where('model_type', Matrix::class)
+            ->where('model_id', $matrix->id)
+            ->where('approval_order', $finalOrder)
+            ->whereIn('action', ['approved', 'passed'])
+            ->exists();
+
+        return $finalApproved ? 'approved' : $current;
     }
 }

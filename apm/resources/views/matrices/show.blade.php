@@ -125,6 +125,7 @@
             $isMatrixQm = $matrixQmStaffId > 0 && $currentStaffIdForQm === $matrixQmStaffId;
             $currentDivisionId = (int) (user_session('division_id') ?? 0);
             $canDivisionAddSingleMemo = $currentDivisionId > 0 && $currentDivisionId === (int) $matrix->division_id;
+            $isStrictAdmin = user_session('role') == 10;
         @endphp
         @if($canDivisionAddSingleMemo && ($matrix->overall_status=='approved'|| $matrix->overall_status=='pending'))
         <a wire:navigate href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
@@ -148,6 +149,15 @@
                 </ul>
             </div>
         @endif
+        @if($isStrictAdmin && ($matrix->overall_status ?? '') !== 'archived')
+            <button type="button" class="btn btn-outline-danger btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#archiveMatrixModal">
+                <i class="bx bx-archive me-1"></i> Archive
+            </button>
+        @elseif($isStrictAdmin && ($matrix->overall_status ?? '') === 'archived')
+            <button type="button" class="btn btn-outline-success btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#unarchiveMatrixModal">
+                <i class="bx bx-reset me-1"></i> Unarchive
+            </button>
+        @endif
        <a wire:navigate href="{{ route('matrices.index') }}" class="btn btn-outline-secondary btn-sm">
        <i class="bx bx-arrow-back me-1"></i> Back
     </a>
@@ -155,6 +165,52 @@
 @endsection
 
 @section('content')
+@if(($isStrictAdmin ?? false) && ($matrix->overall_status ?? '') !== 'archived')
+    <div class="modal fade" id="archiveMatrixModal" tabindex="-1" aria-labelledby="archiveMatrixModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="archiveMatrixModalLabel">Archive Matrix</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Are you sure you want to archive this matrix?</p>
+                    <p class="text-muted small mb-0">This keeps records intact and hides it from active matrix lists unless archived is selected.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="POST" action="{{ route('matrices.archive', $matrix) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-danger"><i class="bx bx-archive me-1"></i> Archive</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+@if(($isStrictAdmin ?? false) && ($matrix->overall_status ?? '') === 'archived')
+    <div class="modal fade" id="unarchiveMatrixModal" tabindex="-1" aria-labelledby="unarchiveMatrixModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="unarchiveMatrixModalLabel">Unarchive Matrix</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Restore this matrix to active workflow lists?</p>
+                    <p class="text-muted small mb-0">The matrix status is restored to its previous workflow state.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="POST" action="{{ route('matrices.unarchive', $matrix) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-success"><i class="bx bx-reset me-1"></i> Unarchive</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
 <div class="matrix-show-page" id="matrix-show-root" data-matrix-id="{{ $matrix->id }}" data-activities-url="{{ route('matrices.activities-for-approver', $matrix) }}" data-single-memos-url="{{ route('matrices.single-memos-for-approver', $matrix) }}" data-budgets-url="{{ route('matrices.budgets', $matrix) }}">
 @include('matrices.partials.matrix-metadata')
    

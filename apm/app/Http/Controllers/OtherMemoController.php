@@ -1033,11 +1033,60 @@ class OtherMemoController extends Controller
                 ->with('error', 'Only system administrators can archive this memo.');
         }
 
-        $other_memo->forward_workflow_id = null;
+        $other_memo->previous_overall_status = $this->determineOtherMemoStatusBeforeArchive($other_memo);
         $other_memo->overall_status = 'archived';
         $other_memo->save();
 
         return redirect()->route('other-memos.show', $other_memo)
             ->with('success', 'Other memo archived successfully.');
+    }
+
+    public function unarchive(OtherMemo $other_memo): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('other-memos.show', $other_memo)
+                ->with('error', 'Only system administrators can unarchive this memo.');
+        }
+
+        if (($other_memo->overall_status ?? '') !== 'archived') {
+            return redirect()->route('other-memos.show', $other_memo)
+                ->with('error', 'This memo is not archived.');
+        }
+
+        $other_memo->overall_status = $other_memo->previous_overall_status ?: OtherMemo::STATUS_RETURNED;
+        $other_memo->previous_overall_status = null;
+        $other_memo->save();
+
+        return redirect()->route('other-memos.show', $other_memo)
+            ->with('success', 'Other memo unarchived successfully.');
+    }
+
+    private function determineOtherMemoStatusBeforeArchive(OtherMemo $memo): string
+    {
+        $current = (string) ($memo->overall_status ?? OtherMemo::STATUS_RETURNED);
+        if ($current === OtherMemo::STATUS_APPROVED) {
+            return OtherMemo::STATUS_APPROVED;
+        }
+
+        $maxSequence = collect($memo->approvers_config ?? [])
+            ->pluck('sequence')
+            ->filter()
+            ->map(fn ($v) => (int) $v)
+            ->max() ?: 0;
+        if ($maxSequence <= 0) {
+            return $current;
+        }
+
+        $finalApproved = OtherMemoApprovalTrail::query()
+            ->where('other_memo_id', $memo->id)
+            ->where('approval_order', $maxSequence)
+            ->where('action', 'approved')
+            ->exists();
+
+        return $finalApproved ? OtherMemo::STATUS_APPROVED : $current;
     }
 }

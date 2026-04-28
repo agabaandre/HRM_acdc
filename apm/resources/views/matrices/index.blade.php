@@ -139,6 +139,7 @@
             $('#quarterFilter').val(params.get('quarter') || '');
             $('#divisionFilter').val(params.get('division') || '');
             $('#focalFilter').val(params.get('focal_person') || '');
+            $('#statusFilter').val(params.get('status') || 'active');
 
             // Apply Select2
             $('.select2').select2({
@@ -176,6 +177,10 @@
                 document.getElementById('focalFilter').addEventListener('change', applyFilters);
             }
 
+            if (document.getElementById('statusFilter')) {
+                document.getElementById('statusFilter').addEventListener('change', applyFilters);
+            }
+
             // Function to load tab data via AJAX
             function loadTabData(tabId, page = 1) {
                 console.log('Loading matrices tab data for:', tabId, 'page:', page);
@@ -189,10 +194,12 @@
                 const quarter = document.getElementById('quarterFilter')?.value || '';
                 const division = document.getElementById('divisionFilter')?.value || '';
                 const focalPerson = document.getElementById('focalFilter')?.value || '';
+                const status = document.getElementById('statusFilter')?.value || 'active';
                 
                 // Always set parameters, even if empty, to properly handle "All Years" and "All Quarters"
                 currentUrl.searchParams.set('year', year);
                 currentUrl.searchParams.set('quarter', quarter);
+                currentUrl.searchParams.set('status', status);
                 if (division) currentUrl.searchParams.set('division', division);
                 if (focalPerson) currentUrl.searchParams.set('focal_person', focalPerson);
                 

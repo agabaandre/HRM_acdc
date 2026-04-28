@@ -3381,13 +3381,49 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 ->with('error', 'Invalid activity context for archive action.');
         }
 
-        $activity->forward_workflow_id = null;
+        $activity->previous_overall_status = $this->determineActivityStatusBeforeArchive($activity);
         $activity->overall_status = 'archived';
         $activity->save();
 
         return redirect()
             ->route('matrices.activities.show', [$matrix, $activity])
             ->with('success', 'Activity archived successfully.');
+    }
+
+    public function unarchive(Matrix $matrix, Activity $activity): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()
+                ->route('matrices.activities.show', [$matrix, $activity])
+                ->with('error', 'Only system administrators can unarchive this memo.');
+        }
+
+        if ((int) $activity->matrix_id !== (int) $matrix->id) {
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('error', 'Invalid activity context for unarchive action.');
+        }
+
+        if (($activity->overall_status ?? '') !== 'archived') {
+            return redirect()
+                ->route('matrices.activities.show', [$matrix, $activity])
+                ->with('error', 'This memo is not archived.');
+        }
+
+        if (! $activity->forward_workflow_id) {
+            $activity->forward_workflow_id = (int) ($matrix->forward_workflow_id ?? 1);
+        }
+        $activity->overall_status = $activity->previous_overall_status ?: 'returned';
+        $activity->previous_overall_status = null;
+        $activity->save();
+
+        return redirect()
+            ->route('matrices.activities.show', [$matrix, $activity])
+            ->with('success', 'Activity unarchived successfully.');
     }
 
     /**
@@ -3405,13 +3441,43 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 ->with('error', 'Only system administrators can archive this memo.');
         }
 
-        $activity->forward_workflow_id = null;
+        $activity->previous_overall_status = $this->determineActivityStatusBeforeArchive($activity);
         $activity->overall_status = 'archived';
         $activity->save();
 
         return redirect()
             ->route('activities.single-memos.show', $activity)
             ->with('success', 'Single memo archived successfully.');
+    }
+
+    public function unarchiveSingleMemo(Activity $activity): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()
+                ->route('activities.single-memos.show', $activity)
+                ->with('error', 'Only system administrators can unarchive this memo.');
+        }
+
+        if (($activity->overall_status ?? '') !== 'archived') {
+            return redirect()
+                ->route('activities.single-memos.show', $activity)
+                ->with('error', 'This memo is not archived.');
+        }
+
+        if (! $activity->forward_workflow_id) {
+            $activity->forward_workflow_id = (int) ($activity->matrix->forward_workflow_id ?? 1);
+        }
+        $activity->overall_status = $activity->previous_overall_status ?: 'returned';
+        $activity->previous_overall_status = null;
+        $activity->save();
+
+        return redirect()
+            ->route('activities.single-memos.show', $activity)
+            ->with('success', 'Single memo unarchived successfully.');
     }
 
     /**
@@ -3482,6 +3548,43 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 'message' => 'Failed to update: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    private function determineActivityStatusBeforeArchive(Activity $activity): string
+    {
+        $current = (string) ($activity->overall_status ?? 'returned');
+        if ($current === 'approved') {
+            return 'approved';
+        }
+
+        $workflowId = (int) ($activity->forward_workflow_id ?: ($activity->matrix->forward_workflow_id ?? 0));
+        if ($workflowId <= 0) {
+            return $current;
+        }
+
+        $finalOrder = (int) WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->max('approval_order');
+
+        if ($finalOrder <= 0) {
+            return $current;
+        }
+
+        $finalApproved = false;
+        if ((int) ($activity->is_single_memo ?? 0) === 1) {
+            $finalApproved = ApprovalTrail::where('model_type', Activity::class)
+                ->where('model_id', $activity->id)
+                ->where('approval_order', $finalOrder)
+                ->whereIn('action', ['approved', 'passed'])
+                ->exists();
+        } else {
+            $finalApproved = ActivityApprovalTrail::where('activity_id', $activity->id)
+                ->where('approval_order', $finalOrder)
+                ->whereIn('action', ['approved', 'passed'])
+                ->exists();
+        }
+
+        return $finalApproved ? 'approved' : $current;
     }
 
     /**

@@ -297,6 +297,10 @@
                                     <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#archiveServiceRequestModal">
                                         <i class="bx bx-archive me-1"></i> Archive
                                     </button>
+                               @elseif($isAdmin && ($serviceRequest->overall_status ?? '') === 'archived')
+                                    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#unarchiveServiceRequestModal">
+                                        <i class="bx bx-reset me-1"></i> Unarchive
+                                    </button>
                                @endif
                                {!!display_memo_status_auto($serviceRequest)!!}
                             </div>
@@ -324,6 +328,29 @@
                     <form method="POST" action="{{ route('service-requests.archive', $serviceRequest) }}">
                         @csrf
                         <button type="submit" class="btn btn-danger"><i class="bx bx-archive me-1"></i> Archive</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+    @if(($isAdmin ?? false) && ($serviceRequest->overall_status ?? '') === 'archived')
+    <div class="modal fade" id="unarchiveServiceRequestModal" tabindex="-1" aria-labelledby="unarchiveServiceRequestModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="unarchiveServiceRequestModalLabel">Unarchive Service Request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Restore this memo to active workflow?</p>
+                    <p class="text-muted small mb-0">This undo action sets status back to <code>returned</code> and restores workflow routing.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="POST" action="{{ route('service-requests.unarchive', $serviceRequest) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-success"><i class="bx bx-reset me-1"></i> Unarchive</button>
                     </form>
                 </div>
             </div>
