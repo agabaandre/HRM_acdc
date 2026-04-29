@@ -1545,6 +1545,91 @@ class Staff extends MX_Controller
 		}
 	}
 
+	public function staff_data_quality_report()
+	{
+		$data['module'] = $this->module;
+		$data['title'] = 'Staff Data Quality Check Report';
+		$data['staff_filters_auto_apply'] = true;
+		render('staff_data_quality_report', $data);
+	}
+
+	public function get_staff_data_quality_report_ajax()
+	{
+		if (ob_get_level()) {
+			ob_end_clean();
+		}
+		ob_start();
+		try {
+			$page = (int) ($this->input->post('page') ?: 0);
+			$per_page = (int) ($this->input->post('per_page') ?: 20);
+			if ($per_page < 20) {
+				$per_page = 20;
+			}
+			if ($per_page > 100) {
+				$per_page = 100;
+			}
+			$start = $page * $per_page;
+
+			$filters = $this->input->post();
+			unset($filters['page'], $filters['per_page']);
+			$csrf_token_name = $this->security->get_csrf_token_name();
+			if (isset($filters[$csrf_token_name])) {
+				unset($filters[$csrf_token_name]);
+			}
+
+			$count = $this->staff_mdl->count_staff_data_quality_report($filters);
+			$rows = $this->staff_mdl->get_staff_data_quality_report($filters, $per_page, $start);
+
+			$data = [
+				'rows' => $rows,
+			];
+			ob_start();
+			$html_content = $this->load->view('staff_data_quality_report_table', $data, true);
+			$view_output = ob_get_clean();
+			if ($view_output) {
+				$html_content = $view_output . $html_content;
+			}
+
+			$csrf_hash = $this->security->get_csrf_hash();
+			if (ob_get_level()) {
+				ob_end_clean();
+			}
+
+			$response = [
+				'html' => $html_content,
+				'total' => $count,
+				'page' => $page,
+				'per_page' => $per_page,
+				'records' => $count,
+				'csrf_hash' => $csrf_hash,
+			];
+			$json_output = json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if ($json_output === false) {
+				throw new Exception('JSON encoding failed: ' . json_last_error_msg());
+			}
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output($json_output);
+		} catch (Throwable $e) {
+			log_message('error', 'get_staff_data_quality_report_ajax: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+			while (ob_get_level()) {
+				ob_end_clean();
+			}
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Error loading data: ' . $e->getMessage(),
+					'html' => '<tr><td colspan="3" class="text-center text-danger">Error loading data. Please try again.</td></tr>',
+					'total' => 0,
+					'page' => 0,
+					'per_page' => 20,
+					'records' => 0,
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+		}
+	}
+
 	private function _staff_next_of_kin_normalize_nok_row($row)
 	{
 		$out = ['name' => '', 'relationship_id' => 0, 'phone' => '', 'email' => ''];

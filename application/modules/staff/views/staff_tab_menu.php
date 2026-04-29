@@ -82,6 +82,11 @@ $staff_id = $this->session->userdata('user')->staff_id;
                         <i class="fa fa-address-card"></i> Next of Kin
                     </a>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link <?= ($current_uri == 'staff_data_quality_report') ? 'active' : '' ?>" href="<?= base_url('staff/staff_data_quality_report') ?>">
+                        <i class="fa fa-check-circle"></i> Data Quality
+                    </a>
+                </li>
             <?php endif; ?>
         <?php endif; ?>
 
@@ -89,6 +94,11 @@ $staff_id = $this->session->userdata('user')->staff_id;
             <li class="nav-item" role="presentation">
                 <a class="nav-link <?= ($current_uri == 'staff_birthday') ? 'active' : '' ?>" href="<?= base_url('staff/staff_birthday') ?>">
                     <i class="fa fa-birthday-cake"></i> Birthdays
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link <?= ($current_uri == 'staff_data_quality_report') ? 'active' : '' ?>" href="<?= base_url('staff/staff_data_quality_report') ?>">
+                    <i class="fa fa-check-circle"></i> Data Quality
                 </a>
             </li>
         <?php endif; ?>

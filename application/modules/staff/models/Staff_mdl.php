@@ -1184,6 +1184,166 @@ public function getBirthdays($days)
     return ($query);
 }
 
+	/**
+	 * Build Data Quality report rows for current staff (latest contract statuses: Active/Due).
+	 *
+	 * Alerts:
+	 * 1) Supervisor separated (latest supervisor contract status = 4)
+	 * 2) DOB invalid/missing or age <18 or >100
+	 * 3) Missing gender
+	 * 4) Missing Africa CDC work email + missing physical location
+	 */
+	private function _build_staff_data_quality_rows($filters = [])
+	{
+		$subquery = $this->db
+			->select('MAX(staff_contract_id)')
+			->from('staff_contracts')
+			->group_by('staff_id')
+			->get_compiled_select();
+
+		$this->db->select('
+			s.staff_id,
+			s.title,
+			s.fname,
+			s.lname,
+			s.oname,
+			s.gender,
+			s.date_of_birth,
+			s.work_email,
+			s.physical_location,
+			sc.first_supervisor,
+			sc.second_supervisor
+		');
+		$this->db->from('staff s');
+		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+		$this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+		$this->db->where_in('sc.status_id', [1, 2]); // Current staff approach: Active + Due only
+
+		$name = trim((string) ($filters['staff_name'] ?? ''));
+		if ($name !== '') {
+			$this->db->group_start();
+			$this->db->like('s.fname', $name, 'both');
+			$this->db->or_like('s.lname', $name, 'both');
+			$this->db->or_like('s.oname', $name, 'both');
+			$this->db->group_end();
+		}
+
+		$this->db->order_by('s.fname', 'ASC');
+		$staffRows = $this->db->get()->result();
+		if (empty($staffRows)) {
+			return [];
+		}
+
+		// Resolve latest contract status for all supervisors referenced by current staff in one query.
+		$supervisorIds = [];
+		foreach ($staffRows as $r) {
+			if (!empty($r->first_supervisor)) {
+				$supervisorIds[(int) $r->first_supervisor] = true;
+			}
+			if (!empty($r->second_supervisor)) {
+				$supervisorIds[(int) $r->second_supervisor] = true;
+			}
+		}
+		$supervisorStatusMap = [];
+		if (!empty($supervisorIds)) {
+			$supervisorIds = array_keys($supervisorIds);
+			$supLatest = $this->db
+				->select('MAX(staff_contract_id) as latest_contract_id')
+				->from('staff_contracts')
+				->where_in('staff_id', $supervisorIds)
+				->group_by('staff_id')
+				->get_compiled_select();
+
+			$this->db->select('sc.staff_id, sc.status_id');
+			$this->db->from('staff_contracts sc');
+			$this->db->join("($supLatest) mx", 'mx.latest_contract_id = sc.staff_contract_id', 'inner', false);
+			foreach ($this->db->get()->result() as $supRow) {
+				$supervisorStatusMap[(int) $supRow->staff_id] = (int) $supRow->status_id;
+			}
+		}
+
+		$alertFilter = trim((string) ($filters['alert'] ?? ''));
+		$output = [];
+		foreach ($staffRows as $r) {
+			$alerts = [];
+			$alertKeys = [];
+
+			$firstSupId = (int) ($r->first_supervisor ?? 0);
+			$secondSupId = (int) ($r->second_supervisor ?? 0);
+			if ($firstSupId > 0 && (($supervisorStatusMap[$firstSupId] ?? null) === 4)) {
+				$alerts[] = 'First supervisor is separated (latest contract status).';
+				$alertKeys['supervisor_separated'] = true;
+			}
+			if ($secondSupId > 0 && (($supervisorStatusMap[$secondSupId] ?? null) === 4)) {
+				$alerts[] = 'Second supervisor is separated (latest contract status).';
+				$alertKeys['supervisor_separated'] = true;
+			}
+
+			$dob = trim((string) ($r->date_of_birth ?? ''));
+			$hasDobIssue = false;
+			if ($dob === '' || $dob === '0000-00-00') {
+				$hasDobIssue = true;
+				$alerts[] = 'Missing date of birth.';
+			} else {
+				try {
+					$dobObj = new DateTime($dob);
+					$age = (int) $dobObj->diff(new DateTime('today'))->y;
+					if ($age < 18 || $age > 100) {
+						$hasDobIssue = true;
+						$alerts[] = 'Age out of range (must be between 18 and 100).';
+					}
+				} catch (Throwable $e) {
+					$hasDobIssue = true;
+					$alerts[] = 'Invalid date of birth format.';
+				}
+			}
+			if ($hasDobIssue) {
+				$alertKeys['invalid_age'] = true;
+			}
+
+			if (trim((string) ($r->gender ?? '')) === '') {
+				$alerts[] = 'Missing gender.';
+				$alertKeys['no_gender'] = true;
+			}
+
+			$workEmail = strtolower(trim((string) ($r->work_email ?? '')));
+			$hasAfricaCdcEmail = $workEmail !== '' && substr($workEmail, -14) === '@africacdc.org';
+			$hasPhysicalLocation = trim((string) ($r->physical_location ?? '')) !== '';
+			if (!$hasAfricaCdcEmail && !$hasPhysicalLocation) {
+				$alerts[] = 'No Africa CDC work email and no physical location details.';
+				$alertKeys['email_location'] = true;
+			}
+
+			if (empty($alerts)) {
+				continue; // Data quality report should list staff with alerts only
+			}
+
+			if ($alertFilter !== '' && empty($alertKeys[$alertFilter])) {
+				continue;
+			}
+
+			$r->full_name = trim(($r->title ? $r->title . ' ' : '') . ($r->lname ?? '') . ' ' . ($r->fname ?? '') . ' ' . ($r->oname ?? ''));
+			$r->data_quality_alerts = $alerts;
+			$output[] = $r;
+		}
+
+		return $output;
+	}
+
+	public function get_staff_data_quality_report($filters = [], $limit = false, $start = false)
+	{
+		$rows = $this->_build_staff_data_quality_rows($filters);
+		if ($limit !== false && $limit !== null && (int) $limit > 0) {
+			return array_slice($rows, (int) $start, (int) $limit);
+		}
+		return $rows;
+	}
+
+	public function count_staff_data_quality_report($filters = [])
+	{
+		return count($this->_build_staff_data_quality_rows($filters));
+	}
+
 
 	public function add_staff($sapno, $title, $fname, $lname, $oname, $dob, $gender, $nationality_id, $initiation_date, $tel_1, $tel_2, $whatsapp, $work_email, $private_email, $physical_location)
 	{
