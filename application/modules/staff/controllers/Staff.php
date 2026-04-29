@@ -1545,11 +1545,40 @@ class Staff extends MX_Controller
 		}
 	}
 
-	public function staff_data_quality_report()
+	public function staff_data_quality_report($csv = false, $pdf = false)
 	{
 		$data['module'] = $this->module;
 		$data['title'] = 'Staff Data Quality Check Report';
 		$data['staff_filters_auto_apply'] = true;
+
+		$filters = $this->input->get();
+		$filters['csv'] = $csv;
+		$filters['pdf'] = $pdf;
+
+		if ((int) $csv === 1) {
+			$rows = $this->staff_mdl->get_staff_data_quality_report($filters);
+			$flat = [];
+			$count = 1;
+			foreach ($rows as $r) {
+				$flat[] = [
+					'#' => $count++,
+					'staff_id' => (int) ($r->staff_id ?? 0),
+					'name_of_staff' => (string) ($r->full_name ?? ''),
+					'data_quality_alerts' => implode(' | ', (array) ($r->data_quality_alerts ?? [])),
+				];
+			}
+			$file_name = 'Staff-Data-Quality-Report_' . date('d-m-Y-H-i') . '.csv';
+			render_csv_data($flat, $file_name, true);
+			return;
+		}
+
+		if ((int) $pdf === 1) {
+			$data['rows'] = $this->staff_mdl->get_staff_data_quality_report($filters);
+			$pdf_name = 'Staff-Data-Quality-Report_' . date('d-m-Y-H-i') . '.pdf';
+			pdf_print_data($data, $pdf_name, 'L', 'pdfs/staff_data_quality_report');
+			return;
+		}
+
 		render('staff_data_quality_report', $data);
 	}
 
@@ -1582,6 +1611,8 @@ class Staff extends MX_Controller
 
 			$data = [
 				'rows' => $rows,
+				'page' => $page,
+				'per_page' => $per_page,
 			];
 			ob_start();
 			$html_content = $this->load->view('staff_data_quality_report_table', $data, true);
