@@ -43,21 +43,31 @@
 					</select>
 				</div>
 			</div>
-			<div class="col-md-4"></div>
+			<div class="col-md-4 text-end">
+				<div id="exportButtonsTopDq" class="d-flex gap-2 justify-content-end">
+					<a id="dqExportExcel" href="<?= base_url('staff/staff_data_quality_report/1') ?>" class="btn btn-sm btn-outline-primary">
+						<i class="fa fa-file-csv me-1"></i> Export Excel
+					</a>
+					<a id="dqExportPdf" href="<?= base_url('staff/staff_data_quality_report/0/1') ?>" class="btn btn-sm btn-outline-danger">
+						<i class="fa fa-file-pdf me-1"></i> Export PDF
+					</a>
+				</div>
+			</div>
 		</div>
 
 		<div class="table-responsive">
 			<table class="table table-striped table-bordered">
 				<thead>
 					<tr>
-						<th style="width: 80px;">ID</th>
+						<th style="width: 70px;">#</th>
+						<th style="width: 90px;">Profile</th>
 						<th style="width: 320px;">Name of Staff</th>
 						<th>Data Quality Alerts</th>
 					</tr>
 				</thead>
 				<tbody id="staffDataQualityBody">
 					<tr>
-						<td colspan="3" class="text-center">
+						<td colspan="4" class="text-center">
 							<div class="spinner-border text-primary" role="status">
 								<span class="visually-hidden">Loading...</span>
 							</div>
@@ -93,6 +103,15 @@
 			filters.alert = alertType;
 		}
 		return filters;
+	}
+
+	function updateExportLinks() {
+		var filters = collectFilters();
+		var qs = $.param(filters);
+		var excelHref = '<?= base_url('staff/staff_data_quality_report/1') ?>' + (qs ? ('?' + qs) : '');
+		var pdfHref = '<?= base_url('staff/staff_data_quality_report/0/1') ?>' + (qs ? ('?' + qs) : '');
+		$('#dqExportExcel').attr('href', excelHref);
+		$('#dqExportPdf').attr('href', pdfHref);
 	}
 
 	function generatePagination(total, page, perPage, records) {
@@ -141,7 +160,7 @@
 
 	function loadData() {
 		$('#staffDataQualityBody').html(
-			'<tr><td colspan="3" class="text-center">' +
+			'<tr><td colspan="4" class="text-center">' +
 			'<div class="spinner-border text-primary" role="status"></div>' +
 			'<p class="mt-2 mb-0">Loading report...</p></td></tr>'
 		);
@@ -166,7 +185,7 @@
 				generatePagination(response.total || 0, response.page || 0, response.per_page || currentPerPage, response.records || 0);
 			},
 			error: function () {
-				$('#staffDataQualityBody').html('<tr><td colspan="3" class="text-center text-danger">Error loading report. Please try again.</td></tr>');
+				$('#staffDataQualityBody').html('<tr><td colspan="4" class="text-center text-danger">Error loading report. Please try again.</td></tr>');
 			}
 		});
 	}
@@ -180,6 +199,7 @@
 	}
 
 	$(document).ready(function () {
+		updateExportLinks();
 		loadData();
 
 		$('#recordsPerPageDq').on('change', function () {
@@ -190,10 +210,14 @@
 
 		$('#alert').on('change', function () {
 			currentPage = 0;
+			updateExportLinks();
 			loadData();
 		});
 
-		$('#staff_name').on('input', triggerDebouncedApply);
+		$('#staff_name').on('input', function () {
+			updateExportLinks();
+			triggerDebouncedApply();
+		});
 
 		$(document).on('click', '[data-page-dq]', function (e) {
 			e.preventDefault();

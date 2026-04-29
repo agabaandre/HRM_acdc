@@ -1207,6 +1207,7 @@ public function getBirthdays($days)
 			s.fname,
 			s.lname,
 			s.oname,
+			s.photo,
 			s.gender,
 			s.date_of_birth,
 			s.work_email,
