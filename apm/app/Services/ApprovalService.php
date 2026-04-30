@@ -296,6 +296,23 @@ class ApprovalService
             $next_approver = $this->getNextApprover($model);
             //dd($next_approver);
 
+            // Safety fallback: if next approver resolution returns null but there are still
+            // enabled workflow levels above current level, pick the first eligible one.
+            if (!$next_approver && $model->forward_workflow_id && $model->approval_level !== null) {
+                $fallbackCandidates = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                    ->where('is_enabled', 1)
+                    ->where('approval_order', '>', (int) $model->approval_level)
+                    ->orderBy('approval_order', 'asc')
+                    ->get();
+
+                foreach ($fallbackCandidates as $candidate) {
+                    if ($this->isOnlyAllowedForDivisions($candidate, $model) && $this->isOnlyAllowedForFunders($candidate, $model)) {
+                        $next_approver = $candidate;
+                        break;
+                    }
+                }
+            }
+
             if ($next_approver) {
                 $model->forward_workflow_id = $next_approver->workflow_id;
                 $model->approval_level = $next_approver->approval_order;
