@@ -78,7 +78,13 @@ class ServiceRequestController extends Controller
         }
         
         if ($request->filled('search')) {
-            $baseQuery->where('activity_title', 'like', '%' . $request->search . '%');
+            $search = trim((string) $request->search);
+            $baseQuery->where(function ($query) use ($search) {
+                $query->where('service_title', 'like', '%' . $search . '%')
+                    ->orWhere('title', 'like', '%' . $search . '%')
+                    ->orWhere('request_number', 'like', '%' . $search . '%')
+                    ->orWhere('document_number', 'like', '%' . $search . '%');
+            });
         }
         
         // My Submitted Requests (current user's requests)
