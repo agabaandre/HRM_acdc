@@ -451,23 +451,24 @@ if (! function_exists('generate_pdf')) {
             $mpdf->showWatermarkText = true;
         }
 
-        // Write HTML content with safer parsing for long documents:
-        // - strip script tags
-        // - split CSS and BODY parser modes for mPDF
+        // Write HTML content with safer parsing for long/dirty documents.
         try {
-            $safeHtml = preg_replace('#<script\b[^>]*>.*?</script>#is', '', (string) $html);
-            $safeHtml = preg_replace('#<noscript\b[^>]*>.*?</noscript>#is', '', (string) $safeHtml);
+            $safeHtml = \App\Helpers\PrintHelper::sanitizeHtmlForMpdf((string) $html);
 
             $css = '';
             if (preg_match_all('#<style\b[^>]*>(.*?)</style>#is', $safeHtml, $cssMatches)) {
                 $css = trim(implode("\n", $cssMatches[1] ?? []));
+                // Keep CSS payload bounded to reduce parser stress on extreme records.
+                if (strlen($css) > 1_500_000) {
+                    $css = substr($css, 0, 1_500_000);
+                }
                 $safeHtml = preg_replace('#<style\b[^>]*>.*?</style>#is', '', $safeHtml);
             }
 
             if ($css !== '') {
                 $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
             }
-            $mpdf->WriteHTML($safeHtml, \Mpdf\HTMLParserMode::HTML_BODY);
+            $mpdf->WriteHTML((string) $safeHtml, \Mpdf\HTMLParserMode::HTML_BODY);
         } catch (\Throwable $e) {
             Log::error('mPDF WriteHTML failed', [
                 'view' => $view,
@@ -495,14 +496,28 @@ if (! function_exists('generate_pdf')) {
                 'default_font_size' => 10,
             ]);
 
-            $simpleHtml = '<html><body><p>Error generating PDF for this record. Please contact support.</p></body></html>';
+            // Second pass: aggressively sanitize and retry rendering real content.
+            $retryHtml = \App\Helpers\PrintHelper::sanitizeHtmlForMpdf((string) $html);
+            $retryHtml = preg_replace('#<style\b[^>]*>.*?</style>#is', '', (string) $retryHtml) ?? (string) $retryHtml;
+            $retryHtml = preg_replace('#\s+#', ' ', (string) $retryHtml) ?? (string) $retryHtml;
             try {
-                $mpdf->WriteHTML($simpleHtml, \Mpdf\HTMLParserMode::HTML_BODY);
+                $mpdf->WriteHTML((string) $retryHtml, \Mpdf\HTMLParserMode::HTML_BODY);
             } catch (\Throwable $fallbackException) {
                 Log::error('mPDF fallback WriteHTML failed', [
                     'view' => $view,
                     'message' => $fallbackException->getMessage(),
                 ]);
+
+                // Final fallback to avoid 500.
+                $simpleHtml = '<html><body><p>Error generating PDF for this record. Please contact support.</p></body></html>';
+                try {
+                    $mpdf->WriteHTML($simpleHtml, \Mpdf\HTMLParserMode::HTML_BODY);
+                } catch (\Throwable $finalFallbackException) {
+                    Log::critical('mPDF final fallback failed', [
+                        'view' => $view,
+                        'message' => $finalFallbackException->getMessage(),
+                    ]);
+                }
             }
         }
 

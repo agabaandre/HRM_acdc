@@ -2085,9 +2085,11 @@ class ServiceRequestController extends Controller
         // Full memo HTML documents must not be nested inside the SR template (duplicated CSS + huge PCRE/mPDF failures).
         if (is_string($sourcePdfHtml) && $sourcePdfHtml !== '') {
             $sourcePdfHtml = \App\Helpers\PrintHelper::htmlFullDocumentToEmbedFragment($sourcePdfHtml);
+            $sourcePdfHtml = \App\Helpers\PrintHelper::sanitizeHtmlForMpdf($sourcePdfHtml);
         }
         if (is_string($changeRequestPdfHtml) && $changeRequestPdfHtml !== '') {
             $changeRequestPdfHtml = \App\Helpers\PrintHelper::htmlFullDocumentToEmbedFragment($changeRequestPdfHtml);
+            $changeRequestPdfHtml = \App\Helpers\PrintHelper::sanitizeHtmlForMpdf($changeRequestPdfHtml);
         }
 
         // Use mPDF helper function for service request
