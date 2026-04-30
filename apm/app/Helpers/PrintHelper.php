@@ -24,8 +24,50 @@ class PrintHelper
         }
         $html = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $html) ?? $html;
 
-        // Remove tags mPDF does not need and that often carry parser-breaking content.
-        $html = preg_replace('#<(script|noscript|iframe|object|embed|canvas|svg)\b[^>]*>.*?</\1>#is', '', $html) ?? $html;
+        // Remove clearly unsafe/executable blocks only. Keep visual tags like svg for rendering fidelity.
+        $html = preg_replace('#<(script|noscript|iframe|object|embed)\b[^>]*>.*?</\1>#is', '', $html) ?? $html;
+
+        // Prefer HTML5 parser (composer package) because it preserves modern markup better than DOMDocument.
+        if (class_exists(\Masterminds\HTML5::class)) {
+            try {
+                $parser = new \Masterminds\HTML5(['disable_html_ns' => true]);
+                $dom = $parser->loadHTML($html);
+                if ($dom instanceof \DOMDocument) {
+                    $xpath = new \DOMXPath($dom);
+                    foreach ($xpath->query('//*') as $node) {
+                        if (!$node instanceof \DOMElement || !$node->hasAttributes()) {
+                            continue;
+                        }
+
+                        $toRemove = [];
+                        foreach ($node->attributes as $attr) {
+                            $name = strtolower($attr->name);
+                            $value = (string) $attr->value;
+
+                            if (str_starts_with($name, 'on')) {
+                                $toRemove[] = $name;
+                                continue;
+                            }
+                            if (in_array($name, ['integrity', 'crossorigin', 'nonce'], true)) {
+                                $toRemove[] = $name;
+                                continue;
+                            }
+                            if (in_array($name, ['href', 'src'], true) && preg_match('/^\s*javascript:/i', $value)) {
+                                $toRemove[] = $name;
+                            }
+                        }
+
+                        foreach ($toRemove as $attrName) {
+                            $node->removeAttribute($attrName);
+                        }
+                    }
+
+                    return $parser->saveHTML($dom) ?: $html;
+                }
+            } catch (\Throwable $e) {
+                // Fall through to DOMDocument fallback.
+            }
+        }
 
         if (!class_exists(\DOMDocument::class)) {
             return $html;
