@@ -1740,6 +1740,14 @@ class ChangeRequestController extends Controller
             ]);
         }
 
+        // Reject submission when no actual change flag is set.
+        if (! $changeRequest->hasAnyChanges()) {
+            return redirect()->back()->with([
+                'msg' => 'This change request has no detected changes. Please update at least one field before submitting for approval.',
+                'type' => 'error'
+            ]);
+        }
+
         try {
             // Determine workflow ID based on change type
             $workflowId = $this->determineWorkflowId($changeRequest);
@@ -1896,6 +1904,85 @@ class ChangeRequestController extends Controller
                 'type' => 'error'
             ]);
         }
+    }
+
+    public function archive(ChangeRequest $changeRequest): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('change-requests.show', $changeRequest)
+                ->with('error', 'Only system administrators can archive this memo.');
+        }
+
+        $changeRequest->previous_overall_status = $this->determineStatusBeforeArchive($changeRequest);
+        $changeRequest->overall_status = 'archived';
+        $changeRequest->save();
+
+        return redirect()->route('change-requests.show', $changeRequest)
+            ->with('success', 'Change request archived successfully.');
+    }
+
+    public function unarchive(ChangeRequest $changeRequest): RedirectResponse
+    {
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isAdmin = ((int) $userRole) === 10;
+
+        if (! $isAdmin) {
+            return redirect()->route('change-requests.show', $changeRequest)
+                ->with('error', 'Only system administrators can unarchive this memo.');
+        }
+
+        if (($changeRequest->overall_status ?? '') !== 'archived') {
+            return redirect()->route('change-requests.show', $changeRequest)
+                ->with('error', 'This memo is not archived.');
+        }
+
+        if (! $changeRequest->forward_workflow_id) {
+            $restoredWorkflowId = \App\Models\ApprovalTrail::where('model_type', ChangeRequest::class)
+                ->where('model_id', $changeRequest->id)
+                ->whereNotNull('forward_workflow_id')
+                ->latest('id')
+                ->value('forward_workflow_id');
+            $changeRequest->forward_workflow_id = $restoredWorkflowId ? (int) $restoredWorkflowId : 1;
+        }
+        $changeRequest->overall_status = $changeRequest->previous_overall_status ?: 'returned';
+        $changeRequest->previous_overall_status = null;
+        $changeRequest->save();
+
+        return redirect()->route('change-requests.show', $changeRequest)
+            ->with('success', 'Change request unarchived successfully.');
+    }
+
+    private function determineStatusBeforeArchive(ChangeRequest $memo): string
+    {
+        $current = (string) ($memo->overall_status ?? 'returned');
+        if ($current === 'approved') {
+            return 'approved';
+        }
+
+        $workflowId = (int) ($memo->forward_workflow_id ?? 0);
+        if ($workflowId <= 0) {
+            return $current;
+        }
+
+        $finalOrder = (int) \App\Models\WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->max('approval_order');
+        if ($finalOrder <= 0) {
+            return $current;
+        }
+
+        $finalApproved = \App\Models\ApprovalTrail::where('model_type', ChangeRequest::class)
+            ->where('model_id', $memo->id)
+            ->where('approval_order', $finalOrder)
+            ->whereIn('action', ['approved', 'passed'])
+            ->exists();
+
+        return $finalApproved ? 'approved' : $current;
     }
 
     /**

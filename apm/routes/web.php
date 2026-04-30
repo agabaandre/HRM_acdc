@@ -524,6 +524,8 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::post('change-requests/{changeRequest}/submit-for-approval', [App\Http\Controllers\ChangeRequestController::class, 'submitForApproval'])->name('change-requests.submit-for-approval');
     Route::post('change-requests/{changeRequest}/update-status', [App\Http\Controllers\ChangeRequestController::class, 'updateStatus'])->name('change-requests.update-status');
     Route::post('change-requests/{changeRequest}/resubmit', [App\Http\Controllers\ChangeRequestController::class, 'resubmit'])->name('change-requests.resubmit');
+    Route::post('change-requests/{changeRequest}/archive', [App\Http\Controllers\ChangeRequestController::class, 'archive'])->name('change-requests.archive');
+    Route::post('change-requests/{changeRequest}/unarchive', [App\Http\Controllers\ChangeRequestController::class, 'unarchive'])->name('change-requests.unarchive');
     Route::post('change-requests/{changeRequest}/admin-update', [App\Http\Controllers\ChangeRequestController::class, 'adminUpdate'])->name('change-requests.admin-update');
     Route::post('change-requests/{changeRequest}/email-pdf', [App\Http\Controllers\ChangeRequestController::class, 'emailPdf'])->name('change-requests.email-pdf');
 
