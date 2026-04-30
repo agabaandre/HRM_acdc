@@ -601,7 +601,7 @@
                             ?>
                             <tr>
                                 <td><?php echo $rowIndex; ?></td>
-                                <td><?php echo htmlspecialchars(\App\Helpers\PrintHelper::sanitizeTextareaPlainTextForPrint($item['description'] ?? null)); ?></td>
+                                <td><?php echo $item['description'] ?? 'N/A'; ?></td>
                                 <td class="text-center"><?php echo $item['quantity'] ?? 1; ?></td>
                                 <td class="text-right">$<?php echo number_format($item['unit_cost'] ?? 0, 2); ?></td>
                                 <td class="text-right">$<?php echo number_format($itemTotal, 2); ?></td>
@@ -1110,7 +1110,7 @@
                                             <td class="text-right">$<?php echo number_format($unitCost, 2); ?></td>
                                             <td class="text-right"><?php echo $quantity; ?></td>
                                             <td class="text-right">$<?php echo number_format($total, 2); ?></td>
-                                            <td><?php echo htmlspecialchars(\App\Helpers\PrintHelper::sanitizeTextareaPlainTextForPrint($cost['description'] ?? null)); ?></td>
+                                            <td><?php echo htmlspecialchars($cost['description'] ?? 'N/A'); ?></td>
       </tr>
                                         <?php $count++; ?>
                                     <?php endforeach; ?>

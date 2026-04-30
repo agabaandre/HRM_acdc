@@ -1324,26 +1324,6 @@ class PrintHelper
     }
 
     /**
-     * Sanitize textarea-like content for plain text/table cells in print templates.
-     * This avoids CSS/script fragments leaking into PDF content.
-     */
-    public static function sanitizeTextareaPlainTextForPrint($value): string
-    {
-        $text = (string) ($value ?? '');
-        if ($text === '') {
-            return 'N/A';
-        }
-
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = preg_replace('#<(script|style|noscript)\b[^>]*>.*?</\1>#is', ' ', $text) ?? $text;
-        $text = strip_tags($text);
-        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
-        $text = trim($text);
-
-        return $text !== '' ? $text : 'N/A';
-    }
-
-    /**
      * Remove leading/trailing whitespace-only text nodes and empty p/div blocks (e.g. trailing &lt;p&gt;&lt;br&gt;&lt;/p&gt;).
      */
     private static function trimDomDocumentEdges(\DOMElement $root): void
