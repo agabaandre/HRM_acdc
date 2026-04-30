@@ -8,6 +8,78 @@ use Illuminate\Support\Str;
 class PrintHelper
 {
     /**
+     * Sanitize and normalize HTML before mPDF parsing.
+     * Removes risky/unsupported tags and normalizes malformed UTF-8/control chars.
+     */
+    public static function sanitizeHtmlForMpdf(?string $html): string
+    {
+        $html = (string) ($html ?? '');
+        if ($html === '') {
+            return '';
+        }
+
+        // Ensure valid UTF-8 and remove control chars that can break PDF parsers.
+        if (!mb_check_encoding($html, 'UTF-8')) {
+            $html = mb_convert_encoding($html, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+        }
+        $html = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $html) ?? $html;
+
+        // Remove tags mPDF does not need and that often carry parser-breaking content.
+        $html = preg_replace('#<(script|noscript|iframe|object|embed|canvas|svg)\b[^>]*>.*?</\1>#is', '', $html) ?? $html;
+
+        if (!class_exists(\DOMDocument::class)) {
+            return $html;
+        }
+
+        try {
+            $internal = libxml_use_internal_errors(true);
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+
+            // Parse as HTML fragment safely.
+            $wrapped = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' . $html . '</body></html>';
+            $dom->loadHTML($wrapped, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NOWARNING | LIBXML_NOERROR);
+
+            // Remove dangerous attributes and normalize style/class noise.
+            $xpath = new \DOMXPath($dom);
+            foreach ($xpath->query('//*') as $node) {
+                if (!$node instanceof \DOMElement || !$node->hasAttributes()) {
+                    continue;
+                }
+
+                $toRemove = [];
+                foreach ($node->attributes as $attr) {
+                    $name = strtolower($attr->name);
+                    $value = (string) $attr->value;
+
+                    if (str_starts_with($name, 'on')) {
+                        $toRemove[] = $name;
+                        continue;
+                    }
+                    if (in_array($name, ['srcset', 'integrity', 'crossorigin', 'nonce'], true)) {
+                        $toRemove[] = $name;
+                        continue;
+                    }
+                    if (in_array($name, ['href', 'src'], true) && preg_match('/^\s*javascript:/i', $value)) {
+                        $toRemove[] = $name;
+                    }
+                }
+
+                foreach ($toRemove as $attrName) {
+                    $node->removeAttribute($attrName);
+                }
+            }
+
+            $clean = $dom->saveHTML() ?: $html;
+            libxml_clear_errors();
+            libxml_use_internal_errors($internal);
+
+            return $clean;
+        } catch (\Throwable $e) {
+            return $html;
+        }
+    }
+
+    /**
      * Embed staff signature in mPDF HTML: CI3 blocks direct /uploads/staff/signature/* and
      * server-side PDF generation cannot use session-cookie URLs. Read from disk + data URI.
      */
