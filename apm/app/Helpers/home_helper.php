@@ -474,8 +474,36 @@ if (! function_exists('generate_pdf')) {
                 'message' => $e->getMessage(),
                 'html_bytes' => strlen($html),
             ]);
-            $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
-            $mpdf->WriteHTML($simpleHtml);
+            // mPDF can remain in a bad parser state after a failed WriteHTML call.
+            // Recreate a clean instance for fallback output to avoid secondary parser exceptions.
+            $mpdf = new \Mpdf\Mpdf([
+                'mode' => 'utf-8',
+                'format' => 'A4',
+                'tempDir' => storage_path('app/mpdf_tmp'),
+                'fontDir' => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
+                'fontdata' => $haveArial
+                    ? $fontData + [
+                        'arial' => [
+                            'R' => 'ARIAL.TTF',
+                            'B' => 'ARIALBD.TTF',
+                            'I' => 'ARIALI.TTF',
+                            'BI' => 'ARIALBI.TTF',
+                        ],
+                    ]
+                    : $fontData,
+                'default_font' => $haveArial ? 'arial' : 'freesans',
+                'default_font_size' => 10,
+            ]);
+
+            $simpleHtml = '<html><body><p>Error generating PDF for this record. Please contact support.</p></body></html>';
+            try {
+                $mpdf->WriteHTML($simpleHtml, \Mpdf\HTMLParserMode::HTML_BODY);
+            } catch (\Throwable $fallbackException) {
+                Log::error('mPDF fallback WriteHTML failed', [
+                    'view' => $view,
+                    'message' => $fallbackException->getMessage(),
+                ]);
+            }
         }
 
         return $mpdf;

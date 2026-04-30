@@ -2092,14 +2092,31 @@ class ServiceRequestController extends Controller
 
         // Use mPDF helper function for service request
         $print = false;
-        $pdf = mpdf_print('service-requests.print', [
-            'serviceRequest' => $serviceRequest,
-            'sourceData' => $sourceData,
-            'sourcePdfHtml' => $sourcePdfHtml,
-            'organized_workflow_steps' => $organizedWorkflowSteps,
-            'disclaimerData' => $disclaimerData,
-            'changeRequestPdfHtml' => $changeRequestPdfHtml,
-        ], ['preview_html' => $print]);
+        try {
+            $pdf = mpdf_print('service-requests.print', [
+                'serviceRequest' => $serviceRequest,
+                'sourceData' => $sourceData,
+                'sourcePdfHtml' => $sourcePdfHtml,
+                'organized_workflow_steps' => $organizedWorkflowSteps,
+                'disclaimerData' => $disclaimerData,
+                'changeRequestPdfHtml' => $changeRequestPdfHtml,
+            ], ['preview_html' => $print]);
+        } catch (\Throwable $e) {
+            \Log::warning('Service request print failed; retrying without embedded fragments', [
+                'service_request_id' => $serviceRequest->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            // Fallback for edge-case records that contain HTML mPDF cannot parse reliably.
+            $pdf = mpdf_print('service-requests.print', [
+                'serviceRequest' => $serviceRequest,
+                'sourceData' => $sourceData,
+                'sourcePdfHtml' => null,
+                'organized_workflow_steps' => $organizedWorkflowSteps,
+                'disclaimerData' => $disclaimerData,
+                'changeRequestPdfHtml' => null,
+            ], ['preview_html' => $print]);
+        }
 
         // Generate filename
         $filename = 'Service_Request_' . $serviceRequest->request_number . '_' . now()->format('Y-m-d') . '.pdf';
