@@ -453,7 +453,8 @@ if (! function_exists('generate_pdf')) {
 
         // Write HTML content with safer parsing for long/dirty documents.
         try {
-            $safeHtml = \App\Helpers\PrintHelper::sanitizeHtmlForMpdf((string) $html);
+            // Keep view HTML intact on first pass; only remove executable blocks.
+            $safeHtml = preg_replace('#<(script|noscript)\b[^>]*>.*?</\1>#is', '', (string) $html) ?? (string) $html;
 
             $css = '';
             if (preg_match_all('#<style\b[^>]*>(.*?)</style>#is', $safeHtml, $cssMatches)) {
