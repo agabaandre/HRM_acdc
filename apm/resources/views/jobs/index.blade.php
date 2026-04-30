@@ -260,6 +260,40 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Service Request Premature Approval Check -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-search-alt text-info" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Check SR Level-31</h6>
+                                <p class="card-text small text-muted">List current-quarter service requests approved at level 31</p>
+                                <button type="button" class="btn btn-outline-info btn-sm"
+                                        onclick="executeCommand('service-requests:list-premature-approved')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Request Premature Approval Fix -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-wrench text-warning" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Fix SR to Level-32</h6>
+                                <p class="card-text small text-muted">Set matching current-quarter records to pending at level 32</p>
+                                <button type="button" class="btn btn-outline-warning btn-sm"
+                                        onclick="executeCommand('service-requests:fix-premature-approved')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
