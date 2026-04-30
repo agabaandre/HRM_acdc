@@ -496,10 +496,8 @@ if (! function_exists('generate_pdf')) {
                 'default_font_size' => 10,
             ]);
 
-            // Second pass: aggressively sanitize and retry rendering real content.
+            // Second pass: sanitize/repair and retry while preserving CSS/content.
             $retryHtml = \App\Helpers\PrintHelper::sanitizeHtmlForMpdf((string) $html);
-            $retryHtml = preg_replace('#<style\b[^>]*>.*?</style>#is', '', (string) $retryHtml) ?? (string) $retryHtml;
-            $retryHtml = preg_replace('#\s+#', ' ', (string) $retryHtml) ?? (string) $retryHtml;
             try {
                 $mpdf->WriteHTML((string) $retryHtml, \Mpdf\HTMLParserMode::HTML_BODY);
             } catch (\Throwable $fallbackException) {
