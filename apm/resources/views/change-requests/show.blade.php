@@ -64,6 +64,18 @@
                     </button>
                 @endif
 
+                @if($isStrictAdmin && ($changeRequest->overall_status ?? '') !== 'archived')
+                    <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#archiveChangeRequestModal">
+                        <i class="bx bx-archive"></i>
+                        <span>Archive</span>
+                    </button>
+                @elseif($isStrictAdmin && ($changeRequest->overall_status ?? '') === 'archived')
+                    <button type="button" class="btn btn-outline-success btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#unarchiveChangeRequestModal">
+                        <i class="bx bx-reset"></i>
+                        <span>Unarchive</span>
+                    </button>
+                @endif
+
                 @if($existingArf)
                     <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-2">
                         <i class="bx bx-show"></i>
@@ -1381,6 +1393,54 @@
         </div>
     </div>
 </div>
+
+@if($isStrictAdmin && ($changeRequest->overall_status ?? '') !== 'archived')
+<div class="modal fade" id="archiveChangeRequestModal" tabindex="-1" aria-labelledby="archiveChangeRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="archiveChangeRequestModalLabel">Archive Change Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Are you sure you want to archive this change request?</p>
+                <p class="text-muted small mb-0">The memo will be hidden from active workflow views until unarchived.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ route('change-requests.archive', $changeRequest) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-danger"><i class="bx bx-archive me-1"></i> Archive</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+@if($isStrictAdmin && ($changeRequest->overall_status ?? '') === 'archived')
+<div class="modal fade" id="unarchiveChangeRequestModal" tabindex="-1" aria-labelledby="unarchiveChangeRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="unarchiveChangeRequestModalLabel">Unarchive Change Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Unarchive this change request and return it to workflow?</p>
+                <p class="text-muted small mb-0">The memo status will be restored to its previous workflow state.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ route('change-requests.unarchive', $changeRequest) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-success"><i class="bx bx-reset me-1"></i> Unarchive</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- Modal for preview --}}
 <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">

@@ -403,11 +403,22 @@ function initChangeRequestsPage() {
         const search = document.getElementById('search')?.value;
         
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
+        else currentUrl.searchParams.delete('document_number');
+
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
+        else currentUrl.searchParams.delete('staff_id');
+
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
+        else currentUrl.searchParams.delete('division_id');
+
         if (status) currentUrl.searchParams.set('status', status);
+        else currentUrl.searchParams.delete('status');
+
         if (memoType) currentUrl.searchParams.set('memo_type', memoType);
+        else currentUrl.searchParams.delete('memo_type');
+
         if (search) currentUrl.searchParams.set('search', search);
+        else currentUrl.searchParams.delete('search');
 
         window.history.replaceState({}, '', currentUrl.toString());
 

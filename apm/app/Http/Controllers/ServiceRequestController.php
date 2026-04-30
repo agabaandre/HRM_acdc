@@ -10,6 +10,7 @@ use App\Models\Division;
 use App\Models\Activity;
 use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
+use App\Models\OtherMemo;
 use App\Models\CostItem;
 use App\Models\FundType;
 use App\Models\WorkflowModel;
@@ -183,6 +184,7 @@ class ServiceRequestController extends Controller
                     'App\Models\Activity' => 'activity',
                     'App\Models\NonTravelMemo' => 'non_travel_memo',
                     'App\Models\SpecialMemo' => 'special_memo',
+                    'App\Models\OtherMemo' => 'other_memo',
                     default => $sourceType,
                 };
                 $sourceId = $sourceId ?? $changeRequest->parent_memo_id;
@@ -712,6 +714,15 @@ class ServiceRequestController extends Controller
                         }
                     }
                     break;
+                case 'other_memo':
+                    if ($sourceData && isset($sourceData->payload) && is_array($sourceData->payload)) {
+                        $payload = $sourceData->payload;
+                        $budget = $payload['budget_breakdown'] ?? null;
+                        if (is_array($budget)) {
+                            return $budget;
+                        }
+                    }
+                    break;
             }
             
             return [];
@@ -840,6 +851,14 @@ class ServiceRequestController extends Controller
                             $staffIds = array_map('intval', array_keys($participants));
                             
                             return $participants; // Return the raw participants data
+                        }
+                    }
+                    break;
+                case 'other_memo':
+                    if ($sourceData && isset($sourceData->payload) && is_array($sourceData->payload)) {
+                        $participants = $sourceData->payload['internal_participants'] ?? [];
+                        if (is_array($participants)) {
+                            return $participants;
                         }
                     }
                     break;
@@ -1349,6 +1368,35 @@ class ServiceRequestController extends Controller
                         }
                     }
                     break;
+                case 'other_memo':
+                    $memo = OtherMemo::with(['division'])->find($sourceId);
+                    if ($memo) {
+                        $payload = is_array($memo->payload) ? $memo->payload : [];
+                        $sourceData = [
+                            'id' => $memo->id,
+                            'title' => $payload['activity_title'] ?? $payload['title'] ?? ($memo->memo_type_name_snapshot ?? 'Other Memo'),
+                            'description' => $payload['background'] ?? ($payload['request_for_approval'] ?? ''),
+                            'start_date' => $payload['date_from'] ?? null,
+                            'end_date' => $payload['date_to'] ?? null,
+                            'location' => $payload['location'] ?? null,
+                            'division_id' => $memo->division_id,
+                            'division_name' => $memo->division->division_name ?? 'N/A',
+                            'fund_type_id' => (int) ($payload['fund_type_id'] ?? 1),
+                            'overall_status' => 'approved',
+                        ];
+
+                        $participants = $payload['internal_participants'] ?? [];
+                        if (is_array($participants)) {
+                            $internalParticipants = $participants;
+                        }
+
+                        $budget = $payload['budget_breakdown'] ?? [];
+                        if (is_array($budget)) {
+                            $budgetBreakdown = $budget;
+                            $originalTotalBudget = (float) ($budget['grand_total'] ?? 0);
+                        }
+                    }
+                    break;
             }
 
             return response()->json([
@@ -1541,7 +1589,7 @@ class ServiceRequestController extends Controller
     {
         try {
             $validated = $request->validate([
-                'sourceType' => 'required|string|in:activity,non_travel_memo,special_memo',
+                'sourceType' => 'required|string|in:activity,non_travel_memo,special_memo,other_memo',
                 'sourceId' => 'required|integer',
                 'title' => 'required|string|max:255',
                 'description' => 'required|string',
@@ -1702,7 +1750,7 @@ class ServiceRequestController extends Controller
         }
         
         // For memos, get division code
-        if (in_array($modelType, ['non_travel_memo', 'special_memo']) && $sourceData) {
+        if (in_array($modelType, ['non_travel_memo', 'special_memo', 'other_memo']) && $sourceData) {
             if (method_exists($sourceData, 'division') && $sourceData->division) {
                 $divisionCode = ServiceRequest::generateShortCodeFromDivision($sourceData->division->division_name);
             }
@@ -1731,6 +1779,9 @@ class ServiceRequestController extends Controller
                     break;
                 case 'special_memo':
                     $source = SpecialMemo::find($sourceId);
+                    break;
+                case 'other_memo':
+                    $source = OtherMemo::find($sourceId);
                     break;
                 default:
                     return null;
@@ -1767,6 +1818,8 @@ class ServiceRequestController extends Controller
                     return route('non-travel.show', $sourceId);
                 case 'special_memo':
                     return route('special-memo.show', $sourceId);
+                case 'other_memo':
+                    return route('other-memos.show', $sourceId);
                 default:
                     return null;
             }
@@ -1784,6 +1837,7 @@ class ServiceRequestController extends Controller
             'activity' => 'App\\Models\\Activity',
             'non_travel_memo' => 'App\\Models\\NonTravelMemo',
             'special_memo' => 'App\\Models\\SpecialMemo',
+            'other_memo' => 'App\\Models\\OtherMemo',
             default => 'App\\Models\\Activity'
         };
     }
@@ -2035,9 +2089,26 @@ class ServiceRequestController extends Controller
             // Load approval trails for the source data
             if ($sourceData) {
                 if ($serviceRequest->source_type === 'activity') {
-                    $sourceData->load(['activityApprovalTrails.staff', 'activityApprovalTrails.oicStaff', 'matrix.matrixApprovalTrails.staff']);
-                    // Add approval trails to source data for template access
-                    $sourceData->approval_trails = $sourceData->is_single_memo ? $sourceData->activityApprovalTrails : $sourceData->matrix->matrixApprovalTrails;
+                    $sourceData->load([
+                        'approvalTrails.staff',
+                        'approvalTrails.oicStaff',
+                        'activityApprovalTrails.staff',
+                        'activityApprovalTrails.oicStaff',
+                        'matrix.matrixApprovalTrails.staff',
+                        'matrix.matrixApprovalTrails.oicStaff',
+                    ]);
+
+                    // Single memos use generic approval_trails as source of truth.
+                    // Keep legacy fallback to activityApprovalTrails for older records.
+                    if ((bool) $sourceData->is_single_memo) {
+                        $sourceTrails = $sourceData->approvalTrails;
+                        if (!$sourceTrails || $sourceTrails->isEmpty()) {
+                            $sourceTrails = $sourceData->activityApprovalTrails;
+                        }
+                        $sourceData->approval_trails = $sourceTrails;
+                    } else {
+                        $sourceData->approval_trails = $sourceData->matrix->matrixApprovalTrails;
+                    }
                 } elseif ($serviceRequest->source_type === 'special_memo') {
                     $sourceData->load(['approvalTrails.staff', 'approvalTrails.oicStaff']);
                     $sourceData->approval_trails = $sourceData->approvalTrails;
