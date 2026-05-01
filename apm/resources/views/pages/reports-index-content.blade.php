@@ -61,6 +61,27 @@
             </div>
             @endif
 
+            @php
+                $permsReports = user_session('permissions', []) ?? [];
+                $canApproverTimingReport = in_array(88, $permsReports, true);
+            @endphp
+            @if($canApproverTimingReport)
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow-sm h-100 border-0 bg-white report-card">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="rounded-circle bg-success bg-opacity-10 report-card-icon me-2">
+                                <i class="bx bx-time-five text-success"></i>
+                            </div>
+                            <h5 class="mb-0 fw-bold text-success">Average time per document</h5>
+                        </div>
+                        <p class="text-muted small mb-2">Per-action trail: received vs acted timestamps, hours elapsed, document title and division. Matches Approver Dashboard receipt logic.</p>
+                        <a href="{{ route('reports.approver-document-timing.index') }}" wire:navigate class="btn btn-success btn-sm"><i class="bx bx-right-arrow-circle me-1"></i> View report</a>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <div class="col-md-6 col-lg-4">
                 <div class="card shadow-sm h-100 border-0 bg-white border-dashed report-card" style="border-style: dashed !important;">
                     <div class="card-body py-2 px-3">

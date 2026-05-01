@@ -538,6 +538,9 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::get('reports/division-counts/export/excel', [App\Http\Controllers\ReportsController::class, 'exportDivisionCountsExcel'])->name('reports.division-counts.export.excel');
     Route::get('reports/memo-list/export/excel', [App\Http\Controllers\ReportsController::class, 'exportMemoListExcel'])->name('reports.memo-list.export.excel');
 
+    Route::get('reports/average-time-per-document', [App\Http\Controllers\ApproverDocumentTimingReportController::class, 'index'])->name('reports.approver-document-timing.index');
+    Route::get('reports/average-time-per-document/export', [App\Http\Controllers\ApproverDocumentTimingReportController::class, 'exportCsv'])->name('reports.approver-document-timing.export');
+
     // Staff Quarterly Travel Report
     Route::get('reports/staff-quarterly-travel', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'index'])->name('reports.staff-quarterly-travel');
     Route::get('reports/staff-quarterly-travel/data', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'data'])->name('reports.staff-quarterly-travel.data');

@@ -294,6 +294,23 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Approver document timing backfill -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-time-five text-success" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Approver timing backfill</h6>
+                                <p class="card-text small text-muted">Populate Average time per document from historical approvals (skips duplicates)</p>
+                                <button type="button" class="btn btn-outline-success btn-sm"
+                                        onclick="executeCommand('apm:backfill-approver-document-timings')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

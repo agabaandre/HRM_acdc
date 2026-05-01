@@ -43,8 +43,8 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 ### System Improvements
 
 - **[Sync Improvements](./SYNC_IMPROVEMENTS.md)** - Data synchronization enhancements
-- **[System Updates](./SYSTEM_UPDATES.md)** - Changelog of new features and updates (signature verification, etc.)
-- **[Jobs and Commands](./JOBS_AND_COMMANDS_DOCUMENTATION.md)** - Background jobs, schedulers, and Artisan command reference (including `apm:fix-single-memo-promoted-approval-trails`)
+- **[System Updates](./SYSTEM_UPDATES.md)** - Changelog of new features and updates (signature verification, average time per document report, etc.)
+- **[Jobs and Commands](./JOBS_AND_COMMANDS_DOCUMENTATION.md)** - Background jobs, schedulers, and Artisan command reference (including `apm:fix-single-memo-promoted-approval-trails`, approver timing jobs, `apm:backfill-approver-document-timings`)
 
 ## 🚀 Quick Commands
 

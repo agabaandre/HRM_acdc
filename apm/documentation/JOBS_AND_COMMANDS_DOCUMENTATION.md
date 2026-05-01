@@ -68,6 +68,22 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 - **Tries**: 3
 - **Timeout**: 300 seconds
 
+#### 7. `RecordApproverDocumentTimingJob`
+- **Purpose**: Inserts one row into **`approver_document_timing_records`** for a unified **`approval_trails`** id after **`approved`** / **`rejected`** (receipt and elapsed time match the Approver Dashboard rules).
+- **Queue**: `default`
+- **Tries**: 5
+- **Timeout**: 120 seconds
+- **Dispatched from**: `ApprovalService::processApproval()` (`afterCommit`)
+- **Dependencies**: `ApproverDocumentTimingService`, `ApprovalReceiptTimeCalculator`
+
+#### 8. `RecordOtherMemoApproverDocumentTimingJob`
+- **Purpose**: Same timing snapshot for **Other Memo** rows in **`other_memos_approval_trails`** ( **`approved`** only at the acting sequence).
+- **Queue**: `default`
+- **Tries**: 5
+- **Timeout**: 120 seconds
+- **Dispatched from**: `OtherMemoController::approve`, `OtherMemoApiApprovalService::approve` (`afterCommit`)
+- **Dependencies**: `ApproverDocumentTimingService`, `ApprovalReceiptTimeCalculator`
+
 ---
 
 ## 🖥️ Console Commands
@@ -209,6 +225,16 @@ This document provides a comprehensive overview of all jobs, commands, and sched
   - `--dry-run` — no database writes
   - `--activity-id=` — process only that activity ID
 - **Related code**: `ActivityApprovalTrail::mapActionForPromotionToApprovalTrail()`, `ActivityApprovalTrail::createPromotedApprovalTrail()` (new conversions preserve source timestamps automatically).
+
+#### `apm:backfill-approver-document-timings`
+- **Purpose**: Populate **`approver_document_timing_records`** from historical **`approval_trails`** (`approved` / `rejected`, non-archived) and **`other_memos_approval_trails`** (`approved`, sequence ≥ 1). Skips duplicates (unique trail ids).
+- **Usage** (from the `apm/` directory):
+  - `php artisan apm:backfill-approver-document-timings`
+  - `php artisan apm:backfill-approver-document-timings --chunk=500`
+  - `php artisan apm:backfill-approver-document-timings --approval-only` — only morph `approval_trails`
+  - `php artisan apm:backfill-approver-document-timings --other-memo-only` — only Other Memo trails
+- **Also**: Allowed from the in-app **Jobs** maintenance page as `apm:backfill-approver-document-timings`.
+- **Related**: [SYSTEM_UPDATES.md](./SYSTEM_UPDATES.md) (2026-05-01 entry), `BackfillApproverDocumentTimingsCommand`.
 
 ### System Health Commands
 

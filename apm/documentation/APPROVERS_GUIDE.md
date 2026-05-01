@@ -10,7 +10,8 @@ Welcome to the APM (Approvals Management) Approvers Guide. This guide will help 
 4. [Returning Documents](#returning-documents)
 5. [Rejecting Documents](#rejecting-documents)
 6. [Approval Workflow](#approval-workflow)
-7. [Best Practices](#best-practices)
+7. [Average time per document (administrators)](#average-time-per-document-administrators)
+8. [Best Practices](#best-practices)
 
 ---
 
@@ -251,6 +252,18 @@ Documents follow a multi-level approval process:
    - Final approver: Final approval and authorization
    
    ![Screenshot: Approval Roles](APM)
+
+---
+
+## Average time per document (administrators)
+
+For users with **permission 88** (cross-division / admin-style access to the Approver Dashboard):
+
+- **Reports** includes **Average time per document** (`/reports/average-time-per-document`). The report lists each **approve/reject** (and Other Memo **approve**) with **received** and **acted** timestamps, **hours elapsed**, **document title**, **division**, and a link to open the document. Filters include approver, division, document type, year/month (on action time), and search. **Export CSV** downloads the same scope.
+- On the **Approver Dashboard**, the **average time** column is a link to that report for the selected **staff** (and year/month when set on the dashboard).
+- On **Pending Approvals**, when average time is shown, a button opens the report with the same **staff** / **year** / **month** context when you are viewing another approver’s queue.
+
+**Receipt rules** match the dashboard: first step uses **submission** time; later steps use the **previous approver’s action** time (see technical notes in [SYSTEM_UPDATES.md](./SYSTEM_UPDATES.md)). New actions are recorded **asynchronously** via queue jobs; run the **`apm:backfill-approver-document-timings`** command once if you need history before go-live.
 
 ---
 

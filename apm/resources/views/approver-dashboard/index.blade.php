@@ -397,6 +397,7 @@ var hasPermission88 = {{ $hasPermission88 ? 'true' : 'false' }};
 var baseUrl = '{{ user_session("base_url") ?? url("/") }}';
 var staffPhotoRoute = @json(route('staff-uploads.photo'));
 var pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
+var approvalTimingReportUrl = @json(route('reports.approver-document-timing.index'));
 var dashboardApiUrl = '{{ route("approver-dashboard.api") }}';
 var workflowStatsData = [];
 var workflowChartUnit = 'days';
@@ -1008,7 +1009,18 @@ function initializeDataTable() {
                     if (type === 'sort' || type === 'type') {
                         return row.avg_approval_time_hours || 0;
                     }
-                    return `<span class="badge bg-info">${row.avg_approval_time_display || 'No data'}</span>`;
+                    var label = row.avg_approval_time_display || 'No data';
+                    if (hasPermission88) {
+                        var params = new URLSearchParams();
+                        params.set('staff_id', row.staff_id);
+                        var fy = $('#filterYear').val();
+                        var fm = $('#filterMonth').val();
+                        if (fy) { params.set('year', fy); }
+                        if (fm) { params.set('month', fm); }
+                        var href = approvalTimingReportUrl + '?' + params.toString();
+                        return `<a href="${href}" class="text-decoration-none" wire:navigate title="Open average time per document"><span class="badge bg-info">${label}</span></a>`;
+                    }
+                    return `<span class="badge bg-info">${label}</span>`;
                 }
             }
         ],

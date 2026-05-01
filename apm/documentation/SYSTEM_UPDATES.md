@@ -4,6 +4,52 @@ This document lists notable features, improvements, and changes to the APM (Appr
 
 ---
 
+## Average time per document — timing trail, report, and background jobs (2026-05-01)
+
+### Purpose
+
+- **Per-action audit trail** of how long each approver took from **“received at this workflow step”** to **approve/reject**, aligned with the receipt rules used by the **Approver Dashboard** average-time metric (see `ApproverDashboardHelper::getAverageApprovalTimeAll()` and `ApprovalReceiptTimeCalculator`).
+- **Other Memo** approvals use the same idea via `other_memos_approval_trails` (submission / resubmit at order `0`, then prior `approved` steps).
+
+### Database
+
+- Table **`approver_document_timing_records`** (migration `2026_05_01_000001_create_approver_document_timing_records_table.php`).
+- One row per unified **`approval_trails`** action in **`approved` / `rejected`** (non-archived, with workflow + order), and per **Other Memo** **`approved`** row (sequence ≥ 1).
+- Stores **approver `staff_id`** and **name snapshot**, **received_at**, **acted_at**, **hours_elapsed**, **document type label**, **title**, **document number**, **division** (id + name snapshot), **workflow name / role** where applicable, and nullable links **`approval_trail_id`** / **`other_memo_approval_trail_id`** (unique, short index names for MySQL). Rows include Laravel **`created_at`** / **`updated_at`** for when the snapshot row was written or last touched.
+
+### Real-time capture
+
+- **`RecordApproverDocumentTimingJob`**: dispatched **`afterCommit`** from **`ApprovalService::processApproval`** when the action is **`approved`** or **`rejected`**.
+- **`RecordOtherMemoApproverDocumentTimingJob`**: dispatched from **Other Memo** web approve and **`OtherMemoApiApprovalService::approve`**.
+- Requires a running **queue worker** (`queue:work` / systemd worker). If the queue is not processed, rows are not written until jobs run.
+
+### Historical backfill
+
+- Command: **`php artisan apm:backfill-approver-document-timings`**  
+  Options: **`--chunk=`**, **`--approval-only`**, **`--other-memo-only`**.  
+  Idempotent: skips rows that already exist (unique source trail ids).
+- Also exposed on **Jobs** maintenance UI (`apm:backfill-approver-document-timings`).
+
+### Report and navigation (permission **88**)
+
+- **Reports → Average time per document**: **`GET /reports/average-time-per-document`** (and **`/export`** for CSV).
+- **Approver Dashboard**: the **average time** badge links to the report with **`staff_id`** and dashboard **year/month** filters when the user has permission **88**.
+- **Pending Approvals**: button **“Average time per document (detail)”** when permission **88** is present (passes **`staff_id`** / **year** / **month** when viewing another approver).
+- Access to the report pages is **403** without permission **88**.
+
+### Code reference
+
+- Model: `App\Models\ApproverDocumentTimingRecord`
+- Services: `App\Services\ApprovalReceiptTimeCalculator`, `App\Services\ApproverDocumentTimingService`
+- Report: `App\Http\Controllers\ApproverDocumentTimingReportController`
+
+### Related documentation
+
+- Jobs and commands: **[JOBS_AND_COMMANDS_DOCUMENTATION.md](./JOBS_AND_COMMANDS_DOCUMENTATION.md)** (timing jobs and backfill command).
+- Approver-facing summary: **[APPROVERS_GUIDE.md](./APPROVERS_GUIDE.md)** (Average time per document).
+
+---
+
 ## Routing after Head of Operations (order 7), matrices & activities UX, memo PDF budgets (2026-04-29)
 
 ### Next approver (division category)
