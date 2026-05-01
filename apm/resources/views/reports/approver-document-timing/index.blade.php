@@ -11,10 +11,18 @@
     border: 1px solid #e9ecef !important;
     box-shadow: 0 1px 3px rgba(0,0,0,.05);
 }
-/* Same approach as activities/single-memos/index.blade.php — fixed layout + title cell wrapping */
-.adt-report .adt-timing-table {
-    table-layout: fixed;
+/* Fixed layout + colgroup: forces Document column width so long titles wrap (see single-memos). */
+.adt-report .adt-table-outer {
     width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.adt-report .adt-timing-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-collapse: collapse;
 }
 .adt-report .adt-timing-table thead th {
     font-size: 0.78rem;
@@ -27,30 +35,42 @@
     font-size: 0.9rem;
     vertical-align: middle;
 }
+/* Critical: min-width 0 + no fixed max-width on cell so % column can shrink; break anywhere if needed */
 .adt-report .adt-timing-table .table-title-cell {
-    max-width: 270px;
-    word-wrap: break-word;
-    word-break: break-word;
-    white-space: normal;
-    overflow-wrap: break-word;
-    line-height: 1.4;
+    min-width: 0;
+    width: 28%;
+    max-width: 100%;
     vertical-align: top;
-}
-.adt-report .adt-timing-table .table-title-cell > .fw-medium {
     word-wrap: break-word;
     word-break: break-word;
+    overflow-wrap: anywhere;
+    hyphens: auto;
     white-space: normal;
-    overflow-wrap: break-word;
+    line-height: 1.4;
+}
+.adt-report .adt-timing-table .adt-doc-wrap {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+.adt-report .adt-timing-table .adt-elapsed {
+    min-width: 5.5rem;
+    vertical-align: middle;
 }
 .adt-report .adt-timing-table th:nth-child(1) { width: 11%; }
 .adt-report .adt-timing-table th:nth-child(2) { width: 7%; }
 .adt-report .adt-timing-table th:nth-child(3) { width: 28%; }
 .adt-report .adt-timing-table th:nth-child(4) { width: 11%; }
-.adt-report .adt-timing-table th:nth-child(5) { width: 14%; }
+.adt-report .adt-timing-table th:nth-child(5) { width: 13%; }
 .adt-report .adt-timing-table th:nth-child(6) { width: 9%; }
 .adt-report .adt-timing-table th:nth-child(7) { width: 9%; }
-.adt-report .adt-timing-table th:nth-child(8) { width: 6%; }
-.adt-report .adt-timing-table th:nth-child(9) { width: 5%; }
+.adt-report .adt-timing-table th:nth-child(8) { width: 8%; }
+.adt-report .adt-timing-table th:nth-child(9) { width: 4%; }
 .adt-report .adt-timing-table .workflow-cell {
     word-wrap: break-word;
     word-break: break-word;
@@ -199,8 +219,19 @@
             <i class="bx bx-table"></i>
             <span class="fw-semibold">Document timing trail</span>
         </div>
-        <div class="card-body p-0 table-responsive">
+        <div class="card-body p-0 adt-table-outer">
             <table class="table table-hover table-striped mb-0 adt-timing-table">
+                <colgroup>
+                    <col style="width:11%">
+                    <col style="width:7%">
+                    <col style="width:28%">
+                    <col style="width:11%">
+                    <col style="width:13%">
+                    <col style="width:9%">
+                    <col style="width:9%">
+                    <col style="width:8%">
+                    <col style="width:4%">
+                </colgroup>
                 <thead class="table-light">
                     <tr>
                         <th>Approver</th>
@@ -218,6 +249,7 @@
                     @forelse($records as $r)
                         @php
                             $docUrl = $timingService->resolveDocumentUrl($r->model_type, (int) $r->model_id);
+                            $elapsedParts = format_approver_timing_elapsed_display($r->hours_elapsed);
                         @endphp
                         <tr>
                             <td>
@@ -226,9 +258,9 @@
                             </td>
                             <td><span class="badge bg-light text-dark">{{ $r->document_type_label }}</span></td>
                             <td class="table-title-cell">
-                                <div class="fw-medium text-dark text-break">{{ $r->document_title ?? '—' }}</div>
+                                <div class="fw-medium text-dark adt-doc-wrap">{{ strip_tags($r->document_title ?? '—') }}</div>
                                 @if($r->document_number_snapshot)
-                                    <div class="small text-muted mt-1">{{ $r->document_number_snapshot }}</div>
+                                    <div class="small text-muted mt-1 adt-doc-wrap">{{ $r->document_number_snapshot }}</div>
                                 @endif
                             </td>
                             <td class="division-cell">{{ $r->division_name_snapshot ?? '—' }}</td>
@@ -238,7 +270,10 @@
                             </td>
                             <td class="small text-nowrap">{{ $r->received_at?->format('Y-m-d H:i') }}</td>
                             <td class="small text-nowrap">{{ $r->acted_at?->format('Y-m-d H:i') }}</td>
-                            <td class="fw-semibold">{{ number_format((float) $r->hours_elapsed, 2) }} h</td>
+                            <td class="adt-elapsed">
+                                <div class="fw-semibold text-dark lh-sm">{{ $elapsedParts['hours_formatted'] }} h</div>
+                                <div class="small text-muted lh-sm">{{ $elapsedParts['days_formatted'] }} d</div>
+                            </td>
                             <td class="text-end">
                                 @if($docUrl)
                                     <a href="{{ url($docUrl) }}" class="btn btn-sm btn-outline-success" wire:navigate>Open</a>
@@ -256,12 +291,16 @@
                     @endforelse
                 </tbody>
                 @if($records->count() > 0)
+                    @php $totalElapsedParts = format_approver_timing_elapsed_display($summary['total_hours'] ?? 0); @endphp
                     <tfoot class="table-light">
                         <tr>
                             <td colspan="7" class="text-end text-muted small border-top py-2">
-                                Total hours <span class="d-none d-md-inline">(all rows matching current filters)</span>
+                                Total <span class="d-none d-md-inline">(all rows matching current filters)</span>
                             </td>
-                            <td class="fw-bold text-dark border-top py-2 text-nowrap">{{ number_format((float) ($summary['total_hours'] ?? 0), 2) }} h</td>
+                            <td class="border-top py-2 adt-elapsed">
+                                <div class="fw-bold text-dark lh-sm">{{ $totalElapsedParts['hours_formatted'] }} h</div>
+                                <div class="small text-muted lh-sm">{{ $totalElapsedParts['days_formatted'] }} d</div>
+                            </td>
                             <td class="border-top py-2"></td>
                         </tr>
                     </tfoot>

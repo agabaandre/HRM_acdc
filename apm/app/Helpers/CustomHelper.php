@@ -213,6 +213,27 @@ if (! function_exists('user_session')) {
         }
     }
 
+    if (! function_exists('format_approver_timing_elapsed_display')) {
+        /**
+         * Hours and calendar-day equivalent for approver timing report (hours + h/24 days).
+         *
+         * @param  float|string  $hours
+         * @return array{hours_formatted: string, days_formatted: string, hours_raw: float, days_raw: float}
+         */
+        function format_approver_timing_elapsed_display(float|string $hours): array
+        {
+            $h = round((float) $hours, 4);
+            $d = $h / 24.0;
+
+            return [
+                'hours_formatted' => number_format($h, 2),
+                'days_formatted' => number_format($d, 2),
+                'hours_raw' => $h,
+                'days_raw' => $d,
+            ];
+        }
+    }
+
     if (! function_exists('get_admin_assistant_approvers')) {
         /**
          * Get list of approver staff IDs that the current admin assistant supports
