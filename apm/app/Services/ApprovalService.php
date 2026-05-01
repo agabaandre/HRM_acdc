@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\RecordApproverDocumentTimingJob;
 use App\Models\ApprovalTrail;
 use App\Models\FundCode;
 use App\Models\OtherMemo;
@@ -266,6 +267,10 @@ class ApprovalService
         }
 
         $trail->save();
+
+        if (in_array($action, ['approved', 'rejected'], true)) {
+            RecordApproverDocumentTimingJob::dispatch($trail->id)->afterCommit();
+        }
 
         // Update model status
         if ($action === 'cancelled') {

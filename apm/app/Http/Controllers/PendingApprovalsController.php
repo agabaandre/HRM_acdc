@@ -132,6 +132,8 @@ class PendingApprovalsController extends Controller
         $avgApprovalTimeHours = $this->getAverageApprovalTimeAll($staffIdForAvg, $divisionIdForAvg, $year, $month);
         $avgApprovalTimeDisplay = $this->formatApprovalTime($avgApprovalTimeHours);
 
+        $canViewApprovalTimingReport = in_array(88, user_session('permissions', []) ?? [], true);
+
         return view('pending-approvals.index', compact(
             'pendingApprovals',
             'summaryStats',
@@ -147,7 +149,8 @@ class PendingApprovalsController extends Controller
             'year',
             'month',
             'approvalWarningDays',
-            'stalePendingItems'
+            'stalePendingItems',
+            'canViewApprovalTimingReport'
         ));
     }
 

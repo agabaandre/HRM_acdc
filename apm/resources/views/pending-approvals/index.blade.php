@@ -371,11 +371,21 @@
 </details>
 
 @if(isset($avgApprovalTimeDisplay) && (float)($avgApprovalTimeHours ?? 0) > 0)
+@php
+    $timingReportUrl = null;
+    if (!empty($canViewApprovalTimingReport)) {
+        $timingReportUrl = route('reports.approver-document-timing.index', array_filter([
+            'staff_id' => !empty($staffId) ? $staffId : null,
+            'year' => $year ?? null,
+            'month' => $month ?? null,
+        ]));
+    }
+@endphp
 <div class="row mb-3 justify-content-center">
     <div class="col-12 col-md-8 col-lg-6">
-        <div class="card shadow-sm">
+        <div class="card shadow-sm {{ $timingReportUrl ? 'border border-success border-opacity-50' : '' }}">
             <div class="card-body text-center py-3">
-                <p class="mb-0" style="font-size: 1.05rem; color: #495057;">
+                <p class="mb-2" style="font-size: 1.05rem; color: #495057;">
                     @if(!empty($staffId))
                         This approver takes an average of <strong>{{ $avgApprovalTimeDisplay }}</strong> to approve.
                     @else
@@ -383,6 +393,9 @@
                     @endif
                     <i class="fas fa-info-circle ms-1 text-info" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="This average goes down when you approve incoming memos promptly. Approving items sooner reduces your average approval time." aria-label="Info"></i>
                 </p>
+                @if(!empty($timingReportUrl))
+                    <a href="{{ $timingReportUrl }}" wire:navigate class="btn btn-sm btn-success"><i class="fas fa-table me-1"></i> Average time per document (detail)</a>
+                @endif
             </div>
         </div>
     </div>

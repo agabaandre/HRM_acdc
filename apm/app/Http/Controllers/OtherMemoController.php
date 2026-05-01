@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Division;
 use App\Models\MemoTypeDefinition;
 use App\Models\OtherMemo;
+use App\Jobs\RecordOtherMemoApproverDocumentTimingJob;
 use App\Models\OtherMemoApprovalTrail;
 use App\Models\Staff;
 use App\Models\WorkflowDefinition;
@@ -425,13 +426,15 @@ class OtherMemoController extends Controller
         $request->validate(['remarks' => 'nullable|string|max:5000']);
 
         $seq = (int) $other_memo->active_sequence;
-        OtherMemoApprovalTrail::create([
+        $trail = OtherMemoApprovalTrail::create([
             'other_memo_id' => $other_memo->id,
             'approval_order' => $seq,
             'staff_id' => $this->staffId(),
             'action' => 'approved',
             'remarks' => $request->input('remarks'),
         ]);
+
+        RecordOtherMemoApproverDocumentTimingJob::dispatch($trail->id)->afterCommit();
 
         $total = $other_memo->approversCount();
         if ($seq >= $total) {

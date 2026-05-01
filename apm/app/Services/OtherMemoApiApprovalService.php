@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\RecordOtherMemoApproverDocumentTimingJob;
 use App\Models\OtherMemo;
 use App\Models\OtherMemoApprovalTrail;
 
@@ -13,13 +14,15 @@ class OtherMemoApiApprovalService
     public static function approve(OtherMemo $memo, int $staffId, ?string $remarks): OtherMemo
     {
         $seq = (int) $memo->active_sequence;
-        OtherMemoApprovalTrail::create([
+        $trail = OtherMemoApprovalTrail::create([
             'other_memo_id' => $memo->id,
             'approval_order' => $seq,
             'staff_id' => $staffId,
             'action' => 'approved',
             'remarks' => $remarks,
         ]);
+
+        RecordOtherMemoApproverDocumentTimingJob::dispatch($trail->id)->afterCommit();
 
         $total = $memo->approversCount();
         if ($seq >= $total) {
