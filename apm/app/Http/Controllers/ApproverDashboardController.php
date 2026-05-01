@@ -23,8 +23,15 @@ class ApproverDashboardController extends Controller
         $userDivisionId = $userSession['division_id'] ?? null;
         $userPermissions = $userSession['permissions'] ?? [];
         $hasPermission88 = in_array(88, $userPermissions);
-        
-        return view('approver-dashboard.index', compact('userDivisionId', 'hasPermission88'));
+        $approverTimingReportWideAccess = approver_timing_report_can_view_all();
+        $sessionStaffIdForTiming = (int) ($userSession['staff_id'] ?? 0);
+
+        return view('approver-dashboard.index', compact(
+            'userDivisionId',
+            'hasPermission88',
+            'approverTimingReportWideAccess',
+            'sessionStaffIdForTiming'
+        ));
     }
 
     /**

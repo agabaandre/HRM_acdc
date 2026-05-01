@@ -159,6 +159,60 @@ if (! function_exists('user_session')) {
         }
     }
 
+    if (! function_exists('approver_timing_report_can_view_all')) {
+        /**
+         * Whether the current user may view approval timing for **any** approver (all staff filters, exports).
+         * Aligns with the rest of APM: **role 10** (APM/system admin), **permission 87** (admin-style UI),
+         * **permission 88** (cross-division approver dashboard).
+         */
+        function approver_timing_report_can_view_all(): bool
+        {
+            $role = (int) (user_session('role') ?? user_session('user_role') ?? 0);
+            $perms = user_session('permissions', []) ?? [];
+
+            return $role === 10 || in_array(87, $perms, true) || in_array(88, $perms, true);
+        }
+    }
+
+    if (! function_exists('approver_timing_report_authorize_web_request')) {
+        /**
+         * Abort unless user may open the timing report: full access {@see approver_timing_report_can_view_all()}
+         * or **self only** (session staff_id must match optional request staff_id).
+         */
+        function approver_timing_report_authorize_web_request(\Illuminate\Http\Request $request): void
+        {
+            if (approver_timing_report_can_view_all()) {
+                return;
+            }
+
+            $sessionStaffId = (int) user_session('staff_id');
+            if ($sessionStaffId <= 0) {
+                abort(403, 'You do not have access to this report.');
+            }
+
+            if ($request->filled('staff_id') && (int) $request->staff_id !== $sessionStaffId) {
+                abort(403, 'You can only view your own approval timing records.');
+            }
+        }
+    }
+
+    if (! function_exists('approver_timing_report_effective_staff_id')) {
+        /**
+         * Staff filter applied to timing queries: null = all approvers (full access only);
+         * int = restrict to that staff_id (forced to session user when not full access).
+         */
+        function approver_timing_report_effective_staff_id(\Illuminate\Http\Request $request): ?int
+        {
+            if (approver_timing_report_can_view_all()) {
+                return $request->filled('staff_id') ? (int) $request->staff_id : null;
+            }
+
+            $sessionStaffId = (int) user_session('staff_id');
+
+            return $sessionStaffId > 0 ? $sessionStaffId : null;
+        }
+    }
+
     if (! function_exists('get_admin_assistant_approvers')) {
         /**
          * Get list of approver staff IDs that the current admin assistant supports

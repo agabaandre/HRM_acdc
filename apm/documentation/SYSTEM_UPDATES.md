@@ -30,12 +30,13 @@ This document lists notable features, improvements, and changes to the APM (Appr
   Idempotent: skips rows that already exist (unique source trail ids).
 - Also exposed on **Jobs** maintenance UI (`apm:backfill-approver-document-timings`).
 
-### Report and navigation (permission **88**)
+### Report and navigation (access control)
 
 - **Reports → Average time per document**: **`GET /reports/average-time-per-document`** (and **`/export`** for CSV).
-- **Approver Dashboard**: the **average time** badge links to the report with **`staff_id`** and dashboard **year/month** filters when the user has permission **88**.
-- **Pending Approvals**: button **“Average time per document (detail)”** when permission **88** is present (passes **`staff_id`** / **year** / **month** when viewing another approver).
-- Access to the report pages is **403** without permission **88**.
+- **Full access** (any approver filter): **`user_session('role') === 10`** (APM admin), or permission **87**, or permission **88** — same convention as cross-division dashboard / admin UI elsewhere (`approver_timing_report_can_view_all()` in `CustomHelper.php`).
+- **Self-service**: any logged-in user with **`staff_id`** may view **only their own** rows; **`staff_id`** query param must match session or be omitted (scoped automatically). Other combinations return **403**.
+- **Approver Dashboard**: average-time badge links when user has full access **or** the row’s **`staff_id`** matches the current user.
+- **Pending Approvals**: detail button when full access, when viewing **your own** queue, or when **`staff_id`** in the URL matches you.
 
 ### Code reference
 

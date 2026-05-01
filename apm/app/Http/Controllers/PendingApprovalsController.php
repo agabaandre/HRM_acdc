@@ -132,7 +132,9 @@ class PendingApprovalsController extends Controller
         $avgApprovalTimeHours = $this->getAverageApprovalTimeAll($staffIdForAvg, $divisionIdForAvg, $year, $month);
         $avgApprovalTimeDisplay = $this->formatApprovalTime($avgApprovalTimeHours);
 
-        $canViewApprovalTimingReport = in_array(88, user_session('permissions', []) ?? [], true);
+        $canViewApprovalTimingReport = approver_timing_report_can_view_all()
+            || empty($staffId)
+            || ((int) $staffId === (int) user_session('staff_id'));
 
         return view('pending-approvals.index', compact(
             'pendingApprovals',

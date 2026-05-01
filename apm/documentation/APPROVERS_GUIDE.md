@@ -257,11 +257,14 @@ Documents follow a multi-level approval process:
 
 ## Average time per document (administrators)
 
-For users with **permission 88** (cross-division / admin-style access to the Approver Dashboard):
+- **Full report access** (filter by any approver): **role 10** (APM admin), **permission 87**, or **permission 88** — see **`approver_timing_report_can_view_all()`** in `CustomHelper.php`.
+- **Own timing only**: any user with a **`staff_id`** in session may open the report scoped to **their** approvals; they cannot pass another user’s **`staff_id`**.
 
-- **Reports** includes **Average time per document** (`/reports/average-time-per-document`). The report lists each **approve/reject** (and Other Memo **approve**) with **received** and **acted** timestamps, **hours elapsed**, **document title**, **division**, and a link to open the document. Filters include approver, division, document type, year/month (on action time), and search. **Export CSV** downloads the same scope.
-- On the **Approver Dashboard**, the **average time** column is a link to that report for the selected **staff** (and year/month when set on the dashboard).
-- On **Pending Approvals**, when average time is shown, a button opens the report with the same **staff** / **year** / **month** context when you are viewing another approver’s queue.
+Details:
+
+- **Reports** includes **Average time per document** (`/reports/average-time-per-document`). The report lists each **approve/reject** (and Other Memo **approve**) with **received** and **acted** timestamps, **hours elapsed**, **document title**, **division**, and a link to open the document. Filters include approver (full access only), division, document type, year/month (on action time), and search. **Export CSV** downloads the same scope.
+- On the **Approver Dashboard**, the **average time** column links to the report when you have full access **or** when the row is **your** **`staff_id`** (plus year/month when set on the dashboard).
+- On **Pending Approvals**, when average time is shown, a button opens the report when you have full access, are viewing **your own** queue, or the viewed **`staff_id`** is yours.
 
 **Receipt rules** match the dashboard: first step uses **submission** time; later steps use the **previous approver’s action** time (see technical notes in [SYSTEM_UPDATES.md](./SYSTEM_UPDATES.md)). New actions are recorded **asynchronously** via queue jobs; run the **`apm:backfill-approver-document-timings`** command once if you need history before go-live.
 
