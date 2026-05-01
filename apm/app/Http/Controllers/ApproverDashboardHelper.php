@@ -852,7 +852,7 @@ trait ApproverDashboardHelper
                     FROM approval_trails at
                     WHERE at.forward_workflow_id = ?
                     AND at.approval_order = 0
-                    AND at.action = 'submitted'
+                    AND at.action IN ('submitted', 'resubmitted')
                     AND at.model_id NOT IN (
                         SELECT DISTINCT at2.model_id 
                         FROM approval_trails at2 
@@ -926,7 +926,7 @@ trait ApproverDashboardHelper
                                OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
                            )
                            AND sub_at.approval_order = 0
-                           AND sub_at.action = 'submitted'
+                           AND sub_at.action IN ('submitted', 'resubmitted')
                            AND sub_at.is_archived = 0
                            AND sub_at.updated_at <= at.updated_at
                         ) as submitted_time
@@ -944,15 +944,30 @@ trait ApproverDashboardHelper
                         at.model_id,
                         at.model_type,
                         at.updated_at as approval_time,
-                        (SELECT MAX(prev_at.updated_at)
-                         FROM approval_trails prev_at
-                         WHERE prev_at.model_type = at.model_type
-                           AND prev_at.model_id = at.model_id
-                           AND prev_at.forward_workflow_id = at.forward_workflow_id
-                           AND prev_at.approval_order < at.approval_order
-                           AND prev_at.action IN ('approved', 'rejected')
-                           AND prev_at.is_archived = 0
-                           AND prev_at.updated_at <= at.updated_at
+                        COALESCE(
+                            (SELECT MAX(prev_at.updated_at)
+                             FROM approval_trails prev_at
+                             WHERE prev_at.model_type = at.model_type
+                               AND prev_at.model_id = at.model_id
+                               AND prev_at.forward_workflow_id = at.forward_workflow_id
+                               AND prev_at.approval_order < at.approval_order
+                               AND prev_at.action IN ('approved', 'rejected')
+                               AND prev_at.is_archived = 0
+                               AND prev_at.updated_at <= at.updated_at),
+                            (SELECT MAX(sub_at.updated_at)
+                             FROM approval_trails sub_at
+                             WHERE sub_at.model_type = at.model_type
+                               AND sub_at.model_id = at.model_id
+                               AND (
+                                   sub_at.forward_workflow_id = at.forward_workflow_id
+                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
+                               )
+                               AND sub_at.approval_order = 0
+                               AND sub_at.action IN ('submitted', 'resubmitted')
+                               AND sub_at.is_archived = 0
+                               AND sub_at.updated_at <= at.updated_at)
                         ) as submitted_time
                     FROM approval_trails at
                     WHERE at.forward_workflow_id = ?
@@ -1023,7 +1038,7 @@ trait ApproverDashboardHelper
     /**
      * Get average approval time by workflow for the dashboard.
      * Returns for each workflow: workflow name, memo/document count, average approval time (hours and display).
-     * Approval time = from submitted (approval_order=0) to last approved/rejected for that document.
+     * Approval time = from latest submitted/resubmitted (order 0) to last approved/rejected for that document.
      */
     protected function getAverageApprovalTimeByWorkflow()
     {
@@ -1041,13 +1056,13 @@ trait ApproverDashboardHelper
                     SELECT 
                         at.model_id,
                         at.model_type,
-                        MIN(CASE WHEN at.action = 'submitted' AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time,
+                        MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time,
                         MAX(CASE WHEN at.action IN ('approved', 'rejected') THEN at.updated_at END) AS last_approval_time
                     FROM approval_trails at
                     WHERE at.forward_workflow_id = ?
                     AND at.is_archived = 0
                     AND (
-                        (at.action = 'submitted' AND at.approval_order = 0)
+                        (at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0)
                         OR at.action IN ('approved', 'rejected')
                     )
                     GROUP BY at.model_id, at.model_type
@@ -1347,7 +1362,7 @@ trait ApproverDashboardHelper
                     ->select(
                         'at.model_id',
                         'at.model_type',
-                        DB::raw("MIN(CASE WHEN at.action = 'submitted' THEN at.updated_at END) AS submitted_time"),
+                        DB::raw("MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time"),
                         DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) AS last_approval_time")
                     )
                     // Match by trail's workflow OR by document's workflow (same approach as General workflow memos)
@@ -1411,7 +1426,7 @@ trait ApproverDashboardHelper
                             });
                     })
                     ->where('at.is_archived', 0)
-                    ->whereIn('at.action', ['submitted', 'approved']);
+                    ->whereIn('at.action', ['submitted', 'resubmitted', 'approved']);
 
                 // Only documents that are fully approved (overall_status = 'approved')
                 $query->where(function ($q) {
@@ -1608,7 +1623,7 @@ trait ApproverDashboardHelper
                                             });
                                     });
                             })
-                            ->where('sub.action', 'submitted')
+                            ->whereIn('sub.action', ['submitted', 'resubmitted'])
                             ->where('sub.is_archived', 0)
                             ->where('st.division_id', $divisionId);
                     });
@@ -1686,9 +1701,9 @@ trait ApproverDashboardHelper
                 }
 
                 $query->groupBy('at.model_id', 'at.model_type');
-                $query->havingNotNull(DB::raw("MIN(CASE WHEN at.action = 'submitted' THEN at.updated_at END)"));
+                $query->havingNotNull(DB::raw("MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0 THEN at.updated_at END)"));
                 $query->havingNotNull(DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END)"));
-                $query->havingRaw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) >= MIN(CASE WHEN at.action = 'submitted' THEN at.updated_at END)");
+                $query->havingRaw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) >= MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0 THEN at.updated_at END)");
 
                 $rows = $query->get();
 
@@ -1975,8 +1990,8 @@ trait ApproverDashboardHelper
             
             // Get all approval actions by this approver.
             // received_time = when item came to this approver:
-            // - Order >= 2: previous level's updated_at (when previous approver took approved/rejected action).
-            // - Order 1: submitted trail's updated_at (when item was submitted to workflow).
+            // - Order >= 2: latest previous-level approved/rejected before this action; if none, latest order-0 submitted/resubmitted (return/resubmit cycles).
+            // - Order 1: latest order-0 submitted/resubmitted at or before this action.
             // approval_time = this approver's updated_at (when they took the action).
             $sql = "
                 SELECT 
@@ -1987,16 +2002,30 @@ trait ApproverDashboardHelper
                     at.approval_order,
                     at.updated_at as approval_time,
                     CASE
-                        WHEN at.approval_order >= 3 THEN (
-                            SELECT MAX(prev_at.updated_at)
-                            FROM approval_trails prev_at
-                            WHERE prev_at.model_type = at.model_type
-                              AND prev_at.model_id = at.model_id
-                              AND prev_at.forward_workflow_id = at.forward_workflow_id
-                              AND prev_at.approval_order < at.approval_order
-                              AND prev_at.action IN ('approved', 'rejected')
-                              AND prev_at.is_archived = 0
-                              AND prev_at.updated_at <= at.updated_at
+                        WHEN at.approval_order >= 3 THEN COALESCE(
+                            (SELECT MAX(prev_at.updated_at)
+                             FROM approval_trails prev_at
+                             WHERE prev_at.model_type = at.model_type
+                               AND prev_at.model_id = at.model_id
+                               AND prev_at.forward_workflow_id = at.forward_workflow_id
+                               AND prev_at.approval_order < at.approval_order
+                               AND prev_at.action IN ('approved', 'rejected')
+                               AND prev_at.is_archived = 0
+                               AND prev_at.updated_at <= at.updated_at),
+                            (SELECT MAX(sub_at.updated_at)
+                             FROM approval_trails sub_at
+                             WHERE sub_at.model_type = at.model_type
+                               AND sub_at.model_id = at.model_id
+                               AND (
+                                   sub_at.forward_workflow_id = at.forward_workflow_id
+                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
+                               )
+                               AND sub_at.approval_order = 0
+                               AND sub_at.action IN ('submitted', 'resubmitted')
+                               AND sub_at.is_archived = 0
+                               AND sub_at.updated_at <= at.updated_at)
                         )
                         WHEN at.approval_order = 2 THEN COALESCE(
                             (SELECT MAX(prev_at.updated_at)
@@ -2019,7 +2048,7 @@ trait ApproverDashboardHelper
                                    OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
                                )
                                AND sub_at.approval_order = 0
-                               AND sub_at.action = 'submitted'
+                               AND sub_at.action IN ('submitted', 'resubmitted')
                                AND sub_at.is_archived = 0
                                AND sub_at.updated_at <= at.updated_at)
                         )
@@ -2035,7 +2064,7 @@ trait ApproverDashboardHelper
                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
                               )
                               AND sub_at.approval_order = 0
-                              AND sub_at.action = 'submitted'
+                              AND sub_at.action IN ('submitted', 'resubmitted')
                               AND sub_at.is_archived = 0
                               AND sub_at.updated_at <= at.updated_at
                         )
@@ -2089,7 +2118,7 @@ trait ApproverDashboardHelper
     }
 
     /**
-     * Last submitted trail time for a document (same rules as average-approval SQL for order 1 receipt).
+     * Latest order-0 submitted or resubmitted trail time (same workflow matching as order-1 receipt in averages).
      */
     protected function selectLastSubmittedTimeForModel(string $modelType, int $modelId, int $forwardWorkflowId): ?string
     {
@@ -2109,7 +2138,7 @@ trait ApproverDashboardHelper
                   OR (sub_at.forward_workflow_id IS NULL AND ? NOT IN (?, ?))
               )
               AND sub_at.approval_order = 0
-              AND sub_at.action = 'submitted'
+              AND sub_at.action IN ('submitted', 'resubmitted')
               AND sub_at.is_archived = 0
             ",
             [
