@@ -394,6 +394,8 @@ var approverTable;
 var filterOptions = {};
 var userDivisionId = {{ $userDivisionId ?? 'null' }};
 var hasPermission88 = {{ $hasPermission88 ? 'true' : 'false' }};
+var approverTimingReportWideAccess = {{ ($approverTimingReportWideAccess ?? false) ? 'true' : 'false' }};
+var sessionStaffIdForTiming = {{ (int) ($sessionStaffIdForTiming ?? 0) }};
 var baseUrl = '{{ user_session("base_url") ?? url("/") }}';
 var staffPhotoRoute = @json(route('staff-uploads.photo'));
 var pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
@@ -1010,7 +1012,7 @@ function initializeDataTable() {
                         return row.avg_approval_time_hours || 0;
                     }
                     var label = row.avg_approval_time_display || 'No data';
-                    if (hasPermission88) {
+                    if (approverTimingReportWideAccess || Number(row.staff_id) === sessionStaffIdForTiming) {
                         var params = new URLSearchParams();
                         params.set('staff_id', row.staff_id);
                         var fy = $('#filterYear').val();

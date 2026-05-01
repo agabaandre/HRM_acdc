@@ -26,6 +26,12 @@
         <span class="text-muted small ms-auto">Receipt rules match the Approver Dashboard average-time calculation.</span>
     </div>
 
+    @if(empty($reportFullAccess))
+        <div class="alert alert-info py-2 small mb-3">
+            You are viewing <strong>your own</strong> approval timing only. Administrators (role 10 or permissions 87 / 88) can filter by any approver.
+        </div>
+    @endif
+
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="card metric-card h-100 border-0 bg-success bg-opacity-10">
@@ -69,14 +75,19 @@
             <form method="get" action="{{ route('reports.approver-document-timing.index') }}" class="row g-3 align-items-end">
                 <div class="col-md-3">
                     <label class="form-label small mb-0">Approver</label>
-                    <select name="staff_id" class="form-select form-select-sm">
-                        <option value="">All approvers with records</option>
+                    <select name="staff_id" class="form-select form-select-sm" {{ empty($reportFullAccess) ? 'disabled' : '' }}>
+                        @if(!empty($reportFullAccess))
+                            <option value="">All approvers with records</option>
+                        @endif
                         @foreach($staffOptions as $s)
                             <option value="{{ $s->staff_id }}" {{ (int)($filters['staff_id'] ?? 0) === (int)$s->staff_id ? 'selected' : '' }}>
                                 {{ trim(($s->title ? $s->title . ' ' : '') . $s->fname . ' ' . $s->lname) }} ({{ $s->staff_id }})
                             </option>
                         @endforeach
                     </select>
+                    @if(empty($reportFullAccess))
+                        <input type="hidden" name="staff_id" value="{{ (int) user_session('staff_id') }}">
+                    @endif
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small mb-0">Division</label>

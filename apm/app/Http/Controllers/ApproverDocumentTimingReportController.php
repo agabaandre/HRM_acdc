@@ -15,17 +15,11 @@ class ApproverDocumentTimingReportController extends Controller
         protected ApproverDocumentTimingService $timingService
     ) {}
 
-    protected function ensurePermission88(): void
-    {
-        $perms = user_session('permissions', []) ?? [];
-        abort_unless(in_array(88, $perms, true), 403, 'You do not have access to this report.');
-    }
-
     public function index(Request $request): View
     {
-        $this->ensurePermission88();
+        approver_timing_report_authorize_web_request($request);
 
-        $staffId = $request->filled('staff_id') ? (int) $request->staff_id : null;
+        $staffId = approver_timing_report_effective_staff_id($request);
         $divisionId = $request->filled('division_id') ? (int) $request->division_id : null;
         $documentType = $request->filled('document_type') ? (string) $request->document_type : null;
         $year = $request->filled('year') ? (int) $request->year : null;
@@ -33,7 +27,7 @@ class ApproverDocumentTimingReportController extends Controller
         $search = $request->filled('q') ? trim((string) $request->q) : null;
 
         $baseQuery = ApproverDocumentTimingRecord::query()
-            ->when($staffId, fn ($q) => $q->where('staff_id', $staffId))
+            ->when($staffId !== null && $staffId > 0, fn ($q) => $q->where('staff_id', $staffId))
             ->when($divisionId, fn ($q) => $q->where('division_id', $divisionId))
             ->when($documentType, fn ($q) => $q->where('document_type_label', $documentType))
             ->when($year, fn ($q) => $q->whereYear('acted_at', $year))
@@ -64,6 +58,11 @@ class ApproverDocumentTimingReportController extends Controller
         }
 
         $staffIdsWithData = ApproverDocumentTimingRecord::query()->distinct()->orderBy('staff_id')->pluck('staff_id');
+        if (! approver_timing_report_can_view_all()) {
+            $ownId = (int) user_session('staff_id');
+            $staffIdsWithData = $staffIdsWithData->filter(fn ($id): bool => (int) $id === $ownId)->values();
+        }
+
         $staffOptions = Staff::query()
             ->whereIn('staff_id', $staffIdsWithData)
             ->orderBy('fname')
@@ -83,6 +82,7 @@ class ApproverDocumentTimingReportController extends Controller
             'staffOptions' => $staffOptions,
             'divisions' => $divisions,
             'documentTypes' => $documentTypes,
+            'reportFullAccess' => approver_timing_report_can_view_all(),
             'filters' => [
                 'staff_id' => $staffId,
                 'division_id' => $divisionId,
@@ -103,9 +103,9 @@ class ApproverDocumentTimingReportController extends Controller
 
     public function exportCsv(Request $request)
     {
-        $this->ensurePermission88();
+        approver_timing_report_authorize_web_request($request);
 
-        $staffId = $request->filled('staff_id') ? (int) $request->staff_id : null;
+        $staffId = approver_timing_report_effective_staff_id($request);
         $divisionId = $request->filled('division_id') ? (int) $request->division_id : null;
         $documentType = $request->filled('document_type') ? (string) $request->document_type : null;
         $year = $request->filled('year') ? (int) $request->year : null;
@@ -113,7 +113,7 @@ class ApproverDocumentTimingReportController extends Controller
         $search = $request->filled('q') ? trim((string) $request->q) : null;
 
         $query = ApproverDocumentTimingRecord::query()
-            ->when($staffId, fn ($q) => $q->where('staff_id', $staffId))
+            ->when($staffId !== null && $staffId > 0, fn ($q) => $q->where('staff_id', $staffId))
             ->when($divisionId, fn ($q) => $q->where('division_id', $divisionId))
             ->when($documentType, fn ($q) => $q->where('document_type_label', $documentType))
             ->when($year, fn ($q) => $q->whereYear('acted_at', $year))

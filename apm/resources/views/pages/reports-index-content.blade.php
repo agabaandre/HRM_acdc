@@ -62,8 +62,8 @@
             @endif
 
             @php
-                $permsReports = user_session('permissions', []) ?? [];
-                $canApproverTimingReport = in_array(88, $permsReports, true);
+                $canApproverTimingReport = approver_timing_report_can_view_all()
+                    || (int) user_session('staff_id') > 0;
             @endphp
             @if($canApproverTimingReport)
             <div class="col-md-6 col-lg-4">
