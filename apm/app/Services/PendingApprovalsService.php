@@ -928,7 +928,7 @@ class PendingApprovalsService
     }
 
     /**
-     * Last submitted trail time (order 0) for this document/workflow.
+     * Latest order-0 submitted or resubmitted trail time for this document/workflow.
      */
     protected function selectLastSubmittedTimeForPendingItem(string $modelType, int $modelId, int $forwardWorkflowId): ?string
     {
@@ -948,7 +948,7 @@ class PendingApprovalsService
                   OR (sub_at.forward_workflow_id IS NULL AND ? NOT IN (?, ?))
               )
               AND sub_at.approval_order = 0
-              AND sub_at.action = 'submitted'
+              AND sub_at.action IN ('submitted', 'resubmitted')
               AND sub_at.is_archived = 0
             ",
             [

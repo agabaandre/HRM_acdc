@@ -78,16 +78,30 @@ class ApprovalReceiptTimeCalculator
         return "
                 SELECT 
                     CASE
-                        WHEN at.approval_order >= 3 THEN (
-                            SELECT MAX(prev_at.updated_at)
-                            FROM approval_trails prev_at
-                            WHERE prev_at.model_type = at.model_type
-                              AND prev_at.model_id = at.model_id
-                              AND prev_at.forward_workflow_id = at.forward_workflow_id
-                              AND prev_at.approval_order < at.approval_order
-                              AND prev_at.action IN ('approved', 'rejected')
-                              AND prev_at.is_archived = 0
-                              AND prev_at.updated_at <= at.updated_at
+                        WHEN at.approval_order >= 3 THEN COALESCE(
+                            (SELECT MAX(prev_at.updated_at)
+                             FROM approval_trails prev_at
+                             WHERE prev_at.model_type = at.model_type
+                               AND prev_at.model_id = at.model_id
+                               AND prev_at.forward_workflow_id = at.forward_workflow_id
+                               AND prev_at.approval_order < at.approval_order
+                               AND prev_at.action IN ('approved', 'rejected')
+                               AND prev_at.is_archived = 0
+                               AND prev_at.updated_at <= at.updated_at),
+                            (SELECT MAX(sub_at.updated_at)
+                             FROM approval_trails sub_at
+                             WHERE sub_at.model_type = at.model_type
+                               AND sub_at.model_id = at.model_id
+                               AND (
+                                   sub_at.forward_workflow_id = at.forward_workflow_id
+                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
+                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
+                               )
+                               AND sub_at.approval_order = 0
+                               AND sub_at.action IN ('submitted', 'resubmitted')
+                               AND sub_at.is_archived = 0
+                               AND sub_at.updated_at <= at.updated_at)
                         )
                         WHEN at.approval_order = 2 THEN COALESCE(
                             (SELECT MAX(prev_at.updated_at)
@@ -110,7 +124,7 @@ class ApprovalReceiptTimeCalculator
                                    OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
                                )
                                AND sub_at.approval_order = 0
-                               AND sub_at.action = 'submitted'
+                               AND sub_at.action IN ('submitted', 'resubmitted')
                                AND sub_at.is_archived = 0
                                AND sub_at.updated_at <= at.updated_at)
                         )
@@ -126,7 +140,7 @@ class ApprovalReceiptTimeCalculator
                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
                               )
                               AND sub_at.approval_order = 0
-                              AND sub_at.action = 'submitted'
+                              AND sub_at.action IN ('submitted', 'resubmitted')
                               AND sub_at.is_archived = 0
                               AND sub_at.updated_at <= at.updated_at
                         )
