@@ -11,15 +11,59 @@
     border: 1px solid #e9ecef !important;
     box-shadow: 0 1px 3px rgba(0,0,0,.05);
 }
-.adt-report .table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: .03em; color: #6c757d; white-space: nowrap; }
-.adt-report .table td { vertical-align: middle; font-size: 0.9rem; }
-.adt-report .doc-title {
-    max-width: 22rem;
-    min-width: 10rem;
-    white-space: normal;
+/* Same approach as activities/single-memos/index.blade.php — fixed layout + title cell wrapping */
+.adt-report .adt-timing-table {
+    table-layout: fixed;
+    width: 100%;
+}
+.adt-report .adt-timing-table thead th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: #6c757d;
+    white-space: nowrap;
+}
+.adt-report .adt-timing-table td {
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+.adt-report .adt-timing-table .table-title-cell {
+    max-width: 270px;
+    word-wrap: break-word;
     word-break: break-word;
-    overflow-wrap: anywhere;
-    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+    vertical-align: top;
+}
+.adt-report .adt-timing-table .table-title-cell > .fw-medium {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+.adt-report .adt-timing-table th:nth-child(1) { width: 11%; }
+.adt-report .adt-timing-table th:nth-child(2) { width: 7%; }
+.adt-report .adt-timing-table th:nth-child(3) { width: 28%; }
+.adt-report .adt-timing-table th:nth-child(4) { width: 11%; }
+.adt-report .adt-timing-table th:nth-child(5) { width: 14%; }
+.adt-report .adt-timing-table th:nth-child(6) { width: 9%; }
+.adt-report .adt-timing-table th:nth-child(7) { width: 9%; }
+.adt-report .adt-timing-table th:nth-child(8) { width: 6%; }
+.adt-report .adt-timing-table th:nth-child(9) { width: 5%; }
+.adt-report .adt-timing-table .workflow-cell {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    vertical-align: top;
+}
+.adt-report .adt-timing-table .division-cell {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.3;
+    vertical-align: top;
 }
 .adt-report tfoot td { vertical-align: middle; }
 </style>
@@ -156,7 +200,7 @@
             <span class="fw-semibold">Document timing trail</span>
         </div>
         <div class="card-body p-0 table-responsive">
-            <table class="table table-hover table-striped mb-0">
+            <table class="table table-hover table-striped mb-0 adt-timing-table">
                 <thead class="table-light">
                     <tr>
                         <th>Approver</th>
@@ -181,14 +225,14 @@
                                 <div class="small text-muted">ID {{ $r->staff_id }}</div>
                             </td>
                             <td><span class="badge bg-light text-dark">{{ $r->document_type_label }}</span></td>
-                            <td class="doc-title">
-                                <div class="fw-medium">{{ $r->document_title ?? '—' }}</div>
+                            <td class="table-title-cell">
+                                <div class="fw-medium text-dark text-break">{{ $r->document_title ?? '—' }}</div>
                                 @if($r->document_number_snapshot)
-                                    <div class="small text-muted">{{ $r->document_number_snapshot }}</div>
+                                    <div class="small text-muted mt-1">{{ $r->document_number_snapshot }}</div>
                                 @endif
                             </td>
-                            <td>{{ $r->division_name_snapshot ?? '—' }}</td>
-                            <td>
+                            <td class="division-cell">{{ $r->division_name_snapshot ?? '—' }}</td>
+                            <td class="workflow-cell">
                                 <div class="small">{{ $r->workflow_name_snapshot ?? '—' }}</div>
                                 <div class="small text-muted">{{ $r->workflow_role_snapshot ?? ('Level ' . ($r->approval_order ?? '—')) }}</div>
                             </td>
