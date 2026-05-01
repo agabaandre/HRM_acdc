@@ -13,7 +13,15 @@
 }
 .adt-report .table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: .03em; color: #6c757d; white-space: nowrap; }
 .adt-report .table td { vertical-align: middle; font-size: 0.9rem; }
-.adt-report .doc-title { max-width: 280px; word-break: break-word; }
+.adt-report .doc-title {
+    max-width: 22rem;
+    min-width: 10rem;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+}
+.adt-report tfoot td { vertical-align: middle; }
 </style>
 @endpush
 
@@ -174,7 +182,7 @@
                             </td>
                             <td><span class="badge bg-light text-dark">{{ $r->document_type_label }}</span></td>
                             <td class="doc-title">
-                                <div class="fw-medium">{{ \Illuminate\Support\Str::limit($r->document_title ?? '—', 120) }}</div>
+                                <div class="fw-medium">{{ $r->document_title ?? '—' }}</div>
                                 @if($r->document_number_snapshot)
                                     <div class="small text-muted">{{ $r->document_number_snapshot }}</div>
                                 @endif
@@ -203,6 +211,17 @@
                         </tr>
                     @endforelse
                 </tbody>
+                @if($records->count() > 0)
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="7" class="text-end text-muted small border-top py-2">
+                                Total hours <span class="d-none d-md-inline">(all rows matching current filters)</span>
+                            </td>
+                            <td class="fw-bold text-dark border-top py-2 text-nowrap">{{ number_format((float) ($summary['total_hours'] ?? 0), 2) }} h</td>
+                            <td class="border-top py-2"></td>
+                        </tr>
+                    </tfoot>
+                @endif
             </table>
         </div>
         @if($records->hasPages())
