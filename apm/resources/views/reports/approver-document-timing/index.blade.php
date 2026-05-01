@@ -5,7 +5,12 @@
 
 @push('styles')
 <style>
-.adt-report .metric-card { border: none; border-radius: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.adt-report .metric-card {
+    border-radius: 0.5rem;
+    background: #fff;
+    border: 1px solid #e9ecef !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
 .adt-report .table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: .03em; color: #6c757d; white-space: nowrap; }
 .adt-report .table td { vertical-align: middle; font-size: 0.9rem; }
 .adt-report .doc-title { max-width: 280px; word-break: break-word; }
@@ -34,18 +39,18 @@
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">
-            <div class="card metric-card h-100 border-0 bg-success bg-opacity-10">
+            <div class="card metric-card h-100">
                 <div class="card-body py-3">
                     <div class="text-muted small text-uppercase fw-semibold">Actions in scope</div>
-                    <div class="fs-4 fw-bold text-success">{{ number_format($summary['total_rows']) }}</div>
+                    <div class="fs-4 fw-bold text-dark">{{ number_format($summary['total_rows']) }}</div>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card metric-card h-100 border-0 bg-primary bg-opacity-10">
+            <div class="card metric-card h-100">
                 <div class="card-body py-3">
                     <div class="text-muted small text-uppercase fw-semibold">Average time</div>
-                    <div class="fs-4 fw-bold text-primary">{{ $summary['avg_display'] }}</div>
+                    <div class="fs-4 fw-bold text-dark">{{ $summary['avg_display'] }}</div>
                     @if($summary['avg_hours'] !== null)
                         <div class="small text-muted">{{ $summary['avg_hours'] }} hours (numeric)</div>
                     @endif
@@ -53,7 +58,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card metric-card h-100 border-0 bg-secondary bg-opacity-10">
+            <div class="card metric-card h-100">
                 <div class="card-body py-3">
                     <div class="text-muted small text-uppercase fw-semibold">Total person-hours</div>
                     <div class="fs-4 fw-bold text-dark">{{ number_format($summary['total_hours'], 1) }}</div>
