@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Add session expiry check to web middleware group
         $middleware->web(append: [
             \App\Http\Middleware\CheckSessionExpiry::class,
+            \App\Http\Middleware\DisableSearchEngineIndexing::class,
+        ]);
+        $middleware->api(append: [
+            \App\Http\Middleware\DisableSearchEngineIndexing::class,
         ]);
         $middleware->alias([
             'apm.api.context' => \App\Http\Middleware\SetApmApiUserContext::class,
