@@ -97,6 +97,22 @@ The platform consists of three integrated modules working seamlessly together:
 ### 👨‍💻 For Developers
 
 <details>
+<summary><b>Docker (Staff + APM)</b></summary>
+
+- Full guide: [docker/README.md](./docker/README.md)
+- Requires Docker Desktop or Docker Engine running (fix “Cannot connect to the Docker daemon” by starting Docker).
+- By default the stack uses **MySQL on the physical host**: set `DB_HOST=host.docker.internal` (and matching DB names/users) in root `.env` and `apm/.env`.
+
+```bash
+cp docker/compose.env.example .env
+docker compose up -d --build
+```
+
+- Staff portal: `http://localhost:8080/` · APM: `http://localhost:8080/apm`
+
+</details>
+
+<details>
 <summary><b>1. Set up Staff Portal (CodeIgniter)</b></summary>
 
 - Configure database in `application/config/database.php`
