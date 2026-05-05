@@ -933,12 +933,6 @@ class PrintHelper
     public static function getFinancialApprovers($activityApprovalTrails, $workflowId = 1)
     {
         $financialApprovers = [];
-        $definitionCache = [];
-
-        // Ensure collection
-        if (is_array($activityApprovalTrails)) {
-            $activityApprovalTrails = collect($activityApprovalTrails);
-        }
         
         // Define the financial approver roles and their expected approval orders
         $financialRoles = [
@@ -947,76 +941,9 @@ class PrintHelper
             'Director Finance' => 6,      // Endorsed by (Director Finance)
             'Deputy Director General' => 9 // Approved by
         ];
-
-        // Keyword aliases for dynamic role matching across workflow variants.
-        $roleAliases = [
-            'Head of Division' => ['head of division'],
-            'Finance Officer' => ['finance officer', 'senior finance officer', 'sfo'],
-            'Director Finance' => ['director finance', 'director of finance', 'finance director'],
-            'Deputy Director General' => ['deputy director general', 'ddg'],
-        ];
-
-        $resolveTrailRole = static function ($trail) use (&$definitionCache, $workflowId) {
-            if (isset($trail->workflowDefinition) && $trail->workflowDefinition) {
-                return (string) ($trail->workflowDefinition->role ?? '');
-            }
-            if (isset($trail->approverRole) && $trail->approverRole) {
-                return (string) ($trail->approverRole->role ?? '');
-            }
-
-            $trailWorkflowId = (int) ($trail->forward_workflow_id ?? $workflowId ?? 0);
-            $trailOrder = (int) ($trail->approval_order ?? 0);
-            if ($trailWorkflowId <= 0 || $trailOrder <= 0) {
-                return '';
-            }
-
-            $cacheKey = $trailWorkflowId . ':' . $trailOrder;
-            if (!array_key_exists($cacheKey, $definitionCache)) {
-                $definitionCache[$cacheKey] = \App\Models\WorkflowDefinition::where('workflow_id', $trailWorkflowId)
-                    ->where('approval_order', $trailOrder)
-                    ->where('is_enabled', 1)
-                    ->value('role');
-            }
-
-            return (string) ($definitionCache[$cacheKey] ?? '');
-        };
         
         foreach ($financialRoles as $role => $expectedOrder) {
-            $approval = null;
-
-            // Prefer dynamic role-based resolution (handles workflow order drift).
-            $keywords = $roleAliases[$role] ?? [strtolower($role)];
-            $matchingApprovals = $activityApprovalTrails->filter(function ($trail) use ($resolveTrailRole, $keywords) {
-                if (isset($trail->is_archived) && (int) $trail->is_archived === 1) {
-                    return false;
-                }
-                $action = strtolower((string) ($trail->action ?? ''));
-                if ($action !== 'approved') {
-                    return false;
-                }
-
-                $roleName = strtolower(trim((string) $resolveTrailRole($trail)));
-                if ($roleName === '') {
-                    return false;
-                }
-
-                foreach ($keywords as $keyword) {
-                    if (str_contains($roleName, strtolower($keyword))) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-
-            if ($matchingApprovals->isNotEmpty()) {
-                $approval = $matchingApprovals->sortByDesc('created_at')->first();
-            }
-
-            // Fallback to legacy fixed-order lookup for backward compatibility.
-            if (!$approval) {
-                $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
-            }
-
+            $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
             if ($approval) {
                 $financialApprovers[$role] = $approval;
             }
