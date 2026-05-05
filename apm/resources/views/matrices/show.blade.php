@@ -114,7 +114,7 @@
 <div class="d-flex gap-2">
     
         @if( $matrix->overall_status=='draft' || $matrix->overall_status=='returned')
-        <a wire:navigate href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
+        <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Activity
         </a>
         @endif
@@ -128,7 +128,7 @@
             $isStrictAdmin = user_session('role') == 10;
         @endphp
         @if($canDivisionAddSingleMemo && ($matrix->overall_status=='approved'|| $matrix->overall_status=='pending'))
-        <a wire:navigate href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
+        <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Single Memo 
         </a>
         @endif
