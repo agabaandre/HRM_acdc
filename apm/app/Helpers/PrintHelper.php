@@ -933,22 +933,75 @@ class PrintHelper
     public static function getFinancialApprovers($activityApprovalTrails, $workflowId = 1)
     {
         $financialApprovers = [];
-        
-        // Define the financial approver roles and their expected approval orders
-        $financialRoles = [
+
+        if (is_array($activityApprovalTrails)) {
+            $activityApprovalTrails = collect($activityApprovalTrails);
+        }
+
+        // Keep backward-compatible fallback orders for legacy workflows.
+        $fallbackOrders = [
             'Head of Division' => 1,      // Prepared by
             'Finance Officer' => 5,       // Endorsed by (SFO)
             'Director Finance' => 6,      // Endorsed by (Director Finance)
-            'Deputy Director General' => 9 // Approved by
+            'Deputy Director General' => 9, // Approved by
         ];
-        
-        foreach ($financialRoles as $role => $expectedOrder) {
-            $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
+
+        // Resolve role orders dynamically from workflow definitions (important for
+        // non-matrix memos such as Special Memo where finance levels may differ).
+        $roleKeywords = [
+            'Head of Division' => ['head of division', 'hod'],
+            'Finance Officer' => ['finance officer', 'senior finance officer', 'sfo'],
+            'Director Finance' => ['director finance', 'director of finance'],
+            'Deputy Director General' => ['deputy director general', 'ddg'],
+        ];
+
+        $resolvedOrdersByRole = [];
+        $workflowId = (int) $workflowId;
+        if ($workflowId > 0) {
+            $definitions = \App\Models\WorkflowDefinition::where('workflow_id', $workflowId)
+                ->where('is_enabled', 1)
+                ->get(['approval_order', 'role']);
+
+            foreach ($roleKeywords as $role => $keywords) {
+                $orders = [];
+                foreach ($definitions as $definition) {
+                    $defRole = strtolower((string) ($definition->role ?? ''));
+                    foreach ($keywords as $keyword) {
+                        if ($defRole !== '' && strpos($defRole, $keyword) !== false) {
+                            $orders[] = (int) $definition->approval_order;
+                            break;
+                        }
+                    }
+                }
+                $resolvedOrdersByRole[$role] = array_values(array_unique($orders));
+            }
+        }
+
+        foreach ($fallbackOrders as $role => $fallbackOrder) {
+            $orders = $resolvedOrdersByRole[$role] ?? [];
+            if (empty($orders)) {
+                $orders = [$fallbackOrder];
+            }
+
+            $approval = $activityApprovalTrails
+                ->filter(function ($trail) use ($orders) {
+                    if (isset($trail->is_archived) && (int) $trail->is_archived === 1) {
+                        return false;
+                    }
+
+                    $trailOrder = (int) ($trail->approval_order ?? 0);
+                    $action = strtolower((string) ($trail->action ?? ''));
+
+                    return in_array($trailOrder, $orders, true) && $action === 'approved';
+                })
+                ->sortByDesc('created_at')
+                ->first();
+
             if ($approval) {
                 $financialApprovers[$role] = $approval;
             }
         }
-        
+
         return $financialApprovers;
     }
     /**
