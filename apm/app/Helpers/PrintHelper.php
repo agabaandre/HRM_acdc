@@ -933,60 +933,95 @@ class PrintHelper
     public static function getFinancialApprovers($activityApprovalTrails, $workflowId = 1)
     {
         $financialApprovers = [];
+        $definitionCache = [];
 
+        // Ensure collection
         if (is_array($activityApprovalTrails)) {
             $activityApprovalTrails = collect($activityApprovalTrails);
         }
-
-        // Prefer role-based resolution from active workflow definitions so prints
-        // work even when approval orders differ across workflows.
-        $roleMatchers = [
-            'Head of Division'        => '/head\s+of\s+division/i',
-            'Finance Officer'         => '/(finance\s+officer|sfo)/i',
-            'Director Finance'        => '/director\s+finance/i',
-            'Deputy Director General' => '/(deputy\s+director\s+general|ddg)/i',
+        
+        // Define the financial approver roles and their expected approval orders
+        $financialRoles = [
+            'Head of Division' => 1,      // Prepared by
+            'Finance Officer' => 5,       // Endorsed by (SFO)
+            'Director Finance' => 6,      // Endorsed by (Director Finance)
+            'Deputy Director General' => 9 // Approved by
         ];
 
-        $definitions = collect();
-        if (!empty($workflowId)) {
-            $definitions = \App\Models\WorkflowDefinition::where('workflow_id', (int) $workflowId)
-                ->where('is_enabled', 1)
-                ->orderBy('approval_order')
-                ->get();
-        }
+        // Keyword aliases for dynamic role matching across workflow variants.
+        $roleAliases = [
+            'Head of Division' => ['head of division'],
+            'Finance Officer' => ['finance officer', 'senior finance officer', 'sfo'],
+            'Director Finance' => ['director finance', 'director of finance', 'finance director'],
+            'Deputy Director General' => ['deputy director general', 'ddg'],
+        ];
 
-        foreach ($roleMatchers as $canonicalRole => $pattern) {
-            $matchedDefinition = $definitions->first(function ($definition) use ($pattern) {
-                $role = (string) ($definition->role ?? '');
-                return $role !== '' && preg_match($pattern, $role);
+        $resolveTrailRole = static function ($trail) use (&$definitionCache, $workflowId) {
+            if (isset($trail->workflowDefinition) && $trail->workflowDefinition) {
+                return (string) ($trail->workflowDefinition->role ?? '');
+            }
+            if (isset($trail->approverRole) && $trail->approverRole) {
+                return (string) ($trail->approverRole->role ?? '');
+            }
+
+            $trailWorkflowId = (int) ($trail->forward_workflow_id ?? $workflowId ?? 0);
+            $trailOrder = (int) ($trail->approval_order ?? 0);
+            if ($trailWorkflowId <= 0 || $trailOrder <= 0) {
+                return '';
+            }
+
+            $cacheKey = $trailWorkflowId . ':' . $trailOrder;
+            if (!array_key_exists($cacheKey, $definitionCache)) {
+                $definitionCache[$cacheKey] = \App\Models\WorkflowDefinition::where('workflow_id', $trailWorkflowId)
+                    ->where('approval_order', $trailOrder)
+                    ->where('is_enabled', 1)
+                    ->value('role');
+            }
+
+            return (string) ($definitionCache[$cacheKey] ?? '');
+        };
+        
+        foreach ($financialRoles as $role => $expectedOrder) {
+            $approval = null;
+
+            // Prefer dynamic role-based resolution (handles workflow order drift).
+            $keywords = $roleAliases[$role] ?? [strtolower($role)];
+            $matchingApprovals = $activityApprovalTrails->filter(function ($trail) use ($resolveTrailRole, $keywords) {
+                if (isset($trail->is_archived) && (int) $trail->is_archived === 1) {
+                    return false;
+                }
+                $action = strtolower((string) ($trail->action ?? ''));
+                if ($action !== 'approved') {
+                    return false;
+                }
+
+                $roleName = strtolower(trim((string) $resolveTrailRole($trail)));
+                if ($roleName === '') {
+                    return false;
+                }
+
+                foreach ($keywords as $keyword) {
+                    if (str_contains($roleName, strtolower($keyword))) {
+                        return true;
+                    }
+                }
+                return false;
             });
 
-            if ($matchedDefinition) {
-                $approval = self::getLatestApprovalForOrder($activityApprovalTrails, (int) $matchedDefinition->approval_order);
-                if ($approval) {
-                    $financialApprovers[$canonicalRole] = $approval;
-                }
+            if ($matchingApprovals->isNotEmpty()) {
+                $approval = $matchingApprovals->sortByDesc('created_at')->first();
             }
-        }
 
-        // Backward-compatible fallback for older workflows that still rely on these orders.
-        $fallbackOrders = [
-            'Head of Division'        => 1, // Prepared by
-            'Finance Officer'         => 5, // Endorsed by (SFO)
-            'Director Finance'        => 6, // Endorsed by (Director Finance)
-            'Deputy Director General' => 9, // Approved by
-        ];
-
-        foreach ($fallbackOrders as $role => $expectedOrder) {
-            if (isset($financialApprovers[$role])) {
-                continue;
+            // Fallback to legacy fixed-order lookup for backward compatibility.
+            if (!$approval) {
+                $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
             }
-            $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
+
             if ($approval) {
                 $financialApprovers[$role] = $approval;
             }
         }
-
+        
         return $financialApprovers;
     }
     /**
