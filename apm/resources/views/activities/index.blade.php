@@ -49,7 +49,7 @@
                             <i class="bx bx-arrow-back me-1"></i> Back to Matrix
                         </a>
                         @if($matrix->overall_status !== 'approved')
-                            <a wire:navigate href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm">
+                            <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm">
                                 <i class="bx bx-plus me-1"></i> Add Activity
                             </a>
                         @endif

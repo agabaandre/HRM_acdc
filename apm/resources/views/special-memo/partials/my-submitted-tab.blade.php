@@ -104,7 +104,7 @@
                                 <i class="bx bx-show me-1"></i>View
                             </a>
                             @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
-                                <a wire:navigate href="{{ route('special-memo.edit', $memo) }}" 
+                                <a href="{{ route('special-memo.edit', $memo) }}" 
                                    class="btn btn-sm btn-outline-warning" title="Edit">
                                     <i class="bx bx-edit me-1"></i>Edit
                                 </a>

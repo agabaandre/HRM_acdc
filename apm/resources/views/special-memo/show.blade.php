@@ -487,7 +487,7 @@
                     </a>
                     
                     @if(can_edit_memo($specialMemo))
-                        <a wire:navigate href="{{ route('special-memo.edit', $specialMemo) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
+                        <a href="{{ route('special-memo.edit', $specialMemo) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="bx bx-edit"></i>
                             <span>Edit Memo</span>
                         </a>
@@ -537,7 +537,7 @@
                     @endif
 
                     @if($specialMemo->overall_status === 'approved')
-                        <a wire:navigate href="{{ route('special-memo.edit', $specialMemo) }}?change_request=1"
+                        <a href="{{ route('special-memo.edit', $specialMemo) }}?change_request=1"
                            class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="fas fa-edit"></i>
                             <span>Change Request</span>
