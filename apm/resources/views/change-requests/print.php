@@ -620,6 +620,15 @@
     </div>
   <?php endif; ?>
 
+  <?php if (!empty($changeRequest->supporting_reasons)): ?>
+    <div style="margin-top: 16px;">
+      <div class="section-label mb-15"><strong>Change Request Approval Details</strong></div>
+      <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border: 1px solid #e5e7eb;">
+        <?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($changeRequest->supporting_reasons ?? ''); ?>
+      </div>
+    </div>
+  <?php endif; ?>
+
   <!-- Detailed Participants Comparison -->
   <?php if ($changeRequest->has_internal_participants_changed || $changeRequest->has_participant_days_changed): ?>
     <div class="section-label mb-15" style="margin-top: <?php echo !empty($summaryChanges) ? '20px' : '15px'; ?>;"><strong>Internal Participants - Detailed Comparison</strong></div>
