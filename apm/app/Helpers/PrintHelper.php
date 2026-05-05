@@ -933,22 +933,60 @@ class PrintHelper
     public static function getFinancialApprovers($activityApprovalTrails, $workflowId = 1)
     {
         $financialApprovers = [];
-        
-        // Define the financial approver roles and their expected approval orders
-        $financialRoles = [
-            'Head of Division' => 1,      // Prepared by
-            'Finance Officer' => 5,       // Endorsed by (SFO)
-            'Director Finance' => 6,      // Endorsed by (Director Finance)
-            'Deputy Director General' => 9 // Approved by
+
+        if (is_array($activityApprovalTrails)) {
+            $activityApprovalTrails = collect($activityApprovalTrails);
+        }
+
+        // Prefer role-based resolution from active workflow definitions so prints
+        // work even when approval orders differ across workflows.
+        $roleMatchers = [
+            'Head of Division'        => '/head\s+of\s+division/i',
+            'Finance Officer'         => '/(finance\s+officer|sfo)/i',
+            'Director Finance'        => '/director\s+finance/i',
+            'Deputy Director General' => '/(deputy\s+director\s+general|ddg)/i',
         ];
-        
-        foreach ($financialRoles as $role => $expectedOrder) {
+
+        $definitions = collect();
+        if (!empty($workflowId)) {
+            $definitions = \App\Models\WorkflowDefinition::where('workflow_id', (int) $workflowId)
+                ->where('is_enabled', 1)
+                ->orderBy('approval_order')
+                ->get();
+        }
+
+        foreach ($roleMatchers as $canonicalRole => $pattern) {
+            $matchedDefinition = $definitions->first(function ($definition) use ($pattern) {
+                $role = (string) ($definition->role ?? '');
+                return $role !== '' && preg_match($pattern, $role);
+            });
+
+            if ($matchedDefinition) {
+                $approval = self::getLatestApprovalForOrder($activityApprovalTrails, (int) $matchedDefinition->approval_order);
+                if ($approval) {
+                    $financialApprovers[$canonicalRole] = $approval;
+                }
+            }
+        }
+
+        // Backward-compatible fallback for older workflows that still rely on these orders.
+        $fallbackOrders = [
+            'Head of Division'        => 1, // Prepared by
+            'Finance Officer'         => 5, // Endorsed by (SFO)
+            'Director Finance'        => 6, // Endorsed by (Director Finance)
+            'Deputy Director General' => 9, // Approved by
+        ];
+
+        foreach ($fallbackOrders as $role => $expectedOrder) {
+            if (isset($financialApprovers[$role])) {
+                continue;
+            }
             $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
             if ($approval) {
                 $financialApprovers[$role] = $approval;
             }
         }
-        
+
         return $financialApprovers;
     }
     /**
