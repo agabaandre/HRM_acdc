@@ -956,6 +956,15 @@ class PrintHelper
         ];
 
         $resolvedOrdersByRole = [];
+        $approvedTrails = $activityApprovalTrails
+            ->filter(function ($trail) {
+                if (isset($trail->is_archived) && (int) $trail->is_archived === 1) {
+                    return false;
+                }
+                return strtolower((string) ($trail->action ?? '')) === 'approved';
+            })
+            ->sortByDesc('created_at')
+            ->values();
         $workflowId = (int) $workflowId;
         if ($workflowId > 0) {
             $definitions = \App\Models\WorkflowDefinition::where('workflow_id', $workflowId)
@@ -978,24 +987,43 @@ class PrintHelper
         }
 
         foreach ($fallbackOrders as $role => $fallbackOrder) {
+            // Primary source: actual approved approval_trails role labels
+            // (workflowDefinition/approverRole) for this memo/document.
+            $keywords = $roleKeywords[$role] ?? [];
+            $approvalByRoleName = $approvedTrails->first(function ($trail) use ($keywords) {
+                $trailRole = strtolower((string) (
+                    $trail->workflowDefinition->role
+                    ?? $trail->approverRole->role
+                    ?? ''
+                ));
+                if ($trailRole === '') {
+                    return false;
+                }
+                foreach ($keywords as $keyword) {
+                    if (strpos($trailRole, $keyword) !== false) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            if ($approvalByRoleName) {
+                $financialApprovers[$role] = $approvalByRoleName;
+                continue;
+            }
+
+            // Fallback source: resolve order(s) then pick latest approved trail at those orders.
             $orders = $resolvedOrdersByRole[$role] ?? [];
             if (empty($orders)) {
                 $orders = [$fallbackOrder];
             }
 
-            $approval = $activityApprovalTrails
-                ->filter(function ($trail) use ($orders) {
-                    if (isset($trail->is_archived) && (int) $trail->is_archived === 1) {
-                        return false;
-                    }
-
+            $approval = $approvedTrails
+                ->first(function ($trail) use ($orders) {
                     $trailOrder = (int) ($trail->approval_order ?? 0);
-                    $action = strtolower((string) ($trail->action ?? ''));
-
-                    return in_array($trailOrder, $orders, true) && $action === 'approved';
+                    return in_array($trailOrder, $orders, true);
                 })
-                ->sortByDesc('created_at')
-                ->first();
+            ;
 
             if ($approval) {
                 $financialApprovers[$role] = $approval;
