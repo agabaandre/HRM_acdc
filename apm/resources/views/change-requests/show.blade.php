@@ -302,7 +302,7 @@
 
         @if($changeRequest->supporting_reasons)
             <div class="mt-4">
-                <h6 class="text-success">Request for Approval</h6>
+                <h6 class="text-success">Change Request Details</h6>
                 <div class="bg-light p-3 rounded">
                     {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($changeRequest->supporting_reasons ?? '') !!}
                 </div>
