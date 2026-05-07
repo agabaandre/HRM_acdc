@@ -107,7 +107,7 @@
                 </a>
 
                 @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
-                    <a wire:navigate href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2">
+                    <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2">
                         <i class="fas fa-edit"></i>
                         <span>Edit</span>
                     </a>
@@ -1528,15 +1528,28 @@ function deleteChangeRequest(changeRequestId) {
     formData.append('_token', token);
 
     // Send delete request
-    fetch(`/apm/change-requests/${changeRequestId}`, {
+    const deleteBaseUrl = @json(url('change-requests'));
+    fetch(`${deleteBaseUrl}/${changeRequestId}`, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': token,
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
         },
         body: formData
     })
-    .then(response => response.json())
+    .then(async response => {
+        const text = await response.text();
+        let data = {};
+        try { data = JSON.parse(text); } catch (e) {
+            data = { success: false, msg: text || `Delete failed (${response.status})` };
+        }
+        if (!response.ok) {
+            data.success = false;
+            data.msg = data.msg || `Delete failed (${response.status})`;
+        }
+        return data;
+    })
     .then(data => {
         if (data.success) {
             // Show success message

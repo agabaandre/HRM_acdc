@@ -187,7 +187,7 @@
                                 <i class="bx bx-show me-1"></i>View
                             </a>
                             @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
-                                <a wire:navigate href="{{ route('change-requests.edit', $changeRequest) }}" 
+                                <a href="{{ route('change-requests.edit', $changeRequest) }}" 
                                    class="btn btn-sm btn-outline-warning" 
                                    title="Edit">
                                     <i class="bx bx-edit me-1"></i>Edit
