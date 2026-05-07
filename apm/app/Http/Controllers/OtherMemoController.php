@@ -219,6 +219,7 @@ class OtherMemoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $definition = $this->resolveDefinition($request);
+        $this->assertUploadMemoPdfRulesOnStore($request, $definition);
         $this->assertNoAttachmentsWhenDisabled($request, (bool) $definition->attachments_enabled);
         if ($definition->attachments_enabled) {
             $request->validate([
@@ -229,6 +230,7 @@ class OtherMemoController extends Controller
         $approvers = $this->normalizeApprovers($request);
 
         $attachmentRows = $this->collectUploadedOtherMemoAttachmentsOnCreate($request, $definition);
+        $this->assertUploadMemoStoredAttachmentsAreSinglePdf($attachmentRows, (string) $definition->slug);
 
         $memo = OtherMemo::create([
             'memo_type_slug' => $definition->slug,
@@ -299,6 +301,7 @@ class OtherMemoController extends Controller
             $this->validateOtherMemoAttachmentMultipartRules($request);
             $attachmentForDb = $this->mergeOtherMemoAttachmentsFromRequest($request, $other_memo);
         }
+        $this->assertUploadMemoStoredAttachmentsAreSinglePdf($attachmentForDb, (string) $other_memo->memo_type_slug);
 
         $other_memo->update([
             'payload' => $payload,
@@ -335,6 +338,7 @@ class OtherMemoController extends Controller
         if ($request->boolean('use_stored_memo_content')) {
             $payload = $other_memo->payload ?? [];
             $approvers = $other_memo->approvers_config ?? [];
+            $this->assertUploadMemoStoredAttachmentsAreSinglePdf((array) ($other_memo->attachment ?? []), (string) $other_memo->memo_type_slug);
         } else {
             $payload = $this->validatePayloadForSchema($request, $schema);
             $approvers = $this->normalizeApprovers($request);
@@ -342,6 +346,7 @@ class OtherMemoController extends Controller
                 $this->validateOtherMemoAttachmentMultipartRules($request);
                 $other_memo->attachment = $this->mergeOtherMemoAttachmentsFromRequest($request, $other_memo);
             }
+            $this->assertUploadMemoStoredAttachmentsAreSinglePdf((array) ($other_memo->attachment ?? []), (string) $other_memo->memo_type_slug);
             $defSnap = MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
             $other_memo->attachments_enabled_snapshot = (bool) ($defSnap->attachments_enabled ?? false);
         }
@@ -673,15 +678,76 @@ class OtherMemoController extends Controller
             $sid = (int) ($row['staff_id'] ?? 0);
             $role = trim((string) ($row['role_label'] ?? ''));
             if ($sid > 0) {
+                $box = $row['signature_box'] ?? [];
+                $page = max(1, (int) ($box['page'] ?? 1));
+                $x = (int) ($box['x'] ?? 0);
+                $y = (int) ($box['y'] ?? 0);
+                $w = max(1, (int) ($box['width'] ?? 180));
+                $h = max(1, (int) ($box['height'] ?? 70));
                 $out[] = [
                     'sequence' => $seq++,
                     'staff_id' => $sid,
                     'role_label' => $role !== '' ? $role : 'Approver',
+                    'signature_box' => [
+                        'page' => $page,
+                        'x' => $x,
+                        'y' => $y,
+                        'width' => $w,
+                        'height' => $h,
+                    ],
                 ];
             }
         }
 
         return $out;
+    }
+
+    private function isUploadMemoSlug(string $slug): bool
+    {
+        return strtolower(trim($slug)) === 'upload';
+    }
+
+    private function assertUploadMemoPdfRulesOnStore(Request $request, MemoTypeDefinition $definition): void
+    {
+        if (! $this->isUploadMemoSlug((string) $definition->slug)) {
+            return;
+        }
+
+        $request->validate([
+            'attachments' => 'required|array|size:1',
+            'attachments.0' => 'required|file|mimes:pdf|max:10240',
+            'approvers' => 'required|array|min:1',
+        ], [
+            'attachments.required' => 'Upload memo requires one PDF document.',
+            'attachments.size' => 'Upload memo allows exactly one PDF document.',
+            'attachments.0.mimes' => 'Upload memo allows PDF files only.',
+        ]);
+    }
+
+    /**
+     * @param array<int, array<string,mixed>> $attachments
+     */
+    private function assertUploadMemoStoredAttachmentsAreSinglePdf(array $attachments, string $memoTypeSlug): void
+    {
+        if (! $this->isUploadMemoSlug($memoTypeSlug)) {
+            return;
+        }
+
+        if (count($attachments) !== 1) {
+            throw ValidationException::withMessages([
+                'attachments' => 'Upload memo must keep exactly one PDF document.',
+            ]);
+        }
+
+        $row = $attachments[0] ?? [];
+        $name = (string) ($row['original_name'] ?? $row['filename'] ?? '');
+        $path = (string) ($row['path'] ?? '');
+        $ext = strtolower(pathinfo($name !== '' ? $name : $path, PATHINFO_EXTENSION));
+        if ($ext !== 'pdf') {
+            throw ValidationException::withMessages([
+                'attachments' => 'Upload memo supports PDF files only.',
+            ]);
+        }
     }
 
     private function definitionForNumbering(OtherMemo $memo): MemoTypeDefinition
