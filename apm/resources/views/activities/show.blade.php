@@ -587,7 +587,7 @@
                     
                     {{-- Change Request Button --}}
                     @if($activity->overall_status === 'approved')
-                        <a wire:navigate href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}?change_request=1" 
+                        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}?change_request=1" 
                            class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="fas fa-edit"></i>
                             <span>Change Request</span>

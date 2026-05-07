@@ -14,11 +14,11 @@
                 <i class="fas fa-calendar-plus me-2"></i> Activity Details
             </h5>
             @if($activity->is_single_memo)
-                <a wire:navigate href="{{ route('activities.single-memos.show', $activity) }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ route('activities.single-memos.show', $activity) }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bx bx-arrow-back"></i> Back to Single Memo
                 </a>
             @else
-                <a wire:navigate href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bx bx-arrow-back"></i> Back to Matrix
                 </a>
             @endif
