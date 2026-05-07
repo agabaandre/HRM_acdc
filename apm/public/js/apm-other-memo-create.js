@@ -138,7 +138,8 @@
         var fieldsCard = document.getElementById('memo-fields-card');
         var approversCard = document.getElementById('memo-approvers-card');
         var attCard = document.getElementById('memo-attachments-card');
-        if (fieldsCard) fieldsCard.classList.toggle('d-none', !t);
+        var uploadOnly = isUploadType(slug);
+        if (fieldsCard) fieldsCard.classList.toggle('d-none', !t || uploadOnly);
         if (approversCard) approversCard.classList.toggle('d-none', !t);
         if (attCard) attCard.classList.toggle('d-none', !t || !t.attachments_enabled);
 

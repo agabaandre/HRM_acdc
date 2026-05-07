@@ -283,7 +283,12 @@
                         </div>
                         <div class="card-body pt-0">
                             @if ($uploadPdfAttachment)
-                                @php $uploadPdfUrl = url('storage/' . ($uploadPdfAttachment['path'] ?? '')); @endphp
+                                @php
+                                    $uploadAttachmentIndex = collect($memoAttachmentsShow)->search(function ($row) use ($uploadPdfAttachment) {
+                                        return ($row['path'] ?? null) === ($uploadPdfAttachment['path'] ?? null);
+                                    });
+                                    $uploadPdfUrl = route('other-memos.attachments.preview', [$memo, (int) $uploadAttachmentIndex]);
+                                @endphp
                                 <div class="ratio ratio-16x9 border rounded overflow-hidden">
                                     <iframe src="{{ $uploadPdfUrl }}" title="Uploaded PDF" style="width:100%;height:100%;border:0;"></iframe>
                                 </div>
@@ -297,10 +302,12 @@
                     </div>
                 @endif
 
-                @include('other-memos.partials.show-content-cards', [
-                    'schema' => $memo->fields_schema_snapshot ?? [],
-                    'values' => $memo->payload ?? [],
-                ])
+                @if (! $isUploadMemoType)
+                    @include('other-memos.partials.show-content-cards', [
+                        'schema' => $memo->fields_schema_snapshot ?? [],
+                        'values' => $memo->payload ?? [],
+                    ])
+                @endif
 
                 @if (count($memoAttachmentsShow) > 0)
                     <div class="card border-0 shadow-sm mb-4">
@@ -328,7 +335,8 @@
                                                 $originalName = $attachment['original_name'] ?? ($attachment['filename'] ?? ($attachment['name'] ?? 'Unknown'));
                                                 $filePath = $attachment['path'] ?? ($attachment['file_path'] ?? '');
                                                 $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
-                                                $fileUrl = $filePath ? url('storage/' . $filePath) : '#';
+                                                $previewUrl = $filePath ? route('other-memos.attachments.preview', [$memo, $index]) : '#';
+                                                $downloadUrl = $filePath ? route('other-memos.attachments.download', [$memo, $index]) : '#';
                                                 $isOffice = in_array($ext, ['ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'], true);
                                             @endphp
                                             <tr>
@@ -341,12 +349,12 @@
                                                     @if ($filePath)
                                                         <button type="button"
                                                             class="btn btn-sm btn-success preview-other-memo-attachment"
-                                                            data-file-url="{{ $fileUrl }}"
+                                                            data-file-url="{{ $previewUrl }}"
                                                             data-file-ext="{{ $ext }}"
                                                             data-file-office="{{ $isOffice ? '1' : '0' }}">
                                                             <i class="bx bx-show"></i> Preview
                                                         </button>
-                                                        <a href="{{ $fileUrl }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                        <a href="{{ $downloadUrl }}" class="btn btn-sm btn-outline-primary">
                                                             <i class="bx bx-download"></i> Download
                                                         </a>
                                                     @else

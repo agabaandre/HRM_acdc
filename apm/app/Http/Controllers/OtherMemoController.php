@@ -270,6 +270,43 @@ class OtherMemoController extends Controller
         ]);
     }
 
+    public function attachmentPreview(OtherMemo $other_memo, int $index): Response
+    {
+        $this->authorizeView($other_memo);
+        $attachment = $this->memoAttachmentAtIndex($other_memo, $index);
+        $path = (string) ($attachment['path'] ?? '');
+        if ($path === '' || ! Storage::disk('public')->exists($path)) {
+            abort(404, 'Attachment not found.');
+        }
+
+        $absolute = Storage::disk('public')->path($path);
+        $name = (string) ($attachment['original_name'] ?? basename($path));
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        if ($ext !== 'pdf') {
+            abort(415, 'Only PDF preview is supported.');
+        }
+
+        return response()->file($absolute, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.basename($name).'"',
+        ]);
+    }
+
+    public function attachmentDownload(OtherMemo $other_memo, int $index): Response
+    {
+        $this->authorizeView($other_memo);
+        $attachment = $this->memoAttachmentAtIndex($other_memo, $index);
+        $path = (string) ($attachment['path'] ?? '');
+        if ($path === '' || ! Storage::disk('public')->exists($path)) {
+            abort(404, 'Attachment not found.');
+        }
+
+        $absolute = Storage::disk('public')->path($path);
+        $name = (string) ($attachment['original_name'] ?? basename($path));
+
+        return response()->download($absolute, basename($name));
+    }
+
     public function edit(OtherMemo $other_memo): View|RedirectResponse
     {
         if (! $this->canEdit($other_memo)) {
@@ -1089,6 +1126,16 @@ class OtherMemoController extends Controller
     {
         return $memo->overall_status === OtherMemo::STATUS_APPROVED
             && $memo->staff_id === $this->staffId();
+    }
+
+    private function memoAttachmentAtIndex(OtherMemo $memo, int $index): array
+    {
+        $rows = is_array($memo->attachment) ? array_values($memo->attachment) : [];
+        if ($index < 0 || !isset($rows[$index]) || !is_array($rows[$index])) {
+            abort(404, 'Attachment not found.');
+        }
+
+        return $rows[$index];
     }
 
     public function archive(OtherMemo $other_memo): RedirectResponse
