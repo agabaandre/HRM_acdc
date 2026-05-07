@@ -542,6 +542,38 @@ $(document).ready(function () {
         return Math.max(Math.ceil((end - start) / msPerDay) + 1, 1);
     }
 
+    function syncParticipantsWithMainActivityDates() {
+        const mainStart = $('#date_from').val();
+        const mainEnd = $('#date_to').val();
+        if (!mainStart || !mainEnd) return;
+
+        $('#participantsTableBody tr[data-participant-id]').each(function () {
+            const row = $(this);
+            const $start = row.find('.participant-start');
+            const $end = row.find('.participant-end');
+            const $days = row.find('.participant-days');
+
+            if (!$start.length || !$end.length || !$days.length) return;
+
+            const startPicker = $start[0]._flatpickr;
+            const endPicker = $end[0]._flatpickr;
+
+            if (startPicker) {
+                startPicker.setDate(mainStart, false);
+            } else {
+                $start.val(mainStart);
+            }
+
+            if (endPicker) {
+                endPicker.setDate(mainEnd, false);
+            } else {
+                $end.val(mainEnd);
+            }
+
+            $days.val(getActivityDays(mainStart, mainEnd));
+        });
+    }
+
     function appendToInternalParticipantsTable(staffList, internationalTravelMap) {
         internationalTravelMap = internationalTravelMap || {};
         const mainStart = $('#date_from').val();
@@ -685,6 +717,11 @@ $(document).ready(function () {
     // Update total participants on any input change
     $(document).on('input change', '#participantsTableBody input, #internal_participants, .staff-names, #total_external_participants', function () {
         updateTotalParticipants();
+    });
+
+    // Keep participant date ranges and day counts aligned with main activity range.
+    $('#date_from, #date_to').on('change input', function () {
+        syncParticipantsWithMainActivityDates();
     });
 
     // Remove participant event handler
@@ -1286,7 +1323,12 @@ $(document).ready(function () {
     // Initialize date pickers
     $('.datepicker').flatpickr({
         dateFormat: 'Y-m-d',
-        allowInput: true
+        allowInput: true,
+        onChange: function () {
+            if (this.input && (this.input.id === 'date_from' || this.input.id === 'date_to')) {
+                syncParticipantsWithMainActivityDates();
+            }
+        }
     });
 
     // Initialize existing participants table (second init point): use same map so display matches DB (1=checked, 0=unchecked)
@@ -1304,6 +1346,9 @@ $(document).ready(function () {
         $('#internal_participants').removeData('internationalTravelMap');
         setTimeout(applyInternationalTravelFromExistingParticipants, 0);
     }
+
+    // Ensure day values are correct on initial render in edit/change-request flows.
+    syncParticipantsWithMainActivityDates();
 
     refreshActivitiesSelect2Fields();
     setTimeout(refreshActivitiesSelect2Fields, 0);
