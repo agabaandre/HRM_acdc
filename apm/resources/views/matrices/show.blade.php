@@ -1,5 +1,20 @@
 @extends('layouts.app')
 
+@php
+    $matrix->loadMissing('division');
+    $matrixQmStaffId = (int) ($matrix->focal_person_id ?? 0);
+    $currentStaffIdForQm = (int) (user_session('staff_id') ?? 0);
+    $isMatrixQm = $matrixQmStaffId > 0 && $currentStaffIdForQm === $matrixQmStaffId;
+    $currentDivisionId = (int) (user_session('division_id') ?? 0);
+    $canDivisionAddSingleMemo = $currentDivisionId > 0 && $currentDivisionId === (int) $matrix->division_id;
+    $isStrictAdmin = user_session('role') == 10;
+    $effectiveHodId = effective_division_head_staff_id($matrix->division);
+    $isDivisionHod = $effectiveHodId !== null && (int) $effectiveHodId === $currentStaffIdForQm;
+    $matrixRegularActivityCount = $matrix->activities()->whereRaw('COALESCE(is_single_memo, 0) = 0')->count();
+    $canEnvelopeOnHoldByStatus = in_array($matrix->overall_status, ['draft', 'returned'], true);
+    $canHodEnvelopeOnHold = $isDivisionHod && $canEnvelopeOnHoldByStatus && $matrixRegularActivityCount === 0;
+@endphp
+
 @section('title', 'View Matrix')
 
 @section('styles')
@@ -113,24 +128,22 @@
 @section('header-actions')
 <div class="d-flex gap-2">
     
-        @if( $matrix->overall_status=='draft' || $matrix->overall_status=='returned')
+        @if($matrix->overall_status === 'draft')
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Activity
         </a>
         @endif
 
-        @php
-            $matrixQmStaffId = (int) ($matrix->focal_person_id ?? 0);
-            $currentStaffIdForQm = (int) (user_session('staff_id') ?? 0);
-            $isMatrixQm = $matrixQmStaffId > 0 && $currentStaffIdForQm === $matrixQmStaffId;
-            $currentDivisionId = (int) (user_session('division_id') ?? 0);
-            $canDivisionAddSingleMemo = $currentDivisionId > 0 && $currentDivisionId === (int) $matrix->division_id;
-            $isStrictAdmin = user_session('role') == 10;
-        @endphp
-        @if($canDivisionAddSingleMemo && ($matrix->overall_status=='approved'|| $matrix->overall_status=='pending'))
+        @if($canDivisionAddSingleMemo && in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true))
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Single Memo 
         </a>
+        @endif
+
+        @if($canHodEnvelopeOnHold)
+            <button type="button" class="btn btn-outline-info btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#envelopeOnHoldModal">
+                <i class="bx bx-pause-circle me-1"></i> Envelope (on hold)
+            </button>
         @endif
 
         @if(still_with_creator($matrix))
@@ -165,6 +178,18 @@
 @endsection
 
 @section('content')
+@if($matrix->overall_status === 'onhold')
+    <div class="alert alert-info border-0 shadow-sm mx-3 mt-3 mb-0" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bx bx-envelope fs-4"></i>
+            <div>
+                <strong>Envelope (on hold)</strong>
+                <p class="mb-0 small">This matrix is held open for division single memos only. Regular matrix activities are not used in this mode.</p>
+            </div>
+        </div>
+    </div>
+@endif
+
 @if(($isStrictAdmin ?? false) && ($matrix->overall_status ?? '') !== 'archived')
     <div class="modal fade" id="archiveMatrixModal" tabindex="-1" aria-labelledby="archiveMatrixModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -211,6 +236,34 @@
         </div>
     </div>
 @endif
+
+@if($canHodEnvelopeOnHold)
+    <div class="modal fade" id="envelopeOnHoldModal" tabindex="-1" aria-labelledby="envelopeOnHoldModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="envelopeOnHoldModalLabel">Envelope (on hold)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{{ route('matrices.envelope-on-hold', $matrix) }}">
+                    @csrf
+                    <div class="modal-body">
+                        <p class="mb-2">Mark this matrix as an envelope on hold when it is <strong>draft or returned</strong>, you are the Head of Division (or active Head OIC), and it has <strong>no regular matrix activities</strong> (single memos do not count). The division can then add <strong>single memos</strong>; regular activities stay disabled in this mode.</p>
+                        <div class="mb-0">
+                            <label for="envelopeOnHoldComment" class="form-label">Comment (optional)</label>
+                            <textarea class="form-control" id="envelopeOnHoldComment" name="comment" rows="3" maxlength="2000" placeholder="e.g. Awaiting division submissions via single memos…"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-info text-dark"><i class="bx bx-pause-circle me-1"></i> Confirm on hold</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endif
+
 <div class="matrix-show-page" id="matrix-show-root" data-matrix-id="{{ $matrix->id }}" data-activities-url="{{ route('matrices.activities-for-approver', $matrix) }}" data-single-memos-url="{{ route('matrices.single-memos-for-approver', $matrix) }}" data-budgets-url="{{ route('matrices.budgets', $matrix) }}">
 @include('matrices.partials.matrix-metadata')
    
@@ -1103,7 +1156,7 @@ function isLevel5Approver() {
 
 // Check if delete button should be shown
 function canShowDeleteButton() {
-    return {{ ($matrix->overall_status == 'draft' || $matrix->overall_status == 'returned') ? 'true' : 'false' }};
+    return {{ ($matrix->overall_status == 'draft' || $matrix->overall_status == 'returned' || $matrix->overall_status == 'onhold') ? 'true' : 'false' }};
 }
 
 // Check if copy button should be shown (draft or returned at approval_order 0 or 1)

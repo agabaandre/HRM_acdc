@@ -220,6 +220,7 @@ trait HasApprovalWorkflow
             'approved' => 'bg-success',
             'rejected' => 'bg-danger',
             'returned' => 'bg-info',
+            'onhold' => 'bg-info',
         ];
 
         return $statusClasses[$this->overall_status] ?? 'bg-secondary';

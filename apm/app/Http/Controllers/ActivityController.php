@@ -98,8 +98,8 @@ class ActivityController extends Controller
         // Eager load division
         $matrix->load('division');
 
-        // Single-memo creation for in-workflow/finalized matrices is division-wide.
-        if (in_array($matrix->overall_status, ['approved', 'pending'], true)) {
+        // Single-memo creation for in-workflow / returned / on-hold envelope / finalized matrices is division-wide.
+        if (in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true)) {
             $sid = (int) (user_session('staff_id') ?? 0);
             $userDivisionId = (int) (user_session('division_id') ?? 0);
             if ($sid === 0 || $userDivisionId === 0 || $userDivisionId !== (int) $matrix->division_id) {
@@ -181,7 +181,7 @@ class ActivityController extends Controller
     
         return DB::transaction(function () use ($request, $matrix, $userStaffId) {
             try {
-                if (in_array($matrix->overall_status, ['approved', 'pending'], true)) {
+                if (in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true)) {
                     $sid = (int) (user_session('staff_id') ?? 0);
                     $userDivisionId = (int) (user_session('division_id') ?? 0);
                     if ($sid === 0 || $userDivisionId === 0 || $userDivisionId !== (int) $matrix->division_id) {
@@ -193,6 +193,22 @@ class ActivityController extends Controller
                         }
                         abort(403, 'Only staff from this matrix division can add single memos for this matrix.');
                     }
+                }
+
+                $isSingleMemoFlag = (int) $request->input('is_single_memo', 0);
+                if (in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true) && $isSingleMemoFlag !== 1) {
+                    $msg = 'This matrix only allows creating single memos at this stage.';
+                    if ($request->ajax()) {
+                        return response()->json(['success' => false, 'msg' => $msg], 422);
+                    }
+                    return redirect()->back()->withInput()->with(['msg' => $msg, 'type' => 'error']);
+                }
+                if ($matrix->overall_status === 'draft' && $isSingleMemoFlag !== 0) {
+                    $msg = 'Use Add Single Memo from a matrix that is pending, approved, returned, or on hold (envelope).';
+                    if ($request->ajax()) {
+                        return response()->json(['success' => false, 'msg' => $msg], 422);
+                    }
+                    return redirect()->back()->withInput()->with(['msg' => $msg, 'type' => 'error']);
                 }
 
                 // Validate required fields
@@ -1890,7 +1906,7 @@ class ActivityController extends Controller
         $years = range($currentYear, $minYear);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
 
-        // "Create new" single memo: show for current division matrix in pending/approved status.
+        // "Create new" single memo: show for current division matrix in pending/approved/returned/onhold status.
         $createSingleMemoMatrix = null;
         $canCreateSingleMemo = false;
         if ($userDivisionId && $currentStaffId) {
@@ -1899,7 +1915,7 @@ class ActivityController extends Controller
                 ->where('year', (int) $selectedYear)
                 ->where('quarter', $selectedQuarter)
                 ->first();
-            if ($createSingleMemoMatrix && in_array($createSingleMemoMatrix->overall_status, ['approved', 'pending'], true)) {
+            if ($createSingleMemoMatrix && in_array($createSingleMemoMatrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true)) {
                 $canCreateSingleMemo = (int) $createSingleMemoMatrix->division_id === (int) $userDivisionId;
             }
         }

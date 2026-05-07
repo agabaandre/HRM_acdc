@@ -80,9 +80,19 @@ if (! function_exists('user_session')) {
             }
 
             // If matrix is in draft or returned
-            if (! in_array($matrix->overall_status, ['draft', 'returned'])) {
+            if (! in_array($matrix->overall_status, ['draft', 'returned', 'onhold'])) {
                 // =dd("here");
                 return false;
+            }
+
+            // Envelope (on hold): same edit access as draft for creator / focal person
+            if ($matrix->overall_status === 'onhold') {
+                $allowedIds = [$matrix->staff_id, $matrix->focal_person_id];
+                if ($activity && isset($activity->responsible_person_id)) {
+                    $allowedIds[] = $activity->responsible_person_id;
+                }
+
+                return in_array($staffId, $allowedIds);
             }
 
             // If matrix is in draft, allow staff, focal person, or responsible staff to edit
@@ -141,6 +151,39 @@ if (! function_exists('user_session')) {
             // even when there are no approvable activities in the current stack.
             return ((int) ($divisionHeadId ?? 0) === (int) ($currentStaffId ?? 0))
                 && $isReturnedAtHodLevel;
+        }
+    }
+
+    if (! function_exists('effective_division_head_staff_id')) {
+        /**
+         * Staff ID who acts as Head of Division for workflow purposes:
+         * active head OIC (within date window) when set, otherwise division_head.
+         * Mirrors HasApprovalWorkflow / MatrixController division approver resolution.
+         */
+        function effective_division_head_staff_id(?Division $division): ?int
+        {
+            if (! $division) {
+                return null;
+            }
+
+            $today = Carbon::today();
+
+            if ($division->head_oic_id) {
+                $isOicActive = true;
+                if ($division->head_oic_start_date) {
+                    $isOicActive = $isOicActive && $division->head_oic_start_date <= $today;
+                }
+                if ($division->head_oic_end_date) {
+                    $isOicActive = $isOicActive && $division->head_oic_end_date >= $today;
+                }
+                if ($isOicActive) {
+                    return (int) $division->head_oic_id;
+                }
+            }
+
+            $head = $division->division_head ?? null;
+
+            return $head !== null && $head !== '' ? (int) $head : null;
         }
     }
 
@@ -1379,7 +1422,7 @@ if (! function_exists('user_session')) {
         {
             $user = session('user', []);
 
-            if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status, ['approved', 'draft'])) {
+            if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status, ['approved', 'draft', 'onhold'])) {
                 return false;
             }
 
