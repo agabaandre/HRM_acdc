@@ -84,7 +84,7 @@
                                     <i class="bx bx-show me-1"></i>View
                                 </a>
                                 @if(can_edit_memo($memo))
-                                    <a wire:navigate href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
+                                    <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
                                        class="btn btn-sm btn-outline-warning" title="Edit">
                                         <i class="bx bx-edit me-1"></i>Edit
                                     </a>
