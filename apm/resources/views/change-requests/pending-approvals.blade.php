@@ -198,7 +198,7 @@
                                                             <i class="bx bx-show"></i>
                                                         </a>
                                                         @if($changeRequest->overall_status === 'draft' && $changeRequest->staff_id === user_session('staff_id'))
-                                                            <a wire:navigate href="{{ route('change-requests.edit', $changeRequest) }}" 
+                                                            <a href="{{ route('change-requests.edit', $changeRequest) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                                                 <i class="bx bx-edit"></i>
                                                             </a>
