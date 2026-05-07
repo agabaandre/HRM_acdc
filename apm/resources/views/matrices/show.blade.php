@@ -1,7 +1,6 @@
 @extends('layouts.app')
 
 @php
-    $matrix->loadMissing('division');
     $matrixQmStaffId = (int) ($matrix->focal_person_id ?? 0);
     $currentStaffIdForQm = (int) (user_session('staff_id') ?? 0);
     $isMatrixQm = $matrixQmStaffId > 0 && $currentStaffIdForQm === $matrixQmStaffId;
@@ -10,9 +9,9 @@
     $isStrictAdmin = user_session('role') == 10;
     $effectiveHodId = effective_division_head_staff_id($matrix->division);
     $isDivisionHod = $effectiveHodId !== null && (int) $effectiveHodId === $currentStaffIdForQm;
-    $matrixRegularActivityCount = $matrix->activities()->whereRaw('COALESCE(is_single_memo, 0) = 0')->count();
-    $canEnvelopeOnHoldByStatus = in_array($matrix->overall_status, ['draft', 'returned'], true);
-    $canHodEnvelopeOnHold = $isDivisionHod && $canEnvelopeOnHoldByStatus && $matrixRegularActivityCount === 0;
+    $matrixRegularActivityCount = $matrix->activities()->where('is_single_memo', 0)->count();
+    $canEnvelopeOnHoldStatus = in_array($matrix->overall_status, ['draft', 'returned'], true);
+    $canEnvelopeOnHold = ($isDivisionHod || $isStrictAdmin) && $canEnvelopeOnHoldStatus && $matrixRegularActivityCount === 0;
 @endphp
 
 @section('title', 'View Matrix')
@@ -140,7 +139,7 @@
         </a>
         @endif
 
-        @if($canHodEnvelopeOnHold)
+        @if($canEnvelopeOnHold)
             <button type="button" class="btn btn-outline-info btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#envelopeOnHoldModal">
                 <i class="bx bx-pause-circle me-1"></i> Envelope (on hold)
             </button>
@@ -237,7 +236,7 @@
     </div>
 @endif
 
-@if($canHodEnvelopeOnHold)
+@if($canEnvelopeOnHold)
     <div class="modal fade" id="envelopeOnHoldModal" tabindex="-1" aria-labelledby="envelopeOnHoldModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -248,7 +247,7 @@
                 <form method="POST" action="{{ route('matrices.envelope-on-hold', $matrix) }}">
                     @csrf
                     <div class="modal-body">
-                        <p class="mb-2">Mark this matrix as an envelope on hold when it is <strong>draft or returned</strong>, you are the Head of Division (or active Head OIC), and it has <strong>no regular matrix activities</strong> (single memos do not count). The division can then add <strong>single memos</strong>; regular activities stay disabled in this mode.</p>
+                        <p class="mb-2">Mark this matrix as an envelope on hold when it has <strong>no regular activities</strong> (single memos are allowed). The division can then add <strong>single memos</strong> only; regular matrix activities stay disabled until you use a normal draft matrix.</p>
                         <div class="mb-0">
                             <label for="envelopeOnHoldComment" class="form-label">Comment (optional)</label>
                             <textarea class="form-control" id="envelopeOnHoldComment" name="comment" rows="3" maxlength="2000" placeholder="e.g. Awaiting division submissions via single memos…"></textarea>

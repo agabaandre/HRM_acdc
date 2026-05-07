@@ -3172,7 +3172,7 @@ class MatrixController extends Controller
     }
 
     /**
-     * HOD: mark a draft or returned matrix with no regular activities as an envelope (on hold) for single-memo-only intake.
+     * HOD or system admin: mark a matrix with no regular activities as an envelope (on hold) for single-memo-only intake.
      */
     public function envelopeOnHold(Request $request, Matrix $matrix): RedirectResponse
     {
@@ -3183,12 +3183,17 @@ class MatrixController extends Controller
                 ->with('error', 'Matrix division could not be loaded.');
         }
 
-        $hodId = effective_division_head_staff_id($matrix->division);
-        $currentId = (int) (user_session('staff_id') ?? 0);
+        $user = session('user', []);
+        $userRole = $user['role'] ?? $user['user_role'] ?? null;
+        $isStrictAdmin = ((int) $userRole) === 10;
 
-        if ($hodId === null || $currentId !== (int) $hodId) {
+        $effectiveHodId = effective_division_head_staff_id($matrix->division);
+        $currentId = (int) (user_session('staff_id') ?? 0);
+        $isEffectiveHod = $effectiveHodId && $currentId === (int) $effectiveHodId;
+
+        if (! $isStrictAdmin && ! $isEffectiveHod) {
             return redirect()->route('matrices.show', $matrix)
-                ->with('error', 'Only the Head of Division (or active Head OIC) can place this matrix on hold as an envelope.');
+                ->with('error', 'Only the Head of Division or a system administrator can place this matrix on hold as an envelope.');
         }
 
         if (! in_array($matrix->overall_status, ['draft', 'returned'], true)) {
@@ -3196,9 +3201,9 @@ class MatrixController extends Controller
                 ->with('error', 'Only draft or returned matrices can be converted to an envelope (on hold).');
         }
 
-        if ($matrix->activities()->whereRaw('COALESCE(is_single_memo, 0) = 0')->count() > 0) {
+        if ($matrix->activities()->where('is_single_memo', 0)->count() > 0) {
             return redirect()->route('matrices.show', $matrix)
-                ->with('error', 'This action is only available when the matrix has no regular (non–single-memo) activities.');
+                ->with('error', 'This action is only available when the matrix has no regular activities (single memos may exist).');
         }
 
         $validated = $request->validate([
