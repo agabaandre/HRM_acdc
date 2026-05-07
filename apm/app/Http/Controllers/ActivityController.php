@@ -1785,8 +1785,7 @@ class ActivityController extends Controller
             'fundType',
             'requestType',
         ])
-            ->where('is_single_memo', true)
-            ->latest();
+            ->where('is_single_memo', true);
 
         // Apply common filters
         if ($request->has('staff_id') && $request->staff_id) {
@@ -1831,8 +1830,11 @@ class ActivityController extends Controller
         // Show all single memos regardless of status
         // Removed draft filtering to show all single memos
         
-        // Order by latest entries first
-        $myMemos = $myMemosQuery->orderBy('activities.created_at', 'desc')->paginate(10);
+        // Deterministic newest-first ordering for stable pagination.
+        $myMemos = $myMemosQuery
+            ->orderBy('activities.created_at', 'desc')
+            ->orderBy('activities.id', 'desc')
+            ->paginate(10);
 
         // Query for "All Single Memos" tab - only if user has permission
         $allMemos = null;
@@ -1842,8 +1844,10 @@ class ActivityController extends Controller
             // Show all single memos regardless of status
             // Removed draft filtering to show all single memos
             
-            // Order by latest entries first
-            $allMemos = $allMemosQuery->orderBy('activities.created_at', 'desc')->paginate(10);
+            $allMemos = $allMemosQuery
+                ->orderBy('activities.created_at', 'desc')
+                ->orderBy('activities.id', 'desc')
+                ->paginate(10);
         }
         
         // Query for "Shared Single Memos" tab - single memos from other divisions where user is involved
@@ -1866,8 +1870,10 @@ class ActivityController extends Controller
         }
         $sharedMemosQuery->where('activities.overall_status', '!=', 'archived');
         
-        // Order by latest entries first
-        $sharedMemos = $sharedMemosQuery->orderBy('activities.created_at', 'desc')->paginate(10);
+        $sharedMemos = $sharedMemosQuery
+            ->orderBy('activities.created_at', 'desc')
+            ->orderBy('activities.id', 'desc')
+            ->paginate(10);
         
         $staff = Staff::active()->get();
     
