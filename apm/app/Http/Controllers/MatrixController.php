@@ -1433,11 +1433,11 @@ class MatrixController extends Controller
      */
     public function edit(Matrix $matrix): View
     {
-        // Only allow editing if matrix is in draft or returned status
-        if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
+        // Only allow editing if matrix is in draft, returned, or envelope (on hold) status
+        if (! in_array($matrix->overall_status, ['draft', 'returned', 'onhold'], true)) {
             return redirect()
                 ->route('matrices.index')
-                ->with('error', 'Only draft or returned matrices can be edited.');
+                ->with('error', 'Only draft, returned, or on-hold matrices can be edited.');
         }
         $divisions = Division::all();
         $staff = Staff::active()->get();
@@ -1536,11 +1536,11 @@ class MatrixController extends Controller
      */
     public function update(Request $request, Matrix $matrix): RedirectResponse
     {
-        // Only allow updating if matrix is in draft or returned status
-        if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
+        // Only allow updating if matrix is in draft, returned, or envelope (on hold) status
+        if (! in_array($matrix->overall_status, ['draft', 'returned', 'onhold'], true)) {
             return redirect()
                 ->route('matrices.index')
-                ->with('error', 'Only draft or returned matrices can be updated.');
+                ->with('error', 'Only draft, returned, or on-hold matrices can be updated.');
         }
 
         $isAdmin = session('user.user_role') == 10;
@@ -1671,11 +1671,11 @@ class MatrixController extends Controller
      */
     public function destroy(Matrix $matrix): RedirectResponse
     {
-        // Only allow deletion if matrix is in draft or returned status
-        if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
+        // Only allow deletion if matrix is in draft, returned, or envelope (on hold) status
+        if (! in_array($matrix->overall_status, ['draft', 'returned', 'onhold'], true)) {
             return redirect()
                 ->route('matrices.index')
-                ->with('error', 'Only draft or returned matrices can be deleted.');
+                ->with('error', 'Only draft, returned, or on-hold matrices can be deleted.');
         }
 
         $matrix->delete();
@@ -3171,6 +3171,70 @@ class MatrixController extends Controller
         return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
     }
 
+    /**
+     * HOD: mark a draft or returned matrix with no regular activities as an envelope (on hold) for single-memo-only intake.
+     */
+    public function envelopeOnHold(Request $request, Matrix $matrix): RedirectResponse
+    {
+        $matrix->loadMissing('division');
+
+        if (! $matrix->division) {
+            return redirect()->route('matrices.index')
+                ->with('error', 'Matrix division could not be loaded.');
+        }
+
+        $hodId = effective_division_head_staff_id($matrix->division);
+        $currentId = (int) (user_session('staff_id') ?? 0);
+
+        if ($hodId === null || $currentId !== (int) $hodId) {
+            return redirect()->route('matrices.show', $matrix)
+                ->with('error', 'Only the Head of Division (or active Head OIC) can place this matrix on hold as an envelope.');
+        }
+
+        if (! in_array($matrix->overall_status, ['draft', 'returned'], true)) {
+            return redirect()->route('matrices.show', $matrix)
+                ->with('error', 'Only draft or returned matrices can be converted to an envelope (on hold).');
+        }
+
+        if ($matrix->activities()->whereRaw('COALESCE(is_single_memo, 0) = 0')->count() > 0) {
+            return redirect()->route('matrices.show', $matrix)
+                ->with('error', 'This action is only available when the matrix has no regular (non–single-memo) activities.');
+        }
+
+        $validated = $request->validate([
+            'comment' => 'nullable|string|max:2000',
+        ]);
+
+        $remark = trim((string) ($validated['comment'] ?? ''));
+        if ($remark === '') {
+            $remark = 'Matrix marked as envelope (on hold). Division staff may add single memos only.';
+        }
+
+        DB::transaction(function () use ($matrix, $remark): void {
+            $matrix->previous_overall_status = $matrix->overall_status;
+            $matrix->overall_status = 'onhold';
+            $matrix->forward_workflow_id = null;
+            $matrix->approval_level = 0;
+            $matrix->next_approval_level = null;
+            $matrix->save();
+
+            $trail = new ApprovalTrail;
+            $trail->remarks = $remark;
+            $trail->action = 'envelope_onhold';
+            $trail->model_id = $matrix->id;
+            $trail->model_type = Matrix::class;
+            $trail->matrix_id = $matrix->id;
+            $trail->forward_workflow_id = null;
+            $trail->approval_order = 0;
+            $trail->staff_id = user_session('staff_id');
+            $trail->is_archived = 0;
+            $trail->save();
+        });
+
+        return redirect()->route('matrices.show', $matrix)
+            ->with('success', 'Matrix is now on hold as an envelope. Staff in your division can add single memos.');
+    }
+
     public function archive(Matrix $matrix): RedirectResponse
     {
         $user = session('user', []);
@@ -3226,6 +3290,9 @@ class MatrixController extends Controller
     private function determineStatusBeforeArchive(Matrix $matrix): string
     {
         $current = (string) ($matrix->overall_status ?? 'returned');
+        if ($current === 'onhold') {
+            return 'onhold';
+        }
         if ($current === 'approved') {
             return 'approved';
         }

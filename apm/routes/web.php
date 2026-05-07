@@ -349,6 +349,7 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     Route::get('/matrices/{matrix}/status', [MatrixController::class, 'status'])->name('matrices.view-status');
     Route::post('/matrices/{matrix}/archive', [MatrixController::class, 'archive'])->name('matrices.archive');
     Route::post('/matrices/{matrix}/unarchive', [MatrixController::class, 'unarchive'])->name('matrices.unarchive');
+    Route::post('/matrices/{matrix}/envelope-on-hold', [MatrixController::class, 'envelopeOnHold'])->name('matrices.envelope-on-hold');
     
     // CSV Export Routes
     Route::get('/matrices/export/csv', [MatrixController::class, 'exportCsv'])->name('matrices.export.csv');
