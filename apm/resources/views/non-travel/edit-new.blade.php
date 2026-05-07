@@ -51,47 +51,10 @@
             </h5>
         </div>
         <div class="card-body p-4">
-            <form action="{{ request('change_request') ? route('change-requests.store') : route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
+            <form action="{{ route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
                 @csrf
-                @if(request('change_request'))
-                    @method('POST')
-                    <input type="hidden" name="parent_memo_id" value="{{ $nonTravel->id }}">
-                    <input type="hidden" name="parent_memo_model" value="App\Models\NonTravelMemo">
-                    @if(request('change_request_id'))
-                        <input type="hidden" name="change_request_id" value="{{ request('change_request_id') }}">
-                    @endif
-                @else
-                    @method('PUT')
-                @endif
+                @method('PUT')
                 <input type="hidden" name="_token" value="{{ csrf_token() }}">
-
-                @if(request('change_request'))
-                    @if(request('change_request_id'))
-                        <div class="alert alert-warning d-flex align-items-start mb-4" role="alert">
-                            <i class="fas fa-info-circle me-2 mt-1"></i>
-                            <div>
-                                <strong>Note:</strong> You are editing a <strong>saved change request draft</strong>
-                                @if(!empty($changeRequestForEdit?->document_number))
-                                    (<span class="fw-semibold">{{ $changeRequestForEdit->document_number }}</span>)
-                                @endif
-                                . Fields below reflect this draft; save to update it.
-                            </div>
-                        </div>
-                    @endif
-
-                    <div class="card border-warning mb-4">
-                        <div class="card-header bg-warning text-dark">
-                            <h6 class="mb-0"><i class="fas fa-edit me-2"></i> Change Request Details</h6>
-                        </div>
-                        <div class="card-body">
-                            <label for="supporting_reasons" class="form-label fw-semibold">
-                                <i class="fas fa-comment-alt me-1 text-warning"></i> Supporting Reasons <span class="text-danger">*</span>
-                            </label>
-                            <textarea name="supporting_reasons" id="supporting_reasons" class="form-control" rows="4" placeholder="Please explain why you are requesting changes to this memo..." required>{{ old('supporting_reasons', optional($changeRequestForEdit ?? null)->supporting_reasons ?? '') }}</textarea>
-                            <small class="text-muted">Provide detailed justification for the requested changes.</small>
-                        </div>
-                    </div>
-                @endif
 
                 <!-- Section 1: Basic Information -->
                 <div class="mb-5">
@@ -388,7 +351,7 @@
 
                 <div class="d-flex justify-content-end gap-3 border-top pt-4 mt-5">
                     <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
-                        <i class="bx bx-save me-1"></i> {{ request('change_request') ? 'Submit Change Request' : 'Update Non-Travel Memo' }}
+                        <i class="bx bx-save me-1"></i> Update Non-Travel Memo
                     </button>
                     {{-- <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
                         <i class="bx bx-check-circle me-1"></i> Update & Submit
@@ -1095,14 +1058,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        show_notification(response.message || response.msg || 'Non-travel memo updated successfully.', 'success');
-                        const redirectUrl = response.redirect_url || response?.memo?.preview_url;
+                        show_notification(response.message || 'Non-travel memo updated successfully.', 'success');
                         setTimeout(function() {
-                            if (redirectUrl) {
-                                window.location.href = redirectUrl;
-                            } else {
-                                window.location.reload();
-                            }
+                            window.location.href = response.memo.preview_url;
                         }, 1500);
                     }
                 },

@@ -27,7 +27,6 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use App\Services\ConvertMemoToNonTravelMemoService;
 use App\Models\ApprovalTrail;
-use App\Models\ChangeRequest;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
@@ -658,10 +657,6 @@ class NonTravelMemoController extends Controller
     {
         // Check if this is a change request
         $isChangeRequest = request('change_request') == '1';
-        $changeRequestForEdit = null;
-        if ($isChangeRequest && request()->filled('change_request_id')) {
-            $changeRequestForEdit = ChangeRequest::query()->find((int) request('change_request_id'));
-        }
         
         // For change requests, allow access to approved memos if user is owner/responsible
         if ($isChangeRequest) {
@@ -736,8 +731,7 @@ class NonTravelMemoController extends Controller
             'locations', 
             'workflows', 
             'staff',
-            'fundTypes',
-            'changeRequestForEdit'
+            'fundTypes'
         ));
     }
 
