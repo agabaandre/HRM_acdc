@@ -486,7 +486,7 @@
     </a>
     
         @if ($activity->overall_status === 'draft' && $activity->staff_id === user_session('staff_id'))
-        <a wire:navigate href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}" class="btn btn-warning">
+        <a href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}" class="btn btn-warning">
             <i class="bx bx-edit"></i> Edit
         </a>
     @endif
@@ -511,7 +511,7 @@
                         </a>
                         
                             @if (can_edit_memo($activity))
-                            <a wire:navigate href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}"
+                            <a href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}"
                                 class="btn btn-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                 <i class="bx bx-edit"></i>
                                 <span>Edit Memo</span>
@@ -564,7 +564,7 @@
                                 <span>Print PDF</span>
                             </a>
                             
-                            <a wire:navigate href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}?change_request=1" 
+                            <a href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}?change_request=1" 
                                class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                 <i class="fas fa-edit"></i>
                                 <span>Change Request</span>
