@@ -156,9 +156,8 @@ if (! function_exists('user_session')) {
 
     if (! function_exists('effective_division_head_staff_id')) {
         /**
-         * Staff ID who acts as Head of Division for workflow purposes:
-         * active head OIC (within date window) when set, otherwise division_head.
-         * Mirrors HasApprovalWorkflow / MatrixController division approver resolution.
+         * Staff id that acts as Head of Division today: active head OIC if in date window, else division_head.
+         * Matches workflow resolution in HasApprovalWorkflow / MatrixController division approver checks.
          */
         function effective_division_head_staff_id(?Division $division): ?int
         {
@@ -167,7 +166,6 @@ if (! function_exists('user_session')) {
             }
 
             $today = Carbon::today();
-
             if ($division->head_oic_id) {
                 $isOicActive = true;
                 if ($division->head_oic_start_date) {
