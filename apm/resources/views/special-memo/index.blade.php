@@ -12,7 +12,7 @@
             <span class="badge bg-danger ms-1">{{ get_staff_pending_action_count('special-memo') }}</span>
         @endif
     </a>
-    <a wire:navigate href="{{ route('special-memo.create') }}" class="btn btn-success shadow-sm">
+    <a href="{{ route('special-memo.create') }}" class="btn btn-success shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Create New Memo
     </a>
 </div>
