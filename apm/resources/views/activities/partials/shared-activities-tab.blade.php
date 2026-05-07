@@ -68,8 +68,16 @@
                         <td class="text-center">
                             @php
                                 $statusClass = $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary');
-                                $workflowRole = $activity->matrix?->workflow_definition ? ($activity->matrix->workflow_definition->role ?? 'N/A') : 'N/A';
-                                $actorName = $activity->matrix?->current_actor ? ($activity->matrix->current_actor->fname . ' ' . $activity->matrix->current_actor->lname) : 'N/A';
+                                if ($activity->is_single_memo) {
+                                    $statusMeta = $activity->memoIndexStatusMeta();
+                                    $workflowRole = $statusMeta['role'] ?? 'N/A';
+                                    $actorName = $activity->current_actor
+                                        ? trim(($activity->current_actor->fname ?? '').' '.($activity->current_actor->lname ?? ''))
+                                        : ($statusMeta['actor_name'] ?? 'N/A');
+                                } else {
+                                    $workflowRole = $activity->matrix?->workflow_definition ? ($activity->matrix->workflow_definition->role ?? 'N/A') : 'N/A';
+                                    $actorName = $activity->matrix?->current_actor ? ($activity->matrix->current_actor->fname . ' ' . $activity->matrix->current_actor->lname) : 'N/A';
+                                }
                             @endphp
                             @if($activity->overall_status === 'pending')
                                 <div class="text-center">
