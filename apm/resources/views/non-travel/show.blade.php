@@ -232,7 +232,7 @@
                     </a>
                     
                     @if (can_edit_memo($nonTravel))
-                        <a wire:navigate href="{{ route('non-travel.edit', $nonTravel) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1">
+                        <a href="{{ route('non-travel.edit', $nonTravel) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1">
                             <i class="bx bx-edit"></i>
                             <span>Edit Memo</span>
                         </a>
@@ -310,7 +310,7 @@
                     @endif
                     
                     @if($nonTravel->overall_status === 'approved')
-                        <a wire:navigate href="{{ route('non-travel.edit', $nonTravel) }}?change_request=1" 
+                        <a href="{{ route('non-travel.edit', $nonTravel) }}?change_request=1"
                            class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-edit"></i>
                             <span>Change Request</span>

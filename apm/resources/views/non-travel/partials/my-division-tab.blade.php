@@ -85,12 +85,12 @@
                     </td>
                     <td class="text-center">
                         <div class="btn-group">
-                            <a wire:navigate href="{{ route('non-travel.show', $memo) }}"
+                            <a href="{{ route('non-travel.show', $memo) }}"
                                class="btn btn-sm btn-outline-info" title="View">
                                 <i class="bx bx-show me-1"></i>View
                             </a>
                             @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
-                                <a wire:navigate href="{{ route('non-travel.edit', $memo) }}"
+                                <a href="{{ route('non-travel.edit', $memo) }}"
                                    class="btn btn-sm btn-outline-warning" title="Edit">
                                     <i class="bx bx-edit me-1"></i>Edit
                                 </a>

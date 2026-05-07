@@ -218,7 +218,7 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a wire:navigate href="{{ route('non-travel.show', $memo) }}" 
+                                                        <a href="{{ route('non-travel.show', $memo) }}"
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show me-1"></i>View
                                                         </a>
@@ -347,7 +347,7 @@
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a wire:navigate href="{{ route('non-travel.show', $memo) }}" 
+                                                        <a href="{{ route('non-travel.show', $memo) }}"
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show me-1"></i>View
                                                         </a>
