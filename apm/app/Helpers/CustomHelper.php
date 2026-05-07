@@ -129,14 +129,17 @@ if (! function_exists('user_session')) {
     if (! function_exists('can_division_head_edit')) {
         function can_division_head_edit($matrix)
         {
-            $user = (object) session('user', []);
+            // Prefer normalized session accessor used across the app.
+            $currentStaffId = user_session('staff_id')
+                ?? data_get(session('user', []), 'staff_id');
+
             $divisionHeadId = $matrix->division->division_head ?? null;
             $isReturnedAtHodLevel = ((int) ($matrix->approval_level ?? 0) === 1)
                 && in_array($matrix->overall_status, ['returned'], true);
 
             // HOD should be able to edit/resubmit returned matrices at level 1
             // even when there are no approvable activities in the current stack.
-            return ((int) ($divisionHeadId ?? 0) === (int) ($user->staff_id ?? 0))
+            return ((int) ($divisionHeadId ?? 0) === (int) ($currentStaffId ?? 0))
                 && $isReturnedAtHodLevel;
         }
     }
