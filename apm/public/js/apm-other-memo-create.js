@@ -146,6 +146,36 @@
             window.initOtherMemoApprovers();
         }
         if (t) renderFields(t.fields_schema || []);
+        applyUploadTypeAttachmentRules(slug);
+    }
+
+    function isUploadType(slug) {
+        return String(slug || '').toLowerCase() === 'upload';
+    }
+
+    function applyUploadTypeAttachmentRules(slug) {
+        if (typeof jQuery === 'undefined') return;
+        var upload = isUploadType(slug);
+        var $container = jQuery('#other-memo-attachment-container');
+        var $addBtn = jQuery('#other-memo-add-attachment');
+        var $note = $container.siblings('p.small.text-muted');
+        var $files = $container.find('input[type="file"]');
+
+        if (upload) {
+            $addBtn.prop('disabled', true).attr('title', 'Upload memo allows one PDF only');
+            if (!$container.find('.attachment-block').length) {
+                $addBtn.trigger('click');
+            }
+            // Keep first only
+            $container.find('.attachment-block:gt(0)').remove();
+            $container.find('input[type="text"][name^="attachments["]').attr('placeholder', 'Document type (e.g. Signed Contract)');
+            $files.attr('accept', '.pdf,application/pdf');
+            $note.text('Upload type: exactly one PDF file is required (max 10MB).');
+        } else {
+            $addBtn.prop('disabled', false).removeAttr('title');
+            $files.attr('accept', '.pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*');
+            $note.text('Max size 10 MB per file. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX.');
+        }
     }
 
     function initMemoTypeSelect2() {
@@ -188,6 +218,12 @@
 
         jQuery(document).on('click.otherMemoCreateAttach', '#other-memo-add-attachment', function () {
             if (!otherMemoCreatePagePresent()) return;
+            if (isUploadType(getSelectedMemoTypeSlug()) && jQuery('#other-memo-attachment-container .attachment-block').length >= 1) {
+                if (typeof show_notification === 'function') {
+                    show_notification('Upload memo allows only one PDF attachment.', 'warning');
+                }
+                return;
+            }
             var idx = window.__apmOtherMemoAttachIdx || 1;
             var newField = '<div class="col-md-4 attachment-block">' +
                 '<label class="form-label">Document type</label>' +
@@ -218,12 +254,13 @@
             if (!file) return;
             var maxSize = 10 * 1024 * 1024;
             var ext = file.name.split('.').pop().toLowerCase();
-            var allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+            var uploadOnly = isUploadType(getSelectedMemoTypeSlug());
+            var allowedExtensions = uploadOnly ? ['pdf'] : ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
             if (allowedExtensions.indexOf(ext) === -1) {
                 if (typeof show_notification === 'function') {
-                    show_notification('Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.', 'warning');
+                    show_notification(uploadOnly ? 'Upload memo allows PDF files only.' : 'Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.', 'warning');
                 } else {
-                    alert('Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.');
+                    alert(uploadOnly ? 'Upload memo allows PDF files only.' : 'Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.');
                 }
                 jQuery(fileInput).val('');
                 return;

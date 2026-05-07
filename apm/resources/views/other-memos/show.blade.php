@@ -259,6 +259,44 @@
 
         <div class="row g-3">
             <div class="col-lg-8">
+                @php
+                    $isUploadMemoType = strtolower((string) ($memo->memo_type_slug ?? '')) === 'upload';
+                    $uploadPdfAttachment = null;
+                    if ($isUploadMemoType) {
+                        foreach ($memoAttachmentsShow as $a) {
+                            $n = (string) ($a['original_name'] ?? $a['filename'] ?? '');
+                            $p = (string) ($a['path'] ?? '');
+                            $ext = strtolower(pathinfo($n !== '' ? $n : $p, PATHINFO_EXTENSION));
+                            if ($ext === 'pdf' && $p !== '') {
+                                $uploadPdfAttachment = $a;
+                                break;
+                            }
+                        }
+                    }
+                @endphp
+                @if ($isUploadMemoType)
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-file"></i> Uploaded PDF
+                            </h6>
+                        </div>
+                        <div class="card-body pt-0">
+                            @if ($uploadPdfAttachment)
+                                @php $uploadPdfUrl = url('storage/' . ($uploadPdfAttachment['path'] ?? '')); @endphp
+                                <div class="ratio ratio-16x9 border rounded overflow-hidden">
+                                    <iframe src="{{ $uploadPdfUrl }}" title="Uploaded PDF" style="width:100%;height:100%;border:0;"></iframe>
+                                </div>
+                                <p class="small text-muted mt-2 mb-0">
+                                    Signature areas are configured per approver in this memo's approval sequence.
+                                </p>
+                            @else
+                                <div class="alert alert-warning mb-0">No uploaded PDF found for this upload memo.</div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 @include('other-memos.partials.show-content-cards', [
                     'schema' => $memo->fields_schema_snapshot ?? [],
                     'values' => $memo->payload ?? [],

@@ -27,7 +27,7 @@
                 <label class="form-label small text-muted mb-0">Step</label>
                 <div class="form-control-plaintext fw-bold approver-step-num">{{ $row['sequence'] ?? $idx + 1 }}</div>
             </div>
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label small">Staff <span class="text-danger">*</span></label>
                 <select name="approvers[{{ $idx }}][staff_id]" class="form-select approver-staff-id select2 w-100 border-success" style="width: 100%;">
                     <option value="">— Select staff —</option>
@@ -41,9 +41,29 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label small">Approver role label</label>
                 <input type="text" name="approvers[{{ $idx }}][role_label]" class="form-control approver-role-label" value="{{ old('approvers.' . $idx . '.role_label', $row['role_label'] ?? '') }}" placeholder="Filled from job title when you pick staff" autocomplete="off">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">Signature area (page/x/y/w/h)</label>
+                <div class="row g-1">
+                    <div class="col-2">
+                        <input type="number" min="1" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][page]" value="{{ old('approvers.' . $idx . '.signature_box.page', $row['signature_box']['page'] ?? 1) }}" placeholder="P">
+                    </div>
+                    <div class="col-2">
+                        <input type="number" min="0" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][x]" value="{{ old('approvers.' . $idx . '.signature_box.x', $row['signature_box']['x'] ?? '') }}" placeholder="X">
+                    </div>
+                    <div class="col-2">
+                        <input type="number" min="0" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][y]" value="{{ old('approvers.' . $idx . '.signature_box.y', $row['signature_box']['y'] ?? '') }}" placeholder="Y">
+                    </div>
+                    <div class="col-3">
+                        <input type="number" min="1" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][width]" value="{{ old('approvers.' . $idx . '.signature_box.width', $row['signature_box']['width'] ?? 180) }}" placeholder="W">
+                    </div>
+                    <div class="col-3">
+                        <input type="number" min="1" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][height]" value="{{ old('approvers.' . $idx . '.signature_box.height', $row['signature_box']['height'] ?? 70) }}" placeholder="H">
+                    </div>
+                </div>
             </div>
             <div class="col-md-1">
                 <label class="form-label small d-block mb-0 opacity-0">.</label>
@@ -65,7 +85,7 @@
             <label class="form-label small text-muted mb-0">Step</label>
             <div class="form-control-plaintext fw-bold approver-step-num">1</div>
         </div>
-        <div class="col-md-5">
+        <div class="col-md-4">
             <label class="form-label small">Staff <span class="text-danger">*</span></label>
             <select name="approvers[0][staff_id]" class="form-select approver-staff-id select2 w-100 border-success" style="width: 100%;">
                 <option value="">— Select staff —</option>
@@ -79,9 +99,29 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label small">Approver role label</label>
             <input type="text" name="approvers[0][role_label]" class="form-control approver-role-label" value="" placeholder="Filled from job title when you pick staff" autocomplete="off">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small">Signature area (page/x/y/w/h)</label>
+            <div class="row g-1">
+                <div class="col-2">
+                    <input type="number" min="1" class="form-control form-control-sm" name="approvers[0][signature_box][page]" value="1" placeholder="P">
+                </div>
+                <div class="col-2">
+                    <input type="number" min="0" class="form-control form-control-sm" name="approvers[0][signature_box][x]" placeholder="X">
+                </div>
+                <div class="col-2">
+                    <input type="number" min="0" class="form-control form-control-sm" name="approvers[0][signature_box][y]" placeholder="Y">
+                </div>
+                <div class="col-3">
+                    <input type="number" min="1" class="form-control form-control-sm" name="approvers[0][signature_box][width]" value="180" placeholder="W">
+                </div>
+                <div class="col-3">
+                    <input type="number" min="1" class="form-control form-control-sm" name="approvers[0][signature_box][height]" value="70" placeholder="H">
+                </div>
+            </div>
         </div>
         <div class="col-md-1">
             <label class="form-label small d-block mb-0 opacity-0">.</label>
@@ -198,8 +238,9 @@ window.otherMemoStaffJobById = @json($otherMemoStaffJobMap);
             var sn = row.querySelector('.approver-step-num');
             if (sn) sn.textContent = String(idx + 1);
             row.querySelectorAll('input[name^="approvers["], select[name^="approvers["]').forEach(function(el) {
-                var m = el.name.match(/^approvers\[\d+\]\[(\w+)\]$/);
-                if (m) el.name = 'approvers[' + idx + '][' + m[1] + ']';
+                if (typeof el.name === 'string' && el.name.indexOf('approvers[') === 0) {
+                    el.name = el.name.replace(/^approvers\[\d+\]/, 'approvers[' + idx + ']');
+                }
             });
         });
     }
