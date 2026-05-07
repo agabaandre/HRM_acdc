@@ -67,7 +67,11 @@
                         || count($memoAttachments) > 0;
                 @endphp
                 @if ($showOtherMemoAttachments)
-                    @include('other-memos.partials.attachment-fields', ['attachments' => $memoAttachments])
+                    @include('other-memos.partials.attachment-fields', [
+                        'attachments' => $memoAttachments,
+                        'memoTypeSlug' => $memo->memo_type_slug,
+                        'memo' => $memo,
+                    ])
                 @endif
 
                 <div class="card border mb-4">
@@ -133,13 +137,20 @@
     @if ($showOtherMemoAttachments ?? false)
     if (typeof jQuery !== 'undefined') {
         jQuery(function($) {
+            var uploadOnly = {{ strtolower((string) ($memo->memo_type_slug ?? '')) === 'upload' ? 'true' : 'false' }};
             var attachmentIndex = {{ count($memoAttachments ?? []) }};
             $('#addAttachment').on('click', function() {
+                if (uploadOnly && $('.attachment-block').length >= 1) {
+                    if (typeof show_notification === 'function') {
+                        show_notification('Upload memo allows only one PDF attachment.', 'warning');
+                    }
+                    return;
+                }
                 var newField = '<div class="col-md-4 attachment-block">' +
                     '<label class="form-label">Document type</label>' +
                     '<input type="text" name="attachments[' + attachmentIndex + '][type]" class="form-control" required>' +
                     '<input type="file" name="attachments[' + attachmentIndex + '][file]" class="form-control mt-1 attachment-input" ' +
-                    'accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" required>' +
+                    'accept="' + (uploadOnly ? '.pdf,application/pdf' : '.pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*') + '" required>' +
                     '<small class="text-muted">Max size: 10MB</small></div>';
                 var $c = $('#attachmentContainer');
                 if ($c.find('.alert-info').length) {
@@ -168,12 +179,12 @@
                 if (!file) return;
                 var maxSize = 10 * 1024 * 1024;
                 var ext = file.name.split('.').pop().toLowerCase();
-                var allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+                var allowedExtensions = uploadOnly ? ['pdf'] : ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
                 if (allowedExtensions.indexOf(ext) === -1) {
                     if (typeof show_notification === 'function') {
-                        show_notification('Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.', 'warning');
+                        show_notification(uploadOnly ? 'Upload memo allows PDF files only.' : 'Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.', 'warning');
                     } else {
-                        alert('Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.');
+                        alert(uploadOnly ? 'Upload memo allows PDF files only.' : 'Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.');
                     }
                     $(fileInput).val('');
                     return;

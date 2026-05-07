@@ -1,5 +1,7 @@
 @php
     $attachments = is_array($attachments ?? null) ? $attachments : [];
+    $isUploadType = strtolower((string) ($memoTypeSlug ?? '')) === 'upload';
+    $acceptAttr = $isUploadType ? '.pdf,application/pdf' : '.pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*';
 @endphp
 <div class="card border mb-4" id="other-memo-attachments-card">
     <div class="card-header bg-light border-bottom py-2">
@@ -31,10 +33,10 @@
                                     <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
                                     <td>
                                         @if (! empty($attachment['path']))
-                                            <a href="{{ url('storage/' . $attachment['path']) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <a href="{{ route('other-memos.attachments.preview', [$memo, $index]) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                                 <i class="bx bx-show"></i> View
                                             </a>
-                                            <a href="{{ url('storage/' . $attachment['path']) }}" download="{{ $attachment['original_name'] ?? 'file' }}" class="btn btn-sm btn-outline-success">
+                                            <a href="{{ route('other-memos.attachments.download', [$memo, $index]) }}" class="btn btn-sm btn-outline-success">
                                                 <i class="bx bx-download"></i> Download
                                             </a>
                                         @endif
@@ -48,7 +50,7 @@
         @endif
 
         <div class="d-flex gap-2 mb-3">
-            <button type="button" class="btn btn-danger btn-sm" id="addAttachment">Add New</button>
+            <button type="button" class="btn btn-danger btn-sm" id="addAttachment" @if($isUploadType && count($attachments) > 0) disabled @endif>Add New</button>
             <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
         </div>
         <div class="row g-3" id="attachmentContainer">
@@ -57,7 +59,7 @@
                     <div class="col-md-4 attachment-block">
                         <label class="form-label">Document type</label>
                         <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment['type'] ?? '' }}">
-                        <input type="file" name="attachments[{{ $index }}][file]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
+                        <input type="file" name="attachments[{{ $index }}][file]" class="form-control mt-1 attachment-input" accept="{{ $acceptAttr }}">
                         <small class="text-muted">Current: {{ $attachment['original_name'] ?? 'No file' }}</small>
                         <small class="text-muted d-block">Leave empty to keep existing file</small>
                         <div class="form-check mt-2">
@@ -83,6 +85,12 @@
                 </div>
             @endif
         </div>
-        <p class="small text-muted mt-2 mb-0">Max size 10 MB per file. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX.</p>
+        <p class="small text-muted mt-2 mb-0">
+            @if($isUploadType)
+                Upload memo allows exactly one PDF file (max 10MB).
+            @else
+                Max size 10 MB per file. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX.
+            @endif
+        </p>
     </div>
 </div>

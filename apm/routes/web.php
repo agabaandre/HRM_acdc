@@ -483,6 +483,12 @@ Route::post('special-memo/{specialMemo}/unarchive', [App\Http\Controllers\Specia
 
     Route::get('other-memos/staff-lookup', [App\Http\Controllers\OtherMemoController::class, 'staffLookup'])->name('other-memos.staff-lookup');
     Route::get('other-memos/{other_memo}/print', [App\Http\Controllers\OtherMemoController::class, 'print'])->name('other-memos.print');
+    Route::get('other-memos/{other_memo}/attachments/{index}/preview', [App\Http\Controllers\OtherMemoController::class, 'attachmentPreview'])
+        ->whereNumber('index')
+        ->name('other-memos.attachments.preview');
+    Route::get('other-memos/{other_memo}/attachments/{index}/download', [App\Http\Controllers\OtherMemoController::class, 'attachmentDownload'])
+        ->whereNumber('index')
+        ->name('other-memos.attachments.download');
     Route::post('other-memos/{other_memo}/email-pdf', [App\Http\Controllers\OtherMemoController::class, 'emailPdf'])->name('other-memos.email-pdf');
     Route::post('other-memos/{other_memo}/submit', [App\Http\Controllers\OtherMemoController::class, 'submit'])->name('other-memos.submit');
     Route::post('other-memos/{other_memo}/approve', [App\Http\Controllers\OtherMemoController::class, 'approve'])->name('other-memos.approve');
