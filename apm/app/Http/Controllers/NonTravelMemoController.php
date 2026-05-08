@@ -732,6 +732,19 @@ class NonTravelMemoController extends Controller
 
         // Get fund types for the form
         $fundTypes = FundType::all();
+        $initialFundTypeId = (int) ($nonTravel->fund_type_id ?? 0);
+        $initialBudgetCodeOptions = collect();
+        if ($initialFundTypeId > 0) {
+            $initialBudgetCodeOptions = FundCode::with('funder:id,name,show_activity_code,activity_code_label')
+                ->where('fund_type_id', $initialFundTypeId)
+                ->where('is_active', true)
+                ->where(function ($query) use ($nonTravel) {
+                    $query->where('division_id', $nonTravel->division_id)
+                        ->orWhereNull('division_id')
+                        ->orWhere('division_id', '');
+                })
+                ->get(['id', 'code', 'activity', 'budget_balance', 'funder_id']);
+        }
         
         return view('non-travel.edit-new', compact(
             'nonTravel', 
@@ -743,7 +756,8 @@ class NonTravelMemoController extends Controller
             'locations', 
             'workflows', 
             'staff',
-            'fundTypes'
+            'fundTypes',
+            'initialBudgetCodeOptions'
         ));
     }
 

@@ -51,7 +51,7 @@
             </h5>
         </div>
         <div class="card-body p-4">
-            <form action="{{ request('change_request') ? route('change-requests.store') : route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
+         <form action="{{ request('change_request') ? route('change-requests.store') : route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
                 @csrf
                 @if(!request('change_request'))
                     @method('PUT')
@@ -192,8 +192,9 @@
                                 @enderror
                             </div>
                         </div>
-
-                        @if(request('change_request'))
+                     
+         
+        @if(request('change_request'))
                             <div class="col-md-12">
                                 <div class="form-group">
                                     <label for="supporting_reasons" class="form-label fw-semibold">
@@ -208,9 +209,6 @@
                                 </div>
                             </div>
                         @endif
-                     
-         
-
             
                 <!-- Budget Section: exclude from machine translation (avoids Google Translate DOM recursion with live-updating inputs) -->
                 <div id="budgetGroupContainer" class="mt-4 notranslate" translate="no">
@@ -373,13 +371,11 @@
 
               
 
-                <div class="d-flex justify-content-end gap-3 border-top pt-4 mt-5">
+                 <div class="d-flex justify-content-end gap-3 border-top pt-4 mt-5">
                     <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
                         <i class="bx bx-save me-1"></i> {{ request('change_request') ? 'Save Change Request as Draft' : 'Update Non-Travel Memo' }}
                     </button>
-                    {{-- <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
-                        <i class="bx bx-check-circle me-1"></i> Update & Submit
-                    </button> --}}
+                 
                 </div>
             </form>
         </div>
@@ -454,13 +450,7 @@
         // Existing values used to restore edit state reliably across browsers
         const initialActivityCode = @json($nonTravel->workplan_activity_code ?? '');
         const existingBudget = @json($budgetBreakdownForJs);
-        const rawExistingBudgetCodes = @json($budgetIdsForJs ?? []);
-        const existingBudgetCodes = (function (raw) {
-            if (Array.isArray(raw)) return raw.map(String);
-            if (raw && typeof raw === 'object') return Object.values(raw).map(String);
-            if (raw === null || raw === undefined || raw === '') return [];
-            return [String(raw)];
-        })(rawExistingBudgetCodes);
+        const existingBudgetCodes = (@json($budgetIdsForJs) || []).map(String);
         let hasRestoredInitialBudget = false;
 
         const budgetItemsHint = $('#budget_items_hint');
@@ -494,29 +484,6 @@
         const divisionId = {{ $nonTravel->division_id }};
         const budgetCodesSelect = $('#budget_codes');
         const budgetCodesHelp = $('#budget_codes_help');
-
-        function restoreExistingBudgetFallback() {
-            if (!existingBudgetCodes.length) return;
-            budgetCodesSelect.empty();
-            existingBudgetCodes.forEach(function (id) {
-                if (!budgetCodesSelect.find(`option[value="${id}"]`).length) {
-                    budgetCodesSelect.append(
-                        `<option value="${id}" data-balance="0" data-funder-id="">Code ${id}</option>`
-                    );
-                }
-            });
-            budgetCodesSelect.prop('disabled', false);
-            if (!budgetCodesSelect.hasClass('select2-hidden-accessible')) {
-                budgetCodesSelect.select2({ theme: 'bootstrap4', width: '100%' });
-            }
-            budgetCodesSelect.find('option').prop('selected', false);
-            existingBudgetCodes.forEach(function (id) {
-                budgetCodesSelect.find(`option[value="${id}"]`).prop('selected', true);
-            });
-            budgetCodesSelect.trigger('change.select2');
-            budgetCodesSelect.trigger('change');
-            budgetCodesHelp.text('Restored existing budget code(s)');
-        }
 
         function applyBudgetCodesSelect2(isExtramural) {
             if (budgetCodesSelect.hasClass('select2-hidden-accessible')) {
@@ -599,28 +566,13 @@
                             budgetCodesSelect.trigger('change');
                         }, 0);
                     }
-                    if (!budgetDataRestored) {
-                        runNonTravelBudgetRestoreFromExisting();
-                    }
                 } else {
-                    if (existingBudgetCodes.length > 0) {
-                        restoreExistingBudgetFallback();
-                    } else {
-                        budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
-                        budgetCodesHelp.text('No budget codes found');
-                    }
+                    budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
+                    budgetCodesHelp.text('No budget codes found');
                 }
                 $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
             }).fail(function() {
                 $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
-                if (existingBudgetCodes.length > 0) {
-                    restoreExistingBudgetFallback();
-                } else {
-                    budgetCodesHelp.text('Could not load budget codes. Please retry.');
-                }
-                if (!budgetDataRestored) {
-                    runNonTravelBudgetRestoreFromExisting();
-                }
             });
         });
 
@@ -643,36 +595,6 @@
             const n = Number(codeId);
             if (!Number.isNaN(n) && existingBudget[n] !== undefined) return existingBudget[n];
             return null;
-        }
-
-        let budgetDataRestored = false;
-        function runNonTravelBudgetRestoreFromExisting() {
-            if (budgetDataRestored || !existingBudget || typeof existingBudget !== 'object') return;
-
-            const codeKeys = Object.keys(existingBudget).filter(function (key) {
-                return String(key) !== 'grand_total';
-            });
-            if (!codeKeys.length) return;
-
-            codeKeys.forEach(function (codeId) {
-                let option = findBudgetCodeOption(codeId);
-                if (!option.length) {
-                    budgetCodesSelect.append(
-                        `<option value="${codeId}" data-balance="0" data-funder-id="">Code ${codeId}</option>`
-                    );
-                    option = findBudgetCodeOption(codeId);
-                }
-                option.prop('selected', true);
-                const label = option.text() || `Code ${codeId}`;
-                const balance = option.data('balance') || 0;
-                const raw = getExistingBudgetItemsForCode(codeId);
-                createBudgetCardWithData(codeId, label, balance, raw);
-            });
-
-            budgetCodesSelect.prop('disabled', false);
-            budgetCodesSelect.trigger('change.select2');
-            budgetCodesSelect.trigger('change');
-            budgetDataRestored = true;
         }
 
         function findBudgetCodeOption(codeId) {
@@ -1156,24 +1078,30 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        const successMsg = response.msg || response.message || ({{ request('change_request') ? 'true' : 'false' }}
-                            ? 'Change request saved as draft successfully.'
-                            : 'Non-travel memo updated successfully.');
+                        const redirectUrl = response.redirect_url
+                            || (response.memo && response.memo.preview_url)
+                            || null;
+                        const successMsg = response.msg
+                            || response.message
+                            || (response.redirect_url
+                                ? 'Change request saved successfully.'
+                                : 'Non-travel memo updated successfully.');
                         show_notification(successMsg, 'success');
                         setTimeout(function() {
-                            const redirectUrl = response.redirect_url || (response.memo ? response.memo.preview_url : null);
                             if (redirectUrl) {
                                 window.location.href = redirectUrl;
                             } else {
                                 window.location.reload();
                             }
-                        }, 1200);
+                        }, 1500);
                     }
                 },
                 error: function(xhr) {
-                    let errorMessage = {{ request('change_request') ? "'An error occurred while saving the change request.'" : "'An error occurred while updating the memo.'" }};
+                    let errorMessage = 'An error occurred while saving.';
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
                         errorMessage = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                    } else if (xhr.responseJSON && xhr.responseJSON.msg) {
+                        errorMessage = xhr.responseJSON.msg;
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
                     } else if (xhr.status === 422) {
@@ -1191,9 +1119,6 @@
         // Initial load for edit page: pull budget codes for selected fund type
         if ($('#fund_type').val()) {
             $('#fund_type').trigger('change');
-            setTimeout(runNonTravelBudgetRestoreFromExisting, 50);
-            setTimeout(runNonTravelBudgetRestoreFromExisting, 300);
-            setTimeout(runNonTravelBudgetRestoreFromExisting, 700);
         }
     });
 </script>
