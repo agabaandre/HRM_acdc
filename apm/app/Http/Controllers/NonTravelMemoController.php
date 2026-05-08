@@ -676,6 +676,12 @@ class NonTravelMemoController extends Controller
                     ->route('non-travel.show', $nonTravel)
                     ->with('error', 'You do not have permission to edit this memo.');
             }
+            $ntStatus = strtolower((string) ($nonTravel->overall_status ?? ''));
+            if (in_array($ntStatus, ['pending', 'approved'], true)) {
+                return redirect()
+                    ->route('non-travel.show', $nonTravel)
+                    ->with('error', 'This memo cannot be edited while it is pending or approved. For approved memos, use a change request instead.');
+            }
         }
 
         // Retrieve budgets with funder details
@@ -779,6 +785,21 @@ class NonTravelMemoController extends Controller
             return redirect()
                 ->route('non-travel.show', $nonTravel)
                 ->with('error', 'You do not have permission to edit this memo.');
+        }
+
+        $ntStatus = strtolower((string) ($nonTravel->overall_status ?? ''));
+        if (in_array($ntStatus, ['pending', 'approved'], true)) {
+            $blocked = 'This memo cannot be edited while it is pending or approved. For approved memos, use a change request instead.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $blocked,
+                ], 422);
+            }
+
+            return redirect()
+                ->route('non-travel.show', $nonTravel)
+                ->with('error', $blocked);
         }
 
         $fundTypeId = $this->requestFundTypeId($request);
