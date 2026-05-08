@@ -13,7 +13,7 @@
             <i class="bx bx-printer me-1"></i> Print PDF
         </a>
     @endif
-    @if($nonTravel->overall_status === 'draft')
+    @if(in_array($nonTravel->overall_status, ['draft', 'returned'], true))
         <a href="{{ route('non-travel.edit', $nonTravel) }}" class="btn btn-warning">
             <i class="bx bx-edit me-1"></i> Edit Memo
         </a>

@@ -753,6 +753,13 @@ if (! function_exists('user_session')) {
                 return false;
             }
 
+            // Non-Travel memos: direct edit only when draft or returned — not while pending or approved.
+            if ($memo instanceof \App\Models\NonTravelMemo) {
+                $st = strtolower((string) ($memo->overall_status ?? ''));
+
+                return in_array($st, ['draft', 'returned'], true);
+            }
+
             // Check memo status conditions
             $memoStatus = $memo->overall_status ?? null;
             $approvalLevel = $memo->approval_level ?? 0;
