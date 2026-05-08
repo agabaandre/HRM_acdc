@@ -692,14 +692,26 @@ class NonTravelMemoController extends Controller
             });
 
         // Decode selected budget codes
-        $selectedBudgetCodes = is_array($nonTravel->budget_id) 
-            ? $nonTravel->budget_id 
+        $selectedBudgetCodes = is_array($nonTravel->budget_id)
+            ? $nonTravel->budget_id
             : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
+        $selectedBudgetCodes = is_array($selectedBudgetCodes) ? $selectedBudgetCodes : [];
 
         // Decode budget breakdown data - use budget_breakdown field, not budget
-        $budgetBreakdown = is_array($nonTravel->budget_breakdown) 
-            ? $nonTravel->budget_breakdown 
+        $budgetBreakdown = is_array($nonTravel->budget_breakdown)
+            ? $nonTravel->budget_breakdown
             : (is_string($nonTravel->budget_breakdown) ? json_decode($nonTravel->budget_breakdown, true) : []);
+        $budgetBreakdown = is_array($budgetBreakdown) ? $budgetBreakdown : [];
+
+        // Legacy/non-travel shape fallback:
+        // Some memos have budget rows keyed by fund_code_id in budget_breakdown, while budget_id may be empty.
+        // Mirror special-memo preload behavior by deriving codes from breakdown keys when needed.
+        if (empty($selectedBudgetCodes) && ! empty($budgetBreakdown)) {
+            $selectedBudgetCodes = array_values(array_filter(array_map(
+                static fn ($key) => is_numeric($key) ? (int) $key : null,
+                array_keys($budgetBreakdown)
+            )));
+        }
          $attachments = is_string($nonTravel->attachment)
             ? json_decode($nonTravel->attachment, true)
             : ($nonTravel->attachment ?? []);
