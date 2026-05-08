@@ -655,23 +655,23 @@ class NonTravelMemoController extends Controller
     /** Show edit form */
     public function edit(NonTravelMemo $nonTravel)
     {
-        // Check if this is a change request
-        $isChangeRequest = request('change_request') == '1';
+        $request = request();
+        $changeRequestRaw = strtolower(trim((string) $request->query('change_request', $request->input('change_request', ''))));
+        $isChangeRequest = $request->boolean('change_request')
+            || in_array($changeRequestRaw, ['1', 'true', 'yes', 'on'], true);
+        $currentStaffId = (int) (user_session('staff_id') ?? 0);
+        $isOwner = (int) ($nonTravel->staff_id ?? 0) === $currentStaffId;
         
-        // For change requests, allow access to approved memos if user is owner/responsible
+        // For change requests, Non-Travel memo access is creator-only.
         if ($isChangeRequest) {
-            $user = (object) session('user', []);
-            $isOwner = isset($nonTravel->staff_id, $user->staff_id) && $nonTravel->staff_id == $user->staff_id;
-            $isResponsible = isset($nonTravel->responsible_person_id, $user->staff_id) && $nonTravel->responsible_person_id == $user->staff_id;
-            
-            if (!$isOwner && !$isResponsible) {
+            if (! $isOwner) {
                 return redirect()
                     ->route('non-travel.show', $nonTravel)
-                    ->with('error', 'You can only create change requests for memos you own or are responsible for.');
+                    ->with('error', 'You can only create change requests for memos you created.');
             }
         } else {
-            // For normal edits, use the existing permission check
-            if (!can_edit_memo($nonTravel)) {
+            // Creator should always be allowed to edit their own non-travel memo.
+            if (! $isOwner && ! can_edit_memo($nonTravel)) {
                 return redirect()
                     ->route('non-travel.show', $nonTravel)
                     ->with('error', 'You do not have permission to edit this memo.');
@@ -739,8 +739,11 @@ class NonTravelMemoController extends Controller
     public function update(Request $request, NonTravelMemo $nonTravel): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         //dd($request);
-        // Check if user has privileges to edit this memo using can_edit_memo()
-        if (!can_edit_memo($nonTravel)) {
+        $currentStaffId = (int) (user_session('staff_id') ?? 0);
+        $isOwner = (int) ($nonTravel->staff_id ?? 0) === $currentStaffId;
+
+        // Creator should always be allowed; otherwise fall back to existing workflow permission check.
+        if (! $isOwner && ! can_edit_memo($nonTravel)) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,

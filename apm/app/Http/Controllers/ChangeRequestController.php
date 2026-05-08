@@ -534,16 +534,24 @@ class ChangeRequestController extends Controller
             throw new \Exception('Parent memo not found');
         }
 
+                $isNonTravelParent = $parentMemo instanceof NonTravelMemo;
+
                 // Calculate total budget from budget items
                 $totalBudget = 0;
-                $budgetItems = $request->input('budget', []);
+                $budgetItems = $isNonTravelParent
+                    ? $request->input('budget_breakdown', [])
+                    : $request->input('budget', []);
                 $fundTypeId = (int) $request->input('fund_type', 1);
                 
                 if (!empty($budgetItems)) {
                     foreach ($budgetItems as $codeId => $items) {
                         if (is_array($items)) {
                             foreach ($items as $item) {
-                                $qty = isset($item['units']) ? floatval($item['units']) : 1;
+                                $qty = isset($item['quantity'])
+                                    ? floatval($item['quantity'])
+                                    : (isset($item['qty'])
+                                        ? floatval($item['qty'])
+                                        : (isset($item['units']) ? floatval($item['units']) : 1));
                                 $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : 0;
                                 $totalBudget += $qty * $unitCost;
                             }
@@ -569,6 +577,15 @@ class ChangeRequestController extends Controller
                 }
 
                 $budgetCodes = $request->input('budget_codes', []);
+                if ($isNonTravelParent && empty($budgetCodes)) {
+                    $breakdownInput = $request->input('budget_breakdown', []);
+                    if (is_array($breakdownInput)) {
+                        $budgetCodes = array_values(array_filter(array_map(
+                            static fn ($k) => is_numeric($k) ? (int) $k : null,
+                            array_keys($breakdownInput)
+                        )));
+                    }
+                }
                 
                 // Handle file uploads for attachments
                 $attachments = [];
@@ -754,7 +771,108 @@ class ChangeRequestController extends Controller
 
         // Load relationships for parent memo if it exists
         if ($parentMemo) {
-            $parentMemo->load(['requestType', 'fundType']);
+            $parentRelations = [];
+            if (method_exists($parentMemo, 'requestType')) {
+                $parentRelations[] = 'requestType';
+            }
+            if (method_exists($parentMemo, 'fundType')) {
+                $parentRelations[] = 'fundType';
+            }
+            if (!empty($parentRelations)) {
+                $parentMemo->load($parentRelations);
+            }
+        }
+
+        // Non-travel legacy guard:
+        // Older records could be saved with empty change-request budget fields due to key mismatch (budget vs budget_breakdown).
+        // Recompute effective budget flags for display so false "Budget Code/Budget Breakdown" badges are avoided.
+        if ($parentMemo instanceof NonTravelMemo) {
+            $parentBudget = $parentMemo->budget_breakdown ?? [];
+            if (is_string($parentBudget)) {
+                $decoded = json_decode($parentBudget, true);
+                $parentBudget = is_array($decoded) ? $decoded : [];
+            }
+            $parentBudgetIds = $parentMemo->budget_id ?? [];
+            if (is_string($parentBudgetIds)) {
+                $decoded = json_decode($parentBudgetIds, true);
+                $parentBudgetIds = is_array($decoded) ? $decoded : [];
+            }
+
+            $crBudget = $changeRequest->budget_breakdown ?? [];
+            if (is_string($crBudget)) {
+                $decoded = json_decode($crBudget, true);
+                $crBudget = is_array($decoded) ? $decoded : [];
+            }
+            $crBudgetIds = $changeRequest->budget_id ?? [];
+            if (is_string($crBudgetIds)) {
+                $decoded = json_decode($crBudgetIds, true);
+                $crBudgetIds = is_array($decoded) ? $decoded : [];
+            }
+
+            // If CR budget snapshot is empty, treat it as inherited baseline for display-level change detection.
+            if (empty($crBudget) && empty($crBudgetIds)) {
+                $crBudget = $parentBudget;
+                $crBudgetIds = $parentBudgetIds;
+            }
+
+            $parentNormalized = $this->normalizeNonTravelMemoBudget(is_array($parentBudget) ? $parentBudget : []);
+            $crNormalized = $this->normalizeNonTravelMemoBudget(is_array($crBudget) ? $crBudget : []);
+            $effectiveBudgetBreakdownChanged = json_encode($parentNormalized) !== json_encode($crNormalized);
+
+            $parentIds = array_values(array_map('intval', is_array($parentBudgetIds) ? $parentBudgetIds : []));
+            $crIds = array_values(array_map('intval', is_array($crBudgetIds) ? $crBudgetIds : []));
+            sort($parentIds);
+            sort($crIds);
+            $effectiveBudgetIdChanged = $parentIds !== $crIds;
+
+            $changeRequest->has_budget_breakdown_changed = $effectiveBudgetBreakdownChanged;
+            $changeRequest->has_budget_id_changed = $effectiveBudgetIdChanged;
+        }
+
+        // Non-travel legacy guard:
+        // Older records could be saved with empty change-request budget fields due to key mismatch (budget vs budget_breakdown).
+        // Recompute effective budget flags for display so false "Budget Code/Budget Breakdown" badges are avoided.
+        if ($parentMemo instanceof NonTravelMemo) {
+            $parentBudget = $parentMemo->budget_breakdown ?? [];
+            if (is_string($parentBudget)) {
+                $decoded = json_decode($parentBudget, true);
+                $parentBudget = is_array($decoded) ? $decoded : [];
+            }
+            $parentBudgetIds = $parentMemo->budget_id ?? [];
+            if (is_string($parentBudgetIds)) {
+                $decoded = json_decode($parentBudgetIds, true);
+                $parentBudgetIds = is_array($decoded) ? $decoded : [];
+            }
+
+            $crBudget = $changeRequest->budget_breakdown ?? [];
+            if (is_string($crBudget)) {
+                $decoded = json_decode($crBudget, true);
+                $crBudget = is_array($decoded) ? $decoded : [];
+            }
+            $crBudgetIds = $changeRequest->budget_id ?? [];
+            if (is_string($crBudgetIds)) {
+                $decoded = json_decode($crBudgetIds, true);
+                $crBudgetIds = is_array($decoded) ? $decoded : [];
+            }
+
+            // If CR budget snapshot is empty, treat it as inherited baseline for display-level change detection.
+            if (empty($crBudget) && empty($crBudgetIds)) {
+                $crBudget = $parentBudget;
+                $crBudgetIds = $parentBudgetIds;
+            }
+
+            $parentNormalized = $this->normalizeNonTravelMemoBudget(is_array($parentBudget) ? $parentBudget : []);
+            $crNormalized = $this->normalizeNonTravelMemoBudget(is_array($crBudget) ? $crBudget : []);
+            $effectiveBudgetBreakdownChanged = json_encode($parentNormalized) !== json_encode($crNormalized);
+
+            $parentIds = array_values(array_map('intval', is_array($parentBudgetIds) ? $parentBudgetIds : []));
+            $crIds = array_values(array_map('intval', is_array($crBudgetIds) ? $crBudgetIds : []));
+            sort($parentIds);
+            sort($crIds);
+            $effectiveBudgetIdChanged = $parentIds !== $crIds;
+
+            $changeRequest->has_budget_breakdown_changed = $effectiveBudgetBreakdownChanged;
+            $changeRequest->has_budget_id_changed = $effectiveBudgetIdChanged;
         }
 
         $existingArf = $changeRequest->request_arf_id
@@ -1145,7 +1263,34 @@ class ChangeRequestController extends Controller
         $changes['participant_days'] = $this->detectParticipantDaysChange($parentMemo, $request);
 
         // Other existing checks
-        if ($parentMemo->budget_id !== json_encode($request->input('budget_codes', []))) {
+        $parentBudgetIds = $parentMemo->budget_id ?? [];
+        if (is_string($parentBudgetIds)) {
+            $decodedParentBudgetIds = json_decode($parentBudgetIds, true);
+            $parentBudgetIds = is_array($decodedParentBudgetIds) ? $decodedParentBudgetIds : [];
+        }
+        if (!is_array($parentBudgetIds)) {
+            $parentBudgetIds = [];
+        }
+        $parentBudgetIds = array_values(array_map('intval', $parentBudgetIds));
+        sort($parentBudgetIds);
+
+        $requestBudgetIds = $request->input('budget_codes', []);
+        if (($parentMemo instanceof NonTravelMemo) && empty($requestBudgetIds)) {
+            $breakdownInput = $request->input('budget_breakdown', []);
+            if (is_array($breakdownInput)) {
+                $requestBudgetIds = array_values(array_filter(array_map(
+                    static fn ($k) => is_numeric($k) ? (int) $k : null,
+                    array_keys($breakdownInput)
+                )));
+            }
+        }
+        if (!is_array($requestBudgetIds)) {
+            $requestBudgetIds = [];
+        }
+        $requestBudgetIds = array_values(array_map('intval', $requestBudgetIds));
+        sort($requestBudgetIds);
+
+        if ($parentBudgetIds !== $requestBudgetIds) {
             $changes['budget_id'] = true;
         }
 
@@ -1405,17 +1550,17 @@ class ChangeRequestController extends Controller
             $parentBudget = is_array($decoded) ? $decoded : [];
         }
 
-        // Get request budget breakdown
-        $requestBudget = $request->input('budget', []);
-
         // Check if this is a Special Memo or Matrix memo (different structure)
         $isSpecialOrMatrixMemo = $parentMemo instanceof SpecialMemo || 
                                 ($parentMemo instanceof Activity && $parentMemo->matrix_id);
 
         if ($isSpecialOrMatrixMemo) {
+            // Special/Matrix forms submit budget in `budget[...]`
+            $requestBudget = $request->input('budget', []);
             return $this->detectSpecialMemoBudgetChange($parentBudget, $requestBudget, $parentMemo, $request);
         } else {
-            // Handle NonTravelMemo format
+            // Non-travel forms submit budget in `budget_breakdown[...]`
+            $requestBudget = $request->input('budget_breakdown', []);
             return $this->detectNonTravelMemoBudgetChange($parentBudget, $requestBudget);
         }
     }
@@ -1505,23 +1650,34 @@ class ChangeRequestController extends Controller
 
         $normalized = [];
         foreach ($budget as $codeId => $items) {
+            if ((string) $codeId === 'grand_total') {
+                // Avoid false positives from formatting-only differences in computed totals.
+                continue;
+            }
+
             if (is_array($items)) {
                 $normalized[$codeId] = [];
                 foreach ($items as $item) {
                     if (is_array($item)) {
                         // Normalize NonTravelMemo budget item structure
                         $normalizedItem = [
-                            'description' => $item['description'] ?? '',
-                            'units' => floatval($item['units'] ?? 1),
+                            'description' => trim((string) ($item['description'] ?? '')),
+                            'unit' => trim((string) ($item['unit'] ?? '')),
+                            'quantity' => (float) ($item['quantity'] ?? ($item['qty'] ?? ($item['units'] ?? 1))),
                             'unit_cost' => floatval($item['unit_cost'] ?? 0),
-                            'total' => floatval($item['total'] ?? 0)
                         ];
                         $normalized[$codeId][] = $normalizedItem;
                     }
                 }
+
+                // Stable ordering: same content in different row order should not count as a change.
+                usort($normalized[$codeId], function ($a, $b) {
+                    return strcmp(json_encode($a), json_encode($b));
+                });
             }
         }
 
+        ksort($normalized, SORT_NATURAL);
         return $normalized;
     }
 
