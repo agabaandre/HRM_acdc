@@ -999,6 +999,7 @@
                                                                         <th class="fw-bold cost-item">Description</th>
                                                                         <th class="fw-bold text-end" style="width: 100px;">Unit Cost</th>
                                                                         <th class="fw-bold text-end" style="width: 80px;">Quantity</th>
+                                                                        <th class="fw-bold text-end" style="width: 70px;">Days</th>
                                                                         <th class="fw-bold text-end" style="width: 120px;">Total</th>
                                                                         @if(!$isNonTravelMemo)
                                                                             <th class="fw-bold description">Description</th>
@@ -1029,6 +1030,7 @@
                                                                             </td>
                                                                             <td class="text-end">${{ number_format($unitCost, 2) }}</td>
                                                                             <td class="text-end">{{ $quantity }}</td>
+                                                                            <td class="text-end">{{ $days }}</td>
                                                                             <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
                                                                             @if(!$isNonTravelMemo)
                                                                                 <td class="description">{{ $item['description'] ?? 'N/A' }}</td>
@@ -1038,7 +1040,7 @@
                                                                 </tbody>
                                                                 <tfoot class="table-light">
                                                                     <tr>
-                                                                        <th colspan="{{ $isNonTravelMemo ? '4' : '5' }}" class="text-end">Total:</th>
+                                                                        <th colspan="{{ $isNonTravelMemo ? '5' : '6' }}" class="text-end">Total:</th>
                                                                         <th class="text-end text-success">${{ number_format($fundTotal, 2) }}</th>
                                                                         @if(!$isNonTravelMemo)
                                                                             <th></th>
@@ -1069,6 +1071,7 @@
                                                             <th class="cost-item">Description</th>
                                                             <th class="text-end" style="width: 100px;">Unit Cost</th>
                                                             <th class="text-end" style="width: 80px;">Quantity</th>
+                                                            <th class="text-end" style="width: 70px;">Days</th>
                                                             <th class="text-end" style="width: 120px;">Total</th>
                                                             @if(!$isNonTravelMemo)
                                                                 <th class="description">Description</th>
@@ -1081,8 +1084,9 @@
                                                             @if (is_array($item))
                                                                 @php
                                                                     $quantity = (float) ($item['quantity'] ?? $item['units'] ?? 1);
+                                                                    $days = $isNonTravelMemo ? 1 : (float) ($item['days'] ?? 1);
                                                                     $unitCost = (float) ($item['unit_cost'] ?? 0);
-                                                                    $itemTotal = $unitCost * $quantity;
+                                                                    $itemTotal = $unitCost * $quantity * $days;
                                                                     $grandTotal += $itemTotal;
                                                                 @endphp
                                                                 <tr>
@@ -1098,6 +1102,7 @@
                                                                     </td>
                                                                     <td class="text-end">${{ number_format($unitCost, 2) }}</td>
                                                                     <td class="text-end">{{ $quantity }}</td>
+                                                                    <td class="text-end">{{ $days }}</td>
                                                                     <td class="text-end fw-bold">${{ number_format($itemTotal, 2) }}</td>
                                                                     @if(!$isNonTravelMemo)
                                                                         <td class="description">{{ $item['description'] ?? 'N/A' }}</td>
@@ -1108,7 +1113,7 @@
                                                     </tbody>
                                                     <tfoot>
                                                         <tr>
-                                                            <th colspan="{{ $isNonTravelMemo ? '4' : '5' }}" class="text-end">Grand Total</th>
+                                                            <th colspan="{{ $isNonTravelMemo ? '5' : '6' }}" class="text-end">Grand Total</th>
                                                             <th class="text-end">${{ number_format($grandTotal, 2) }}</th>
                                                             @if(!$isNonTravelMemo)
                                                                 <th></th>
