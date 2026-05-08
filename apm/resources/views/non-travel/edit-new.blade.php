@@ -51,10 +51,18 @@
             </h5>
         </div>
         <div class="card-body p-4">
-            <form action="{{ route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
+            <form action="{{ request('change_request') ? route('change-requests.store') : route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
                 @csrf
-                @method('PUT')
-                <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                @if(!request('change_request'))
+                    @method('PUT')
+                @endif
+                @if(request('change_request'))
+                    <input type="hidden" name="parent_memo_id" value="{{ $nonTravel->id }}">
+                    <input type="hidden" name="parent_memo_model" value="App\Models\NonTravelMemo">
+                    @if(request('change_request_id'))
+                        <input type="hidden" name="change_request_id" value="{{ request('change_request_id') }}">
+                    @endif
+                @endif
 
                 <!-- Section 1: Basic Information -->
                 <div class="mb-5">
@@ -184,6 +192,22 @@
                                 @enderror
                             </div>
                         </div>
+
+                        @if(request('change_request'))
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="supporting_reasons" class="form-label fw-semibold">
+                                        <i class="bx bx-revision me-1 text-success"></i> Reasons for Change <span class="text-danger">*</span>
+                                    </label>
+                                    <textarea name="supporting_reasons" id="supporting_reasons"
+                                              class="form-control summernote @error('supporting_reasons') is-invalid @enderror"
+                                              rows="5" required>{{ old('supporting_reasons', $nonTravel->justification) }}</textarea>
+                                    @error('supporting_reasons')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        @endif
                      
          
 
@@ -351,7 +375,7 @@
 
                 <div class="d-flex justify-content-end gap-3 border-top pt-4 mt-5">
                     <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
-                        <i class="bx bx-save me-1"></i> Update Non-Travel Memo
+                        <i class="bx bx-save me-1"></i> {{ request('change_request') ? 'Save Change Request as Draft' : 'Update Non-Travel Memo' }}
                     </button>
                     {{-- <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
                         <i class="bx bx-check-circle me-1"></i> Update & Submit
@@ -430,7 +454,13 @@
         // Existing values used to restore edit state reliably across browsers
         const initialActivityCode = @json($nonTravel->workplan_activity_code ?? '');
         const existingBudget = @json($budgetBreakdownForJs);
-        const existingBudgetCodes = (@json($budgetIdsForJs) || []).map(String);
+        const rawExistingBudgetCodes = @json($budgetIdsForJs ?? []);
+        const existingBudgetCodes = (function (raw) {
+            if (Array.isArray(raw)) return raw.map(String);
+            if (raw && typeof raw === 'object') return Object.values(raw).map(String);
+            if (raw === null || raw === undefined || raw === '') return [];
+            return [String(raw)];
+        })(rawExistingBudgetCodes);
         let hasRestoredInitialBudget = false;
 
         const budgetItemsHint = $('#budget_items_hint');
@@ -464,6 +494,29 @@
         const divisionId = {{ $nonTravel->division_id }};
         const budgetCodesSelect = $('#budget_codes');
         const budgetCodesHelp = $('#budget_codes_help');
+
+        function restoreExistingBudgetFallback() {
+            if (!existingBudgetCodes.length) return;
+            budgetCodesSelect.empty();
+            existingBudgetCodes.forEach(function (id) {
+                if (!budgetCodesSelect.find(`option[value="${id}"]`).length) {
+                    budgetCodesSelect.append(
+                        `<option value="${id}" data-balance="0" data-funder-id="">Code ${id}</option>`
+                    );
+                }
+            });
+            budgetCodesSelect.prop('disabled', false);
+            if (!budgetCodesSelect.hasClass('select2-hidden-accessible')) {
+                budgetCodesSelect.select2({ theme: 'bootstrap4', width: '100%' });
+            }
+            budgetCodesSelect.find('option').prop('selected', false);
+            existingBudgetCodes.forEach(function (id) {
+                budgetCodesSelect.find(`option[value="${id}"]`).prop('selected', true);
+            });
+            budgetCodesSelect.trigger('change.select2');
+            budgetCodesSelect.trigger('change');
+            budgetCodesHelp.text('Restored existing budget code(s)');
+        }
 
         function applyBudgetCodesSelect2(isExtramural) {
             if (budgetCodesSelect.hasClass('select2-hidden-accessible')) {
@@ -547,12 +600,21 @@
                         }, 0);
                     }
                 } else {
-                    budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
-                    budgetCodesHelp.text('No budget codes found');
+                    if (existingBudgetCodes.length > 0) {
+                        restoreExistingBudgetFallback();
+                    } else {
+                        budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
+                        budgetCodesHelp.text('No budget codes found');
+                    }
                 }
                 $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
             }).fail(function() {
                 $wrapper.css({ opacity: '', pointerEvents: '', transition: '' });
+                if (existingBudgetCodes.length > 0) {
+                    restoreExistingBudgetFallback();
+                } else {
+                    budgetCodesHelp.text('Could not load budget codes. Please retry.');
+                }
             });
         });
 
@@ -1058,14 +1120,22 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        show_notification(response.message || 'Non-travel memo updated successfully.', 'success');
+                        const successMsg = response.msg || response.message || ({{ request('change_request') ? 'true' : 'false' }}
+                            ? 'Change request saved as draft successfully.'
+                            : 'Non-travel memo updated successfully.');
+                        show_notification(successMsg, 'success');
                         setTimeout(function() {
-                            window.location.href = response.memo.preview_url;
-                        }, 1500);
+                            const redirectUrl = response.redirect_url || (response.memo ? response.memo.preview_url : null);
+                            if (redirectUrl) {
+                                window.location.href = redirectUrl;
+                            } else {
+                                window.location.reload();
+                            }
+                        }, 1200);
                     }
                 },
                 error: function(xhr) {
-                    let errorMessage = 'An error occurred while updating the memo.';
+                    let errorMessage = {{ request('change_request') ? "'An error occurred while saving the change request.'" : "'An error occurred while updating the memo.'" }};
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
                         errorMessage = Object.values(xhr.responseJSON.errors).flat().join('\n');
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {

@@ -6,7 +6,7 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a wire:navigate.hover href="{{ route('other-memos.create') }}" class="btn btn-success shadow-sm">
+    <a wire:navigate href="{{ route('other-memos.create') }}" class="btn btn-success shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Create New Memo
     </a>
 </div>

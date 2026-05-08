@@ -388,6 +388,7 @@
                 }
             }
 } else {
+    $isNonTravelSource = $requestARF->model_type === 'App\\Models\\NonTravelMemo';
     // For memos, use budget_breakdown array
     $budget = $sourceData['budget_breakdown'] ?? [];
     // Decode JSON string if needed
@@ -399,8 +400,14 @@
                 if (isset($budget[0]) && is_array($budget[0])) {
                     // Simple array structure: [0 => {item1}, 1 => {item2}]
                     foreach ($budget as $item) {
+                        $quantity = floatval($item['quantity'] ?? $item['units'] ?? 1);
+                        $days = floatval($item['days'] ?? 1);
+                        if ($isNonTravelSource) {
+                            $days = 1;
+                        }
+                        $unitCost = floatval($item['unit_cost'] ?? $item['unit_price'] ?? 0);
                         $totalBudget += floatval(
-                            $item['total'] ?? ($item['unit_price'] ?? 0) * ($item['quantity'] ?? 1),
+                            $item['total'] ?? ($unitCost * $quantity * $days),
                         );
                     }
                 } else {
@@ -410,9 +417,14 @@
                             $totalBudget = floatval($item);
                         } elseif (is_array($item)) {
                             foreach ($item as $budgetItem) {
+                                $quantity = floatval($budgetItem['quantity'] ?? $budgetItem['units'] ?? 1);
+                                $days = floatval($budgetItem['days'] ?? 1);
+                                if ($isNonTravelSource) {
+                                    $days = 1;
+                                }
+                                $unitCost = floatval($budgetItem['unit_cost'] ?? $budgetItem['unit_price'] ?? 0);
                                 $totalBudget += floatval(
-                                    $budgetItem['total'] ??
-                                        ($budgetItem['unit_price'] ?? 0) * ($budgetItem['quantity'] ?? 1),
+                                    $budgetItem['total'] ?? ($unitCost * $quantity * $days),
                                 );
                             }
                         }
@@ -997,9 +1009,10 @@
                                                                     @php $count = 1; @endphp
                                                                     @foreach($items as $item)
                                                                         @php
-                                                                            $quantity = $item['quantity'] ?? $item['units'] ?? 1;
+                                                                            $quantity = floatval($item['quantity'] ?? $item['units'] ?? 1);
+                                                                            $days = $isNonTravelMemo ? 1 : floatval($item['days'] ?? 1);
                                                                             $unitCost = (float)($item['unit_cost'] ?? 0);
-                                                                            $total = $unitCost * (float)$quantity;
+                                                                            $total = $unitCost * $quantity * $days;
                                                                             $fundTotal += $total;
                                                                             $grandTotal += $total;
                                                                         @endphp
