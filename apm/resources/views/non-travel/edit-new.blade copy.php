@@ -491,7 +491,7 @@
         });
 
         // Get budget codes based on fund type and division (extramural: division + unbounded, one code; intramural: up to 2)
-        const divisionId = {{ $nonTravel->division_id }};
+        const divisionId = Number(@json((int) ($nonTravel->division_id ?? user_session('division_id') ?? 0))) || 0;
         const budgetCodesSelect = $('#budget_codes');
         const budgetCodesHelp = $('#budget_codes_help');
 
@@ -569,8 +569,9 @@
                 if (data.length) {
                     data.forEach(code => {
                         const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
+                        const encodedActivityCodeLabel = encodeURIComponent(String(code.activity_code_label || 'Activity Code *'));
                         budgetCodesSelect.append(
-                            `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
+                            `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${encodedActivityCodeLabel}">${label}</option>`
                         );
                     });
                     budgetCodesSelect.prop('disabled', false);
@@ -599,9 +600,6 @@
                             budgetCodesSelect.trigger('change');
                         }, 0);
                     }
-                    if (!budgetDataRestored) {
-                        runNonTravelBudgetRestoreFromExisting();
-                    }
                 } else {
                     if (existingBudgetCodes.length > 0) {
                         restoreExistingBudgetFallback();
@@ -617,9 +615,6 @@
                     restoreExistingBudgetFallback();
                 } else {
                     budgetCodesHelp.text('Could not load budget codes. Please retry.');
-                }
-                if (!budgetDataRestored) {
-                    runNonTravelBudgetRestoreFromExisting();
                 }
             });
         });
@@ -643,36 +638,6 @@
             const n = Number(codeId);
             if (!Number.isNaN(n) && existingBudget[n] !== undefined) return existingBudget[n];
             return null;
-        }
-
-        let budgetDataRestored = false;
-        function runNonTravelBudgetRestoreFromExisting() {
-            if (budgetDataRestored || !existingBudget || typeof existingBudget !== 'object') return;
-
-            const codeKeys = Object.keys(existingBudget).filter(function (key) {
-                return String(key) !== 'grand_total';
-            });
-            if (!codeKeys.length) return;
-
-            codeKeys.forEach(function (codeId) {
-                let option = findBudgetCodeOption(codeId);
-                if (!option.length) {
-                    budgetCodesSelect.append(
-                        `<option value="${codeId}" data-balance="0" data-funder-id="">Code ${codeId}</option>`
-                    );
-                    option = findBudgetCodeOption(codeId);
-                }
-                option.prop('selected', true);
-                const label = option.text() || `Code ${codeId}`;
-                const balance = option.data('balance') || 0;
-                const raw = getExistingBudgetItemsForCode(codeId);
-                createBudgetCardWithData(codeId, label, balance, raw);
-            });
-
-            budgetCodesSelect.prop('disabled', false);
-            budgetCodesSelect.trigger('change.select2');
-            budgetCodesSelect.trigger('change');
-            budgetDataRestored = true;
         }
 
         function findBudgetCodeOption(codeId) {
@@ -778,7 +743,14 @@
                         var l = $(this).attr('data-activity-code-label')
                             || $(this).data('activity-code-label')
                             || $(this).data('activityCodeLabel');
-                        if (l) { firstLabel = l; return false; }
+                        if (l) {
+                            try {
+                                firstLabel = decodeURIComponent(String(l));
+                            } catch (e) {
+                                firstLabel = String(l);
+                            }
+                            return false;
+                        }
                     }
                 });
                 $('.activity_code .activity-code-label').text(firstLabel);
@@ -1191,9 +1163,6 @@
         // Initial load for edit page: pull budget codes for selected fund type
         if ($('#fund_type').val()) {
             $('#fund_type').trigger('change');
-            setTimeout(runNonTravelBudgetRestoreFromExisting, 50);
-            setTimeout(runNonTravelBudgetRestoreFromExisting, 300);
-            setTimeout(runNonTravelBudgetRestoreFromExisting, 700);
         }
     });
 </script>
