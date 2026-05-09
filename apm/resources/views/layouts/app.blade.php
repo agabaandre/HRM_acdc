@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-1    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="mobile-web-app-capable" content="no">
     <meta name="apple-mobile-web-app-capable" content="no">
