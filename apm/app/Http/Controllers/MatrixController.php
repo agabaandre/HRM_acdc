@@ -510,40 +510,62 @@ class MatrixController extends Controller
         $activities = $activitiesQuery->latest()->paginate($perPage);
         $singleMemos = $singleMemosQuery->latest()->paginate(20);
      
-        // Prepare additional decoded & related data per activity
-        foreach ($activities as $activity) {
-            // Decode JSON arrays
-            $locationIds = is_array($activity->location_id)
-                ? $activity->location_id
-                : json_decode($activity->location_id ?? '[]', true);
-    
-            $internalRaw = is_string($activity->internal_participants)
-                ? json_decode($activity->internal_participants ?? '[]', true)
-                : ($activity->internal_participants ?? []);
-    
-            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
-    
-            // Attach related models
-            $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
-            $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+        // Batch-resolve locations/internal participants for both activity lists
+        $allRows = collect($activities->items())->merge($singleMemos->items());
+        $rowMeta = [];
+        $allLocationIds = [];
+        $allStaffIds = [];
+
+        foreach ($allRows as $row) {
+            $locationIds = is_array($row->location_id)
+                ? $row->location_id
+                : json_decode($row->location_id ?? '[]', true);
+            $locationIds = array_values(array_filter((array) $locationIds, static fn ($id) => (int) $id > 0));
+
+            $internalRaw = is_string($row->internal_participants)
+                ? json_decode($row->internal_participants ?? '[]', true)
+                : ($row->internal_participants ?? []);
+            $internalParticipantIds = collect((array) $internalRaw)
+                ->pluck('staff_id')
+                ->filter(static fn ($id) => (int) $id > 0)
+                ->map(static fn ($id) => (int) $id)
+                ->values()
+                ->all();
+
+            $rowMeta[$row->id] = [
+                'location_ids' => $locationIds,
+                'staff_ids' => $internalParticipantIds,
+            ];
+
+            $allLocationIds = array_merge($allLocationIds, $locationIds);
+            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds);
         }
-        
-        // Prepare additional decoded & related data per single memo
+
+        $locationsById = Location::whereIn('id', array_values(array_unique($allLocationIds)))->get()->keyBy('id');
+        $staffByStaffId = Staff::whereIn('staff_id', array_values(array_unique($allStaffIds)))->get()->keyBy('staff_id');
+
+        foreach ($activities as $activity) {
+            $meta = $rowMeta[$activity->id] ?? ['location_ids' => [], 'staff_ids' => []];
+            $activity->locations = collect($meta['location_ids'])
+                ->map(static fn ($id) => $locationsById->get((int) $id))
+                ->filter()
+                ->values();
+            $activity->internalParticipants = collect($meta['staff_ids'])
+                ->map(static fn ($id) => $staffByStaffId->get((int) $id))
+                ->filter()
+                ->values();
+        }
+
         foreach ($singleMemos as $memo) {
-            // Decode JSON arrays
-            $locationIds = is_array($memo->location_id)
-                ? $memo->location_id
-                : json_decode($memo->location_id ?? '[]', true);
-    
-            $internalRaw = is_string($memo->internal_participants)
-                ? json_decode($memo->internal_participants ?? '[]', true)
-                : ($memo->internal_participants ?? []);
-    
-            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
-    
-            // Attach related models
-            $memo->locations = Location::whereIn('id', $locationIds ?: [])->get();
-            $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+            $meta = $rowMeta[$memo->id] ?? ['location_ids' => [], 'staff_ids' => []];
+            $memo->locations = collect($meta['location_ids'])
+                ->map(static fn ($id) => $locationsById->get((int) $id))
+                ->filter()
+                ->values();
+            $memo->internalParticipants = collect($meta['staff_ids'])
+                ->map(static fn ($id) => $staffByStaffId->get((int) $id))
+                ->filter()
+                ->values();
         }
         
         // Filter division staff by name if provided

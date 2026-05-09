@@ -38,12 +38,14 @@ class PendingApprovalsController extends Controller
         $staffId = $request->get('staff_id');
         
         $approverInfo = null;
+        $staffForApprover = null;
         
         // If staff_id is provided (from dashboard), filter pending approvals for that specific approver
         if ($staffId) {
             // Get approver information (name and roles)
             $staff = \App\Models\Staff::where('staff_id', (int) $staffId)->first();
             if ($staff) {
+                $staffForApprover = $staff;
                 // Get roles from workflow definitions
                 $approvers = \App\Models\Approver::where('staff_id', (int) $staffId)
                     ->with(['workflowDefinition' => function($query) {
@@ -128,7 +130,9 @@ class PendingApprovalsController extends Controller
         $year = $request->filled('year') ? (int) $request->get('year') : null;
         $month = $request->filled('month') ? (int) $request->get('month') : null;
         $staffIdForAvg = $staffId ? (int) $staffId : (int) user_session('staff_id');
-        $divisionIdForAvg = $staffId ? (optional(\App\Models\Staff::where('staff_id', $staffIdForAvg)->first())->division_id) : user_session('division_id');
+        $divisionIdForAvg = $staffId
+            ? (int) ($staffForApprover->division_id ?? 0)
+            : (int) user_session('division_id');
         $avgApprovalTimeHours = $this->getAverageApprovalTimeAll($staffIdForAvg, $divisionIdForAvg, $year, $month);
         $avgApprovalTimeDisplay = $this->formatApprovalTime($avgApprovalTimeHours);
 

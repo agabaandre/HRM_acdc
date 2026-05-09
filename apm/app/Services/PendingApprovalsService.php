@@ -30,6 +30,8 @@ class PendingApprovalsService
     protected $userPermissions;
     protected $sessionData;
     protected $originalStaffId;
+    protected $cachedPendingApprovals = null;
+    protected $cachedSummaryStats = null;
 
     public function __construct(?array $sessionData = null)
     {
@@ -57,6 +59,7 @@ class PendingApprovalsService
             $this->originalStaffId = $this->currentStaffId;
         }
         $this->currentStaffId = $staffId;
+        $this->clearComputedCaches();
     }
 
     /**
@@ -67,7 +70,14 @@ class PendingApprovalsService
         if ($this->originalStaffId) {
             $this->currentStaffId = $this->originalStaffId;
             $this->originalStaffId = null;
+            $this->clearComputedCaches();
         }
+    }
+
+    protected function clearComputedCaches(): void
+    {
+        $this->cachedPendingApprovals = null;
+        $this->cachedSummaryStats = null;
     }
 
     /**
@@ -83,6 +93,10 @@ class PendingApprovalsService
      */
     public function getPendingApprovals(): array
     {
+        if ($this->cachedPendingApprovals !== null) {
+            return $this->cachedPendingApprovals;
+        }
+
         $pendingItems = collect();
 
         // Check if user is an admin assistant
@@ -119,7 +133,9 @@ class PendingApprovalsService
         $pendingItems = $pendingItems->merge($this->getPendingChangeRequests($isAdminAssistant, $adminAssistantApproverIds));
 
         // Group by category and sort by date received
-        return $this->groupByCategory($pendingItems);
+        $this->cachedPendingApprovals = $this->groupByCategory($pendingItems);
+
+        return $this->cachedPendingApprovals;
     }
 
     /**
@@ -1185,15 +1201,21 @@ class PendingApprovalsService
      */
     public function getSummaryStats(): array
     {
+        if ($this->cachedSummaryStats !== null) {
+            return $this->cachedSummaryStats;
+        }
+
         $allPending = collect($this->getPendingApprovals())->flatten(1);
-        
-        return [
+
+        $this->cachedSummaryStats = [
             'total_pending' => $allPending->count(),
             'by_category' => $allPending->groupBy('category')->map->count(),
             'by_division' => $allPending->groupBy('division')->map->count(),
             'oldest_pending' => $allPending->min('date_received'),
             'newest_pending' => $allPending->max('date_received'),
         ];
+
+        return $this->cachedSummaryStats;
     }
 
     /**
