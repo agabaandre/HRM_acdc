@@ -255,7 +255,8 @@
             }
 
             $('#matrixTabs button[data-bs-toggle="tab"]').off('shown.bs.tab.matricesIdx').on('shown.bs.tab.matricesIdx', function(e) {
-                const target = $(e.target).attr('data-bs-target');
+                // Use currentTarget so clicks on inner <i> / badge still resolve the tab button.
+                const target = $(e.currentTarget).attr('data-bs-target');
                 if (!target) return;
                 const tabId = target.replace('#', '');
                 loadTabData(tabId, 1);

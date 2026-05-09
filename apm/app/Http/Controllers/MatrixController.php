@@ -58,7 +58,7 @@ class MatrixController extends Controller
                     ))->render();
                     break;
                 case 'allMatrices':
-                    if (! in_array(87, user_session('permissions', []), true)) {
+                    if (! in_array(87, user_session('permissions', []))) {
                         return response()->json(['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>']);
                     }
                     $allBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
@@ -81,7 +81,7 @@ class MatrixController extends Controller
         $myDivisionMatricesCount = (int) $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)->count();
 
         $allMatricesCount = 0;
-        if (in_array(87, user_session('permissions', []), true)) {
+        if (in_array(87, user_session('permissions', []))) {
             $allBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
             if ($allBuilder !== null) {
                 $allMatricesCount = (int) $allBuilder->count();
@@ -162,7 +162,7 @@ class MatrixController extends Controller
 
     private function newAllMatricesBuilder(Request $request, mixed $selectedYear, mixed $selectedQuarter, string $selectedStatus): ?\Illuminate\Database\Eloquent\Builder
     {
-        if (! in_array(87, user_session('permissions', []), true)) {
+        if (! in_array(87, user_session('permissions', []))) {
             return null;
         }
 
