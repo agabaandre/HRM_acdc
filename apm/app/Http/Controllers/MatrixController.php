@@ -25,112 +25,144 @@ class MatrixController extends Controller
 {
     /**
      * Display a listing of matrices.
+     *
+     * Initial GET returns filters and tab counts only; tab tables load via AJAX when the tab panel
+     * nears the viewport (lazy) so the page stays fast. Heavy paginated queries run only for AJAX.
      */
     public function index(Request $request)
     {
-        $query = Matrix::with([
+        $currentYear = now()->year;
+        $currentQuarter = 'Q'.now()->quarter;
+
+        $selectedYear = $request->get('year', '');
+        $selectedQuarter = $request->get('quarter', '');
+        $selectedStatus = $request->get('status', 'active');
+
+        if (empty($selectedYear) && ! $request->has('year')) {
+            $selectedYear = $currentYear;
+        }
+
+        $myDivisionBase = $this->indexMyDivisionMatricesBaseQuery(
+            $request,
+            $currentQuarter,
+            $selectedYear,
+            $selectedQuarter,
+            $selectedStatus,
+            $currentYear
+        );
+        $myDivisionTotalCount = (int) $myDivisionBase->clone()->count();
+
+        $canViewAllMatrices = in_array(87, user_session('permissions', []), true);
+        $allMatricesBase = $canViewAllMatrices
+            ? $this->indexAllMatricesBaseQuery(
+                $request,
+                $currentQuarter,
+                $selectedYear,
+                $selectedQuarter,
+                $selectedStatus,
+                $currentYear
+            )
+            : null;
+        $allMatricesTotalCount = $allMatricesBase ? (int) $allMatricesBase->clone()->count() : 0;
+
+        if ($request->ajax()) {
+            $tab = $request->get('tab', '');
+            $html = '';
+
+            if ($tab === 'myDivision') {
+                $myDivisionMatrices = $myDivisionBase->clone()
+                    ->with($this->matrixIndexEagerLoads())
+                    ->paginate(24, ['*'], 'my_division_page');
+                $html = view('matrices.partials.my-division-tab', compact(
+                    'myDivisionMatrices',
+                    'selectedYear',
+                    'selectedQuarter',
+                    'selectedStatus'
+                ))->render();
+            } elseif ($tab === 'allMatrices' && $allMatricesBase) {
+                $allMatrices = $allMatricesBase->clone()
+                    ->with($this->matrixIndexEagerLoads())
+                    ->paginate(24, ['*'], 'all_matrices_page');
+                $html = view('matrices.partials.all-matrices-tab', compact(
+                    'allMatrices',
+                    'selectedYear',
+                    'selectedQuarter',
+                    'selectedStatus'
+                ))->render();
+            }
+
+            return response()->json(['html' => $html]);
+        }
+
+        $divisions = Division::query()
+            ->orderBy('division_name')
+            ->get(['id', 'division_name']);
+
+        $focalPersons = Staff::active()->get();
+
+        return view('matrices.index', [
+            'myDivisionTotalCount' => $myDivisionTotalCount,
+            'allMatricesTotalCount' => $allMatricesTotalCount,
+            'title' => user_session('division_name'),
+            'module' => 'Quarterly Matrix',
+            'divisions' => $divisions,
+            'focalPersons' => $focalPersons,
+            'selectedYear' => $selectedYear,
+            'selectedQuarter' => $selectedQuarter,
+            'selectedStatus' => $selectedStatus,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function matrixIndexEagerLoads(): array
+    {
+        return [
             'division',
             'staff',
             'focalPerson',
             'forwardWorkflow',
-            'activities' => function ($q) {
+            'activities' => static function ($q): void {
                 $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
-                  ->whereNotNull('matrix_id');
-            }
-        ]);
+                    ->whereNotNull('matrix_id');
+            },
+        ];
+    }
 
-
-        // Replace the complex whereHas query with proper division-specific and workflow logic
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\Matrix>
+     */
+    private function indexMyDivisionMatricesBaseQuery(
+        Request $request,
+        string $currentQuarter,
+        mixed $selectedYear,
+        string $selectedQuarter,
+        string $selectedStatus,
+        int $currentYear
+    ): \Illuminate\Database\Eloquent\Builder {
         $userDivisionId = user_session('division_id');
-        $userStaffId    = user_session('staff_id');
-        
-        $query->where(function($q) use ($userDivisionId, $userStaffId) {
-            // Case 1: Division-specific approval - check if user's division matches matrix division
-            if ($userDivisionId) {
-                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
-                    $subQ->where('is_division_specific', 1)
-                    ->whereNull('division_reference_column')
-                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'));
-                })
-                ->where('division_id', $userDivisionId);
-            }
+        $userStaffId = user_session('staff_id');
 
-            // Case 1b: Division-specific approval with division_reference_column - check if user's staff_id matches the value in the division_reference_column
+        $query = Matrix::query()->where(function ($q) use ($userDivisionId, $userStaffId): void {
+            $q->where('division_id', $userDivisionId);
+
             if ($userStaffId) {
-                $q->orWhere(function($subQ) use ($userStaffId, $userDivisionId) {
-
-                    $divisionsTable = (new Division())->getTable();
-                    $subQ->whereRaw("EXISTS (
-                        SELECT 1 FROM workflow_definition wd 
-                        JOIN {$divisionsTable} d ON d.id = matrices.division_id 
-                        WHERE wd.workflow_id = matrices.forward_workflow_id 
-                        AND wd.is_division_specific = 1 
-                        AND wd.division_reference_column IS NOT NULL 
-                        AND wd.approval_order = matrices.approval_level
-                        AND ( d.focal_person = ? OR
-                            d.division_head = ? OR
-                            d.admin_assistant = ? OR
-                            d.finance_officer = ? OR
-                            d.head_oic_id = ? OR
-                            d.director_id = ? OR
-                            d.director_oic_id = ?
-                            OR (d.id=matrices.division_id AND d.id=?)
-                        )
-                    )", [$userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userDivisionId])
-                    ->orWhere(function($subQ2) use ($userStaffId) {
-                        $subQ2->where('approval_level', $userStaffId)
-                              ->orWhereHas('approvalTrails', function($trailQ) use ($userStaffId) {
-                                $trailQ->where('staff_id', '=',$userStaffId);
-                              });
-                    });
+                $q->orWhereHas('division', function ($divisionQuery) use ($userStaffId): void {
+                    $divisionQuery->where('division_head', $userStaffId);
                 });
             }
-            
-            // Case 2: Non-division-specific approval - check workflow definition and approver
-            if ($userStaffId) {
-                $q->orWhere(function($subQ) use ($userStaffId) {
-                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
-                        $workflowQ->where('is_division_specific','=', 0)
-                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'))
-                                  ->whereHas('approvers', function($approverQ) use ($userStaffId) {
-                                      $approverQ->where('staff_id', $userStaffId);
-                                  });
-                    });
-                });
-            }
-
-            $q->orWhere('division_id', $userDivisionId);
         });
 
-        // Get current year and quarter as default
-        $currentYear = now()->year;
-        $currentQuarter = 'Q' . now()->quarter;
-       
-        // Get selected values from request, use defaults only if not provided at all
-        $selectedYear = $request->get('year', '');
-        $selectedQuarter = $request->get('quarter', '');
-        $selectedStatus = $request->get('status', 'active');
-        
-        // Use defaults only on initial page load (no filters provided)
-        if (empty($selectedYear) && !$request->has('year')) {
-            $selectedYear = $currentYear;
-        }
-        // Do not default quarter: show all quarters for the selected year unless the user picks one.
-
-        // Apply year filter only if a year is selected
-        if (!empty($selectedYear)) {
+        if (! empty($selectedYear)) {
             $query->where('year', $selectedYear);
         }
-    
-        // Apply quarter filter only if a quarter is selected
-        if (!empty($selectedQuarter)) {
+        if (! empty($selectedQuarter)) {
             $query->where('quarter', $selectedQuarter);
         }
-    
         if ($request->filled('focal_person')) {
             $query->where('focal_person_id', $request->focal_person);
         }
-    
         if ($request->filled('division')) {
             $query->where('division_id', $request->division);
         }
@@ -141,158 +173,46 @@ class MatrixController extends Controller
             $query->where('overall_status', '!=', 'archived');
         }
 
-       //  dd(getFullSql($query));
-
         $this->applyMatrixListOrdering($query, $currentQuarter, $selectedYear, $currentYear);
-        $matrices = $query->paginate(24);
 
-        //dd($matrices->toArray());
+        return $query;
+    }
 
-        
-       
-        $matrices->getCollection()->transform(function ($matrix) {
-            $matrix->total_activities = $matrix->activities->count();
-            $matrix->total_participants = $matrix->activities->sum('total_participants');
-            $matrix->total_budget = $matrix->activities->sum(function ($activity) {
-                return is_array($activity->budget_breakdown) && isset($activity->budget_breakdown['total'])
-                    ? $activity->budget_breakdown['total']
-                    : 0;
-            });
-            return $matrix;
-        });
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\Matrix>
+     */
+    private function indexAllMatricesBaseQuery(
+        Request $request,
+        string $currentQuarter,
+        mixed $selectedYear,
+        string $selectedQuarter,
+        string $selectedStatus,
+        int $currentYear
+    ): \Illuminate\Database\Eloquent\Builder {
+        $query = Matrix::query();
 
-        
-       
-        // Create separate queries for each tab with proper server-side pagination
-        $myDivisionQuery = Matrix::with([
-            'division',
-            'staff',
-            'focalPerson',
-            'forwardWorkflow',
-            'activities' => function ($q) {
-                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
-                  ->whereNotNull('matrix_id');
-            }
-        ])->where(function($q) {
-            $userDivisionId = user_session('division_id');
-            $userStaffId = user_session('staff_id');
-            
-            // Show matrices from user's own division
-            $q->where('division_id', $userDivisionId);
-            
-            // Also show matrices where user is the division head of other divisions
-            if ($userStaffId) {
-                $q->orWhereHas('division', function($divisionQuery) use ($userStaffId) {
-                    $divisionQuery->where('division_head', $userStaffId);
-                });
-            }
-        });
-
-        // Apply filters to my division query (only if values are provided)
-        if (!empty($selectedYear)) {
-            $myDivisionQuery->where('year', $selectedYear);
+        if (! empty($selectedYear)) {
+            $query->where('year', $selectedYear);
         }
-        if (!empty($selectedQuarter)) {
-            $myDivisionQuery->where('quarter', $selectedQuarter);
+        if (! empty($selectedQuarter)) {
+            $query->where('quarter', $selectedQuarter);
         }
         if ($request->filled('focal_person')) {
-            $myDivisionQuery->where('focal_person_id', $request->focal_person);
+            $query->where('focal_person_id', $request->focal_person);
         }
         if ($request->filled('division')) {
-            $myDivisionQuery->where('division_id', $request->division);
+            $query->where('division_id', $request->division);
         }
 
         if ($selectedStatus === 'archived') {
-            $myDivisionQuery->where('overall_status', 'archived');
+            $query->where('overall_status', 'archived');
         } elseif ($selectedStatus === 'active') {
-            $myDivisionQuery->where('overall_status', '!=', 'archived');
+            $query->where('overall_status', '!=', 'archived');
         }
 
-        $this->applyMatrixListOrdering($myDivisionQuery, $currentQuarter, $selectedYear, $currentYear);
-        $myDivisionMatrices = $myDivisionQuery->paginate(24, ['*'], 'my_division_page');
+        $this->applyMatrixListOrdering($query, $currentQuarter, $selectedYear, $currentYear);
 
-        // Get all matrices for users with permission ID 87
-        $allMatrices = collect();
-        if (in_array(87, user_session('permissions', []))) {
-            $allMatricesQuery = Matrix::with([
-                'division',
-                'staff',
-                'focalPerson',
-                'forwardWorkflow',
-                'activities' => function ($q) {
-                    $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
-                      ->whereNotNull('matrix_id');
-                }
-            ]);
-
-            // Apply same filters to all matrices query (only if values are provided)
-            if (!empty($selectedYear)) {
-                $allMatricesQuery->where('year', $selectedYear);
-            }
-            if (!empty($selectedQuarter)) {
-                $allMatricesQuery->where('quarter', $selectedQuarter);
-            }
-        
-            if ($request->filled('focal_person')) {
-                $allMatricesQuery->where('focal_person_id', $request->focal_person);
-            }
-        
-            if ($request->filled('division')) {
-                $allMatricesQuery->where('division_id', $request->division);
-            }
-
-            if ($selectedStatus === 'archived') {
-                $allMatricesQuery->where('overall_status', 'archived');
-            } elseif ($selectedStatus === 'active') {
-                $allMatricesQuery->where('overall_status', '!=', 'archived');
-            }
-
-            $this->applyMatrixListOrdering($allMatricesQuery, $currentQuarter, $selectedYear, $currentYear);
-            $allMatrices = $allMatricesQuery->paginate(24, ['*'], 'all_matrices_page');
-        }
-
-        //  dd($filteredActionedMatrices->toArray());
-
-        // Handle AJAX requests for tab content
-        if ($request->ajax()) {
-            \Log::info('AJAX request received in MatrixController index', [
-                'tab' => $request->get('tab'),
-                'all_params' => $request->all()
-            ]);
-            
-            $tab = $request->get('tab', '');
-            $html = '';
-            
-            switch($tab) {
-                case 'myDivision':
-                    $html = view('matrices.partials.my-division-tab', compact(
-                        'myDivisionMatrices', 'selectedYear', 'selectedQuarter', 'selectedStatus'
-                    ))->render();
-                    break;
-                case 'allMatrices':
-                    $html = view('matrices.partials.all-matrices-tab', compact(
-                        'allMatrices', 'selectedYear', 'selectedQuarter', 'selectedStatus'
-                    ))->render();
-                    break;
-            }
-            
-            \Log::info('Generated HTML length for matrices', ['html_length' => strlen($html)]);
-            
-            return response()->json(['html' => $html]);
-        }
-    
-        return view('matrices.index', [
-            'matrices' => $matrices,
-            'myDivisionMatrices' => $myDivisionMatrices,
-            'allMatrices' => $allMatrices,
-            'title' => user_session('division_name'),
-            'module' => 'Quarterly Matrix',
-            'divisions' => \App\Models\Division::all(),
-            'focalPersons' => \App\Models\Staff::active()->get(),
-            'selectedYear' => $selectedYear,
-            'selectedQuarter' => $selectedQuarter,
-            'selectedStatus' => $selectedStatus,
-        ]);
+        return $query;
     }
 
     /**
