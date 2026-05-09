@@ -117,18 +117,16 @@
 @endsection
 
 @section('content')
-@include('pages.matrices-index-content', compact('title', 'module', 'divisions', 'focalPersons', 'selectedYear', 'selectedQuarter', 'selectedStatus', 'myDivisionTotalCount', 'allMatricesTotalCount'))
+@include('pages.matrices-index-content', compact('myDivisionMatricesCount', 'allMatricesCount', 'title', 'module', 'divisions', 'focalPersons', 'selectedYear', 'selectedQuarter', 'selectedStatus'))
 @endsection
 
 @push('scripts')
     <script>
-        function matricesIndexPageQueryParam(tabId) {
-            return tabId === 'myDivision' ? 'my_division_page' : 'all_matrices_page';
-        }
-
         function initMatricesIndexPage() {
             if (!document.getElementById('yearFilter')) return;
             const params = new URLSearchParams(window.location.search);
+            // Default to current year if no year parameter exists (initial page load)
+            // If year parameter exists but is empty, use empty string (explicit "All Years" selection)
             const currentYear = new Date().getFullYear();
             const yearParam = params.get('year');
             $('#yearFilter').val(yearParam !== null ? yearParam : currentYear);
@@ -137,26 +135,72 @@
             $('#focalFilter').val(params.get('focal_person') || '');
             $('#statusFilter').val(params.get('status') || 'active');
 
+            // Apply Select2
             $('.select2').select2({
                 width: '100%'
             });
 
-            function loadTabData(tabId, page) {
-                const mount = document.getElementById(tabId + '-ajax-body');
-                if (!mount) return;
-
-                if (page === undefined || page === null) {
-                    const sp = new URLSearchParams(window.location.search);
-                    const key = matricesIndexPageQueryParam(tabId);
-                    page = parseInt(sp.get(key) || sp.get('page') || '1', 10) || 1;
+            // AJAX filtering - auto-update when filters change
+            function applyFilters() {
+                const activeTab = document.querySelector('.tab-pane.active');
+                if (activeTab) {
+                    const tabId = activeTab.id;
+                    loadTabData(tabId, 1);
                 }
+            }
+            
+            // Manual filter button click
+            if (document.getElementById('applyFilters')) {
+                document.getElementById('applyFilters').addEventListener('click', applyFilters);
+            }
+            
+            // Auto-apply filters when they change
+            if (document.getElementById('yearFilter')) {
+                document.getElementById('yearFilter').addEventListener('change', applyFilters);
+            }
+            
+            if (document.getElementById('quarterFilter')) {
+                document.getElementById('quarterFilter').addEventListener('change', applyFilters);
+            }
+            
+            if (document.getElementById('divisionFilter')) {
+                document.getElementById('divisionFilter').addEventListener('change', applyFilters);
+            }
+            
+            if (document.getElementById('focalFilter')) {
+                document.getElementById('focalFilter').addEventListener('change', applyFilters);
+            }
+
+            if (document.getElementById('statusFilter')) {
+                document.getElementById('statusFilter').addEventListener('change', applyFilters);
+            }
+
+            function matricesTabMountEl(tabId) {
+                return document.getElementById(tabId + '-matrix-table-host');
+            }
+
+            function matricesTabPageParam(tabId) {
+                if (tabId === 'myDivision') return 'my_division_page';
+                if (tabId === 'allMatrices') return 'all_matrices_page';
+                return 'page';
+            }
+
+            // Function to load tab data via AJAX (injects HTML into #<tabId>-matrix-table-host only)
+            function loadTabData(tabId, page = 1) {
+                const mount = matricesTabMountEl(tabId);
+                if (!mount) return;
 
                 const currentUrl = new URL(window.location.href);
                 currentUrl.searchParams.set('tab', tabId);
+
                 currentUrl.searchParams.delete('page');
                 currentUrl.searchParams.delete('my_division_page');
                 currentUrl.searchParams.delete('all_matrices_page');
-                currentUrl.searchParams.set(matricesIndexPageQueryParam(tabId), String(page));
+                const pageParam = matricesTabPageParam(tabId);
+                const pageNum = parseInt(String(page), 10) || 1;
+                if (pageNum > 1) {
+                    currentUrl.searchParams.set(pageParam, String(pageNum));
+                }
 
                 const year = document.getElementById('yearFilter')?.value || '';
                 const quarter = document.getElementById('quarterFilter')?.value || '';
@@ -170,7 +214,7 @@
                 if (division) currentUrl.searchParams.set('division', division); else currentUrl.searchParams.delete('division');
                 if (focalPerson) currentUrl.searchParams.set('focal_person', focalPerson); else currentUrl.searchParams.delete('focal_person');
 
-                mount.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading…</span></div></div>';
+                mount.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-muted small mt-2 mb-0">Loading matrices…</p></div>';
 
                 fetch(currentUrl.toString(), {
                     method: 'GET',
@@ -179,99 +223,75 @@
                         'Accept': 'application/json'
                     }
                 })
-                .then(function (response) { return response.json(); })
-                .then(function (data) {
-                    if (data.html) {
+                .then(response => response.json())
+                .then(data => {
+                    if (data.html !== undefined && data.html !== null && data.html !== '') {
                         mount.innerHTML = data.html;
                         attachPaginationHandlers(tabId);
                     } else {
                         mount.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
                     }
+                    updatePaginationInfo();
                 })
-                .catch(function () {
+                .catch(function() {
                     mount.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
                 });
             }
 
             function attachPaginationHandlers(tabId) {
-                const mount = document.getElementById(tabId + '-ajax-body');
+                const mount = matricesTabMountEl(tabId);
                 if (!mount) return;
-                mount.querySelectorAll('.pagination a').forEach(function (link) {
-                    link.addEventListener('click', function (e) {
+
+                const pageParam = matricesTabPageParam(tabId);
+                const paginationLinks = mount.querySelectorAll('.pagination a');
+                paginationLinks.forEach(function(link) {
+                    link.addEventListener('click', function(e) {
                         e.preventDefault();
-                        const url = new URL(link.getAttribute('href'), window.location.origin);
-                        const key = matricesIndexPageQueryParam(tabId);
-                        const p = parseInt(url.searchParams.get(key) || url.searchParams.get('page') || '1', 10) || 1;
+                        const url = new URL(this.href, window.location.origin);
+                        const p = parseInt(url.searchParams.get(pageParam) || url.searchParams.get('page') || '1', 10) || 1;
                         loadTabData(tabId, p);
                     });
                 });
             }
 
-            function applyFilters() {
-                const activeTab = document.querySelector('#matrixTabsContent .tab-pane.active');
-                if (activeTab) {
-                    loadTabData(activeTab.id, 1);
-                }
-            }
-
-            if (document.getElementById('applyFilters')) {
-                document.getElementById('applyFilters').addEventListener('click', applyFilters);
-            }
-            ['yearFilter', 'quarterFilter', 'divisionFilter', 'focalFilter', 'statusFilter'].forEach(function (id) {
-                const el = document.getElementById(id);
-                if (el) el.addEventListener('change', applyFilters);
-            });
-
-            $('#matrixTabs button[data-bs-toggle="tab"]').off('shown.bs.tab.matricesIndex').on('shown.bs.tab.matricesIndex', function (e) {
+            $('#matrixTabs button[data-bs-toggle="tab"]').off('shown.bs.tab.matricesIdx').on('shown.bs.tab.matricesIdx', function(e) {
                 const target = $(e.target).attr('data-bs-target');
                 if (!target) return;
                 const tabId = target.replace('#', '');
-                loadTabData(tabId);
+                loadTabData(tabId, 1);
             });
 
-            function scheduleMatricesIndexLazyLoad(tabId) {
-                const scrollRoot = document.getElementById('matrixTabsContent');
-                const mount = document.getElementById(tabId + '-ajax-body');
-                if (!mount || !scrollRoot) {
-                    if (mount) loadTabData(tabId);
-                    return;
-                }
-                var fired = false;
-                var obs = null;
-                function run() {
-                    if (fired) return;
-                    fired = true;
-                    if (obs) {
-                        try { obs.disconnect(); } catch (err) {}
+            function updatePaginationInfo() {
+                $('.pagination-info').each(function() {
+                    const $pagination = $(this).closest('.tab-pane').find('.pagination');
+                    if ($pagination.length > 0) {
+                        const $paginationLinks = $pagination.find('a, span');
+                        const currentPage = $paginationLinks.filter('.active').text();
+                        const totalPages = $paginationLinks.filter('.page-link').length;
+
+                        if (currentPage && totalPages > 1) {
+                            $(this).text('Page ' + currentPage + ' of ' + totalPages);
+                        }
                     }
-                    loadTabData(tabId);
-                }
-                if (typeof IntersectionObserver !== 'undefined') {
-                    obs = new IntersectionObserver(function (entries) {
-                        entries.forEach(function (entry) {
-                            if (entry.isIntersecting) run();
-                        });
-                    }, { root: null, rootMargin: '140px 0px', threshold: 0 });
-                    obs.observe(scrollRoot);
-                }
-                requestAnimationFrame(function () {
-                    var r = scrollRoot.getBoundingClientRect();
-                    var vh = window.innerHeight || document.documentElement.clientHeight || 700;
-                    if (r.top < vh + 200) run();
                 });
-                if (typeof IntersectionObserver === 'undefined') {
-                    setTimeout(run, 100);
-                }
-                setTimeout(run, 12000);
             }
 
             const activePane = document.querySelector('#matrixTabsContent .tab-pane.active');
             if (activePane && activePane.id) {
-                scheduleMatricesIndexLazyLoad(activePane.id);
+                const tid = activePane.id;
+                let initialPage = 1;
+                if (tid === 'myDivision') {
+                    initialPage = parseInt(params.get('my_division_page') || '1', 10) || 1;
+                } else if (tid === 'allMatrices') {
+                    initialPage = parseInt(params.get('all_matrices_page') || '1', 10) || 1;
+                }
+                loadTabData(tid, initialPage);
+            } else {
+                updatePaginationInfo();
             }
         }
         $(document).ready(initMatricesIndexPage);
-        document.addEventListener('livewire:navigated', function () {
+        document.addEventListener('livewire:navigated', function() {
             if (document.getElementById('matrixTabs')) initMatricesIndexPage();
         });
     </script>
