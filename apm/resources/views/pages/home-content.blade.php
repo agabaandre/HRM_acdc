@@ -411,9 +411,37 @@ body {
     
     {{-- Quarterly Travel Matrix --}}
     @php
-      $pendingMatrixCount = get_staff_pending_action_count('matrices');
-      $pendingNonTravelCount = get_staff_pending_action_count('non-travel');
-      $pendingSpecialMemoCount = get_staff_pending_action_count('special-memo');
+      $pendingCounts = [
+        'matrices' => 0,
+        'non-travel' => 0,
+        'special-memo' => 0,
+        'service-requests' => 0,
+        'request-arf' => 0,
+        'single-memo' => 0,
+        'change-request' => 0,
+      ];
+
+      try {
+        $summaryStats = (new \App\Services\PendingApprovalsService([
+          'staff_id' => (int) user_session('staff_id'),
+          'division_id' => user_session('division_id'),
+          'permissions' => user_session('permissions', []),
+          'name' => user_session('name', ''),
+          'email' => user_session('email', ''),
+          'base_url' => config('app.url'),
+        ]))->getSummaryStats();
+
+        $byCategory = $summaryStats['by_category'] ?? [];
+        $pendingCounts['matrices'] = (int) ($byCategory['Matrix'] ?? 0);
+        $pendingCounts['non-travel'] = (int) ($byCategory['Non-Travel Memo'] ?? 0);
+        $pendingCounts['special-memo'] = (int) ($byCategory['Special Memo'] ?? 0);
+        $pendingCounts['service-requests'] = (int) ($byCategory['Service Request'] ?? 0);
+        $pendingCounts['request-arf'] = (int) ($byCategory['Request ARF'] ?? 0);
+        $pendingCounts['single-memo'] = (int) ($byCategory['Single Memo'] ?? 0);
+        $pendingCounts['change-request'] = (int) ($byCategory['Change Request'] ?? 0);
+      } catch (\Throwable $e) {
+        // Keep zeros if dashboard summary fails.
+      }
     @endphp
 
     <div class="col-lg-3 col-md-6">
@@ -430,10 +458,10 @@ body {
             <a href="{{ route('matrices.index') }}" wire:navigate class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            @if(get_staff_pending_action_count('matrices') >= 0)
+            @if(($pendingCounts['matrices'] ?? 0) >= 0)
             <a href="{{ route('matrices.pending-approvals') }}" wire:navigate class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              <span class="alert-count" id="matrix-pending-count">{{ get_staff_pending_action_count('matrices') }}</span>
+              <span class="alert-count" id="matrix-pending-count">{{ $pendingCounts['matrices'] ?? 0 }}</span>
             </a>
             @endif
           </div>
@@ -458,10 +486,10 @@ body {
               <i class="fas fa-plus"></i> Open
             </a>
             
-            @if(get_staff_pending_action_count('non-travel') >= 0)
+            @if(($pendingCounts['non-travel'] ?? 0) >= 0)
             <a href="{{ route('non-travel.pending-approvals') }}" wire:navigate class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              <span class="alert-count" id="non-travel-pending-count">{{ get_staff_pending_action_count('non-travel') }}</span>
+              <span class="alert-count" id="non-travel-pending-count">{{ $pendingCounts['non-travel'] ?? 0 }}</span>
             </a>
             @endif
           </div>
@@ -485,10 +513,10 @@ body {
             <a href="{{ url('special-memo') }}" wire:navigate class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            @if(get_staff_pending_action_count('special-memo') >=0)
+            @if(($pendingCounts['special-memo'] ?? 0) >=0)
             <a href="{{ route('special-memo.pending-approvals') }}" wire:navigate class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              <span class="alert-count" id="special-memo-pending-count">{{ get_staff_pending_action_count('special-memo') }}</span>
+              <span class="alert-count" id="special-memo-pending-count">{{ $pendingCounts['special-memo'] ?? 0 }}</span>
             </a>
             @endif
            
@@ -513,10 +541,10 @@ body {
             <a href="{{ url('service-requests') }}" wire:navigate class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            @if(get_staff_pending_action_count('service-requests') >= 0)
+            @if(($pendingCounts['service-requests'] ?? 0) >= 0)
             <a href="{{ url('service-requests/pending-approvals') }}" wire:navigate class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              <span class="alert-count" id="service-requests-pending-count">{{ get_staff_pending_action_count('service-requests') }}</span>
+              <span class="alert-count" id="service-requests-pending-count">{{ $pendingCounts['service-requests'] ?? 0 }}</span>
             </a>
             @endif
           </div>
@@ -540,10 +568,10 @@ body {
             <a href="{{ url('request-arf') }}" wire:navigate class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            @if(get_staff_pending_action_count('request-arf') >= 0)
+            @if(($pendingCounts['request-arf'] ?? 0) >= 0)
             <a href="{{ route('request-arf.pending-approvals') }}" wire:navigate class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              <span class="alert-count" id="arf-pending-count">{{ get_staff_pending_action_count('request-arf') }}</span>
+              <span class="alert-count" id="arf-pending-count">{{ $pendingCounts['request-arf'] ?? 0 }}</span>
             </a>
             @endif
            
@@ -569,10 +597,10 @@ body {
             <a href="{{ route('activities.single-memos.index') }}" wire:navigate class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            @if(get_staff_pending_action_count('single-memo') >= 0)
+            @if(($pendingCounts['single-memo'] ?? 0) >= 0)
             <a href="{{ route('activities.single-memos.pending-approvals') }}" wire:navigate class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              <span class="alert-count" id="single-memo-pending-count">{{ get_staff_pending_action_count('single-memo') }}</span>
+              <span class="alert-count" id="single-memo-pending-count">{{ $pendingCounts['single-memo'] ?? 0 }}</span>
             </a>
             @endif
         
@@ -597,10 +625,10 @@ body {
             <a href="{{ route('change-requests.index') }}" wire:navigate class="btn btn-success btn-sm">
               <i class="fas fa-list"></i> View All
             </a>
-            @if(get_staff_pending_action_count('change-request') >= 0)
+            @if(($pendingCounts['change-request'] ?? 0) >= 0)
             <a href="{{ route('change-requests.pending-approvals') }}" wire:navigate class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              <span class="alert-count" id="change-request-pending-count">{{ get_staff_pending_action_count('change-request') }}</span>
+              <span class="alert-count" id="change-request-pending-count">{{ $pendingCounts['change-request'] ?? 0 }}</span>
             </a>
             @endif
           </div>

@@ -111,6 +111,44 @@
     ];
 @endphp
 
+@php
+    $staffId = (int) (user_session('staff_id') ?? 0);
+    $returnedCount = 0;
+    $approvalsCount = 0;
+
+    if ($staffId > 0) {
+        $cacheTtl = now()->addSeconds(60);
+        $returnedCount = \Illuminate\Support\Facades\Cache::remember("nav:returned_count:{$staffId}", $cacheTtl, static function () use ($staffId) {
+            return
+                get_my_returned_matrices_count($staffId) +
+                get_my_returned_special_memo_count($staffId) +
+                get_my_returned_non_travel_memo_count($staffId) +
+                get_my_returned_other_memo_count($staffId) +
+                get_my_returned_single_memo_count($staffId) +
+                get_my_returned_service_requests_count($staffId) +
+                get_my_returned_request_arf_count($staffId) +
+                get_my_returned_change_request_count($staffId);
+        });
+
+        $approvalsCount = \Illuminate\Support\Facades\Cache::remember("nav:approvals_count:{$staffId}", $cacheTtl, static function () use ($staffId) {
+            try {
+                $summaryStats = (new \App\Services\PendingApprovalsService([
+                    'staff_id' => $staffId,
+                    'division_id' => user_session('division_id'),
+                    'permissions' => user_session('permissions', []),
+                    'name' => user_session('name', ''),
+                    'email' => user_session('email', ''),
+                    'base_url' => config('app.url'),
+                ]))->getSummaryStats();
+
+                return (int) ($summaryStats['total_pending'] ?? 0);
+            } catch (\Throwable $e) {
+                return 0;
+            }
+        });
+    }
+@endphp
+
 <div class="nav-container primary-menu">
     <nav class="navbar navbar-expand-xl w-100">
         <ul class="navbar-nav justify-content-start">
@@ -158,22 +196,8 @@
                     class="nav-link {{ Request::is('returned-memos*') ? 'active' : '' }}">
                     <div class="parent-icon"><i class="fas fa-clock"></i></div>
                     <div class="menu-title">Returns</div>
-                    @php
-                        $pendingCount = 0;
-                        if (user_session('staff_id')) {
-                            $pendingCount =
-                                get_my_returned_matrices_count(user_session('staff_id')) +
-                                get_my_returned_special_memo_count(user_session('staff_id')) +
-                                get_my_returned_non_travel_memo_count(user_session('staff_id')) +
-                                get_my_returned_other_memo_count(user_session('staff_id')) +
-                                get_my_returned_single_memo_count(user_session('staff_id')) +
-                                get_my_returned_service_requests_count(user_session('staff_id')) +
-                                get_my_returned_request_arf_count(user_session('staff_id')) +
-                                get_my_returned_change_request_count(user_session('staff_id'));
-                        }
-                    @endphp
-                    @if ($pendingCount > 0)
-                        <span class="badge bg-danger ms-2">{{ $pendingCount }}</span>
+                    @if ($returnedCount > 0)
+                        <span class="badge bg-danger ms-2">{{ $returnedCount }}</span>
                     @endif
                 </a>
             </li>
@@ -184,22 +208,8 @@
                     class="nav-link {{ Request::is('pending-approvals*') ? 'active' : '' }}">
                     <div class="parent-icon"><i class="fas fa-clock"></i></div>
                     <div class="menu-title">Approvals</div>
-                    @php
-                        $pendingCount = 0;
-                        if (user_session('staff_id')) {
-                            $pendingCount =
-                                get_pending_matrices_count(user_session('staff_id')) +
-                                get_pending_special_memo_count(user_session('staff_id')) +
-                                get_pending_non_travel_memo_count(user_session('staff_id')) +
-                                get_pending_single_memo_count(user_session('staff_id')) +
-                                get_pending_service_requests_count(user_session('staff_id')) +
-                                get_pending_request_arf_count(user_session('staff_id')) +
-                                get_pending_change_request_count(user_session('staff_id')) +
-                                get_pending_other_memo_count(user_session('staff_id'));
-                        }
-                    @endphp
-                    @if ($pendingCount > 0)
-                        <span class="badge bg-danger ms-2">{{ $pendingCount }}</span>
+                    @if ($approvalsCount > 0)
+                        <span class="badge bg-danger ms-2">{{ $approvalsCount }}</span>
                     @endif
                 </a>
             </li>
