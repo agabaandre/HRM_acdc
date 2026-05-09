@@ -48,32 +48,43 @@ trait ProvidesMemoIndexStatusMeta
     {
         $level = $this->approval_level;
         $workflowId = $this->memoIndexResolvedWorkflowId();
+        $division = $this->memoIndexDivisionContext();
+        $divisionCategory = $division?->category;
 
         $role = 'N/A';
         if ($workflowId && $level !== null && $level !== '') {
-            $definitions = WorkflowDefinition::where('workflow_id', $workflowId)
-                ->where('approval_order', (int) $level)
-                ->where('is_enabled', 1)
-                ->get();
+            // Avoid repeated DB hits across rows in index tables.
+            static $definitionsCache = [];
+            $cacheKey = implode(':', [
+                (int) $workflowId,
+                (int) $level,
+                (string) ($divisionCategory ?? ''),
+            ]);
 
-            $definition = null;
-            if ($definitions->count() > 1 && ($definitions->first()->category ?? null)) {
-                $division = $this->memoIndexDivisionContext();
-                $definition = $division
-                    ? $definitions->where('category', $division->category)->first()
-                    : $definitions->first();
-            } else {
-                $definition = $definitions->first();
+            if (!array_key_exists($cacheKey, $definitionsCache)) {
+                $definitions = WorkflowDefinition::where('workflow_id', $workflowId)
+                    ->where('approval_order', (int) $level)
+                    ->where('is_enabled', 1)
+                    ->get();
+
+                $definition = null;
+                if ($definitions->count() > 1 && ($definitions->first()->category ?? null)) {
+                    $definition = $division
+                        ? $definitions->where('category', $divisionCategory)->first()
+                        : $definitions->first();
+                } else {
+                    $definition = $definitions->first();
+                }
+
+                $definitionsCache[$cacheKey] = $definition?->role ?? 'N/A';
             }
-            if ($definition) {
-                $role = $definition->role ?? 'N/A';
-            }
+
+            $role = $definitionsCache[$cacheKey];
         }
 
         $actor = $this->current_actor;
 
         if (!$actor && in_array($this->overall_status, ['returned', 'draft'], true) && (int) $level === 1) {
-            $division = $this->memoIndexDivisionContext();
             if ($division) {
                 $actor = $division->relationLoaded('divisionHead')
                     ? $division->divisionHead
