@@ -9,6 +9,204 @@ use Carbon\Carbon;
 trait ApproverDashboardHelper
 {
     /**
+     * Request-scoped cache: pending document collections for dashboard counts (division/year/month scope).
+     * Avoids reloading all pending matrices/memos/etc. once per approver row.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    protected array $approverDashboardPendingDocsCache = [];
+
+    /**
+     * Load all pending documents once per dashboard scope for {@see getPendingCountsForApproverAll()}.
+     *
+     * @return array{matrices:\Illuminate\Support\Collection, special:\Illuminate\Support\Collection, non_travel:\Illuminate\Support\Collection, activities:\Illuminate\Support\Collection, other_memos:\Illuminate\Support\Collection, arfs:\Illuminate\Support\Collection, service_requests:\Illuminate\Support\Collection, change_requests:\Illuminate\Support\Collection}
+     */
+    protected function getPendingDocumentsPayloadForDashboard(?int $divisionId, ?int $year, ?int $month): array
+    {
+        $key = implode('|', [
+            $divisionId ?? 'all',
+            $year ?? 'all',
+            $month ?? 'all',
+        ]);
+
+        if (isset($this->approverDashboardPendingDocsCache[$key])) {
+            return $this->approverDashboardPendingDocsCache[$key];
+        }
+
+        $query = \App\Models\Matrix::with(['division', 'staff', 'focalPerson', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+
+        if ($year) {
+            $query->where('year', $year);
+        }
+
+        if ($month) {
+            $quarter = 'Q' . ceil($month / 3);
+            $query->where('quarter', $quarter);
+        }
+
+        $matrices = $query->get();
+
+        $query = \App\Models\SpecialMemo::with(['staff', 'division'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+
+        $specialMemos = $query->get();
+
+        $query = \App\Models\NonTravelMemo::with(['staff', 'division'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+
+        $nonTravelMemos = $query->get();
+
+        $query = \App\Models\Activity::with(['staff', 'division', 'matrix'])
+            ->where('is_single_memo', true)
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+
+        if ($year) {
+            $query->whereHas('matrix', function ($q) use ($year) {
+                $q->where('year', $year);
+            });
+        }
+
+        if ($month) {
+            $quarter = 'Q' . ceil($month / 3);
+            $query->whereHas('matrix', function ($q) use ($quarter) {
+                $q->where('quarter', $quarter);
+            });
+        }
+
+        $activities = $query->get();
+
+        $otherQuery = \App\Models\OtherMemo::query()
+            ->where('overall_status', \App\Models\OtherMemo::STATUS_PENDING)
+            ->whereNotNull('current_approver_staff_id');
+        if ($divisionId) {
+            $otherQuery->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $otherQuery->whereYear('created_at', $year);
+        }
+        if ($month) {
+            $otherQuery->whereMonth('created_at', $month);
+        }
+        $otherMemos = $otherQuery->get();
+
+        $query = \App\Models\RequestARF::with(['staff', 'division', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+
+        $arfs = $query->get();
+
+        $query = \App\Models\ServiceRequest::with(['staff', 'division', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+
+        if ($year) {
+            $query->whereYear('created_at', $year);
+        }
+
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+
+        $serviceRequests = $query->get();
+
+        $query = \App\Models\ChangeRequest::with(['staff', 'division', 'forwardWorkflow', 'matrix'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+
+        if ($year) {
+            $query->where(function ($q) use ($year) {
+                $q->whereHas('matrix', function ($matrixQuery) use ($year) {
+                    $matrixQuery->where('year', $year);
+                })
+                    ->orWhereYear('created_at', $year);
+            });
+        }
+
+        if ($month) {
+            $quarter = 'Q' . ceil($month / 3);
+            $query->where(function ($q) use ($quarter, $month) {
+                $q->whereHas('matrix', function ($matrixQuery) use ($quarter) {
+                    $matrixQuery->where('quarter', $quarter);
+                })
+                    ->orWhereMonth('created_at', $month);
+            });
+        }
+
+        $changeRequests = $query->get();
+
+        $payload = [
+            'matrices' => $matrices,
+            'special' => $specialMemos,
+            'non_travel' => $nonTravelMemos,
+            'activities' => $activities,
+            'other_memos' => $otherMemos,
+            'arfs' => $arfs,
+            'service_requests' => $serviceRequests,
+            'change_requests' => $changeRequests,
+        ];
+
+        $this->approverDashboardPendingDocsCache[$key] = $payload;
+
+        return $payload;
+    }
+
+    /**
      * Build the base query for approvers from both approvers table and divisions table.
      * Properly handles division-specific approval levels using is_division_specific column.
      */
@@ -298,223 +496,56 @@ trait ApproverDashboardHelper
             'change_requests' => 0,
         ];
 
-        // Use ApprovalService to check if approver can take action (same logic as PendingApprovalsService)
         $approvalService = app(\App\Services\ApprovalService::class);
+        $payload = $this->getPendingDocumentsPayloadForDashboard(
+            $divisionId !== null && $divisionId !== '' ? (int) $divisionId : null,
+            $year !== null && $year !== '' ? (int) $year : null,
+            $month !== null && $month !== '' ? (int) $month : null
+        );
 
-        // Get pending matrices (across all workflows)
-        $query = \App\Models\Matrix::with(['division', 'staff', 'focalPerson', 'forwardWorkflow'])
-            ->where('overall_status', 'pending')
-            ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0);
-        
-        if ($divisionId) {
-            $query->where('division_id', $divisionId);
-        }
-        
-        if ($year) {
-            $query->where('year', $year);
-        }
-        
-        // Apply month filter by converting to quarter for matrices
-        if ($month) {
-            $quarter = 'Q' . ceil($month / 3);
-            $query->where('quarter', $quarter);
-        }
-        
-        $matrices = $query->get();
-        foreach ($matrices as $matrix) {
+        foreach ($payload['matrices'] as $matrix) {
             if ($approvalService->canTakeAction($matrix, $staffId)) {
                 $counts['matrix']++;
             }
         }
 
-        // Get pending special memos (across all workflows)
-        $query = \App\Models\SpecialMemo::with(['staff', 'division'])
-            ->where('overall_status', 'pending')
-            ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0);
-        
-        if ($divisionId) {
-            $query->where('division_id', $divisionId);
-        }
-        
-        // Apply year filter by created_at year
-        if ($year) {
-            $query->whereYear('created_at', $year);
-        }
-        
-        $memos = $query->get();
-        foreach ($memos as $memo) {
+        foreach ($payload['special'] as $memo) {
             if ($approvalService->canTakeAction($memo, $staffId)) {
                 $counts['special']++;
             }
         }
 
-        // Get pending non-travel memos (across all workflows)
-        $query = \App\Models\NonTravelMemo::with(['staff', 'division'])
-            ->where('overall_status', 'pending')
-            ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0);
-        
-        if ($divisionId) {
-            $query->where('division_id', $divisionId);
-        }
-        
-        // Apply year filter by created_at year
-        if ($year) {
-            $query->whereYear('created_at', $year);
-        }
-        
-        $memos = $query->get();
-        foreach ($memos as $memo) {
+        foreach ($payload['non_travel'] as $memo) {
             if ($approvalService->canTakeAction($memo, $staffId)) {
                 $counts['non_travel']++;
             }
         }
 
-        // Get pending single memos (activities with is_single_memo = true, across all workflows)
-        $query = \App\Models\Activity::with(['staff', 'division', 'matrix'])
-            ->where('is_single_memo', true)
-            ->where('overall_status', 'pending')
-            ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0);
-        
-        if ($divisionId) {
-            $query->where('division_id', $divisionId);
-        }
-        
-        // Apply year filter through matrix relationship
-        if ($year) {
-            $query->whereHas('matrix', function($q) use ($year) {
-                $q->where('year', $year);
-            });
-        }
-        
-        // Apply month filter through matrix relationship (convert month to quarter)
-        if ($month) {
-            $quarter = 'Q' . ceil($month / 3);
-            $query->whereHas('matrix', function($q) use ($quarter) {
-                $q->where('quarter', $quarter);
-            });
-        }
-        
-        $activities = $query->get();
-        foreach ($activities as $activity) {
+        foreach ($payload['activities'] as $activity) {
             if ($approvalService->canTakeAction($activity, $staffId)) {
                 $counts['single_memos']++;
             }
         }
 
-        // Pending other memos (explicit approver chain, not workflow definitions)
-        $query = \App\Models\OtherMemo::query()
-            ->where('overall_status', \App\Models\OtherMemo::STATUS_PENDING)
-            ->whereNotNull('current_approver_staff_id');
-        if ($divisionId) {
-            $query->where('division_id', $divisionId);
-        }
-        if ($year) {
-            $query->whereYear('created_at', $year);
-        }
-        if ($month) {
-            $query->whereMonth('created_at', $month);
-        }
-        foreach ($query->get() as $otherMemo) {
+        foreach ($payload['other_memos'] as $otherMemo) {
             if ($approvalService->canTakeAction($otherMemo, $staffId)) {
                 $counts['other_memo']++;
             }
         }
 
-        // Get pending ARF requests (across all workflows)
-        $query = \App\Models\RequestARF::with(['staff', 'division', 'forwardWorkflow'])
-            ->where('overall_status', 'pending')
-            ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0);
-        
-        if ($divisionId) {
-            $query->where('division_id', $divisionId);
-        }
-        
-        // Apply year filter by created_at year
-        if ($year) {
-            $query->whereYear('created_at', $year);
-        }
-        
-        // Apply month filter by created_at month
-        if ($month) {
-            $query->whereMonth('created_at', $month);
-        }
-        
-        $arfs = $query->get();
-        foreach ($arfs as $arf) {
+        foreach ($payload['arfs'] as $arf) {
             if ($approvalService->canTakeAction($arf, $staffId)) {
                 $counts['arf']++;
             }
         }
 
-        // Get pending service requests (across all workflows)
-        $query = \App\Models\ServiceRequest::with(['staff', 'division', 'forwardWorkflow'])
-            ->where('overall_status', 'pending')
-            ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0);
-        
-        if ($divisionId) {
-            $query->where('division_id', $divisionId);
-        }
-        
-        // Apply year filter by created_at year
-        if ($year) {
-            $query->whereYear('created_at', $year);
-        }
-        
-        // Apply month filter by created_at month
-        if ($month) {
-            $query->whereMonth('created_at', $month);
-        }
-        
-        $serviceRequests = $query->get();
-        foreach ($serviceRequests as $serviceRequest) {
+        foreach ($payload['service_requests'] as $serviceRequest) {
             if ($approvalService->canTakeAction($serviceRequest, $staffId)) {
                 $counts['requests_for_service']++;
             }
         }
 
-        // Get pending change requests (uses workflows 1, 6, 7)
-        $query = \App\Models\ChangeRequest::with(['staff', 'division', 'forwardWorkflow', 'matrix'])
-            ->where('overall_status', 'pending')
-            ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0);
-        
-        if ($divisionId) {
-            $query->where('division_id', $divisionId);
-        }
-        
-        // Apply year filter through matrix relationship or created_at
-        if ($year) {
-            $query->where(function($q) use ($year) {
-                // Filter by matrix year if change request has a matrix
-                $q->whereHas('matrix', function($matrixQuery) use ($year) {
-                    $matrixQuery->where('year', $year);
-                })
-                // Or filter by created_at year if no matrix
-                ->orWhereYear('created_at', $year);
-            });
-        }
-        
-        // Apply month filter through matrix relationship (convert month to quarter) or created_at
-        if ($month) {
-            $quarter = 'Q' . ceil($month / 3);
-            $query->where(function($q) use ($quarter, $month) {
-                // Filter by matrix quarter if change request has a matrix
-                $q->whereHas('matrix', function($matrixQuery) use ($quarter) {
-                    $matrixQuery->where('quarter', $quarter);
-                })
-                // Or filter by created_at month if no matrix
-                ->orWhereMonth('created_at', $month);
-            });
-        }
-        
-        $changeRequests = $query->get();
-        foreach ($changeRequests as $changeRequest) {
+        foreach ($payload['change_requests'] as $changeRequest) {
             if ($approvalService->canTakeAction($changeRequest, $staffId)) {
                 $counts['change_requests']++;
             }
