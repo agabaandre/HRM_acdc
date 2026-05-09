@@ -403,6 +403,7 @@ var approvalTimingReportUrl = @json(route('reports.approver-document-timing.inde
 var dashboardApiUrl = '{{ route("approver-dashboard.api") }}';
 var workflowStatsData = [];
 var workflowChartUnit = 'days';
+var approverTableLazyObserver = null;
 
 /** Hint keys from ApproverDashboardHelper::getApproverRolesPipelineForWorkflow → FA icon + tooltip */
 var WF_ROLE_HINTS = {
@@ -472,6 +473,47 @@ function pendingApprovalsFilterParams() {
     return (y ? '&year=' + encodeURIComponent(y) : '') + (m ? '&month=' + encodeURIComponent(m) : '');
 }
 
+function scheduleInitializeDataTable() {
+    if (approverTableLazyObserver) {
+        try { approverTableLazyObserver.disconnect(); } catch (e) {}
+        approverTableLazyObserver = null;
+    }
+    var card = document.getElementById('approverDashboardTableCard');
+    var runInit = function() {
+        if (approverTable) return;
+        initializeDataTable();
+    };
+    var fallbackMs = 12000;
+    var fallbackTimer = setTimeout(function() {
+        fallbackTimer = null;
+        runInit();
+    }, fallbackMs);
+    if (card && typeof IntersectionObserver !== 'undefined') {
+        approverTableLazyObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    if (fallbackTimer) {
+                        clearTimeout(fallbackTimer);
+                        fallbackTimer = null;
+                    }
+                    if (approverTableLazyObserver) {
+                        try { approverTableLazyObserver.disconnect(); } catch (e2) {}
+                        approverTableLazyObserver = null;
+                    }
+                    runInit();
+                }
+            });
+        }, { root: null, rootMargin: '280px 0px', threshold: 0 });
+        approverTableLazyObserver.observe(card);
+    } else {
+        if (fallbackTimer) {
+            clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+        }
+        setTimeout(runInit, 80);
+    }
+}
+
 function initApproverDashboard() {
     if (!document.getElementById('filterDivision')) return;
     if (approverTable) {
@@ -479,7 +521,7 @@ function initApproverDashboard() {
         approverTable = null;
     }
     loadFilterOptions().then(function() {
-        initializeDataTable();
+        scheduleInitializeDataTable();
     });
     let filterTimeout;
     $('#searchApprover').off('keyup.approverDashboard').on('keyup.approverDashboard', function() {

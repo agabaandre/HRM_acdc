@@ -199,9 +199,9 @@
     </div>
   </div>
 
-    <!-- Approver Dashboard Table -->
+    <!-- Approver Dashboard Table (lazy-loaded via IntersectionObserver in approver-dashboard/index) -->
     <div class="col-12">
-        <div class="card">
+        <div class="card" id="approverDashboardTableCard">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bx bx-table me-2 text-primary"></i>Approver Dashboard</h6>
                 <div class="d-flex gap-2">
