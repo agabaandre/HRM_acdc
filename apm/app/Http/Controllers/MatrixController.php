@@ -26,8 +26,8 @@ class MatrixController extends Controller
     /**
      * Display a listing of matrices.
      *
-     * Initial GET returns filters and tab counts only; tab tables load via AJAX when the tab panel
-     * nears the viewport (lazy) so the page stays fast. Heavy paginated queries run only for AJAX.
+     * Initial HTML load only resolves tab counts and filter dropdowns; tab tables load via AJAX
+     * so only one heavy query runs per request (full page = counts only; AJAX = active tab only).
      */
     public function index(Request $request)
     {
@@ -42,71 +42,59 @@ class MatrixController extends Controller
             $selectedYear = $currentYear;
         }
 
-        $myDivisionBase = $this->indexMyDivisionMatricesBaseQuery(
-            $request,
-            $currentQuarter,
-            $selectedYear,
-            $selectedQuarter,
-            $selectedStatus,
-            $currentYear
-        );
-        $myDivisionTotalCount = (int) $myDivisionBase->clone()->count();
-
-        $canViewAllMatrices = in_array(87, user_session('permissions', []), true);
-        $allMatricesBase = $canViewAllMatrices
-            ? $this->indexAllMatricesBaseQuery(
-                $request,
-                $currentQuarter,
-                $selectedYear,
-                $selectedQuarter,
-                $selectedStatus,
-                $currentYear
-            )
-            : null;
-        $allMatricesTotalCount = $allMatricesBase ? (int) $allMatricesBase->clone()->count() : 0;
-
         if ($request->ajax()) {
             $tab = $request->get('tab', '');
             $html = '';
 
-            if ($tab === 'myDivision') {
-                $myDivisionMatrices = $myDivisionBase->clone()
-                    ->with($this->matrixIndexEagerLoads())
-                    ->paginate(24, ['*'], 'my_division_page');
-                $html = view('matrices.partials.my-division-tab', compact(
-                    'myDivisionMatrices',
-                    'selectedYear',
-                    'selectedQuarter',
-                    'selectedStatus'
-                ))->render();
-            } elseif ($tab === 'allMatrices' && $allMatricesBase) {
-                $allMatrices = $allMatricesBase->clone()
-                    ->with($this->matrixIndexEagerLoads())
-                    ->paginate(24, ['*'], 'all_matrices_page');
-                $html = view('matrices.partials.all-matrices-tab', compact(
-                    'allMatrices',
-                    'selectedYear',
-                    'selectedQuarter',
-                    'selectedStatus'
-                ))->render();
+            switch ($tab) {
+                case 'myDivision':
+                    $myDivisionMatrices = $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)
+                        ->paginate(24, ['*'], 'my_division_page');
+                    $html = view('matrices.partials.my-division-tab', compact(
+                        'myDivisionMatrices',
+                        'selectedYear',
+                        'selectedQuarter',
+                        'selectedStatus'
+                    ))->render();
+                    break;
+                case 'allMatrices':
+                    if (! in_array(87, user_session('permissions', []), true)) {
+                        return response()->json(['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>']);
+                    }
+                    $allBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
+                    if ($allBuilder === null) {
+                        return response()->json(['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>']);
+                    }
+                    $allMatrices = $allBuilder->paginate(24, ['*'], 'all_matrices_page');
+                    $html = view('matrices.partials.all-matrices-tab', compact(
+                        'allMatrices',
+                        'selectedYear',
+                        'selectedQuarter',
+                        'selectedStatus'
+                    ))->render();
+                    break;
             }
 
             return response()->json(['html' => $html]);
         }
 
-        $divisions = Division::query()
-            ->orderBy('division_name')
-            ->get(['id', 'division_name']);
+        $myDivisionMatricesCount = (int) $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)->count();
 
-        $focalPersons = Staff::active()->get();
+        $allMatricesCount = 0;
+        if (in_array(87, user_session('permissions', []), true)) {
+            $allBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
+            if ($allBuilder !== null) {
+                $allMatricesCount = (int) $allBuilder->count();
+            }
+        }
 
         return view('matrices.index', [
-            'myDivisionTotalCount' => $myDivisionTotalCount,
-            'allMatricesTotalCount' => $allMatricesTotalCount,
+            'myDivisionMatricesCount' => $myDivisionMatricesCount,
+            'allMatricesCount' => $allMatricesCount,
             'title' => user_session('division_name'),
             'module' => 'Quarterly Matrix',
-            'divisions' => $divisions,
-            'focalPersons' => $focalPersons,
+            'divisions' => Division::all(),
+            'focalPersons' => Staff::active()->get(),
             'selectedYear' => $selectedYear,
             'selectedQuarter' => $selectedQuarter,
             'selectedStatus' => $selectedStatus,
@@ -116,7 +104,7 @@ class MatrixController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function matrixIndexEagerLoads(): array
+    private function matrixIndexListWithRelations(): array
     {
         return [
             'division',
@@ -130,21 +118,15 @@ class MatrixController extends Controller
         ];
     }
 
-    /**
-     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\Matrix>
-     */
-    private function indexMyDivisionMatricesBaseQuery(
-        Request $request,
-        string $currentQuarter,
-        mixed $selectedYear,
-        string $selectedQuarter,
-        string $selectedStatus,
-        int $currentYear
-    ): \Illuminate\Database\Eloquent\Builder {
-        $userDivisionId = user_session('division_id');
-        $userStaffId = user_session('staff_id');
+    private function newMyDivisionMatricesBuilder(Request $request, mixed $selectedYear, mixed $selectedQuarter, string $selectedStatus): \Illuminate\Database\Eloquent\Builder
+    {
+        $currentYear = now()->year;
+        $currentQuarter = 'Q'.now()->quarter;
 
-        $query = Matrix::query()->where(function ($q) use ($userDivisionId, $userStaffId): void {
+        $myDivisionQuery = Matrix::with($this->matrixIndexListWithRelations())->where(function ($q): void {
+            $userDivisionId = user_session('division_id');
+            $userStaffId = user_session('staff_id');
+
             $q->where('division_id', $userDivisionId);
 
             if ($userStaffId) {
@@ -155,64 +137,64 @@ class MatrixController extends Controller
         });
 
         if (! empty($selectedYear)) {
-            $query->where('year', $selectedYear);
+            $myDivisionQuery->where('year', $selectedYear);
         }
         if (! empty($selectedQuarter)) {
-            $query->where('quarter', $selectedQuarter);
+            $myDivisionQuery->where('quarter', $selectedQuarter);
         }
         if ($request->filled('focal_person')) {
-            $query->where('focal_person_id', $request->focal_person);
+            $myDivisionQuery->where('focal_person_id', $request->focal_person);
         }
         if ($request->filled('division')) {
-            $query->where('division_id', $request->division);
+            $myDivisionQuery->where('division_id', $request->division);
         }
 
         if ($selectedStatus === 'archived') {
-            $query->where('overall_status', 'archived');
+            $myDivisionQuery->where('overall_status', 'archived');
         } elseif ($selectedStatus === 'active') {
-            $query->where('overall_status', '!=', 'archived');
+            $myDivisionQuery->where('overall_status', '!=', 'archived');
         }
 
-        $this->applyMatrixListOrdering($query, $currentQuarter, $selectedYear, $currentYear);
+        $this->applyMatrixListOrdering($myDivisionQuery, $currentQuarter, $selectedYear, $currentYear);
 
-        return $query;
+        return $myDivisionQuery;
     }
 
-    /**
-     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\Matrix>
-     */
-    private function indexAllMatricesBaseQuery(
-        Request $request,
-        string $currentQuarter,
-        mixed $selectedYear,
-        string $selectedQuarter,
-        string $selectedStatus,
-        int $currentYear
-    ): \Illuminate\Database\Eloquent\Builder {
-        $query = Matrix::query();
+    private function newAllMatricesBuilder(Request $request, mixed $selectedYear, mixed $selectedQuarter, string $selectedStatus): ?\Illuminate\Database\Eloquent\Builder
+    {
+        if (! in_array(87, user_session('permissions', []), true)) {
+            return null;
+        }
+
+        $currentYear = now()->year;
+        $currentQuarter = 'Q'.now()->quarter;
+
+        $allMatricesQuery = Matrix::with($this->matrixIndexListWithRelations());
 
         if (! empty($selectedYear)) {
-            $query->where('year', $selectedYear);
+            $allMatricesQuery->where('year', $selectedYear);
         }
         if (! empty($selectedQuarter)) {
-            $query->where('quarter', $selectedQuarter);
+            $allMatricesQuery->where('quarter', $selectedQuarter);
         }
+
         if ($request->filled('focal_person')) {
-            $query->where('focal_person_id', $request->focal_person);
+            $allMatricesQuery->where('focal_person_id', $request->focal_person);
         }
+
         if ($request->filled('division')) {
-            $query->where('division_id', $request->division);
+            $allMatricesQuery->where('division_id', $request->division);
         }
 
         if ($selectedStatus === 'archived') {
-            $query->where('overall_status', 'archived');
+            $allMatricesQuery->where('overall_status', 'archived');
         } elseif ($selectedStatus === 'active') {
-            $query->where('overall_status', '!=', 'archived');
+            $allMatricesQuery->where('overall_status', '!=', 'archived');
         }
 
-        $this->applyMatrixListOrdering($query, $currentQuarter, $selectedYear, $currentYear);
+        $this->applyMatrixListOrdering($allMatricesQuery, $currentQuarter, $selectedYear, $currentYear);
 
-        return $query;
+        return $allMatricesQuery;
     }
 
     /**

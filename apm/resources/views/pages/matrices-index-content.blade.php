@@ -1,10 +1,4 @@
-@php
-    $isFocal = function_exists('isfocal_person') ? isfocal_person() : false;
-    $canViewAllMatrices = in_array(87, user_session('permissions', []), true);
-    $myDivisionTotalCount = (int) ($myDivisionTotalCount ?? 0);
-    $allMatricesTotalCount = (int) ($allMatricesTotalCount ?? 0);
-    $hasMyDivisionTab = $myDivisionTotalCount > 0;
-@endphp
+@php $isFocal = function_exists('isfocal_person') ? isfocal_person() : false; @endphp
     <div class="card shadow-sm mb-4 border-0">
         <div class="card-body py-3 px-4 bg-light rounded-3">
 
@@ -90,41 +84,32 @@
         </div>
     </div>
 
-    @if(! $hasMyDivisionTab && ! $canViewAllMatrices)
-        <div class="card shadow-sm border-0">
-            <div class="card-body text-center py-5 text-muted">
-                <i class="bx bx-folder-open fs-1 d-block mb-2 opacity-50"></i>
-                <p class="mb-0">No matrices match the current filters.</p>
-                <small>Try another year, quarter, or status.</small>
-            </div>
-        </div>
-    @else
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <!-- Bootstrap Tabs Navigation -->
             <ul class="nav nav-tabs nav-fill" id="matrixTabs" role="tablist">
-                @if($hasMyDivisionTab)
+                @if(($myDivisionMatricesCount ?? 0) > 0)
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link {{ $hasMyDivisionTab ? 'active' : '' }}" id="myDivision-tab" data-bs-toggle="tab" data-bs-target="#myDivision" type="button" role="tab" aria-controls="myDivision" aria-selected="{{ $hasMyDivisionTab ? 'true' : 'false' }}">
-                            <i class="bx bx-home me-2"></i> My Division Matrices
-                            <span class="badge bg-success text-dark ms-2">{{ $myDivisionTotalCount }}</span>
+                        <button class="nav-link active" id="myDivision-tab" data-bs-toggle="tab" data-bs-target="#myDivision" type="button" role="tab" aria-controls="myDivision" aria-selected="true">
+                            <i class="bx bx-home me-2"></i> My Division Matrices 
+                            <span class="badge bg-success text-dark ms-2">{{ (int) ($myDivisionMatricesCount ?? 0) }}</span>
                         </button>
                     </li>
                 @endif
-                @if($canViewAllMatrices)
+                @if(in_array(87, user_session('permissions', [])))
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link {{ ! $hasMyDivisionTab ? 'active' : '' }}" id="allMatrices-tab" data-bs-toggle="tab" data-bs-target="#allMatrices" type="button" role="tab" aria-controls="allMatrices" aria-selected="{{ ! $hasMyDivisionTab ? 'true' : 'false' }}">
+                        <button class="nav-link {{ ($myDivisionMatricesCount ?? 0) == 0 ? 'active' : '' }}" id="allMatrices-tab" data-bs-toggle="tab" data-bs-target="#allMatrices" type="button" role="tab" aria-controls="allMatrices" aria-selected="{{ ($myDivisionMatricesCount ?? 0) == 0 ? 'true' : 'false' }}">
                             <i class="bx bx-grid me-2"></i> All Matrices
-                            <span class="badge bg-primary text-white ms-2">{{ $allMatricesTotalCount }}</span>
+                            <span class="badge bg-primary text-white ms-2">{{ (int) ($allMatricesCount ?? 0) }}</span>
                         </button>
                     </li>
                 @endif
             </ul>
 
-            <!-- Tab Content: tables load via AJAX when this block is near the viewport -->
+            <!-- Tab Content -->
             <div class="tab-content" id="matrixTabsContent">
-                @if($hasMyDivisionTab)
-                <div class="tab-pane fade {{ $hasMyDivisionTab ? 'show active' : '' }}" id="myDivision" role="tabpanel" aria-labelledby="myDivision-tab">
+                <!-- My Division Matrices Tab -->
+                <div class="tab-pane fade show active" id="myDivision" role="tabpanel" aria-labelledby="myDivision-tab">
                     <div class="p-3">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div>
@@ -139,19 +124,18 @@
                                 </a>
                             </div>
                         </div>
-
-                        <div id="myDivision-ajax-body" class="matrices-tab-ajax-body" style="min-height: 12rem;">
-                            <div class="text-center py-5 text-muted">
-                                <div class="spinner-border spinner-border-sm text-success" role="status"><span class="visually-hidden">Loading…</span></div>
-                                <p class="small mb-0 mt-2">Scroll here or wait a moment to load matrices…</p>
+                        <div id="myDivision-matrix-table-host" class="matrix-tab-table-host">
+                            <div class="text-center py-4 text-muted">
+                                <div class="spinner-border spinner-border-sm text-success mb-2" role="status"><span class="visually-hidden">Loading…</span></div>
+                                <div>Loading matrices…</div>
                             </div>
                         </div>
                     </div>
                 </div>
-                @endif
 
-                @if($canViewAllMatrices)
-                <div class="tab-pane fade {{ ! $hasMyDivisionTab ? 'show active' : '' }}" id="allMatrices" role="tabpanel" aria-labelledby="allMatrices-tab">
+                <!-- All Matrices Tab -->
+                @if(in_array(87, user_session('permissions', [])))
+                <div class="tab-pane fade {{ ($myDivisionMatricesCount ?? 0) == 0 ? 'show active' : '' }}" id="allMatrices" role="tabpanel" aria-labelledby="allMatrices-tab">
                     <div class="p-3">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div>
@@ -166,12 +150,18 @@
                                 </a>
                             </div>
                         </div>
-
-                        <div id="allMatrices-ajax-body" class="matrices-tab-ajax-body" style="min-height: 12rem;">
-                            <div class="text-center py-5 text-muted">
-                                <div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading…</span></div>
-                                <p class="small mb-0 mt-2">Open this tab or scroll here to load matrices…</p>
-                            </div>
+                        <div id="allMatrices-matrix-table-host" class="matrix-tab-table-host">
+                            @if(($myDivisionMatricesCount ?? 0) > 0)
+                                <div class="text-center py-4 text-muted">
+                                    <i class="bx bx-grid fs-3 d-block mb-2 opacity-50"></i>
+                                    <div>Select the <strong>All Matrices</strong> tab above to load this list.</div>
+                                </div>
+                            @else
+                                <div class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"><span class="visually-hidden">Loading…</span></div>
+                                    <div>Loading matrices…</div>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -179,4 +169,3 @@
             </div>
         </div>
     </div>
-    @endif
