@@ -116,23 +116,19 @@
 
 @endsection
 
-@php
-    //dd($matrices->toArray());
-@endphp
-
-
-
 @section('content')
-@include('pages.matrices-index-content', compact('matrices', 'myDivisionMatrices', 'allMatrices', 'title', 'module', 'divisions', 'focalPersons', 'selectedYear', 'selectedQuarter'))
+@include('pages.matrices-index-content', compact('title', 'module', 'divisions', 'focalPersons', 'selectedYear', 'selectedQuarter', 'selectedStatus', 'myDivisionTotalCount', 'allMatricesTotalCount'))
 @endsection
 
 @push('scripts')
     <script>
+        function matricesIndexPageQueryParam(tabId) {
+            return tabId === 'myDivision' ? 'my_division_page' : 'all_matrices_page';
+        }
+
         function initMatricesIndexPage() {
             if (!document.getElementById('yearFilter')) return;
             const params = new URLSearchParams(window.location.search);
-            // Default to current year if no year parameter exists (initial page load)
-            // If year parameter exists but is empty, use empty string (explicit "All Years" selection)
             const currentYear = new Date().getFullYear();
             const yearParam = params.get('year');
             $('#yearFilter').val(yearParam !== null ? yearParam : currentYear);
@@ -141,76 +137,41 @@
             $('#focalFilter').val(params.get('focal_person') || '');
             $('#statusFilter').val(params.get('status') || 'active');
 
-            // Apply Select2
             $('.select2').select2({
                 width: '100%'
             });
 
-            // AJAX filtering - auto-update when filters change
-            function applyFilters() {
-                const activeTab = document.querySelector('.tab-pane.active');
-                if (activeTab) {
-                    const tabId = activeTab.id;
-                    loadTabData(tabId);
+            function loadTabData(tabId, page) {
+                const mount = document.getElementById(tabId + '-ajax-body');
+                if (!mount) return;
+
+                if (page === undefined || page === null) {
+                    const sp = new URLSearchParams(window.location.search);
+                    const key = matricesIndexPageQueryParam(tabId);
+                    page = parseInt(sp.get(key) || sp.get('page') || '1', 10) || 1;
                 }
-            }
-            
-            // Manual filter button click
-            if (document.getElementById('applyFilters')) {
-                document.getElementById('applyFilters').addEventListener('click', applyFilters);
-            }
-            
-            // Auto-apply filters when they change
-            if (document.getElementById('yearFilter')) {
-                document.getElementById('yearFilter').addEventListener('change', applyFilters);
-            }
-            
-            if (document.getElementById('quarterFilter')) {
-                document.getElementById('quarterFilter').addEventListener('change', applyFilters);
-            }
-            
-            if (document.getElementById('divisionFilter')) {
-                document.getElementById('divisionFilter').addEventListener('change', applyFilters);
-            }
-            
-            if (document.getElementById('focalFilter')) {
-                document.getElementById('focalFilter').addEventListener('change', applyFilters);
-            }
 
-            if (document.getElementById('statusFilter')) {
-                document.getElementById('statusFilter').addEventListener('change', applyFilters);
-            }
-
-            // Function to load tab data via AJAX
-            function loadTabData(tabId, page = 1) {
-                console.log('Loading matrices tab data for:', tabId, 'page:', page);
-                
-                const currentUrl = new URL(window.location);
-                currentUrl.searchParams.set('page', page);
+                const currentUrl = new URL(window.location.href);
                 currentUrl.searchParams.set('tab', tabId);
-                
-                // Include current filter values (include empty values to clear filters)
+                currentUrl.searchParams.delete('page');
+                currentUrl.searchParams.delete('my_division_page');
+                currentUrl.searchParams.delete('all_matrices_page');
+                currentUrl.searchParams.set(matricesIndexPageQueryParam(tabId), String(page));
+
                 const year = document.getElementById('yearFilter')?.value || '';
                 const quarter = document.getElementById('quarterFilter')?.value || '';
                 const division = document.getElementById('divisionFilter')?.value || '';
                 const focalPerson = document.getElementById('focalFilter')?.value || '';
                 const status = document.getElementById('statusFilter')?.value || 'active';
-                
-                // Always set parameters, even if empty, to properly handle "All Years" and "All Quarters"
+
                 currentUrl.searchParams.set('year', year);
                 currentUrl.searchParams.set('quarter', quarter);
                 currentUrl.searchParams.set('status', status);
-                if (division) currentUrl.searchParams.set('division', division);
-                if (focalPerson) currentUrl.searchParams.set('focal_person', focalPerson);
-                
-                console.log('Matrices request URL:', currentUrl.toString());
-                
-                // Show loading indicator
-                const tabContent = document.getElementById(tabId);
-                if (tabContent) {
-                    tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-                }
-                
+                if (division) currentUrl.searchParams.set('division', division); else currentUrl.searchParams.delete('division');
+                if (focalPerson) currentUrl.searchParams.set('focal_person', focalPerson); else currentUrl.searchParams.delete('focal_person');
+
+                mount.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading…</span></div></div>';
+
                 fetch(currentUrl.toString(), {
                     method: 'GET',
                     headers: {
@@ -218,76 +179,99 @@
                         'Accept': 'application/json'
                     }
                 })
-                .then(response => {
-                    console.log('Matrices response status:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Matrices response data:', data);
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
                     if (data.html) {
-                        if (tabContent) {
-                            tabContent.innerHTML = data.html;
-                            attachPaginationHandlers(tabId);
-                        }
+                        mount.innerHTML = data.html;
+                        attachPaginationHandlers(tabId);
                     } else {
-                        console.error('No HTML data received for matrices');
-                        if (tabContent) {
-                            tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
-                        }
+                        mount.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
                     }
                 })
-                .catch(error => {
-                    console.error('Error loading matrices tab data:', error);
-                    if (tabContent) {
-                        tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
-                    }
+                .catch(function () {
+                    mount.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
                 });
             }
-            
+
             function attachPaginationHandlers(tabId) {
-                const tabContent = document.getElementById(tabId);
-                if (!tabContent) return;
-                
-                const paginationLinks = tabContent.querySelectorAll('.pagination a');
-                paginationLinks.forEach(link => {
-                    link.addEventListener('click', function(e) {
+                const mount = document.getElementById(tabId + '-ajax-body');
+                if (!mount) return;
+                mount.querySelectorAll('.pagination a').forEach(function (link) {
+                    link.addEventListener('click', function (e) {
                         e.preventDefault();
-                        const url = new URL(this.href);
-                        const page = url.searchParams.get('page') || 1;
-                        loadTabData(tabId, page);
+                        const url = new URL(link.getAttribute('href'), window.location.origin);
+                        const key = matricesIndexPageQueryParam(tabId);
+                        const p = parseInt(url.searchParams.get(key) || url.searchParams.get('page') || '1', 10) || 1;
+                        loadTabData(tabId, p);
                     });
                 });
             }
 
-            // Handle tab switching with AJAX
-            $('#matrixTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            function applyFilters() {
+                const activeTab = document.querySelector('#matrixTabsContent .tab-pane.active');
+                if (activeTab) {
+                    loadTabData(activeTab.id, 1);
+                }
+            }
+
+            if (document.getElementById('applyFilters')) {
+                document.getElementById('applyFilters').addEventListener('click', applyFilters);
+            }
+            ['yearFilter', 'quarterFilter', 'divisionFilter', 'focalFilter', 'statusFilter'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', applyFilters);
+            });
+
+            $('#matrixTabs button[data-bs-toggle="tab"]').off('shown.bs.tab.matricesIndex').on('shown.bs.tab.matricesIndex', function (e) {
                 const target = $(e.target).attr('data-bs-target');
+                if (!target) return;
                 const tabId = target.replace('#', '');
-                
-                // Load tab data via AJAX
                 loadTabData(tabId);
             });
 
-            // Show pagination info
-            function updatePaginationInfo() {
-                $('.pagination-info').each(function() {
-                    const $pagination = $(this).closest('.tab-pane').find('.pagination');
-                    if ($pagination.length > 0) {
-                        const $paginationLinks = $pagination.find('a, span');
-                        const currentPage = $paginationLinks.filter('.active').text();
-                        const totalPages = $paginationLinks.filter('.page-link').length;
-                        
-                        if (currentPage && totalPages > 1) {
-                            $(this).text(`Page ${currentPage} of ${totalPages}`);
-                        }
+            function scheduleMatricesIndexLazyLoad(tabId) {
+                const scrollRoot = document.getElementById('matrixTabsContent');
+                const mount = document.getElementById(tabId + '-ajax-body');
+                if (!mount || !scrollRoot) {
+                    if (mount) loadTabData(tabId);
+                    return;
+                }
+                var fired = false;
+                var obs = null;
+                function run() {
+                    if (fired) return;
+                    fired = true;
+                    if (obs) {
+                        try { obs.disconnect(); } catch (err) {}
                     }
+                    loadTabData(tabId);
+                }
+                if (typeof IntersectionObserver !== 'undefined') {
+                    obs = new IntersectionObserver(function (entries) {
+                        entries.forEach(function (entry) {
+                            if (entry.isIntersecting) run();
+                        });
+                    }, { root: null, rootMargin: '140px 0px', threshold: 0 });
+                    obs.observe(scrollRoot);
+                }
+                requestAnimationFrame(function () {
+                    var r = scrollRoot.getBoundingClientRect();
+                    var vh = window.innerHeight || document.documentElement.clientHeight || 700;
+                    if (r.top < vh + 200) run();
                 });
+                if (typeof IntersectionObserver === 'undefined') {
+                    setTimeout(run, 100);
+                }
+                setTimeout(run, 12000);
             }
-            
-            updatePaginationInfo();
+
+            const activePane = document.querySelector('#matrixTabsContent .tab-pane.active');
+            if (activePane && activePane.id) {
+                scheduleMatricesIndexLazyLoad(activePane.id);
+            }
         }
         $(document).ready(initMatricesIndexPage);
-        document.addEventListener('livewire:navigated', function() {
+        document.addEventListener('livewire:navigated', function () {
             if (document.getElementById('matrixTabs')) initMatricesIndexPage();
         });
     </script>
