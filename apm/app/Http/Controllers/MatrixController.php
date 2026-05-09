@@ -26,8 +26,8 @@ class MatrixController extends Controller
     /**
      * Display a listing of matrices.
      *
-     * Initial HTML load only resolves tab counts and filter dropdowns; tab tables load via AJAX
-     * so only one heavy query runs per request (full page = counts only; AJAX = active tab only).
+     * Full page: fast COUNT(*) for tab badges (no eager loads, no ORDER BY), server-renders the
+     * initially visible tab so first paint avoids an extra AJAX round-trip. Other tab(s) still load via AJAX.
      */
     public function index(Request $request)
     {
@@ -78,19 +78,32 @@ class MatrixController extends Controller
             return response()->json(['html' => $html]);
         }
 
-        $myDivisionMatricesCount = (int) $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)->count();
+        $myDivisionMatricesCount = (int) $this->newMyDivisionMatricesCountQuery($request, $selectedYear, $selectedQuarter, $selectedStatus)->count();
 
         $allMatricesCount = 0;
-        if (in_array(87, user_session('permissions', []))) {
-            $allBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
-            if ($allBuilder !== null) {
-                $allMatricesCount = (int) $allBuilder->count();
+        $allCountQuery = $this->newAllMatricesCountQuery($request, $selectedYear, $selectedQuarter, $selectedStatus);
+        if ($allCountQuery !== null) {
+            $allMatricesCount = (int) $allCountQuery->count();
+        }
+
+        // First visible tab: render server-side (same single request) so the browser does not wait on a follow-up AJAX for initial data.
+        $initialMyDivisionMatrices = null;
+        $initialAllMatrices = null;
+        if ($myDivisionMatricesCount > 0) {
+            $initialMyDivisionMatrices = $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)
+                ->paginate(24, ['*'], 'my_division_page');
+        } elseif ($allMatricesCount > 0 && $allCountQuery !== null) {
+            $allMatricesBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
+            if ($allMatricesBuilder !== null) {
+                $initialAllMatrices = $allMatricesBuilder->paginate(24, ['*'], 'all_matrices_page');
             }
         }
 
         return view('matrices.index', [
             'myDivisionMatricesCount' => $myDivisionMatricesCount,
             'allMatricesCount' => $allMatricesCount,
+            'initialMyDivisionMatrices' => $initialMyDivisionMatrices,
+            'initialAllMatrices' => $initialAllMatrices,
             'title' => user_session('division_name'),
             'module' => 'Quarterly Matrix',
             'divisions' => Division::all(),
@@ -118,12 +131,34 @@ class MatrixController extends Controller
         ];
     }
 
+    private function newMyDivisionMatricesCountQuery(Request $request, mixed $selectedYear, mixed $selectedQuarter, string $selectedStatus): \Illuminate\Database\Eloquent\Builder
+    {
+        $q = Matrix::query();
+        $this->applyMyDivisionMatrixListScopesToQuery($q, $request, $selectedYear, $selectedQuarter, $selectedStatus);
+
+        return $q;
+    }
+
     private function newMyDivisionMatricesBuilder(Request $request, mixed $selectedYear, mixed $selectedQuarter, string $selectedStatus): \Illuminate\Database\Eloquent\Builder
     {
         $currentYear = now()->year;
         $currentQuarter = 'Q'.now()->quarter;
 
-        $myDivisionQuery = Matrix::with($this->matrixIndexListWithRelations())->where(function ($q): void {
+        $myDivisionQuery = Matrix::with($this->matrixIndexListWithRelations());
+        $this->applyMyDivisionMatrixListScopesToQuery($myDivisionQuery, $request, $selectedYear, $selectedQuarter, $selectedStatus);
+        $this->applyMatrixListOrdering($myDivisionQuery, $currentQuarter, $selectedYear, $currentYear);
+
+        return $myDivisionQuery;
+    }
+
+    private function applyMyDivisionMatrixListScopesToQuery(
+        \Illuminate\Database\Eloquent\Builder $query,
+        Request $request,
+        mixed $selectedYear,
+        mixed $selectedQuarter,
+        string $selectedStatus
+    ): void {
+        $query->where(function ($q): void {
             $userDivisionId = user_session('division_id');
             $userStaffId = user_session('staff_id');
 
@@ -137,27 +172,35 @@ class MatrixController extends Controller
         });
 
         if (! empty($selectedYear)) {
-            $myDivisionQuery->where('year', $selectedYear);
+            $query->where('year', $selectedYear);
         }
         if (! empty($selectedQuarter)) {
-            $myDivisionQuery->where('quarter', $selectedQuarter);
+            $query->where('quarter', $selectedQuarter);
         }
         if ($request->filled('focal_person')) {
-            $myDivisionQuery->where('focal_person_id', $request->focal_person);
+            $query->where('focal_person_id', $request->focal_person);
         }
         if ($request->filled('division')) {
-            $myDivisionQuery->where('division_id', $request->division);
+            $query->where('division_id', $request->division);
         }
 
         if ($selectedStatus === 'archived') {
-            $myDivisionQuery->where('overall_status', 'archived');
+            $query->where('overall_status', 'archived');
         } elseif ($selectedStatus === 'active') {
-            $myDivisionQuery->where('overall_status', '!=', 'archived');
+            $query->where('overall_status', '!=', 'archived');
+        }
+    }
+
+    private function newAllMatricesCountQuery(Request $request, mixed $selectedYear, mixed $selectedQuarter, string $selectedStatus): ?\Illuminate\Database\Eloquent\Builder
+    {
+        if (! in_array(87, user_session('permissions', []))) {
+            return null;
         }
 
-        $this->applyMatrixListOrdering($myDivisionQuery, $currentQuarter, $selectedYear, $currentYear);
+        $q = Matrix::query();
+        $this->applyAllMatricesListScopesToQuery($q, $request, $selectedYear, $selectedQuarter, $selectedStatus);
 
-        return $myDivisionQuery;
+        return $q;
     }
 
     private function newAllMatricesBuilder(Request $request, mixed $selectedYear, mixed $selectedQuarter, string $selectedStatus): ?\Illuminate\Database\Eloquent\Builder
@@ -170,31 +213,39 @@ class MatrixController extends Controller
         $currentQuarter = 'Q'.now()->quarter;
 
         $allMatricesQuery = Matrix::with($this->matrixIndexListWithRelations());
-
-        if (! empty($selectedYear)) {
-            $allMatricesQuery->where('year', $selectedYear);
-        }
-        if (! empty($selectedQuarter)) {
-            $allMatricesQuery->where('quarter', $selectedQuarter);
-        }
-
-        if ($request->filled('focal_person')) {
-            $allMatricesQuery->where('focal_person_id', $request->focal_person);
-        }
-
-        if ($request->filled('division')) {
-            $allMatricesQuery->where('division_id', $request->division);
-        }
-
-        if ($selectedStatus === 'archived') {
-            $allMatricesQuery->where('overall_status', 'archived');
-        } elseif ($selectedStatus === 'active') {
-            $allMatricesQuery->where('overall_status', '!=', 'archived');
-        }
-
+        $this->applyAllMatricesListScopesToQuery($allMatricesQuery, $request, $selectedYear, $selectedQuarter, $selectedStatus);
         $this->applyMatrixListOrdering($allMatricesQuery, $currentQuarter, $selectedYear, $currentYear);
 
         return $allMatricesQuery;
+    }
+
+    private function applyAllMatricesListScopesToQuery(
+        \Illuminate\Database\Eloquent\Builder $query,
+        Request $request,
+        mixed $selectedYear,
+        mixed $selectedQuarter,
+        string $selectedStatus
+    ): void {
+        if (! empty($selectedYear)) {
+            $query->where('year', $selectedYear);
+        }
+        if (! empty($selectedQuarter)) {
+            $query->where('quarter', $selectedQuarter);
+        }
+
+        if ($request->filled('focal_person')) {
+            $query->where('focal_person_id', $request->focal_person);
+        }
+
+        if ($request->filled('division')) {
+            $query->where('division_id', $request->division);
+        }
+
+        if ($selectedStatus === 'archived') {
+            $query->where('overall_status', 'archived');
+        } elseif ($selectedStatus === 'active') {
+            $query->where('overall_status', '!=', 'archived');
+        }
     }
 
     /**

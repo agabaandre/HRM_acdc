@@ -117,7 +117,7 @@
 @endsection
 
 @section('content')
-@include('pages.matrices-index-content', compact('myDivisionMatricesCount', 'allMatricesCount', 'title', 'module', 'divisions', 'focalPersons', 'selectedYear', 'selectedQuarter', 'selectedStatus'))
+@include('pages.matrices-index-content', compact('myDivisionMatricesCount', 'allMatricesCount', 'initialMyDivisionMatrices', 'initialAllMatrices', 'title', 'module', 'divisions', 'focalPersons', 'selectedYear', 'selectedQuarter', 'selectedStatus'))
 @endsection
 
 @push('scripts')
@@ -280,13 +280,19 @@
             const activePane = document.querySelector('#matrixTabsContent .tab-pane.active');
             if (activePane && activePane.id) {
                 const tid = activePane.id;
-                let initialPage = 1;
-                if (tid === 'myDivision') {
-                    initialPage = parseInt(params.get('my_division_page') || '1', 10) || 1;
-                } else if (tid === 'allMatrices') {
-                    initialPage = parseInt(params.get('all_matrices_page') || '1', 10) || 1;
+                const mount = matricesTabMountEl(tid);
+                if (mount && mount.getAttribute('data-server-rendered') === '1') {
+                    attachPaginationHandlers(tid);
+                    updatePaginationInfo();
+                } else {
+                    let initialPage = 1;
+                    if (tid === 'myDivision') {
+                        initialPage = parseInt(params.get('my_division_page') || '1', 10) || 1;
+                    } else if (tid === 'allMatrices') {
+                        initialPage = parseInt(params.get('all_matrices_page') || '1', 10) || 1;
+                    }
+                    loadTabData(tid, initialPage);
                 }
-                loadTabData(tid, initialPage);
             } else {
                 updatePaginationInfo();
             }
