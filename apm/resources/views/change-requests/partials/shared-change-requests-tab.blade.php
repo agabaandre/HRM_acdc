@@ -27,7 +27,7 @@
                     <td class="table-title-cell">
                         <div class="fw-semibold text-dark">{{ $changeRequest->activity_title }}</div>
                         @if($changeRequest->supporting_reasons)
-                            <small class="text-muted">{{ Str::limit($changeRequest->supporting_reasons, 50) }}</small>
+                            <small class="text-muted d-block">{!! \Illuminate\Support\Str::limit($changeRequest->supporting_reasons, 120) !!}</small>
                         @endif
                     </td>
                     <td class="text-center">
