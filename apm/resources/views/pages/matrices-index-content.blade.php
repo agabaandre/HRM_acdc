@@ -124,11 +124,20 @@
                                 </a>
                             </div>
                         </div>
-                        <div id="myDivision-matrix-table-host" class="matrix-tab-table-host">
-                            <div class="text-center py-4 text-muted">
-                                <div class="spinner-border spinner-border-sm text-success mb-2" role="status"><span class="visually-hidden">Loading…</span></div>
-                                <div>Loading matrices…</div>
-                            </div>
+                        <div id="myDivision-matrix-table-host" class="matrix-tab-table-host" @if(!empty($initialMyDivisionMatrices)) data-server-rendered="1" @endif>
+                            @if(!empty($initialMyDivisionMatrices))
+                                @include('matrices.partials.my-division-tab', [
+                                    'myDivisionMatrices' => $initialMyDivisionMatrices,
+                                    'selectedYear' => $selectedYear,
+                                    'selectedQuarter' => $selectedQuarter,
+                                    'selectedStatus' => $selectedStatus ?? 'active',
+                                ])
+                            @else
+                                <div class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-success mb-2" role="status"><span class="visually-hidden">Loading…</span></div>
+                                    <div>Loading matrices…</div>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -150,8 +159,15 @@
                                 </a>
                             </div>
                         </div>
-                        <div id="allMatrices-matrix-table-host" class="matrix-tab-table-host">
-                            @if(($myDivisionMatricesCount ?? 0) > 0)
+                        <div id="allMatrices-matrix-table-host" class="matrix-tab-table-host" @if(!empty($initialAllMatrices)) data-server-rendered="1" @endif>
+                            @if(!empty($initialAllMatrices))
+                                @include('matrices.partials.all-matrices-tab', [
+                                    'allMatrices' => $initialAllMatrices,
+                                    'selectedYear' => $selectedYear,
+                                    'selectedQuarter' => $selectedQuarter,
+                                    'selectedStatus' => $selectedStatus ?? 'active',
+                                ])
+                            @elseif(($myDivisionMatricesCount ?? 0) > 0)
                                 <div class="text-center py-4 text-muted">
                                     <i class="bx bx-grid fs-3 d-block mb-2 opacity-50"></i>
                                     <div>Select the <strong>All Matrices</strong> tab above to load this list.</div>
