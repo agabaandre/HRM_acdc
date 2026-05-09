@@ -478,21 +478,19 @@ class MatrixController extends Controller
     //dd($matrix);
         // Separate regular activities and single memos
         $activitiesQuery = $matrix->activities()->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
-        $singleMemosQuery = $matrix->activities()->where('is_single_memo', 1)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
 
         // Approvers at current level only see activities they can approve (get_approvable_activities respects allowed_funders)
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
         $isApprover = $userStaffId && $this->isUserApproverAtCurrentLevel($matrix, $userStaffId, $userDivisionId);
+        $approvableIds = [];
         if ($isApprover) {
             $approvable = get_approvable_activities($matrix);
             $approvableIds = $approvable->pluck('id')->toArray();
             if (!empty($approvableIds)) {
                 $activitiesQuery->whereIn('id', $approvableIds);
-                $singleMemosQuery->whereIn('id', $approvableIds);
             } else {
                 $activitiesQuery->whereRaw('1 = 0');
-                $singleMemosQuery->whereRaw('1 = 0');
             }
         }
 
@@ -500,18 +498,25 @@ class MatrixController extends Controller
         if ($request->filled('document_number')) {
             $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
         }
-        
-        // Apply single memo document number filter if provided
-        if ($request->filled('single_memo_search')) {
-            $singleMemosQuery->where('document_number', 'like', '%' . $request->single_memo_search . '%');
+
+        // Approved single memos: count only on initial page load; list loads via AJAX (lazy). Same approver scope as activities.
+        $approvedSingleMemosCountQuery = $matrix->activities()
+            ->where('is_single_memo', 1)
+            ->where('overall_status', 'approved');
+        if ($isApprover) {
+            if (!empty($approvableIds)) {
+                $approvedSingleMemosCountQuery->whereIn('id', $approvableIds);
+            } else {
+                $approvedSingleMemosCountQuery->whereRaw('1 = 0');
+            }
         }
-        
+        $approvedSingleMemosCount = (int) $approvedSingleMemosCountQuery->count();
+
         $perPage = $request->get('per_page', 20);
         $activities = $activitiesQuery->latest()->paginate($perPage);
-        $singleMemos = $singleMemosQuery->latest()->paginate(20);
-     
-        // Batch-resolve locations/internal participants for both activity lists
-        $allRows = collect($activities->items())->merge($singleMemos->items());
+
+        // Batch-resolve locations/internal participants for regular activities only
+        $allRows = collect($activities->items());
         $rowMeta = [];
         $allLocationIds = [];
         $allStaffIds = [];
@@ -556,7 +561,57 @@ class MatrixController extends Controller
                 ->values();
         }
 
-        foreach ($singleMemos as $memo) {
+        // Filter division staff by name if provided
+        //dd($matrix);
+    
+        return view('matrices.show', compact('matrix', 'activities', 'approvedSingleMemosCount'));
+     }
+
+    /**
+     * Attach locations + internal participants to single memo rows (batch queries; same pattern as activities AJAX).
+     *
+     * @param  iterable<\App\Models\Activity>  $memos
+     */
+    protected function hydrateSingleMemoRowsForJson(iterable $memos): void
+    {
+        $items = is_array($memos) ? $memos : iterator_to_array($memos);
+        if ($items === []) {
+            return;
+        }
+
+        $rowMeta = [];
+        $allLocationIds = [];
+        $allStaffIds = [];
+
+        foreach ($items as $memo) {
+            $locationIds = is_array($memo->location_id)
+                ? $memo->location_id
+                : json_decode($memo->location_id ?? '[]', true);
+            $locationIds = array_values(array_filter((array) $locationIds, static fn ($id) => (int) $id > 0));
+
+            $internalRaw = is_string($memo->internal_participants)
+                ? json_decode($memo->internal_participants ?? '[]', true)
+                : ($memo->internal_participants ?? []);
+            $internalParticipantIds = collect((array) $internalRaw)
+                ->pluck('staff_id')
+                ->filter(static fn ($id) => (int) $id > 0)
+                ->map(static fn ($id) => (int) $id)
+                ->values()
+                ->all();
+
+            $rowMeta[$memo->id] = [
+                'location_ids' => $locationIds,
+                'staff_ids' => $internalParticipantIds,
+            ];
+
+            $allLocationIds = array_merge($allLocationIds, $locationIds);
+            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds);
+        }
+
+        $locationsById = Location::whereIn('id', array_values(array_unique($allLocationIds)))->get()->keyBy('id');
+        $staffByStaffId = Staff::whereIn('staff_id', array_values(array_unique($allStaffIds)))->get()->keyBy('staff_id');
+
+        foreach ($items as $memo) {
             $meta = $rowMeta[$memo->id] ?? ['location_ids' => [], 'staff_ids' => []];
             $memo->locations = collect($meta['location_ids'])
                 ->map(static fn ($id) => $locationsById->get((int) $id))
@@ -567,12 +622,7 @@ class MatrixController extends Controller
                 ->filter()
                 ->values();
         }
-        
-        // Filter division staff by name if provided
-        //dd($matrix);
-    
-        return view('matrices.show', compact('matrix', 'activities', 'singleMemos'));
-     }
+    }
 
     /**
      * Get activities for approvers via AJAX with filtering by approval order and allowed funders
@@ -1206,6 +1256,16 @@ class MatrixController extends Controller
             ->where('overall_status', 'approved')
             ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
 
+        if ($this->isUserApproverAtCurrentLevel($matrix, $userStaffId, $userDivisionId)) {
+            $approvable = get_approvable_activities($matrix);
+            $approvableSingleMemoIds = $approvable->pluck('id')->toArray();
+            if (!empty($approvableSingleMemoIds)) {
+                $singleMemosQuery->whereIn('id', $approvableSingleMemoIds);
+            } else {
+                $singleMemosQuery->whereRaw('1 = 0');
+            }
+        }
+
         // Apply document number filter if provided
         if ($request->filled('document_number')) {
             $singleMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
@@ -1232,29 +1292,12 @@ class MatrixController extends Controller
         $perPage = $request->get('per_page', 20);
         $singleMemos = $singleMemosQuery->latest()->paginate($perPage);
 
-        // Prepare additional decoded & related data per single memo
+        $this->hydrateSingleMemoRowsForJson($singleMemos->items());
+
         foreach ($singleMemos as $memo) {
-            // Decode JSON arrays
-            $locationIds = is_array($memo->location_id)
-                ? $memo->location_id
-                : json_decode($memo->location_id ?? '[]', true);
-
-            $internalRaw = is_string($memo->internal_participants)
-                ? json_decode($memo->internal_participants ?? '[]', true)
-                : ($memo->internal_participants ?? []);
-
-            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
-
-            // Attach related models
-            $memo->locations = Location::whereIn('id', $locationIds ?: [])->get();
-            $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
-            
-            // Add approval-related data
             $memo->can_approve = can_approve_activity($memo);
             $memo->allow_print = allow_print_activity($memo);
             $memo->my_last_action = $memo->my_last_action ?? null;
-            
-            // Check if user's last action on this single memo was "passed"
             $memo->user_has_passed = $this->hasUserPassedActivity($memo, $userWorkflowDefinition);
         }
 
@@ -1315,24 +1358,9 @@ class MatrixController extends Controller
         $perPage = $request->get('per_page', 20);
         $singleMemos = $singleMemosQuery->latest()->paginate($perPage);
 
-        // Prepare additional decoded & related data per single memo
+        $this->hydrateSingleMemoRowsForJson($singleMemos->items());
+
         foreach ($singleMemos as $memo) {
-            // Decode JSON arrays
-            $locationIds = is_array($memo->location_id)
-                ? $memo->location_id
-                : json_decode($memo->location_id ?? '[]', true);
-
-            $internalRaw = is_string($memo->internal_participants)
-                ? json_decode($memo->internal_participants ?? '[]', true)
-                : ($memo->internal_participants ?? []);
-
-            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
-
-            // Attach related models
-            $memo->locations = Location::whereIn('id', $locationIds ?: [])->get();
-            $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
-            
-            // Add approval-related data (default to false for non-authenticated users)
             $memo->can_approve = false;
             $memo->allow_print = false;
             $memo->my_last_action = null;

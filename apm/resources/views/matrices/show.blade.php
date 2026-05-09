@@ -471,8 +471,8 @@
     </div>
 </div>
 
-<!-- Single Memos Section -->
-@if($singleMemos->where('overall_status', 'approved')->count() > 0)
+<!-- Single Memos Section (list loads via AJAX when scrolled into view) -->
+@if(($approvedSingleMemosCount ?? 0) > 0)
 <div class="row mt-4">
     <div class="col-12">
         <div id="single-memos-card" class="card shadow-sm border-0">
@@ -483,7 +483,7 @@
                             <i class="bx bx-file-text me-2 text-primary"></i>Single Memos
                         </h5>
                         <small class="text-muted d-block mt-1">
-                            <span id="single-memos-count">{{ $singleMemos->where('overall_status', 'approved')->count() }}</span> approved single memos in this matrix
+                            <span id="single-memos-count">{{ (int) ($approvedSingleMemosCount ?? 0) }}</span> approved single memos in this matrix
                         </small>
                     </div>
                     <div class="col-md-8">
@@ -607,127 +607,6 @@
             </div>
         </div>
     </div>
-</div>
-
-<!-- Static single memos table for reference (will be replaced by AJAX) -->
-<div style="display: none;">
-    <table>
-                        <tbody>
-                            @php $memoCount = 1; @endphp
-                            @forelse($singleMemos as $memo)
-                                <tr style="background-color: {{ $memo->overall_status !== 'approved' ? '#fff3cd' : '#d5f5de' }};">
-                                    <td class="px-3 py-3 text-center">
-                                        <span class="badge bg-secondary rounded-pill">{{ $memoCount }}</span>
-                                    </td>
-                                    <td class="px-3 py-3 text-center">
-                                        <span class="badge bg-info text-dark">
-                                            {{ $memo->document_number ?? 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td class="px-3 py-3 text-wrap" style="max-width: 250px;">
-                                        {{ $memo->activity_title }}
-                                    </td>
-                                    <td class="px-3 py-3">
-                                        <div class="small text-wrap" style="max-width: 120px;">
-                                            <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
-                                            <div class="text-muted">to {{ \Carbon\Carbon::parse($memo->date_to)->format('M d, Y') }}</div>
-                                        </div>
-                                    </td>
-                                    <td class="px-3 py-3">
-                                        <div class="text-wrap" style="max-width: 120px;">
-                                            @if($memo->responsiblePerson)
-                                                <div class="fw-semibold">{{ $memo->responsiblePerson->fname }} {{ $memo->responsiblePerson->lname }}</div>
-                                                <small class="text-muted">{{ $memo->responsiblePerson->job_name ?? 'N/A' }}</small>
-                                            @else
-                                                <span class="text-muted">Not assigned</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="px-3 py-3 text-center">
-                                        <span class="badge bg-info rounded-pill">{{ $memo->total_participants }}</span>
-                                    </td>
-                                    <td class="px-3 py-3 text-center">
-                                        <span class="badge bg-info rounded-pill">{{ $memo->fundType->name }}</span>
-                                    </td>
-                                    <td class="px-3 py-3 text-center">
-                                        @php
-                                            $budget = is_array($memo->budget_breakdown) ? $memo->budget_breakdown : json_decode($memo->budget_breakdown , true);
-                                            $sanitizeNumber = static function ($value): float {
-                                                if ($value === null || $value === '') {
-                                                    return 0.0;
-                                                }
-
-                                                return (float) str_replace(',', '', (string) $value);
-                                            };
-                                            $totalBudget = 0;
-
-                                            if (is_array($budget)) {
-                                                // Always recalculate from individual items to avoid JSON grand_total issues
-                                                foreach ($budget as $key => $entries) {
-                                                    if ($key === 'grand_total') continue;
-
-                                                    if (is_array($entries)) {
-                                                        foreach ($entries as $item) {
-                                                            $unitCost = $sanitizeNumber($item['unit_cost'] ?? 0);
-                                                            $units = $sanitizeNumber($item['units'] ?? 0);
-                                                            $days = $sanitizeNumber($item['days'] ?? 1);
-                                                            $itemTotal = $unitCost * $units * $days;
-                                                            
-                                                            $totalBudget += $itemTotal;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        @endphp
-                                        <span class="fw-bold text-success">{{ number_format($totalBudget, 2) }} USD</span>
-                                    </td>
-                                    <td class="px-3 py-3 text-center">
-                                        <span class="badge bg-{{ $memo->overall_status === 'approved' ? 'success' : 'warning' }} rounded-pill">
-                                            {{ ucfirst($memo->overall_status) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-3 py-3 text-center">
-                                        <div class="btn-group btn-group-vertical btn-group-sm matrix-show-action-group" role="group">
-                                            <a wire:navigate href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm">
-                                                <i class="bx bx-show me-1"></i>View
-                                            </a>
-                                            @if($memo->overall_status == 'draft' && 
-                                                ($memo->responsible_person_id == user_session('staff_id') || 
-                                                 $memo->staff_id == user_session('staff_id') || 
-                                                 $matrix->division->division_head == user_session('staff_id') ||
-                                                 $matrix->staff_id == user_session('staff_id')))
-                                                @if($matrix->overall_status == 'draft' || ($matrix->overall_status == 'returned' && in_array((int) $matrix->approval_level, [0, 1])))
-                                                    <button type="button" class="btn btn-outline-info btn-sm" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#copyActivityModal" 
-                                                            data-activity-id="{{ $memo->id }}"
-                                                            data-activity-title="{{ $memo->activity_title }}">
-                                                        <i class="bx bx-copy me-1"></i>Copy
-                                                    </button>
-                                                @endif
-                                                <button type="button" class="btn btn-outline-danger btn-sm" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#deleteSingleMemoModal" 
-                                                        data-memo-id="{{ $memo->id }}"
-                                                        data-memo-title="{{ $memo->activity_title }}">
-                                                    <i class="bx bx-trash me-1"></i>Delete
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @php $memoCount++; @endphp
-                            @empty
-                                <tr>
-                                    <td colspan="10" class="text-center py-5">
-                                        <i class="bx bx-file-text fs-1 text-muted mb-3 d-block"></i>
-                                        <div class="text-muted">No single memos found for this matrix.</div>
-                                        <small class="text-muted">Single memos will appear here once they are added.</small>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
 </div>
 @endif
 
@@ -1137,6 +1016,8 @@ let singleMemoCurrentPage = 1;
 let singleMemoIsLoading = false;
 let singleMemoCurrentSearchTerm = '';
 let singleMemoPageSize = 10;
+let singleMemosLazyObserver = null;
+let singleMemosLazyLoadTriggered = false;
 
 // Generate activity URL
 function getActivityUrl(activityId) {
@@ -1752,10 +1633,64 @@ function getSingleMemoUrl(memoId) {
     return '{{ url("single-memos") }}/' + memoId;
 }
 
+function disconnectSingleMemosLazyObserver() {
+    if (singleMemosLazyObserver) {
+        try { singleMemosLazyObserver.disconnect(); } catch (e) {}
+        singleMemosLazyObserver = null;
+    }
+}
+
+/** Defer single-memo list fetch until the section is near the viewport (same idea as activities, but activities load immediately). */
+function setupSingleMemosLazyLoad() {
+    disconnectSingleMemosLazyObserver();
+    singleMemosLazyLoadTriggered = false;
+    const card = document.getElementById('single-memos-card');
+    if (!card) return;
+
+    const tbody = document.getElementById('single-memos-tbody');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4"><i class="bx bx-down-arrow-alt me-1"></i> Single memos load when you scroll to this section.</td></tr>';
+    }
+    const showing = document.getElementById('single-memo-showingRange');
+    if (showing) {
+        showing.textContent = 'Not loaded yet — scroll here or wait a few seconds';
+    }
+
+    function triggerFirstSingleMemosFetch() {
+        if (singleMemosLazyLoadTriggered) return;
+        singleMemosLazyLoadTriggered = true;
+        disconnectSingleMemosLazyObserver();
+        loadSingleMemos(1, '{{ request("single_memo_search") }}', '{{ request("single_memo_document_number") }}');
+    }
+
+    if (typeof IntersectionObserver !== 'undefined') {
+        singleMemosLazyObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) triggerFirstSingleMemosFetch();
+            });
+        }, { root: null, rootMargin: '200px 0px', threshold: 0 });
+        singleMemosLazyObserver.observe(card);
+        requestAnimationFrame(function () {
+            var rect = card.getBoundingClientRect();
+            var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+            if (rect.top < vh + 240 && rect.bottom > -240) {
+                triggerFirstSingleMemosFetch();
+            }
+        });
+    } else {
+        setTimeout(triggerFirstSingleMemosFetch, 200);
+    }
+
+    setTimeout(function () {
+        if (!singleMemosLazyLoadTriggered) triggerFirstSingleMemosFetch();
+    }, 15000);
+}
+
 // Load single memos via AJAX
 function loadSingleMemos(page = 1, search = '', documentNumber = '') {
     if (singleMemoIsLoading) return;
-    
+
+    singleMemosLazyLoadTriggered = true;
     singleMemoIsLoading = true;
     singleMemoCurrentPage = page;
     singleMemoCurrentSearchTerm = search;
@@ -1780,8 +1715,15 @@ function loadSingleMemos(page = 1, search = '', documentNumber = '') {
     const root = document.getElementById('matrix-show-root');
     const singleMemosBaseUrl = root ? root.getAttribute('data-single-memos-url') : null;
     if (!singleMemosBaseUrl) {
+        singleMemoIsLoading = false;
         if (loadingElement) loadingElement.style.display = 'none';
-        if (tableContainer) { tableContainer.style.display = 'block'; tableContainer.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Matrix context not found. Please refresh.</td></tr>'; }
+        if (tableContainer) {
+            tableContainer.style.display = 'block';
+        }
+        const tbodyMissing = document.getElementById('single-memos-tbody');
+        if (tbodyMissing) {
+            tbodyMissing.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3">Matrix context not found. Please refresh.</td></tr>';
+        }
         return;
     }
     const url = new URL(singleMemosBaseUrl, window.location.origin);
@@ -1863,17 +1805,23 @@ function loadSingleMemos(page = 1, search = '', documentNumber = '') {
 // Render single memos
 function renderSingleMemos(singleMemos) {
     const tbody = document.getElementById('single-memos-tbody');
+    if (!tbody) return;
     const singleMemosCard = document.getElementById('single-memos-card');
     let html = '';
-    
-    if (singleMemos.length === 0) {
-        // Hide the entire single memos card if no approved single memos
+
+    const generalEl = document.getElementById('single-memo-general-search');
+    const docEl = document.getElementById('single-memo-document-search');
+    const hasFilter = (generalEl && generalEl.value.trim()) || (docEl && docEl.value.trim());
+
+    if (!singleMemos || singleMemos.length === 0) {
+        const emptyMsg = hasFilter
+            ? 'No single memos match your search. Try different keywords or reset filters.'
+            : 'No single memos on this page.';
+        html = '<tr><td colspan="10" class="text-center text-muted py-4">' + emptyMsg + '</td></tr>';
         if (singleMemosCard) {
-            singleMemosCard.style.display = 'none';
+            singleMemosCard.style.display = 'block';
         }
-        return;
     } else {
-        // Show the single memos card if there are approved single memos
         if (singleMemosCard) {
             singleMemosCard.style.display = 'block';
         }
@@ -2163,7 +2111,7 @@ function loadMatrixBudgets() {
 
 function initMatrixShowPage() {
     loadActivities(1, '{{ request("search") }}', '{{ request("document_number") }}');
-    loadSingleMemos(1, '{{ request("single_memo_search") }}', '{{ request("single_memo_document_number") }}');
+    setupSingleMemosLazyLoad();
     
     // Add event listeners for search functionality
     const searchBtn = document.getElementById('search-btn');
