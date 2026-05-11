@@ -717,11 +717,14 @@
                 }
             }
             
-            // Fetch fund code details for display
-            $fundCodes = [];
+            // Fetch fund code details for display (normalize keys: JSON uses string keys, keyBy('id') is int)
+            $fundCodes = collect();
             if (!empty($budgetByFundCode)) {
-                $fundCodeIds = array_keys($budgetByFundCode);
-                $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
+                $fundCodeIds = array_values(array_unique(array_map(static fn ($id) => (int) $id, array_keys($budgetByFundCode))));
+                $fundCodeIds = array_values(array_filter($fundCodeIds, static fn ($id) => $id > 0));
+                if ($fundCodeIds !== []) {
+                    $fundCodes = \App\Models\FundCode::with('fundType')->whereIn('id', $fundCodeIds)->get()->keyBy(static fn ($fc) => (int) $fc->id);
+                }
             }
             
             // If no grand_total found, calculate from items with proper days logic
@@ -1109,20 +1112,31 @@
 
                             @foreach ($budgetByFundCode as $fundCodeId => $items)
                                     @php
-                                        $fundCode = $fundCodes[$fundCodeId] ?? null;
+                                        $fundCode = $fundCodes->get((int) $fundCodeId);
                                     $groupTotal = 0;
                                     $itemCount = 1; // Reset counter for each budget code
                                     @endphp
                                     
-                                {{-- Budget Code Title --}}
+                                {{-- Budget Code Title: show fund_codes.code (not DB id); append fund_codes.activity when present --}}
                                 <h6 style="color: #2c3d50; font-weight: 600; margin-top: 20px;">
                                     @if ($fundCode)
-                                        {{ $fundCode->activity }} - {{ $fundCode->code }} -
-                                        ({{ $fundCode->fundType->name ?? 'N/A' }})
-                                                    @else
-                                        Budget Code: {{ $fundCodeId }}
-                                                    @endif
-                                                </h6>
+                                        <span class="text-primary">Budget Code:</span>
+                                        <span class="fw-semibold">{{ $fundCode->code ?: '—' }}</span>
+                                        @php
+                                            $fcActivity = trim((string) ($fundCode->activity ?? ''));
+                                        @endphp
+                                        @if ($fcActivity !== '')
+                                            <span class="text-muted"> — {{ $fcActivity }}</span>
+                                        @endif
+                                        @if ($fundCode->fundType)
+                                            <small class="text-muted"> ({{ $fundCode->fundType->name }})</small>
+                                        @endif
+                                    @else
+                                        <span class="text-primary">Budget Code:</span>
+                                        <span class="text-muted">Not found</span>
+                                        <small class="text-muted">(reference ID {{ $fundCodeId }})</small>
+                                    @endif
+                                </h6>
 
                                 {{-- Individual Table for this Budget Code --}}
                                 <div class="table-responsive mb-4">
