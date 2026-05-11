@@ -1118,17 +1118,11 @@
                                     $itemCount = 1; // Reset counter for each budget code
                                     @endphp
                                     
-                                {{-- Budget Code Title: show fund_codes.code (not DB id); append fund_codes.activity when present --}}
+                                {{-- Budget Code Title: fund_codes.code only (no fund_codes.activity line) --}}
                                 <h6 style="color: #2c3d50; font-weight: 600; margin-top: 20px;">
                                     @if ($fundCode)
                                         <span class="text-primary">Budget Code:</span>
                                         <span class="fw-semibold">{{ $fundCode->code ?: '—' }}</span>
-                                        @php
-                                            $fcActivity = trim((string) ($fundCode->activity ?? ''));
-                                        @endphp
-                                        @if ($fcActivity !== '')
-                                            <span class="text-muted"> — {{ $fcActivity }}</span>
-                                        @endif
                                         @if ($fundCode->fundType)
                                             <small class="text-muted"> ({{ $fundCode->fundType->name }})</small>
                                         @endif
