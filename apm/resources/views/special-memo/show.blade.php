@@ -899,8 +899,9 @@
                                     <span class="text-muted">Not specified</span>
                                 @endif
                                 @php
-                                    $fundCodes = $specialMemo->fundCodes ?? collect();
-                                    $budgetCodeLabels = $fundCodes->isNotEmpty() ? $fundCodes->pluck('code')->filter()->unique()->values()->all() : [];
+                                    // Do not use name $fundCodes here — it would overwrite the budget_breakdown lookup map used below in "Budget Information".
+                                    $summaryFundCodesForLabels = $specialMemo->fundCodes ?? collect();
+                                    $budgetCodeLabels = $summaryFundCodesForLabels->isNotEmpty() ? $summaryFundCodesForLabels->pluck('code')->filter()->unique()->values()->all() : [];
                                 @endphp
                                 @if(count($budgetCodeLabels) > 0)
                                     <span class="text-muted ms-1">(Budget code{{ count($budgetCodeLabels) > 1 ? 's' : '' }}: {{ implode(', ', $budgetCodeLabels) }})</span>
