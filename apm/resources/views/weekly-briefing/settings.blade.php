@@ -112,7 +112,7 @@
                 <button type="button" class="btn btn-sm btn-outline-success" id="wb-add-viewer">+ Add viewer</button>
             </div>
             <div class="card-body">
-                <p class="small text-muted">These staff can open Division Weekly Brief, see every unit’s status and PDFs, and download the compiled PDF and completion summary. They cannot edit or submit another person’s report unless they are also listed as a contributor for that unit.</p>
+                <p class="small text-muted">These staff can open Weekly brief, see every unit’s status and PDFs, and download the compiled PDF and completion summary. They cannot edit or submit another person’s report unless they are also listed as a contributor for that unit.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle" id="wb-viewers-table">
                         <thead class="table-light">
@@ -156,7 +156,7 @@
                 <input type="hidden" name="division_directors_can_access_module" value="0">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="division_directors_can_access_module" value="1" id="wbDirModule" @checked(filter_var(old('division_directors_can_access_module', $settings->division_directors_can_access_module ?? true), FILTER_VALIDATE_BOOLEAN))>
-                    <label class="form-check-label" for="wbDirModule">Allow staff set as <strong>division director</strong> (<code>divisions.director_id</code>) to open <strong>Division Weekly Brief</strong> in the top menu and home dashboard, and to review or download reports for reporting units they direct (same rules as today when this is on). If unchecked, directors only see the module if they are also a contributor or a configured report viewer.</label>
+                    <label class="form-check-label" for="wbDirModule">Allow staff set as <strong>division director</strong> (<code>divisions.director_id</code>) to open <strong>Weekly brief</strong> in the top menu and home dashboard, and to review or download reports for reporting units they direct (same rules as today when this is on). If unchecked, directors only see the module if they are also a contributor or a configured report viewer.</label>
                 </div>
             </div>
         </div>
@@ -180,7 +180,7 @@
         </div>
 
         <button type="submit" class="btn btn-success">Save settings</button>
-        <a href="{{ route('weekly-briefing.index') }}" class="btn btn-outline-secondary">Back to weekly briefing</a>
+        <a href="{{ route('weekly-briefing.index') }}" class="btn btn-outline-secondary">Back to Weekly brief</a>
     </form>
 
     <template id="wb-contributor-template">

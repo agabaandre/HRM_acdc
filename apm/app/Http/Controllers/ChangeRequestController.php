@@ -53,7 +53,6 @@ class ChangeRequestController extends Controller
             $selectedYear = (string) $currentYear;
         }
         $selectedQuarter = $request->get('quarter', 'Q4');
-        $selectedDivisionId = $request->get('division_id', $userDivisionId);
         $status = $request->get('status', 'all') ?: 'all';
         $documentNumber = $request->get('document_number');
         $staffId = (int) $request->get('staff_id');
@@ -101,8 +100,8 @@ class ChangeRequestController extends Controller
         }
 
         // Filter by division (only if explicitly set in URL)
-        if ($request->filled('division_id') && !$showAllDueToNoSession) {
-            $baseQuery->where('division_id', (int) $selectedDivisionId);
+        if ($request->filled('division_id') && (int) $request->input('division_id') > 0 && ! $showAllDueToNoSession) {
+            $baseQuery->where('division_id', (int) $request->input('division_id'));
         }
 
         // Filter by search term
@@ -121,12 +120,14 @@ class ChangeRequestController extends Controller
         $myChangeRequests = $myChangeRequestsQuery->where('staff_id', $userStaffId)->paginate(20)->withQueryString();
         }
 
-        // My Division Change Requests (change requests in user's division)
+        // My Division Change Requests (change requests in user's division, or in the division selected in filters)
         $myDivisionChangeRequestsQuery = clone $baseQuery;
         if ($showAllDueToNoSession) {
             $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->paginate(20)->withQueryString();
+        } elseif ($request->filled('division_id') && (int) $request->input('division_id') > 0) {
+            $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->paginate(20)->withQueryString();
         } else {
-        $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->where('division_id', $userDivisionId)->paginate(20)->withQueryString();
+            $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->where('division_id', $userDivisionId)->paginate(20)->withQueryString();
         }
 
         // Shared Change Requests (where user is responsible person)
@@ -196,8 +197,8 @@ class ChangeRequestController extends Controller
                 if ($parentMemoId) {
                     $baseQuery->where('parent_memo_id', (int) $parentMemoId);
                 }
-                if ($request->filled('division_id') && !$showAllDueToNoSession) {
-                    $baseQuery->where('division_id', (int) $selectedDivisionId);
+                if ($request->filled('division_id') && (int) $request->input('division_id') > 0 && ! $showAllDueToNoSession) {
+                    $baseQuery->where('division_id', (int) $request->input('division_id'));
                 }
                 if ($request->filled('search')) {
                     $baseQuery->where('activity_title', 'like', '%' . $request->search . '%');
@@ -208,9 +209,13 @@ class ChangeRequestController extends Controller
                     ? $myChangeRequestsQuery->paginate(20)->withQueryString()
                     : $myChangeRequestsQuery->where('staff_id', $userStaffId)->paginate(20)->withQueryString();
                 $myDivisionChangeRequestsQuery = clone $baseQuery;
-                $myDivisionChangeRequests = $showAllDueToNoSession
-                    ? $myDivisionChangeRequestsQuery->paginate(20)->withQueryString()
-                    : $myDivisionChangeRequestsQuery->where('division_id', $userDivisionId)->paginate(20)->withQueryString();
+                if ($showAllDueToNoSession) {
+                    $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->paginate(20)->withQueryString();
+                } elseif ($request->filled('division_id') && (int) $request->input('division_id') > 0) {
+                    $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->paginate(20)->withQueryString();
+                } else {
+                    $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->where('division_id', $userDivisionId)->paginate(20)->withQueryString();
+                }
                 $sharedChangeRequestsQuery = clone $baseQuery;
                 $sharedChangeRequests = $showAllDueToNoSession
                     ? $sharedChangeRequestsQuery->paginate(20)->withQueryString()
@@ -259,7 +264,6 @@ class ChangeRequestController extends Controller
             'statuses' => $statuses,
             'selectedYear' => $selectedYear,
             'selectedQuarter' => $selectedQuarter,
-            'selectedDivisionId' => $selectedDivisionId,
             'selectedStatus' => $status,
             'selectedMemoType' => $memoType,
             'userDivisionId' => $userDivisionId

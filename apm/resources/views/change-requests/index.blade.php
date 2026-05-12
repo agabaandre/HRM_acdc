@@ -135,7 +135,7 @@
                     <select name="division_id" id="division_id" class="form-select apm-filter-select change-request-filter-select" style="width: 100%;">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
-                            <option value="{{ $division->division_id }}" {{ request('division_id') == $division->division_id ? 'selected' : '' }}>
+                            <option value="{{ $division->id }}" {{ (string) request('division_id') === (string) $division->id ? 'selected' : '' }}>
                                 {{ $division->division_name }}
                             </option>
                         @endforeach
@@ -387,6 +387,18 @@ function initChangeRequestsPage() {
         return (v !== undefined && v !== null && v !== '') ? String(v) : currentYear;
     }
 
+    /** Native select or Select2 (hidden native .value is unreliable). */
+    function getSelectOrSelect2Value(id) {
+        const el = document.getElementById(id);
+        if (!el) return '';
+        if (typeof $ !== 'undefined' && $(el).data('select2')) {
+            const val = $(el).val();
+            if (val === undefined || val === null) return '';
+            return Array.isArray(val) ? (val[0] != null ? String(val[0]) : '') : String(val);
+        }
+        return el.value != null ? String(el.value) : '';
+    }
+
     // Function to load tab data via AJAX
     function loadTabData(tabId, page = 1) {
         const currentUrl = new URL(window.location);
@@ -396,10 +408,10 @@ function initChangeRequestsPage() {
         const year = getYearValue();
         currentUrl.searchParams.set('year', year);
         const documentNumber = document.getElementById('document_number')?.value;
-        const staffId = document.getElementById('staff_id')?.value;
-        const divisionId = document.getElementById('division_id')?.value;
-        const status = document.getElementById('statusFilter')?.value;
-        const memoType = document.getElementById('memo_type')?.value;
+        const staffId = getSelectOrSelect2Value('staff_id');
+        const divisionId = getSelectOrSelect2Value('division_id');
+        const status = getSelectOrSelect2Value('statusFilter');
+        const memoType = getSelectOrSelect2Value('memo_type');
         const search = document.getElementById('search')?.value;
         
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
@@ -517,6 +529,7 @@ function initChangeRequestsPage() {
             loadTabData(tabId);
         });
     });
+    window.loadChangeRequestTabData = loadTabData;
     // Do not call loadTabData on initial load when there is no tab in URL — keep server-rendered content so the view shows data. AJAX load only when user switches tab or applies filters.
 }
 document.addEventListener('DOMContentLoaded', initChangeRequestsPage);
@@ -571,7 +584,11 @@ function deleteChangeRequest(changeRequestId) {
             // Reload the current tab
             const activeTab = document.querySelector('#changeRequestTabs .nav-link.active');
             if (activeTab) {
-                loadTabData(activeTab.getAttribute('aria-controls'));
+                if (typeof window.loadChangeRequestTabData === 'function') {
+                    window.loadChangeRequestTabData(activeTab.getAttribute('aria-controls'));
+                } else {
+                    window.location.reload();
+                }
             }
         } else {
             alert(data.msg || 'Failed to delete change request');

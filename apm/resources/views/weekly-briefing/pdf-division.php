@@ -29,7 +29,7 @@ $dirName = $report->directorate?->name ?? 'Directorate / Office';
 $unitLabel = $report->contributionEntityLabel();
 $apmDiv = $report->division?->division_name ?? '';
 ?>
-<h1>Weekly Briefing</h1>
+<h1>Weekly brief</h1>
 <div class="meta">
     <strong><?php echo htmlspecialchars($dirName); ?></strong><br>
     <strong>Reporting unit:</strong> <?php echo htmlspecialchars($unitLabel); ?>
@@ -119,6 +119,6 @@ if (count($bodyRows) > 0) {
     </tbody>
 </table>
 
-<div class="footer">Africa CDC · Weekly briefing · Generated <?php echo date('Y-m-d H:i'); ?></div>
+<div class="footer">Africa CDC · Weekly brief · Generated <?php echo date('Y-m-d H:i'); ?></div>
 </body>
 </html>

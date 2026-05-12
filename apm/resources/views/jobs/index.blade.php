@@ -466,7 +466,7 @@
                 <div class="row g-3 mt-2">
                     <div class="col-12">
                         <hr class="my-2">
-                        <h6 class="mb-2 text-secondary"><i class="bx bx-news me-1"></i>Division Weekly Brief (email)</h6>
+                        <h6 class="mb-2 text-secondary"><i class="bx bx-news me-1"></i>Weekly brief (email)</h6>
                         <p class="small text-muted mb-3">Production sends are also triggered by the scheduler every minute (<code>weekly-briefing:hod-reminders</code>, <code>weekly-briefing:compiled-summary</code>). Use <strong>Send test emails</strong> to verify SMTP to a safe inbox; force buttons email <em>real</em> contributors or compiled recipients.</p>
                     </div>
                     <div class="col-md-6 col-lg-4">
@@ -1129,7 +1129,7 @@ function executeWeeklyBriefingMail(action, button) {
     button.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Running...';
     button.disabled = true;
     $('#outputCard').show();
-    $('#commandOutput').html('<div class="text-info">Running Division Weekly Brief: ' + action + '…</div>');
+    $('#commandOutput').html('<div class="text-info">Running Weekly brief: ' + action + '…</div>');
     const payload = {
         action: action,
         _token: '{{ csrf_token() }}'
@@ -1149,16 +1149,16 @@ function executeWeeklyBriefingMail(action, button) {
                     '<div class="text-light mt-2">Command: <code>' + (response.command || '') + '</code></div>' +
                     '<div class="text-light mt-2">Output:</div><div class="text-light">' + (response.output || '—') + '</div>'
                 );
-                showAlert('Weekly briefing command finished', 'success');
+                showAlert('Weekly brief command finished', 'success');
             } else {
                 $('#commandOutput').html('<div class="text-danger">✗ ' + (response.message || 'Failed') + '</div><div class="text-danger">' + (response.output || '') + '</div>');
-                showAlert(response.message || 'Weekly briefing command failed', 'danger');
+                showAlert(response.message || 'Weekly brief command failed', 'danger');
             }
         },
         error: function(xhr) {
             const r = xhr.responseJSON;
             $('#commandOutput').html('<div class="text-danger">✗ ' + (r?.message || 'Request failed') + '</div>');
-            showAlert(r?.message || 'Weekly briefing request failed', 'danger');
+            showAlert(r?.message || 'Weekly brief request failed', 'danger');
         },
         complete: function() {
             button.innerHTML = originalText;

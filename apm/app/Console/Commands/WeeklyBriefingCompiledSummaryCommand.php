@@ -10,6 +10,7 @@ use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 use App\Services\WeeklyBriefingCompletionSummary;
 use App\Services\WeeklyBriefingDirectorateCombined;
+use App\Support\WeeklyBriefingMailTemplate;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +20,7 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
 {
     protected $signature = 'weekly-briefing:compiled-summary {--force : Run immediately, ignoring reminders_enabled, weekday, and summary_send_time}';
 
-    protected $description = 'Email organisation-wide compiled weekly briefing only to central recipients; optionally email HoDs per division and directors a separate division-only director report plus scoped completion summary.';
+    protected $description = 'Email organisation-wide compiled Weekly brief only to central recipients; optionally email HoDs per division and directors a separate division-only director report plus scoped completion summary.';
 
     public function handle(): int
     {
@@ -94,8 +95,17 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             $summaryBinary = $summaryPdf->Output('', 'S');
             $summaryFilename = 'Weekly_Briefing_Completion_Summary_FULL_AUDIT_W'.$w.'_'.$y.'.pdf';
 
-            $subject = $subjectPrefix."Weekly briefing compiled — W{$w}/{$y}";
-            $body = '<p>Attached: compiled weekly briefing (all submitted units for this week) and the <strong>full organisational</strong> completion summary (every configured reporting unit in settings) for audit.</p>';
+            $subject = $subjectPrefix."Weekly brief compiled — W{$w}/{$y}".WeeklyBriefingMailTemplate::subjectSuffix();
+            $innerCentral = <<<HTML
+<p>We write to inform you that the compiled <strong>Weekly brief</strong> materials for ISO week <strong>W{$w} / {$y}</strong> are ready for your attention.</p>
+<p>Attached, for audit and organisational oversight, you will find:</p>
+<ul style="color:#444444;font-size:14px;line-height:1.6;">
+<li>The <strong>compiled PDF</strong> containing all submitted reporting units for this week; and</li>
+<li>The <strong>organisational completion summary</strong>, listing every configured reporting unit in the weekly brief settings.</li>
+</ul>
+<p>Should you require any clarification, please contact your APM administrator or the relevant focal point.</p>
+HTML;
+            $body = WeeklyBriefingMailTemplate::wrap(null, 'Weekly brief — compiled package', $innerCentral);
             $graphAttachments = [
                 ['name' => $compiledFilename, 'content' => $compiledBinary, 'content_type' => 'application/pdf'],
                 ['name' => $summaryFilename, 'content' => $summaryBinary, 'content_type' => 'application/pdf'],
@@ -125,12 +135,13 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
                 }
             }
             $staffIds = array_values(array_unique($staffIds));
-            $workEmailByStaffId = $staffIds === []
-                ? []
+            $hodStaffById = $staffIds === []
+                ? collect()
                 : Staff::query()
                     ->whereIn('staff_id', $staffIds)
-                    ->pluck('work_email', 'staff_id')
-                    ->all();
+                    ->get()
+                    ->keyBy('staff_id');
+            $workEmailByStaffId = $hodStaffById->pluck('work_email', 'staff_id')->all();
 
             foreach ($divisions as $division) {
                 $key = WeeklyBriefingContributor::contributionKeyForDivision((int) $division->id);
@@ -168,8 +179,10 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
                     $divLabel = 'Division '.$division->id;
                 }
                 $divLabelEsc = htmlspecialchars($divLabel, ENT_QUOTES, 'UTF-8');
-                $divBody = '<p>Attached: submitted weekly briefing for <strong>'.$divLabelEsc.'</strong> (W'.$w.'/'.$y.').</p>';
-                $divSubject = $subjectPrefix.'Weekly briefing — '.$divLabel.' — W'.$w.'/'.$y;
+                $hodStaff = $hodStaffById->get((int) $division->division_head);
+                $innerDiv = '<p>Please find attached the submitted <strong>Weekly brief</strong> for <strong>'.$divLabelEsc.'</strong> (ISO week <strong>W'.$w.' / '.$y.'</strong>), for your records and onward distribution as appropriate.</p>';
+                $divBody = WeeklyBriefingMailTemplate::wrap($hodStaff instanceof Staff ? $hodStaff : null, 'Weekly brief — division submission', $innerDiv);
+                $divSubject = $subjectPrefix.'Weekly brief — '.$divLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
 
                 foreach ($leaderAddresses as $addr) {
                     try {
@@ -186,7 +199,8 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
                 $directorId = $group['director_id'];
                 $dirTorateId = $group['directorate_id'];
                 $groupReports = $group['reports'];
-                $raw = Staff::query()->where('staff_id', $directorId)->value('work_email');
+                $directorStaff = Staff::query()->find($directorId);
+                $raw = $directorStaff?->work_email;
                 $raw = is_string($raw) ? trim($raw) : '';
                 if ($raw === '' || ! Str::contains($raw, '@')) {
                     continue;
@@ -204,7 +218,7 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
                     'settings' => $settings,
                     'isoYear' => $y,
                     'isoWeek' => $w,
-                    'compiledPdfHeading' => 'Weekly briefing — director report (your divisions only)',
+                    'compiledPdfHeading' => 'Weekly brief — director report (your divisions only)',
                     'compiledPdfMetaHtml' => $metaHtml,
                 ], ['orientation' => 'L']);
                 $combinedFilename = 'Weekly_Briefing_Director_Divisions_'.$safeDir.'_W'.$w.'_'.$y.'.pdf';
@@ -237,8 +251,9 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
                 }
 
                 $dirLabelEsc = htmlspecialchars($dirLabel, ENT_QUOTES, 'UTF-8');
-                $combinedBody = '<p>Attached: (1) <strong>Director report</strong> — submitted weekly briefings for divisions where you are the director (from the divisions table) for W'.$w.'/'.$y.'; this is <strong>not</strong> the organisation-wide compiled briefing. (2) A completion summary for those division reporting units only.</p>';
-                $combinedSubject = $subjectPrefix.'Weekly briefing — director report — '.$dirLabel.' — W'.$w.'/'.$y;
+                $combinedInner = '<p>Please find attached (1) the <strong>Director report</strong>, comprising submitted <strong>Weekly brief</strong> returns for divisions for which you are recorded as director in the system (ISO week <strong>W'.$w.' / '.$y.'</strong>). This package is <strong>not</strong> the organisation-wide compiled document sent to central recipients. (2) A completion summary covering those division reporting units only.</p>';
+                $combinedBody = WeeklyBriefingMailTemplate::wrap($directorStaff, 'Weekly brief — director report', $combinedInner);
+                $combinedSubject = $subjectPrefix.'Weekly brief — director report — '.$dirLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
 
                 try {
                     if (! sendEmail($raw, $combinedSubject, $combinedBody, null, null, [], [], $attachments)) {

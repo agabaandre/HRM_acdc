@@ -14,6 +14,7 @@ use App\Services\WeeklyBriefingWindowService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
 class WeeklyBriefingController extends Controller
@@ -25,22 +26,13 @@ class WeeklyBriefingController extends Controller
         $listingKeys = DivisionWeeklyBriefGate::contributionKeysForReportListing();
         $filingKeys = DivisionWeeklyBriefGate::contributionKeysForFiling();
 
-        $year = (int) $request->get('year', Carbon::now()->isoWeekYear());
-        $week = (int) $request->get('week', Carbon::now()->isoWeek());
-
-        $reportsQuery = WeeklyBriefingReport::query()
-            ->where('report_iso_week_year', $year)
-            ->orderByDesc('report_iso_week')
-            ->with(['division', 'directorate']);
-        if ($listingKeys !== []) {
-            $reportsQuery->whereIn('contribution_key', $listingKeys);
-        } else {
-            $reportsQuery->whereRaw('0 = 1');
-        }
-        $reports = $reportsQuery->paginate(12);
-
         $cy = Carbon::now()->isoWeekYear();
         $cw = Carbon::now()->isoWeek();
+
+        $tab = (string) $request->query('tab', 'this_week');
+        if ($tab !== 'all') {
+            $tab = 'this_week';
+        }
 
         $currentQuery = WeeklyBriefingReport::query()
             ->where('report_iso_week_year', $cy)
@@ -54,12 +46,100 @@ class WeeklyBriefingController extends Controller
         }
         $currentWeekReports = $currentQuery->get()->keyBy('contribution_key');
 
-        $weekRows = collect($listingKeys)->map(function (string $k) use ($currentWeekReports) {
+        $weekRowsBase = collect($listingKeys)->map(function (string $k) use ($currentWeekReports) {
             return [
                 'key' => $k,
                 'report' => $currentWeekReports->get($k),
             ];
-        })->values()->all();
+        })->values();
+
+        $twStatus = (string) $request->query('tw_status', '');
+        $allowedTwStatuses = ['', 'draft', 'submitted', 'locked', 'not_started'];
+        if (! in_array($twStatus, $allowedTwStatuses, true)) {
+            $twStatus = '';
+        }
+        $twSearch = trim((string) $request->query('tw_search', ''));
+
+        $filteredThisWeek = $weekRowsBase->filter(function (array $row) use ($twStatus, $twSearch) {
+            $k = $row['key'];
+            $r = $row['report'];
+            if ($twSearch !== '') {
+                $label = strtolower(WeeklyBriefingContributor::presentationLabelForContributionKey($k));
+                if (! str_contains($label, strtolower($twSearch))) {
+                    return false;
+                }
+            }
+            if ($twStatus === '') {
+                return true;
+            }
+            if ($twStatus === 'not_started') {
+                return $r === null;
+            }
+
+            return $r && (string) $r->status === $twStatus;
+        })->values();
+
+        $twPerPage = 15;
+        $twPage = max(1, (int) $request->query('tw_page', 1));
+        $twTotal = $filteredThisWeek->count();
+        $twItems = $filteredThisWeek->slice(($twPage - 1) * $twPerPage, $twPerPage)->values()->all();
+
+        $thisWeekPaginator = new LengthAwarePaginator(
+            $twItems,
+            $twTotal,
+            $twPerPage,
+            $twPage,
+            [
+                'path' => $request->url(),
+                'pageName' => 'tw_page',
+            ]
+        );
+        $thisWeekPaginator->withQueryString();
+
+        $filterYear = (int) $request->query('year', $cy);
+        $filterWeekRaw = $request->query('week');
+        $filterWeek = ($filterWeekRaw === null || $filterWeekRaw === '') ? null : (int) $filterWeekRaw;
+        if ($filterWeek !== null && ($filterWeek < 1 || $filterWeek > 53)) {
+            $filterWeek = null;
+        }
+        $filterStatus = (string) $request->query('status', '');
+        $allowedStatuses = ['', WeeklyBriefingReport::STATUS_DRAFT, WeeklyBriefingReport::STATUS_SUBMITTED, WeeklyBriefingReport::STATUS_LOCKED];
+        if (! in_array($filterStatus, $allowedStatuses, true)) {
+            $filterStatus = '';
+        }
+        $filterSearch = trim((string) $request->query('search', ''));
+
+        $reports = null;
+        if ($tab === 'all') {
+            $reportsQuery = WeeklyBriefingReport::query()
+                ->where('report_iso_week_year', $filterYear)
+                ->orderByDesc('report_iso_week')
+                ->orderBy('contribution_key')
+                ->with(['division', 'directorate']);
+            if ($listingKeys !== []) {
+                $reportsQuery->whereIn('contribution_key', $listingKeys);
+            } else {
+                $reportsQuery->whereRaw('0 = 1');
+            }
+            if ($filterWeek !== null) {
+                $reportsQuery->where('report_iso_week', $filterWeek);
+            }
+            if ($filterStatus !== '') {
+                $reportsQuery->where('status', $filterStatus);
+            }
+            if ($filterSearch !== '' && $listingKeys !== []) {
+                $needle = strtolower($filterSearch);
+                $matchingKeys = array_values(array_filter($listingKeys, function (string $k) use ($needle) {
+                    return str_contains(strtolower(WeeklyBriefingContributor::presentationLabelForContributionKey($k)), $needle);
+                }));
+                if ($matchingKeys === []) {
+                    $reportsQuery->whereRaw('0 = 1');
+                } else {
+                    $reportsQuery->whereIn('contribution_key', $matchingKeys);
+                }
+            }
+            $reports = $reportsQuery->paginate(15)->withQueryString();
+        }
 
         $filingKeySet = array_fill_keys($filingKeys, true);
         $startUrls = [];
@@ -74,8 +154,8 @@ class WeeklyBriefingController extends Controller
 
         $divisionId = $this->userPrimaryDivisionId();
 
-        $wbNowY = Carbon::now()->isoWeekYear();
-        $wbNowW = Carbon::now()->isoWeek();
+        $wbNowY = $cy;
+        $wbNowW = $cw;
         $wbDirectorCombinedOptions = WeeklyBriefingDirectorateCombined::directorCombinedDownloadOptionsForStaff(
             (int) user_session('staff_id'),
             $wbNowY,
@@ -84,15 +164,27 @@ class WeeklyBriefingController extends Controller
 
         $directorReviewKeySet = array_fill_keys(DivisionWeeklyBriefGate::directorManagedContributionKeysForListing(), true);
 
+        $yearOptions = range($cy - 2, $cy + 1);
+        $configuredUnitCount = count($listingKeys);
+
         return view('weekly-briefing.index', compact(
+            'tab',
+            'thisWeekPaginator',
+            'twStatus',
+            'twSearch',
             'reports',
-            'weekRows',
+            'filterYear',
+            'filterWeek',
+            'filterStatus',
+            'filterSearch',
+            'yearOptions',
+            'configuredUnitCount',
             'startUrls',
             'filingKeySet',
             'filingWeekReports',
             'divisionId',
-            'year',
-            'week',
+            'cy',
+            'cw',
             'wbNowY',
             'wbNowW',
             'wbDirectorCombinedOptions',
@@ -292,7 +384,7 @@ class WeeklyBriefingController extends Controller
         $report->save();
 
         $msg = $request->boolean('submit_final') && DivisionWeeklyBriefGate::mayEditReport($report)
-            ? 'Weekly briefing submitted.'
+            ? 'Weekly brief submitted.'
             : ($directorOnly ? 'Changes saved (director edit recorded on trail).' : 'Draft saved.');
 
         return redirect()->route('weekly-briefing.edit', $report)->with('status', $msg);
@@ -405,7 +497,7 @@ class WeeklyBriefingController extends Controller
             'settings' => $settings,
             'isoYear' => $year,
             'isoWeek' => $week,
-            'compiledPdfHeading' => 'Weekly briefing — director report (your divisions only)',
+            'compiledPdfHeading' => 'Weekly brief — director report (your divisions only)',
             'compiledPdfMetaHtml' => $metaHtml,
         ], ['orientation' => 'L']);
 
@@ -460,7 +552,7 @@ class WeeklyBriefingController extends Controller
     private function assertDivisionWeeklyBriefModuleAccess(): void
     {
         if (! DivisionWeeklyBriefGate::canAccessModule()) {
-            abort(403, 'You do not have access to Division Weekly Brief.');
+            abort(403, 'You do not have access to Weekly brief.');
         }
     }
 
