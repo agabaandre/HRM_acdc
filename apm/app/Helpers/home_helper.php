@@ -343,14 +343,14 @@ if (! function_exists('generate_pdf')) {
                 $qrCode = new \Endroid\QrCode\QrCode(
                     data: $footerDocumentUrl,
                     errorCorrectionLevel: \Endroid\QrCode\ErrorCorrectionLevel::Medium,
-                    size: 110,
+                    size: 121,
                     margin: 2,
                 );
                 $writer = new \Endroid\QrCode\Writer\PngWriter();
                 $qrResult = $writer->write($qrCode);
                 $dataUri = $qrResult->getDataUri();
                 $dataUriEsc = htmlspecialchars($dataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                $footerDocumentQrHtml = '<img src="'.$dataUriEsc.'" alt="" style="width: 14mm; height: 14mm; display: block;" />';
+                $footerDocumentQrHtml = '<img src="'.$dataUriEsc.'" alt="" style="width: 15.4mm; height: 15.4mm; display: block;" />';
             }
         } catch (\Throwable $e) {
             Log::warning('mPDF footer QR code generation failed', [
@@ -359,7 +359,7 @@ if (! function_exists('generate_pdf')) {
             $footerDocumentQrHtml = '';
         }
         if ($footerDocumentQrHtml === '') {
-            $footerDocumentQrHtml = '<span style="word-break: break-all; font-size: 6pt; display: inline-block; max-width: 16mm;">'.$footerDocumentUrlEsc.'</span>';
+            $footerDocumentQrHtml = '<span style="word-break: break-all; font-size: 6pt; display: inline-block; max-width: 18mm;">'.$footerDocumentUrlEsc.'</span>';
         }
 
         $footerMetaHtml = 'Source: Africa CDC  Central Business Platform<br>'
@@ -369,7 +369,7 @@ if (! function_exists('generate_pdf')) {
         $footerMetaAndQrHtml = '<div style="display: inline-block; text-align: left;">'
             .'<table cellpadding="0" cellspacing="0" style="border-collapse: collapse; border: none; width: auto;">'
             .'<tr>'
-            .'<td valign="top" align="left" style="border: none; width: 16mm; padding: 0 12px 0 0;">'
+            .'<td valign="top" align="left" style="border: none; width: 18mm; padding: 0 12px 0 0;">'
             .$footerDocumentQrHtml
             .'</td>'
             .'<td valign="top" align="left" style="border: none; padding: 0;">'
