@@ -652,14 +652,10 @@ body {
             <a href="{{ url('reports') }}" wire:navigate class="btn btn-outline-info btn-sm">
               <i class="fas fa-list"></i> All Reports
             </a>
-          </div>
-        </div>
 
-        @if (\App\Services\DivisionWeeklyBriefGate::canAccessModule())
+           @if (\App\Services\DivisionWeeklyBriefGate::canAccessModule())
         <hr class="border-secondary opacity-25 my-3">
-        <p class="text-muted mb-2" style="font-size: 0.9rem;">Major happenings and bottlenecks by ISO week.</p>
-        <div class="menu-section mb-0">
-          <h6>Quick Actions</h6>
+         <div class="menu-section mb-0">
           <div class="menu-links">
             <a href="{{ route('weekly-briefing.index') }}" wire:navigate class="btn btn-success btn-sm">
               <i class="fas fa-edit"></i> Open Weekly brief
@@ -667,6 +663,10 @@ body {
           </div>
         </div>
         @endif
+          </div>
+        </div>
+
+       
       </div>
     </div>
 
