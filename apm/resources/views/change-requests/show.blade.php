@@ -133,6 +133,17 @@
     </div>
 @endif
 
+@if ($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <ul class="mb-0 ps-3">
+            @foreach ($errors->all() as $err)
+                <li>{{ $err }}</li>
+            @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
 <div class="card shadow-sm border-0">
     <div class="card-header text-dark">
         <h5 class="mb-0 text-dark">
@@ -1245,9 +1256,13 @@
                                         <div class="mb-3">
                                             <label for="remarks" class="form-label fw-semibold">
                                                 <i class="bx bx-message-square-detail me-1"></i>Comments
+                                                <span class="text-muted fw-normal small">(required when using Return)</span>
                                             </label>
-                                            <textarea class="form-control" id="remarks" name="remarks" rows="3"
-                                                placeholder="Add your comments here..."></textarea>
+                                            <textarea class="form-control @error('remarks') is-invalid @enderror" id="remarks" name="remarks" rows="3"
+                                                placeholder="Add your comments here...">{{ old('remarks') }}</textarea>
+                                            @error('remarks')
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            @enderror
                                         </div>
                                         @if($changeRequest->approval_level=='5')
                                         <div class="mb-3">
@@ -1273,7 +1288,7 @@
                                             @endif
                                             
                                             {{-- Always show Return button --}}
-                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-1">
+                                            <button type="submit" name="action" value="returned" id="approvalReturnBtn" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-1">
                                                 <i class="bx bx-undo"></i>
                                                 Return
                                             </button>
@@ -1567,5 +1582,40 @@ function deleteChangeRequest(changeRequestId) {
         alert('An error occurred while deleting the change request');
     });
 }
+
+(function () {
+    const form = document.getElementById('approvalForm');
+    if (!form) {
+        return;
+    }
+    form.addEventListener('submit', function (e) {
+        const submitter = e.submitter;
+        const isReturn = submitter
+            && submitter.getAttribute('name') === 'action'
+            && submitter.value === 'returned';
+        if (!isReturn) {
+            return;
+        }
+        const ta = document.getElementById('remarks');
+        if (!ta || !ta.value.trim()) {
+            e.preventDefault();
+            if (typeof show_notification === 'function') {
+                show_notification('Please enter a comment explaining what to fix before returning this change request.', 'error');
+            } else if (typeof Lobibox !== 'undefined') {
+                Lobibox.notify('error', {
+                    pauseDelayOnHover: true,
+                    continueDelayOnInactiveTab: false,
+                    position: 'center top',
+                    icon: 'bx bx-error-circle',
+                    sound: false,
+                    msg: 'Please enter a comment explaining what to fix before returning this change request.'
+                });
+            } else {
+                alert('Please enter a comment explaining what to fix before returning this change request.');
+            }
+            ta?.focus();
+        }
+    });
+})();
 </script>
 @endpush
