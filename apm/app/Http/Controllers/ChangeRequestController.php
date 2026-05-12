@@ -383,24 +383,24 @@ class ChangeRequestController extends Controller
      */
     public function edit(ChangeRequest $changeRequest): RedirectResponse
     {
-        // Allow editing saved drafts, rejected, returned, or in-progress (pending) without resetting workflow on parent memo save
-        $crStatus = strtolower(trim((string) $changeRequest->overall_status));
-        $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED, 'returned', 'pending'];
-        if (!in_array($crStatus, $allowedStatuses, true)) {
-            return redirect()
-                ->route('change-requests.show', $changeRequest)
-                ->with('error', 'This change request cannot be edited in its current status.');
-        }
-
-        // Check if current user is the owner or responsible person
         $userStaffId = user_session('staff_id');
-        $isOwner = $changeRequest->staff_id == $userStaffId;
-        $isResponsiblePerson = $changeRequest->responsible_person_id == $userStaffId;
-        
-        if (!$isOwner && !$isResponsiblePerson) {
+        if ($userStaffId === null || $userStaffId === '') {
             return redirect()
                 ->route('change-requests.show', $changeRequest)
                 ->with('error', 'You are not authorized to edit this change request.');
+        }
+        $userStaffId = (int) $userStaffId;
+
+        if (! $changeRequest->isOwnedOrResponsibleByStaffId($userStaffId)) {
+            return redirect()
+                ->route('change-requests.show', $changeRequest)
+                ->with('error', 'You are not authorized to edit this change request.');
+        }
+
+        if (! $changeRequest->workflowAllowsSubmitterParentMemoEdit()) {
+            return redirect()
+                ->route('change-requests.show', $changeRequest)
+                ->with('error', 'This change request cannot be edited in its current status or approval level.');
         }
 
         // Get the parent memo

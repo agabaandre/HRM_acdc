@@ -197,7 +197,7 @@
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
-                                                        @if($changeRequest->overall_status === 'draft' && $changeRequest->staff_id === user_session('staff_id'))
+                                                        @if($changeRequest->workflowAllowsSubmitterParentMemoEdit() && user_session('staff_id') && $changeRequest->isOwnedOrResponsibleByStaffId((int) user_session('staff_id')))
                                                             <a href="{{ route('change-requests.edit', $changeRequest) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                                                 <i class="bx bx-edit"></i>

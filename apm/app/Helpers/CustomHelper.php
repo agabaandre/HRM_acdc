@@ -720,6 +720,14 @@ if (! function_exists('user_session')) {
                 return false;
             }
 
+            // Change requests: parent-memo editor; must match ChangeRequestController::edit.
+            if ($memo instanceof \App\Models\ChangeRequest) {
+                $sid = (int) $user->staff_id;
+
+                return $memo->workflowAllowsSubmitterParentMemoEdit()
+                    && $memo->isOwnedOrResponsibleByStaffId($sid);
+            }
+
             $session_division_id = isset($user->division_id) ? $user->division_id : null;
 
             // Check if this is a single memo (Activity model with is_single_memo = true)

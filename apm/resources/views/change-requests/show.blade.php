@@ -106,12 +106,12 @@
                     <span>Back to List</span>
                 </a>
 
-                @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
+                @if($changeRequest->workflowAllowsSubmitterParentMemoEdit() && $currentStaffId !== null && $changeRequest->isOwnedOrResponsibleByStaffId((int) $currentStaffId))
                     <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2">
                         <i class="fas fa-edit"></i>
                         <span>Edit</span>
                     </a>
-                    @if($currentStaffId !== null && ($changeRequest->staff_id == $currentStaffId || $changeRequest->responsible_person_id == $currentStaffId))
+                    @if($currentStaffId !== null && ($changeRequest->staff_id == $currentStaffId || $changeRequest->responsible_person_id == $currentStaffId) && in_array($changeRequest->overall_status, ['draft', 'rejected'], true))
                         <button type="button"
                                 class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2"
                                 onclick="deleteChangeRequest({{ $changeRequest->id }})">
