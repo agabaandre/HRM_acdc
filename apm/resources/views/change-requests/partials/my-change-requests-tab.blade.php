@@ -186,20 +186,20 @@
                                title="View Details">
                                 <i class="bx bx-show me-1"></i>View
                             </a>
-                            @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
+                            @if($changeRequest->workflowAllowsSubmitterParentMemoEdit() && user_session('staff_id') && $changeRequest->isOwnedOrResponsibleByStaffId((int) user_session('staff_id')))
                                 <a href="{{ route('change-requests.edit', $changeRequest) }}" 
                                    class="btn btn-sm btn-outline-warning" 
                                    title="Edit">
                                     <i class="bx bx-edit me-1"></i>Edit
                                 </a>
-                                @if($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id'))
+                            @endif
+                            @if(in_array($changeRequest->overall_status, ['draft', 'rejected'], true) && ($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id')))
                                     <button type="button" 
                                             class="btn btn-sm btn-outline-danger" 
                                             title="Delete"
                                             onclick="deleteChangeRequest({{ $changeRequest->id }})">
                                         <i class="bx bx-trash me-1"></i>Delete
                                     </button>
-                                @endif
                             @endif
                         </div>
                     </td>

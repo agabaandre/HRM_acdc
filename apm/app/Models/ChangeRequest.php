@@ -466,6 +466,39 @@ class ChangeRequest extends Model
         return $parentMemo?->document_number ?? null;
     }
 
+    /**
+     * Whether status and approval level allow the focal/responsible user to open the parent memo editor
+     * (route change-requests.edit). Draft: only at approval level 0. Returned: levels 0 or 1.
+     * Rejected and pending: unchanged (any level where that status applies).
+     */
+    public function workflowAllowsSubmitterParentMemoEdit(): bool
+    {
+        $st = strtolower(trim((string) ($this->overall_status ?? '')));
+        $level = (int) ($this->approval_level ?? 0);
+
+        if (in_array($st, [self::STATUS_REJECTED, 'pending'], true)) {
+            return true;
+        }
+        if ($st === self::STATUS_DRAFT) {
+            return $level === 0;
+        }
+        if ($st === 'returned') {
+            return in_array($level, [0, 1], true);
+        }
+
+        return false;
+    }
+
+    public function isOwnedOrResponsibleByStaffId(?int $staffId): bool
+    {
+        if ($staffId === null) {
+            return false;
+        }
+
+        return (int) $this->staff_id === $staffId
+            || ($this->responsible_person_id !== null && (int) $this->responsible_person_id === $staffId);
+    }
+
     public function getRecipientsAttribute($value)
     {
         if (is_array($value)) {
