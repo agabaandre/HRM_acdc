@@ -40,6 +40,19 @@ $apmDiv = $report->division?->division_name ?? '';
     ISO week <strong>W<?php echo (int) $report->report_iso_week; ?> / <?php echo (int) $report->report_iso_week_year; ?></strong>
     · Period <?php echo $report->period_start ? $report->period_start->format('Y-m-d') : ''; ?>
     · Status: <?php echo htmlspecialchars($report->status); ?>
+    <?php
+    if ($report->submitted_by_staff_id && $report->submittedBy) {
+        $sn = trim((string) (($report->submittedBy->fname ?? '').' '.($report->submittedBy->lname ?? '')));
+        if ($sn === '') {
+            $sn = 'Staff #'.(int) $report->submitted_by_staff_id;
+        }
+        echo '<br><span style="font-size:9pt;">Submitted by: <strong>'.htmlspecialchars($sn, ENT_QUOTES, 'UTF-8').'</strong>';
+        if ($report->submitted_at) {
+            echo ' · '.htmlspecialchars($report->submitted_at->format('Y-m-d H:i'), ENT_QUOTES, 'UTF-8');
+        }
+        echo '</span>';
+    }
+    ?>
 </div>
 
 <h2>Section 1 — Major happenings (max 3)</h2>

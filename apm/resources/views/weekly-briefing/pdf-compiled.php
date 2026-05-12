@@ -33,7 +33,20 @@ use App\Helpers\PrintHelper;
     $unitLabel = $report->contributionEntityLabel();
     ?>
     <h2 style="font-size:13pt;color:#0d5c2f;border-bottom:1px solid #cbd5e1;"><?php echo htmlspecialchars($unitLabel); ?> <span style="font-weight:normal;color:#64748b;">(<?php echo htmlspecialchars($dirName); ?>)</span></h2>
-    <p><strong>Status:</strong> <?php echo htmlspecialchars($report->status); ?></p>
+    <p><strong>Status:</strong> <?php echo htmlspecialchars($report->status); ?>
+    <?php
+    if ($report->submitted_by_staff_id && $report->submittedBy) {
+        $sn = trim((string) (($report->submittedBy->fname ?? '').' '.($report->submittedBy->lname ?? '')));
+        if ($sn === '') {
+            $sn = 'Staff #'.(int) $report->submitted_by_staff_id;
+        }
+        echo ' · <span style="font-size:10pt;color:#475569;">Submitted by: <strong>'.htmlspecialchars($sn, ENT_QUOTES, 'UTF-8').'</strong>';
+        if ($report->submitted_at) {
+            echo ' ('.htmlspecialchars($report->submitted_at->format('Y-m-d H:i'), ENT_QUOTES, 'UTF-8').')';
+        }
+        echo '</span>';
+    }
+    ?></p>
 
     <h3 style="font-size:11pt;">Section 1 — Major happenings</h3>
     <?php
