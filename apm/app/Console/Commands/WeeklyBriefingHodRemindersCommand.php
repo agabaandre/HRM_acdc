@@ -55,7 +55,7 @@ class WeeklyBriefingHodRemindersCommand extends Command
                     }
                     try {
                         Mail::raw(
-                            "Please complete the Staff list weekly report for ISO week W{$w}/{$y} (reporting unit key: {$contributionKey}).",
+                            "Please complete the Division Weekly Brief for ISO week W{$w}/{$y} (reporting unit key: {$contributionKey}).",
                             function ($message) use ($email, $contributionKey) {
                                 $message->to($email)->subject('Weekly briefing reminder — '.$contributionKey);
                             }
@@ -97,7 +97,7 @@ class WeeklyBriefingHodRemindersCommand extends Command
 
             try {
                 Mail::raw(
-                    "Please remind your team to complete the Staff list weekly report for ISO week W{$w}/{$y} (division: {$division->division_name}).",
+                    "Please remind your team to complete the Division Weekly Brief for ISO week W{$w}/{$y} (division: {$division->division_name}).",
                     function ($message) use ($email, $division) {
                         $message->to($email)->subject('Weekly briefing reminder — '.$division->division_name);
                     }

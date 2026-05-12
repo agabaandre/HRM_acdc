@@ -176,13 +176,15 @@
                 </a>
             </li>
 
-            <li class="nav-item">
-                <a class="nav-link {{ Request::is('weekly-briefing*') ? 'active' : '' }}"
-                    href="{{ route('weekly-briefing.index') }}" wire:navigate>
-                    <div class="parent-icon"><i class="fas fa-newspaper"></i></div>
-                    <div class="menu-title">Staff list weekly report</div>
-                </a>
-            </li>
+            @if (! empty($showDivisionWeeklyBriefNav ?? false))
+                <li class="nav-item">
+                    <a class="nav-link {{ Request::is('weekly-briefing*') ? 'active' : '' }}"
+                        href="{{ route('weekly-briefing.index') }}" wire:navigate>
+                        <div class="parent-icon"><i class="fas fa-newspaper"></i></div>
+                        <div class="menu-title">Division Weekly Brief</div>
+                    </a>
+                </li>
+            @endif
 
             @if (!empty($cbpPlatformNavItems))
                 <li class="nav-item dropdown">
@@ -354,13 +356,16 @@
             <!-- Settings -->
             @if (in_array(89, user_session('permissions', [])))
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ Request::is('memo-type-definitions*') || Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('apm-api-users*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') ? 'active' : '' }}"
+                    <a class="nav-link dropdown-toggle {{ Request::is('memo-type-definitions*') || Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('apm-api-users*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') || Request::is('weekly-briefing/settings*') ? 'active' : '' }}"
                         href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                         <div class="menu-title">Settings</div>
                     </a>
                     <ul class="dropdown-menu">
                         @foreach ($settingsMenuItems as $item)
+                            @if (($item['route'] ?? null) === 'weekly-briefing.settings.edit' && (int) (user_session('role') ?? user_session('user_role') ?? 0) !== 10)
+                                @continue
+                            @endif
                             <li>
                                 <a class="dropdown-item"
                                     href="{{ isset($item['url']) ? $item['url'] : route($item['route']) }}" wire:navigate>

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Edit weekly briefing')
-@section('header', 'Edit weekly briefing')
+@section('title', 'Edit Division Weekly Brief')
+@section('header', 'Edit Division Weekly Brief')
 
 @section('content')
 <div class="container-fluid py-3" id="weekly-briefing-page">

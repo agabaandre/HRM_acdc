@@ -7,6 +7,7 @@ use App\Models\Division;
 use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingSetting;
+use App\Services\DivisionWeeklyBriefGate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -16,6 +17,8 @@ class WeeklyBriefingSettingsController extends Controller
 {
     public function edit(): View
     {
+        abort_unless(DivisionWeeklyBriefGate::isSystemAdmin(), 403);
+
         $settings = WeeklyBriefingSetting::current()->load(['contributors.staff', 'contributors.apmDivision']);
 
         $staffList = Staff::query()->active()
@@ -32,6 +35,8 @@ class WeeklyBriefingSettingsController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
+        abort_unless(DivisionWeeklyBriefGate::isSystemAdmin(), 403);
+
         $data = $request->validate([
             'submission_weekday' => 'required|integer|min:0|max:6',
             'hod_reminder_time' => 'required|string|max:8',

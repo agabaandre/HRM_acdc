@@ -20,7 +20,7 @@
             <div class="card-header fw-bold">Submission window</div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label">Day HoDs are reminded &amp; submissions close (PHP weekday)</label>
+                    <label class="form-label">Day HoDs are reminded &amp; submissions close</label>
                     <select name="submission_weekday" class="form-select">
                         @foreach(['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] as $d => $label)
                             <option value="{{ $d }}" @selected((int)$settings->submission_weekday === $d)>{{ $label }}</option>
@@ -99,7 +99,7 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="small text-muted mb-0">Leave all rows empty to use <strong>legacy mode</strong> (any user in an APM division may file for that division only).</p>
+                <p class="small text-muted mb-0">Only staff listed here (plus system administrators) can open Division Weekly Brief. Distinct contribution targets in this list drive reminders and the completion summary.</p>
             </div>
         </div>
 
@@ -197,10 +197,24 @@
         if (tr) {
             body.appendChild(tr);
             wbWireRow(tr);
+            wbInitStaffSelect2(tr);
         }
     });
 
-    body.querySelectorAll('tr[data-wb-row]').forEach(wbWireRow);
+    function wbInitStaffSelect2(tr) {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+        jQuery(tr).find('.wb-staff-select').each(function () {
+            var $s = jQuery(this);
+            if ($s.hasClass('select2-hidden-accessible')) {
+                try { $s.select2('destroy'); } catch (e) {}
+            }
+            $s.select2({ theme: 'bootstrap4', width: '100%' });
+        });
+    }
+
+    body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
+        wbWireRow(tr);
+    });
 })();
 </script>
 @endpush

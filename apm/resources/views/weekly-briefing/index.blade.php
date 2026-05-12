@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Staff list weekly report')
-@section('header', 'Staff list weekly report')
+@section('title', 'Division Weekly Brief')
+@section('header', 'Division Weekly Brief')
 
 @section('content')
 <div class="container-fluid py-3">
@@ -14,7 +14,7 @@
 
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
-            <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Weekly briefing</h4>
+            <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Division Weekly Brief</h4>
             <small class="text-muted">Reporting units you may file for (ISO week {{ \Carbon\Carbon::now()->isoWeek() }}, {{ \Carbon\Carbon::now()->isoWeekYear() }}).</small>
         </div>
         <div class="d-flex flex-wrap gap-2">
@@ -46,18 +46,6 @@
                 <a href="{{ route('weekly-briefing.compiled-pdf', ['year' => $wbNowY, 'week' => $wbNowW]) }}" class="btn btn-outline-primary" target="_blank"><i class="fas fa-file-archive me-1"></i> Compiled PDF</a>
                 <a href="{{ route('weekly-briefing.completion-summary-pdf', ['year' => $wbNowY, 'week' => $wbNowW]) }}" class="btn btn-outline-secondary" target="_blank"><i class="fas fa-clipboard-list me-1"></i> Completion summary</a>
             @endif
-        </div>
-    </div>
-
-    <div class="card shadow-sm mb-3">
-        <div class="card-body">
-            <h6 class="fw-bold">Schedule (from settings)</h6>
-            <p class="small text-muted mb-0">
-                Submission weekday: <strong>{{ ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][$settings->submission_weekday] ?? $settings->submission_weekday }}</strong>
-                · Close: <strong>{{ $settings->submission_close_time }}</strong>
-                · HoD reminder: <strong>{{ $settings->hod_reminder_time }}</strong>
-                · Summary send: <strong>{{ $settings->summary_send_time }}</strong>
-            </p>
         </div>
     </div>
 
