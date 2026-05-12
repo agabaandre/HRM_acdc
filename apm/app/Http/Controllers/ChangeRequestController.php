@@ -391,7 +391,9 @@ class ChangeRequestController extends Controller
         }
         $userStaffId = (int) $userStaffId;
 
-        if (! $changeRequest->isOwnedOrResponsibleByStaffId($userStaffId)) {
+        $changeRequest->loadMissing('division');
+
+        if (! $changeRequest->isOwnedResponsibleOrEffectiveDivisionHeadByStaffId($userStaffId)) {
             return redirect()
                 ->route('change-requests.show', $changeRequest)
                 ->with('error', 'You are not authorized to edit this change request.');
@@ -500,23 +502,17 @@ class ChangeRequestController extends Controller
                 $changeRequest = null;
                 
                 if ($isUpdate) {
-                    $changeRequest = ChangeRequest::findOrFail($changeRequestId);
-                    
-                    // Allow updates while draft, rejected, returned, or pending (same as edit gate)
-                    $crStatus = strtolower(trim((string) $changeRequest->overall_status));
-                    $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED, 'returned', 'pending'];
-                    if (!in_array($crStatus, $allowedStatuses, true)) {
-                        throw new \Exception('This change request cannot be updated in its current status.');
+                    $changeRequest = ChangeRequest::query()->with('division')->findOrFail($changeRequestId);
+
+                    if (! $changeRequest->workflowAllowsSubmitterParentMemoEdit()) {
+                        throw new \Exception('This change request cannot be updated in its current status or approval level.');
                     }
-                    
-                    // Check if current user is the owner or responsible person
-                    $isOwner = $changeRequest->staff_id == $userStaffId;
-                    $isResponsiblePerson = $changeRequest->responsible_person_id == $userStaffId;
-                    
-                    if (!$isOwner && !$isResponsiblePerson) {
+
+                    $viewerId = (int) $userStaffId;
+                    if (! $changeRequest->isOwnedResponsibleOrEffectiveDivisionHeadByStaffId($viewerId)) {
                         throw new \Exception('You are not authorized to update this change request.');
                     }
-                    
+
                     // Use the change request's parent memo info
                     $parentMemo = $this->getParentMemo($changeRequest->parent_memo_model, $changeRequest->parent_memo_id);
                 } else {

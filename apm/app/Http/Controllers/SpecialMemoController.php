@@ -789,49 +789,34 @@ class SpecialMemoController extends Controller
     public function edit(SpecialMemo $specialMemo): View|RedirectResponse
     {
         $isChangeRequest = request('change_request') == '1';
+        $crId = request()->filled('change_request_id') ? (int) request('change_request_id') : 0;
+        $viewerStaffId = (int) user_session('staff_id');
 
-        if ($isChangeRequest) {
+        if ($isChangeRequest && $crId > 0) {
+            if (! ChangeRequest::viewerMayEditParentMemoRoute($crId, $specialMemo, $viewerStaffId)) {
+                return redirect()
+                    ->route('special-memo.show', $specialMemo)
+                    ->with('error', 'You are not authorized to edit this memo for this change request.');
+            }
+        } elseif ($isChangeRequest) {
             $user = (object) session('user', []);
             $isOwner = isset($specialMemo->staff_id, $user->staff_id) && $specialMemo->staff_id == $user->staff_id;
             $isResponsible = isset($specialMemo->responsible_person_id, $user->staff_id) && $specialMemo->responsible_person_id == $user->staff_id;
 
-            if (!$isOwner && !$isResponsible) {
+            if (! $isOwner && ! $isResponsible) {
                 return redirect()
                     ->route('special-memo.show', $specialMemo)
                     ->with('error', 'You can only create change requests for special memos you own or are responsible for.');
             }
-        } elseif (!can_edit_memo($specialMemo)) {
+        } elseif (! can_edit_memo($specialMemo)) {
             return redirect()
                 ->route('special-memo.show', $specialMemo)
                 ->with('error', 'You do not have permission to edit this memo.');
         }
 
         $changeRequestForEdit = null;
-        if ($isChangeRequest && request()->filled('change_request_id')) {
-            $changeRequestForEdit = ChangeRequest::findOrFail((int) request('change_request_id'));
-            $parentMatches = (int) $changeRequestForEdit->parent_memo_id === (int) $specialMemo->id
-                && (
-                    $changeRequestForEdit->parent_memo_model === SpecialMemo::class
-                    || $changeRequestForEdit->parent_memo_model === 'App\\Models\\SpecialMemo'
-                );
-            if (! $parentMatches) {
-                abort(404, 'This change request does not belong to this special memo.');
-            }
-            $userStaffId = (int) user_session('staff_id');
-            $isCrOwner = (int) $changeRequestForEdit->staff_id === $userStaffId;
-            $isCrResponsible = (int) $changeRequestForEdit->responsible_person_id === $userStaffId;
-            if (! $isCrOwner && ! $isCrResponsible) {
-                return redirect()
-                    ->route('special-memo.show', $specialMemo)
-                    ->with('error', 'You are not authorized to edit this change request.');
-            }
-            $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED];
-            if (! in_array($changeRequestForEdit->overall_status, $allowedStatuses, true)) {
-                return redirect()
-                    ->route('special-memo.show', $specialMemo)
-                    ->with('error', 'Only draft or rejected change requests can be edited.');
-            }
-
+        if ($isChangeRequest && $crId > 0) {
+            $changeRequestForEdit = ChangeRequest::query()->findOrFail($crId);
             $this->applyChangeRequestSnapshotToSpecialMemo($specialMemo, $changeRequestForEdit);
         }
 
@@ -1022,8 +1007,16 @@ class SpecialMemoController extends Controller
      */
     public function update(Request $request, SpecialMemo $specialMemo): RedirectResponse
     {
-        // Check if user has privileges to edit this memo using can_edit_memo()
-        if (!can_edit_memo($specialMemo)) {
+        $currentStaffId = (int) (user_session('staff_id') ?? 0);
+        $changeRequestRaw = strtolower(trim((string) $request->query('change_request', $request->input('change_request', ''))));
+        $isChangeRequest = $request->input('change_request') == '1'
+            || $request->boolean('change_request')
+            || in_array($changeRequestRaw, ['1', 'true', 'yes', 'on'], true);
+        $crId = (int) $request->input('change_request_id', $request->query('change_request_id', 0));
+        $mayEditViaChangeRequest = $isChangeRequest && $crId > 0
+            && ChangeRequest::viewerMayEditParentMemoRoute($crId, $specialMemo, $currentStaffId);
+
+        if (! $mayEditViaChangeRequest && ! can_edit_memo($specialMemo)) {
             return redirect()
                 ->route('special-memo.show', $specialMemo)
                 ->with('error', 'You do not have permission to edit this memo.');

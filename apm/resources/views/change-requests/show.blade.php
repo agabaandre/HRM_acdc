@@ -106,7 +106,7 @@
                     <span>Back to List</span>
                 </a>
 
-                @if($changeRequest->workflowAllowsSubmitterParentMemoEdit() && $currentStaffId !== null && $changeRequest->isOwnedOrResponsibleByStaffId((int) $currentStaffId))
+                @if($changeRequest->workflowAllowsSubmitterParentMemoEdit() && $currentStaffId !== null && $changeRequest->isOwnedResponsibleOrEffectiveDivisionHeadByStaffId((int) $currentStaffId))
                     <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2">
                         <i class="fas fa-edit"></i>
                         <span>Edit</span>
