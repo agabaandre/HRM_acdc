@@ -259,12 +259,25 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 - **Usage**: `php artisan queue:retry-failed`
 - **Output**: Retries all failed jobs in the queue
 
+### Weekly briefing commands
+
+Full behaviour, routes, access, and PDF footer behaviour: **[WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md)**.
+
+| Command | Purpose |
+|---------|---------|
+| `weekly-briefing:hod-reminders` | Contributor (and legacy division HoD) reminders for missing briefs for the current ISO week. Without `--force`, respects `reminders_enabled`, submission weekday, and `hod_reminder_time`. |
+| `weekly-briefing:lock-drafts` | Locks **draft** reports after the submission deadline (honours per-report unlock overrides). |
+| `weekly-briefing:compiled-summary` | Sends compiled weekly-brief email(s) and attachments per settings. Without `--force`, respects `reminders_enabled`, submission weekday, and `summary_send_time`. |
+| `weekly-briefing:test-notifications` | Sends sample weekly-brief emails to a test address (SMTP verification). |
+
+- **Jobs UI**: `POST jobs/weekly-briefing` can invoke test notifications or `--force` runs for reminders and compiled summary (`JobsController`).
+
 ---
 
 ## ⏰ Scheduled Tasks
 
 ### Scheduler Configuration
-- **Configuration File**: `app/Providers/ScheduleServiceProvider.php`
+- **Configuration files**: `app/Providers/ScheduleServiceProvider.php` (most tasks); **weekly briefing** Artisan commands are additionally registered in **`bootstrap/app.php`** (every minute with `withoutOverlapping`).
 - **Timezone**: Africa/Addis_Ababa (GMT+3)
 - **Execution**: `php artisan schedule:work` (continuous) or `php artisan schedule:run` (one-time)
 - **Service**: Managed via `laravel-scheduler.service` systemd service
@@ -283,7 +296,11 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 - **9:00 AM GMT+3**: `reminders:schedule` (Morning reminders)
 - **4:00 PM GMT+3**: `reminders:schedule` (Evening reminders)
 
-**Note**: Scheduled tasks are configured in `app/Providers/ScheduleServiceProvider.php` and run automatically via `php artisan schedule:work`.
+### Weekly briefing (APM)
+
+- **Every minute** (with overlap protection): `weekly-briefing:hod-reminders`, `weekly-briefing:lock-drafts`, `weekly-briefing:compiled-summary` — registered in **`bootstrap/app.php`**; each command applies its own weekday/time gates unless run with **`--force`** (see [WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md)).
+
+**Note**: Scheduled tasks are configured in `app/Providers/ScheduleServiceProvider.php` (and weekly-briefing entries in `bootstrap/app.php`) and run automatically when cron invokes `php artisan schedule:run` or when `php artisan schedule:work` is used.
 
 ---
 
