@@ -17,9 +17,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use App\Models\ApprovalTrail;
+use Illuminate\Validation\ValidationException;
+use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
 
 class RequestARFController extends Controller
 {
+    use SendsSelfDocumentPdfEmail;
+
     protected ApprovalService $approvalService;
 
     public function __construct(ApprovalService $approvalService)
@@ -1009,7 +1013,10 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             $disclaimerData = parent_based_disclaimer_data($requestARF->source_id, $requestARF->model_type, 'arf', $requestARF->id);
         }
 
-        return view('request-arf.show', compact('requestARF', 'sourceModel', 'sourceData', 'approvalLevels', 'disclaimerData', 'originatingChangeRequest'));
+        $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
+        $canEmailPdf = can_print_memo($requestARF) && count($emailPdfRecipientChoices) > 0;
+
+        return view('request-arf.show', compact('requestARF', 'sourceModel', 'sourceData', 'approvalLevels', 'disclaimerData', 'originatingChangeRequest', 'emailPdfRecipientChoices', 'canEmailPdf'));
     }
 
     /**
@@ -1269,9 +1276,9 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
     }
 
     /**
-     * Print ARF request as PDF.
+     * @return array{0: object, 1: string}
      */
-    public function print(Request $request, RequestARF $requestARF)
+    private function buildRequestArfPdfForOutput(RequestARF $requestARF): array
     {
         // Load essential ARF relationships
         $requestARF->load(['staff', 'fundType', 'responsiblePerson', 'funder', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole']);
@@ -1483,8 +1490,67 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         $mpdf = generate_pdf('request-arf.arf-pdf-simple', $data);
         
         $filename = 'ARF_' . $requestARF->arf_number . '_' . date('Y-m-d') . '.pdf';
-        
-        return $mpdf->Output($filename, 'I'); // 'D' for download
+
+        return [$mpdf, $filename];
+    }
+
+    public function print(Request $request, RequestARF $requestARF)
+    {
+        [$mpdf, $filename] = $this->buildRequestArfPdfForOutput($requestARF);
+
+        return $mpdf->Output($filename, 'I');
+    }
+
+    public function emailPdf(Request $request, RequestARF $requestARF): RedirectResponse
+    {
+        if (! can_print_memo($requestARF)) {
+            abort(403);
+        }
+
+        $allowed = staff_pdf_mail_allowed_recipient_emails_normalized();
+        if ($allowed === []) {
+            return redirect()->route('request-arf.show', $requestARF)
+                ->with('msg', 'No valid email is on file for your account. Update your work email in staff records, then try again.')
+                ->with('type', 'warning');
+        }
+
+        $validated = $request->validate([
+            'recipient_email' => 'required|email|max:255',
+        ]);
+
+        $norm = strtolower(trim($validated['recipient_email']));
+        if (! in_array($norm, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'recipient_email' => 'You can only send this PDF to your own email address.',
+            ]);
+        }
+
+        try {
+            [$mpdf, $filename] = $this->buildRequestArfPdfForOutput($requestARF);
+            $binary = $mpdf->Output($filename, 'S');
+            if (! is_string($binary) || $binary === '') {
+                throw new \RuntimeException('PDF generation returned empty output.');
+            }
+
+            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM');
+            $doc = $requestARF->arf_number ?? ('ARF-'.$requestARF->id);
+            $subject = "{$prefix}: {$doc} (PDF)";
+
+            $this->queueDocumentPdfEmailFromBinary($validated['recipient_email'], $subject, $filename, $binary);
+        } catch (\Throwable $e) {
+            Log::error('ARF email PDF queue failed', [
+                'request_arf_id' => $requestARF->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('request-arf.show', $requestARF)
+                ->with('msg', 'Could not queue the email: '.$e->getMessage())
+                ->with('type', 'danger');
+        }
+
+        return redirect()->route('request-arf.show', $requestARF)
+            ->with('msg', 'Your PDF email has been queued. It should arrive shortly; if not, confirm email settings and that a queue worker is processing jobs.')
+            ->with('type', 'success');
     }
 
     /**

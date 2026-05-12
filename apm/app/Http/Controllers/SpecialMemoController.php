@@ -29,9 +29,13 @@ use App\Models\FundCodeTransaction;
 use App\Models\ApprovalTrail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
+use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
 
 class SpecialMemoController extends Controller
 {
+    use SendsSelfDocumentPdfEmail;
+
     public function index(Request $request)
     {
         // Cache lookup tables for 60 minutes
@@ -772,8 +776,11 @@ class SpecialMemoController extends Controller
     public function show(SpecialMemo $specialMemo): View
     {
         $specialMemo->load(['staff', 'division', 'staff.division', 'responsiblePerson', 'approvalTrails.staff', 'approvalTrails.oicStaff']);
-        
-        return view('special-memo.show', compact('specialMemo'));
+
+        $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
+        $canEmailPdf = can_print_memo($specialMemo) && count($emailPdfRecipientChoices) > 0;
+
+        return view('special-memo.show', compact('specialMemo', 'emailPdfRecipientChoices', 'canEmailPdf'));
     }
 
     /**
@@ -1751,14 +1758,14 @@ class SpecialMemoController extends Controller
     }
 
     /**
-     * Generate a printable PDF for a Special Memo.
+     * @return array{0: object, 1: string}
      */
-    public function print(SpecialMemo $specialMemo)
+    private function buildSpecialMemoPdfForOutput(SpecialMemo $specialMemo): array
     {
         // Eager load relations
         $specialMemo->load([
-            'staff', 
-            'division', 
+            'staff',
+            'division',
             'requestType',
             'approvalTrails.staff',
             'approvalTrails.oicStaff',
@@ -1851,14 +1858,74 @@ class SpecialMemoController extends Controller
             'organized_workflow_steps' => $organizedWorkflowSteps
         ], ['preview_html' => $print]);
 
-        // Generate filename
         $filename = 'Special_Memo_' . $specialMemo->id . '_' . now()->format('Y-m-d') . '.pdf';
 
-        // Return PDF for display in browser using mPDF Output method
+        return [$pdf, $filename];
+    }
+
+    /**
+     * Generate a printable PDF for a Special Memo.
+     */
+    public function print(SpecialMemo $specialMemo)
+    {
+        [$pdf, $filename] = $this->buildSpecialMemoPdfForOutput($specialMemo);
+
         return response($pdf->Output($filename, 'I'), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"'
         ]);
+    }
+
+    public function emailPdf(Request $request, SpecialMemo $specialMemo): RedirectResponse
+    {
+        if (! can_print_memo($specialMemo)) {
+            abort(403);
+        }
+
+        $allowed = staff_pdf_mail_allowed_recipient_emails_normalized();
+        if ($allowed === []) {
+            return redirect()->back()
+                ->with('msg', 'No valid email is on file for your account. Update your work email in staff records, then try again.')
+                ->with('type', 'warning');
+        }
+
+        $validated = $request->validate([
+            'recipient_email' => 'required|email|max:255',
+        ]);
+
+        $norm = strtolower(trim($validated['recipient_email']));
+        if (! in_array($norm, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'recipient_email' => 'You can only send this PDF to your own email address.',
+            ]);
+        }
+
+        try {
+            [$pdf, $filename] = $this->buildSpecialMemoPdfForOutput($specialMemo);
+            $binary = $pdf->Output($filename, 'S');
+            if (! is_string($binary) || $binary === '') {
+                throw new \RuntimeException('PDF generation returned empty output.');
+            }
+
+            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM');
+            $doc = $specialMemo->document_number ?? ('Special-memo-'.$specialMemo->id);
+            $subject = "{$prefix}: {$doc} (PDF)";
+
+            $this->queueDocumentPdfEmailFromBinary($validated['recipient_email'], $subject, $filename, $binary);
+        } catch (\Throwable $e) {
+            Log::error('Special memo email PDF queue failed', [
+                'special_memo_id' => $specialMemo->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->with('msg', 'Could not queue the email: '.$e->getMessage())
+                ->with('type', 'danger');
+        }
+
+        return redirect()->back()
+            ->with('msg', 'Your PDF email has been queued. It should arrive shortly; if not, confirm email settings and that a queue worker is processing jobs.')
+            ->with('type', 'success');
     }
 
     /**

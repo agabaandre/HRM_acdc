@@ -30,9 +30,13 @@ use App\Models\ApprovalTrail;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
+use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
+use Illuminate\Validation\ValidationException;
 
 class NonTravelMemoController extends Controller
 {
+    use SendsSelfDocumentPdfEmail;
+
     /** List all memos with optional filters */
     public function index(Request $request)
     {
@@ -649,7 +653,10 @@ class NonTravelMemoController extends Controller
             ? json_decode($nonTravel->budget_id, true) 
             : $nonTravel->budget_id;
 
-        return view('non-travel.show', compact('nonTravel'));
+        $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
+        $canEmailPdf = can_print_memo($nonTravel) && count($emailPdfRecipientChoices) > 0;
+
+        return view('non-travel.show', compact('nonTravel', 'emailPdfRecipientChoices', 'canEmailPdf'));
     }
 
     /** Show edit form */
@@ -1785,11 +1792,10 @@ class NonTravelMemoController extends Controller
 
     
     /**
-     * Generate a printable PDF for a Non-Travel Memo.
+     * @return array{0: object, 1: string}
      */
-    public function print(NonTravelMemo $nonTravel)
+    private function buildNonTravelPdfForOutput(NonTravelMemo $nonTravel): array
     {
-        // Eager load needed relations
         $nonTravel->load([
             'staff', 
             'nonTravelMemoCategory', 
@@ -1800,7 +1806,6 @@ class NonTravelMemoController extends Controller
             'approvalTrails.workflowDefinition'
         ]);
 
-        // Decode JSON fields safely
         $locationIds = is_string($nonTravel->location_id)
             ? json_decode($nonTravel->location_id, true)
             : ($nonTravel->location_id ?? []);
@@ -1823,18 +1828,14 @@ class NonTravelMemoController extends Controller
             $breakdown = is_array($decoded) ? $decoded : [];
         }
 
-        // Fetch related collections
         $locations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->with('fundType')->get();
 
-        // Get approval trails (not activity approval trails)
         $approvalTrails = $nonTravel->approvalTrails;
 
-        // Get workflow information
         $workflowInfo = $this->getComprehensiveWorkflowInfo($nonTravel);
         $organizedWorkflowSteps = \App\Helpers\PrintHelper::organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
 
-        // Use mPDF helper function
         $print = false;
         $pdf = mpdf_print('non-travel.memo-pdf-simple', [
             'nonTravel' => $nonTravel,
@@ -1843,19 +1844,79 @@ class NonTravelMemoController extends Controller
             'attachments' => $attachments,
             'budgetBreakdown' => $breakdown,
             'approval_trails' => $approvalTrails,
-            'matrix_approval_trails' => $approvalTrails, // For compatibility with activities template
+            'matrix_approval_trails' => $approvalTrails,
             'workflow_info' => $workflowInfo,
             'organized_workflow_steps' => $organizedWorkflowSteps
         ], ['preview_html' => $print]);
 
-        // Generate filename
         $filename = 'Non_Travel_Memo_' . $nonTravel->id . '_' . now()->format('Y-m-d') . '.pdf';
 
-        // Return PDF for display in browser using mPDF Output method
+        return [$pdf, $filename];
+    }
+
+    /**
+     * Generate a printable PDF for a Non-Travel Memo.
+     */
+    public function print(NonTravelMemo $nonTravel)
+    {
+        [$pdf, $filename] = $this->buildNonTravelPdfForOutput($nonTravel);
+
         return response($pdf->Output($filename, 'I'), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"'
         ]);
+    }
+
+    public function emailPdf(Request $request, NonTravelMemo $nonTravel): RedirectResponse
+    {
+        if (! can_print_memo($nonTravel)) {
+            abort(403);
+        }
+
+        $allowed = staff_pdf_mail_allowed_recipient_emails_normalized();
+        if ($allowed === []) {
+            return redirect()->route('non-travel.show', $nonTravel)
+                ->with('msg', 'No valid email is on file for your account. Update your work email in staff records, then try again.')
+                ->with('type', 'warning');
+        }
+
+        $validated = $request->validate([
+            'recipient_email' => 'required|email|max:255',
+        ]);
+
+        $norm = strtolower(trim($validated['recipient_email']));
+        if (! in_array($norm, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'recipient_email' => 'You can only send this PDF to your own email address.',
+            ]);
+        }
+
+        try {
+            [$pdf, $filename] = $this->buildNonTravelPdfForOutput($nonTravel);
+            $binary = $pdf->Output($filename, 'S');
+            if (! is_string($binary) || $binary === '') {
+                throw new \RuntimeException('PDF generation returned empty output.');
+            }
+
+            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM');
+            $doc = $nonTravel->document_number ?? ('Non-travel-'.$nonTravel->id);
+            $subject = "{$prefix}: {$doc} (PDF)";
+
+            $this->queueDocumentPdfEmailFromBinary($validated['recipient_email'], $subject, $filename, $binary);
+        } catch (\Throwable $e) {
+            Log::error('Non-travel email PDF queue failed', [
+                'non_travel_id' => $nonTravel->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('non-travel.show', $nonTravel)
+                ->with('msg', 'Could not queue the email: '.$e->getMessage())
+                ->with('type', 'danger');
+        }
+
+        return redirect()->route('non-travel.show', $nonTravel)
+            ->with('msg', 'Your PDF email has been queued. It should arrive shortly; if not, confirm email settings and that a queue worker is processing jobs.')
+            ->with('type', 'success');
     }
 
     /**

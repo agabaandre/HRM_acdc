@@ -26,9 +26,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
+use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
 
 class ServiceRequestController extends Controller
 {
+    use SendsSelfDocumentPdfEmail;
+
     protected ApprovalService $approvalService;
 
     public function __construct(?ApprovalService $approvalService = null)
@@ -899,7 +903,10 @@ class ServiceRequestController extends Controller
             $disclaimerData = parent_based_disclaimer_data($serviceRequest->source_id, $serviceRequest->model_type, 'service_request', $serviceRequest->id);
         }
 
-        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels', 'mainActivityUrl', 'disclaimerData', 'originatingChangeRequest'));
+        $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
+        $canEmailPdf = can_print_memo($serviceRequest) && count($emailPdfRecipientChoices) > 0;
+
+        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels', 'mainActivityUrl', 'disclaimerData', 'originatingChangeRequest', 'emailPdfRecipientChoices', 'canEmailPdf'));
     }
 
     /**
@@ -2064,9 +2071,9 @@ class ServiceRequestController extends Controller
     }
 
     /**
-     * Print service request as PDF.
+     * @return array{0: object, 1: string}
      */
-    public function print(ServiceRequest $serviceRequest)
+    private function buildServiceRequestPdfForOutput(ServiceRequest $serviceRequest): array
     {
         // Eager load needed relations
         $serviceRequest->load([
@@ -2191,14 +2198,74 @@ class ServiceRequestController extends Controller
             ], ['preview_html' => $print]);
         }
 
-        // Generate filename
         $filename = 'Service_Request_' . $serviceRequest->request_number . '_' . now()->format('Y-m-d') . '.pdf';
 
-        // Return PDF for display in browser using mPDF Output method
+        return [$pdf, $filename];
+    }
+
+    /**
+     * Print service request as PDF.
+     */
+    public function print(ServiceRequest $serviceRequest)
+    {
+        [$pdf, $filename] = $this->buildServiceRequestPdfForOutput($serviceRequest);
+
         return response($pdf->Output($filename, 'I'), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"'
         ]);
+    }
+
+    public function emailPdf(Request $request, ServiceRequest $serviceRequest): RedirectResponse
+    {
+        if (! can_print_memo($serviceRequest)) {
+            abort(403);
+        }
+
+        $allowed = staff_pdf_mail_allowed_recipient_emails_normalized();
+        if ($allowed === []) {
+            return redirect()->route('service-requests.show', $serviceRequest)
+                ->with('msg', 'No valid email is on file for your account. Update your work email in staff records, then try again.')
+                ->with('type', 'warning');
+        }
+
+        $validated = $request->validate([
+            'recipient_email' => 'required|email|max:255',
+        ]);
+
+        $norm = strtolower(trim($validated['recipient_email']));
+        if (! in_array($norm, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'recipient_email' => 'You can only send this PDF to your own email address.',
+            ]);
+        }
+
+        try {
+            [$pdf, $filename] = $this->buildServiceRequestPdfForOutput($serviceRequest);
+            $binary = $pdf->Output($filename, 'S');
+            if (! is_string($binary) || $binary === '') {
+                throw new \RuntimeException('PDF generation returned empty output.');
+            }
+
+            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM');
+            $doc = $serviceRequest->request_number ?? ('SR-'.$serviceRequest->id);
+            $subject = "{$prefix}: {$doc} (PDF)";
+
+            $this->queueDocumentPdfEmailFromBinary($validated['recipient_email'], $subject, $filename, $binary);
+        } catch (\Throwable $e) {
+            Log::error('Service request email PDF queue failed', [
+                'service_request_id' => $serviceRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('service-requests.show', $serviceRequest)
+                ->with('msg', 'Could not queue the email: '.$e->getMessage())
+                ->with('type', 'danger');
+        }
+
+        return redirect()->route('service-requests.show', $serviceRequest)
+            ->with('msg', 'Your PDF email has been queued. It should arrive shortly; if not, confirm email settings and that a queue worker is processing jobs.')
+            ->with('type', 'success');
     }
 
     /**

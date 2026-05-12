@@ -901,6 +901,17 @@
                             Print PDF
                         </a>
                         @endif
+                        @if(!empty($canEmailPdf) && $canEmailPdf)
+                        <button type="button" class="btn btn-outline-primary btn-action mt-2 w-100" data-bs-toggle="modal" data-bs-target="#emailPdfModal" title="Email a PDF copy to yourself">
+                            <i class="bx bx-mail-send"></i>
+                            Email PDF
+                        </button>
+                        @include('partials.email-pdf-modal', [
+                            'emailPdfFormAction' => route('service-requests.email-pdf', $serviceRequest),
+                            'emailPdfDocumentLabel' => $serviceRequest->request_number ?? ('Service request #'.$serviceRequest->id),
+                            'emailPdfRecipientChoices' => $emailPdfRecipientChoices ?? [],
+                        ])
+                        @endif
                         
                     </div>
                 </div>
