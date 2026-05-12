@@ -310,12 +310,32 @@ if (! function_exists('generate_pdf')) {
      *                          - 'preview_html' (bool): If true, output HTML to browser instead of PDF (for debug)
      *                          - 'format' (string): Page size, default A4 (e.g. A4, Letter)
      *                          - 'orientation' (string): L or LANDSCAPE for landscape (mPDF uses e.g. A4-L)
+     *                          - 'document_url' (string): Full URL shown in footer (defaults to current request URL in web context, else APP_URL)
      * @return \Mpdf\Mpdf|string
      */
     function generate_pdf($view, $data = [], $options = [])
     {
         // Set timezone
         date_default_timezone_set('Africa/Nairobi');
+
+        $footerDocumentUrl = $options['document_url'] ?? $options['source_url'] ?? null;
+        if (! is_string($footerDocumentUrl) || trim($footerDocumentUrl) === '') {
+            $footerDocumentUrl = null;
+            try {
+                if (function_exists('request') && app()->runningInConsole() === false) {
+                    $req = request();
+                    if ($req !== null) {
+                        $footerDocumentUrl = $req->url();
+                    }
+                }
+            } catch (\Throwable $e) {
+                $footerDocumentUrl = null;
+            }
+        }
+        if (! is_string($footerDocumentUrl) || trim($footerDocumentUrl) === '') {
+            $footerDocumentUrl = (string) config('app.url');
+        }
+        $footerDocumentUrlEsc = htmlspecialchars($footerDocumentUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
         $pdfFormat = $options['format'] ?? 'A4';
         $orientation = strtoupper((string) ($options['orientation'] ?? ''));
@@ -445,8 +465,8 @@ if (! function_exists('generate_pdf')) {
                 <td align="left" style="border: none;">
                     Source: Africa CDC  Central Business Platform<br>
                     Generated on: '.date('d F, Y h:i A').'<br>
-                    '.config('app.url').'
-                    <br>By:'.user_session('name').'
+                    <span style="word-break: break-all; white-space: normal;">'.$footerDocumentUrlEsc.'</span>
+                    <br>By:'.htmlspecialchars((string) (user_session('name') ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'
                 </td>
             </tr>
         </table>'.'<p style="text-align:right; font-size: 8pt;">Page {PAGENO} of {nbpg}</p>';

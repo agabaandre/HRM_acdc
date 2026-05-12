@@ -2703,7 +2703,10 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'staff' => $activity->staff,
             'workflow_info' => $workflowInfo,
             'organized_workflow_steps' => $organizedWorkflowSteps
-        ],['preview_html' => $print]);
+        ], [
+            'preview_html' => $print,
+            'document_url' => route('matrices.activities.memo-pdf', [$matrix, $activity], true),
+        ]);
 
         $filename = 'Activity_Memo_' . str_replace(['/', '\\'], '_', $activity->activity_ref ?? $activity->created_at->format('Y-m-d')) . '_' . now()->format('Y-m-d') . '.pdf';
 
