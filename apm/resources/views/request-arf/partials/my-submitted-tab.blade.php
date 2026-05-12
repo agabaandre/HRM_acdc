@@ -57,8 +57,8 @@
                         <td>{{ $arf->created_at ? $arf->created_at->format('M d, Y') : 'N/A' }}</td>
                         <td class="text-center">
                             <div class="btn-group">
-                                <a wire:navigate href="{{ route('request-arf.show', $arf) }}" class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show me-1"></i>View
+                                <a wire:navigate href="{{ route('request-arf.show', $arf) }}" class="btn btn-sm btn-outline-info" title="Open">
+                                    <i class="bx bx-show me-1"></i>Open
                                 </a>
                                 @if($arf->overall_status === 'draft' || $arf->overall_status === 'returned')
                                     <a wire:navigate href="{{ route('request-arf.edit', $arf) }}" class="btn btn-sm btn-outline-warning" title="Edit">

@@ -179,8 +179,8 @@
                                                 <td class="text-center">
                                                     <div class="btn-group">
                                                         <a wire:navigate href="{{ route('request-arf.show', $arf) }}" 
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show me-1"></i>View
+                                                           class="btn btn-sm btn-outline-info" title="Open">
+                                                            <i class="bx bx-show me-1"></i>Open
                                                         </a>
                                                         @if($arf->overall_status === 'draft' && $arf->staff_id === user_session('staff_id'))
                                                             <a wire:navigate href="{{ route('request-arf.edit', $arf) }}" 
@@ -292,8 +292,8 @@
                                                 <td class="text-center">
                                                     <div class="btn-group">
                                                         <a wire:navigate href="{{ route('request-arf.show', $arf) }}" 
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show me-1"></i>View
+                                                           class="btn btn-sm btn-outline-info" title="Open">
+                                                            <i class="bx bx-show me-1"></i>Open
                                                         </a>
                                                         @if($arf->overall_status === 'draft' && $arf->staff_id === user_session('staff_id'))
                                                             <a wire:navigate href="{{ route('request-arf.edit', $arf) }}" 

@@ -383,8 +383,8 @@
                                     </td>
                                     <td>
                                         <div class="action-buttons">
-                                            <a href="{{ $item['view_url'] }}" class="btn btn-success btn-sm" title="View" style="background-color: #119A48; border-color: #119A48;">
-                                                <i class="fas fa-eye me-1"></i> View
+                                            <a href="{{ $item['view_url'] }}" class="btn btn-success btn-sm" title="Open" style="background-color: #119A48; border-color: #119A48;">
+                                                <i class="fas fa-eye me-1"></i> Open
                                             </a>
                                             
                                             @if($item['can_edit'] && $item['edit_url'])

@@ -100,8 +100,8 @@
                     <td class="text-center">
                         <div class="btn-group-vertical btn-group-sm" role="group">
                             <a wire:navigate href="{{ route('special-memo.show', $memo) }}" 
-                               class="btn btn-sm btn-outline-info" title="View">
-                                <i class="bx bx-show me-1"></i>View
+                               class="btn btn-sm btn-outline-info" title="Open">
+                                <i class="bx bx-show me-1"></i>Open
                             </a>
                             @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
                                 <a href="{{ route('special-memo.edit', $memo) }}" 

@@ -95,8 +95,8 @@
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center flex-wrap activity-actions action-buttons-stacked">
                                 <a wire:navigate href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
-                                   class="btn btn-sm btn-outline-info activity-action-btn" title="View">
-                                    <i class="bx bx-show me-1"></i>View
+                                   class="btn btn-sm btn-outline-info activity-action-btn" title="Open">
+                                    <i class="bx bx-show me-1"></i>Open
                                 </a>
                                 @if($activity->overall_status === 'approved')
                                     <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
