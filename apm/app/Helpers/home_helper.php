@@ -308,12 +308,20 @@ if (! function_exists('generate_pdf')) {
      * @param  array  $data
      * @param  array  $options
      *                          - 'preview_html' (bool): If true, output HTML to browser instead of PDF (for debug)
+     *                          - 'format' (string): Page size, default A4 (e.g. A4, Letter)
+     *                          - 'orientation' (string): L or LANDSCAPE for landscape (mPDF uses e.g. A4-L)
      * @return \Mpdf\Mpdf|string
      */
     function generate_pdf($view, $data = [], $options = [])
     {
         // Set timezone
         date_default_timezone_set('Africa/Nairobi');
+
+        $pdfFormat = $options['format'] ?? 'A4';
+        $orientation = strtoupper((string) ($options['orientation'] ?? ''));
+        if (in_array($orientation, ['L', 'LANDSCAPE'], true) && is_string($pdfFormat) && ! preg_match('/-L$/i', $pdfFormat)) {
+            $pdfFormat .= '-L';
+        }
 
         // Load the view with data
         if (strpos($view, '.blade.php') !== false) {
@@ -386,7 +394,7 @@ if (! function_exists('generate_pdf')) {
 
         $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
-            'format' => 'A4',
+            'format' => $pdfFormat,
             'tempDir' => storage_path('app/mpdf_tmp'), // ensure this exists & is writable
             'fontDir' => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
             'fontdata' => $haveArial
@@ -479,7 +487,7 @@ if (! function_exists('generate_pdf')) {
             // Recreate a clean instance for fallback output to avoid secondary parser exceptions.
             $mpdf = new \Mpdf\Mpdf([
                 'mode' => 'utf-8',
-                'format' => 'A4',
+                'format' => $pdfFormat,
                 'tempDir' => storage_path('app/mpdf_tmp'),
                 'fontDir' => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
                 'fontdata' => $haveArial
@@ -495,6 +503,11 @@ if (! function_exists('generate_pdf')) {
                 'default_font' => $haveArial ? 'arial' : 'freesans',
                 'default_font_size' => 10,
             ]);
+
+            $mpdf->SetMargins(10, 10, 35);
+            $mpdf->SetAutoPageBreak(true, 30);
+            $mpdf->SetHTMLHeader($header);
+            $mpdf->SetHTMLFooter($footer);
 
             // Second pass: sanitize/repair and retry while preserving CSS/content.
             $retryHtml = \App\Helpers\PrintHelper::sanitizeHtmlForMpdf((string) $html);

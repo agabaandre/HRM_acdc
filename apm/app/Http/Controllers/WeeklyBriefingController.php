@@ -20,10 +20,8 @@ class WeeklyBriefingController extends Controller
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
 
-        $keys = DivisionWeeklyBriefGate::contributionKeysForCurrentUser();
-        if ($keys === [] && ! DivisionWeeklyBriefGate::isSystemAdmin()) {
-            abort(403, 'No Division Weekly Brief access for your account.');
-        }
+        $listingKeys = DivisionWeeklyBriefGate::contributionKeysForReportListing();
+        $filingKeys = DivisionWeeklyBriefGate::contributionKeysForFiling();
 
         $year = (int) $request->get('year', Carbon::now()->isoWeekYear());
         $week = (int) $request->get('week', Carbon::now()->isoWeek());
@@ -31,8 +29,8 @@ class WeeklyBriefingController extends Controller
         $reportsQuery = WeeklyBriefingReport::query()
             ->where('report_iso_week_year', $year)
             ->orderByDesc('report_iso_week');
-        if ($keys !== []) {
-            $reportsQuery->whereIn('contribution_key', $keys);
+        if ($listingKeys !== []) {
+            $reportsQuery->whereIn('contribution_key', $listingKeys);
         } else {
             $reportsQuery->whereRaw('0 = 1');
         }
@@ -45,27 +43,39 @@ class WeeklyBriefingController extends Controller
             ->where('report_iso_week_year', $cy)
             ->where('report_iso_week', $cw)
             ->orderBy('contribution_key');
-        if ($keys !== []) {
-            $currentQuery->whereIn('contribution_key', $keys);
+        if ($listingKeys !== []) {
+            $currentQuery->whereIn('contribution_key', $listingKeys);
         } else {
             $currentQuery->whereRaw('0 = 1');
         }
-        $currentWeekReports = $currentQuery->get();
+        $currentWeekReports = $currentQuery->get()->keyBy('contribution_key');
 
+        $weekRows = collect($listingKeys)->map(function (string $k) use ($currentWeekReports) {
+            return [
+                'key' => $k,
+                'report' => $currentWeekReports->get($k),
+            ];
+        })->values()->all();
+
+        $filingKeySet = array_fill_keys($filingKeys, true);
         $startUrls = [];
-        foreach ($keys as $k) {
-            if ($currentWeekReports->contains('contribution_key', $k)) {
+        foreach ($filingKeys as $k) {
+            if ($currentWeekReports->has($k)) {
                 continue;
             }
             $startUrls[$k] = route('weekly-briefing.create', ['contribution_key' => $k]);
         }
 
+        $filingWeekReports = $currentWeekReports->only($filingKeys)->values();
+
         $divisionId = $this->userPrimaryDivisionId();
 
         return view('weekly-briefing.index', compact(
             'reports',
-            'currentWeekReports',
+            'weekRows',
             'startUrls',
+            'filingKeySet',
+            'filingWeekReports',
             'divisionId',
             'year',
             'week'
@@ -78,7 +88,6 @@ class WeeklyBriefingController extends Controller
 
         $settings = WeeklyBriefingSetting::current();
         $staffId = (int) user_session('staff_id');
-        $divisionId = $this->userPrimaryDivisionId();
 
         $contributionKey = (string) $request->query('contribution_key', '');
 
@@ -93,12 +102,12 @@ class WeeklyBriefingController extends Controller
         $contributorRow = $settings->contributors()
             ->where('contribution_key', $contributionKey)
             ->where('staff_id', $staffId)
-            ->first()
-            ?? $settings->contributors()->where('contribution_key', $contributionKey)->first();
+            ->first();
+        if (! $contributorRow) {
+            abort(403);
+        }
 
-        $apmDivisionId = $contributorRow
-            ? (int) $contributorRow->apm_division_id
-            : (int) $divisionId;
+        $apmDivisionId = (int) $contributorRow->apm_division_id;
 
         $isoYear = (int) $request->get('iso_year', Carbon::now()->isoWeekYear());
         $isoWeek = (int) $request->get('iso_week', Carbon::now()->isoWeek());
@@ -147,7 +156,7 @@ class WeeklyBriefingController extends Controller
     public function edit(WeeklyBriefingReport $report): View
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
-        $this->assertCanAccessReport($report);
+        $this->assertCanEditReport($report);
 
         $report->load(['division', 'directorate']);
         $settings = WeeklyBriefingSetting::current();
@@ -159,7 +168,7 @@ class WeeklyBriefingController extends Controller
     public function update(Request $request, WeeklyBriefingReport $report): RedirectResponse
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
-        $this->assertCanAccessReport($report);
+        $this->assertCanEditReport($report);
 
         $window = new WeeklyBriefingWindowService;
         if (! $window->canEditReport($report)) {
@@ -226,7 +235,7 @@ class WeeklyBriefingController extends Controller
     public function pdf(WeeklyBriefingReport $report)
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
-        $this->assertCanAccessReport($report);
+        $this->assertCanViewReport($report);
 
         $report->load(['division', 'directorate']);
         $settings = WeeklyBriefingSetting::current();
@@ -234,7 +243,7 @@ class WeeklyBriefingController extends Controller
         $pdf = mpdf_print('weekly-briefing.pdf-division', [
             'report' => $report,
             'settings' => $settings,
-        ], []);
+        ], ['orientation' => 'L']);
 
         $label = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $report->contributionEntityLabel());
         $fn = 'Weekly_Briefing_'.$label.'_W'.$report->report_iso_week.'_'.$report->report_iso_week_year.'.pdf';
@@ -246,9 +255,7 @@ class WeeklyBriefingController extends Controller
 
     public function compiledPdf(int $year, int $week)
     {
-        $role = (int) (user_session('role') ?? user_session('user_role') ?? 0);
-        $perms = user_session('permissions', []) ?? [];
-        if ($role !== 10 && ! in_array(87, $perms, true) && ! in_array(88, $perms, true)) {
+        if (! DivisionWeeklyBriefGate::mayAccessCompiledBriefingExports()) {
             abort(403);
         }
 
@@ -268,7 +275,7 @@ class WeeklyBriefingController extends Controller
             'settings' => $settings,
             'isoYear' => $year,
             'isoWeek' => $week,
-        ], []);
+        ], ['orientation' => 'L']);
 
         $fn = 'Weekly_Briefing_Compiled_W'.$week.'_'.$year.'.pdf';
 
@@ -279,9 +286,7 @@ class WeeklyBriefingController extends Controller
 
     public function completionSummaryPdf(int $year, int $week)
     {
-        $role = (int) (user_session('role') ?? user_session('user_role') ?? 0);
-        $perms = user_session('permissions', []) ?? [];
-        if ($role !== 10 && ! in_array(87, $perms, true) && ! in_array(88, $perms, true)) {
+        if (! DivisionWeeklyBriefGate::mayAccessCompiledBriefingExports()) {
             abort(403);
         }
 
@@ -293,7 +298,7 @@ class WeeklyBriefingController extends Controller
             'settings' => $settings,
             'isoYear' => $year,
             'isoWeek' => $week,
-        ], []);
+        ], ['orientation' => 'L']);
 
         $fn = 'Weekly_Briefing_Completion_W'.$week.'_'.$year.'.pdf';
 
@@ -325,18 +330,17 @@ class WeeklyBriefingController extends Controller
         }
     }
 
-    private function assertCanAccessReport(WeeklyBriefingReport $report): void
+    private function assertCanViewReport(WeeklyBriefingReport $report): void
     {
-        if (DivisionWeeklyBriefGate::isSystemAdmin()) {
-            return;
+        if (! DivisionWeeklyBriefGate::mayViewReport($report)) {
+            abort(403);
         }
+    }
 
-        $settings = WeeklyBriefingSetting::current();
-        $uid = (int) user_session('staff_id');
-        if ($settings->contributors()->where('staff_id', $uid)->where('contribution_key', $report->contribution_key)->exists()) {
-            return;
+    private function assertCanEditReport(WeeklyBriefingReport $report): void
+    {
+        if (! DivisionWeeklyBriefGate::mayEditReport($report)) {
+            abort(403);
         }
-
-        abort(403);
     }
 }

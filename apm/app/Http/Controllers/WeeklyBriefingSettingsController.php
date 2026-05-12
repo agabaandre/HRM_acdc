@@ -52,6 +52,8 @@ class WeeklyBriefingSettingsController extends Controller
             'contributors.*.contribution_division_id' => 'nullable|integer',
             'contributors.*.contribution_directorate_id' => 'nullable|integer',
             'contributors.*.display_name' => 'nullable|string|max:255',
+            'report_viewers' => 'nullable|array',
+            'report_viewers.*.staff_id' => 'nullable|integer',
         ]);
 
         $settings = WeeklyBriefingSetting::current();
@@ -100,6 +102,19 @@ class WeeklyBriefingSettingsController extends Controller
             ];
         }
 
+        $viewerIds = [];
+        foreach ($request->input('report_viewers', []) as $row) {
+            $sid = (int) ($row['staff_id'] ?? 0);
+            if ($sid <= 0) {
+                continue;
+            }
+            if (! Staff::query()->whereKey($sid)->exists()) {
+                return back()->withInput()->with('error', 'Invalid staff selected in report viewers.');
+            }
+            $viewerIds[$sid] = $sid;
+        }
+        $viewerIds = array_values($viewerIds);
+
         $settings->fill([
             'submission_weekday' => $data['submission_weekday'],
             'hod_reminder_time' => $this->normalizeTime($data['hod_reminder_time']),
@@ -108,6 +123,7 @@ class WeeklyBriefingSettingsController extends Controller
             'compiled_recipient_emails' => $data['compiled_recipient_emails'] ?? null,
             'cc_division_hod_on_compiled' => $request->boolean('cc_division_hod_on_compiled'),
             'reminders_enabled' => $request->boolean('reminders_enabled'),
+            'report_viewer_staff_ids' => $viewerIds,
         ]);
         $settings->save();
 

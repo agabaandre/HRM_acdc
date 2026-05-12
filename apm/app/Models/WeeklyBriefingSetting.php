@@ -16,6 +16,7 @@ class WeeklyBriefingSetting extends Model
         'compiled_recipient_emails',
         'cc_division_hod_on_compiled',
         'reminders_enabled',
+        'report_viewer_staff_ids',
     ];
 
     protected function casts(): array
@@ -24,6 +25,7 @@ class WeeklyBriefingSetting extends Model
             'submission_weekday' => 'integer',
             'cc_division_hod_on_compiled' => 'boolean',
             'reminders_enabled' => 'boolean',
+            'report_viewer_staff_ids' => 'array',
         ];
     }
 
