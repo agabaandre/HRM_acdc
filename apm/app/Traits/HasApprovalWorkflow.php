@@ -24,7 +24,7 @@ trait HasApprovalWorkflow
      */
     public function getWorkflowDefinitionAttribute()
     {
-        if (!$this->forward_workflow_id || !$this->approval_level) {
+        if (! $this->forward_workflow_id || $this->approval_level === null || $this->approval_level === '') {
             return null;
         }
 
@@ -33,14 +33,20 @@ trait HasApprovalWorkflow
             ->where('is_enabled', 1)
             ->get();
 
-        if ($definitions->count() > 1 && $definitions[0]->category) {
-            // For models that have division relationship
-            if (method_exists($this, 'division') && $this->division) {
-                return $definitions->where('category', $this->division->category)->first();
+        if ($definitions->isEmpty()) {
+            return null;
+        }
+
+        if ($definitions->count() > 1 && ($definitions->first()->category ?? null)) {
+            if (method_exists($this, 'division') && $this->division && $this->division->category !== null && $this->division->category !== '') {
+                $matched = $definitions->where('category', $this->division->category)->first();
+                if ($matched) {
+                    return $matched;
+                }
             }
         }
 
-        return $definitions->count() > 0 ? $definitions[0] : null;
+        return $definitions->first();
     }
 
     /**
@@ -53,79 +59,90 @@ trait HasApprovalWorkflow
         }
 
         $role = $this->workflow_definition;
-        if (!$role) {
-            return null;
-        }
-
         $staff_id = null;
 
-        if ($role->is_division_specific && method_exists($this, 'division') && $this->division) {
-            // Division-specific approver (e.g., HOD, Director)
-            $referenceColumn = $role->division_reference_column;
-            $today = Carbon::today();
-            
-            // Check for active OIC first (if available)
-            // Map reference columns to their OIC column names
-            $oicColumnMap = [
-                'division_head' => 'head_oic_id',
-                'finance_officer' => 'finance_officer_oic_id', // This might need to be added to the division table
-                'director_id' => 'director_oic_id'
-            ];
-            
-            $oicColumn = $oicColumnMap[$referenceColumn] ?? $referenceColumn . '_oic_id';
-            $oicStartColumn = str_replace('_oic_id', '_oic_start_date', $oicColumn);
-            $oicEndColumn = str_replace('_oic_id', '_oic_end_date', $oicColumn);
-            
-            if (isset($this->division->$oicColumn) && $this->division->$oicColumn) {
-                $isOicActive = true;
-                if (isset($this->division->$oicStartColumn) && $this->division->$oicStartColumn) {
-                    $isOicActive = $isOicActive && $this->division->$oicStartColumn <= $today;
+        if ($role) {
+            if ($role->is_division_specific && method_exists($this, 'division') && $this->division) {
+                // Division-specific approver (e.g., HOD, Director)
+                $referenceColumn = $role->division_reference_column;
+                $today = Carbon::today();
+
+                // Check for active OIC first (if available)
+                // Map reference columns to their OIC column names
+                $oicColumnMap = [
+                    'division_head' => 'head_oic_id',
+                    'finance_officer' => 'finance_officer_oic_id', // This might need to be added to the division table
+                    'director_id' => 'director_oic_id',
+                ];
+
+                $oicColumn = $oicColumnMap[$referenceColumn] ?? $referenceColumn . '_oic_id';
+                $oicStartColumn = str_replace('_oic_id', '_oic_start_date', $oicColumn);
+                $oicEndColumn = str_replace('_oic_id', '_oic_end_date', $oicColumn);
+
+                if (isset($this->division->$oicColumn) && $this->division->$oicColumn) {
+                    $isOicActive = true;
+                    if (isset($this->division->$oicStartColumn) && $this->division->$oicStartColumn) {
+                        $isOicActive = $isOicActive && $this->division->$oicStartColumn <= $today;
+                    }
+                    if (isset($this->division->$oicEndColumn) && $this->division->$oicEndColumn) {
+                        $isOicActive = $isOicActive && $this->division->$oicEndColumn >= $today;
+                    }
+
+                    if ($isOicActive) {
+                        $staff_id = $this->division->$oicColumn;
+                    }
                 }
-                if (isset($this->division->$oicEndColumn) && $this->division->$oicEndColumn) {
-                    $isOicActive = $isOicActive && $this->division->$oicEndColumn >= $today;
+
+                // If no active OIC, check primary approver
+                if (! $staff_id && isset($this->division->$referenceColumn)) {
+                    $staff_id = $this->division->$referenceColumn;
                 }
-                
-                if ($isOicActive) {
-                    $staff_id = $this->division->$oicColumn;
+            } else {
+                // Regular approver from approvers table
+                $today = Carbon::today();
+
+                // First, check for OIC (Officer in Charge) if active
+                $oicApprover = Approver::where('workflow_dfn_id', $role->id)
+                    ->whereNotNull('oic_staff_id')
+                    ->where(function ($query) use ($today) {
+                        $query->whereNull('end_date')
+                            ->orWhere('end_date', '>=', $today);
+                    })
+                    ->with('oicStaff')
+                    ->first();
+
+                if ($oicApprover && $oicApprover->oicStaff) {
+                    return $oicApprover->oicStaff;
                 }
+
+                // If no active OIC, get regular approver
+                $approver = Approver::where('workflow_dfn_id', $role->id)
+                    ->where(function ($query) use ($today) {
+                        $query->whereNull('end_date')
+                            ->orWhere('end_date', '>=', $today);
+                    })
+                    ->with('staff')
+                    ->first();
+
+                if ($approver && $approver->staff) {
+                    return $approver->staff;
+                }
+
+                $staff_id = $approver ? $approver->staff_id : null;
             }
-            
-            // If no active OIC, check primary approver
-            if (!$staff_id && isset($this->division->$referenceColumn)) {
-                $staff_id = $this->division->$referenceColumn;
+        }
+
+        // Match ProvidesMemoIndexStatusMeta: list views fall back to effective HoD when workflow
+        // resolution yields no actor at level 1 (e.g. category mismatch, empty division columns).
+        if (! $staff_id && in_array($this->overall_status ?? '', ['returned', 'draft'], true)
+            && (int) ($this->approval_level ?? 0) === 1
+            && method_exists($this, 'division') && $this->division) {
+            $headId = function_exists('effective_division_head_staff_id')
+                ? effective_division_head_staff_id($this->division)
+                : null;
+            if ($headId) {
+                $staff_id = (int) $headId;
             }
-        } else {
-            // Regular approver from approvers table
-            $today = Carbon::today();
-            
-            // First, check for OIC (Officer in Charge) if active
-            $oicApprover = Approver::where('workflow_dfn_id', $role->id)
-                ->whereNotNull('oic_staff_id')
-                ->where(function ($query) use ($today) {
-                    $query->whereNull('end_date')
-                        ->orWhere('end_date', '>=', $today);
-                })
-                ->with('oicStaff')
-                ->first();
-            
-            if ($oicApprover && $oicApprover->oicStaff) {
-                return $oicApprover->oicStaff;
-            }
-            
-            // If no active OIC, get regular approver
-            $approver = Approver::where('workflow_dfn_id', $role->id)
-                ->where(function ($query) use ($today) {
-                    $query->whereNull('end_date')
-                        ->orWhere('end_date', '>=', $today);
-                })
-                ->with('staff')
-                ->first();
-            
-            if ($approver && $approver->staff) {
-                return $approver->staff;
-            }
-            
-            $staff_id = $approver ? $approver->staff_id : null;
         }
 
         return $staff_id ? Staff::select('lname', 'fname', 'staff_id', 'job_name', 'division_name')
