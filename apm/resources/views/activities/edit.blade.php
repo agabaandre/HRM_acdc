@@ -1068,28 +1068,59 @@ $(document).ready(function () {
         if (window._budgetCodesChangeInProgress) return;
         window._budgetCodesChangeInProgress = true;
         try {
-            const selected = $(this).find('option:selected');
+            const budgetCodesEl = $(this);
             const container = $('#budgetGroupContainer');
-            // World Bank Activity Code: show when any selected code's funder has show_activity_code enabled (control from funders admin)
+            // Match non-travel: read data-* via .attr first — jQuery .data() on <option> can miss flags after AJAX/Select2.
+            const isTruthyFlag = function (value) {
+                return value === true || value === 1 || value === '1' || value === 'true';
+            };
+            const rawVal = budgetCodesEl.val();
+            const selectedCodeIds = Array.isArray(rawVal)
+                ? rawVal.filter(function (v) { return v !== '' && v !== null && v !== undefined; })
+                : (rawVal ? [rawVal] : []);
+
             let hasWorldBankCode = false;
-            selected.each(function () {
-                if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
+            selectedCodeIds.forEach(function (vid) {
+                const opt = findBudgetCodeOption(vid);
+                if (!opt.length) {
+                    return;
+                }
+                const rawFlag = opt.attr('data-show-activity-code')
+                    ?? opt.data('show-activity-code')
+                    ?? opt.data('showActivityCode');
+                if (isTruthyFlag(rawFlag)) {
                     hasWorldBankCode = true;
                 }
             });
 
             if (hasWorldBankCode) {
                 var firstLabel = 'Activity Code *';
-                selected.each(function () {
-                    if ($(this).data('show-activity-code') || $(this).data('showActivityCode')) {
-                        var l = $(this).data('activity-code-label') || $(this).data('activityCodeLabel');
-                        if (l) { firstLabel = l; return false; }
+                for (var si = 0; si < selectedCodeIds.length; si++) {
+                    const opt = findBudgetCodeOption(selectedCodeIds[si]);
+                    if (!opt.length) {
+                        continue;
                     }
-                });
+                    const rawFlag = opt.attr('data-show-activity-code')
+                        ?? opt.data('show-activity-code')
+                        ?? opt.data('showActivityCode');
+                    if (!isTruthyFlag(rawFlag)) {
+                        continue;
+                    }
+                    const l = opt.attr('data-activity-code-label')
+                        || opt.data('activity-code-label')
+                        || opt.data('activityCodeLabel');
+                    if (l) {
+                        firstLabel = l;
+                        break;
+                    }
+                }
                 $('.activity_code .activity-code-label').text(firstLabel);
                 $('.activity_code').show();
                 $('#activity_code').prop('required', true);
                 $('.activity_code label .text-danger').show();
+                if (initialActivityCodeValue !== undefined && initialActivityCodeValue !== null && String(initialActivityCodeValue).length) {
+                    $('#activity_code').val(initialActivityCodeValue);
+                }
             } else {
                 $('.activity_code').hide();
                 $('#activity_code').val('').prop('required', false);
@@ -1101,22 +1132,24 @@ $(document).ready(function () {
                 return;
             }
             
-            // Get newly selected code IDs
-            const selectedCodeIds = selected.map(function() { return $(this).val(); }).get();
+            const selectedIdStrings = selectedCodeIds.map(String);
             
             // Remove cards for codes that are no longer selected
             container.find('.card').each(function() {
                 const cardCodeId = $(this).find('.budget-body').data('code');
-                if (!selectedCodeIds.includes(cardCodeId)) {
+                if (!selectedIdStrings.includes(String(cardCodeId))) {
                     $(this).remove();
                 }
             });
 
             // Add cards for newly selected codes
-            selected.each(function () {
-                const codeId = $(this).val();
-                const label = $(this).text();
-                const balance = $(this).data('balance');
+            selectedCodeIds.forEach(function (codeId) {
+                const opt = findBudgetCodeOption(codeId);
+                if (!opt.length) {
+                    return;
+                }
+                const label = opt.text();
+                const balance = opt.data('balance');
                 
                 // Get existing data for this code
                 const existingData = existingBudgetItems && existingBudgetItems[codeId] ? existingBudgetItems[codeId] : null;
@@ -1697,19 +1730,28 @@ $(document).ready(function () {
 
     // Initialize World Bank Activity Code requirement on page load (and after budget codes restored)
     function initializeWorldBankActivityCodeRequirement() {
-        const selected = $('#budget_codes').find('option:selected');
-        const fundTypeId = $('#fund_type').val(); // Use current fund type (options don't have data-fund-type-id)
-        let hasWorldBankIntramuralCode = false;
-        
-        selected.each(function () {
-            const funderId = $(this).data('funder-id');
-            if (funderId == 1 && fundTypeId == 1) { // World Bank funder_id AND Intramural fund_type_id
-                hasWorldBankIntramuralCode = true;
+        const rawVal = $('#budget_codes').val();
+        const selectedCodeIds = Array.isArray(rawVal)
+            ? rawVal.filter(function (v) { return v !== '' && v !== null && v !== undefined; })
+            : (rawVal ? [rawVal] : []);
+        const isTruthyFlag = function (value) {
+            return value === true || value === 1 || value === '1' || value === 'true';
+        };
+        let needsActivityCode = false;
+        selectedCodeIds.forEach(function (vid) {
+            const opt = findBudgetCodeOption(vid);
+            if (!opt.length) {
+                return;
+            }
+            const rawFlag = opt.attr('data-show-activity-code')
+                ?? opt.data('show-activity-code')
+                ?? opt.data('showActivityCode');
+            if (isTruthyFlag(rawFlag)) {
+                needsActivityCode = true;
             }
         });
 
-        // Make World Bank Activity Code required if World Bank AND Intramural budget code is selected
-        if (hasWorldBankIntramuralCode) {
+        if (needsActivityCode) {
             $('#activity_code').prop('required', true);
             $('.activity_code label .text-danger').show();
         } else {
