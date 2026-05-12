@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class WeeklyBriefingTestNotificationsCommand extends Command
 {
@@ -25,26 +24,26 @@ class WeeklyBriefingTestNotificationsCommand extends Command
 
         $y = Carbon::now()->isoWeekYear();
         $w = Carbon::now()->isoWeek();
-        $appUrl = (string) config('app.url');
+        $appUrl = rtrim((string) config('app.url'), '/');
+        $indexUrl = htmlspecialchars(route('weekly-briefing.index', [], true), ENT_QUOTES, 'UTF-8');
 
-        $reminderBody = <<<TXT
-This is a TEST message from APM (weekly-briefing:test-notifications).
+        $reminderHtml = <<<HTML
+<p><strong>TEST</strong> — from <code>weekly-briefing:test-notifications</code>.</p>
+<p>Production contributor reminders are <strong>HTML</strong> and include the reporting unit, <strong>submission deadline</strong>, and direct links to <strong>start</strong> or <strong>open the draft</strong> plus the <a href="{$indexUrl}">Division Weekly Brief home</a>.</p>
+<p>Example subject: <em>Weekly briefing reminder — [unit name]</em> · ISO week W{$w} / {$y}</p>
+<p><a href="{$appUrl}">APM home</a></p>
+HTML;
 
-In production, configured contributors (or legacy division HoDs) receive a reminder like:
-
-"Please complete the Division Weekly Brief for ISO week W{$w}/{$y} (reporting unit key: …)."
-
-— Configure staff under Weekly briefing settings → Allowed heads / contributors.
-— Reminder time uses hod_reminder_time on submission_weekday (see settings).
-— Scheduler: weekly-briefing:hod-reminders (every minute, self-gated on time).
-
-App: {$appUrl}
-TXT;
+        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
+        $reminderSubject = $subjectPrefix.'[TEST] Weekly briefing reminder — W'.$w.'/'.$y;
 
         try {
-            Mail::raw($reminderBody, function ($message) use ($email, $w, $y) {
-                $message->to($email)->subject('[TEST] Weekly briefing reminder — W'.$w.'/'.$y);
-            });
+            if (! sendEmail($email, $reminderSubject, $reminderHtml)) {
+                Log::warning('weekly-briefing:test-notifications reminder sendEmail returned false', ['to' => $email]);
+                $this->error('Reminder test mail failed (Exchange / mail transport returned false).');
+
+                return self::FAILURE;
+            }
         } catch (\Throwable $e) {
             Log::warning('weekly-briefing:test-notifications reminder mail failed', ['e' => $e->getMessage(), 'to' => $email]);
             $this->error('Reminder test mail failed: '.$e->getMessage());
@@ -65,10 +64,15 @@ TXT;
 <p><a href="{$appUrl}">{$appUrl}</a></p>
 HTML;
 
+        $compiledSubject = $subjectPrefix.'[TEST] Weekly briefing compiled — W'.$w.'/'.$y;
+
         try {
-            Mail::html($compiledHtml, function ($message) use ($email, $w, $y) {
-                $message->to($email)->subject('[TEST] Weekly briefing compiled — W'.$w.'/'.$y);
-            });
+            if (! sendEmail($email, $compiledSubject, $compiledHtml)) {
+                Log::warning('weekly-briefing:test-notifications compiled sendEmail returned false', ['to' => $email]);
+                $this->error('Compiled test mail failed (Exchange / mail transport returned false).');
+
+                return self::FAILURE;
+            }
         } catch (\Throwable $e) {
             Log::warning('weekly-briefing:test-notifications compiled mail failed', ['e' => $e->getMessage(), 'to' => $email]);
             $this->error('Compiled test mail failed: '.$e->getMessage());

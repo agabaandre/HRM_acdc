@@ -158,7 +158,7 @@ class WeeklyBriefingController extends Controller
         $this->assertDivisionWeeklyBriefModuleAccess();
         $this->assertCanEditReport($report);
 
-        $report->load(['division', 'directorate']);
+        $report->load(['division', 'directorate', 'submittedBy']);
         $settings = WeeklyBriefingSetting::current();
         $window = new WeeklyBriefingWindowService;
 
@@ -251,7 +251,7 @@ class WeeklyBriefingController extends Controller
         $this->assertDivisionWeeklyBriefModuleAccess();
         $this->assertCanViewReport($report);
 
-        $report->load(['division', 'directorate']);
+        $report->load(['division', 'directorate', 'submittedBy']);
         $settings = WeeklyBriefingSetting::current();
 
         $pdf = mpdf_print('weekly-briefing.pdf-division', [
@@ -277,7 +277,7 @@ class WeeklyBriefingController extends Controller
             ->where('report_iso_week_year', $year)
             ->where('report_iso_week', $week)
             ->where('status', WeeklyBriefingReport::STATUS_SUBMITTED)
-            ->with(['division', 'directorate'])
+            ->with(['division', 'directorate', 'submittedBy'])
             ->get();
 
         $reports = WeeklyBriefingCompletionSummary::sortReportsForCompiled($reports);

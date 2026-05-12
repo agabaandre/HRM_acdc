@@ -9,7 +9,6 @@ use App\Services\WeeklyBriefingCompletionSummary;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class WeeklyBriefingCompiledSummaryCommand extends Command
@@ -112,20 +111,25 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             $ccHods = array_values(array_unique(array_diff($ccHods, array_map('strtolower', $recipients))));
         }
 
+        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
+        $subject = $subjectPrefix."Weekly briefing compiled — W{$w}/{$y}";
+        $body = '<p>Attached: compiled weekly briefing (grouped by directorate / reporting unit), one PDF per submission, and a one-page completion summary for configured reporting units.</p>';
+        $graphAttachments = [
+            ['name' => $compiledFilename, 'content' => $compiledBinary, 'content_type' => 'application/pdf'],
+            ['name' => $summaryFilename, 'content' => $summaryBinary, 'content_type' => 'application/pdf'],
+        ];
+        foreach ($divisionAttachments as $att) {
+            $graphAttachments[] = [
+                'name' => $att['filename'],
+                'content' => $att['binary'],
+                'content_type' => 'application/pdf',
+            ];
+        }
+
         try {
-            Mail::send([], [], function ($message) use ($recipients, $ccHods, $compiledFilename, $compiledBinary, $divisionAttachments, $summaryBinary, $summaryFilename, $y, $w) {
-                $message->to($recipients)
-                    ->subject("Weekly briefing compiled — W{$w}/{$y}")
-                    ->html('<p>Attached: compiled weekly briefing (grouped by directorate / reporting unit), one PDF per submission, and a one-page completion summary for configured reporting units.</p>')
-                    ->attachData($compiledBinary, $compiledFilename, ['mime' => 'application/pdf'])
-                    ->attachData($summaryBinary, $summaryFilename, ['mime' => 'application/pdf']);
-                foreach ($divisionAttachments as $att) {
-                    $message->attachData($att['binary'], $att['filename'], ['mime' => 'application/pdf']);
-                }
-                if ($ccHods !== []) {
-                    $message->cc($ccHods);
-                }
-            });
+            if (! sendEmail($recipients, $subject, $body, null, null, $ccHods, [], $graphAttachments)) {
+                Log::warning('weekly-briefing:compiled-summary sendEmail returned false');
+            }
         } catch (\Throwable $e) {
             Log::warning('weekly-briefing:compiled-summary mail failed', ['e' => $e->getMessage()]);
         }

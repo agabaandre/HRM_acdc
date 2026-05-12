@@ -51,6 +51,17 @@
                 @if($report->division && str_starts_with((string) ($report->contribution_key ?? ''), 'dr-'))
                     <div class="small text-muted">APM division: {{ $report->division->division_name }}</div>
                 @endif
+                @if($report->submitted_by_staff_id && $report->submittedBy)
+                    @php
+                        $subName = trim(($report->submittedBy->fname ?? '').' '.($report->submittedBy->lname ?? ''));
+                    @endphp
+                    <div class="small text-muted mt-1">
+                        Submitted by <strong>{{ $subName !== '' ? $subName : 'Staff #'.$report->submitted_by_staff_id }}</strong>
+                        @if($report->submitted_at)
+                            <span>· {{ $report->submitted_at->format('M j, Y g:i A') }}</span>
+                        @endif
+                    </div>
+                @endif
             </div>
             <div class="text-end">
                 <span class="badge bg-{{ $report->status === 'submitted' ? 'success' : ($report->status === 'locked' ? 'dark' : 'warning') }}">{{ $report->status }}</span>
@@ -62,36 +73,57 @@
         @csrf
         @method('PUT')
 
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-success text-white fw-bold">Section 1 — Major happenings (max 3)</div>
+        <div class="card shadow-sm mb-4 border-0">
+            <div class="card-header bg-white border-bottom py-3 d-flex align-items-center">
+                <h6 class="mb-0 text-success fw-bold"><i class="bx bx-news me-2 text-success"></i>Section 1 — Major happenings (max 3)</h6>
+            </div>
             <div class="card-body">
-                <p class="small text-muted">For each item: <strong>Major happening</strong> (short title), then <strong>Description &amp; key actions</strong> and <strong>Strategic relevance to Africa CDC</strong>.</p>
-                @foreach($s1 as $idx => $row)
-                    <div class="border rounded p-3 mb-3 bg-light">
-                        <h6 class="fw-bold text-success">Happening {{ $idx + 1 }}</h6>
-                        <label class="form-label" for="wb-major-{{ $idx }}">Major happening</label>
-                        <input type="text" class="form-control mb-3" id="wb-major-{{ $idx }}" name="section1[{{ $idx }}][major_happening]" value="{{ $row['major_happening'] ?? '' }}" maxlength="500" placeholder="e.g. AU Champion on MCH: Finalization of the roadmap">
-                        <label class="form-label">Description &amp; key actions</label>
-                        <div class="wb-quill-wrap mb-2">
-                            <div id="wb-desc-{{ $idx }}" class="wb-quill-editor border rounded bg-white" style="min-height:140px;"></div>
-                            <input type="hidden" name="section1[{{ $idx }}][description_key_actions]" id="wb-desc-h-{{ $idx }}" value="{{ $row['description_key_actions'] ?? '' }}">
-                        </div>
-                        <label class="form-label">Strategic relevance to Africa CDC</label>
-                        <div class="wb-quill-wrap mb-0">
-                            <div id="wb-strat-{{ $idx }}" class="wb-quill-editor border rounded bg-white" style="min-height:140px;"></div>
-                            <input type="hidden" name="section1[{{ $idx }}][strategic_relevance]" id="wb-strat-h-{{ $idx }}" value="{{ $row['strategic_relevance'] ?? '' }}">
-                        </div>
-                    </div>
-                @endforeach
+                <p class="small text-muted mb-2">Complete each row: <strong>Major happening</strong> (short title), <strong>Description &amp; key actions</strong>, and <strong>Strategic relevance to Africa CDC</strong>.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0" id="wb-major-happenings-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:3rem" class="text-center">#</th>
+                                <th style="min-width:180px">Major happening</th>
+                                <th style="min-width:240px">Description &amp; key actions</th>
+                                <th style="min-width:240px">Strategic relevance to Africa CDC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($s1 as $idx => $row)
+                                <tr>
+                                    <td class="text-center text-muted fw-semibold">{{ $idx + 1 }}</td>
+                                    <td>
+                                        <textarea class="form-control form-control-sm" id="wb-major-{{ $idx }}" name="section1[{{ $idx }}][major_happening]" rows="3" maxlength="500" placeholder="Short title">{{ $row['major_happening'] ?? '' }}</textarea>
+                                    </td>
+                                    <td>
+                                        <div class="wb-quill-wrap">
+                                            <div id="wb-desc-{{ $idx }}" class="wb-quill-editor border rounded bg-white" style="min-height:140px;"></div>
+                                            <input type="hidden" name="section1[{{ $idx }}][description_key_actions]" id="wb-desc-h-{{ $idx }}" value="{{ $row['description_key_actions'] ?? '' }}">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="wb-quill-wrap">
+                                            <div id="wb-strat-{{ $idx }}" class="wb-quill-editor border rounded bg-white" style="min-height:140px;"></div>
+                                            <input type="hidden" name="section1[{{ $idx }}][strategic_relevance]" id="wb-strat-h-{{ $idx }}" value="{{ $row['strategic_relevance'] ?? '' }}">
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-warning fw-bold">Section 2 — Key bottlenecks &amp; escalation</div>
+        <div class="card shadow-sm mb-4 border-0">
+            <div class="card-header bg-white border-bottom py-3 d-flex align-items-center">
+                <h6 class="mb-0 text-warning fw-bold"><i class="bx bx-error-circle me-2 text-warning"></i>Section 2 — Key bottlenecks &amp; escalation</h6>
+            </div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle" id="bottleneck-table">
-                        <thead class="table-light">
+                        <thead class="table-warning">
                             <tr>
                                 <th style="width:28%">Issue</th>
                                 <th style="width:22%">Impact / risk level</th>
@@ -133,6 +165,8 @@
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet" />
 <style>
     #weekly-briefing-page .wb-quill-editor .ql-editor { min-height: 120px; }
+    #weekly-briefing-page #wb-major-happenings-table td { vertical-align: top; }
+    #weekly-briefing-page #wb-major-happenings-table .wb-quill-editor .ql-toolbar { flex-wrap: wrap; }
 </style>
 @endpush
 
