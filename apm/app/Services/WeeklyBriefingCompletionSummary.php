@@ -51,7 +51,7 @@ class WeeklyBriefingCompletionSummary
     }
 
     /**
-     * @return list<array{key: string, label: string, directorate_name: string, status: string, contacts: string}>
+     * @return list<array{key: string, label: string, directorate_name: string, status: string, contacts: string, major_happenings: string}>
      */
     public static function rows(WeeklyBriefingSetting $settings, int $isoYear, int $isoWeek): array
     {
@@ -77,6 +77,7 @@ class WeeklyBriefingCompletionSummary
                 'directorate_name' => self::directorateNameForKey($k),
                 'status' => $report ? (string) $report->status : 'missing',
                 'contacts' => self::contactNamesForKey($settings, $k),
+                'major_happenings' => self::majorHappeningsTitlesFromReport($report),
             ];
         }
 
@@ -129,6 +130,25 @@ class WeeklyBriefingCompletionSummary
         }
 
         return '';
+    }
+
+    private static function majorHappeningsTitlesFromReport(?WeeklyBriefingReport $report): string
+    {
+        if (! $report) {
+            return '—';
+        }
+        $parts = [];
+        $n = 1;
+        foreach ($report->section1_major_happenings ?? [] as $row) {
+            $t = trim((string) ($row['major_happening'] ?? ''));
+            if ($t === '') {
+                continue;
+            }
+            $parts[] = $n.'. '.$t;
+            $n++;
+        }
+
+        return $parts === [] ? '—' : implode('; ', $parts);
     }
 
     /**

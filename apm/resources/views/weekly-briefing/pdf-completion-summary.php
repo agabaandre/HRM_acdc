@@ -17,7 +17,7 @@
 </head>
 <body>
 <?php
-/** @var list<array{key: string, label: string, directorate_name: string, status: string, contacts: string}> $rows */
+/** @var list<array{key: string, label: string, directorate_name: string, status: string, contacts: string, major_happenings: string}> $rows */
 /** @var int $isoYear */
 /** @var int $isoWeek */
 $submitted = 0;
@@ -40,10 +40,11 @@ foreach ($rows as $r) {
 <?php } else { ?>
 <table>
     <tr>
-        <th style="width:22%">Directorate / office</th>
-        <th style="width:28%">Reporting unit</th>
-        <th style="width:14%">Status</th>
-        <th style="width:36%">Contributor staff</th>
+        <th style="width:18%">Directorate / office</th>
+        <th style="width:20%">Reporting unit</th>
+        <th style="width:26%">Major happenings (titles)</th>
+        <th style="width:12%">Status</th>
+        <th style="width:24%">Contributor staff</th>
     </tr>
     <?php foreach ($rows as $row) {
         $st = (string) ($row['status'] ?? '');
@@ -59,6 +60,7 @@ foreach ($rows as $r) {
     <tr>
         <td><?php echo htmlspecialchars((string) ($row['directorate_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
         <td><?php echo htmlspecialchars((string) ($row['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+        <td><?php echo htmlspecialchars((string) ($row['major_happenings'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
         <td class="<?php echo htmlspecialchars($cls, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($st !== '' ? $st : 'missing', ENT_QUOTES, 'UTF-8'); ?></td>
         <td><?php echo htmlspecialchars((string) ($row['contacts'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
     </tr>
