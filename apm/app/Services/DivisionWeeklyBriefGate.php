@@ -63,6 +63,9 @@ final class DivisionWeeklyBriefGate
 
     public static function mayActAsDivisionDirector(?int $staffId = null): bool
     {
+        if (! (bool) (WeeklyBriefingSetting::current()->division_directors_can_access_module ?? true)) {
+            return false;
+        }
         $sid = $staffId ?? (int) user_session('staff_id');
         if ($sid <= 0) {
             return false;
