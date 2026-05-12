@@ -13,6 +13,7 @@
     @endif
 
     @php
+        $submissionDeadline = $report->submissionDeadline($settings);
         $s1 = old('section1', $report->section1_major_happenings ?? []);
         while (count($s1) < 3) {
             $s1[] = ['major_happening' => '', 'description_key_actions' => '', 'strategic_relevance' => ''];
@@ -23,6 +24,20 @@
             $s2[] = ['issue' => '', 'impact_risk' => '', 'required_action' => ''];
         }
     @endphp
+
+    <div class="alert alert-{{ $window->canEditReport($report) ? 'info' : 'secondary' }} border shadow-sm mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <strong><i class="fas fa-calendar-check me-1"></i>Submission deadline</strong>
+            <span class="ms-1">{{ $submissionDeadline->format('l, F j, Y') }} at {{ $submissionDeadline->format('g:i A') }}</span>
+        </div>
+        @if($report->status === \App\Models\WeeklyBriefingReport::STATUS_LOCKED)
+            <span class="badge bg-dark">Locked</span>
+        @elseif(! $window->canEditReport($report))
+            <span class="badge bg-danger">Closed — deadline passed</span>
+        @else
+            <span class="badge bg-success">Open for edits</span>
+        @endif
+    </div>
 
     <div class="card shadow-sm mb-3">
         <div class="card-body d-flex flex-wrap justify-content-between gap-2">
@@ -39,11 +54,6 @@
             </div>
             <div class="text-end">
                 <span class="badge bg-{{ $report->status === 'submitted' ? 'success' : ($report->status === 'locked' ? 'dark' : 'warning') }}">{{ $report->status }}</span>
-                @if($window->canEditReport($report))
-                    <div class="small text-success mt-1">Editable until deadline</div>
-                @else
-                    <div class="small text-danger mt-1">Read-only</div>
-                @endif
             </div>
         </div>
     </div>
@@ -55,7 +65,7 @@
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-success text-white fw-bold">Section 1 — Major happenings (max 3)</div>
             <div class="card-body">
-                <p class="small text-muted">For each item: <strong>Major happening</strong> (short title), then <strong>Description &amp; key actions</strong> and <strong>Strategic relevance to Africa CDC</strong> (rich text; Quill editors below).</p>
+                <p class="small text-muted">For each item: <strong>Major happening</strong> (short title), then <strong>Description &amp; key actions</strong> and <strong>Strategic relevance to Africa CDC</strong>.</p>
                 @foreach($s1 as $idx => $row)
                     <div class="border rounded p-3 mb-3 bg-light">
                         <h6 class="fw-bold text-success">Happening {{ $idx + 1 }}</h6>

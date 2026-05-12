@@ -52,9 +52,11 @@ use App\Helpers\PrintHelper;
         echo '<table class="happenings"><thead><tr>';
         echo '<th>Major Happening</th><th>Description and Key Actions</th><th>Strategic Relevance to Africa CDC</th>';
         echo '</tr></thead><tbody>';
-        foreach ($bodyRows as $row) {
+        foreach ($bodyRows as $idx => $row) {
             $mh = trim((string) ($row['major_happening'] ?? ''));
-            $mhOut = $mh !== '' ? htmlspecialchars($mh, ENT_QUOTES, 'UTF-8') : '<span style="color:#64748b;">—</span>';
+            $num = $idx + 1;
+            $mhBody = $mh !== '' ? htmlspecialchars($mh, ENT_QUOTES, 'UTF-8') : '<span style="color:#64748b;">—</span>';
+            $mhOut = '<strong>'.(int) $num.'.</strong> '.$mhBody;
             echo '<tr>';
             echo '<td class="major">'.$mhOut.'</td>';
             echo '<td>'.PrintHelper::sanitizeRichTextForMpdf($row['description_key_actions'] ?? '').'</td>';
