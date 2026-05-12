@@ -2,14 +2,13 @@
 
 namespace App\Jobs;
 
-use App\Mail\DocumentPdfMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\View;
 use Throwable;
 
 class SendDocumentPdfEmailJob implements ShouldQueue
@@ -38,13 +37,25 @@ class SendDocumentPdfEmailJob implements ShouldQueue
             throw new \RuntimeException('PDF temp file is missing or not readable.');
         }
 
-        Mail::to($this->recipientEmail)->send(
-            new DocumentPdfMail(
-                $this->subjectLine,
-                $this->attachmentFilename,
-                $this->absolutePathToPdf,
-            )
-        );
+        $binary = file_get_contents($this->absolutePathToPdf);
+        if ($binary === false || $binary === '') {
+            throw new \RuntimeException('Could not read PDF file for emailing.');
+        }
+
+        $htmlBody = trim(View::make('emails.document-pdf')->render());
+        if ($htmlBody === '') {
+            $htmlBody = '<p>Your requested PDF is attached.</p>';
+        }
+
+        $attachments = [[
+            'name' => $this->attachmentFilename,
+            'content' => $binary,
+            'content_type' => 'application/pdf',
+        ]];
+
+        if (! sendEmail($this->recipientEmail, $this->subjectLine, $htmlBody, null, null, [], [], $attachments)) {
+            throw new \RuntimeException('sendEmail returned false (mail transport rejected send).');
+        }
 
         $this->deleteTempFile();
 

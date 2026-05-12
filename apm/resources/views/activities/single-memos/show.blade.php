@@ -563,6 +563,17 @@
                                 <i class="bx bx-printer"></i>
                                 <span>Print PDF</span>
                             </a>
+                            @if(!empty($canEmailPdf) && $canEmailPdf)
+                            <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;" data-bs-toggle="modal" data-bs-target="#emailPdfModal" title="Email a PDF copy to yourself">
+                                <i class="bx bx-mail-send"></i>
+                                <span>Email PDF</span>
+                            </button>
+                            @include('partials.email-pdf-modal', [
+                                'emailPdfFormAction' => route('matrices.activities.email-pdf', [$activity->matrix, $activity]),
+                                'emailPdfDocumentLabel' => $activity->document_number ?? ($activity->activity_ref ?? 'Activity #'.$activity->id),
+                                'emailPdfRecipientChoices' => $emailPdfRecipientChoices ?? [],
+                            ])
+                            @endif
                             
                             <a href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}?change_request=1" 
                                class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">

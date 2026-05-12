@@ -535,6 +535,17 @@
                             <span>Print PDF</span>
                         </a>
                     @endif
+                    @if(!empty($canEmailPdf) && $canEmailPdf)
+                        <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;" data-bs-toggle="modal" data-bs-target="#emailPdfModal" title="Email a PDF copy to yourself">
+                            <i class="bx bx-mail-send"></i>
+                            <span>Email PDF</span>
+                        </button>
+                        @include('partials.email-pdf-modal', [
+                            'emailPdfFormAction' => route('special-memo.email-pdf', $specialMemo),
+                            'emailPdfDocumentLabel' => $specialMemo->document_number ?? ('Special memo #'.$specialMemo->id),
+                            'emailPdfRecipientChoices' => $emailPdfRecipientChoices ?? [],
+                        ])
+                    @endif
 
                     @if($specialMemo->overall_status === 'approved')
                         <a href="{{ route('special-memo.edit', $specialMemo) }}?change_request=1"

@@ -1240,20 +1240,31 @@
                             <div class="card-header border-0 py-3"
                                 style="background: linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 100%);">
 
-                                <div class="d-flex gap-3" style="float: right;">
-                                    @if($requestARF->overall_status === 'approved')
+                                <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                                    <i class="bx bx-trending-up text-success"></i>
+                                    Approval Progress
+                                </h6>
 
+                                @if($requestARF->overall_status === 'approved')
+                                <div class="d-flex justify-content-end gap-2 flex-wrap mt-3 pt-2 border-top border-light">
                                     <a href="{{ route('request-arf.print', $requestARF) }}"
                                         class="btn btn-primary d-flex align-items-center gap-2" target="_blank">
                                         <i class="bx bx-printer"></i>
                                         <span>Print PDF</span>
                                     </a>
+                                    @if(!empty($canEmailPdf) && $canEmailPdf)
+                                    <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#emailPdfModal" title="Email a PDF copy to yourself">
+                                        <i class="bx bx-mail-send"></i>
+                                        <span>Email PDF</span>
+                                    </button>
+                                    @include('partials.email-pdf-modal', [
+                                        'emailPdfFormAction' => route('request-arf.email-pdf', $requestARF),
+                                        'emailPdfDocumentLabel' => $requestARF->arf_number ?? ('ARF #'.$requestARF->id),
+                                        'emailPdfRecipientChoices' => $emailPdfRecipientChoices ?? [],
+                                    ])
                                     @endif
                                 </div>
-                                <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                                    <i class="bx bx-trending-up text-success"></i>
-                                    Approval Progress
-                                </h6>
+                                @endif
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">

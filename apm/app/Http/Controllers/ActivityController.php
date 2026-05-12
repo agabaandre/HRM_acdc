@@ -30,9 +30,12 @@ use App\Services\ApprovalService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use function PHPUnit\Framework\isEmpty;
+use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
 
 class ActivityController extends Controller
 {
+    use SendsSelfDocumentPdfEmail;
+
     
     /**
      * Display a listing of activities for a matrix.
@@ -495,6 +498,8 @@ class ActivityController extends Controller
         $locations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
     
+        $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
+
         return view(( $activity->is_single_memo ? 'activities.single-memos.show' : 'activities.show'), [
             'matrix' => $activity->matrix,
             'activity' => $activity,
@@ -505,7 +510,9 @@ class ActivityController extends Controller
             'internalParticipants' => $internalParticipants,
             'budgetItems' => $budgetItems,
             'attachments' => $attachments,
-            'title' => ($activity->is_single_memo ? 'View Single Memo: ' : 'View Activity: ') . $activity->activity_title
+            'title' => ($activity->is_single_memo ? 'View Single Memo: ' : 'View Activity: ') . $activity->activity_title,
+            'emailPdfRecipientChoices' => $emailPdfRecipientChoices,
+            'canEmailPdf' => can_print_memo($activity) && count($emailPdfRecipientChoices) > 0,
         ]);
     }
     
@@ -2591,9 +2598,9 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
     }
 
     /**
-     * Generate PDF memo for an activity.
+     * @return array{0: object, 1: string}
      */
-    public function generateMemoPdf(Matrix $matrix, Activity $activity)
+    private function buildActivityMemoPdfForOutput(Matrix $matrix, Activity $activity): array
     {
         // Load comprehensive relationships for the activity
         $activity->load([
@@ -2698,14 +2705,71 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'organized_workflow_steps' => $organizedWorkflowSteps
         ],['preview_html' => $print]);
 
-        // Generate filename
         $filename = 'Activity_Memo_' . str_replace(['/', '\\'], '_', $activity->activity_ref ?? $activity->created_at->format('Y-m-d')) . '_' . now()->format('Y-m-d') . '.pdf';
 
-        // Return PDF for display in browser using mPDF Output method
+        return [$pdf, $filename];
+    }
+
+    public function generateMemoPdf(Matrix $matrix, Activity $activity)
+    {
+        [$pdf, $filename] = $this->buildActivityMemoPdfForOutput($matrix, $activity);
+
         return response($pdf->Output($filename, 'I'), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"'
         ]);
+    }
+
+    public function emailMemoPdf(Request $request, Matrix $matrix, Activity $activity): RedirectResponse
+    {
+        if (! can_print_memo($activity)) {
+            abort(403);
+        }
+
+        $allowed = staff_pdf_mail_allowed_recipient_emails_normalized();
+        if ($allowed === []) {
+            return redirect()->back()
+                ->with('msg', 'No valid email is on file for your account. Update your work email in staff records, then try again.')
+                ->with('type', 'warning');
+        }
+
+        $validated = $request->validate([
+            'recipient_email' => 'required|email|max:255',
+        ]);
+
+        $norm = strtolower(trim($validated['recipient_email']));
+        if (! in_array($norm, $allowed, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'recipient_email' => 'You can only send this PDF to your own email address.',
+            ]);
+        }
+
+        try {
+            [$pdf, $filename] = $this->buildActivityMemoPdfForOutput($matrix, $activity);
+            $binary = $pdf->Output($filename, 'S');
+            if (! is_string($binary) || $binary === '') {
+                throw new \RuntimeException('PDF generation returned empty output.');
+            }
+
+            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM');
+            $doc = $activity->document_number ?? ($activity->activity_ref ?? 'Activity-'.$activity->id);
+            $subject = "{$prefix}: {$doc} (PDF)";
+
+            $this->queueDocumentPdfEmailFromBinary($validated['recipient_email'], $subject, $filename, $binary);
+        } catch (\Throwable $e) {
+            Log::error('Activity memo email PDF queue failed', [
+                'activity_id' => $activity->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->with('msg', 'Could not queue the email: '.$e->getMessage())
+                ->with('type', 'danger');
+        }
+
+        return redirect()->back()
+            ->with('msg', 'Your PDF email has been queued. It should arrive shortly; if not, confirm email settings and that a queue worker is processing jobs.')
+            ->with('type', 'success');
     }
 
     /**

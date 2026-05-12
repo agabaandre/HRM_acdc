@@ -308,7 +308,18 @@
                             <span>Print</span>
                         </a>
                     @endif
-                    
+                    @if(!empty($canEmailPdf) && $canEmailPdf)
+                        <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#emailPdfModal" title="Email a PDF copy to yourself">
+                            <i class="bx bx-mail-send"></i>
+                            <span>Email PDF</span>
+                        </button>
+                        @include('partials.email-pdf-modal', [
+                            'emailPdfFormAction' => route('non-travel.email-pdf', $nonTravel),
+                            'emailPdfDocumentLabel' => $nonTravel->document_number ?? ('Non-travel #'.$nonTravel->id),
+                            'emailPdfRecipientChoices' => $emailPdfRecipientChoices ?? [],
+                        ])
+                    @endif
+
                     @if($nonTravel->overall_status === 'approved')
                         <a href="{{ route('non-travel.edit', $nonTravel) }}?change_request=1"
                            class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1">

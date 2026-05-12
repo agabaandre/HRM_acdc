@@ -382,6 +382,8 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     // Activity PDF Generation Route
     Route::get('/matrices/{matrix}/activities/{activity}/memo-pdf', [ActivityController::class, 'generateMemoPdf'])
         ->name('matrices.activities.memo-pdf');
+    Route::post('/matrices/{matrix}/activities/{activity}/email-pdf', [ActivityController::class, 'emailMemoPdf'])
+        ->name('matrices.activities.email-pdf');
     
     // Admin-only route to update creator and responsible person
     Route::post('/matrices/{matrix}/activities/{activity}/admin-update', [ActivityController::class, 'adminUpdate'])
@@ -518,6 +520,7 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::post('special-memo/{specialMemo}/convert-to-non-travel', [App\Http\Controllers\NonTravelMemoController::class, 'convertReturnedSpecialMemoToNonTravel'])
         ->name('special-memo.convert-to-non-travel');
     Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMemoController::class, 'status'])->name('special-memo.status');
+    Route::post('special-memo/{specialMemo}/email-pdf', [App\Http\Controllers\SpecialMemoController::class, 'emailPdf'])->name('special-memo.email-pdf');
     
     // Request for Services Routes
     // Specific routes must come before resource routes to avoid conflicts
@@ -546,6 +549,9 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::post('change-requests/{changeRequest}/unarchive', [App\Http\Controllers\ChangeRequestController::class, 'unarchive'])->name('change-requests.unarchive');
     Route::post('change-requests/{changeRequest}/admin-update', [App\Http\Controllers\ChangeRequestController::class, 'adminUpdate'])->name('change-requests.admin-update');
     Route::post('change-requests/{changeRequest}/email-pdf', [App\Http\Controllers\ChangeRequestController::class, 'emailPdf'])->name('change-requests.email-pdf');
+    Route::post('non-travel/{nonTravel}/email-pdf', [App\Http\Controllers\NonTravelMemoController::class, 'emailPdf'])->name('non-travel.email-pdf');
+    Route::post('service-requests/{serviceRequest}/email-pdf', [App\Http\Controllers\ServiceRequestController::class, 'emailPdf'])->name('service-requests.email-pdf');
+    Route::post('request-arf/{requestARF}/email-pdf', [App\Http\Controllers\RequestARFController::class, 'emailPdf'])->name('request-arf.email-pdf');
 
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
