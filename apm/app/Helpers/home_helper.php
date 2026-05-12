@@ -310,7 +310,7 @@ if (! function_exists('generate_pdf')) {
      *                          - 'preview_html' (bool): If true, output HTML to browser instead of PDF (for debug)
      *                          - 'format' (string): Page size, default A4 (e.g. A4, Letter)
      *                          - 'orientation' (string): L or LANDSCAPE for landscape (mPDF uses e.g. A4-L)
-     *                          - 'document_url' (string): URL encoded in the footer QR (after the By: name line; defaults to current request URL in web context, else APP_URL); plain text if QR fails
+     *                          - 'document_url' (string): URL encoded in the footer QR (left of Source/Generated/By; defaults to current request URL in web context, else APP_URL); plain text if QR fails
      * @return \Mpdf\Mpdf|string
      */
     function generate_pdf($view, $data = [], $options = [])
@@ -350,7 +350,7 @@ if (! function_exists('generate_pdf')) {
                 $qrResult = $writer->write($qrCode);
                 $dataUri = $qrResult->getDataUri();
                 $dataUriEsc = htmlspecialchars($dataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                $footerDocumentQrHtml = '<img src="'.$dataUriEsc.'" alt="" style="width: 14mm; height: 14mm; display: block; margin-top: 3px;" />';
+                $footerDocumentQrHtml = '<img src="'.$dataUriEsc.'" alt="" style="width: 14mm; height: 14mm; display: block;" />';
             }
         } catch (\Throwable $e) {
             Log::warning('mPDF footer QR code generation failed', [
@@ -359,14 +359,25 @@ if (! function_exists('generate_pdf')) {
             $footerDocumentQrHtml = '';
         }
         if ($footerDocumentQrHtml === '') {
-            $footerDocumentQrHtml = '<span style="word-break: break-all; font-size: 6pt; display: inline-block; max-width: 52mm; margin-top: 3px;">'.$footerDocumentUrlEsc.'</span>';
+            $footerDocumentQrHtml = '<span style="word-break: break-all; font-size: 6pt; display: inline-block; max-width: 16mm;">'.$footerDocumentUrlEsc.'</span>';
         }
 
         $footerMetaHtml = 'Source: Africa CDC  Central Business Platform<br>'
             .'Generated on: '.date('d F, Y h:i A').'<br>'
             .'By: '.htmlspecialchars((string) (user_session('name') ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
-        $footerMetaAndQrHtml = $footerMetaHtml.'<br>'.$footerDocumentQrHtml;
+        $footerMetaAndQrHtml = '<div style="display: inline-block; text-align: left;">'
+            .'<table cellpadding="0" cellspacing="0" style="border-collapse: collapse; border: none; width: auto;">'
+            .'<tr>'
+            .'<td valign="top" align="left" style="border: none; width: 16mm; padding: 0 12px 0 0;">'
+            .$footerDocumentQrHtml
+            .'</td>'
+            .'<td valign="top" align="left" style="border: none; padding: 0;">'
+            .$footerMetaHtml
+            .'</td>'
+            .'</tr>'
+            .'</table>'
+            .'</div>';
 
         $pdfFormat = $options['format'] ?? 'A4';
         $orientation = strtoupper((string) ($options['orientation'] ?? ''));
@@ -487,25 +498,16 @@ if (! function_exists('generate_pdf')) {
         // Set footer exactly like CodeIgniter
         $footer = ' <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 8pt; color: #911C39; border:none; margin-top: 4px; border-collapse: collapse; !important">
             <tr>
-                <td align="left" valign="top" style="border: none; width: 42%; padding: 0 6px 0 0;">
+                <td align="left" valign="top" style="border: none; width: 42%; padding: 0 18px 0 0;">
                     Africa CDC Headquarters, Ring Road, 16/17,<br>
                     Haile Garment Lafto Square, Nifas Silk-Lafto Sub City,<br>
                     P.O Box: 200050 Addis Ababa, Tel: +251(0) 112175100/75200<br>
                     Email: <a href="mailto:registry@africacdc.org" style="color: #911C39;">registry@africacdc.org</a>
                 </td>
-                <td align="left" valign="top" style="border: none; padding: 0;">
-                    '.$footerMetaAndQrHtml.'
-                </td>
+                <td align="right" valign="top" style="border: none; padding: 0 0 0 12px;">'.$footerMetaAndQrHtml.'</td>
             </tr>
-        </table>'.'<p style="text-align:right; font-size: 8pt;">Page {PAGENO} of {nbpg}</p>';
-
+        </table><p style="text-align:right; font-size: 8pt;">Page {PAGENO} of {nbpg}</p>';
         $mpdf->SetHTMLFooter($footer);
-
-        // Optional watermark text (e.g. "APPROVED") on every page
-        if (! empty($options['watermark_text'])) {
-            $mpdf->SetWatermarkText($options['watermark_text'], $options['watermark_alpha'] ?? 0.12);
-            $mpdf->showWatermarkText = true;
-        }
 
         // Write HTML content with safer parsing for long/dirty documents.
         try {
