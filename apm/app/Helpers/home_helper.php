@@ -350,8 +350,8 @@ if (! function_exists('generate_pdf')) {
                 $qrResult = $writer->write($qrCode);
                 $dataUri = $qrResult->getDataUri();
                 $dataUriEsc = htmlspecialchars($dataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                $footerDocumentQrHtml = '<div style="text-align: center;">'
-                    .'<img src="'.$dataUriEsc.'" alt="Document link QR" style="width: 14mm; height: 14mm; display: block; margin: 0 auto;" />'
+                $footerDocumentQrHtml = '<div style="text-align: right;">'
+                    .'<img src="'.$dataUriEsc.'" alt="Document link QR" style="width: 14mm; height: 14mm; display: block; margin-left: auto; margin-right: 0;" />'
                     .'</div>';
             }
         } catch (\Throwable $e) {
@@ -361,7 +361,7 @@ if (! function_exists('generate_pdf')) {
             $footerDocumentQrHtml = '';
         }
         if ($footerDocumentQrHtml === '') {
-            $footerDocumentQrHtml = '<div style="text-align: center; max-width: 22mm;"><span style="word-break: break-all; white-space: normal; font-size: 6pt;">'.$footerDocumentUrlEsc.'</span></div>';
+            $footerDocumentQrHtml = '<div style="text-align: right; max-width: 22mm;"><span style="word-break: break-all; white-space: normal; font-size: 6pt;">'.$footerDocumentUrlEsc.'</span></div>';
         }
 
         $footerMetaHtml = 'Source: Africa CDC  Central Business Platform<br>'
@@ -485,18 +485,18 @@ if (! function_exists('generate_pdf')) {
         $mpdf->SetHTMLHeader($header);    // allow auto page break with 30mm bottom margin for footer
 
         // Set footer exactly like CodeIgniter
-        $footer = ' <table width="100%" style="font-size: 8pt; color: #911C39; border:none; margin-top: 4px; !important">
+        $footer = ' <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 8pt; color: #911C39; border:none; margin-top: 4px; border-collapse: collapse; !important">
             <tr>
-                <td align="left" valign="top" style="border: none; width: 46%;">
+                <td align="left" valign="top" style="border: none; width: 40%; padding: 0 4px 0 0;">
                     Africa CDC Headquarters, Ring Road, 16/17,<br>
                     Haile Garment Lafto Square, Nifas Silk-Lafto Sub City,<br>
                     P.O Box: 200050 Addis Ababa, Tel: +251(0) 112175100/75200<br>
                     Email: <a href="mailto:registry@africacdc.org" style="color: #911C39;">registry@africacdc.org</a>
                 </td>
-                <td align="center" valign="top" style="border: none; width: 18%; padding: 0 4px;">
+                <td align="right" valign="top" style="border: none; width: 15mm; max-width: 15mm; padding: 0 1px 0 0;">
                     '.$footerDocumentQrHtml.'
                 </td>
-                <td align="left" valign="top" style="border: none;">
+                <td align="left" valign="top" style="border: none; padding: 0 0 0 2px;">
                     '.$footerMetaHtml.'
                 </td>
             </tr>
