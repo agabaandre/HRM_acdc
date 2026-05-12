@@ -725,7 +725,7 @@ if (! function_exists('user_session')) {
                 $sid = (int) $user->staff_id;
 
                 return $memo->workflowAllowsSubmitterParentMemoEdit()
-                    && $memo->isOwnedOrResponsibleByStaffId($sid);
+                    && $memo->isOwnedResponsibleOrEffectiveDivisionHeadByStaffId($sid);
             }
 
             $session_division_id = isset($user->division_id) ? $user->division_id : null;

@@ -499,6 +499,61 @@ class ChangeRequest extends Model
             || ($this->responsible_person_id !== null && (int) $this->responsible_person_id === $staffId);
     }
 
+    /**
+     * Creator, responsible person, or effective Head of Division (division_head or active head OIC).
+     */
+    public function isOwnedResponsibleOrEffectiveDivisionHeadByStaffId(?int $staffId): bool
+    {
+        if ($this->isOwnedOrResponsibleByStaffId($staffId)) {
+            return true;
+        }
+        if ($staffId === null) {
+            return false;
+        }
+
+        $division = $this->relationLoaded('division') ? $this->division : null;
+        if (! $division && $this->division_id) {
+            $division = Division::query()->find((int) $this->division_id);
+        }
+        if (! $division) {
+            return false;
+        }
+
+        if (function_exists('effective_division_head_staff_id')) {
+            $headId = effective_division_head_staff_id($division);
+
+            return $headId !== null && (int) $headId === (int) $staffId;
+        }
+
+        return (int) ($division->division_head ?? 0) === (int) $staffId;
+    }
+
+    /**
+     * When editing a parent memo with ?change_request=1&change_request_id=…, verify the CR targets this memo
+     * and the viewer may edit (creator, responsible, or effective division head).
+     */
+    public static function viewerMayEditParentMemoRoute(?int $changeRequestId, object $parentMemo, int $viewerStaffId): bool
+    {
+        if (! $changeRequestId || $viewerStaffId <= 0) {
+            return false;
+        }
+
+        $cr = self::query()->with('division')->find($changeRequestId);
+        if (! $cr) {
+            return false;
+        }
+        if ((int) $cr->parent_memo_id !== (int) $parentMemo->id) {
+            return false;
+        }
+        $expectedModel = get_class($parentMemo);
+        if ((string) $cr->parent_memo_model !== $expectedModel) {
+            return false;
+        }
+
+        return $cr->isOwnedResponsibleOrEffectiveDivisionHeadByStaffId($viewerStaffId)
+            && $cr->workflowAllowsSubmitterParentMemoEdit();
+    }
+
     public function getRecipientsAttribute($value)
     {
         if (is_array($value)) {

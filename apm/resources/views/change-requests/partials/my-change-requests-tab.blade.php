@@ -186,7 +186,7 @@
                                title="View Details">
                                 <i class="bx bx-show me-1"></i>View
                             </a>
-                            @if($changeRequest->workflowAllowsSubmitterParentMemoEdit() && user_session('staff_id') && $changeRequest->isOwnedOrResponsibleByStaffId((int) user_session('staff_id')))
+                            @if($changeRequest->workflowAllowsSubmitterParentMemoEdit() && user_session('staff_id') && $changeRequest->isOwnedResponsibleOrEffectiveDivisionHeadByStaffId((int) user_session('staff_id')))
                                 <a href="{{ route('change-requests.edit', $changeRequest) }}" 
                                    class="btn btn-sm btn-outline-warning" 
                                    title="Edit">

@@ -581,10 +581,14 @@ class ActivityController extends Controller
         // For change requests, allow access to approved activities if user is owner/responsible
         if ($isChangeRequest) {
             $user = (object) session('user', []);
-            $isOwner = isset($activity->staff_id, $user->staff_id) && $activity->staff_id == $user->staff_id;
-            $isResponsible = isset($activity->responsible_person_id, $user->staff_id) && $activity->responsible_person_id == $user->staff_id;
-            
-            if (!$isOwner && !$isResponsible) {
+            $sid = (int) ($user->staff_id ?? 0);
+            $isOwner = isset($activity->staff_id, $user->staff_id) && (int) $activity->staff_id === $sid;
+            $isResponsible = isset($activity->responsible_person_id, $user->staff_id)
+                && (int) $activity->responsible_person_id === $sid;
+            $crId = request()->filled('change_request_id') ? (int) request('change_request_id') : 0;
+            $canViaCr = $crId > 0 && ChangeRequest::viewerMayEditParentMemoRoute($crId, $activity, $sid);
+
+            if (! $isOwner && ! $isResponsible && ! $canViaCr) {
                 return redirect()
                     ->route('matrices.activities.show', [$matrix, $activity])
                     ->with('error', 'You can only create change requests for activities you own or are responsible for.');
@@ -725,10 +729,14 @@ class ActivityController extends Controller
         // For change requests, allow access to approved activities if user is owner/responsible
         if ($isChangeRequest) {
             $user = (object) session('user', []);
-            $isOwner = isset($activity->staff_id, $user->staff_id) && $activity->staff_id == $user->staff_id;
-            $isResponsible = isset($activity->responsible_person_id, $user->staff_id) && $activity->responsible_person_id == $user->staff_id;
-            
-            if (!$isOwner && !$isResponsible) {
+            $sid = (int) ($user->staff_id ?? 0);
+            $isOwner = isset($activity->staff_id, $user->staff_id) && (int) $activity->staff_id === $sid;
+            $isResponsible = isset($activity->responsible_person_id, $user->staff_id)
+                && (int) $activity->responsible_person_id === $sid;
+            $crId = request()->filled('change_request_id') ? (int) request('change_request_id') : 0;
+            $canViaCr = $crId > 0 && ChangeRequest::viewerMayEditParentMemoRoute($crId, $activity, $sid);
+
+            if (! $isOwner && ! $isResponsible && ! $canViaCr) {
                 return redirect()
                     ->route('activities.single-memos.show', $activity)
                     ->with('error', 'You can only create change requests for activities you own or are responsible for.');
@@ -874,8 +882,16 @@ class ActivityController extends Controller
      */
     public function updateSingleMemo(Request $request, Matrix $matrix, Activity $activity): RedirectResponse|JsonResponse
     {
-        // Check if user has privileges to edit this memo using can_edit_memo()
-        if (!can_edit_memo($activity)) {
+        $currentStaffId = (int) (user_session('staff_id') ?? 0);
+        $changeRequestRaw = strtolower(trim((string) $request->query('change_request', $request->input('change_request', ''))));
+        $isChangeRequest = $request->input('change_request') == '1'
+            || $request->boolean('change_request')
+            || in_array($changeRequestRaw, ['1', 'true', 'yes', 'on'], true);
+        $crId = (int) $request->input('change_request_id', $request->query('change_request_id', 0));
+        $mayEditViaChangeRequest = $isChangeRequest && $crId > 0
+            && ChangeRequest::viewerMayEditParentMemoRoute($crId, $activity, $currentStaffId);
+
+        if (! $mayEditViaChangeRequest && ! can_edit_memo($activity)) {
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -3783,14 +3799,11 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             abort(404, 'This change request does not belong to this activity.');
         }
         $userStaffId = (int) user_session('staff_id');
-        $isCrOwner = (int) $changeRequest->staff_id === $userStaffId;
-        $isCrResponsible = (int) $changeRequest->responsible_person_id === $userStaffId;
-        if (! $isCrOwner && ! $isCrResponsible) {
+        if (! $changeRequest->isOwnedResponsibleOrEffectiveDivisionHeadByStaffId($userStaffId)) {
             abort(403, 'You are not authorized to edit this change request.');
         }
-        $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED];
-        if (! in_array($changeRequest->overall_status, $allowedStatuses, true)) {
-            abort(403, 'Only draft or rejected change requests can be edited.');
+        if (! $changeRequest->workflowAllowsSubmitterParentMemoEdit()) {
+            abort(403, 'This change request cannot be edited in its current status or approval level.');
         }
 
         $this->applyChangeRequestSnapshotToActivity($activity, $changeRequest);

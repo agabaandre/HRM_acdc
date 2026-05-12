@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
+use App\Models\ChangeRequest;
 use App\Models\NonTravelMemo;
 use App\Models\NonTravelMemoCategory;
 use App\Models\SpecialMemo;
@@ -668,13 +669,16 @@ class NonTravelMemoController extends Controller
             || in_array($changeRequestRaw, ['1', 'true', 'yes', 'on'], true);
         $currentStaffId = (int) (user_session('staff_id') ?? 0);
         $isOwner = (int) ($nonTravel->staff_id ?? 0) === $currentStaffId;
-        
-        // For change requests, Non-Travel memo access is creator-only.
+
+        // For change requests, allow creator/responsible on CR or effective division head (same as change-requests.edit).
         if ($isChangeRequest) {
-            if (! $isOwner) {
+            $crId = (int) $request->query('change_request_id', $request->input('change_request_id', 0));
+            $mayViaChangeRequest = $crId > 0
+                && ChangeRequest::viewerMayEditParentMemoRoute($crId, $nonTravel, $currentStaffId);
+            if (! $isOwner && ! $mayViaChangeRequest) {
                 return redirect()
                     ->route('non-travel.show', $nonTravel)
-                    ->with('error', 'You can only create change requests for memos you created.');
+                    ->with('error', 'You do not have permission to edit this memo for this change request.');
             }
         } else {
             // Creator should always be allowed to edit their own non-travel memo.
@@ -781,8 +785,15 @@ class NonTravelMemoController extends Controller
         $currentStaffId = (int) (user_session('staff_id') ?? 0);
         $isOwner = (int) ($nonTravel->staff_id ?? 0) === $currentStaffId;
 
-        // Creator should always be allowed; otherwise fall back to existing workflow permission check.
-        if (! $isOwner && ! can_edit_memo($nonTravel)) {
+        $changeRequestRaw = strtolower(trim((string) $request->query('change_request', $request->input('change_request', ''))));
+        $isChangeRequest = $request->boolean('change_request')
+            || in_array($changeRequestRaw, ['1', 'true', 'yes', 'on'], true);
+        $crId = (int) $request->input('change_request_id', $request->query('change_request_id', 0));
+        $mayEditViaChangeRequest = $isChangeRequest && $crId > 0
+            && ChangeRequest::viewerMayEditParentMemoRoute($crId, $nonTravel, $currentStaffId);
+
+        // Creator should always be allowed; change-request path for HoD/creator; otherwise can_edit_memo.
+        if (! $isOwner && ! $mayEditViaChangeRequest && ! can_edit_memo($nonTravel)) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -795,7 +806,7 @@ class NonTravelMemoController extends Controller
         }
 
         $ntStatus = strtolower((string) ($nonTravel->overall_status ?? ''));
-        if (in_array($ntStatus, ['pending', 'approved'], true)) {
+        if (in_array($ntStatus, ['pending', 'approved'], true) && ! $mayEditViaChangeRequest) {
             $blocked = 'This memo cannot be edited while it is pending or approved. For approved memos, use a change request instead.';
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
