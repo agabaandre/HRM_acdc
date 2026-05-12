@@ -462,6 +462,58 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-12">
+                        <hr class="my-2">
+                        <h6 class="mb-2 text-secondary"><i class="bx bx-news me-1"></i>Division Weekly Brief (email)</h6>
+                        <p class="small text-muted mb-3">Production sends are also triggered by the scheduler every minute (<code>weekly-briefing:hod-reminders</code>, <code>weekly-briefing:compiled-summary</code>). Use <strong>Send test emails</strong> to verify SMTP to a safe inbox; force buttons email <em>real</em> contributors or compiled recipients.</p>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm h-100 border-start border-success border-3">
+                            <div class="card-body text-center">
+                                <div class="mb-2">
+                                    <i class="bx bx-envelope text-success" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Test weekly brief emails</h6>
+                                <p class="card-text small text-muted">Sends two sample messages (reminder + compiled notice) to check delivery.</p>
+                                <label class="form-label small text-start d-block text-muted">Recipient</label>
+                                <input type="email" class="form-control form-control-sm mb-2" id="wbTestEmail" value="andrewa@africacdc.org" autocomplete="email">
+                                <button type="button" class="btn btn-success btn-sm w-100" id="wbTestEmailBtn" onclick="executeWeeklyBriefingMail('test_emails', this)">
+                                    <i class="bx bx-send me-1"></i> Send test emails
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm h-100 border-start border-warning border-3">
+                            <div class="card-body text-center">
+                                <div class="mb-2">
+                                    <i class="bx bx-user-voice text-warning" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">HoD / contributor reminders</h6>
+                                <p class="card-text small text-muted">Runs <code>--force</code>: emails everyone due a missing draft for this ISO week (same as scheduled reminder).</p>
+                                <button type="button" class="btn btn-outline-warning btn-sm w-100" onclick="executeWeeklyBriefingMail('hod_reminders', this)">
+                                    <i class="bx bx-play me-1"></i> Run now (force)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm h-100 border-start border-primary border-3">
+                            <div class="card-body text-center">
+                                <div class="mb-2">
+                                    <i class="bx bx-paperclip text-primary" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Compiled summary email</h6>
+                                <p class="card-text small text-muted">Runs <code>--force</code>: sends PDFs to configured compiled recipients (and HoD CC if enabled).</p>
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="executeWeeklyBriefingMail('compiled_summary', this)">
+                                    <i class="bx bx-play me-1"></i> Run now (force)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1066,6 +1118,49 @@ function executeRemindersSchedule(force = false) {
         },
         complete: function() {
             // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    });
+}
+
+function executeWeeklyBriefingMail(action, button) {
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Running...';
+    button.disabled = true;
+    $('#outputCard').show();
+    $('#commandOutput').html('<div class="text-info">Running Division Weekly Brief: ' + action + '…</div>');
+    const payload = {
+        action: action,
+        _token: '{{ csrf_token() }}'
+    };
+    if (action === 'test_emails') {
+        payload.email = ($('#wbTestEmail').val() || '').trim();
+    }
+    $.ajax({
+        url: '{{ route("jobs.weekly-briefing") }}',
+        type: 'POST',
+        data: payload,
+        success: function(response) {
+            if (response.success) {
+                $('#commandOutput').html(
+                    '<div class="text-success">✓ ' + (response.message || 'OK') + '</div>' +
+                    '<div class="text-light">Time: ' + response.execution_time + 'ms</div>' +
+                    '<div class="text-light mt-2">Command: <code>' + (response.command || '') + '</code></div>' +
+                    '<div class="text-light mt-2">Output:</div><div class="text-light">' + (response.output || '—') + '</div>'
+                );
+                showAlert('Weekly briefing command finished', 'success');
+            } else {
+                $('#commandOutput').html('<div class="text-danger">✗ ' + (response.message || 'Failed') + '</div><div class="text-danger">' + (response.output || '') + '</div>');
+                showAlert(response.message || 'Weekly briefing command failed', 'danger');
+            }
+        },
+        error: function(xhr) {
+            const r = xhr.responseJSON;
+            $('#commandOutput').html('<div class="text-danger">✗ ' + (r?.message || 'Request failed') + '</div>');
+            showAlert(r?.message || 'Weekly briefing request failed', 'danger');
+        },
+        complete: function() {
             button.innerHTML = originalText;
             button.disabled = false;
         }

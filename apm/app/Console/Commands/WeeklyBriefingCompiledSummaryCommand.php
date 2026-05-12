@@ -14,21 +14,24 @@ use Illuminate\Support\Str;
 
 class WeeklyBriefingCompiledSummaryCommand extends Command
 {
-    protected $signature = 'weekly-briefing:compiled-summary';
+    protected $signature = 'weekly-briefing:compiled-summary {--force : Run immediately, ignoring reminders_enabled, weekday, and summary_send_time}';
 
     protected $description = 'Email compiled weekly briefing PDF to configured recipients.';
 
     public function handle(): int
     {
         $settings = WeeklyBriefingSetting::current();
-        if (! $settings->reminders_enabled) {
-            return self::SUCCESS;
-        }
-        if ((int) Carbon::now()->dayOfWeek !== (int) $settings->submission_weekday) {
-            return self::SUCCESS;
-        }
-        if (! $settings->matchesTimeNow('summary_send_time')) {
-            return self::SUCCESS;
+        $force = (bool) $this->option('force');
+        if (! $force) {
+            if (! $settings->reminders_enabled) {
+                return self::SUCCESS;
+            }
+            if ((int) Carbon::now()->dayOfWeek !== (int) $settings->submission_weekday) {
+                return self::SUCCESS;
+            }
+            if (! $settings->matchesTimeNow('summary_send_time')) {
+                return self::SUCCESS;
+            }
         }
 
         $y = Carbon::now()->isoWeekYear();

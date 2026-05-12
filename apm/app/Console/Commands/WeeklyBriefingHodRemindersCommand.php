@@ -14,21 +14,24 @@ use Illuminate\Support\Facades\Mail;
 
 class WeeklyBriefingHodRemindersCommand extends Command
 {
-    protected $signature = 'weekly-briefing:hod-reminders';
+    protected $signature = 'weekly-briefing:hod-reminders {--force : Run immediately, ignoring reminders_enabled, weekday, and hod_reminder_time}';
 
     protected $description = 'Remind configured contributors (or legacy division HoDs) when a weekly briefing is missing for the current ISO week.';
 
     public function handle(): int
     {
         $settings = WeeklyBriefingSetting::current();
-        if (! $settings->reminders_enabled) {
-            return self::SUCCESS;
-        }
-        if ((int) Carbon::now()->dayOfWeek !== (int) $settings->submission_weekday) {
-            return self::SUCCESS;
-        }
-        if (! $settings->matchesTimeNow('hod_reminder_time')) {
-            return self::SUCCESS;
+        $force = (bool) $this->option('force');
+        if (! $force) {
+            if (! $settings->reminders_enabled) {
+                return self::SUCCESS;
+            }
+            if ((int) Carbon::now()->dayOfWeek !== (int) $settings->submission_weekday) {
+                return self::SUCCESS;
+            }
+            if (! $settings->matchesTimeNow('hod_reminder_time')) {
+                return self::SUCCESS;
+            }
         }
 
         $y = Carbon::now()->isoWeekYear();
