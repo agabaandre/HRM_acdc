@@ -17,6 +17,10 @@ class WeeklyBriefingSetting extends Model
         'cc_division_hod_on_compiled',
         'reminders_enabled',
         'division_directors_can_access_module',
+        'report_unlock_override_enabled',
+        'report_unlock_override_until',
+        'report_unlock_override_scope',
+        'report_unlock_override_division_id',
         'report_viewer_staff_ids',
     ];
 
@@ -27,6 +31,10 @@ class WeeklyBriefingSetting extends Model
             'cc_division_hod_on_compiled' => 'boolean',
             'reminders_enabled' => 'boolean',
             'division_directors_can_access_module' => 'boolean',
+            'report_unlock_override_enabled' => 'boolean',
+            'report_unlock_override_until' => 'datetime',
+            'report_unlock_override_scope' => 'string',
+            'report_unlock_override_division_id' => 'integer',
             'report_viewer_staff_ids' => 'array',
         ];
     }
@@ -67,5 +75,40 @@ class WeeklyBriefingSetting extends Model
         $hm = is_string($value) ? substr($value, 0, 5) : Carbon::parse($value)->format('H:i');
 
         return Carbon::now()->format('H:i') === $hm;
+    }
+
+    /**
+     * Admin unlock window: contributors (and directors) may edit / submit past the normal deadline
+     * for locked or late drafts, until {@see report_unlock_override_until}.
+     */
+    public function reportUnlockOverrideAppliesTo(WeeklyBriefingReport $report): bool
+    {
+        if (! $this->report_unlock_override_enabled) {
+            return false;
+        }
+        $until = $this->report_unlock_override_until;
+        if ($until === null) {
+            return false;
+        }
+        if (Carbon::now()->greaterThan(Carbon::parse($until))) {
+            return false;
+        }
+        $scope = (string) ($this->report_unlock_override_scope ?? 'all');
+        if ($scope !== 'division') {
+            return true;
+        }
+        $divId = (int) ($this->report_unlock_override_division_id ?? 0);
+        if ($divId <= 0) {
+            return false;
+        }
+        $key = (string) ($report->contribution_key ?? '');
+        if (str_starts_with($key, 'd-')) {
+            return (int) substr($key, 2) === $divId;
+        }
+        if (str_starts_with($key, 'dr-')) {
+            return (int) ($report->division_id ?? 0) === $divId;
+        }
+
+        return false;
     }
 }

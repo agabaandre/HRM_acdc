@@ -8,9 +8,11 @@ use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingSetting;
 use App\Services\DivisionWeeklyBriefGate;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class WeeklyBriefingSettingsController extends Controller
@@ -46,6 +48,20 @@ class WeeklyBriefingSettingsController extends Controller
             'cc_division_hod_on_compiled' => 'sometimes|boolean',
             'reminders_enabled' => 'sometimes|boolean',
             'division_directors_can_access_module' => 'sometimes|boolean',
+            'report_unlock_override_enabled' => 'sometimes|boolean',
+            'report_unlock_override_until' => [
+                'nullable',
+                'date',
+                Rule::requiredIf(fn () => $request->boolean('report_unlock_override_enabled')),
+            ],
+            'report_unlock_override_scope' => 'nullable|in:all,division',
+            'report_unlock_override_division_id' => [
+                'nullable',
+                'integer',
+                Rule::exists((new Division)->getTable(), 'id'),
+                Rule::requiredIf(fn () => $request->boolean('report_unlock_override_enabled')
+                    && $request->input('report_unlock_override_scope') === 'division'),
+            ],
             'contributors' => 'nullable|array',
             'contributors.*.staff_id' => 'nullable|integer',
             'contributors.*.apm_division_id' => 'nullable|integer',
@@ -116,6 +132,23 @@ class WeeklyBriefingSettingsController extends Controller
         }
         $viewerIds = array_values($viewerIds);
 
+        $overrideEnabled = $request->boolean('report_unlock_override_enabled');
+        $overrideScope = $overrideEnabled ? (string) ($data['report_unlock_override_scope'] ?? 'all') : 'all';
+        if ($overrideScope !== 'division') {
+            $overrideScope = 'all';
+        }
+        $overrideUntil = null;
+        if ($overrideEnabled && ! empty($data['report_unlock_override_until'])) {
+            $overrideUntil = Carbon::parse($data['report_unlock_override_until'])->format('Y-m-d H:i:s');
+        }
+        $overrideDivisionId = null;
+        if ($overrideEnabled && $overrideScope === 'division') {
+            $overrideDivisionId = (int) ($data['report_unlock_override_division_id'] ?? 0);
+            if ($overrideDivisionId <= 0) {
+                $overrideDivisionId = null;
+            }
+        }
+
         $settings->fill([
             'submission_weekday' => $data['submission_weekday'],
             'hod_reminder_time' => $this->normalizeTime($data['hod_reminder_time']),
@@ -125,6 +158,10 @@ class WeeklyBriefingSettingsController extends Controller
             'cc_division_hod_on_compiled' => $request->boolean('cc_division_hod_on_compiled'),
             'reminders_enabled' => $request->boolean('reminders_enabled'),
             'division_directors_can_access_module' => $request->boolean('division_directors_can_access_module'),
+            'report_unlock_override_enabled' => $overrideEnabled,
+            'report_unlock_override_until' => $overrideUntil,
+            'report_unlock_override_scope' => $overrideScope,
+            'report_unlock_override_division_id' => $overrideDivisionId,
             'report_viewer_staff_ids' => $viewerIds,
         ]);
         $settings->save();

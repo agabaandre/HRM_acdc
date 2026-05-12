@@ -13,6 +13,17 @@
     @endif
 
     @php
+        $unlockOverrideActive = $unlockOverrideActive ?? false;
+    @endphp
+    @if($unlockOverrideActive && $settings->report_unlock_override_until)
+        <div class="alert alert-warning border shadow-sm mb-3">
+            <strong><i class="fas fa-unlock-alt me-1"></i>Administrative unlock is active.</strong>
+            Editing @if($report->status === \App\Models\WeeklyBriefingReport::STATUS_LOCKED)and submission of this locked briefing @endif are allowed until
+            <strong>{{ $settings->report_unlock_override_until->timezone(config('app.timezone'))->format('M j, Y g:i A') }}</strong> ({{ config('app.timezone') }}).
+        </div>
+    @endif
+
+    @php
         $submissionDeadline = $report->submissionDeadline($settings);
         $s1 = old('section1', $report->section1_major_happenings ?? []);
         while (count($s1) < 3) {
@@ -33,8 +44,10 @@
             <strong><i class="fas fa-calendar-check me-1"></i>Submission deadline</strong>
             <span class="ms-1">{{ $submissionDeadline->format('l, F j, Y') }} at {{ $submissionDeadline->format('g:i A') }}</span>
         </div>
-        @if($report->status === \App\Models\WeeklyBriefingReport::STATUS_LOCKED)
+        @if($report->status === \App\Models\WeeklyBriefingReport::STATUS_LOCKED && ! ($unlockOverrideActive ?? false))
             <span class="badge bg-dark">Locked</span>
+        @elseif($report->status === \App\Models\WeeklyBriefingReport::STATUS_LOCKED && ($unlockOverrideActive ?? false))
+            <span class="badge bg-warning text-dark">Locked — open for edits (admin unlock)</span>
         @elseif(! $anyEditsOpen)
             <span class="badge bg-danger">Closed — deadline passed</span>
         @else
@@ -198,7 +211,13 @@
             <div class="d-flex flex-wrap gap-2 mb-5">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>@if($canDirectorEdit && ! $canContributorEdit)Save changes (director)@else Save draft @endif</button>
                 @if($canContributorSubmit)
-                    <button type="submit" name="submit_final" value="1" class="btn btn-success" onclick="return confirm('Submit this weekly briefing? You can still edit until the deadline if submission is allowed.');"><i class="fas fa-paper-plane me-1"></i>Submit</button>
+                    <button type="submit" name="submit_final" value="1" class="btn btn-success"
+                        @if($unlockOverrideActive ?? false)
+                            onclick="return confirm('Submit this weekly brief now? After submission, normal rules apply again when the unlock window ends.');"
+                        @else
+                            onclick="return confirm('Submit this weekly briefing? You can still edit until the deadline if submission is allowed.');"
+                        @endif
+                    ><i class="fas fa-paper-plane me-1"></i>Submit</button>
                 @endif
             </div>
         @endif

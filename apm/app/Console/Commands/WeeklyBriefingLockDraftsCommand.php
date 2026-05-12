@@ -22,6 +22,9 @@ class WeeklyBriefingLockDraftsCommand extends Command
         $n = 0;
         foreach (WeeklyBriefingReport::query()->where('status', WeeklyBriefingReport::STATUS_DRAFT)->cursor() as $report) {
             if ($now->greaterThan($report->submissionDeadline($settings))) {
+                if ($settings->reportUnlockOverrideAppliesTo($report)) {
+                    continue;
+                }
                 $report->update(['status' => WeeklyBriefingReport::STATUS_LOCKED]);
                 $n++;
             }
