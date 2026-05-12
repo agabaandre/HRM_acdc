@@ -373,7 +373,16 @@
 
                  <div class="d-flex justify-content-end gap-3 border-top pt-4 mt-5">
                     <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
-                        <i class="bx bx-save me-1"></i> {{ request('change_request') ? 'Save Change Request as Draft' : 'Update Non-Travel Memo' }}
+                        <i class="bx bx-save me-1"></i>
+                        @if(request('change_request'))
+                            @if(isset($changeRequestForEdit) && strtolower(trim((string) ($changeRequestForEdit->overall_status ?? ''))) === 'returned')
+                                Update
+                            @else
+                                Save Change Request as Draft
+                            @endif
+                        @else
+                            Update Non-Travel Memo
+                        @endif
                     </button>
                  
                 </div>

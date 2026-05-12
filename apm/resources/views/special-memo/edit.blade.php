@@ -296,7 +296,12 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
                     @if(request('change_request'))
                         <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
-                            <i class="bx bx-save me-1"></i> Save as Draft
+                            <i class="bx bx-save me-1"></i>
+                            @if(isset($changeRequestForEdit) && strtolower(trim((string) ($changeRequestForEdit->overall_status ?? ''))) === 'returned')
+                                Update
+                            @else
+                                Save as Draft
+                            @endif
                         </button>
                     @else
                         <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
@@ -1309,6 +1314,7 @@ $(document).ready(function () {
         let grand = 0;
         let hasExceededBudget = false;
         const fundTypeId = parseInt($('#fund_type_id').val()) || 0;
+        const changeRequestReturnedForEdit = @json(isset($changeRequestForEdit) && strtolower(trim((string) ($changeRequestForEdit->overall_status ?? ''))) === 'returned');
         const isChangeRequest = {{ request('change_request') ? 'true' : 'false' }};
         
         $('.budget-body').each(function () {
@@ -1418,7 +1424,9 @@ $(document).ready(function () {
         } else {
             submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success');
             if (isChangeRequest) {
-                submitBtn.html('<i class="bx bx-save me-1"></i> Save as Draft');
+                submitBtn.html(changeRequestReturnedForEdit
+                    ? '<i class="bx bx-save me-1"></i> Update'
+                    : '<i class="bx bx-save me-1"></i> Save as Draft');
             } else {
                 submitBtn.html('<i class="bx bx-save me-1"></i> Update Special Memo');
             }
