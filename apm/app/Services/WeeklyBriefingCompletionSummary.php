@@ -32,7 +32,7 @@ class WeeklyBriefingCompletionSummary
         return $key;
     }
 
-    public static function directorateSortKeyForKey(string $key): string
+    public static function directorateSortKeyForKey(string $key, ?WeeklyBriefingReport $report = null): string
     {
         if (str_starts_with($key, 'dr-')) {
             $id = (int) substr($key, 3);
@@ -42,8 +42,14 @@ class WeeklyBriefingCompletionSummary
         if (str_starts_with($key, 'd-')) {
             $id = (int) substr($key, 2);
             $d = Division::query()->find($id);
+            $dirId = null;
             if ($d && $d->directorate_id) {
-                return strtolower((string) (Directorate::query()->find($d->directorate_id)?->name ?? 'z-'.$d->directorate_id));
+                $dirId = (int) $d->directorate_id;
+            } elseif ($report && (int) ($report->directorate_id ?? 0) > 0) {
+                $dirId = (int) $report->directorate_id;
+            }
+            if ($dirId !== null && $dirId > 0) {
+                return strtolower((string) (Directorate::query()->find($dirId)?->name ?? 'z-'.$dirId));
             }
         }
 
@@ -93,7 +99,7 @@ class WeeklyBriefingCompletionSummary
             $rows[] = [
                 'key' => $k,
                 'label' => WeeklyBriefingContributor::presentationLabelForContributionKey($k),
-                'directorate_name' => self::directorateNameForKey($k),
+                'directorate_name' => self::directorateLabelForCompletionRow($k, $report),
                 'status' => $report ? (string) $report->status : 'missing',
                 'contacts' => self::contactNamesForKey($settings, $k),
                 'major_happenings' => self::majorHappeningsTitlesFromReport($report),
@@ -138,6 +144,45 @@ class WeeklyBriefingCompletionSummary
         return $report->directorReviewTrailSummary();
     }
 
+    /**
+     * Directorate display name from the system `directorates` table when the row is linked
+     * (dr-* key, or division / weekly briefing report directorate_id).
+     */
+    private static function directorateLabelForCompletionRow(string $key, ?WeeklyBriefingReport $report): string
+    {
+        if (str_starts_with($key, 'dr-')) {
+            $id = (int) substr($key, 3);
+            $name = Directorate::query()->find($id)?->name;
+            if ($name !== null && trim((string) $name) !== '') {
+                return trim((string) $name);
+            }
+
+            return $id > 0 ? 'Directorate #'.$id : '—';
+        }
+        if (str_starts_with($key, 'd-')) {
+            $divId = (int) substr($key, 2);
+            $div = Division::query()->find($divId);
+            $dirId = null;
+            if ($div && (int) ($div->directorate_id ?? 0) > 0) {
+                $dirId = (int) $div->directorate_id;
+            } elseif ($report && (int) ($report->directorate_id ?? 0) > 0) {
+                $dirId = (int) $report->directorate_id;
+            }
+            if ($dirId !== null && $dirId > 0) {
+                $name = Directorate::query()->find($dirId)?->name;
+                if ($name !== null && trim((string) $name) !== '') {
+                    return trim((string) $name);
+                }
+
+                return 'Directorate #'.$dirId;
+            }
+
+            return '—';
+        }
+
+        return '';
+    }
+
     public static function contactNamesForKey(WeeklyBriefingSetting $settings, string $key): string
     {
         return $settings->contributors()
@@ -159,24 +204,6 @@ class WeeklyBriefingCompletionSummary
             ->filter()
             ->unique()
             ->join(', ');
-    }
-
-    private static function directorateNameForKey(string $key): string
-    {
-        if (str_starts_with($key, 'dr-')) {
-            $id = (int) substr($key, 3);
-
-            return (string) (Directorate::query()->find($id)?->name ?? '');
-        }
-        if (str_starts_with($key, 'd-')) {
-            $id = (int) substr($key, 2);
-            $d = Division::query()->find($id);
-            if ($d && $d->directorate_id) {
-                return (string) (Directorate::query()->find($d->directorate_id)?->name ?? '');
-            }
-        }
-
-        return '';
     }
 
     private static function majorHappeningsTitlesFromReport(?WeeklyBriefingReport $report): string
@@ -206,7 +233,7 @@ class WeeklyBriefingCompletionSummary
     {
         return $reports->sortBy(function (WeeklyBriefingReport $r) {
             $k = (string) ($r->contribution_key ?? '');
-            $dir = self::directorateSortKeyForKey($k);
+            $dir = self::directorateSortKeyForKey($k, $r);
             $kind = str_starts_with($k, 'dr-') ? '0' : '1';
             $label = strtolower($r->contributionEntityLabel());
 

@@ -34,7 +34,7 @@ foreach ($rows as $r) {
 <div class="meta">ISO week <strong>W<?php echo (int) $isoWeek; ?> / <?php echo (int) $isoYear; ?></strong>
     · Expected reporting units (from settings): <strong><?php echo (int) $total; ?></strong>
     · Submitted: <strong><?php echo (int) $submitted; ?></strong>
-    · Outstanding: <strong><?php echo max(0, $total - $submitted); ?></strong>
+    · Not-submitted: <strong><?php echo max(0, $total - $submitted); ?></strong>
     <?php if (is_string($pdfScopeNote) && $pdfScopeNote !== '') { ?>
     <br><span style="color:#92400e;font-weight:600;"><?php echo htmlspecialchars($pdfScopeNote, ENT_QUOTES, 'UTF-8'); ?></span>
     <?php } ?>
@@ -45,7 +45,7 @@ foreach ($rows as $r) {
 <?php } else { ?>
 <table>
     <tr>
-        <th style="width:14%">Directorate / office</th>
+        <th style="width:14%">Directorate</th>
         <th style="width:16%">Reporting unit</th>
         <th style="width:20%">Major happenings (titles)</th>
         <th style="width:9%">Status</th>
@@ -75,7 +75,7 @@ foreach ($rows as $r) {
     </tr>
     <?php } ?>
 </table>
-<p class="note">Statuses reflect reports in APM for this ISO week. “missing” means no report row exists yet. For division units with a director in the divisions table, director review shows whether the director marked review before the deadline; the trail lists director edits and review actions.</p>
+<p class="note">Statuses reflect reports in APM for this ISO week. “missing” means no report row exists yet. The <strong>Directorate</strong> column uses names from the directorates table when the reporting unit is linked to a directorate (division or directorate brief). For division units with a director in the divisions table, director review shows whether the director marked review before the deadline; the trail lists director edits and review actions.</p>
 <?php } ?>
 </body>
 </html>
