@@ -105,4 +105,9 @@ class Division extends Model
     {
         return $this->belongsTo(Staff::class, 'finance_officer', 'staff_id');
     }
+
+    public function directorate(): BelongsTo
+    {
+        return $this->belongsTo(Directorate::class, 'directorate_id');
+    }
 }

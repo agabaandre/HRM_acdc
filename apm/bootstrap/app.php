@@ -80,4 +80,9 @@ return Application::configure(basePath: dirname(__DIR__))
             ->hourly()
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Weekly briefing: times come from weekly_briefing_settings; commands self-gate on weekday + H:i.
+        $schedule->command('weekly-briefing:hod-reminders')->everyMinute()->withoutOverlapping(120)->runInBackground();
+        $schedule->command('weekly-briefing:lock-drafts')->everyMinute()->withoutOverlapping(120)->runInBackground();
+        $schedule->command('weekly-briefing:compiled-summary')->everyMinute()->withoutOverlapping(300)->runInBackground();
     })->create();
