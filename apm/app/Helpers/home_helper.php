@@ -352,7 +352,6 @@ if (! function_exists('generate_pdf')) {
                 $dataUriEsc = htmlspecialchars($dataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
                 $footerDocumentQrHtml = '<div style="text-align: center;">'
                     .'<img src="'.$dataUriEsc.'" alt="Document link QR" style="width: 14mm; height: 14mm; display: block; margin: 0 auto;" />'
-                    .'<span style="font-size: 5pt; color: #911C39; display: block; margin-top: 1px;">Scan to open</span>'
                     .'</div>';
             }
         } catch (\Throwable $e) {
