@@ -498,10 +498,10 @@ if (! function_exists('generate_pdf')) {
         // Set footer exactly like CodeIgniter
         $footer = ' <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 8pt; color: #911C39; border:none; margin-top: 4px; border-collapse: collapse; !important">
             <tr>
-                <td align="left" valign="top" style="border: none; width: 42%; padding: 0 18px 0 0;">
+                <td align="left" valign="top" style="border: none; width: 50%; padding: 0 18px 0 0;">
                     Africa CDC Headquarters, Ring Road, 16/17,<br>
                     Haile Garment Lafto Square, Nifas Silk-Lafto Sub City,<br>
-                    P.O Box: 200050 Addis Ababa, Tel: +251(0) 112175100/75200<br>
+                    P.O Box: 200050 Addis Ababa<br>
                     Email: <a href="mailto:registry@africacdc.org" style="color: #911C39;">registry@africacdc.org</a>
                 </td>
                 <td align="right" valign="top" style="border: none; padding: 0 0 0 12px;">'.$footerMetaAndQrHtml.'</td>
