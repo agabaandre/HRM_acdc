@@ -156,7 +156,7 @@
                 <input type="hidden" name="division_directors_can_access_module" value="0">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="division_directors_can_access_module" value="1" id="wbDirModule" @checked(filter_var(old('division_directors_can_access_module', $settings->division_directors_can_access_module ?? true), FILTER_VALIDATE_BOOLEAN))>
-                    <label class="form-check-label" for="wbDirModule">Allow staff set as <strong>division director</strong> (<code>divisions.director_id</code>) to open <strong>Weekly brief</strong> in the top menu and home dashboard, and to review or download reports for reporting units they direct (same rules as today when this is on). If unchecked, directors only see the module if they are also a contributor or a configured report viewer.</label>
+                    <label class="form-check-label" for="wbDirModule">Allow staff who act as <strong>division director</strong> (<code>divisions.director_id</code> or active director OIC) or <strong>Head of Division</strong> (<code>division_head</code> or active head OIC, same date rules as elsewhere in APM) to open <strong>Weekly brief</strong> in the top menu and home dashboard, and to review or download reports for reporting units they lead. If unchecked, they only see the module if they are also a contributor or a configured report viewer.</label>
                 </div>
             </div>
         </div>

@@ -53,7 +53,7 @@ final class DivisionWeeklyBriefGate
 
     public static function isListedReportViewer(?int $staffId = null): bool
     {
-        $sid = $staffId ?? (int) user_session('staff_id');
+        $sid = $staffId ?? self::sessionStaffId();
         if ($sid <= 0) {
             return false;
         }
@@ -61,17 +61,32 @@ final class DivisionWeeklyBriefGate
         return in_array($sid, self::reportViewerStaffIds(), true);
     }
 
+    /**
+     * Logged-in staff id from session (some payloads use auth_staff_id only).
+     */
+    public static function sessionStaffId(): int
+    {
+        foreach (['staff_id', 'auth_staff_id'] as $key) {
+            $v = user_session($key);
+            if ($v !== null && $v !== '' && (int) $v > 0) {
+                return (int) $v;
+            }
+        }
+
+        return 0;
+    }
+
     public static function mayActAsDivisionDirector(?int $staffId = null): bool
     {
         if (! self::divisionDirectorsModuleAccessEnabled()) {
             return false;
         }
-        $sid = $staffId ?? (int) user_session('staff_id');
+        $sid = $staffId ?? self::sessionStaffId();
         if ($sid <= 0) {
             return false;
         }
 
-        return Division::queryForStaffActingAsDirector($sid)->exists();
+        return Division::queryForWeeklyBriefDivisionAuthority($sid)->exists();
     }
 
     /**
@@ -93,7 +108,7 @@ final class DivisionWeeklyBriefGate
             return true;
         }
 
-        $sid = (int) user_session('staff_id');
+        $sid = self::sessionStaffId();
 
         return self::isListedContributor($sid) || self::isListedReportViewer($sid) || self::mayActAsDivisionDirector($sid);
     }
@@ -114,9 +129,9 @@ final class DivisionWeeklyBriefGate
             return [];
         }
         $configuredSet = array_fill_keys($configured, true);
-        $sid = (int) user_session('staff_id');
+        $sid = self::sessionStaffId();
         $out = [];
-        foreach (Division::queryForStaffActingAsDirector($sid)->get() as $div) {
+        foreach (Division::queryForWeeklyBriefDivisionAuthority($sid)->get() as $div) {
             $k = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
             if (isset($configuredSet[$k])) {
                 $out[] = $k;
@@ -169,9 +184,9 @@ final class DivisionWeeklyBriefGate
         if (! $div) {
             return false;
         }
-        $uid = (int) user_session('staff_id');
+        $uid = self::sessionStaffId();
 
-        return $div->staffActsAsDivisionDirector($uid);
+        return $div->staffActsAsWeeklyBriefDivisionAuthority($uid);
     }
 
     public static function mayDownloadDirectorateCombinedPdf(int $isoYear, int $isoWeek, int $directorateId): bool
@@ -180,7 +195,7 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        $sid = (int) user_session('staff_id');
+        $sid = self::sessionStaffId();
         if ($sid <= 0 || ! self::mayActAsDivisionDirector($sid)) {
             return false;
         }
@@ -207,7 +222,7 @@ final class DivisionWeeklyBriefGate
             return [];
         }
 
-        $staffId = (int) user_session('staff_id');
+        $staffId = self::sessionStaffId();
 
         return WeeklyBriefingSetting::current()
             ->contributors()
@@ -258,7 +273,7 @@ final class DivisionWeeklyBriefGate
 
         return WeeklyBriefingSetting::current()
             ->contributors()
-            ->where('staff_id', (int) user_session('staff_id'))
+            ->where('staff_id', self::sessionStaffId())
             ->where('contribution_key', $contributionKey)
             ->exists();
     }
@@ -272,7 +287,7 @@ final class DivisionWeeklyBriefGate
             return true;
         }
 
-        $uid = (int) user_session('staff_id');
+        $uid = self::sessionStaffId();
 
         return WeeklyBriefingSetting::current()
             ->contributors()
@@ -288,7 +303,7 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        $uid = (int) user_session('staff_id');
+        $uid = self::sessionStaffId();
 
         return WeeklyBriefingSetting::current()
             ->contributors()
