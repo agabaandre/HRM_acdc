@@ -176,12 +176,12 @@
 
         <div class="card shadow-sm mb-4 border-0">
             <div class="card-header bg-white border-bottom py-3 d-flex align-items-center">
-                <h6 class="mb-0 text-warning fw-bold"><i class="bx bx-error-circle me-2 text-warning"></i>Section 2 — Key bottlenecks &amp; escalation</h6>
+                <h6 class="mb-0 fw-bold text-dark"><i class="bx bx-error-circle me-2 text-dark"></i>Section 2 — Key bottlenecks &amp; escalation</h6>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle" id="bottleneck-table">
-                        <thead class="table-warning">
+                        <thead class="table-light">
                             <tr>
                                 <th style="width:28%">Issue</th>
                                 <th style="width:22%">Impact / risk level</th>
@@ -203,7 +203,7 @@
                         </tbody>
                     </table>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="wb-add-bottleneck"><i class="fas fa-plus me-1"></i>Add row</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="wb-add-bottleneck"><i class="fas fa-plus me-1"></i>Add more bottlenecks</button>
             </div>
         </div>
 
