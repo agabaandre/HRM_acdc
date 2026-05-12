@@ -310,6 +310,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::get('/jobs/document-counter-filters', [App\Http\Controllers\JobsController::class, 'getDocumentCounterFilters'])->name('jobs.document-counter-filters');
     Route::post('/jobs/reminders-schedule', [App\Http\Controllers\JobsController::class, 'executeRemindersSchedule'])->name('jobs.reminders-schedule');
     Route::post('/jobs/returned-memos-reminders', [App\Http\Controllers\JobsController::class, 'executeReturnedMemosReminders'])->name('jobs.returned-memos-reminders');
+    Route::post('/jobs/weekly-briefing', [App\Http\Controllers\JobsController::class, 'executeWeeklyBriefing'])->name('jobs.weekly-briefing');
 
     // Approver Dashboard Routes
 Route::get('/approver-dashboard', [App\Http\Controllers\ApproverDashboardController::class, 'index'])->name('approver-dashboard.index');

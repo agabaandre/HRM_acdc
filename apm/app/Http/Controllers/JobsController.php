@@ -479,6 +479,81 @@ class JobsController extends Controller
     }
 
     /**
+     * Run Division Weekly Brief mail commands (test inbox or forced production sends).
+     */
+    public function executeWeeklyBriefing(Request $request): JsonResponse
+    {
+        $request->validate([
+            'action' => 'required|string|in:test_emails,hod_reminders,compiled_summary',
+            'email' => 'nullable|email|max:255',
+        ]);
+
+        $action = $request->input('action');
+        $startTime = microtime(true);
+        $commandLabel = $action;
+
+        try {
+            if ($action === 'test_emails') {
+                $email = trim((string) ($request->input('email') ?: 'andrewa@africacdc.org'));
+                $exitCode = Artisan::call('weekly-briefing:test-notifications', ['email' => $email]);
+                $commandLabel = "weekly-briefing:test-notifications {$email}";
+            } elseif ($action === 'hod_reminders') {
+                $exitCode = Artisan::call('weekly-briefing:hod-reminders', ['--force' => true]);
+                $commandLabel = 'weekly-briefing:hod-reminders --force';
+            } else {
+                $exitCode = Artisan::call('weekly-briefing:compiled-summary', ['--force' => true]);
+                $commandLabel = 'weekly-briefing:compiled-summary --force';
+            }
+
+            $output = Artisan::output();
+            $executionTime = round((microtime(true) - $startTime) * 1000, 2);
+
+            if ($exitCode === 0) {
+                Log::info('Jobs weekly briefing command ok', [
+                    'action' => $action,
+                    'command' => $commandLabel,
+                    'execution_time' => $executionTime,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Weekly briefing command completed',
+                    'output' => $output,
+                    'execution_time' => $executionTime,
+                    'command' => $commandLabel,
+                ]);
+            }
+
+            Log::error('Jobs weekly briefing command failed', [
+                'action' => $action,
+                'exit_code' => $exitCode,
+                'output' => $output,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Command exited with code '.$exitCode,
+                'output' => $output,
+                'execution_time' => $executionTime,
+                'command' => $commandLabel,
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Jobs weekly briefing command exception', [
+                'action' => $action,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'output' => $e->getMessage(),
+                'execution_time' => round((microtime(true) - $startTime) * 1000, 2),
+                'command' => $commandLabel ?? $action,
+            ], 500);
+        }
+    }
+
+    /**
      * Format bytes to human readable format.
      */
     private function formatBytes($bytes, $precision = 2): string
