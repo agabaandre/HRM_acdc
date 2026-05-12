@@ -23,7 +23,7 @@
 $compiledPdfHeading = $compiledPdfHeading ?? null;
 $compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
 ?>
-<h1><?php echo htmlspecialchars($compiledPdfHeading ?? 'Weekly Briefing — Compiled', ENT_QUOTES, 'UTF-8'); ?></h1>
+<h1><?php echo htmlspecialchars($compiledPdfHeading ?? 'Weekly brief — compiled', ENT_QUOTES, 'UTF-8'); ?></h1>
 <div class="meta"><?php
 if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
     echo $compiledPdfMetaHtml;

@@ -181,7 +181,7 @@
                     <a class="nav-link {{ Request::is('weekly-briefing*') ? 'active' : '' }}"
                         href="{{ route('weekly-briefing.index') }}" wire:navigate>
                         <div class="parent-icon"><i class="fas fa-newspaper"></i></div>
-                        <div class="menu-title">Division Weekly Brief</div>
+                        <div class="menu-title">Weekly brief</div>
                     </a>
                 </li>
             @endif

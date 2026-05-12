@@ -638,14 +638,14 @@ body {
     </div>
 
     @if (\App\Services\DivisionWeeklyBriefGate::canAccessModule())
-    {{-- Division Weekly Brief --}}
+    {{-- Weekly brief --}}
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
           <div class="dashboard-icon reports me-2"><i class="fas fa-newspaper"></i></div>
-          <h6>Division Weekly Brief</h6>
+          <h6>Weekly brief</h6>
         </div>
-        <p class="text-muted" style="font-size: 0.9rem;">Division weekly brief: major happenings and bottlenecks (ISO week).</p>
+        <p class="text-muted" style="font-size: 0.9rem;">Weekly brief: major happenings and bottlenecks (ISO week).</p>
         <div class="menu-section">
           <h6>Quick Actions</h6>
           <div class="menu-links">

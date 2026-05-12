@@ -479,7 +479,7 @@ class JobsController extends Controller
     }
 
     /**
-     * Run Division Weekly Brief mail commands (test inbox or forced production sends).
+     * Run Weekly brief mail commands (test inbox or forced production sends).
      */
     public function executeWeeklyBriefing(Request $request): JsonResponse
     {
@@ -509,7 +509,7 @@ class JobsController extends Controller
             $executionTime = round((microtime(true) - $startTime) * 1000, 2);
 
             if ($exitCode === 0) {
-                Log::info('Jobs weekly briefing command ok', [
+                Log::info('Jobs weekly brief command ok', [
                     'action' => $action,
                     'command' => $commandLabel,
                     'execution_time' => $executionTime,
@@ -517,14 +517,14 @@ class JobsController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Weekly briefing command completed',
+                    'message' => 'Weekly brief command completed',
                     'output' => $output,
                     'execution_time' => $executionTime,
                     'command' => $commandLabel,
                 ]);
             }
 
-            Log::error('Jobs weekly briefing command failed', [
+            Log::error('Jobs weekly brief command failed', [
                 'action' => $action,
                 'exit_code' => $exitCode,
                 'output' => $output,
@@ -538,7 +538,7 @@ class JobsController extends Controller
                 'command' => $commandLabel,
             ], 500);
         } catch (\Exception $e) {
-            Log::error('Jobs weekly briefing command exception', [
+            Log::error('Jobs weekly brief command exception', [
                 'action' => $action,
                 'error' => $e->getMessage(),
             ]);

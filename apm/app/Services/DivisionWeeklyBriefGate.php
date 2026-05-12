@@ -8,7 +8,7 @@ use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 
 /**
- * Division Weekly Brief: module access, filing (contributor rows), full listing (admin / report viewers), view vs edit on reports.
+ * Weekly brief: module access, filing (contributor rows), full listing (admin / report viewers), view vs edit on reports.
  */
 final class DivisionWeeklyBriefGate
 {

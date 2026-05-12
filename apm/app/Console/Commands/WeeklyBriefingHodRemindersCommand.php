@@ -7,6 +7,7 @@ use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 use App\Models\Staff;
+use App\Support\WeeklyBriefingMailTemplate;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -15,7 +16,7 @@ class WeeklyBriefingHodRemindersCommand extends Command
 {
     protected $signature = 'weekly-briefing:hod-reminders {--force : Run immediately, ignoring reminders_enabled, weekday, and hod_reminder_time}';
 
-    protected $description = 'Remind configured contributors (or legacy division HoDs) when a weekly briefing is missing for the current ISO week.';
+    protected $description = 'Remind configured contributors (or legacy division HoDs) when a Weekly brief is missing for the current ISO week.';
 
     public function handle(): int
     {
@@ -58,9 +59,9 @@ class WeeklyBriefingHodRemindersCommand extends Command
                         continue;
                     }
                     try {
-                        $html = $this->contributorReminderHtml($settings, (string) $contributionKey, $y, $w, $report);
+                        $html = $this->contributorReminderHtml($settings, (string) $contributionKey, $y, $w, $report, $c->staff);
                         $label = WeeklyBriefingContributor::presentationLabelForContributionKey((string) $contributionKey);
-                        $subject = $subjectPrefix.'Weekly briefing reminder — '.$label;
+                        $subject = $subjectPrefix.'Weekly brief reminder — '.$label.WeeklyBriefingMailTemplate::subjectSuffix();
                         if (! sendEmail($email, $subject, $html)) {
                             Log::warning('weekly-briefing:hod-reminders sendEmail returned false', ['to' => $email, 'key' => $contributionKey]);
                         }
@@ -100,8 +101,8 @@ class WeeklyBriefingHodRemindersCommand extends Command
             }
 
             try {
-                $html = $this->legacyHodReminderHtml($settings, $division->division_name ?? 'Division', $y, $w, $report);
-                $subject = $subjectPrefix.'Weekly briefing reminder — '.($division->division_name ?? 'Division');
+                $html = $this->legacyHodReminderHtml($settings, $division->division_name ?? 'Division', $y, $w, $report, $hod);
+                $subject = $subjectPrefix.'Weekly brief reminder — '.($division->division_name ?? 'Division').WeeklyBriefingMailTemplate::subjectSuffix();
                 if (! sendEmail($email, $subject, $html)) {
                     Log::warning('weekly-briefing:hod-reminders sendEmail returned false', ['to' => $email, 'division_id' => $division->id]);
                 }
@@ -126,37 +127,42 @@ class WeeklyBriefingHodRemindersCommand extends Command
         return $r->submissionDeadline($settings)->format('l, F j, Y \a\t g:i A');
     }
 
-    private function contributorReminderHtml(WeeklyBriefingSetting $settings, string $contributionKey, int $y, int $w, ?WeeklyBriefingReport $report): string
+    private function contributorReminderHtml(WeeklyBriefingSetting $settings, string $contributionKey, int $y, int $w, ?WeeklyBriefingReport $report, ?Staff $recipient): string
     {
         $label = htmlspecialchars(WeeklyBriefingContributor::presentationLabelForContributionKey($contributionKey), ENT_QUOTES, 'UTF-8');
         $deadline = htmlspecialchars($this->deadlineLine($settings, $y, $w, $report), ENT_QUOTES, 'UTF-8');
         $indexUrl = htmlspecialchars(route('weekly-briefing.index', [], true), ENT_QUOTES, 'UTF-8');
         if ($report) {
             $actionUrl = htmlspecialchars(route('weekly-briefing.edit', ['report' => $report->id], true), ENT_QUOTES, 'UTF-8');
-            $actionText = 'Open your draft to complete and submit';
+            $actionText = 'Open draft to complete and submit';
         } else {
             $actionUrl = htmlspecialchars(route('weekly-briefing.create', ['contribution_key' => $contributionKey], true), ENT_QUOTES, 'UTF-8');
-            $actionText = 'Start this week’s Division Weekly Brief';
+            $actionText = 'Start this week’s Weekly brief';
         }
 
-        return <<<HTML
-<p>Please complete the <strong>Division Weekly Brief</strong> for reporting unit <strong>{$label}</strong> (ISO week <strong>W{$w} / {$y}</strong>).</p>
+        $inner = <<<HTML
+<p>You are kindly reminded to complete the <strong>Weekly brief</strong> for reporting unit <strong>{$label}</strong> (ISO week <strong>W{$w} / {$y}</strong>).</p>
 <p><strong>Submission deadline:</strong> {$deadline}</p>
-<p><a href="{$actionUrl}">{$actionText}</a> — or open the <a href="{$indexUrl}">Division Weekly Brief home</a> in APM.</p>
-<p style="font-size:12px;color:#64748b;">This message was sent because you are listed as a contributor for this reporting unit. If you have already submitted, you can ignore this reminder.</p>
+<p style="text-align:center;"><a class="btn" href="{$actionUrl}">{$actionText}</a></p>
+<p>You may also open the <strong>Weekly brief</strong> module from the <a href="{$indexUrl}">APM home navigation</a>.</p>
+<p style="font-size:12px;color:#64748b;">This message was sent because you are listed as a contributor for this reporting unit. If you have already submitted your report, please disregard this reminder.</p>
 HTML;
+
+        return WeeklyBriefingMailTemplate::wrap($recipient, 'Weekly brief reminder', $inner);
     }
 
-    private function legacyHodReminderHtml(WeeklyBriefingSetting $settings, string $divisionName, int $y, int $w, ?WeeklyBriefingReport $report): string
+    private function legacyHodReminderHtml(WeeklyBriefingSetting $settings, string $divisionName, int $y, int $w, ?WeeklyBriefingReport $report, Staff $hod): string
     {
         $deadline = htmlspecialchars($this->deadlineLine($settings, $y, $w, $report), ENT_QUOTES, 'UTF-8');
         $dn = htmlspecialchars($divisionName, ENT_QUOTES, 'UTF-8');
         $indexUrl = htmlspecialchars(route('weekly-briefing.index', [], true), ENT_QUOTES, 'UTF-8');
 
-        return <<<HTML
-<p>Please remind your team to complete the <strong>Division Weekly Brief</strong> for <strong>{$dn}</strong> (ISO week <strong>W{$w} / {$y}</strong>).</p>
+        $inner = <<<HTML
+<p>You are kindly requested to remind the responsible staff to complete the <strong>Weekly brief</strong> for <strong>{$dn}</strong> (ISO week <strong>W{$w} / {$y}</strong>).</p>
 <p><strong>Submission deadline:</strong> {$deadline}</p>
-<p>Contributors can file from the <a href="{$indexUrl}">Division Weekly Brief</a> section in APM.</p>
+<p>Contributors may file their returns through the <a href="{$indexUrl}">Weekly brief</a> section in the Approvals Management System (APM).</p>
 HTML;
+
+        return WeeklyBriefingMailTemplate::wrap($hod, 'Weekly brief reminder', $inner);
     }
 }

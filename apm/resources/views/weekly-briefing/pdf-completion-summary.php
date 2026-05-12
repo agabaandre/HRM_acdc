@@ -30,7 +30,7 @@ foreach ($rows as $r) {
     }
 }
 ?>
-<h1>Weekly briefing — completion summary</h1>
+<h1>Weekly brief — completion summary</h1>
 <div class="meta">ISO week <strong>W<?php echo (int) $isoWeek; ?> / <?php echo (int) $isoYear; ?></strong>
     · Expected reporting units (from settings): <strong><?php echo (int) $total; ?></strong>
     · Submitted: <strong><?php echo (int) $submitted; ?></strong>
