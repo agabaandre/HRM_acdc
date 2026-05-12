@@ -637,28 +637,7 @@ body {
       </div>
     </div>
 
-    @if (\App\Services\DivisionWeeklyBriefGate::canAccessModule())
-    {{-- Weekly brief --}}
-    <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card position-relative">
-        <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon reports me-2"><i class="fas fa-newspaper"></i></div>
-          <h6>Weekly brief</h6>
-        </div>
-        <p class="text-muted" style="font-size: 0.9rem;">Weekly brief: major happenings and bottlenecks (ISO week).</p>
-        <div class="menu-section">
-          <h6>Quick Actions</h6>
-          <div class="menu-links">
-            <a href="{{ route('weekly-briefing.index') }}" wire:navigate class="btn btn-success btn-sm">
-              <i class="fas fa-edit"></i> Open
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-    @endif
-
-    {{-- Reports --}}
+    {{-- Reports + Weekly brief (same card when user has weekly brief access) --}}
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
@@ -666,7 +645,7 @@ body {
           <h6>Reports</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">View and download performance reports.</p>
-        
+
         <div class="menu-section">
           <h6>Quick Actions</h6>
           <div class="menu-links">
@@ -675,8 +654,23 @@ body {
             </a>
           </div>
         </div>
-        
-        {{-- Reports don't have pending approvals, so no badge needed --}}
+
+        @if (\App\Services\DivisionWeeklyBriefGate::canAccessModule())
+        <hr class="border-secondary opacity-25 my-3">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon reports me-2"><i class="fas fa-newspaper"></i></div>
+          <h6 class="mb-0">Weekly brief</h6>
+        </div>
+        <p class="text-muted mb-2" style="font-size: 0.9rem;">Major happenings and bottlenecks by ISO week.</p>
+        <div class="menu-section mb-0">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+            <a href="{{ route('weekly-briefing.index') }}" wire:navigate class="btn btn-success btn-sm">
+              <i class="fas fa-edit"></i> Open Weekly brief
+            </a>
+          </div>
+        </div>
+        @endif
       </div>
     </div>
 
