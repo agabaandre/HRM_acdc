@@ -15,7 +15,7 @@
     @php
         $s1 = old('section1', $report->section1_major_happenings ?? []);
         while (count($s1) < 3) {
-            $s1[] = ['description_key_actions' => '', 'strategic_relevance' => ''];
+            $s1[] = ['major_happening' => '', 'description_key_actions' => '', 'strategic_relevance' => ''];
         }
         $s1 = array_slice($s1, 0, 3);
         $s2 = old('section2', $report->section2_bottlenecks ?? []);
@@ -55,10 +55,12 @@
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-success text-white fw-bold">Section 1 — Major happenings (max 3)</div>
             <div class="card-body">
-                <p class="small text-muted">For each item: <strong>Description &amp; key actions</strong> and <strong>Strategic relevance to Africa CDC</strong> (rich text; Quill editor below).</p>
+                <p class="small text-muted">For each item: <strong>Major happening</strong> (short title), then <strong>Description &amp; key actions</strong> and <strong>Strategic relevance to Africa CDC</strong> (rich text; Quill editors below).</p>
                 @foreach($s1 as $idx => $row)
                     <div class="border rounded p-3 mb-3 bg-light">
                         <h6 class="fw-bold text-success">Happening {{ $idx + 1 }}</h6>
+                        <label class="form-label" for="wb-major-{{ $idx }}">Major happening</label>
+                        <input type="text" class="form-control mb-3" id="wb-major-{{ $idx }}" name="section1[{{ $idx }}][major_happening]" value="{{ $row['major_happening'] ?? '' }}" maxlength="500" placeholder="e.g. AU Champion on MCH: Finalization of the roadmap">
                         <label class="form-label">Description &amp; key actions</label>
                         <div class="wb-quill-wrap mb-2">
                             <div id="wb-desc-{{ $idx }}" class="wb-quill-editor border rounded bg-white" style="min-height:140px;"></div>

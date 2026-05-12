@@ -7,6 +7,12 @@
     h2 { font-size: 12pt; color: #0d5c2f; margin: 16px 0 8px 0; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
     .meta { text-align: center; font-size: 10pt; color: #64748b; margin-bottom: 16px; }
     .tag { display: inline-block; background: #ecfdf5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 9pt; margin: 2px; }
+    table.happenings { width: 100%; border-collapse: collapse; margin: 8px 0 16px 0; }
+    table.happenings th, table.happenings td { border: 1px solid #94a3b8; padding: 8px; vertical-align: top; }
+    table.happenings th { background: #ffffff; font-size: 10pt; font-weight: bold; }
+    table.happenings td { background: #fdf2f8; font-size: 10pt; }
+    table.happenings td.major { font-weight: bold; width: 22%; }
+    table.happenings td.rich { font-size: 10pt; }
     table.bordered { width: 100%; border-collapse: collapse; margin: 8px 0 16px 0; }
     table.bordered th, table.bordered td { border: 1px solid #94a3b8; padding: 6px; vertical-align: top; }
     table.bordered th { background: #f1f5f9; font-size: 10pt; }
@@ -39,17 +45,30 @@ $apmDiv = $report->division?->division_name ?? '';
 <h2>Section 1 — Major happenings (max 3)</h2>
 <?php
 $rows = $report->section1_major_happenings ?? [];
-$i = 1;
+$bodyRows = [];
 foreach ($rows as $row) {
-    if (empty(trim(strip_tags((string)($row['description_key_actions'] ?? '')))) && empty(trim(strip_tags((string)($row['strategic_relevance'] ?? ''))))) {
+    $mh = trim((string) ($row['major_happening'] ?? ''));
+    $dPlain = trim(strip_tags((string) ($row['description_key_actions'] ?? '')));
+    $sPlain = trim(strip_tags((string) ($row['strategic_relevance'] ?? '')));
+    if ($mh === '' && $dPlain === '' && $sPlain === '') {
         continue;
     }
-    echo '<p class="tag">Happening '.$i.'</p>';
-    echo '<p><strong>Description &amp; key actions</strong></p>';
-    echo '<div class="rich">'.PrintHelper::sanitizeRichTextForMpdf($row['description_key_actions'] ?? '').'</div>';
-    echo '<p><strong>Strategic relevance to Africa CDC</strong></p>';
-    echo '<div class="rich">'.PrintHelper::sanitizeRichTextForMpdf($row['strategic_relevance'] ?? '').'</div>';
-    $i++;
+    $bodyRows[] = $row;
+}
+if (count($bodyRows) > 0) {
+    echo '<table class="happenings"><thead><tr>';
+    echo '<th>Major Happening</th><th>Description and Key Actions</th><th>Strategic Relevance to Africa CDC</th>';
+    echo '</tr></thead><tbody>';
+    foreach ($bodyRows as $row) {
+        $mh = trim((string) ($row['major_happening'] ?? ''));
+        $mhOut = $mh !== '' ? htmlspecialchars($mh, ENT_QUOTES, 'UTF-8') : '<span style="color:#64748b;">—</span>';
+        echo '<tr>';
+        echo '<td class="major">'.$mhOut.'</td>';
+        echo '<td class="rich">'.PrintHelper::sanitizeRichTextForMpdf($row['description_key_actions'] ?? '').'</td>';
+        echo '<td class="rich">'.PrintHelper::sanitizeRichTextForMpdf($row['strategic_relevance'] ?? '').'</td>';
+        echo '</tr>';
+    }
+    echo '</tbody></table>';
 }
 ?>
 

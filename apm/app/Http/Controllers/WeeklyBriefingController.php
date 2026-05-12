@@ -177,6 +177,7 @@ class WeeklyBriefingController extends Controller
 
         $validated = $request->validate([
             'section1' => 'required|array|max:3',
+            'section1.*.major_happening' => 'nullable|string|max:500',
             'section1.*.description_key_actions' => 'nullable|string',
             'section1.*.strategic_relevance' => 'nullable|string',
             'section2' => 'nullable|array',
@@ -187,19 +188,32 @@ class WeeklyBriefingController extends Controller
 
         $section1 = [];
         foreach (array_slice($validated['section1'], 0, 3) as $row) {
+            $m = trim((string) ($row['major_happening'] ?? ''));
             $d = trim((string) ($row['description_key_actions'] ?? ''));
             $s = trim((string) ($row['strategic_relevance'] ?? ''));
-            if ($d === '' && $s === '') {
+            $dPlain = trim(strip_tags($d));
+            $sPlain = trim(strip_tags($s));
+            if ($m === '' && $dPlain === '' && $sPlain === '') {
                 continue;
             }
             $section1[] = [
+                'major_happening' => $m,
                 'description_key_actions' => $d,
                 'strategic_relevance' => $s,
             ];
         }
 
-        if (count($section1) === 0) {
-            return back()->withInput()->with('error', 'Add at least one major happening (description & key actions, and strategic relevance).');
+        $hasCompleteHappening = false;
+        foreach ($section1 as $row) {
+            if (trim(strip_tags((string) ($row['description_key_actions'] ?? ''))) !== ''
+                && trim(strip_tags((string) ($row['strategic_relevance'] ?? ''))) !== '') {
+                $hasCompleteHappening = true;
+                break;
+            }
+        }
+
+        if (! $hasCompleteHappening) {
+            return back()->withInput()->with('error', 'Add at least one major happening with description & key actions and strategic relevance completed.');
         }
 
         $section2 = [];
@@ -310,9 +324,9 @@ class WeeklyBriefingController extends Controller
     private function defaultSection1(): array
     {
         return [
-            ['description_key_actions' => '', 'strategic_relevance' => ''],
-            ['description_key_actions' => '', 'strategic_relevance' => ''],
-            ['description_key_actions' => '', 'strategic_relevance' => ''],
+            ['major_happening' => '', 'description_key_actions' => '', 'strategic_relevance' => ''],
+            ['major_happening' => '', 'description_key_actions' => '', 'strategic_relevance' => ''],
+            ['major_happening' => '', 'description_key_actions' => '', 'strategic_relevance' => ''],
         ];
     }
 
