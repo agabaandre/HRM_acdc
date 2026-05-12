@@ -366,11 +366,7 @@ if (! function_exists('generate_pdf')) {
             .'Generated on: '.date('d F, Y h:i A').'<br>'
             .'By: '.htmlspecialchars((string) (user_session('name') ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
-        $footerMetaAndQrHtml = '<div style="display: inline-block; text-align: left; vertical-align: top;">'
-            .$footerMetaHtml
-            .'<br>'
-            .$footerDocumentQrHtml
-            .'</div>';
+        $footerMetaAndQrHtml = $footerMetaHtml.'<br>'.$footerDocumentQrHtml;
 
         $pdfFormat = $options['format'] ?? 'A4';
         $orientation = strtoupper((string) ($options['orientation'] ?? ''));
@@ -497,7 +493,7 @@ if (! function_exists('generate_pdf')) {
                     P.O Box: 200050 Addis Ababa, Tel: +251(0) 112175100/75200<br>
                     Email: <a href="mailto:registry@africacdc.org" style="color: #911C39;">registry@africacdc.org</a>
                 </td>
-                <td align="right" valign="top" style="border: none; padding: 0;">
+                <td align="left" valign="top" style="border: none; padding: 0;">
                     '.$footerMetaAndQrHtml.'
                 </td>
             </tr>
