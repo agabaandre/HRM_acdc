@@ -265,7 +265,7 @@
                                                 <td class="text-left">
                                                     <div class="btn-group">
                                                         <a wire:navigate href="{{ route('matrices.show', $matrix) }}"
-                                                            class="btn btn-sm btn-outline-info" title="View">
+                                                            class="btn btn-sm btn-outline-info" title="Open">
                                                             <i class="bx bx-show"></i>
                                                         </a>
                                                         @if (still_with_creator($matrix))   
@@ -460,7 +460,7 @@
                                                 <td class="text-center">
                                                     <div class="btn-group">
                                                         <a wire:navigate href="{{ route('matrices.show', $matrix) }}"
-                                                            class="btn btn-sm btn-outline-info" title="View">
+                                                            class="btn btn-sm btn-outline-info" title="Open">
                                                             <i class="bx bx-show"></i>
                                                         </a>
                                                     </div>

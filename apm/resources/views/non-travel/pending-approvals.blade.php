@@ -219,8 +219,8 @@
                                                 <td class="text-center">
                                                     <div class="btn-group">
                                                         <a href="{{ route('non-travel.show', $memo) }}"
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show me-1"></i>View
+                                                           class="btn btn-sm btn-outline-info" title="Open">
+                                                            <i class="bx bx-show me-1"></i>Open
                                                         </a>
                                                         @if($memo->overall_status === 'pending')
                                                             <a wire:navigate href="{{ route('non-travel.status', $memo) }}" 
@@ -348,8 +348,8 @@
                                                 <td class="text-center">
                                                     <div class="btn-group">
                                                         <a href="{{ route('non-travel.show', $memo) }}"
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show me-1"></i>View
+                                                           class="btn btn-sm btn-outline-info" title="Open">
+                                                            <i class="bx bx-show me-1"></i>Open
                                                         </a>
                                                         @if($memo->overall_status === 'approved')
                                                             <a href="{{ route('non-travel.print', $memo) }}" 

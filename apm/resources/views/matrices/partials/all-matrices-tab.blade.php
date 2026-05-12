@@ -207,8 +207,8 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group">
-                                <a wire:navigate href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show me-1"></i>View
+                                <a wire:navigate href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-info" title="Open">
+                                    <i class="bx bx-show me-1"></i>Open
                                 </a>
                                 @if(in_array($matrix->overall_status, ['draft', 'returned']))
                                     <a wire:navigate href="{{ route('matrices.edit', $matrix) }}" class="btn btn-sm btn-outline-warning" title="Edit">

@@ -80,8 +80,8 @@
                         <td class="text-center">
                             <div class="btn-group action-buttons-stacked">
                                 <a wire:navigate href="{{ route('activities.single-memos.show', $memo) }}" 
-                                   class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show me-1"></i>View
+                                   class="btn btn-sm btn-outline-info" title="Open">
+                                    <i class="bx bx-show me-1"></i>Open
                                 </a>
                                 @if(can_edit_memo($memo))
                                     <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 

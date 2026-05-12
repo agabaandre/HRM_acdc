@@ -59,8 +59,8 @@
                         <td>{{ $request->created_at ? $request->created_at->format('M d, Y') : 'N/A' }}</td>
                         <td class="text-center">
                             <div class="btn-group-vertical btn-group-sm" role="group">
-                                <a wire:navigate href="{{ route('service-requests.show', $request) }}" class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show me-1"></i>View
+                                <a wire:navigate href="{{ route('service-requests.show', $request) }}" class="btn btn-sm btn-outline-info" title="Open">
+                                    <i class="bx bx-show me-1"></i>Open
                                 </a>
                                 @if($request->overall_status === 'draft' || $request->overall_status === 'returned')
                                     <a wire:navigate href="{{ route('service-requests.edit', $request) }}" class="btn btn-sm btn-outline-warning" title="Edit">

@@ -105,8 +105,8 @@
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center flex-wrap activity-actions action-buttons-stacked">
                                 <a wire:navigate href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
-                                   class="btn btn-sm btn-outline-info activity-action-btn" title="View">
-                                    <i class="bx bx-show me-1"></i>View
+                                   class="btn btn-sm btn-outline-info activity-action-btn" title="Open">
+                                    <i class="bx bx-show me-1"></i>Open
                                 </a>
                                 @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
                                     <form action="{{ route('matrices.activities.destroy', [$activity->matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">

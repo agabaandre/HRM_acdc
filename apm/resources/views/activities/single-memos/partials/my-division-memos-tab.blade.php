@@ -98,8 +98,8 @@
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center action-buttons-stacked">
                                 <a wire:navigate href="{{ route('activities.single-memos.show', $memo) }}" 
-                                   class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show me-1"></i>View
+                                   class="btn btn-sm btn-outline-info" title="Open">
+                                    <i class="bx bx-show me-1"></i>Open
                                 </a>
                                 @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
                                     <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">

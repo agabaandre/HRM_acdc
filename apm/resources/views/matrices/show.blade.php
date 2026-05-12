@@ -1283,7 +1283,7 @@ function renderActivities(activities) {
             html += '<td class="px-3 py-3 text-center">';
             html += '<div class="btn-group btn-group-vertical btn-group-sm matrix-show-action-group" role="group">';
             html += `<a href="${getActivityUrl(activity.id)}" class="btn btn-outline-primary btn-sm">`;
-            html += '<i class="bx bx-show me-1"></i>View';
+            html += '<i class="bx bx-show me-1"></i>Open';
             html += '</a>';
             
             // Add copy button when matrix allows copy: draft activities, or pending when matrix is returned (0/1)
@@ -1888,7 +1888,7 @@ function renderSingleMemos(singleMemos) {
                     <td class="px-3 py-3 text-center">
                         <div class="btn-group btn-group-vertical btn-group-sm matrix-show-action-group" role="group">
                             <a href="${getSingleMemoUrl(memo.id)}" class="btn btn-outline-primary btn-sm">
-                                <i class="bx bx-show me-1"></i>View
+                                <i class="bx bx-show me-1"></i>Open
                             </a>
                             ${canShowSingleMemoDeleteButton(memo) ? `
                                 <button type="button" class="btn btn-outline-danger btn-sm" 

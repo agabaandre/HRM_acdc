@@ -71,8 +71,8 @@
                         <td class="text-center">
                             <div class="btn-group-vertical btn-group-sm" role="group">
                                 <a wire:navigate href="{{ route('change-requests.show', $changeRequest) }}" 
-                                   class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show me-1"></i>View
+                                   class="btn btn-sm btn-outline-info" title="Open">
+                                    <i class="bx bx-show me-1"></i>Open
                                 </a>
                                 @if($changeRequest->workflowAllowsSubmitterParentMemoEdit() && user_session('staff_id') && $changeRequest->isOwnedResponsibleOrEffectiveDivisionHeadByStaffId((int) user_session('staff_id')))
                                     <a href="{{ route('change-requests.edit', $changeRequest) }}" 
