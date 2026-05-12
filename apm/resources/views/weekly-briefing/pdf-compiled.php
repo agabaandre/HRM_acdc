@@ -6,6 +6,11 @@
     h1 { text-align: center; font-size: 16pt; color: #0d5c2f; margin: 0 0 6px 0; }
     .meta { text-align: center; font-size: 10pt; color: #64748b; margin-bottom: 20px; }
     .page-break { page-break-before: always; }
+    table.happenings { width: 100%; border-collapse: collapse; margin: 8px 0 12px 0; }
+    table.happenings th, table.happenings td { border: 1px solid #94a3b8; padding: 6px; vertical-align: top; font-size: 10pt; }
+    table.happenings th { background: #ffffff; font-weight: bold; }
+    table.happenings td { background: #fdf2f8; }
+    table.happenings td.major { font-weight: bold; width: 22%; }
 </style>
 </head>
 <body>
@@ -33,15 +38,30 @@ use App\Helpers\PrintHelper;
     <h3 style="font-size:11pt;">Section 1 — Major happenings</h3>
     <?php
     $rows = $report->section1_major_happenings ?? [];
-    $i = 1;
+    $bodyRows = [];
     foreach ($rows as $row) {
-        if (empty(trim(strip_tags((string)($row['description_key_actions'] ?? '')))) && empty(trim(strip_tags((string)($row['strategic_relevance'] ?? ''))))) {
+        $mh = trim((string) ($row['major_happening'] ?? ''));
+        $dPlain = trim(strip_tags((string) ($row['description_key_actions'] ?? '')));
+        $sPlain = trim(strip_tags((string) ($row['strategic_relevance'] ?? '')));
+        if ($mh === '' && $dPlain === '' && $sPlain === '') {
             continue;
         }
-        echo '<p><em>Happening '.$i.'</em></p>';
-        echo '<p><strong>Description &amp; key actions</strong></p><div>'.PrintHelper::sanitizeRichTextForMpdf($row['description_key_actions'] ?? '').'</div>';
-        echo '<p><strong>Strategic relevance</strong></p><div>'.PrintHelper::sanitizeRichTextForMpdf($row['strategic_relevance'] ?? '').'</div>';
-        $i++;
+        $bodyRows[] = $row;
+    }
+    if (count($bodyRows) > 0) {
+        echo '<table class="happenings"><thead><tr>';
+        echo '<th>Major Happening</th><th>Description and Key Actions</th><th>Strategic Relevance to Africa CDC</th>';
+        echo '</tr></thead><tbody>';
+        foreach ($bodyRows as $row) {
+            $mh = trim((string) ($row['major_happening'] ?? ''));
+            $mhOut = $mh !== '' ? htmlspecialchars($mh, ENT_QUOTES, 'UTF-8') : '<span style="color:#64748b;">—</span>';
+            echo '<tr>';
+            echo '<td class="major">'.$mhOut.'</td>';
+            echo '<td>'.PrintHelper::sanitizeRichTextForMpdf($row['description_key_actions'] ?? '').'</td>';
+            echo '<td>'.PrintHelper::sanitizeRichTextForMpdf($row['strategic_relevance'] ?? '').'</td>';
+            echo '</tr>';
+        }
+        echo '</tbody></table>';
     }
     ?>
     <h3 style="font-size:11pt;">Section 2 — Bottlenecks</h3>
