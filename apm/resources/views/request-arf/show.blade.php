@@ -444,8 +444,8 @@
             <!-- Enhanced Header -->
             <div class="bg-white border-b border-gray-200 shadow-sm">
                 <div class="container-fluid">
-                    <div class="d-flex justify-content-between align-items-start py-4">
-                        <div class="flex-grow-1 me-3" style="min-width: 0;">
+                    <div class="py-4">
+                        <div class="mb-0">
                             <h1 class="h2 fw-bold text-dark mb-0">View Activity Request</h1>
                             @if ($requestARF->document_number)
                                 <p class="text-muted mb-0">{{ $requestARF->document_number }}</p>
@@ -453,26 +453,25 @@
                             <p class="text-dark mb-0 fw-medium text-break" style="word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ $displayTitle }}</p>
                         </div>
 
-                           @php $isAdmin = user_session('role') == 10; @endphp
-                           <div class="d-flex gap-3 col-md-2 justify-content-end">
-                                    <a wire:navigate href="{{ route('request-arf.index') }}"
-                                        class="btn btn-outline-secondary d-flex align-items-center gap-2">
-                                        <i class="bx bx-arrow-back"></i>
-                                        <span>Back to List</span>
-                                    </a>
-                                    @if($isAdmin && ($requestARF->overall_status ?? '') !== 'archived')
-                                        <button type="button" class="btn btn-outline-danger d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#archiveRequestArfModal">
-                                            <i class="bx bx-archive"></i>
-                                            <span>Archive</span>
-                                        </button>
-                                    @elseif($isAdmin && ($requestARF->overall_status ?? '') === 'archived')
-                                        <button type="button" class="btn btn-outline-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#unarchiveRequestArfModal">
-                                            <i class="bx bx-reset"></i>
-                                            <span>Unarchive</span>
-                                        </button>
-                                    @endif
+                        @php $isAdmin = user_session('role') == 10; @endphp
+                        <div class="d-flex justify-content-end gap-2 flex-wrap align-items-center mt-3 pt-3 border-top border-light">
+                            <a wire:navigate href="{{ route('request-arf.index') }}"
+                                class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                                <i class="bx bx-arrow-back"></i>
+                                <span>Back to List</span>
+                            </a>
+                            @if($isAdmin && ($requestARF->overall_status ?? '') !== 'archived')
+                                <button type="button" class="btn btn-outline-danger d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#archiveRequestArfModal">
+                                    <i class="bx bx-archive"></i>
+                                    <span>Archive</span>
+                                </button>
+                            @elseif($isAdmin && ($requestARF->overall_status ?? '') === 'archived')
+                                <button type="button" class="btn btn-outline-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#unarchiveRequestArfModal">
+                                    <i class="bx bx-reset"></i>
+                                    <span>Unarchive</span>
+                                </button>
+                            @endif
                         </div>
-
                     </div>
                 </div>
             </div>
