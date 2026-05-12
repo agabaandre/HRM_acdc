@@ -625,6 +625,15 @@ class ChangeRequestController extends Controller
 
                // dd($changes);
 
+                $trimmedActivityCode = trim((string) $request->input('activity_code', ''));
+                $resolvedWorkplanActivityCode = $trimmedActivityCode !== ''
+                    ? clean_unicode($trimmedActivityCode)
+                    : (
+                        $isUpdate
+                            ? $changeRequest->getOriginal('workplan_activity_code')
+                            : ($parentMemo->workplan_activity_code ?? null)
+                    );
+
                 // Prepare change request data
                 $changeRequestData = [
                     'parent_memo_id' => $isUpdate ? $changeRequest->parent_memo_id : (int) $request->parent_memo_id,
@@ -681,6 +690,7 @@ class ChangeRequestController extends Controller
                     'background' => clean_unicode($request->input('background', $parentMemo->background ?? '')),
                     'activity_request_remarks' => clean_unicode($request->input('activity_request_remarks', $parentMemo->activity_request_remarks ?? '')),
                     'is_single_memo' => $request->input('is_single_memo', $parentMemo->is_single_memo ?? false),
+                    'workplan_activity_code' => $resolvedWorkplanActivityCode,
                     'budget_breakdown' => $budgetItems,
                     'available_budget' => $totalBudget,
                     'attachment' => $attachments,
