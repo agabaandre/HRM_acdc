@@ -310,7 +310,7 @@ if (! function_exists('generate_pdf')) {
      *                          - 'preview_html' (bool): If true, output HTML to browser instead of PDF (for debug)
      *                          - 'format' (string): Page size, default A4 (e.g. A4, Letter)
      *                          - 'orientation' (string): L or LANDSCAPE for landscape (mPDF uses e.g. A4-L)
-     *                          - 'document_url' (string): Full URL shown in footer (defaults to current request URL in web context, else APP_URL)
+     *                          - 'document_url' (string): URL encoded in the footer QR code (defaults to current request URL in web context, else APP_URL); plain text is used only if QR generation fails
      * @return \Mpdf\Mpdf|string
      */
     function generate_pdf($view, $data = [], $options = [])
@@ -336,6 +336,34 @@ if (! function_exists('generate_pdf')) {
             $footerDocumentUrl = (string) config('app.url');
         }
         $footerDocumentUrlEsc = htmlspecialchars($footerDocumentUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+        $footerDocumentQrHtml = '';
+        try {
+            if (class_exists(\Endroid\QrCode\QrCode::class) && class_exists(\Endroid\QrCode\Writer\PngWriter::class)) {
+                $qrCode = new \Endroid\QrCode\QrCode(
+                    data: $footerDocumentUrl,
+                    errorCorrectionLevel: \Endroid\QrCode\ErrorCorrectionLevel::Medium,
+                    size: 180,
+                    margin: 4,
+                );
+                $writer = new \Endroid\QrCode\Writer\PngWriter();
+                $qrResult = $writer->write($qrCode);
+                $dataUri = $qrResult->getDataUri();
+                $dataUriEsc = htmlspecialchars($dataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                $footerDocumentQrHtml = '<div style="text-align: left;">'
+                    .'<img src="'.$dataUriEsc.'" alt="Document link QR" width="72" height="72" style="width: 24mm; height: 24mm; display: block;" />'
+                    .'<span style="font-size: 6pt; color: #911C39;">Scan to open this document</span>'
+                    .'</div>';
+            }
+        } catch (\Throwable $e) {
+            Log::warning('mPDF footer QR code generation failed', [
+                'message' => $e->getMessage(),
+            ]);
+            $footerDocumentQrHtml = '';
+        }
+        if ($footerDocumentQrHtml === '') {
+            $footerDocumentQrHtml = '<span style="word-break: break-all; white-space: normal;">'.$footerDocumentUrlEsc.'</span>';
+        }
 
         $pdfFormat = $options['format'] ?? 'A4';
         $orientation = strtoupper((string) ($options['orientation'] ?? ''));
@@ -465,8 +493,8 @@ if (! function_exists('generate_pdf')) {
                 <td align="left" style="border: none;">
                     Source: Africa CDC  Central Business Platform<br>
                     Generated on: '.date('d F, Y h:i A').'<br>
-                    <span style="word-break: break-all; white-space: normal;">'.$footerDocumentUrlEsc.'</span>
-                    <br>By:'.htmlspecialchars((string) (user_session('name') ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'
+                    '.$footerDocumentQrHtml.'
+                    <br>By: '.htmlspecialchars((string) (user_session('name') ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'
                 </td>
             </tr>
         </table>'.'<p style="text-align:right; font-size: 8pt;">Page {PAGENO} of {nbpg}</p>';
