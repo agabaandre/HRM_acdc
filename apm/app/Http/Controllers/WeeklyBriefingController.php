@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Directorate;
 use App\Models\Division;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 use App\Services\DivisionWeeklyBriefGate;
 use App\Services\WeeklyBriefingCompletionSummary;
+use App\Services\WeeklyBriefingDirectorateCombined;
 use App\Services\WeeklyBriefingWindowService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +30,8 @@ class WeeklyBriefingController extends Controller
 
         $reportsQuery = WeeklyBriefingReport::query()
             ->where('report_iso_week_year', $year)
-            ->orderByDesc('report_iso_week');
+            ->orderByDesc('report_iso_week')
+            ->with(['division', 'directorate']);
         if ($listingKeys !== []) {
             $reportsQuery->whereIn('contribution_key', $listingKeys);
         } else {
@@ -42,7 +45,8 @@ class WeeklyBriefingController extends Controller
         $currentQuery = WeeklyBriefingReport::query()
             ->where('report_iso_week_year', $cy)
             ->where('report_iso_week', $cw)
-            ->orderBy('contribution_key');
+            ->orderBy('contribution_key')
+            ->with(['division', 'directorate', 'submittedBy', 'directorReviewedBy']);
         if ($listingKeys !== []) {
             $currentQuery->whereIn('contribution_key', $listingKeys);
         } else {
@@ -70,6 +74,16 @@ class WeeklyBriefingController extends Controller
 
         $divisionId = $this->userPrimaryDivisionId();
 
+        $wbNowY = Carbon::now()->isoWeekYear();
+        $wbNowW = Carbon::now()->isoWeek();
+        $wbDirectorCombinedOptions = WeeklyBriefingDirectorateCombined::directorCombinedDownloadOptionsForStaff(
+            (int) user_session('staff_id'),
+            $wbNowY,
+            $wbNowW
+        );
+
+        $directorReviewKeySet = array_fill_keys(DivisionWeeklyBriefGate::directorManagedContributionKeysForListing(), true);
+
         return view('weekly-briefing.index', compact(
             'reports',
             'weekRows',
@@ -78,7 +92,11 @@ class WeeklyBriefingController extends Controller
             'filingWeekReports',
             'divisionId',
             'year',
-            'week'
+            'week',
+            'wbNowY',
+            'wbNowW',
+            'wbDirectorCombinedOptions',
+            'directorReviewKeySet'
         ));
     }
 
@@ -156,23 +174,48 @@ class WeeklyBriefingController extends Controller
     public function edit(WeeklyBriefingReport $report): View
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
-        $this->assertCanEditReport($report);
+        $this->assertCanViewReport($report);
 
-        $report->load(['division', 'directorate', 'submittedBy']);
+        $report->load(['division', 'directorate', 'submittedBy', 'directorReviewedBy']);
         $settings = WeeklyBriefingSetting::current();
         $window = new WeeklyBriefingWindowService;
 
-        return view('weekly-briefing.edit', compact('report', 'settings', 'window'));
+        $canContributorEdit = DivisionWeeklyBriefGate::mayEditReport($report) && $window->canEditReport($report);
+        $canDirectorEdit = DivisionWeeklyBriefGate::mayEditAsDivisionDirector($report) && $window->canDirectorEditSubmittedReport($report);
+        $canContributorSubmit = DivisionWeeklyBriefGate::mayEditReport($report) && $window->canSubmitReport($report);
+        $canMarkDirectorReview = $window->canMarkDirectorReview($report);
+        $formEditable = $canContributorEdit || $canDirectorEdit;
+
+        return view('weekly-briefing.edit', compact(
+            'report',
+            'settings',
+            'window',
+            'canContributorEdit',
+            'canDirectorEdit',
+            'canContributorSubmit',
+            'canMarkDirectorReview',
+            'formEditable'
+        ));
     }
 
     public function update(Request $request, WeeklyBriefingReport $report): RedirectResponse
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
-        $this->assertCanEditReport($report);
+        if (! DivisionWeeklyBriefGate::mayEditReport($report) && ! DivisionWeeklyBriefGate::mayEditAsDivisionDirector($report)) {
+            abort(403);
+        }
 
         $window = new WeeklyBriefingWindowService;
-        if (! $window->canEditReport($report)) {
+        $contribPath = DivisionWeeklyBriefGate::mayEditReport($report) && $window->canEditReport($report);
+        $dirPath = DivisionWeeklyBriefGate::mayEditAsDivisionDirector($report) && $window->canDirectorEditSubmittedReport($report);
+        if (! $contribPath && ! $dirPath) {
             return back()->with('error', 'This weekly briefing is no longer editable (deadline passed or locked).');
+        }
+
+        if (DivisionWeeklyBriefGate::mayEditAsDivisionDirector($report)
+            && ! DivisionWeeklyBriefGate::mayEditReport($report)
+            && $request->boolean('submit_final')) {
+            return back()->with('error', 'Directors cannot submit here — contributors submit the briefing; use “Mark reviewed by director” when you have finished your review.');
         }
 
         $validated = $request->validate([
@@ -234,7 +277,13 @@ class WeeklyBriefingController extends Controller
         $report->section1_major_happenings = $section1;
         $report->section2_bottlenecks = $section2;
 
-        if ($request->boolean('submit_final') && $window->canSubmitReport($report)) {
+        $directorOnly = DivisionWeeklyBriefGate::mayEditAsDivisionDirector($report)
+            && ! DivisionWeeklyBriefGate::mayEditReport($report);
+        if ($directorOnly) {
+            $report->appendDirectorReviewTrail('edited', (int) user_session('staff_id'));
+        }
+
+        if ($request->boolean('submit_final') && $window->canSubmitReport($report) && DivisionWeeklyBriefGate::mayEditReport($report)) {
             $report->status = WeeklyBriefingReport::STATUS_SUBMITTED;
             $report->submitted_at = now();
             $report->submitted_by_staff_id = (int) user_session('staff_id');
@@ -242,8 +291,32 @@ class WeeklyBriefingController extends Controller
 
         $report->save();
 
+        $msg = $request->boolean('submit_final') && DivisionWeeklyBriefGate::mayEditReport($report)
+            ? 'Weekly briefing submitted.'
+            : ($directorOnly ? 'Changes saved (director edit recorded on trail).' : 'Draft saved.');
+
+        return redirect()->route('weekly-briefing.edit', $report)->with('status', $msg);
+    }
+
+    public function directorReview(WeeklyBriefingReport $report): RedirectResponse
+    {
+        $this->assertDivisionWeeklyBriefModuleAccess();
+        $this->assertCanViewReport($report);
+        if (! DivisionWeeklyBriefGate::mayMarkDirectorReview($report)) {
+            abort(403);
+        }
+        $window = new WeeklyBriefingWindowService;
+        if (! $window->canMarkDirectorReview($report)) {
+            return back()->with('error', 'Director review can only be recorded before the submission deadline.');
+        }
+
+        $report->director_reviewed_at = now();
+        $report->director_reviewed_by_staff_id = (int) user_session('staff_id');
+        $report->appendDirectorReviewTrail('reviewed', (int) user_session('staff_id'));
+        $report->save();
+
         return redirect()->route('weekly-briefing.edit', $report)
-            ->with('status', $request->boolean('submit_final') ? 'Weekly briefing submitted.' : 'Draft saved.');
+            ->with('status', 'Recorded as reviewed by director.');
     }
 
     public function pdf(WeeklyBriefingReport $report)
@@ -251,7 +324,7 @@ class WeeklyBriefingController extends Controller
         $this->assertDivisionWeeklyBriefModuleAccess();
         $this->assertCanViewReport($report);
 
-        $report->load(['division', 'directorate', 'submittedBy']);
+        $report->load(['division', 'directorate', 'submittedBy', 'directorReviewedBy']);
         $settings = WeeklyBriefingSetting::current();
 
         $pdf = mpdf_print('weekly-briefing.pdf-division', [
@@ -277,7 +350,7 @@ class WeeklyBriefingController extends Controller
             ->where('report_iso_week_year', $year)
             ->where('report_iso_week', $week)
             ->where('status', WeeklyBriefingReport::STATUS_SUBMITTED)
-            ->with(['division', 'directorate', 'submittedBy'])
+            ->with(['division', 'directorate', 'submittedBy', 'directorReviewedBy'])
             ->get();
 
         $reports = WeeklyBriefingCompletionSummary::sortReportsForCompiled($reports);
@@ -298,6 +371,52 @@ class WeeklyBriefingController extends Controller
         ]);
     }
 
+    public function directorateCombinedPdf(int $year, int $week, int $directorate_id)
+    {
+        $this->assertDivisionWeeklyBriefModuleAccess();
+
+        if (! DivisionWeeklyBriefGate::mayDownloadDirectorateCombinedPdf($year, $week, $directorate_id)) {
+            abort(403);
+        }
+
+        $staffId = (int) user_session('staff_id');
+        $reports = WeeklyBriefingDirectorateCombined::submittedReportsForDirectorDirectorate(
+            $staffId,
+            $directorate_id,
+            $year,
+            $week,
+            null
+        );
+
+        if ($reports->isEmpty()) {
+            abort(404);
+        }
+
+        $settings = WeeklyBriefingSetting::current();
+
+        $dirLabel = $directorate_id > 0
+            ? (trim((string) (Directorate::query()->find($directorate_id)?->name ?? '')) ?: 'Directorate #'.$directorate_id)
+            : 'Directed divisions (no directorate)';
+        $divisionCount = $reports->count();
+        $metaHtml = 'ISO week <strong>W'.(int) $week.' / '.(int) $year.'</strong> · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s) where you are the director (divisions table) · <em>Not the organisation-wide compiled pack for central recipients.</em>';
+
+        $pdf = mpdf_print('weekly-briefing.pdf-compiled', [
+            'reports' => $reports,
+            'settings' => $settings,
+            'isoYear' => $year,
+            'isoWeek' => $week,
+            'compiledPdfHeading' => 'Weekly briefing — director report (your divisions only)',
+            'compiledPdfMetaHtml' => $metaHtml,
+        ], ['orientation' => 'L']);
+
+        $safeDir = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $dirLabel);
+        $fn = 'Weekly_Briefing_Director_Divisions_'.$safeDir.'_W'.$week.'_'.$year.'.pdf';
+
+        return response($pdf->Output($fn, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
     public function completionSummaryPdf(int $year, int $week)
     {
         if (! DivisionWeeklyBriefGate::mayAccessCompiledBriefingExports()) {
@@ -312,9 +431,10 @@ class WeeklyBriefingController extends Controller
             'settings' => $settings,
             'isoYear' => $year,
             'isoWeek' => $week,
+            'pdfScopeNote' => 'Full audit: all reporting units from weekly briefing settings.',
         ], ['orientation' => 'L']);
 
-        $fn = 'Weekly_Briefing_Completion_W'.$week.'_'.$year.'.pdf';
+        $fn = 'Weekly_Briefing_Completion_Summary_FULL_AUDIT_W'.$week.'_'.$year.'.pdf';
 
         return response($pdf->Output($fn, 'I'), 200, [
             'Content-Type' => 'application/pdf',
@@ -347,13 +467,6 @@ class WeeklyBriefingController extends Controller
     private function assertCanViewReport(WeeklyBriefingReport $report): void
     {
         if (! DivisionWeeklyBriefGate::mayViewReport($report)) {
-            abort(403);
-        }
-    }
-
-    private function assertCanEditReport(WeeklyBriefingReport $report): void
-    {
-        if (! DivisionWeeklyBriefGate::mayEditReport($report)) {
             abort(403);
         }
     }

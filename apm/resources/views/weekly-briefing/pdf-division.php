@@ -41,6 +41,15 @@ $apmDiv = $report->division?->division_name ?? '';
     · Period <?php echo $report->period_start ? $report->period_start->format('Y-m-d') : ''; ?>
     · Status: <?php echo htmlspecialchars($report->status); ?>
     <?php
+    if ($report->requiresDirectorReview()) {
+        echo '<br><span style="font-size:9pt;color:#334155;"><strong>Director review:</strong> '.htmlspecialchars($report->directorReviewSummaryLine(), ENT_QUOTES, 'UTF-8').'</span>';
+        $trailSum = $report->directorReviewTrailSummary();
+        if ($trailSum !== '—') {
+            echo '<br><span style="font-size:8.5pt;color:#64748b;">Trail: '.htmlspecialchars($trailSum, ENT_QUOTES, 'UTF-8').'</span>';
+        }
+    }
+    ?>
+    <?php
     if ($report->submitted_by_staff_id && $report->submittedBy) {
         $sn = trim((string) (($report->submittedBy->fname ?? '').' '.($report->submittedBy->lname ?? '')));
         if ($sn === '') {

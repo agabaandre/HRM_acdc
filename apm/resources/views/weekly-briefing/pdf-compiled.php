@@ -18,10 +18,19 @@
 /** @var \Illuminate\Support\Collection<int,\App\Models\WeeklyBriefingReport> $reports */
 /** @var int $isoYear */
 /** @var int $isoWeek */
-use App\Helpers\PrintHelper;
+/** @var string|null $compiledPdfHeading Optional; default is organisation-wide compiled title. */
+/** @var string|null $compiledPdfMetaHtml Optional inner HTML for the meta line (trusted server-side only). */
+$compiledPdfHeading = $compiledPdfHeading ?? null;
+$compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
 ?>
-<h1>Weekly Briefing — Compiled</h1>
-<div class="meta">ISO week <strong>W<?php echo (int) $isoWeek; ?> / <?php echo (int) $isoYear; ?></strong> · <?php echo count($reports); ?> reporting unit(s) · Grouped by directorate / office</div>
+<h1><?php echo htmlspecialchars($compiledPdfHeading ?? 'Weekly Briefing — Compiled', ENT_QUOTES, 'UTF-8'); ?></h1>
+<div class="meta"><?php
+if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
+    echo $compiledPdfMetaHtml;
+} else {
+    echo 'ISO week <strong>W'.(int) $isoWeek.' / '.(int) $isoYear.'</strong> · '.(int) count($reports).' reporting unit(s) · Grouped by directorate / office';
+}
+?></div>
 
 <?php $first = true; ?>
 <?php foreach ($reports as $report) {
@@ -47,6 +56,15 @@ use App\Helpers\PrintHelper;
         echo '</span>';
     }
     ?></p>
+    <?php if ($report->requiresDirectorReview()) { ?>
+    <p style="font-size:10pt;color:#334155;margin-top:6px;"><strong>Director review (divisions table):</strong> <?php echo htmlspecialchars($report->directorReviewSummaryLine(), ENT_QUOTES, 'UTF-8'); ?>
+        <?php
+        $trailSum = $report->directorReviewTrailSummary();
+        if ($trailSum !== '—') {
+            echo '<br><span style="color:#64748b;">Trail:</span> '.htmlspecialchars($trailSum, ENT_QUOTES, 'UTF-8');
+        }
+        ?></p>
+    <?php } ?>
 
     <h3 style="font-size:11pt;">Section 1 — Major happenings</h3>
     <?php
@@ -72,8 +90,8 @@ use App\Helpers\PrintHelper;
             $mhOut = '<strong>'.(int) $num.'.</strong> '.$mhBody;
             echo '<tr>';
             echo '<td class="major">'.$mhOut.'</td>';
-            echo '<td>'.PrintHelper::sanitizeRichTextForMpdf($row['description_key_actions'] ?? '').'</td>';
-            echo '<td>'.PrintHelper::sanitizeRichTextForMpdf($row['strategic_relevance'] ?? '').'</td>';
+            echo '<td>'.\App\Helpers\PrintHelper::sanitizeRichTextForMpdf($row['description_key_actions'] ?? '').'</td>';
+            echo '<td>'.\App\Helpers\PrintHelper::sanitizeRichTextForMpdf($row['strategic_relevance'] ?? '').'</td>';
             echo '</tr>';
         }
         echo '</tbody></table>';
