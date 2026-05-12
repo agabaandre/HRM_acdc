@@ -256,7 +256,12 @@
                     </a>
                     <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
                         @if(request('change_request'))
-                            <i class="bx bx-save me-1"></i> Save as Draft
+                            <i class="bx bx-save me-1"></i>
+                            @if(isset($changeRequestForEdit) && strtolower(trim((string) ($changeRequestForEdit->overall_status ?? ''))) === 'returned')
+                                Update
+                            @else
+                                Save as Draft
+                            @endif
                         @else
                             <i class="bx bx-check-circle me-1"></i> Update Activity
                         @endif
@@ -1160,6 +1165,7 @@ $(document).ready(function () {
         let grand = 0;
         let hasExceededBudget = false;
         const fundTypeId = parseInt($('#fund_type').val()) || 0;
+        const changeRequestReturnedForEdit = @json(isset($changeRequestForEdit) && strtolower(trim((string) ($changeRequestForEdit->overall_status ?? ''))) === 'returned');
         const isChangeRequest = {{ request('change_request') ? 'true' : 'false' }};
         
         $('.budget-body').each(function () {
@@ -1259,7 +1265,9 @@ $(document).ready(function () {
         } else {
             if (isChangeRequest) {
                 submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
-                    .html('<i class="bx bx-save me-1"></i> Save as Draft');
+                    .html(changeRequestReturnedForEdit
+                        ? '<i class="bx bx-save me-1"></i> Update'
+                        : '<i class="bx bx-save me-1"></i> Save as Draft');
             } else {
                 const buttonText = fundTypeId === 3 ? 'Update Activity (External Source)' : 'Update Activity';
                 submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')

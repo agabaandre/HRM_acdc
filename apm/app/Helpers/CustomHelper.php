@@ -1785,7 +1785,29 @@ function display_memo_status($memo, $type)
     } elseif ($isSingleMemo) {
         // For single memos, show the overall status or current actor if not approved
         $overallStatus = $memo->overall_status ?? 'pending';
-        if ($overallStatus !== 'approved') {
+        if ($overallStatus === 'returned') {
+            $approverName = null;
+            if (isset($memo->current_actor) && $memo->current_actor) {
+                $approverName = trim(($memo->current_actor->fname ?? '').' '.($memo->current_actor->lname ?? ''));
+            }
+            if ($approverName === '') {
+                $approverName = null;
+            }
+            if ($approverName === null && method_exists($memo, 'memoIndexStatusMeta')) {
+                $meta = $memo->memoIndexStatusMeta();
+                $actorName = $meta['actor_name'] ?? null;
+                if ($actorName && $actorName !== 'N/A') {
+                    $approverName = $actorName;
+                }
+            }
+            if ($approverName !== null && $approverName !== '') {
+                $safeName = htmlspecialchars($approverName, ENT_QUOTES, 'UTF-8');
+                $statusText = 'Returned — '.$safeName;
+            } else {
+                $statusText = ucwords($overallStatus);
+            }
+            $badgeClass = get_status_badge_class($overallStatus);
+        } elseif ($overallStatus !== 'approved') {
             $currentApprover = getCurrentApproverInfo($memo);
             if ($currentApprover) {
                 $statusText = "Pending - {$currentApprover['name']} ({$currentApprover['level']})";
@@ -2162,8 +2184,28 @@ function get_memo_status_text($memo, $type)
     $isOtherMemo = $type === 'other_memo';
 
     if ($isSingleMemo) {
-        // For single memos, show the overall status
-        $statusText = ucwords($memo->overall_status ?? 'pending');
+        $overallStatus = strtolower((string) ($memo->overall_status ?? 'pending'));
+        if ($overallStatus === 'returned') {
+            $approverName = null;
+            if (isset($memo->current_actor) && $memo->current_actor) {
+                $approverName = trim(($memo->current_actor->fname ?? '').' '.($memo->current_actor->lname ?? ''));
+            }
+            if ($approverName === '') {
+                $approverName = null;
+            }
+            if ($approverName === null && method_exists($memo, 'memoIndexStatusMeta')) {
+                $meta = $memo->memoIndexStatusMeta();
+                $actorName = $meta['actor_name'] ?? null;
+                if ($actorName && $actorName !== 'N/A') {
+                    $approverName = $actorName;
+                }
+            }
+            $statusText = ($approverName !== null && $approverName !== '')
+                ? 'Returned — '.$approverName
+                : ucwords($memo->overall_status ?? 'pending');
+        } else {
+            $statusText = ucwords($memo->overall_status ?? 'pending');
+        }
 
     } elseif ($isOtherMemo) {
         $statusText = ucwords($memo->overall_status ?? 'pending');

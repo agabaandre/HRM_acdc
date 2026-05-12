@@ -502,7 +502,11 @@ class ChangeRequestController extends Controller
                 $changeRequest = null;
                 
                 if ($isUpdate) {
-                    $changeRequest = ChangeRequest::query()->with('division')->findOrFail($changeRequestId);
+                    $changeRequest = ChangeRequest::query()
+                        ->with('division')
+                        ->whereKey($changeRequestId)
+                        ->lockForUpdate()
+                        ->firstOrFail();
 
                     if (! $changeRequest->workflowAllowsSubmitterParentMemoEdit()) {
                         throw new \Exception('This change request cannot be updated in its current status or approval level.');
@@ -691,6 +695,15 @@ class ChangeRequestController extends Controller
                         ? ($changeRequest->getOriginal('overall_status') ?? ChangeRequest::STATUS_DRAFT)
                         : ChangeRequest::STATUS_DRAFT,
                 ];
+
+                if ($isUpdate && strtolower(trim((string) ($changeRequest->getOriginal('overall_status') ?? ''))) === 'returned') {
+                    $attrs = $changeRequest->getAttributes();
+                    $changeRequestData['forward_workflow_id'] = $attrs['forward_workflow_id'] ?? null;
+                    $changeRequestData['status'] = $changeRequest->getRawOriginal('status') ?: ChangeRequest::STATUS_DRAFT;
+                    $changeRequestData['overall_status'] = $attrs['overall_status'] ?? 'returned';
+                    $changeRequestData['approval_level'] = (int) ($attrs['approval_level'] ?? 0);
+                    $changeRequestData['next_approval_level'] = $attrs['next_approval_level'] ?? null;
+                }
 
                 // Create or update the change request
                 if ($isUpdate) {

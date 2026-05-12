@@ -670,6 +670,7 @@ class NonTravelMemoController extends Controller
         $currentStaffId = (int) (user_session('staff_id') ?? 0);
         $isOwner = (int) ($nonTravel->staff_id ?? 0) === $currentStaffId;
 
+        $changeRequestForEdit = null;
         // For change requests, allow creator/responsible on CR or effective division head (same as change-requests.edit).
         if ($isChangeRequest) {
             $crId = (int) $request->query('change_request_id', $request->input('change_request_id', 0));
@@ -679,6 +680,9 @@ class NonTravelMemoController extends Controller
                 return redirect()
                     ->route('non-travel.show', $nonTravel)
                     ->with('error', 'You do not have permission to edit this memo for this change request.');
+            }
+            if ($crId > 0) {
+                $changeRequestForEdit = ChangeRequest::query()->findOrFail($crId);
             }
         } else {
             // Creator should always be allowed to edit their own non-travel memo.
@@ -764,14 +768,15 @@ class NonTravelMemoController extends Controller
         }
         
         return view('non-travel.edit-new', compact(
-            'nonTravel', 
-            'budgets', 
-            'selectedBudgetCodes', 
+            'nonTravel',
+            'changeRequestForEdit',
+            'budgets',
+            'selectedBudgetCodes',
             'attachments',
             'budgetBreakdown',
-            'categories', 
-            'locations', 
-            'workflows', 
+            'categories',
+            'locations',
+            'workflows',
             'staff',
             'fundTypes',
             'initialBudgetCodeOptions'
