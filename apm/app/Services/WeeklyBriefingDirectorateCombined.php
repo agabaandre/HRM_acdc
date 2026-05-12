@@ -10,8 +10,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Combined weekly briefing PDF for a division director: submitted division briefs (d-* only)
- * for divisions where they are director_id in the divisions table, scoped by directorate_id
- * (null directorates use id 0). Does not include directorate-level (dr-*) reports — those stay
+ * for divisions where they are the named director or active director OIC (see Division::queryForStaffActingAsDirector),
+ * scoped by directorate_id (null directorates use id 0). Does not include directorate-level (dr-*) reports — those stay
  * on the organisation-wide compiled pack for central recipients only.
  */
 final class WeeklyBriefingDirectorateCombined
@@ -39,8 +39,7 @@ final class WeeklyBriefingDirectorateCombined
 
         $picked = collect();
 
-        $divisions = Division::query()
-            ->where('director_id', $directorStaffId)
+        $divisions = Division::queryForStaffActingAsDirector($directorStaffId)
             ->where(function ($q) use ($directorateId) {
                 if ($directorateId === 0) {
                     $q->whereNull('directorate_id');
@@ -81,7 +80,7 @@ final class WeeklyBriefingDirectorateCombined
             }
             $divId = (int) substr($k, 2);
             $div = Division::query()->find($divId);
-            if (! $div || (int) $div->director_id !== $directorStaffId) {
+            if (! $div || ! $div->staffActsAsDivisionDirector($directorStaffId)) {
                 continue;
             }
             $divDir = (int) ($div->directorate_id ?? 0);
@@ -106,7 +105,8 @@ final class WeeklyBriefingDirectorateCombined
 
         $pairSeen = [];
         foreach (Division::query()->orderBy('id')->get() as $div) {
-            if (! $div->director_id) {
+            $recipientId = $div->primaryOrActiveDirectorStaffIdForWeeklyBrief();
+            if (! $recipientId) {
                 continue;
             }
             $dKey = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
@@ -114,8 +114,8 @@ final class WeeklyBriefingDirectorateCombined
                 continue;
             }
             $dirTorateId = (int) ($div->directorate_id ?? 0);
-            $pairSeen[(int) $div->director_id.':'.$dirTorateId] = [
-                'director_id' => (int) $div->director_id,
+            $pairSeen[$recipientId.':'.$dirTorateId] = [
+                'director_id' => $recipientId,
                 'directorate_id' => $dirTorateId,
             ];
         }
@@ -159,7 +159,7 @@ final class WeeklyBriefingDirectorateCombined
             ->keyBy(fn (WeeklyBriefingReport $r) => (string) $r->contribution_key);
 
         $directorateIds = [];
-        foreach (Division::query()->where('director_id', $staffId)->get() as $div) {
+        foreach (Division::queryForStaffActingAsDirector($staffId)->get() as $div) {
             $dKey = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
             if (! $reportsByKey->has($dKey)) {
                 continue;
