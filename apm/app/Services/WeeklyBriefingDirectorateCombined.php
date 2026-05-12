@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Combined weekly briefing PDF for a division director: submitted division briefs (d-* only)
- * for divisions where they are the named director or active director OIC (see Division::queryForStaffActingAsDirector),
+ * for divisions where they are the named director, active director OIC, Head of Division, or active head OIC
  * scoped by directorate_id (null directorates use id 0). Does not include directorate-level (dr-*) reports — those stay
  * on the organisation-wide compiled pack for central recipients only.
  */
@@ -39,7 +39,7 @@ final class WeeklyBriefingDirectorateCombined
 
         $picked = collect();
 
-        $divisions = Division::queryForStaffActingAsDirector($directorStaffId)
+        $divisions = Division::queryForWeeklyBriefDivisionAuthority($directorStaffId)
             ->where(function ($q) use ($directorateId) {
                 if ($directorateId === 0) {
                     $q->whereNull('directorate_id');
@@ -80,7 +80,7 @@ final class WeeklyBriefingDirectorateCombined
             }
             $divId = (int) substr($k, 2);
             $div = Division::query()->find($divId);
-            if (! $div || ! $div->staffActsAsDivisionDirector($directorStaffId)) {
+            if (! $div || ! $div->staffActsAsWeeklyBriefDivisionAuthority($directorStaffId)) {
                 continue;
             }
             $divDir = (int) ($div->directorate_id ?? 0);
@@ -159,7 +159,7 @@ final class WeeklyBriefingDirectorateCombined
             ->keyBy(fn (WeeklyBriefingReport $r) => (string) $r->contribution_key);
 
         $directorateIds = [];
-        foreach (Division::queryForStaffActingAsDirector($staffId)->get() as $div) {
+        foreach (Division::queryForWeeklyBriefDivisionAuthority($staffId)->get() as $div) {
             $dKey = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
             if (! $reportsByKey->has($dKey)) {
                 continue;

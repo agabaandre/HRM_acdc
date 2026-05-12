@@ -138,6 +138,45 @@ class Division extends Model
     }
 
     /**
+     * Weekly brief: divisions this user may manage (named director or director OIC, or Head of Division / head OIC).
+     */
+    public static function queryForWeeklyBriefDivisionAuthority(int $staffId): Builder
+    {
+        $today = Carbon::now()->toDateString();
+
+        return static::query()
+            ->where(function ($outer) use ($staffId, $today) {
+                $outer->where(function ($q) use ($staffId, $today) {
+                    $q->where('director_id', $staffId)
+                        ->orWhere(function ($q2) use ($staffId, $today) {
+                            $q2->where('director_oic_id', $staffId)
+                                ->where(function ($q3) use ($today) {
+                                    $q3->whereNull('director_oic_start_date')
+                                        ->orWhereDate('director_oic_start_date', '<=', $today);
+                                })
+                                ->where(function ($q4) use ($today) {
+                                    $q4->whereNull('director_oic_end_date')
+                                        ->orWhereDate('director_oic_end_date', '>=', $today);
+                                });
+                        });
+                })->orWhere(function ($q) use ($staffId, $today) {
+                    $q->where('division_head', $staffId)
+                        ->orWhere(function ($q2) use ($staffId, $today) {
+                            $q2->where('head_oic_id', $staffId)
+                                ->where(function ($q3) use ($today) {
+                                    $q3->whereNull('head_oic_start_date')
+                                        ->orWhereDate('head_oic_start_date', '<=', $today);
+                                })
+                                ->where(function ($q4) use ($today) {
+                                    $q4->whereNull('head_oic_end_date')
+                                        ->orWhereDate('head_oic_end_date', '>=', $today);
+                                });
+                        });
+                });
+            });
+    }
+
+    /**
      * True if this staff member is the division director or is the acting director (OIC) for today.
      */
     public function staffActsAsDivisionDirector(int $staffId): bool
@@ -162,6 +201,22 @@ class Division extends Model
         }
 
         return true;
+    }
+
+    /**
+     * Weekly brief access: division director / director OIC, or effective Head of Division (same rules as approvals).
+     */
+    public function staffActsAsWeeklyBriefDivisionAuthority(int $staffId): bool
+    {
+        if ($this->staffActsAsDivisionDirector($staffId)) {
+            return true;
+        }
+        if (! function_exists('effective_division_head_staff_id')) {
+            return false;
+        }
+        $head = effective_division_head_staff_id($this);
+
+        return $head !== null && (int) $head === $staffId;
     }
 
     /**

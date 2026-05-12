@@ -41,7 +41,8 @@ class WeeklyBriefingSetting extends Model
 
     public static function current(): self
     {
-        $row = static::query()->first();
+        // Prefer the row that was saved most recently (avoids a duplicate stale row blocking director access).
+        $row = static::query()->orderByDesc('updated_at')->orderByDesc('id')->first();
         if ($row) {
             return $row;
         }
