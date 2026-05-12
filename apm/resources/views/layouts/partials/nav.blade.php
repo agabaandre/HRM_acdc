@@ -19,6 +19,11 @@
             'title' => 'Other memo types',
         ],
         [
+            'route' => 'weekly-briefing.settings.edit',
+            'icon' => 'fas fa-calendar-week',
+            'title' => 'Weekly briefing settings',
+        ],
+        [
             'route' => 'fund-types.index',
             'icon' => 'fas fa-hand-holding-usd',
             'title' => 'Fund Types',
@@ -168,6 +173,14 @@
                     href="{{ route('home') }}" wire:navigate>
                     <div class="parent-icon"><i class="fas fa-sitemap"></i></div>
                     <div class="menu-title">APM Home</div>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link {{ Request::is('weekly-briefing*') ? 'active' : '' }}"
+                    href="{{ route('weekly-briefing.index') }}" wire:navigate>
+                    <div class="parent-icon"><i class="fas fa-newspaper"></i></div>
+                    <div class="menu-title">Staff list weekly report</div>
                 </a>
             </li>
 

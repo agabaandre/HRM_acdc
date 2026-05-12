@@ -226,6 +226,16 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
         Route::delete('/{memoTypeDefinition}', [App\Http\Controllers\MemoTypeDefinitionController::class, 'ajaxDestroy'])->name('memo-type-definitions.api.destroy');
     });
 
+    Route::get('weekly-briefing/settings', [App\Http\Controllers\WeeklyBriefingSettingsController::class, 'edit'])->name('weekly-briefing.settings.edit');
+    Route::put('weekly-briefing/settings', [App\Http\Controllers\WeeklyBriefingSettingsController::class, 'update'])->name('weekly-briefing.settings.update');
+    Route::get('weekly-briefing', [App\Http\Controllers\WeeklyBriefingController::class, 'index'])->name('weekly-briefing.index');
+    Route::get('weekly-briefing/create', [App\Http\Controllers\WeeklyBriefingController::class, 'create'])->name('weekly-briefing.create');
+    Route::get('weekly-briefing/compiled/{year}/{week}/completion-pdf', [App\Http\Controllers\WeeklyBriefingController::class, 'completionSummaryPdf'])->name('weekly-briefing.completion-summary-pdf')->whereNumber('year')->whereNumber('week');
+    Route::get('weekly-briefing/compiled/{year}/{week}/pdf', [App\Http\Controllers\WeeklyBriefingController::class, 'compiledPdf'])->name('weekly-briefing.compiled-pdf')->whereNumber('year')->whereNumber('week');
+    Route::get('weekly-briefing/{report}/pdf', [App\Http\Controllers\WeeklyBriefingController::class, 'pdf'])->name('weekly-briefing.pdf');
+    Route::get('weekly-briefing/{report}/edit', [App\Http\Controllers\WeeklyBriefingController::class, 'edit'])->name('weekly-briefing.edit');
+    Route::put('weekly-briefing/{report}', [App\Http\Controllers\WeeklyBriefingController::class, 'update'])->name('weekly-briefing.update');
+
     Route::resource('partners', App\Http\Controllers\PartnerController::class)->except(['destroy']);
 
     // Fund Codes specific routes (must be before resource route)

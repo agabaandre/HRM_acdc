@@ -637,6 +637,25 @@ body {
       </div>
     </div>
 
+    {{-- Staff list weekly report --}}
+    <div class="col-lg-3 col-md-6">
+      <div class="dashboard-card position-relative">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon reports me-2"><i class="fas fa-newspaper"></i></div>
+          <h6>Staff list weekly report</h6>
+        </div>
+        <p class="text-muted" style="font-size: 0.9rem;">Directorate/office weekly briefing: major happenings and bottlenecks (ISO week).</p>
+        <div class="menu-section">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+            <a href="{{ route('weekly-briefing.index') }}" wire:navigate class="btn btn-success btn-sm">
+              <i class="fas fa-edit"></i> Open
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
     {{-- Reports --}}
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
