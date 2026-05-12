@@ -31,4 +31,26 @@ class WeeklyBriefingWindowService
 
         return Carbon::now()->lessThanOrEqualTo($report->submissionDeadline($settings));
     }
+
+    public function canDirectorEditSubmittedReport(WeeklyBriefingReport $report): bool
+    {
+        if ($report->status === WeeklyBriefingReport::STATUS_LOCKED) {
+            return false;
+        }
+        if ($report->status !== WeeklyBriefingReport::STATUS_SUBMITTED) {
+            return false;
+        }
+        if (! DivisionWeeklyBriefGate::mayEditAsDivisionDirector($report)) {
+            return false;
+        }
+        $settings = WeeklyBriefingSetting::current();
+        $deadline = $report->submissionDeadline($settings);
+
+        return Carbon::now()->lessThanOrEqualTo($deadline);
+    }
+
+    public function canMarkDirectorReview(WeeklyBriefingReport $report): bool
+    {
+        return DivisionWeeklyBriefGate::mayMarkDirectorReview($report) && $this->canDirectorEditSubmittedReport($report);
+    }
 }

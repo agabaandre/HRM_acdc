@@ -4,6 +4,7 @@
 @section('header', 'Division Weekly Brief')
 
 @section('content')
+@php $directorReviewKeySet = $directorReviewKeySet ?? []; @endphp
 <div class="container-fluid py-3">
     @if (session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
@@ -15,7 +16,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
             <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Division Weekly Brief</h4>
-            <small class="text-muted">Reporting units (ISO week {{ \Carbon\Carbon::now()->isoWeek() }}, {{ \Carbon\Carbon::now()->isoWeekYear() }}). Start and edit are only available for units you are assigned in settings.</small>
+            <small class="text-muted">Reporting units (ISO week {{ \Carbon\Carbon::now()->isoWeek() }}, {{ \Carbon\Carbon::now()->isoWeekYear() }}). Contributors edit units they are assigned; division directors can open and review division briefs where they are the director in the divisions table.</small>
         </div>
         <div class="d-flex flex-wrap gap-2">
             @if($filingWeekReports->count() === 1)
@@ -36,9 +37,25 @@
                 <a href="{{ $url }}" class="btn btn-outline-success btn-sm">Start {{ \App\Models\WeeklyBriefingContributor::presentationLabelForContributionKey($key) }}</a>
             @endforeach
             @if(\App\Services\DivisionWeeklyBriefGate::mayAccessCompiledBriefingExports())
-                @php $wbNowY = \Carbon\Carbon::now()->isoWeekYear(); $wbNowW = \Carbon\Carbon::now()->isoWeek(); @endphp
                 <a href="{{ route('weekly-briefing.compiled-pdf', ['year' => $wbNowY, 'week' => $wbNowW]) }}" class="btn btn-outline-primary" target="_blank"><i class="fas fa-file-archive me-1"></i> Compiled PDF</a>
                 <a href="{{ route('weekly-briefing.completion-summary-pdf', ['year' => $wbNowY, 'week' => $wbNowW]) }}" class="btn btn-outline-secondary" target="_blank"><i class="fas fa-clipboard-list me-1"></i> Completion summary</a>
+            @endif
+            @if(count($wbDirectorCombinedOptions ?? []) > 0)
+                @if(count($wbDirectorCombinedOptions) === 1)
+                    @php $o0 = $wbDirectorCombinedOptions[0]; @endphp
+                    <a href="{{ route('weekly-briefing.directorate-combined-pdf', ['year' => $wbNowY, 'week' => $wbNowW, 'directorate_id' => $o0['directorate_id']]) }}" class="btn btn-outline-info" target="_blank"><i class="fas fa-layer-group me-1"></i> Director report — my divisions (W{{ $wbNowW }})</a>
+                @else
+                    <div class="dropdown">
+                        <button class="btn btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-layer-group me-1"></i> Director report — my divisions (W{{ $wbNowW }})</button>
+                        <ul class="dropdown-menu">
+                            @foreach($wbDirectorCombinedOptions as $o)
+                                <li>
+                                    <a class="dropdown-item" target="_blank" href="{{ route('weekly-briefing.directorate-combined-pdf', ['year' => $wbNowY, 'week' => $wbNowW, 'directorate_id' => $o['directorate_id']]) }}">{{ $o['label'] }}</a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
             @endif
         </div>
     </div>
@@ -62,6 +79,7 @@
                                 $k = $row['key'];
                                 $r = $row['report'];
                                 $canFile = ! empty($filingKeySet[$k]);
+                                $canDirReview = ! empty($directorReviewKeySet[$k]);
                             @endphp
                             <tr>
                                 <td class="text-center text-muted">{{ $i + 1 }}</td>
@@ -69,6 +87,9 @@
                                 <td>
                                     @if($r)
                                         <span class="badge bg-{{ $r->status === 'submitted' ? 'success' : ($r->status === 'locked' ? 'secondary' : 'warning') }}">{{ $r->status }}</span>
+                                        @if($r->requiresDirectorReview())
+                                            <div class="small mt-1 {{ $r->isDirectorReviewed() ? 'text-success' : 'text-muted' }}">{{ $r->directorReviewSummaryLine() }}</div>
+                                        @endif
                                     @else
                                         <span class="badge bg-light text-dark">not started</span>
                                     @endif
@@ -77,6 +98,8 @@
                                     @if($r)
                                         @if($canFile)
                                             <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                        @elseif($canDirReview)
+                                            <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-info">Director review</a>
                                         @endif
                                         <a href="{{ route('weekly-briefing.pdf', $r) }}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
                                     @elseif($canFile)

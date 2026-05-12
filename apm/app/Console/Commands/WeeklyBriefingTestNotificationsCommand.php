@@ -53,13 +53,12 @@ HTML;
 
         $compiledHtml = <<<HTML
 <p><strong>TEST</strong> — This message was sent by <code>weekly-briefing:test-notifications</code> from the APM Jobs page or Artisan.</p>
-<p>In production, the compiled weekly briefing email is sent at <strong>summary_send_time</strong> on the configured weekday and includes:</p>
+<p>In production, the compiled weekly briefing email is sent at <strong>summary_send_time</strong> on the configured weekday to <strong>Compiled report recipients</strong> and includes:</p>
 <ul>
 <li>Compiled PDF (all submitted units)</li>
-<li>One PDF per reporting unit</li>
-<li>Completion summary PDF</li>
+<li>Full organisational completion summary PDF (all configured reporting units, for audit)</li>
 </ul>
-<p>Recipients come from <strong>Compiled report recipients</strong> in weekly briefing settings; division HoDs may be CC’d when that option is enabled.</p>
+<p>When enabled in settings, division HoDs receive their division’s PDF; division directors receive a <strong>separate director report</strong> (division submissions only, not the central compiled pack) plus a scoped completion summary. Central recipients only receive the organisation-wide compiled PDF.</p>
 <p>Current ISO week: <strong>W{$w} / {$y}</strong></p>
 <p><a href="{$appUrl}">{$appUrl}</a></p>
 HTML;

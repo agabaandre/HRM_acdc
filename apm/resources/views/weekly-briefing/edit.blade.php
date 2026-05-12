@@ -25,14 +25,17 @@
         }
     @endphp
 
-    <div class="alert alert-{{ $window->canEditReport($report) ? 'info' : 'secondary' }} border shadow-sm mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+    @php
+        $anyEditsOpen = $formEditable;
+    @endphp
+    <div class="alert alert-{{ $anyEditsOpen ? 'info' : 'secondary' }} border shadow-sm mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
         <div>
             <strong><i class="fas fa-calendar-check me-1"></i>Submission deadline</strong>
             <span class="ms-1">{{ $submissionDeadline->format('l, F j, Y') }} at {{ $submissionDeadline->format('g:i A') }}</span>
         </div>
         @if($report->status === \App\Models\WeeklyBriefingReport::STATUS_LOCKED)
             <span class="badge bg-dark">Locked</span>
-        @elseif(! $window->canEditReport($report))
+        @elseif(! $anyEditsOpen)
             <span class="badge bg-danger">Closed — deadline passed</span>
         @else
             <span class="badge bg-success">Open for edits</span>
@@ -65,14 +68,56 @@
             </div>
             <div class="text-end">
                 <span class="badge bg-{{ $report->status === 'submitted' ? 'success' : ($report->status === 'locked' ? 'dark' : 'warning') }}">{{ $report->status }}</span>
+                @if($report->requiresDirectorReview())
+                    <div class="small mt-2 {{ $report->isDirectorReviewed() ? 'text-success' : 'text-muted' }}">
+                        {{ $report->directorReviewSummaryLine() }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>
+
+    @if($report->requiresDirectorReview())
+        <div class="card shadow-sm mb-3 border-primary">
+            <div class="card-header fw-bold text-primary"><i class="fas fa-user-tie me-1"></i>Director review</div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">This reporting unit has a director in the divisions table. Directors may adjust the submitted content until the deadline; use <strong>Mark reviewed by director</strong> when your review is complete. All director saves and this action are recorded on the trail.</p>
+                @if($report->isDirectorReviewed() && $report->director_reviewed_at)
+                    <p class="small mb-2"><strong>Reviewed at:</strong> {{ $report->director_reviewed_at->format('M j, Y g:i A') }}
+                        @if($report->directorReviewedBy)
+                            @php $dn = trim(($report->directorReviewedBy->fname ?? '').' '.($report->directorReviewedBy->lname ?? '')); @endphp
+                            · <strong>{{ $dn !== '' ? $dn : 'Staff #'.$report->director_reviewed_by_staff_id }}</strong>
+                        @endif
+                    </p>
+                @endif
+                @php $trail = $report->director_review_trail; @endphp
+                @if(is_array($trail) && count($trail) > 0)
+                    <h6 class="small fw-bold mb-1">Completion trail</h6>
+                    <ol class="small mb-0 ps-3">
+                        @foreach($trail as $entry)
+                            @if(is_array($entry))
+                                <li>{{ $entry['action'] ?? '—' }} — staff #{{ (int) ($entry['staff_id'] ?? 0) }} @ {{ $entry['at'] ?? '' }}</li>
+                            @endif
+                        @endforeach
+                    </ol>
+                @endif
+                @if($canMarkDirectorReview && ! $report->isDirectorReviewed())
+                    <form method="post" action="{{ route('weekly-briefing.director-review', $report) }}" class="mt-3 d-inline" onsubmit="return confirm('Record that you have reviewed this weekly briefing as division director?');">
+                        @csrf
+                        <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-1"></i>Mark reviewed by director</button>
+                    </form>
+                @elseif($report->isDirectorReviewed() && $canDirectorEdit)
+                    <p class="small text-muted mb-0 mt-2">You can still edit content until the deadline; each save is added to the trail above.</p>
+                @endif
+            </div>
+        </div>
+    @endif
 
     <form id="weekly-briefing-form" method="post" action="{{ route('weekly-briefing.update', $report) }}">
         @csrf
         @method('PUT')
 
+        <fieldset class="border-0 m-0 p-0" @disabled(! $formEditable)>
         <div class="card shadow-sm mb-4 border-0">
             <div class="card-header bg-white border-bottom py-3 d-flex align-items-center">
                 <h6 class="mb-0 text-success fw-bold"><i class="bx bx-news me-2 text-success"></i>Section 1 — Major happenings (max 3)</h6>
@@ -149,14 +194,15 @@
             </div>
         </div>
 
-        @if($window->canEditReport($report))
+        @if($formEditable)
             <div class="d-flex flex-wrap gap-2 mb-5">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save draft</button>
-                @if($window->canSubmitReport($report))
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>@if($canDirectorEdit && ! $canContributorEdit)Save changes (director)@else Save draft @endif</button>
+                @if($canContributorSubmit)
                     <button type="submit" name="submit_final" value="1" class="btn btn-success" onclick="return confirm('Submit this weekly briefing? You can still edit until the deadline if submission is allowed.');"><i class="fas fa-paper-plane me-1"></i>Submit</button>
                 @endif
             </div>
         @endif
+        </fieldset>
     </form>
 </div>
 @endsection
@@ -167,6 +213,7 @@
     #weekly-briefing-page .wb-quill-editor .ql-editor { min-height: 120px; }
     #weekly-briefing-page #wb-major-happenings-table td { vertical-align: top; }
     #weekly-briefing-page #wb-major-happenings-table .wb-quill-editor .ql-toolbar { flex-wrap: wrap; }
+    #weekly-briefing-page fieldset:disabled { opacity: 0.65; pointer-events: none; }
 </style>
 @endpush
 
@@ -176,6 +223,9 @@
 (function () {
     var form = document.getElementById('weekly-briefing-form');
     if (!form || typeof Quill === 'undefined') return;
+    @if(! $formEditable)
+    return;
+    @endif
 
     var editors = [];
 

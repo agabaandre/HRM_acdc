@@ -4,7 +4,7 @@
 @section('header', 'Weekly briefing settings')
 
 @section('content')
-<div class="container py-3" style="max-width: 960px;">
+<div class="container-fluid py-3 px-3 px-lg-4 weekly-briefing-settings-page" style="max-width: 1680px; margin-left: auto; margin-right: auto;">
     @if (session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
@@ -159,7 +159,7 @@
                 </div>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" name="cc_division_hod_on_compiled" value="1" id="ccHod" @checked(old('cc_division_hod_on_compiled', $settings->cc_division_hod_on_compiled))>
-                    <label class="form-check-label" for="ccHod">CC division HoDs on the compiled summary email (one message with all PDFs)</label>
+                    <label class="form-check-label" for="ccHod">Email division HoDs their division’s submitted briefing PDF; email each division director (from the divisions table) a <strong>separate director report</strong> (submitted division briefings only for divisions where they are director — not the organisation-wide compiled pack) plus a completion summary for those division rows only. Divisions without a director are skipped for the director copy.</label>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="reminders_enabled" value="1" id="remOn" @checked(old('reminders_enabled', $settings->reminders_enabled))>

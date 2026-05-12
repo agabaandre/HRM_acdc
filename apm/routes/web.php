@@ -232,7 +232,9 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::get('weekly-briefing/create', [App\Http\Controllers\WeeklyBriefingController::class, 'create'])->name('weekly-briefing.create');
     Route::get('weekly-briefing/compiled/{year}/{week}/completion-pdf', [App\Http\Controllers\WeeklyBriefingController::class, 'completionSummaryPdf'])->name('weekly-briefing.completion-summary-pdf')->whereNumber('year')->whereNumber('week');
     Route::get('weekly-briefing/compiled/{year}/{week}/pdf', [App\Http\Controllers\WeeklyBriefingController::class, 'compiledPdf'])->name('weekly-briefing.compiled-pdf')->whereNumber('year')->whereNumber('week');
+    Route::get('weekly-briefing/directorate-combined/{year}/{week}/{directorate_id}/pdf', [App\Http\Controllers\WeeklyBriefingController::class, 'directorateCombinedPdf'])->name('weekly-briefing.directorate-combined-pdf')->whereNumber('year')->whereNumber('week')->whereNumber('directorate_id');
     Route::get('weekly-briefing/{report}/pdf', [App\Http\Controllers\WeeklyBriefingController::class, 'pdf'])->name('weekly-briefing.pdf');
+    Route::post('weekly-briefing/{report}/director-review', [App\Http\Controllers\WeeklyBriefingController::class, 'directorReview'])->name('weekly-briefing.director-review');
     Route::get('weekly-briefing/{report}/edit', [App\Http\Controllers\WeeklyBriefingController::class, 'edit'])->name('weekly-briefing.edit');
     Route::put('weekly-briefing/{report}', [App\Http\Controllers\WeeklyBriefingController::class, 'update'])->name('weekly-briefing.update');
 

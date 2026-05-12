@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Division;
+use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 
@@ -59,6 +61,16 @@ final class DivisionWeeklyBriefGate
         return in_array($sid, self::reportViewerStaffIds(), true);
     }
 
+    public static function mayActAsDivisionDirector(?int $staffId = null): bool
+    {
+        $sid = $staffId ?? (int) user_session('staff_id');
+        if ($sid <= 0) {
+            return false;
+        }
+
+        return Division::query()->where('director_id', $sid)->exists();
+    }
+
     public static function canAccessModule(): bool
     {
         if (self::isSystemAdmin()) {
@@ -67,7 +79,105 @@ final class DivisionWeeklyBriefGate
 
         $sid = (int) user_session('staff_id');
 
-        return self::isListedContributor($sid) || self::isListedReportViewer($sid);
+        return self::isListedContributor($sid) || self::isListedReportViewer($sid) || self::mayActAsDivisionDirector($sid);
+    }
+
+    /**
+     * Contribution keys for reporting units this user may open as division director (divisions table).
+     *
+     * @return list<string>
+     */
+    public static function directorManagedContributionKeysForListing(): array
+    {
+        if (! self::mayActAsDivisionDirector()) {
+            return [];
+        }
+        $settings = WeeklyBriefingSetting::current();
+        $configured = $settings->contributors()->distinct()->pluck('contribution_key')->filter()->values()->all();
+        if ($configured === []) {
+            return [];
+        }
+        $configuredSet = array_fill_keys($configured, true);
+        $sid = (int) user_session('staff_id');
+        $out = [];
+        foreach (Division::query()->where('director_id', $sid)->get() as $div) {
+            $k = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
+            if (isset($configuredSet[$k])) {
+                $out[] = $k;
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    public static function mayViewAsDivisionDirector(WeeklyBriefingReport $report): bool
+    {
+        if (! self::mayActAsDivisionDirector()) {
+            return false;
+        }
+        if (! self::reportHasConfiguredContributionKey($report)) {
+            return false;
+        }
+
+        return self::currentUserIsDirectorForDivisionReport($report);
+    }
+
+    public static function mayEditAsDivisionDirector(WeeklyBriefingReport $report): bool
+    {
+        return self::mayViewAsDivisionDirector($report);
+    }
+
+    public static function mayMarkDirectorReview(WeeklyBriefingReport $report): bool
+    {
+        return self::mayEditAsDivisionDirector($report)
+            && $report->status === WeeklyBriefingReport::STATUS_SUBMITTED
+            && $report->requiresDirectorReview();
+    }
+
+    private static function reportHasConfiguredContributionKey(WeeklyBriefingReport $report): bool
+    {
+        $k = (string) ($report->contribution_key ?? '');
+        if ($k === '') {
+            return false;
+        }
+
+        return WeeklyBriefingSetting::current()
+            ->contributors()
+            ->where('contribution_key', $k)
+            ->exists();
+    }
+
+    private static function currentUserIsDirectorForDivisionReport(WeeklyBriefingReport $report): bool
+    {
+        $div = $report->divisionForContribution();
+        if (! $div) {
+            return false;
+        }
+        $uid = (int) user_session('staff_id');
+
+        return (int) ($div->director_id ?? 0) === $uid;
+    }
+
+    public static function mayDownloadDirectorateCombinedPdf(int $isoYear, int $isoWeek, int $directorateId): bool
+    {
+        if (self::isSystemAdmin() || self::isListedReportViewer()) {
+            return false;
+        }
+
+        $sid = (int) user_session('staff_id');
+        if ($sid <= 0 || ! self::mayActAsDivisionDirector($sid)) {
+            return false;
+        }
+
+        $coll = WeeklyBriefingDirectorateCombined::submittedReportsForDirectorDirectorate(
+            $sid,
+            $directorateId,
+            $isoYear,
+            $isoWeek,
+            null
+        );
+
+        return $coll->isNotEmpty();
     }
 
     /**
@@ -118,7 +228,10 @@ final class DivisionWeeklyBriefGate
                 ->all();
         }
 
-        return self::contributionKeysForFiling();
+        $filing = self::contributionKeysForFiling();
+        $directorKeys = self::directorManagedContributionKeysForListing();
+
+        return array_values(array_unique(array_merge($filing, $directorKeys)));
     }
 
     public static function mayUseContributionKey(string $contributionKey): bool
@@ -149,7 +262,8 @@ final class DivisionWeeklyBriefGate
             ->contributors()
             ->where('staff_id', $uid)
             ->where('contribution_key', $report->contribution_key)
-            ->exists();
+            ->exists()
+            || self::mayViewAsDivisionDirector($report);
     }
 
     public static function mayEditReport(WeeklyBriefingReport $report): bool

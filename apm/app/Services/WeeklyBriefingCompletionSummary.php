@@ -51,12 +51,31 @@ class WeeklyBriefingCompletionSummary
     }
 
     /**
-     * @return list<array{key: string, label: string, directorate_name: string, status: string, contacts: string, major_happenings: string}>
+     * @return list<array{key: string, label: string, directorate_name: string, status: string, contacts: string, major_happenings: string, director_review: string, director_trail: string}>
      */
     public static function rows(WeeklyBriefingSetting $settings, int $isoYear, int $isoWeek): array
     {
-        $keys = $settings->contributors()->distinct()->pluck('contribution_key')->filter()->values();
-        if ($keys->isEmpty()) {
+        $keys = $settings->contributors()->distinct()->pluck('contribution_key')->filter()->values()->all();
+
+        return self::rowsForContributionKeys($settings, $isoYear, $isoWeek, $keys);
+    }
+
+    /**
+     * Same shape as {@see rows}, but only for the given contribution keys (e.g. director-scoped subset).
+     *
+     * @param  list<string>|\Illuminate\Support\Collection<int, string>  $contributionKeys
+     * @return list<array{key: string, label: string, directorate_name: string, status: string, contacts: string, major_happenings: string, director_review: string, director_trail: string}>
+     */
+    public static function rowsForContributionKeys(WeeklyBriefingSetting $settings, int $isoYear, int $isoWeek, array|Collection $contributionKeys): array
+    {
+        $keys = collect($contributionKeys)
+            ->map(fn ($k) => trim((string) $k))
+            ->filter(fn ($k) => $k !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($keys === []) {
             return [];
         }
 
@@ -68,8 +87,8 @@ class WeeklyBriefingCompletionSummary
             ->keyBy('contribution_key');
 
         $rows = [];
-        foreach ($keys as $key) {
-            $k = (string) $key;
+        foreach ($keys as $k) {
+            $k = (string) $k;
             $report = $reports->get($k);
             $rows[] = [
                 'key' => $k,
@@ -78,6 +97,8 @@ class WeeklyBriefingCompletionSummary
                 'status' => $report ? (string) $report->status : 'missing',
                 'contacts' => self::contactNamesForKey($settings, $k),
                 'major_happenings' => self::majorHappeningsTitlesFromReport($report),
+                'director_review' => self::directorReviewCell($k, $report),
+                'director_trail' => self::directorTrailCell($report),
             ];
         }
 
@@ -89,6 +110,32 @@ class WeeklyBriefingCompletionSummary
         });
 
         return $rows;
+    }
+
+    private static function directorReviewCell(string $contributionKey, ?WeeklyBriefingReport $report): string
+    {
+        if (! str_starts_with($contributionKey, 'd-')) {
+            return '—';
+        }
+        $divId = (int) substr($contributionKey, 2);
+        $div = Division::query()->find($divId);
+        if (! $div || (int) ($div->director_id ?? 0) <= 0) {
+            return 'N/A';
+        }
+        if (! $report) {
+            return '—';
+        }
+
+        return $report->directorReviewSummaryLine();
+    }
+
+    private static function directorTrailCell(?WeeklyBriefingReport $report): string
+    {
+        if (! $report || ! $report->requiresDirectorReview()) {
+            return '—';
+        }
+
+        return $report->directorReviewTrailSummary();
     }
 
     public static function contactNamesForKey(WeeklyBriefingSetting $settings, string $key): string
