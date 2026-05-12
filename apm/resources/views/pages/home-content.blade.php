@@ -642,7 +642,7 @@ body {
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
           <div class="dashboard-icon reports me-2"><i class="fas fa-chart-bar"></i></div>
-          <h6>Reports</h6>
+          <h6>Reports & Weekly brief</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">View and download performance reports.</p>
 
@@ -657,10 +657,6 @@ body {
 
         @if (\App\Services\DivisionWeeklyBriefGate::canAccessModule())
         <hr class="border-secondary opacity-25 my-3">
-        <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon reports me-2"><i class="fas fa-newspaper"></i></div>
-          <h6 class="mb-0">Weekly brief</h6>
-        </div>
         <p class="text-muted mb-2" style="font-size: 0.9rem;">Major happenings and bottlenecks by ISO week.</p>
         <div class="menu-section mb-0">
           <h6>Quick Actions</h6>
