@@ -1857,6 +1857,16 @@ class ChangeRequestController extends Controller
             'available_budget' => 'nullable|numeric|min:0'
         ]);
 
+        if ($request->input('action') === 'returned') {
+            $remarks = trim((string) $request->input('remarks', ''));
+            if ($remarks === '') {
+                throw ValidationException::withMessages([
+                    'remarks' => [__('Please enter a comment explaining what to fix before returning this change request.')],
+                ]);
+            }
+            $request->merge(['remarks' => $remarks]);
+        }
+
         // Use the generic approval system
         $genericController = app(\App\Http\Controllers\GenericApprovalController::class);
         return $genericController->updateStatus($request, 'ChangeRequest', $changeRequest->id);
