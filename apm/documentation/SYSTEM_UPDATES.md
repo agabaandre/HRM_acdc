@@ -4,6 +4,13 @@ This document lists notable features, improvements, and changes to the APM (Appr
 
 ---
 
+## Weekly brief — documentation (2026-05-09)
+
+- Operator and developer guide: **[WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md)** (access, settings, routes, PDFs, mail, `weekly-briefing:*` commands, scheduler in `bootstrap/app.php`, global `generate_pdf` footer URL/QR).
+- Indexed from [documentation README](./README.md) and [Jobs and Commands](./JOBS_AND_COMMANDS_DOCUMENTATION.md).
+
+---
+
 ## Average time per document — timing trail, report, and background jobs (2026-05-01)
 
 ### Purpose

@@ -23,6 +23,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 - **[Document Number Management](./DOCUMENT_NUMBER_MANAGEMENT.md)** - Advanced document numbering features
 - **[Signature Verification](./SIGNATURE_VERIFICATION.md)** - Validate APM document signature hashes (lookup, verify, upload PDF)
 - **[Change Tracking Feasibility](./CHANGE_TRACKING_FEASIBILITY.md)** - Change tracking implementation guide
+- **[Weekly brief (Weekly briefing)](./WEEKLY_BRIEFING.md)** - Division/directorate weekly reports, access rules, settings, PDFs, reminders, compiled email, scheduler and Artisan commands, PDF footer URL/QR behaviour
 
 ### Infrastructure & Deployment
 
@@ -39,6 +40,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 - **[Daily Notifications Setup](./DAILY_NOTIFICATIONS_SETUP.md)** - Daily notification system configuration
 - **[Firebase / FCM push (pending approvals)](./FIREBASE_PUSH_NOTIFICATIONS.md)** - Setup, API token registration, Artisan commands (`notifications:test-fcm-pending-approvals`, `notifications:send-pending-approvals-fcm`)
 - **[Session Expiry Setup](./SESSION_EXPIRY_SETUP.md)** - Session expiration and management
+- **[Weekly brief](./WEEKLY_BRIEFING.md)** - HoD reminders, draft locking, compiled summary (`weekly-briefing:*` commands; scheduler in `bootstrap/app.php`)
 
 ### System Improvements
 
@@ -137,6 +139,9 @@ php artisan notifications:send-pending-approvals-fcm --sync
    - Check [Sync Improvements](./SYNC_IMPROVEMENTS.md)
    - See [System Updates](./SYSTEM_UPDATES.md) for recent features (including APM API and users sync)
 
+5. **Weekly brief**
+   - [WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md) — routes, `DivisionWeeklyBriefGate`, settings, lifecycle, PDFs, mail, and `weekly-briefing:*` scheduler
+
 ### For DevOps/System Administrators
 
 1. **Production Deployment**
@@ -151,6 +156,7 @@ php artisan notifications:send-pending-approvals-fcm --sync
 
 3. **Automation**
    - Configure [Daily Notifications](./DAILY_NOTIFICATIONS_SETUP.md)
+   - Weekly brief reminders and compiled sends: [WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md) (requires `schedule:run` in cron)
    - Set up [Session Expiry](./SESSION_EXPIRY_SETUP.md)
    - Configure [Database Backups](../README_BACKUP.md) - Automatic backup scheduling and cleanup
 
@@ -208,6 +214,9 @@ See [Approval Trail Archiving](./APPROVAL_TRAIL_ARCHIVING.md) for complete guide
    - Verify queue is processing
    - Review notification logs
 
+5. **Weekly brief (reminders, compiled mail, lock)**
+   - See [WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md) (scheduler, `--force`, settings times)
+
 ## 📝 File Structure
 
 ```
@@ -261,6 +270,6 @@ For issues or questions:
 
 ---
 
-**Last Updated**: 2025
+**Last Updated**: 2026
 **Version**: 1.1.0
 
