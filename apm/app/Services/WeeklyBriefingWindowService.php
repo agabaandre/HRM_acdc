@@ -8,9 +8,21 @@ use Carbon\Carbon;
 
 class WeeklyBriefingWindowService
 {
+    /**
+     * Contributors may edit draft (or locked draft during admin unlock). Submitted briefs stay read-only for contributors.
+     * Without an active admin unlock: past deadline or locked status blocks editing; locked + past week cannot submit (submit requires draft).
+     */
     public function canEditReport(WeeklyBriefingReport $report): bool
     {
         $settings = WeeklyBriefingSetting::current();
+        $override = $settings->reportUnlockOverrideAppliesTo($report);
+        if ($override) {
+            if ($report->status === WeeklyBriefingReport::STATUS_SUBMITTED) {
+                return false;
+            }
+
+            return true;
+        }
 
         if ($report->status === WeeklyBriefingReport::STATUS_LOCKED) {
             return false;
@@ -21,9 +33,19 @@ class WeeklyBriefingWindowService
         return Carbon::now()->lessThanOrEqualTo($deadline);
     }
 
+    /**
+     * Submit is only for drafts before the deadline, unless an admin unlock allows submitting a locked late draft.
+     */
     public function canSubmitReport(WeeklyBriefingReport $report): bool
     {
         $settings = WeeklyBriefingSetting::current();
+        $override = $settings->reportUnlockOverrideAppliesTo($report);
+        if ($override) {
+            return in_array($report->status, [
+                WeeklyBriefingReport::STATUS_DRAFT,
+                WeeklyBriefingReport::STATUS_LOCKED,
+            ], true);
+        }
 
         if ($report->status !== WeeklyBriefingReport::STATUS_DRAFT) {
             return false;
@@ -34,8 +56,10 @@ class WeeklyBriefingWindowService
 
     public function canDirectorEditSubmittedReport(WeeklyBriefingReport $report): bool
     {
+        $settings = WeeklyBriefingSetting::current();
+        $override = $settings->reportUnlockOverrideAppliesTo($report);
         if ($report->status === WeeklyBriefingReport::STATUS_LOCKED) {
-            return false;
+            return $override && DivisionWeeklyBriefGate::mayEditAsDivisionDirector($report);
         }
         if ($report->status !== WeeklyBriefingReport::STATUS_SUBMITTED) {
             return false;
@@ -43,7 +67,9 @@ class WeeklyBriefingWindowService
         if (! DivisionWeeklyBriefGate::mayEditAsDivisionDirector($report)) {
             return false;
         }
-        $settings = WeeklyBriefingSetting::current();
+        if ($override) {
+            return true;
+        }
         $deadline = $report->submissionDeadline($settings);
 
         return Carbon::now()->lessThanOrEqualTo($deadline);

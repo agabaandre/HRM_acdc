@@ -161,6 +161,54 @@
             </div>
         </div>
 
+        <div class="card shadow-sm mb-3 border-warning">
+            <div class="card-header fw-bold">Late submission unlock (administrative)</div>
+            <div class="card-body">
+                <p class="small text-muted">When the ISO-week deadline has passed, drafts are normally locked and <strong>cannot be submitted</strong>. Use this window only when you need to let contributors (and division directors for submitted briefs) work again until a fixed end time. Scope <strong>All reporting units</strong> applies to every weekly brief row; <strong>One division</strong> limits the unlock to division briefs (<code>d-…</code>) for that contribution division, or directorate briefs (<code>dr-…</code>) whose APM division on the report matches the selected division.</p>
+                <input type="hidden" name="report_unlock_override_enabled" value="0">
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="report_unlock_override_enabled" value="1" id="wbUnlockEn" @checked(filter_var(old('report_unlock_override_enabled', $settings->report_unlock_override_enabled ?? false), FILTER_VALIDATE_BOOLEAN))>
+                    <label class="form-check-label fw-semibold" for="wbUnlockEn">Enable unlock window</label>
+                </div>
+                @php
+                    $untilOld = old('report_unlock_override_until');
+                    $untilDisplay = $untilOld;
+                    if ($untilDisplay === null && isset($settings->report_unlock_override_until) && $settings->report_unlock_override_until) {
+                        $untilDisplay = $settings->report_unlock_override_until->timezone(config('app.timezone'))->format('Y-m-d\TH:i');
+                    }
+                    $scopeOld = old('report_unlock_override_scope', $settings->report_unlock_override_scope ?? 'all');
+                @endphp
+                <div class="row g-2 mb-2">
+                    <div class="col-md-5">
+                        <label class="form-label" for="wbUnlockUntil">Unlock active until (server time: {{ config('app.timezone') }})</label>
+                        <input type="datetime-local" name="report_unlock_override_until" id="wbUnlockUntil" class="form-control" value="{{ $untilDisplay }}">
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label d-block">Applies to</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="report_unlock_override_scope" id="wbUnlockScopeAll" value="all" @checked($scopeOld === 'all')>
+                            <label class="form-check-label" for="wbUnlockScopeAll">All reporting units</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="report_unlock_override_scope" id="wbUnlockScopeDiv" value="division" @checked($scopeOld === 'division')>
+                            <label class="form-check-label" for="wbUnlockScopeDiv">One division only</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-0" id="wbUnlockDivisionWrap" style="{{ $scopeOld === 'division' ? '' : 'display:none;' }}">
+                    <label class="form-label" for="wbUnlockDivisionId">Division (contribution / APM context)</label>
+                    <select name="report_unlock_override_division_id" id="wbUnlockDivisionId" class="form-select" style="max-width:28rem;">
+                        <option value="">— Select division —</option>
+                        @foreach($divisions as $division)
+                            <option value="{{ $division->id }}" @selected((string) old('report_unlock_override_division_id', $settings->report_unlock_override_division_id ?? '') === (string) $division->id)>
+                                {{ $division->division_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <div class="card shadow-sm mb-3">
             <div class="card-header fw-bold">Compiled PDF &amp; mail</div>
             <div class="card-body">
@@ -355,6 +403,17 @@
         });
         vBody.querySelectorAll('tr[data-wb-viewer-row]').forEach(wbWireViewerRow);
     }
+
+    var unlockScopeAll = document.getElementById('wbUnlockScopeAll');
+    var unlockScopeDiv = document.getElementById('wbUnlockScopeDiv');
+    var unlockDivWrap = document.getElementById('wbUnlockDivisionWrap');
+    function wbSyncUnlockDivisionVis() {
+        if (!unlockDivWrap) return;
+        unlockDivWrap.style.display = (unlockScopeDiv && unlockScopeDiv.checked) ? '' : 'none';
+    }
+    if (unlockScopeAll) unlockScopeAll.addEventListener('change', wbSyncUnlockDivisionVis);
+    if (unlockScopeDiv) unlockScopeDiv.addEventListener('change', wbSyncUnlockDivisionVis);
+    wbSyncUnlockDivisionVis();
 })();
 </script>
 @endpush

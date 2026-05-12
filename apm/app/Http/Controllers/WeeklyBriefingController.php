@@ -277,6 +277,7 @@ class WeeklyBriefingController extends Controller
         $canContributorSubmit = DivisionWeeklyBriefGate::mayEditReport($report) && $window->canSubmitReport($report);
         $canMarkDirectorReview = $window->canMarkDirectorReview($report);
         $formEditable = $canContributorEdit || $canDirectorEdit;
+        $unlockOverrideActive = $settings->reportUnlockOverrideAppliesTo($report);
 
         return view('weekly-briefing.edit', compact(
             'report',
@@ -286,7 +287,8 @@ class WeeklyBriefingController extends Controller
             'canDirectorEdit',
             'canContributorSubmit',
             'canMarkDirectorReview',
-            'formEditable'
+            'formEditable',
+            'unlockOverrideActive'
         ));
     }
 
@@ -399,7 +401,7 @@ class WeeklyBriefingController extends Controller
         }
         $window = new WeeklyBriefingWindowService;
         if (! $window->canMarkDirectorReview($report)) {
-            return back()->with('error', 'Director review can only be recorded before the submission deadline.');
+            return back()->with('error', 'Director review cannot be recorded (deadline passed or briefing locked — use an administrative unlock in settings if appropriate).');
         }
 
         $report->director_reviewed_at = now();
