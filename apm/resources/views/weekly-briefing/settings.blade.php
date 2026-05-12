@@ -57,6 +57,7 @@
                     <table class="table table-bordered align-middle" id="wb-contributors-table">
                         <thead class="table-light">
                             <tr>
+                                <th style="width:2.5rem" class="text-center">#</th>
                                 <th style="min-width:200px">Staff</th>
                                 <th style="min-width:160px">APM division</th>
                                 <th style="min-width:130px">Contribution type</th>
@@ -85,6 +86,8 @@
                                 @endphp
                                 @include('weekly-briefing.partials.contributor-row', [
                                     'idx' => $idx,
+                                    'rowNum' => $loop->iteration,
+                                    'showRowNum' => true,
                                     'staffId' => $staffId,
                                     'apmDiv' => $apmDiv,
                                     'kind' => $kind,
@@ -99,7 +102,51 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="small text-muted mb-0">Only staff listed here (plus system administrators) can open Division Weekly Brief. Distinct contribution targets in this list drive reminders and the completion summary.</p>
+                <p class="small text-muted mb-0">Staff listed here may <strong>start, edit, and submit</strong> for their assigned reporting unit only. <strong>System administrators</strong> and <strong>report viewers</strong> (below) can open the module and see all units; only assigned contributors get filing actions.</p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header fw-bold d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span>Individuals allowed to view all reports</span>
+                <button type="button" class="btn btn-sm btn-outline-success" id="wb-add-viewer">+ Add viewer</button>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">These staff can open Division Weekly Brief, see every unit’s status and PDFs, and download the compiled PDF and completion summary. They cannot edit or submit another person’s report unless they are also listed as a contributor for that unit.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle" id="wb-viewers-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:2.5rem" class="text-center">#</th>
+                                <th style="min-width:220px">Staff</th>
+                                <th style="width:48px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="wb-viewers-body">
+                            @php
+                                $viewerRows = old('report_viewers');
+                                if (! is_array($viewerRows)) {
+                                    $viewerRows = [];
+                                    foreach ($settings->report_viewer_staff_ids ?? [] as $vid) {
+                                        $viewerRows[] = ['staff_id' => (int) $vid];
+                                    }
+                                }
+                            @endphp
+                            @foreach($viewerRows as $vidx => $vr)
+                                @php
+                                    $vrow = is_array($vr) ? $vr : [];
+                                    $viewerStaffId = (int) ($vrow['staff_id'] ?? 0);
+                                @endphp
+                                @include('weekly-briefing.partials.viewer-row', [
+                                    'idx' => $vidx,
+                                    'rowNum' => $loop->iteration,
+                                    'viewerStaffId' => $viewerStaffId,
+                                    'staffList' => $staffList,
+                                ])
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -128,6 +175,8 @@
     <template id="wb-contributor-template">
         @include('weekly-briefing.partials.contributor-row', [
             'idx' => '__INDEX__',
+            'rowNum' => '',
+            'showRowNum' => true,
             'staffId' => 0,
             'apmDiv' => 0,
             'kind' => 'division',
@@ -139,6 +188,15 @@
             'directorates' => $directorates,
         ])
     </template>
+
+    <template id="wb-viewer-template">
+        @include('weekly-briefing.partials.viewer-row', [
+            'idx' => '__VINDEX__',
+            'rowNum' => '',
+            'viewerStaffId' => 0,
+            'staffList' => $staffList,
+        ])
+    </template>
 @endsection
 
 @push('scripts')
@@ -147,12 +205,42 @@
     var body = document.getElementById('wb-contributors-body');
     var tpl = document.getElementById('wb-contributor-template');
     var btn = document.getElementById('wb-add-contributor');
+    var vBody = document.getElementById('wb-viewers-body');
+    var vTpl = document.getElementById('wb-viewer-template');
+    var vBtn = document.getElementById('wb-add-viewer');
     if (!body || !tpl || !btn) return;
+
+    function wbRenumberContributorRows() {
+        var n = 1;
+        body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
+            var c = tr.querySelector('.wb-contrib-row-num');
+            if (c) c.textContent = String(n++);
+        });
+    }
+
+    function wbRenumberViewerRows() {
+        if (!vBody) return;
+        var n = 1;
+        vBody.querySelectorAll('tr[data-wb-viewer-row]').forEach(function (tr) {
+            var c = tr.querySelector('.wb-viewer-row-num');
+            if (c) c.textContent = String(n++);
+        });
+    }
 
     function wbNextIndex() {
         var max = -1;
         body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
             var i = parseInt(tr.getAttribute('data-wb-row'), 10);
+            if (!isNaN(i) && i > max) max = i;
+        });
+        return max + 1;
+    }
+
+    function wbNextViewerIndex() {
+        if (!vBody) return 0;
+        var max = -1;
+        vBody.querySelectorAll('tr[data-wb-viewer-row]').forEach(function (tr) {
+            var i = parseInt(tr.getAttribute('data-wb-viewer-row'), 10);
             if (!isNaN(i) && i > max) max = i;
         });
         return max + 1;
@@ -165,10 +253,22 @@
             });
         });
         tr.querySelectorAll('.wb-remove-row').forEach(function (b) {
-            b.addEventListener('click', function () { tr.remove(); });
+            b.addEventListener('click', function () {
+                tr.remove();
+                wbRenumberContributorRows();
+            });
         });
         var k = tr.querySelector('.wb-kind');
         if (k) wbToggleKind(tr, k.value);
+    }
+
+    function wbWireViewerRow(tr) {
+        tr.querySelectorAll('.wb-remove-viewer-row').forEach(function (b) {
+            b.addEventListener('click', function () {
+                tr.remove();
+                wbRenumberViewerRows();
+            });
+        });
     }
 
     function wbToggleKind(tr, kind) {
@@ -198,6 +298,7 @@
             body.appendChild(tr);
             wbWireRow(tr);
             wbInitStaffSelect2(tr);
+            wbRenumberContributorRows();
         }
     });
 
@@ -212,9 +313,37 @@
         });
     }
 
+    function wbInitViewerStaffSelect2(tr) {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+        jQuery(tr).find('.wb-viewer-staff-select').each(function () {
+            var $s = jQuery(this);
+            if ($s.hasClass('select2-hidden-accessible')) {
+                try { $s.select2('destroy'); } catch (e) {}
+            }
+            $s.select2({ theme: 'bootstrap4', width: '100%' });
+        });
+    }
+
     body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
         wbWireRow(tr);
     });
+
+    if (vBody && vTpl && vBtn) {
+        vBtn.addEventListener('click', function () {
+            var ix = wbNextViewerIndex();
+            var html = vTpl.innerHTML.replace(/__VINDEX__/g, String(ix));
+            var wrap = document.createElement('tbody');
+            wrap.innerHTML = html.trim();
+            var tr = wrap.querySelector('tr');
+            if (tr) {
+                vBody.appendChild(tr);
+                wbWireViewerRow(tr);
+                wbInitViewerStaffSelect2(tr);
+                wbRenumberViewerRows();
+            }
+        });
+        vBody.querySelectorAll('tr[data-wb-viewer-row]').forEach(wbWireViewerRow);
+    }
 })();
 </script>
 @endpush

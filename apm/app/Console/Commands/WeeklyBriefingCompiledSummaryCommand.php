@@ -66,7 +66,7 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             'settings' => $settings,
             'isoYear' => $y,
             'isoWeek' => $w,
-        ], []);
+        ], ['orientation' => 'L']);
 
         $compiledBinary = $pdf->Output('', 'S');
         $compiledFilename = 'Weekly_Briefing_Compiled_W'.$w.'_'.$y.'.pdf';
@@ -76,7 +76,7 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             $one = mpdf_print('weekly-briefing.pdf-division', [
                 'report' => $report,
                 'settings' => $settings,
-            ], []);
+            ], ['orientation' => 'L']);
             $safe = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $report->contributionEntityLabel());
             $divisionAttachments[] = [
                 'binary' => $one->Output('', 'S'),
@@ -90,7 +90,7 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             'settings' => $settings,
             'isoYear' => $y,
             'isoWeek' => $w,
-        ], []);
+        ], ['orientation' => 'L']);
         $summaryBinary = $summaryPdf->Output('', 'S');
         $summaryFilename = 'Weekly_Briefing_Completion_Summary_W'.$w.'_'.$y.'.pdf';
 

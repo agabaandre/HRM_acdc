@@ -1,4 +1,7 @@
 <tr data-wb-row="{{ $idx }}">
+    @if(! empty($showRowNum))
+    <td class="text-muted small text-center wb-contrib-row-num">{{ $rowNum ?? '' }}</td>
+    @endif
     <td>
         <select name="contributors[{{ $idx }}][staff_id]" class="form-select form-select-sm wb-staff-select select2 w-100">
             <option value="">— Staff —</option>
