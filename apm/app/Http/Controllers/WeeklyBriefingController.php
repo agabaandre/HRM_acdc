@@ -6,6 +6,7 @@ use App\Models\Division;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
+use App\Services\DivisionWeeklyBriefGate;
 use App\Services\WeeklyBriefingCompletionSummary;
 use App\Services\WeeklyBriefingWindowService;
 use Carbon\Carbon;
@@ -17,32 +18,39 @@ class WeeklyBriefingController extends Controller
 {
     public function index(Request $request): View
     {
-        $settings = WeeklyBriefingSetting::current();
-        $staffId = (int) user_session('staff_id');
-        $divisionId = $this->userPrimaryDivisionId();
-        $keys = $this->userContributionKeys($settings, $staffId, $divisionId);
-        if ($keys === []) {
-            abort(403, 'No weekly briefing access for your account.');
+        $this->assertDivisionWeeklyBriefModuleAccess();
+
+        $keys = DivisionWeeklyBriefGate::contributionKeysForCurrentUser();
+        if ($keys === [] && ! DivisionWeeklyBriefGate::isSystemAdmin()) {
+            abort(403, 'No Division Weekly Brief access for your account.');
         }
 
         $year = (int) $request->get('year', Carbon::now()->isoWeekYear());
         $week = (int) $request->get('week', Carbon::now()->isoWeek());
 
-        $reports = WeeklyBriefingReport::query()
-            ->whereIn('contribution_key', $keys)
+        $reportsQuery = WeeklyBriefingReport::query()
             ->where('report_iso_week_year', $year)
-            ->orderByDesc('report_iso_week')
-            ->paginate(12);
+            ->orderByDesc('report_iso_week');
+        if ($keys !== []) {
+            $reportsQuery->whereIn('contribution_key', $keys);
+        } else {
+            $reportsQuery->whereRaw('0 = 1');
+        }
+        $reports = $reportsQuery->paginate(12);
 
         $cy = Carbon::now()->isoWeekYear();
         $cw = Carbon::now()->isoWeek();
 
-        $currentWeekReports = WeeklyBriefingReport::query()
-            ->whereIn('contribution_key', $keys)
+        $currentQuery = WeeklyBriefingReport::query()
             ->where('report_iso_week_year', $cy)
             ->where('report_iso_week', $cw)
-            ->orderBy('contribution_key')
-            ->get();
+            ->orderBy('contribution_key');
+        if ($keys !== []) {
+            $currentQuery->whereIn('contribution_key', $keys);
+        } else {
+            $currentQuery->whereRaw('0 = 1');
+        }
+        $currentWeekReports = $currentQuery->get();
 
         $startUrls = [];
         foreach ($keys as $k) {
@@ -52,7 +60,7 @@ class WeeklyBriefingController extends Controller
             $startUrls[$k] = route('weekly-briefing.create', ['contribution_key' => $k]);
         }
 
-        $window = new WeeklyBriefingWindowService;
+        $divisionId = $this->userPrimaryDivisionId();
 
         return view('weekly-briefing.index', compact(
             'reports',
@@ -60,34 +68,33 @@ class WeeklyBriefingController extends Controller
             'startUrls',
             'divisionId',
             'year',
-            'week',
-            'settings',
-            'window'
+            'week'
         ));
     }
 
     public function create(Request $request): RedirectResponse
     {
+        $this->assertDivisionWeeklyBriefModuleAccess();
+
         $settings = WeeklyBriefingSetting::current();
         $staffId = (int) user_session('staff_id');
         $divisionId = $this->userPrimaryDivisionId();
 
         $contributionKey = (string) $request->query('contribution_key', '');
-        if ($contributionKey === '' && ! $settings->contributors()->exists() && $divisionId !== null) {
-            $contributionKey = WeeklyBriefingContributor::contributionKeyForDivision($divisionId);
-        }
 
         if ($contributionKey === '') {
             return redirect()->route('weekly-briefing.index')->with('error', 'Choose a reporting unit to start.');
         }
 
-        if (! $this->userMayUseContributionKey($settings, $staffId, $divisionId, $contributionKey)) {
+        if (! DivisionWeeklyBriefGate::mayUseContributionKey($contributionKey)) {
             abort(403);
         }
 
-        $contributorRow = $settings->contributors()->exists()
-            ? $settings->contributors()->where('staff_id', $staffId)->where('contribution_key', $contributionKey)->first()
-            : null;
+        $contributorRow = $settings->contributors()
+            ->where('contribution_key', $contributionKey)
+            ->where('staff_id', $staffId)
+            ->first()
+            ?? $settings->contributors()->where('contribution_key', $contributionKey)->first();
 
         $apmDivisionId = $contributorRow
             ? (int) $contributorRow->apm_division_id
@@ -139,6 +146,7 @@ class WeeklyBriefingController extends Controller
 
     public function edit(WeeklyBriefingReport $report): View
     {
+        $this->assertDivisionWeeklyBriefModuleAccess();
         $this->assertCanAccessReport($report);
 
         $report->load(['division', 'directorate']);
@@ -150,6 +158,7 @@ class WeeklyBriefingController extends Controller
 
     public function update(Request $request, WeeklyBriefingReport $report): RedirectResponse
     {
+        $this->assertDivisionWeeklyBriefModuleAccess();
         $this->assertCanAccessReport($report);
 
         $window = new WeeklyBriefingWindowService;
@@ -216,6 +225,7 @@ class WeeklyBriefingController extends Controller
 
     public function pdf(WeeklyBriefingReport $report)
     {
+        $this->assertDivisionWeeklyBriefModuleAccess();
         $this->assertCanAccessReport($report);
 
         $report->load(['division', 'directorate']);
@@ -308,61 +318,25 @@ class WeeklyBriefingController extends Controller
         return $id !== null && $id !== '' ? (int) $id : null;
     }
 
-    /**
-     * @return list<string>
-     */
-    private function userContributionKeys(WeeklyBriefingSetting $settings, int $staffId, ?int $divisionId): array
+    private function assertDivisionWeeklyBriefModuleAccess(): void
     {
-        if ($settings->contributors()->exists()) {
-            return $settings->contributors()
-                ->where('staff_id', $staffId)
-                ->pluck('contribution_key')
-                ->unique()
-                ->values()
-                ->all();
+        if (! DivisionWeeklyBriefGate::canAccessModule()) {
+            abort(403, 'You do not have access to Division Weekly Brief.');
         }
-
-        if ($divisionId !== null) {
-            return [WeeklyBriefingContributor::contributionKeyForDivision($divisionId)];
-        }
-
-        return [];
-    }
-
-    private function userMayUseContributionKey(WeeklyBriefingSetting $settings, int $staffId, ?int $divisionId, string $contributionKey): bool
-    {
-        if ($settings->contributors()->exists()) {
-            return $settings->contributors()
-                ->where('staff_id', $staffId)
-                ->where('contribution_key', $contributionKey)
-                ->exists();
-        }
-
-        if ($divisionId === null) {
-            return false;
-        }
-
-        return $contributionKey === WeeklyBriefingContributor::contributionKeyForDivision($divisionId);
     }
 
     private function assertCanAccessReport(WeeklyBriefingReport $report): void
     {
-        $settings = WeeklyBriefingSetting::current();
-        $uid = (int) user_session('staff_id');
-        if ($settings->contributors()->exists()) {
-            if ($settings->contributors()->where('staff_id', $uid)->where('contribution_key', $report->contribution_key)->exists()) {
-                return;
-            }
-            abort(403);
+        if (DivisionWeeklyBriefGate::isSystemAdmin()) {
+            return;
         }
 
-        $did = $this->userPrimaryDivisionId();
-        if ($did !== null && $did === (int) $report->division_id) {
+        $settings = WeeklyBriefingSetting::current();
+        $uid = (int) user_session('staff_id');
+        if ($settings->contributors()->where('staff_id', $uid)->where('contribution_key', $report->contribution_key)->exists()) {
             return;
         }
-        if (Division::query()->where('id', $report->division_id)->where('division_head', $uid)->exists()) {
-            return;
-        }
+
         abort(403);
     }
 }

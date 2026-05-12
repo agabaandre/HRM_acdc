@@ -1,6 +1,6 @@
 <tr data-wb-row="{{ $idx }}">
     <td>
-        <select name="contributors[{{ $idx }}][staff_id]" class="form-select form-select-sm">
+        <select name="contributors[{{ $idx }}][staff_id]" class="form-select form-select-sm wb-staff-select select2 w-100">
             <option value="">— Staff —</option>
             @foreach($staffList as $s)
                 <option value="{{ $s->staff_id }}" @selected((int)$staffId === (int)$s->staff_id)>
