@@ -16,6 +16,7 @@ class WeeklyBriefingSetting extends Model
         'compiled_recipient_emails',
         'cc_division_hod_on_compiled',
         'reminders_enabled',
+        'division_directors_can_access_module',
         'report_viewer_staff_ids',
     ];
 
@@ -25,6 +26,7 @@ class WeeklyBriefingSetting extends Model
             'submission_weekday' => 'integer',
             'cc_division_hod_on_compiled' => 'boolean',
             'reminders_enabled' => 'boolean',
+            'division_directors_can_access_module' => 'boolean',
             'report_viewer_staff_ids' => 'array',
         ];
     }
@@ -44,6 +46,7 @@ class WeeklyBriefingSetting extends Model
             'compiled_recipient_emails' => null,
             'cc_division_hod_on_compiled' => true,
             'reminders_enabled' => true,
+            'division_directors_can_access_module' => true,
         ]);
     }
 

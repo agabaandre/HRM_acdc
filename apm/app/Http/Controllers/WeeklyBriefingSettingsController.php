@@ -45,6 +45,7 @@ class WeeklyBriefingSettingsController extends Controller
             'compiled_recipient_emails' => 'nullable|string|max:5000',
             'cc_division_hod_on_compiled' => 'sometimes|boolean',
             'reminders_enabled' => 'sometimes|boolean',
+            'division_directors_can_access_module' => 'sometimes|boolean',
             'contributors' => 'nullable|array',
             'contributors.*.staff_id' => 'nullable|integer',
             'contributors.*.apm_division_id' => 'nullable|integer',
@@ -123,6 +124,7 @@ class WeeklyBriefingSettingsController extends Controller
             'compiled_recipient_emails' => $data['compiled_recipient_emails'] ?? null,
             'cc_division_hod_on_compiled' => $request->boolean('cc_division_hod_on_compiled'),
             'reminders_enabled' => $request->boolean('reminders_enabled'),
+            'division_directors_can_access_module' => $request->boolean('division_directors_can_access_module'),
             'report_viewer_staff_ids' => $viewerIds,
         ]);
         $settings->save();

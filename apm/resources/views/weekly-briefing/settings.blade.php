@@ -151,6 +151,17 @@
         </div>
 
         <div class="card shadow-sm mb-3">
+            <div class="card-header fw-bold">Division director access</div>
+            <div class="card-body">
+                <input type="hidden" name="division_directors_can_access_module" value="0">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="division_directors_can_access_module" value="1" id="wbDirModule" @checked(filter_var(old('division_directors_can_access_module', $settings->division_directors_can_access_module ?? true), FILTER_VALIDATE_BOOLEAN))>
+                    <label class="form-check-label" for="wbDirModule">Allow staff set as <strong>division director</strong> (<code>divisions.director_id</code>) to open <strong>Division Weekly Brief</strong> in the top menu and home dashboard, and to review or download reports for reporting units they direct (same rules as today when this is on). If unchecked, directors only see the module if they are also a contributor or a configured report viewer.</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
             <div class="card-header fw-bold">Compiled PDF &amp; mail</div>
             <div class="card-body">
                 <div class="mb-3">
