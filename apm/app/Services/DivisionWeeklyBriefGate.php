@@ -63,7 +63,7 @@ final class DivisionWeeklyBriefGate
 
     public static function mayActAsDivisionDirector(?int $staffId = null): bool
     {
-        if (! (bool) (WeeklyBriefingSetting::current()->division_directors_can_access_module ?? true)) {
+        if (! self::divisionDirectorsModuleAccessEnabled()) {
             return false;
         }
         $sid = $staffId ?? (int) user_session('staff_id');
@@ -71,7 +71,20 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        return Division::query()->where('director_id', $sid)->exists();
+        return Division::queryForStaffActingAsDirector($sid)->exists();
+    }
+
+    /**
+     * Weekly brief settings: when false, division directors do not get module/nav (unless contributor/viewer).
+     */
+    private static function divisionDirectorsModuleAccessEnabled(): bool
+    {
+        $v = WeeklyBriefingSetting::current()->division_directors_can_access_module;
+        if ($v === null) {
+            return true;
+        }
+
+        return filter_var($v, FILTER_VALIDATE_BOOLEAN);
     }
 
     public static function canAccessModule(): bool
@@ -103,7 +116,7 @@ final class DivisionWeeklyBriefGate
         $configuredSet = array_fill_keys($configured, true);
         $sid = (int) user_session('staff_id');
         $out = [];
-        foreach (Division::query()->where('director_id', $sid)->get() as $div) {
+        foreach (Division::queryForStaffActingAsDirector($sid)->get() as $div) {
             $k = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
             if (isset($configuredSet[$k])) {
                 $out[] = $k;
@@ -158,7 +171,7 @@ final class DivisionWeeklyBriefGate
         }
         $uid = (int) user_session('staff_id');
 
-        return (int) ($div->director_id ?? 0) === $uid;
+        return $div->staffActsAsDivisionDirector($uid);
     }
 
     public static function mayDownloadDirectorateCombinedPdf(int $isoYear, int $isoWeek, int $directorateId): bool

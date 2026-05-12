@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -109,5 +111,70 @@ class Division extends Model
     public function directorate(): BelongsTo
     {
         return $this->belongsTo(Directorate::class, 'directorate_id');
+    }
+
+    /**
+     * Divisions where this staff member is the named director or is the active director OIC (within OIC dates).
+     */
+    public static function queryForStaffActingAsDirector(int $staffId): Builder
+    {
+        $today = Carbon::now()->toDateString();
+
+        return static::query()
+            ->where(function ($q) use ($staffId, $today) {
+                $q->where('director_id', $staffId)
+                    ->orWhere(function ($q2) use ($staffId, $today) {
+                        $q2->where('director_oic_id', $staffId)
+                            ->where(function ($q3) use ($today) {
+                                $q3->whereNull('director_oic_start_date')
+                                    ->orWhereDate('director_oic_start_date', '<=', $today);
+                            })
+                            ->where(function ($q4) use ($today) {
+                                $q4->whereNull('director_oic_end_date')
+                                    ->orWhereDate('director_oic_end_date', '>=', $today);
+                            });
+                    });
+            });
+    }
+
+    /**
+     * True if this staff member is the division director or is the acting director (OIC) for today.
+     */
+    public function staffActsAsDivisionDirector(int $staffId): bool
+    {
+        if ($staffId <= 0) {
+            return false;
+        }
+        if ((int) ($this->director_id ?? 0) === $staffId) {
+            return true;
+        }
+        if ((int) ($this->director_oic_id ?? 0) !== $staffId) {
+            return false;
+        }
+        $today = Carbon::now()->toDateString();
+        $start = $this->director_oic_start_date;
+        $end = $this->director_oic_end_date;
+        if ($start !== null && $start !== '' && Carbon::parse($start)->toDateString() > $today) {
+            return false;
+        }
+        if ($end !== null && $end !== '' && Carbon::parse($end)->toDateString() < $today) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Staff id that should receive director-scoped weekly brief actions (OIC takes precedence when active).
+     */
+    public function primaryOrActiveDirectorStaffIdForWeeklyBrief(): ?int
+    {
+        $oic = (int) ($this->director_oic_id ?? 0);
+        if ($oic > 0 && $this->staffActsAsDivisionDirector($oic)) {
+            return $oic;
+        }
+        $d = (int) ($this->director_id ?? 0);
+
+        return $d > 0 ? $d : null;
     }
 }
