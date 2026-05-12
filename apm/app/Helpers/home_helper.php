@@ -343,16 +343,16 @@ if (! function_exists('generate_pdf')) {
                 $qrCode = new \Endroid\QrCode\QrCode(
                     data: $footerDocumentUrl,
                     errorCorrectionLevel: \Endroid\QrCode\ErrorCorrectionLevel::Medium,
-                    size: 180,
-                    margin: 4,
+                    size: 110,
+                    margin: 2,
                 );
                 $writer = new \Endroid\QrCode\Writer\PngWriter();
                 $qrResult = $writer->write($qrCode);
                 $dataUri = $qrResult->getDataUri();
                 $dataUriEsc = htmlspecialchars($dataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-                $footerDocumentQrHtml = '<div style="text-align: left;">'
-                    .'<img src="'.$dataUriEsc.'" alt="Document link QR" width="72" height="72" style="width: 24mm; height: 24mm; display: block;" />'
-                    .'<span style="font-size: 6pt; color: #911C39;">Scan to open this document</span>'
+                $footerDocumentQrHtml = '<div style="text-align: center;">'
+                    .'<img src="'.$dataUriEsc.'" alt="Document link QR" style="width: 14mm; height: 14mm; display: block; margin: 0 auto;" />'
+                    .'<span style="font-size: 5pt; color: #911C39; display: block; margin-top: 1px;">Scan to open</span>'
                     .'</div>';
             }
         } catch (\Throwable $e) {
@@ -362,8 +362,12 @@ if (! function_exists('generate_pdf')) {
             $footerDocumentQrHtml = '';
         }
         if ($footerDocumentQrHtml === '') {
-            $footerDocumentQrHtml = '<span style="word-break: break-all; white-space: normal;">'.$footerDocumentUrlEsc.'</span>';
+            $footerDocumentQrHtml = '<div style="text-align: center; max-width: 22mm;"><span style="word-break: break-all; white-space: normal; font-size: 6pt;">'.$footerDocumentUrlEsc.'</span></div>';
         }
+
+        $footerMetaHtml = 'Source: Africa CDC  Central Business Platform<br>'
+            .'Generated on: '.date('d F, Y h:i A').'<br>'
+            .'By: '.htmlspecialchars((string) (user_session('name') ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
         $pdfFormat = $options['format'] ?? 'A4';
         $orientation = strtoupper((string) ($options['orientation'] ?? ''));
@@ -484,17 +488,17 @@ if (! function_exists('generate_pdf')) {
         // Set footer exactly like CodeIgniter
         $footer = ' <table width="100%" style="font-size: 8pt; color: #911C39; border:none; margin-top: 4px; !important">
             <tr>
-                <td align="left" style="border: none;">
+                <td align="left" valign="top" style="border: none; width: 46%;">
                     Africa CDC Headquarters, Ring Road, 16/17,<br>
                     Haile Garment Lafto Square, Nifas Silk-Lafto Sub City,<br>
                     P.O Box: 200050 Addis Ababa, Tel: +251(0) 112175100/75200<br>
                     Email: <a href="mailto:registry@africacdc.org" style="color: #911C39;">registry@africacdc.org</a>
                 </td>
-                <td align="left" style="border: none;">
-                    Source: Africa CDC  Central Business Platform<br>
-                    Generated on: '.date('d F, Y h:i A').'<br>
+                <td align="center" valign="top" style="border: none; width: 18%; padding: 0 4px;">
                     '.$footerDocumentQrHtml.'
-                    <br>By: '.htmlspecialchars((string) (user_session('name') ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'
+                </td>
+                <td align="left" valign="top" style="border: none;">
+                    '.$footerMetaHtml.'
                 </td>
             </tr>
         </table>'.'<p style="text-align:right; font-size: 8pt;">Page {PAGENO} of {nbpg}</p>';
