@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\Division;
+use App\Models\Staff;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowModel;
 
@@ -84,11 +85,16 @@ trait ProvidesMemoIndexStatusMeta
 
         $actor = $this->current_actor;
 
-        if (!$actor && in_array($this->overall_status, ['returned', 'draft'], true) && (int) $level === 1) {
+        if (! $actor && in_array($this->overall_status, ['returned', 'draft'], true) && (int) $level === 1) {
             if ($division) {
-                $actor = $division->relationLoaded('divisionHead')
-                    ? $division->divisionHead
-                    : $division->divisionHead()->first();
+                $headId = function_exists('effective_division_head_staff_id')
+                    ? effective_division_head_staff_id($division)
+                    : null;
+                if ($headId) {
+                    $actor = Staff::select('lname', 'fname', 'staff_id', 'job_name', 'division_name')
+                        ->where('staff_id', (int) $headId)
+                        ->first();
+                }
             }
         }
 
