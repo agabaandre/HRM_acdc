@@ -12,7 +12,6 @@ use App\Services\DivisionWeeklyBriefGate;
 use App\Services\WeeklyBriefingCompletionSummary;
 use App\Services\WeeklyBriefingDirectorateCombined;
 use App\Services\WeeklyBriefingWindowService;
-use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -27,8 +26,11 @@ class WeeklyBriefingController extends Controller
         $listingKeys = DivisionWeeklyBriefGate::contributionKeysForReportListing();
         $filingKeys = DivisionWeeklyBriefGate::contributionKeysForFiling();
 
-        $cy = Carbon::now()->isoWeekYear();
-        $cw = Carbon::now()->isoWeek();
+        $settings = WeeklyBriefingSetting::current();
+        $filing = $settings->filingIsoWeekPair();
+        $filingIsoYear = $filing['iso_year'];
+        $filingIsoWeek = $filing['iso_week'];
+        $filingWeekHumanRange = WeeklyBriefingReport::humanIsoWeekRange($filingIsoYear, $filingIsoWeek);
 
         $tab = (string) $request->query('tab', 'this_week');
         if ($tab !== 'all') {
@@ -36,8 +38,8 @@ class WeeklyBriefingController extends Controller
         }
 
         $currentQuery = WeeklyBriefingReport::query()
-            ->where('report_iso_week_year', $cy)
-            ->where('report_iso_week', $cw)
+            ->where('report_iso_week_year', $filingIsoYear)
+            ->where('report_iso_week', $filingIsoWeek)
             ->orderBy('contribution_key')
             ->with(['division', 'directorate', 'submittedBy', 'directorReviewedBy']);
         if ($listingKeys !== []) {
@@ -97,7 +99,7 @@ class WeeklyBriefingController extends Controller
         );
         $thisWeekPaginator->withQueryString();
 
-        $filterYear = (int) $request->query('year', $cy);
+        $filterYear = (int) $request->query('year', $filingIsoYear);
         $filterWeekRaw = $request->query('week');
         $filterWeek = ($filterWeekRaw === null || $filterWeekRaw === '') ? null : (int) $filterWeekRaw;
         if ($filterWeek !== null && ($filterWeek < 1 || $filterWeek > 53)) {
@@ -148,15 +150,19 @@ class WeeklyBriefingController extends Controller
             if ($currentWeekReports->has($k)) {
                 continue;
             }
-            $startUrls[$k] = route('weekly-briefing.create', ['contribution_key' => $k]);
+            $startUrls[$k] = route('weekly-briefing.create', [
+                'contribution_key' => $k,
+                'iso_year' => $filingIsoYear,
+                'iso_week' => $filingIsoWeek,
+            ]);
         }
 
         $filingWeekReports = $currentWeekReports->only($filingKeys)->values();
 
         $divisionId = $this->userPrimaryDivisionId();
 
-        $wbNowY = $cy;
-        $wbNowW = $cw;
+        $wbNowY = $filingIsoYear;
+        $wbNowW = $filingIsoWeek;
         $wbDirectorCombinedOptions = WeeklyBriefingDirectorateCombined::directorCombinedDownloadOptionsForStaff(
             (int) user_session('staff_id'),
             $wbNowY,
@@ -165,7 +171,7 @@ class WeeklyBriefingController extends Controller
 
         $directorReviewKeySet = array_fill_keys(DivisionWeeklyBriefGate::directorManagedContributionKeysForListing(), true);
 
-        $yearOptions = range($cy - 2, $cy + 1);
+        $yearOptions = range($filingIsoYear - 2, $filingIsoYear + 1);
         $configuredUnitCount = count($listingKeys);
 
         return view('weekly-briefing.index', compact(
@@ -184,8 +190,9 @@ class WeeklyBriefingController extends Controller
             'filingKeySet',
             'filingWeekReports',
             'divisionId',
-            'cy',
-            'cw',
+            'filingIsoYear',
+            'filingIsoWeek',
+            'filingWeekHumanRange',
             'wbNowY',
             'wbNowW',
             'wbDirectorCombinedOptions',
@@ -220,8 +227,9 @@ class WeeklyBriefingController extends Controller
 
         $apmDivisionId = (int) $contributorRow->apm_division_id;
 
-        $isoYear = (int) $request->get('iso_year', Carbon::now()->isoWeekYear());
-        $isoWeek = (int) $request->get('iso_week', Carbon::now()->isoWeek());
+        $defaults = $settings->filingIsoWeekPair();
+        $isoYear = (int) $request->get('iso_year', $defaults['iso_year']);
+        $isoWeek = (int) $request->get('iso_week', $defaults['iso_week']);
         $periodStart = WeeklyBriefingReport::periodMonday($isoYear, $isoWeek);
 
         if (str_starts_with($contributionKey, 'dr-')) {
@@ -457,8 +465,8 @@ class WeeklyBriefingController extends Controller
             ->get();
 
         $reports = WeeklyBriefingCompletionSummary::sortReportsForCompiled($reports);
-
         $settings = WeeklyBriefingSetting::current();
+        $reports = WeeklyBriefingReport::filterForOrganisationCompiledExport($reports, $settings);
 
         $pdf = mpdf_print('weekly-briefing.pdf-compiled', [
             'reports' => $reports,
@@ -501,7 +509,11 @@ class WeeklyBriefingController extends Controller
             ? (trim((string) (Directorate::query()->find($directorate_id)?->name ?? '')) ?: 'Directorate #'.$directorate_id)
             : 'Directed divisions (no directorate)';
         $divisionCount = $reports->count();
-        $metaHtml = 'ISO week <strong>W'.(int) $week.' / '.(int) $year.'</strong> · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s).';
+        $metaHtml = htmlspecialchars(
+            WeeklyBriefingReport::humanIsoWeekRange($year, $week),
+            ENT_QUOTES,
+            'UTF-8'
+        ).' · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s).';
 
         $pdf = mpdf_print('weekly-briefing.pdf-compiled', [
             'reports' => $reports,

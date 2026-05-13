@@ -4,7 +4,7 @@ This guide describes the **Weekly brief** feature in APM: ISO-week–based divis
 
 ## Purpose
 
-- Units (divisions or directorates) submit a structured **weekly brief** for the current ISO week.
+- Units (divisions or directorates) submit a structured **weekly brief** for a **reporting week** (Monday–Sunday, identified by ISO week numbers in the database). The **default filing week** on the hub (index tab, Start links, reminders, compiled send) is either the **current** or **next** ISO week — see **Weekly briefing settings** (`filing_iso_week_offset`).
 - **Contributors** file drafts; after the submission deadline, drafts are **locked** unless an administrative unlock applies.
 - **Division directors** (and equivalent heads, where configured) may review submitted briefs for units they lead.
 - Central recipients receive a **compiled** summary email and PDFs according to settings.
@@ -26,7 +26,7 @@ The top menu item **Weekly brief** and the home dashboard card are shown when `D
 
 | Method | Path (relative to APM base) | Name | Notes |
 |--------|-----------------------------|------|--------|
-| GET | `weekly-briefing` | `weekly-briefing.index` | Tabs: this ISO week / all reports; filters and pagination. |
+| GET | `weekly-briefing` | `weekly-briefing.index` | Tabs: **This reporting week** (uses configured filing ISO week) / **All reports**; filters and pagination. |
 | GET | `weekly-briefing/create` | `weekly-briefing.create` | Start a report (`contribution_key` query). |
 | GET/PUT | `weekly-briefing/{report}/edit`, `weekly-briefing/{report}` | `weekly-briefing.edit`, `weekly-briefing.update` | Draft / submitted editing per rules. |
 | POST | `weekly-briefing/{report}/director-review` | `weekly-briefing.director-review` | Record director review when applicable. |
@@ -50,6 +50,10 @@ Contributors and listing keys are driven by **`weekly_briefing_contributors`** l
 Typical options include:
 
 - **Submission weekday** and times: HoD reminder, submission close, compiled/summary send time.
+- **HoD / contributor deadline reminders**: `hod_reminder_days_before_deadline` (JSON list of whole days **before** the submission deadline, e.g. `1, 0`) and `hod_reminder_clock` (`submission_close_time` or `hod_reminder_time`) — the scheduler matches **calendar day** and **H:i** on that clock column. Default offsets **1** and **0** (day before and deadline day).
+- **Director review deadline reminders**: `director_review_reminder_days_before_deadline` and `director_review_reminder_clock` — same pattern for emails to division directors about **submitted** briefs still pending review; stops after the deadline.
+- **Compiled PDF filter**: `compiled_exclude_unreviewed_director_divisions` — when enabled, the organisation-wide compiled PDF and central compiled attachment omit submitted **division** briefs (`d-*`) that require director review but are not yet marked reviewed (default **off** / include all).
+- **Default reporting week (HoDs file for)**: `filing_iso_week_offset` — **0** = ISO week that contains “today”; **1** = the **next** ISO week (e.g. brief ahead for the coming week). Drives the index “This reporting week” tab, default `create` targets, `weekly-briefing:hod-reminders`, `weekly-briefing:director-review-reminders`, and `weekly-briefing:compiled-summary` week selection.
 - **Reminders** on/off.
 - **Division director access**: allow directors / effective HoD to open the module and review configured units.
 - **Report viewers**: JSON list of `staff_id` values with read-only access across units.
@@ -76,23 +80,25 @@ Statuses and helpers live on `App\Models\WeeklyBriefingReport`.
 ## Email
 
 - Templates use `App\Support\WeeklyBriefingMailTemplate` and Blade under `resources/views/emails/` (e.g. weekly briefing notification).
-- Compiled / reminder behaviour is implemented in `WeeklyBriefingCompiledSummaryCommand` and `WeeklyBriefingHodRemindersCommand` (see below).
+- Compiled / reminder behaviour is implemented in `WeeklyBriefingCompiledSummaryCommand`, `WeeklyBriefingHodRemindersCommand`, and `WeeklyBriefingDirectorReviewRemindersCommand` (see below).
 - When a **contributor** submits a **division** brief (`d-*`) that **requires director review** (division has `director_id` / active director OIC), `WeeklyBriefingController::update` dispatches `SendWeeklyBriefingDirectorReviewReminderJob`, which sends the director’s `work_email` via `sendEmail` + `WeeklyBriefingMailTemplate` (`WeeklyBriefingDirectorSubmitNotifier`). Skipped if submitter is the same as the resolved director or director has no email. Directorate-only briefs (`dr-*`) do not use division director review in this path.
 
 ## Artisan commands
 
 | Command | Purpose |
 |---------|---------|
-| `weekly-briefing:hod-reminders` | Reminds contributors (and related staff) about missing briefs for the current ISO week. Respects `reminders_enabled`, **submission weekday**, and **`hod_reminder_time`** unless `--force`. |
+| `weekly-briefing:hod-reminders` | Reminds contributors (and related staff) about **missing** briefs for the configured filing ISO week. Without `--force`, respects `reminders_enabled`, **deadline-relative days** (`hod_reminder_days_before_deadline`), and **`hod_reminder_clock`** (which stored time column to match at minute precision). Sends stop after the submission deadline. |
+| `weekly-briefing:director-review-reminders` | Reminds division directors about **submitted** division briefs still pending director review. Without `--force`, respects `reminders_enabled`, `director_review_reminder_days_before_deadline`, and `director_review_reminder_clock`; stops after the deadline. |
 | `weekly-briefing:lock-drafts` | Locks **draft** reports past their submission deadline (skips rows covered by **report unlock override**). |
-| `weekly-briefing:compiled-summary` | Sends compiled / summary emails per settings; respects weekday and **`summary_send_time`** unless `--force`. |
+| `weekly-briefing:compiled-summary` | Sends compiled / summary emails per settings; respects submission weekday and **`summary_send_time`** unless `--force`. Organisation-wide compiled PDF honours **`compiled_exclude_unreviewed_director_divisions`**. |
 | `weekly-briefing:test-notifications` | Sends **sample** weekly-brief emails to a given address to verify SMTP. |
 
 ## Scheduler (Laravel)
 
 In **`bootstrap/app.php`**, the scheduler runs (each with overlap protection):
 
-- `weekly-briefing:hod-reminders` — every minute (command self-gates on day/time).
+- `weekly-briefing:hod-reminders` — every minute (command self-gates on deadline-relative day + time).
+- `weekly-briefing:director-review-reminders` — every minute (same pattern; only when there is pending director review work).
 - `weekly-briefing:lock-drafts` — every minute.
 - `weekly-briefing:compiled-summary` — every minute.
 
@@ -100,7 +106,7 @@ Production still requires **`php artisan schedule:run`** in cron (see [Cron Setu
 
 ## Jobs screen (admin)
 
-- **POST** `jobs/weekly-briefing` (`jobs.weekly-briefing`) — triggers test or operational weekly-brief mail actions from the Jobs UI (whitelist / role checks in `JobsController`).
+- **POST** `jobs/weekly-briefing` (`jobs.weekly-briefing`) — triggers test or operational weekly-brief mail actions from the Jobs UI (test inbox, forced HoD reminders, forced director review reminders, forced compiled summary; whitelist / role checks in `JobsController`).
 
 ## PDF footer: document URL and QR (global `generate_pdf`)
 
@@ -133,7 +139,7 @@ If QR generation fails (e.g. missing GD), the footer falls back to a small **pla
   - Ensure **`WeeklyBriefingSetting::current()`** is the row you edit (avoid duplicate settings rows with conflicting flags).
 
 - **Reminders or compiled mail never fire**  
-  - Check **`reminders_enabled`**, weekday, and configured **times**; use `--force` on the Artisan command once to verify mail outside the window.
+  - Check **`reminders_enabled`**, **times**, and for HoD/director mails the **days-before-deadline** list and **clock** (submission close vs HoD reminder time); use `--force` on the Artisan command once to verify mail outside the window.
 
 ---
 

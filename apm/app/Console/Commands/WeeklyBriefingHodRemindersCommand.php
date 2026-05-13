@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\Division;
+use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
-use App\Models\Staff;
 use App\Support\WeeklyBriefingMailTemplate;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -14,30 +14,47 @@ use Illuminate\Support\Facades\Log;
 
 class WeeklyBriefingHodRemindersCommand extends Command
 {
-    protected $signature = 'weekly-briefing:hod-reminders {--force : Run immediately, ignoring reminders_enabled, weekday, and hod_reminder_time}';
+    protected $signature = 'weekly-briefing:hod-reminders {--force : Run immediately, ignoring schedule gates}';
 
-    protected $description = 'Remind configured contributors (or legacy division HoDs) when a Weekly brief is missing for the current ISO week.';
+    protected $description = 'Remind contributors (or legacy division HoDs) about missing weekly briefs for the configured filing week, on each configured day-before-deadline offset at the chosen clock time.';
 
     public function handle(): int
     {
         $settings = WeeklyBriefingSetting::current();
         $force = (bool) $this->option('force');
+
+        if (! $force && ! $settings->reminders_enabled) {
+            return self::SUCCESS;
+        }
+
+        $filing = $settings->filingIsoWeekPair();
+        $y = $filing['iso_year'];
+        $w = $filing['iso_week'];
+        $deadline = WeeklyBriefingReport::syntheticDeadlineForIsoWeek($settings, $y, $w);
+        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
+
         if (! $force) {
-            if (! $settings->reminders_enabled) {
+            if (Carbon::now()->greaterThan($deadline)) {
                 return self::SUCCESS;
             }
-            if ((int) Carbon::now()->dayOfWeek !== (int) $settings->submission_weekday) {
+            $offsets = $settings->normalizedHodReminderDaysBeforeDeadline();
+            $clockCol = $settings->hodReminderClockColumn();
+            if (! $settings->matchesTimeNow($clockCol)) {
                 return self::SUCCESS;
             }
-            if (! $settings->matchesTimeNow('hod_reminder_time')) {
+            $today = Carbon::now()->startOfDay();
+            $deadlineDay = $deadline->copy()->startOfDay();
+            $matched = false;
+            foreach ($offsets as $offset) {
+                if ($today->equalTo($deadlineDay->copy()->subDays($offset))) {
+                    $matched = true;
+                    break;
+                }
+            }
+            if (! $matched) {
                 return self::SUCCESS;
             }
         }
-
-        $y = Carbon::now()->isoWeekYear();
-        $w = Carbon::now()->isoWeek();
-
-        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
 
         if ($settings->contributors()->exists()) {
             $keys = $settings->contributors()->distinct()->pluck('contribution_key')->filter()->values();
@@ -136,12 +153,19 @@ class WeeklyBriefingHodRemindersCommand extends Command
             $actionUrl = htmlspecialchars(route('weekly-briefing.edit', ['report' => $report->id], true), ENT_QUOTES, 'UTF-8');
             $actionText = 'Open draft to complete and submit';
         } else {
-            $actionUrl = htmlspecialchars(route('weekly-briefing.create', ['contribution_key' => $contributionKey], true), ENT_QUOTES, 'UTF-8');
-            $actionText = 'Start this week’s Weekly brief';
+            $actionUrl = htmlspecialchars(route('weekly-briefing.create', [
+                'contribution_key' => $contributionKey,
+                'iso_year' => $y,
+                'iso_week' => $w,
+            ], true), ENT_QUOTES, 'UTF-8');
+            $actionText = 'Start this reporting week’s Weekly brief';
         }
 
+        $weekHuman = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8');
+
         $inner = <<<HTML
-<p>You are kindly reminded to complete the <strong>Weekly brief</strong> for reporting unit <strong>{$label}</strong> (ISO week <strong>W{$w} / {$y}</strong>).</p>
+<p>You are kindly reminded to complete the <strong>Weekly brief</strong> for reporting unit <strong>{$label}</strong>.</p>
+<p><strong>Reporting week:</strong> {$weekHuman}</p>
 <p><strong>Submission deadline:</strong> {$deadline}</p>
 <p style="text-align:center;"><a class="btn" href="{$actionUrl}">{$actionText}</a></p>
 <p>You may also open the <strong>Weekly brief</strong> module from the <a href="{$indexUrl}">APM home navigation</a>.</p>
@@ -157,8 +181,11 @@ HTML;
         $dn = htmlspecialchars($divisionName, ENT_QUOTES, 'UTF-8');
         $indexUrl = htmlspecialchars(route('weekly-briefing.index', [], true), ENT_QUOTES, 'UTF-8');
 
+        $weekHuman = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8');
+
         $inner = <<<HTML
-<p>You are kindly requested to remind the responsible staff to complete the <strong>Weekly brief</strong> for <strong>{$dn}</strong> (ISO week <strong>W{$w} / {$y}</strong>).</p>
+<p>You are kindly requested to remind the responsible staff to complete the <strong>Weekly brief</strong> for <strong>{$dn}</strong>.</p>
+<p><strong>Reporting week:</strong> {$weekHuman}</p>
 <p><strong>Submission deadline:</strong> {$deadline}</p>
 <p>Contributors may file their returns through the <a href="{$indexUrl}">Weekly brief</a> section in the Approvals Management System (APM).</p>
 HTML;

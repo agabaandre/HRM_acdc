@@ -265,12 +265,13 @@ Full behaviour, routes, access, and PDF footer behaviour: **[WEEKLY_BRIEFING.md]
 
 | Command | Purpose |
 |---------|---------|
-| `weekly-briefing:hod-reminders` | Contributor (and legacy division HoD) reminders for missing briefs for the current ISO week. Without `--force`, respects `reminders_enabled`, submission weekday, and `hod_reminder_time`. |
+| `weekly-briefing:hod-reminders` | Contributor reminders for missing briefs for the configured filing ISO week. Without `--force`, respects `reminders_enabled`, deadline-relative day offsets (`hod_reminder_days_before_deadline`), and `hod_reminder_clock` (which time column to match). |
+| `weekly-briefing:director-review-reminders` | Director reminders for submitted division briefs pending review. Without `--force`, respects `reminders_enabled`, `director_review_reminder_days_before_deadline`, and `director_review_reminder_clock`. |
 | `weekly-briefing:lock-drafts` | Locks **draft** reports after the submission deadline (honours per-report unlock overrides). |
 | `weekly-briefing:compiled-summary` | Sends compiled weekly-brief email(s) and attachments per settings. Without `--force`, respects `reminders_enabled`, submission weekday, and `summary_send_time`. |
 | `weekly-briefing:test-notifications` | Sends sample weekly-brief emails to a test address (SMTP verification). |
 
-- **Jobs UI**: `POST jobs/weekly-briefing` can invoke test notifications or `--force` runs for reminders and compiled summary (`JobsController`).
+- **Jobs UI**: `POST jobs/weekly-briefing` can invoke test notifications or `--force` runs for HoD reminders, director review reminders, and compiled summary (`JobsController`).
 
 ---
 
@@ -298,7 +299,7 @@ Full behaviour, routes, access, and PDF footer behaviour: **[WEEKLY_BRIEFING.md]
 
 ### Weekly briefing (APM)
 
-- **Every minute** (with overlap protection): `weekly-briefing:hod-reminders`, `weekly-briefing:lock-drafts`, `weekly-briefing:compiled-summary` — registered in **`bootstrap/app.php`**; each command applies its own weekday/time gates unless run with **`--force`** (see [WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md)).
+- **Every minute** (with overlap protection): `weekly-briefing:hod-reminders`, `weekly-briefing:director-review-reminders`, `weekly-briefing:lock-drafts`, `weekly-briefing:compiled-summary` — registered in **`bootstrap/app.php`**; each command applies its own gates unless run with **`--force`** (see [WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md)).
 
 **Note**: Scheduled tasks are configured in `app/Providers/ScheduleServiceProvider.php` (and weekly-briefing entries in `bootstrap/app.php`) and run automatically when cron invokes `php artisan schedule:run` or when `php artisan schedule:work` is used.
 

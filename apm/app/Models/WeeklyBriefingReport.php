@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
-use App\Models\WeeklyBriefingContributor;
 use App\Services\WeeklyBriefingCompletionSummary;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
 
 class WeeklyBriefingReport extends Model
 {
@@ -163,6 +163,26 @@ class WeeklyBriefingReport extends Model
         return Carbon::now()->setISODate($isoYear, $isoWeek, 1)->startOfDay();
     }
 
+    /**
+     * User-facing reporting window: Monday–Sunday for the ISO week, with optional ISO suffix.
+     */
+    public static function humanIsoWeekRange(int $isoYear, int $isoWeek, bool $includeIsoSuffix = true): string
+    {
+        $mon = self::periodMonday($isoYear, $isoWeek);
+        $sun = $mon->copy()->addDays(6);
+        $main = 'Week start: '.$mon->format('l, M j, Y').' · Week end: '.$sun->format('l, M j, Y');
+        if ($includeIsoSuffix) {
+            $main .= ' (ISO W'.$isoWeek.'/'.$isoYear.')';
+        }
+
+        return $main;
+    }
+
+    public function isoWeekDateRangeLabel(bool $includeIsoSuffix = true): string
+    {
+        return self::humanIsoWeekRange((int) $this->report_iso_week_year, (int) $this->report_iso_week, $includeIsoSuffix);
+    }
+
     public function submissionDeadline(WeeklyBriefingSetting $settings): Carbon
     {
         $monday = Carbon::parse($this->period_start)->startOfDay();
@@ -170,6 +190,40 @@ class WeeklyBriefingReport extends Model
         $daysAdd = ($targetDow - $monday->dayOfWeek + 7) % 7;
 
         return $monday->copy()->addDays($daysAdd)->setTimeFromTimeString($settings->submission_close_time);
+    }
+
+    public static function syntheticDeadlineForIsoWeek(WeeklyBriefingSetting $settings, int $isoYear, int $isoWeek): Carbon
+    {
+        $r = new self([
+            'period_start' => self::periodMonday($isoYear, $isoWeek)->toDateString(),
+        ]);
+
+        return $r->submissionDeadline($settings);
+    }
+
+    /**
+     * Organisation-wide compiled PDF / central completion summary: optionally omit division briefs
+     * that still require director review when a director is assigned.
+     *
+     * @param  Collection<int, self>  $reports
+     * @return Collection<int, self>
+     */
+    public static function filterForOrganisationCompiledExport(Collection $reports, WeeklyBriefingSetting $settings): Collection
+    {
+        if (! (bool) ($settings->compiled_exclude_unreviewed_director_divisions ?? false)) {
+            return $reports;
+        }
+
+        return $reports->filter(function (self $r) {
+            if (! str_starts_with((string) ($r->contribution_key ?? ''), 'd-')) {
+                return true;
+            }
+            if (! $r->requiresDirectorReview()) {
+                return true;
+            }
+
+            return $r->isDirectorReviewed();
+        })->values();
     }
 
     public function contributionEntityLabel(): string

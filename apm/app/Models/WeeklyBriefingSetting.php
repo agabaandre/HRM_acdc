@@ -10,7 +10,13 @@ class WeeklyBriefingSetting extends Model
 {
     protected $fillable = [
         'submission_weekday',
+        'filing_iso_week_offset',
         'hod_reminder_time',
+        'hod_reminder_days_before_deadline',
+        'hod_reminder_clock',
+        'director_review_reminder_days_before_deadline',
+        'director_review_reminder_clock',
+        'compiled_exclude_unreviewed_director_divisions',
         'submission_close_time',
         'summary_send_time',
         'compiled_recipient_emails',
@@ -28,6 +34,10 @@ class WeeklyBriefingSetting extends Model
     {
         return [
             'submission_weekday' => 'integer',
+            'filing_iso_week_offset' => 'integer',
+            'hod_reminder_days_before_deadline' => 'array',
+            'director_review_reminder_days_before_deadline' => 'array',
+            'compiled_exclude_unreviewed_director_divisions' => 'boolean',
             'cc_division_hod_on_compiled' => 'boolean',
             'reminders_enabled' => 'boolean',
             'division_directors_can_access_module' => 'boolean',
@@ -50,6 +60,11 @@ class WeeklyBriefingSetting extends Model
         return static::query()->create([
             'submission_weekday' => 5,
             'hod_reminder_time' => '09:00',
+            'hod_reminder_days_before_deadline' => [1, 0],
+            'hod_reminder_clock' => 'submission_close_time',
+            'director_review_reminder_days_before_deadline' => [1, 0],
+            'director_review_reminder_clock' => 'submission_close_time',
+            'compiled_exclude_unreviewed_director_divisions' => false,
             'submission_close_time' => '14:00',
             'summary_send_time' => '14:10',
             'compiled_recipient_emails' => null,
@@ -65,6 +80,24 @@ class WeeklyBriefingSetting extends Model
     }
 
     /**
+     * ISO year/week used as the default “open filing” reporting week on the hub, for new reports
+     * (when iso_year/iso_week are not supplied), HoD reminders, and the compiled-summary send.
+     * filing_iso_week_offset: 0 = calendar current ISO week, 1 = the following ISO week (e.g. brief for next week).
+     *
+     * @return array{iso_year: int, iso_week: int}
+     */
+    public function filingIsoWeekPair(?Carbon $at = null): array
+    {
+        $at = $at ?? Carbon::now();
+        $ref = ((int) ($this->filing_iso_week_offset ?? 0) === 1) ? $at->copy()->addWeek() : $at->copy();
+
+        return [
+            'iso_year' => (int) $ref->isoWeekYear(),
+            'iso_week' => (int) $ref->isoWeek(),
+        ];
+    }
+
+    /**
      * Whether the current clock time (H:i) matches a stored time column (e.g. hod_reminder_time).
      */
     public function matchesTimeNow(string $attribute): bool
@@ -76,6 +109,62 @@ class WeeklyBriefingSetting extends Model
         $hm = is_string($value) ? substr($value, 0, 5) : Carbon::parse($value)->format('H:i');
 
         return Carbon::now()->format('H:i') === $hm;
+    }
+
+    /**
+     * DB column used for clock comparison on HoD / contributor deadline-relative reminders.
+     */
+    public function hodReminderClockColumn(): string
+    {
+        $v = (string) ($this->hod_reminder_clock ?? 'submission_close_time');
+
+        return $v === 'hod_reminder_time' ? 'hod_reminder_time' : 'submission_close_time';
+    }
+
+    /**
+     * DB column used for clock comparison on director review reminders.
+     */
+    public function directorReviewReminderClockColumn(): string
+    {
+        $v = (string) ($this->director_review_reminder_clock ?? 'submission_close_time');
+
+        return $v === 'hod_reminder_time' ? 'hod_reminder_time' : 'submission_close_time';
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function normalizedHodReminderDaysBeforeDeadline(): array
+    {
+        return self::normalizeDaysBeforeList($this->hod_reminder_days_before_deadline, [1, 0]);
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function normalizedDirectorReviewReminderDaysBeforeDeadline(): array
+    {
+        return self::normalizeDaysBeforeList($this->director_review_reminder_days_before_deadline, [1, 0]);
+    }
+
+    /**
+     * @param  mixed  $raw
+     * @return list<int>
+     */
+    protected static function normalizeDaysBeforeList($raw, array $fallback): array
+    {
+        if (! is_array($raw) || $raw === []) {
+            $raw = $fallback;
+        }
+        $out = [];
+        foreach ($raw as $n) {
+            $i = (int) $n;
+            if ($i >= 0 && $i <= 30) {
+                $out[$i] = $i;
+            }
+        }
+
+        return $out === [] ? $fallback : array_values($out);
     }
 
     /**

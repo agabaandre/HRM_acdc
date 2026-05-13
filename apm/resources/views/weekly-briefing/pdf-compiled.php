@@ -28,13 +28,14 @@ $compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
 if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
     echo $compiledPdfMetaHtml;
 } else {
-    echo 'ISO week <strong>W'.(int) $isoWeek.' / '.(int) $isoYear.'</strong> · '.(int) count($reports).' reporting unit(s)';
+    $rangeLine = \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) $isoYear, (int) $isoWeek, true);
+    echo htmlspecialchars($rangeLine, ENT_QUOTES, 'UTF-8').' · <strong>'.(int) count($reports).'</strong> reporting unit(s)';
 }
 ?></div>
 
 <?php $first = true; ?>
 <?php foreach ($reports as $report) {
-    if (!$first) {
+    if (! $first) {
         echo '<div class="page-break"></div>';
     }
     $first = false;
@@ -102,16 +103,16 @@ if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
         <tr style="background:#f1f5f9;"><th>Issue</th><th>Impact</th><th>Required action</th></tr>
         <?php
         foreach ($report->section2_bottlenecks ?? [] as $b) {
-            if (trim((string)($b['issue'] ?? '')) === '' && trim((string)($b['impact_risk'] ?? '')) === '' && trim((string)($b['required_action'] ?? '')) === '') {
+            if (trim((string) ($b['issue'] ?? '')) === '' && trim((string) ($b['impact_risk'] ?? '')) === '' && trim((string) ($b['required_action'] ?? '')) === '') {
                 continue;
             }
             echo '<tr>';
-            echo '<td style="border:1px solid #ccc;vertical-align:top;">'.nl2br(htmlspecialchars((string)($b['issue'] ?? ''), ENT_QUOTES, 'UTF-8')).'</td>';
-            echo '<td style="border:1px solid #ccc;vertical-align:top;">'.nl2br(htmlspecialchars((string)($b['impact_risk'] ?? ''), ENT_QUOTES, 'UTF-8')).'</td>';
-            echo '<td style="border:1px solid #ccc;vertical-align:top;">'.nl2br(htmlspecialchars((string)($b['required_action'] ?? ''), ENT_QUOTES, 'UTF-8')).'</td>';
+            echo '<td style="border:1px solid #ccc;vertical-align:top;">'.nl2br(htmlspecialchars((string) ($b['issue'] ?? ''), ENT_QUOTES, 'UTF-8')).'</td>';
+            echo '<td style="border:1px solid #ccc;vertical-align:top;">'.nl2br(htmlspecialchars((string) ($b['impact_risk'] ?? ''), ENT_QUOTES, 'UTF-8')).'</td>';
+            echo '<td style="border:1px solid #ccc;vertical-align:top;">'.nl2br(htmlspecialchars((string) ($b['required_action'] ?? ''), ENT_QUOTES, 'UTF-8')).'</td>';
             echo '</tr>';
         }
-        ?>
+    ?>
     </table>
 <?php } ?>
 </body>
