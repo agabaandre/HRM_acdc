@@ -1468,13 +1468,45 @@ public function getBirthdays($days)
 		if ($staff_id < 1) {
 			return array();
 		}
+		if (!$this->db->field_exists('event_type', 'user_logs')
+			|| !$this->db->field_exists('target_table', 'user_logs')
+			|| !$this->db->field_exists('target_id', 'user_logs')) {
+			return array();
+		}
 		$cidStrings = array();
 		$crows = $this->db->select('staff_contract_id')->from('staff_contracts')->where('staff_id', $staff_id)->get()->result_array();
 		foreach ($crows as $r) {
 			$cidStrings[] = (string) $r['staff_contract_id'];
 		}
 		$sidStr = (string) $staff_id;
-		$this->db->select('user_logs.id, user_logs.user_id, user_logs.action, user_logs.created_at, user_logs.date_loged_in, user_logs.http_method, user_logs.request_uri, user_logs.event_type, user_logs.target_table, user_logs.target_id, user_logs.old_values, user_logs.new_values, u.name AS actor_name', false);
+		$selectParts = array('user_logs.id', 'user_logs.user_id', 'user_logs.action');
+		if ($this->db->field_exists('created_at', 'user_logs')) {
+			$selectParts[] = 'user_logs.created_at';
+		}
+		if ($this->db->field_exists('date_loged_in', 'user_logs')) {
+			$selectParts[] = 'user_logs.date_loged_in';
+		}
+		if ($this->db->field_exists('http_method', 'user_logs')) {
+			$selectParts[] = 'user_logs.http_method';
+		}
+		if ($this->db->field_exists('request_uri', 'user_logs')) {
+			$selectParts[] = 'user_logs.request_uri';
+		}
+		$selectParts[] = 'user_logs.event_type';
+		if ($this->db->field_exists('target_table', 'user_logs')) {
+			$selectParts[] = 'user_logs.target_table';
+		}
+		if ($this->db->field_exists('target_id', 'user_logs')) {
+			$selectParts[] = 'user_logs.target_id';
+		}
+		if ($this->db->field_exists('old_values', 'user_logs')) {
+			$selectParts[] = 'user_logs.old_values';
+		}
+		if ($this->db->field_exists('new_values', 'user_logs')) {
+			$selectParts[] = 'user_logs.new_values';
+		}
+		$selectParts[] = 'u.name AS actor_name';
+		$this->db->select(implode(', ', $selectParts), false);
 		$this->db->from('user_logs');
 		$this->db->join('user u', 'u.user_id = user_logs.user_id', 'left');
 		$this->db->group_start();
@@ -1488,7 +1520,13 @@ public function getBirthdays($days)
 		$this->db->or_where(array('user_logs.target_table' => 'ppa_entries', 'user_logs.target_id' => $sidStr));
 		$this->db->group_end();
 		$this->db->like('user_logs.event_type', 'record_', 'after');
-		$dateCol = $this->db->field_exists('created_at', 'user_logs') ? 'user_logs.created_at' : 'user_logs.date_loged_in';
+		if ($this->db->field_exists('created_at', 'user_logs')) {
+			$dateCol = 'user_logs.created_at';
+		} elseif ($this->db->field_exists('date_loged_in', 'user_logs')) {
+			$dateCol = 'user_logs.date_loged_in';
+		} else {
+			$dateCol = 'user_logs.id';
+		}
 		$this->db->order_by($dateCol, 'DESC');
 		$this->db->limit((int) $limit);
 		return $this->db->get()->result();
