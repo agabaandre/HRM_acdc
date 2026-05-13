@@ -380,8 +380,14 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       <td>
         <?php if ($is_draft_print): ?>
           <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px;"></div>
-        <?php elseif (!empty(staff_details($ppa->staff_id)->signature)): ?>
-          <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', staff_details($ppa->staff_id)->signature ?? '')) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+        <?php elseif (!empty(staff_details($ppa->staff_id)->signature)):
+          $_ppa_staff_sd = staff_details($ppa->staff_id);
+          $_ppa_staff_sig_src = staff_signature_print_src($_ppa_staff_sd->signature ?? '');
+          if ($_ppa_staff_sig_src !== ''): ?>
+          <img src="<?= htmlspecialchars($_ppa_staff_sig_src) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+        <?php else: ?>
+          <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_staff_sd->work_email ?? '')) ?></p><br>
+        <?php endif; ?>
         <?php else: ?>
           <p style="text-decoration:underline;"><?=staff_details($staff_id)->title.' '.staff_details($staff_id)->lname;?></p><br>
         <?php endif; ?>
@@ -391,8 +397,14 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       <td>
         <?php if ($is_draft_print): ?>
           <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px;"></div>
-        <?php elseif (!empty(staff_details($ppa->supervisor_id)->signature)): ?>
-          <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', staff_details($ppa->supervisor_id)->signature ?? '')) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+        <?php elseif (!empty(staff_details($ppa->supervisor_id)->signature)):
+          $_ppa_sup_sd = staff_details($ppa->supervisor_id);
+          $_ppa_sup_sig_src = staff_signature_print_src($_ppa_sup_sd->signature ?? '');
+          if ($_ppa_sup_sig_src !== ''): ?>
+          <img src="<?= htmlspecialchars($_ppa_sup_sig_src) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+        <?php else: ?>
+          <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_sup_sd->work_email ?? '')) ?></p><br>
+        <?php endif; ?>
         <?php else: ?>
           <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor_id)->title.' '.staff_details($ppa->supervisor_id)->lname;?></p><br>
         <?php endif; ?>
@@ -431,8 +443,14 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <td colspan="2" style="text-align: left;">
           <?php if ($is_draft_print): ?>
             <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px; max-width: 200px;"></div>
-          <?php elseif (!empty(staff_details($ppa->supervisor2_id)->signature)): ?>
-            <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', staff_details($ppa->supervisor2_id)->signature ?? '')) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+          <?php elseif (!empty(staff_details($ppa->supervisor2_id)->signature)):
+            $_ppa_sup2_sd = staff_details($ppa->supervisor2_id);
+            $_ppa_sup2_sig_src = staff_signature_print_src($_ppa_sup2_sd->signature ?? '');
+            if ($_ppa_sup2_sig_src !== ''): ?>
+            <img src="<?= htmlspecialchars($_ppa_sup2_sig_src) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+          <?php else: ?>
+            <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_sup2_sd->work_email ?? '')) ?></p><br>
+          <?php endif; ?>
           <?php else: ?>
             <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor2_id)->title.' '.staff_details($ppa->supervisor2_id)->lname;?></p><br>
           <?php endif; ?>

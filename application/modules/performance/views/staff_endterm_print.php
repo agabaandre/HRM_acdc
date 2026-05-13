@@ -613,12 +613,15 @@ $is_draft_print = !empty($performance_draft_watermark_text);
             <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
           <?php else: ?>
           <div style="margin-top: 20px; margin-bottom: 20px; min-height: 60px;">
-            <?php if (!empty($supervisor->signature)): ?>
-              <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', $supervisor->signature ?? '')) ?>" 
+            <?php
+              $__end_sup_sig_src = !empty($supervisor->signature) ? staff_signature_print_src($supervisor->signature) : '';
+            ?>
+            <?php if ($__end_sup_sig_src !== ''): ?>
+              <img src="<?= htmlspecialchars($__end_sup_sig_src) ?>"
                    style="max-width: 200px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;">
             <?php else: ?>
               <div style=" margin: 0 auto; display: flex; align-items: center; justify-content: center;">
-                <span style="color: #999; font-style: italic; font-size: 11px;"><?= $supervisor->work_email; ?></span>
+                <span style="color: #999; font-style: italic; font-size: 11px;"><?= htmlspecialchars((string) ($supervisor->work_email ?? '')) ?></span>
               </div>
             <?php endif; ?>
           </div>
@@ -731,12 +734,15 @@ $is_draft_print = !empty($performance_draft_watermark_text);
             <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
           <?php else: ?>
           <div style="margin-top: 20px; margin-bottom: 20px; min-height: 60px;">
-            <?php if (!empty($staff->signature)): ?>
-              <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', $staff->signature)) ?>" 
+            <?php
+              $__end_staff_sig_src = !empty($staff->signature) ? staff_signature_print_src($staff->signature) : '';
+            ?>
+            <?php if ($__end_staff_sig_src !== ''): ?>
+              <img src="<?= htmlspecialchars($__end_staff_sig_src) ?>"
                    style="max-width: 200px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;">
             <?php else: ?>
               <div style="border-bottom: 2px solid #ccc; width: 250px; height: 60px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
-                <span style="color: #999; font-style: italic; font-size: 11px;"><?= $staff->work_email; ?></span>
+                <span style="color: #999; font-style: italic; font-size: 11px;"><?= htmlspecialchars((string) ($staff->work_email ?? '')) ?></span>
               </div>
             <?php endif; ?>
           </div>
@@ -868,12 +874,15 @@ $is_draft_print = !empty($performance_draft_watermark_text);
             <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
           <?php else: ?>
           <div style="margin-top: 20px; margin-bottom: 20px; min-height: 60px;">
-            <?php if (!empty($second_supervisor->signature)): ?>
-              <img src="<?= htmlspecialchars(staff_secure_upload_url('signature', $second_supervisor->signature ?? '')) ?>" 
+            <?php
+              $__end_sup2_sig_src = !empty($second_supervisor->signature) ? staff_signature_print_src($second_supervisor->signature) : '';
+            ?>
+            <?php if ($__end_sup2_sig_src !== ''): ?>
+              <img src="<?= htmlspecialchars($__end_sup2_sig_src) ?>"
                    style="max-width: 200px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;">
             <?php else: ?>
               <div style="border-bottom: 2px solid #ccc; width: 250px; height: 60px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
-                <span style="color: #999; font-style: italic; font-size: 11px;"><?= $second_supervisor->work_email ?? 'N/A'; ?></span>
+                <span style="color: #999; font-style: italic; font-size: 11px;"><?= htmlspecialchars((string) ($second_supervisor->work_email ?? 'N/A')) ?></span>
               </div>
             <?php endif; ?>
           </div>
