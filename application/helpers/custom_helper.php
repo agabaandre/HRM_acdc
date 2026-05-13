@@ -974,7 +974,12 @@ if (!function_exists('staff_print_honorific_name')) {
         $lname = trim((string) ($row->lname ?? ''));
         $name = trim($fname.' '.$lname);
         if ($name === '') {
-            return trim($title.($title !== '' && $lname !== '' ? ' ' : '').$lname);
+            if ($title === '') {
+                return $lname;
+            }
+            $prefix = rtrim($title, '.').'.';
+
+            return trim($prefix.' '.$lname);
         }
         if ($title === '') {
             return $name;

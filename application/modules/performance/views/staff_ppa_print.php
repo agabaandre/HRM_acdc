@@ -421,7 +421,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_staff_sd->work_email ?? '')) ?></p><br>
         <?php endif; ?>
         <?php else: ?>
-          <p style="text-decoration:underline;"><?= htmlspecialchars(staff_print_honorific_name($_ppa_print_staff_sd) ?: trim(($_ppa_print_staff_sd->title ?? '').' '.($_ppa_print_staff_sd->lname ?? ''))) ?></p><br>
+          <p style="text-decoration:underline;"><?= htmlspecialchars(staff_print_honorific_name($_ppa_print_staff_sd) ?: '—') ?></p><br>
         <?php endif; ?>
     
        <b> Staff Signature</b>
@@ -454,7 +454,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_sup_sd->work_email ?? '')) ?></p><br>
         <?php endif; ?>
         <?php else: ?>
-          <p style="text-decoration:underline;"><?= $_ppa_print_sup_sd ? htmlspecialchars(staff_print_honorific_name($_ppa_print_sup_sd) ?: trim(($_ppa_print_sup_sd->title ?? '').' '.($_ppa_print_sup_sd->lname ?? ''))) : '—' ?></p><br>
+          <p style="text-decoration:underline;"><?= $_ppa_print_sup_sd ? htmlspecialchars(staff_print_honorific_name($_ppa_print_sup_sd) ?: '—') : '—' ?></p><br>
         <?php endif; ?>
   
         <b>Supervisor Signature</b>
@@ -516,7 +516,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
             <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_sup2_sd->work_email ?? '')) ?></p><br>
           <?php endif; ?>
           <?php else: ?>
-            <p style="text-decoration:underline;"><?= htmlspecialchars(staff_print_honorific_name($_ppa_print_sup2_sd) ?: trim(($_ppa_print_sup2_sd->title ?? '').' '.($_ppa_print_sup2_sd->lname ?? ''))) ?></p><br>
+            <p style="text-decoration:underline;"><?= htmlspecialchars(staff_print_honorific_name($_ppa_print_sup2_sd) ?: '—') ?></p><br>
           <?php endif; ?>
        
           <b>Supervisor Signature</b>
