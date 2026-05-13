@@ -958,6 +958,33 @@ if (!function_exists('staff_signature_print_src')) {
     }
 }
 
+if (!function_exists('staff_print_honorific_name')) {
+    /**
+     * Honorific + full name for print/PDF (e.g. "Mr. Andrew Agaba").
+     *
+     * @param object|null $row staff row with title, fname, lname
+     */
+    function staff_print_honorific_name($row)
+    {
+        if ($row === null) {
+            return '';
+        }
+        $title = trim((string) ($row->title ?? ''));
+        $fname = trim((string) ($row->fname ?? ''));
+        $lname = trim((string) ($row->lname ?? ''));
+        $name = trim($fname.' '.$lname);
+        if ($name === '') {
+            return trim($title.($title !== '' && $lname !== '' ? ' ' : '').$lname);
+        }
+        if ($title === '') {
+            return $name;
+        }
+        $prefix = rtrim($title, '.').'.';
+
+        return trim($prefix.' '.$name);
+    }
+}
+
 if (!function_exists('generate_user_avatar')) {
     function generate_user_avatar($surname, $other_name, $image_path, $photo = false)
     {

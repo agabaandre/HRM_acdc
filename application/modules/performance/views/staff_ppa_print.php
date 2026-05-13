@@ -421,19 +421,15 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_staff_sd->work_email ?? '')) ?></p><br>
         <?php endif; ?>
         <?php else: ?>
-          <p style="text-decoration:underline;"><?= htmlspecialchars(trim(($_ppa_print_staff_sd->title ?? '').' '.($_ppa_print_staff_sd->lname ?? ''))) ?></p><br>
+          <p style="text-decoration:underline;"><?= htmlspecialchars(staff_print_honorific_name($_ppa_print_staff_sd) ?: trim(($_ppa_print_staff_sd->title ?? '').' '.($_ppa_print_staff_sd->lname ?? ''))) ?></p><br>
         <?php endif; ?>
     
        <b> Staff Signature</b>
         <?php if (empty($is_draft_print) && $_ppa_print_staff_sd): ?>
           <?php
-            $_ppa_nm = trim(($_ppa_print_staff_sd->fname ?? '').' '.($_ppa_print_staff_sd->lname ?? ''));
-            if ($_ppa_nm === '') {
-                $_ppa_nm = trim(($_ppa_print_staff_sd->title ?? '').' '.($_ppa_print_staff_sd->lname ?? ''));
-            }
-            $_ppa_ttl = trim((string) ($_ppa_print_staff_sd->title ?? ''));
+            $_ppa_nm = staff_print_honorific_name($_ppa_print_staff_sd);
             $_ppa_pos = trim((string) ($_ppa_print_staff_sd->position ?? ''));
-            $_ppa_role = $_ppa_ttl !== '' && $_ppa_pos !== '' ? $_ppa_ttl.' — '.$_ppa_pos : ($_ppa_ttl !== '' ? $_ppa_ttl : ($_ppa_pos !== '' ? $_ppa_pos : 'Staff'));
+            $_ppa_role = $_ppa_pos !== '' ? $_ppa_pos : 'Staff';
           ?>
           <div style="margin-top: 8px;">
             <div style="font-weight: bold; color: #0f172a; font-size: 13px;"><?= htmlspecialchars($_ppa_nm) ?></div>
@@ -458,19 +454,15 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_sup_sd->work_email ?? '')) ?></p><br>
         <?php endif; ?>
         <?php else: ?>
-          <p style="text-decoration:underline;"><?= $_ppa_print_sup_sd ? htmlspecialchars(trim(($_ppa_print_sup_sd->title ?? '').' '.($_ppa_print_sup_sd->lname ?? ''))) : '—' ?></p><br>
+          <p style="text-decoration:underline;"><?= $_ppa_print_sup_sd ? htmlspecialchars(staff_print_honorific_name($_ppa_print_sup_sd) ?: trim(($_ppa_print_sup_sd->title ?? '').' '.($_ppa_print_sup_sd->lname ?? ''))) : '—' ?></p><br>
         <?php endif; ?>
   
         <b>Supervisor Signature</b>
         <?php if (empty($is_draft_print) && !empty($ppa->supervisor_id) && $_ppa_print_sup_sd): ?>
           <?php
-            $_ppa_sup_nm = trim(($_ppa_print_sup_sd->fname ?? '').' '.($_ppa_print_sup_sd->lname ?? ''));
-            if ($_ppa_sup_nm === '') {
-                $_ppa_sup_nm = trim(($_ppa_print_sup_sd->title ?? '').' '.($_ppa_print_sup_sd->lname ?? ''));
-            }
-            $_ppa_sup_ttl = trim((string) ($_ppa_print_sup_sd->title ?? ''));
+            $_ppa_sup_nm = staff_print_honorific_name($_ppa_print_sup_sd);
             $_ppa_sup_pos = trim((string) ($_ppa_print_sup_sd->position ?? ''));
-            $_ppa_sup_role = $_ppa_sup_ttl !== '' && $_ppa_sup_pos !== '' ? $_ppa_sup_ttl.' — '.$_ppa_sup_pos : ($_ppa_sup_ttl !== '' ? $_ppa_sup_ttl : ($_ppa_sup_pos !== '' ? $_ppa_sup_pos : 'Supervisor'));
+            $_ppa_sup_role = $_ppa_sup_pos !== '' ? $_ppa_sup_pos : 'Supervisor';
           ?>
           <div style="margin-top: 8px;">
             <div style="font-weight: bold; color: #0f172a; font-size: 13px;"><?= htmlspecialchars($_ppa_sup_nm) ?></div>
@@ -524,19 +516,15 @@ $is_draft_print = !empty($performance_draft_watermark_text);
             <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_sup2_sd->work_email ?? '')) ?></p><br>
           <?php endif; ?>
           <?php else: ?>
-            <p style="text-decoration:underline;"><?= htmlspecialchars(trim(($_ppa_print_sup2_sd->title ?? '').' '.($_ppa_print_sup2_sd->lname ?? ''))) ?></p><br>
+            <p style="text-decoration:underline;"><?= htmlspecialchars(staff_print_honorific_name($_ppa_print_sup2_sd) ?: trim(($_ppa_print_sup2_sd->title ?? '').' '.($_ppa_print_sup2_sd->lname ?? ''))) ?></p><br>
           <?php endif; ?>
        
           <b>Supervisor Signature</b>
           <?php if (empty($is_draft_print) && !empty($ppa->supervisor2_id) && $_ppa_print_sup2_sd): ?>
             <?php
-              $_ppa_sup2_nm = trim(($_ppa_print_sup2_sd->fname ?? '').' '.($_ppa_print_sup2_sd->lname ?? ''));
-              if ($_ppa_sup2_nm === '') {
-                  $_ppa_sup2_nm = trim(($_ppa_print_sup2_sd->title ?? '').' '.($_ppa_print_sup2_sd->lname ?? ''));
-              }
-              $_ppa_sup2_ttl = trim((string) ($_ppa_print_sup2_sd->title ?? ''));
+              $_ppa_sup2_nm = staff_print_honorific_name($_ppa_print_sup2_sd);
               $_ppa_sup2_pos = trim((string) ($_ppa_print_sup2_sd->position ?? ''));
-              $_ppa_sup2_role = $_ppa_sup2_ttl !== '' && $_ppa_sup2_pos !== '' ? $_ppa_sup2_ttl.' — '.$_ppa_sup2_pos : ($_ppa_sup2_ttl !== '' ? $_ppa_sup2_ttl : ($_ppa_sup2_pos !== '' ? $_ppa_sup2_pos : 'Second supervisor'));
+              $_ppa_sup2_role = $_ppa_sup2_pos !== '' ? $_ppa_sup2_pos : 'Second supervisor';
             ?>
             <div style="margin-top: 8px;">
               <div style="font-weight: bold; color: #0f172a; font-size: 13px;"><?= htmlspecialchars($_ppa_sup2_nm) ?></div>
