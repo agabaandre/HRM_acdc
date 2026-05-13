@@ -607,7 +607,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       </tr>
       <tr>
         <td colspan="2" style="padding: 25px; text-align: center;">
-          <div style="margin-bottom: 15px; font-weight: bold;">Supervisor Signature</div>
           <?php if ($is_draft_print): ?>
             <div style="margin-top: 20px; margin-bottom: 20px; min-height: 70px; border: 1px dashed #cbd5e1; max-width: 280px; margin-left: auto; margin-right: auto;"></div>
             <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
@@ -726,7 +725,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       </tr>
       <tr>
         <td colspan="2" style="padding: 25px; text-align: center;">
-          <div style="margin-bottom: 15px; font-weight: bold;">Staff Signature</div>
           <?php if ($is_draft_print): ?>
             <div style="margin-top: 20px; margin-bottom: 20px; min-height: 70px; border: 1px dashed #cbd5e1; max-width: 280px; margin-left: auto; margin-right: auto;"></div>
             <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
@@ -864,7 +862,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       </tr>
       <tr>
         <td colspan="2" style="padding: 25px; text-align: center;">
-          <div style="margin-bottom: 15px; font-weight: bold;">Second Supervisor Signature</div>
           <?php if ($is_draft_print): ?>
             <div style="margin-top: 20px; margin-bottom: 20px; min-height: 70px; border: 1px dashed #cbd5e1; max-width: 280px; margin-left: auto; margin-right: auto;"></div>
             <div style="font-size: 11px; color: #64748b;">Signatures omitted on draft print</div>
