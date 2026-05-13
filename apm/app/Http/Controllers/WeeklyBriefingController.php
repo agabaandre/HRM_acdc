@@ -492,7 +492,7 @@ class WeeklyBriefingController extends Controller
             ? (trim((string) (Directorate::query()->find($directorate_id)?->name ?? '')) ?: 'Directorate #'.$directorate_id)
             : 'Directed divisions (no directorate)';
         $divisionCount = $reports->count();
-        $metaHtml = 'ISO week <strong>W'.(int) $week.' / '.(int) $year.'</strong> · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s) where you are the director (divisions table) · <em>Not the organisation-wide compiled pack for central recipients.</em>';
+        $metaHtml = 'ISO week <strong>W'.(int) $week.' / '.(int) $year.'</strong> · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s).';
 
         $pdf = mpdf_print('weekly-briefing.pdf-compiled', [
             'reports' => $reports,
