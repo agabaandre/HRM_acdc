@@ -21,19 +21,20 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
         $settings = WeeklyBriefingSetting::current();
         $force = (bool) $this->option('force');
 
-        if (! $force && ! $settings->reminders_enabled) {
-            return self::SUCCESS;
-        }
-
         $filing = $settings->filingIsoWeekPair();
         $y = $filing['iso_year'];
         $w = $filing['iso_week'];
         $deadline = WeeklyBriefingReport::syntheticDeadlineForIsoWeek($settings, $y, $w);
 
+        if (Carbon::now()->greaterThan($deadline)) {
+            return self::SUCCESS;
+        }
+
+        if (! $force && ! $settings->reminders_enabled) {
+            return self::SUCCESS;
+        }
+
         if (! $force) {
-            if (Carbon::now()->greaterThan($deadline)) {
-                return self::SUCCESS;
-            }
             $offsets = $settings->normalizedDirectorReviewReminderDaysBeforeDeadline();
             $clockCol = $settings->directorReviewReminderClockColumn();
             if (! $settings->matchesTimeNow($clockCol)) {

@@ -23,20 +23,21 @@ class WeeklyBriefingHodRemindersCommand extends Command
         $settings = WeeklyBriefingSetting::current();
         $force = (bool) $this->option('force');
 
-        if (! $force && ! $settings->reminders_enabled) {
-            return self::SUCCESS;
-        }
-
         $filing = $settings->filingIsoWeekPair();
         $y = $filing['iso_year'];
         $w = $filing['iso_week'];
         $deadline = WeeklyBriefingReport::syntheticDeadlineForIsoWeek($settings, $y, $w);
         $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
 
+        if (Carbon::now()->greaterThan($deadline)) {
+            return self::SUCCESS;
+        }
+
+        if (! $force && ! $settings->reminders_enabled) {
+            return self::SUCCESS;
+        }
+
         if (! $force) {
-            if (Carbon::now()->greaterThan($deadline)) {
-                return self::SUCCESS;
-            }
             $offsets = $settings->normalizedHodReminderDaysBeforeDeadline();
             $clockCol = $settings->hodReminderClockColumn();
             if (! $settings->matchesTimeNow($clockCol)) {

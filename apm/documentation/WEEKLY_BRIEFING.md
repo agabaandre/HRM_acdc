@@ -128,6 +128,7 @@ If QR generation fails (e.g. missing GD), the footer falls back to a small **pla
 | Deadline / unlock | `app/Services/WeeklyBriefingWindowService.php` |
 | HTTP controller | `app/Http/Controllers/WeeklyBriefingController.php` |
 | Settings | `app/Http/Controllers/WeeklyBriefingSettingsController.php` |
+| Artisan (HoD / director / compiled mail) | `app/Console/Commands/WeeklyBriefingHodRemindersCommand.php`, `WeeklyBriefingDirectorReviewRemindersCommand.php`, `WeeklyBriefingCompiledSummaryCommand.php` |
 | Models | `app/Models/WeeklyBriefingSetting.php`, `WeeklyBriefingReport.php`, `WeeklyBriefingContributor.php` |
 | Nav composer | `app/Providers/AppServiceProvider.php` |
 
