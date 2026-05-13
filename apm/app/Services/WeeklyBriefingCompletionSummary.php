@@ -214,7 +214,7 @@ class WeeklyBriefingCompletionSummary
         $parts = [];
         $n = 1;
         foreach ($report->section1_major_happenings ?? [] as $row) {
-            $t = trim((string) ($row['major_happening'] ?? ''));
+            $t = trim(strip_tags((string) ($row['major_happening'] ?? '')));
             if ($t === '') {
                 continue;
             }
