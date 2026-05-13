@@ -1,7 +1,8 @@
 <?php
-/** Midterm / endterm: Summernote styling + init (same behaviour as annual PPA plan). */
+/** Midterm / endterm: Quill 2 rich text (aligned with APM weekly-briefing/edit). */
 $wrap_midterm_training = !empty($wrap_midterm_training);
 ?>
+<?php /* Quill snow CSS is already linked globally in templates/partials/css_files.php */ ?>
 <style>
   .objective-table th, .objective-table td { text-align: left; padding: 0; border: 1px solid #ccc; }
   .objective-table {
@@ -15,26 +16,21 @@ $wrap_midterm_training = !empty($wrap_midterm_training);
   .objective-table td.ppa-deliverables-cell {
     max-width: 0;
   }
-  .objective-table td.ppa-deliverables-cell .ppa-summernote + .note-editor {
-    max-width: 100% !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box;
-  }
-  .objective-table td.ppa-deliverables-cell .note-toolbar {
-    flex-wrap: wrap;
-  }
-  .objective-table td .ppa-summernote + .note-editor {
+  .objective-table td .ppa-quill-wrap {
     max-width: 100%;
     box-sizing: border-box;
   }
-  .objective-table td .ppa-summernote + .note-editor .note-editable {
+  .objective-table td .ppa-quill-wrap .ql-toolbar {
+    flex-wrap: wrap;
+  }
+  .ppa-quill-wrap .ppa-quill-editor .ql-editor {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
     min-height: 120px;
   }
-  .ppa-summernote + .note-editor .note-editable,
-  .ppa-summernote + .note-editor .note-editable * {
-    font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 14px !important;
+  .ppa-quill-wrap:has(textarea.is-invalid) .ppa-quill-editor {
+    outline: 2px solid #dc3545;
+    outline-offset: 1px;
   }
   #midtermApproverPreviewModal .preview-readonly-text.ppa-html-preview,
   #endtermApproverPreviewModal .preview-readonly-text.ppa-html-preview {
@@ -55,19 +51,28 @@ $wrap_midterm_training = !empty($wrap_midterm_training);
   }
   .ppa-html-readonly p:last-child { margin-bottom: 0; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script>
 (function () {
+  var toolbarOptions = [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link'], ['clean']];
+
+  function ppaMteQuillOptions(readOnly) {
+    if (readOnly) {
+      return { theme: 'snow', readOnly: true, modules: {} };
+    }
+    return { theme: 'snow', readOnly: false, modules: { toolbar: toolbarOptions } };
+  }
+
   window.syncMteSummernoteToTextareas = function () {
     if (typeof jQuery === 'undefined') return;
-    jQuery('.ppa-summernote').each(function () {
-      var $ta = jQuery(this);
-      if ($ta.next('.note-editor').length) {
-        $ta.val($ta.summernote('code'));
-      }
+    jQuery('.ppa-quill-wrap').each(function () {
+      var q = jQuery(this).data('ppaQuill');
+      var ta = jQuery(this).find('textarea.ppa-summernote')[0];
+      if (q && ta) ta.value = q.root.innerHTML;
     });
   };
 
-  /** True if textarea value is empty or only Summernote placeholder HTML. */
+  /** True if textarea value is empty or only placeholder HTML (Summernote/Quill). */
   window.mteRichTextAreaEmpty = function (textarea) {
     var v = (textarea && textarea.value ? String(textarea.value) : '').trim();
     if (!v) return true;
@@ -76,52 +81,63 @@ $wrap_midterm_training = !empty($wrap_midterm_training);
     return (div.textContent || '').replace(/\u00a0/g, ' ').trim() === '';
   };
 
+  function destroyQuillWrap($w) {
+    var $ta = $w.find('textarea.ppa-summernote').first();
+    if (!$ta.length) return;
+    $ta.detach();
+    $w.after($ta);
+    $w.remove();
+  }
+
   window.initMteSummernote = function () {
-    if (typeof jQuery === 'undefined') return;
+    if (typeof jQuery === 'undefined' || typeof Quill === 'undefined') return;
     jQuery('.ppa-summernote').each(function () {
-      var $ta = jQuery(this);
-      if ($ta.next('.note-editor').length) {
-        return;
-      }
-      var readOnly = $ta.prop('readonly') || $ta.prop('disabled');
-      $ta.removeAttr('readonly').removeAttr('disabled');
-      $ta.summernote({
-        placeholder: 'Type here…',
-        tabsize: 2,
-        height: 170,
-        dialogsInBody: true,
-        fontNames: ['Arial', 'Arial Black', 'Helvetica', 'sans-serif'],
-        fontNamesIgnoreCheck: ['Arial', 'Arial Black', 'Helvetica', 'sans-serif'],
-        toolbar: [
-          ['style', ['bold', 'italic', 'underline', 'clear']],
-          ['para', ['ul', 'ol', 'paragraph']],
-          ['insert', ['link']],
-          ['view', ['fullscreen', 'codeview']]
-        ],
-        callbacks: {
-          onInit: function () {
-            jQuery(this).next('.note-editor').find('.note-editable').css({
-              fontFamily: 'Arial, Helvetica, sans-serif',
-              fontSize: '14px'
-            });
-          },
-          onChange: function () {
-            var $ta = jQuery(this);
-            try {
-              $ta.val($ta.summernote('code'));
-            } catch (e) { /* ignore */ }
-            $ta.trigger('change');
-          }
-        }
+      var ta = this;
+      var $ta = jQuery(ta);
+      if ($ta.closest('.ppa-quill-wrap').length) return;
+
+      var readOnly = !!(ta.readOnly || ta.disabled);
+      var initial = $ta.val() || '';
+
+      var $wrap = jQuery('<div class="ppa-quill-wrap"></div>');
+      var $editor = jQuery('<div class="ppa-quill-editor border rounded bg-white" style="min-height:140px;"></div>');
+
+      $ta.before($wrap);
+      $wrap.append($editor);
+      $wrap.append($ta);
+      $ta.css({
+        position: 'absolute',
+        width: '1px',
+        height: '1px',
+        padding: 0,
+        margin: '-1px',
+        overflow: 'hidden',
+        clip: 'rect(0,0,0,0)',
+        whiteSpace: 'nowrap',
+        border: 0
       });
-      if (readOnly) {
-        $ta.summernote('disable');
+
+      var quill = new Quill($editor[0], ppaMteQuillOptions(readOnly));
+      if (initial) {
+        quill.root.innerHTML = initial;
       }
+      ta.value = quill.root.innerHTML;
+
+      quill.on('text-change', function () {
+        ta.value = quill.root.innerHTML;
+        jQuery(ta).trigger('change');
+      });
+
+      $wrap.data('ppaQuill', quill);
     });
   };
 
   function bindWhenReady() {
     if (typeof jQuery === 'undefined') {
+      setTimeout(bindWhenReady, 50);
+      return;
+    }
+    if (typeof Quill === 'undefined') {
       setTimeout(bindWhenReady, 50);
       return;
     }
@@ -139,24 +155,19 @@ $wrap_midterm_training = !empty($wrap_midterm_training);
         return;
       }
       var _toggle = window.toggleMidtermTraining;
-      if (_toggle._mteSummernoteWrapped) return;
+      if (_toggle._mteQuillWrapped) return;
       window.toggleMidtermTraining = function (show) {
         _toggle(show);
         if (show && typeof window.initMteSummernote === 'function') {
           setTimeout(function () {
-            jQuery('#midterm-training-section .ppa-summernote').each(function () {
-              var $t = jQuery(this);
-              if ($t.next('.note-editor').length) {
-                try {
-                  $t.summernote('destroy');
-                } catch (e) { /* ignore */ }
-              }
+            jQuery('#midterm-training-section .ppa-quill-wrap').each(function () {
+              destroyQuillWrap(jQuery(this));
             });
             window.initMteSummernote();
           }, 80);
         }
       };
-      window.toggleMidtermTraining._mteSummernoteWrapped = true;
+      window.toggleMidtermTraining._mteQuillWrapped = true;
     }
     setTimeout(wrapToggle, 0);
   })();
