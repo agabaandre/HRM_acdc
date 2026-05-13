@@ -624,6 +624,10 @@ $is_draft_print = !empty($performance_draft_watermark_text);
                 <span style="color: #999; font-style: italic; font-size: 11px;"><?= htmlspecialchars((string) ($supervisor->work_email ?? '')) ?></span>
               </div>
             <?php endif; ?>
+            <div style="font-size: 10px; color: #888; margin-top: 10px; line-height: 1.45;">
+              <div>Signing date: <?= date('M j, Y | H:i', strtotime($sup_signed_at)) ?> EAST</div>
+              <div style="font-family: monospace; font-size: 9px; color: #aaa;">Verify hash: <?= strtoupper($sup_hash) ?></div>
+            </div>
           </div>
           <div style="margin-top: 15px;">
             <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
@@ -631,12 +635,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
             </div>
             <div style="color: #666; font-size: 11px; margin-bottom: 8px;">
               <?= $supervisor->position ?? 'Supervisor' ?>
-            </div>
-            <div style="color: #888; font-size: 10px; margin-bottom: 5px;">
-              Date: <?= date('M j, Y | H:i', strtotime($sup_signed_at)) ?> EAST
-            </div>
-            <div style="color: #aaa; font-size: 9px; font-family: monospace;">
-              SIGNATURE ID: <?= strtoupper($sup_hash) ?>
             </div>
           </div>
           <?php endif; ?>
@@ -745,6 +743,10 @@ $is_draft_print = !empty($performance_draft_watermark_text);
                 <span style="color: #999; font-style: italic; font-size: 11px;"><?= htmlspecialchars((string) ($staff->work_email ?? '')) ?></span>
               </div>
             <?php endif; ?>
+            <div style="font-size: 10px; color: #888; margin-top: 10px; line-height: 1.45;">
+              <div>Signing date: <?= date('M j, Y | H:i', strtotime($staff_signed_at)) ?> EAST</div>
+              <div style="font-family: monospace; font-size: 9px; color: #aaa;">Verify hash: <?= strtoupper($staff_hash) ?></div>
+            </div>
           </div>
           <div style="margin-top: 15px;">
             <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
@@ -752,12 +754,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
             </div>
             <div style="color: #666; font-size: 11px; margin-bottom: 8px;">
               Staff
-            </div>
-            <div style="color: #888; font-size: 10px; margin-bottom: 5px;">
-              Date: <?= date('M j, Y | H:i', strtotime($staff_signed_at)) ?> EAST
-            </div>
-            <div style="color: #aaa; font-size: 9px; font-family: monospace;">
-              SIGNATURE ID: <?= strtoupper($staff_hash) ?>
             </div>
           </div>
           <?php endif; ?>
@@ -885,6 +881,12 @@ $is_draft_print = !empty($performance_draft_watermark_text);
                 <span style="color: #999; font-style: italic; font-size: 11px;"><?= htmlspecialchars((string) ($second_supervisor->work_email ?? 'N/A')) ?></span>
               </div>
             <?php endif; ?>
+            <?php if ($second_sup_signed_at): ?>
+            <div style="font-size: 10px; color: #888; margin-top: 10px; line-height: 1.45;">
+              <div>Signing date: <?= date('M j, Y | H:i', strtotime($second_sup_signed_at)) ?> EAST</div>
+              <div style="font-family: monospace; font-size: 9px; color: #aaa;">Verify hash: <?= strtoupper($second_sup_hash) ?></div>
+            </div>
+            <?php endif; ?>
           </div>
           <div style="margin-top: 15px;">
             <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
@@ -893,14 +895,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
             <div style="color: #666; font-size: 11px; margin-bottom: 8px;">
               <?= $second_supervisor->position ?? 'Second Supervisor' ?>
             </div>
-            <?php if ($second_sup_signed_at): ?>
-            <div style="color: #888; font-size: 10px; margin-bottom: 5px;">
-              Date: <?= date('M j, Y | H:i', strtotime($second_sup_signed_at)) ?> EAST
-            </div>
-            <div style="color: #aaa; font-size: 9px; font-family: monospace;">
-              SIGNATURE ID: <?= strtoupper($second_sup_hash) ?>
-            </div>
-            <?php endif; ?>
           </div>
           <?php endif; ?>
         </td>
