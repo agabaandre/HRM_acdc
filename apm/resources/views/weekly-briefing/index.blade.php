@@ -22,7 +22,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
             <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Weekly brief</h4>
-            <small class="text-muted d-block">Contributors edit assigned units; division directors may review division briefs where they are the director.@if(\App\Services\DivisionWeeklyBriefGate::isSystemAdmin()) Default reporting week: <a href="{{ route('weekly-briefing.settings.edit') }}">Weekly briefing settings</a> (current vs next ISO week).@else The default reporting week is set by an administrator (current vs next ISO week).@endif</small>
+            <small class="text-muted d-block">Contributors edit assigned units; division directors may review division briefs where they are the director.</small>
             <small class="text-muted"><strong>Active reporting week:</strong> {{ $filingWeekHumanRange }}</small>
         </div>
         <div class="d-flex flex-wrap gap-2">
