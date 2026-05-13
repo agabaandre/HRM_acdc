@@ -890,7 +890,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           </div>
           <div style="margin-top: 15px;">
             <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
-              <?= $second_supervisor->fname . ' ' . $second_supervisor->lname ?? 'N/A' ?>
+              <?= htmlspecialchars(staff_print_honorific_name($second_supervisor) ?: 'N/A') ?>
             </div>
             <div style="color: #666; font-size: 11px; margin-bottom: 8px;">
               <?= $second_supervisor->position ?? 'Second Supervisor' ?>
