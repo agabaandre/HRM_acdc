@@ -57,6 +57,7 @@ final class WeeklyBriefingDirectorSubmitNotifier
             ENT_QUOTES,
             'UTF-8'
         );
+        $weekHuman = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8');
         $editUrl = htmlspecialchars(route('weekly-briefing.edit', ['report' => $report->id], true), ENT_QUOTES, 'UTF-8');
         $indexUrl = htmlspecialchars(route('weekly-briefing.index', [], true), ENT_QUOTES, 'UTF-8');
 
@@ -74,7 +75,8 @@ final class WeeklyBriefingDirectorSubmitNotifier
         }
 
         $inner = <<<HTML
-<p><strong>{$submitterName}</strong> has submitted the <strong>Weekly brief</strong> for reporting unit <strong>{$label}</strong> (ISO week <strong>W{$w} / {$y}</strong>).</p>
+<p><strong>{$submitterName}</strong> has submitted the <strong>Weekly brief</strong> for reporting unit <strong>{$label}</strong>.</p>
+<p><strong>Reporting week:</strong> {$weekHuman}</p>
 <p>Please review it in APM before the division brief is included in the organisation-wide compilation.</p>
 <p style="text-align:center;"><a class="btn" href="{$editUrl}">Open briefing to review</a></p>
 <p>You can also open the <strong>Weekly brief</strong> module from the <a href="{$indexUrl}">APM home navigation</a>.</p>

@@ -42,7 +42,62 @@
                         <input type="time" name="summary_send_time" class="form-control" value="{{ old('summary_send_time', substr($settings->summary_send_time,0,5)) }}" required>
                     </div>
                 </div>
-                <p class="small text-muted mt-2 mb-0">The server scheduler runs the weekly briefing commands every minute; each command only acts on the weekday above when the current server time matches the configured time (minute precision). Ensure <code>php artisan schedule:run</code> is invoked every minute (standard Laravel cron).</p>
+                <p class="small text-muted mt-2 mb-0">The server scheduler runs weekly briefing commands every minute; each command self-gates (e.g. compiled summary on the submission weekday at <strong>Compiled summary send</strong> time). HoD and director review reminders use the <strong>days before deadline</strong> settings below, matched at the chosen clock column (minute precision). Ensure <code>php artisan schedule:run</code> runs every minute.</p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header fw-bold">Default reporting week (hub &amp; reminders)</div>
+            <div class="card-body">
+                <p class="small text-muted">Controls which ISO week the <strong>Weekly brief</strong> index tab, <strong>Start</strong> links, HoD reminder emails, and the compiled summary send target by default. Individual reports still store their own ISO week; the <strong>All reports</strong> tab can list any week.</p>
+                <div class="mb-0">
+                    <label class="form-label">HoDs file for</label>
+                    <select name="filing_iso_week_offset" class="form-select" style="max-width:28rem;">
+                        <option value="0" @selected((int) old('filing_iso_week_offset', $settings->filing_iso_week_offset ?? 0) === 0)>Current ISO week (week containing today)</option>
+                        <option value="1" @selected((int) old('filing_iso_week_offset', $settings->filing_iso_week_offset ?? 0) === 1)>Next ISO week (the week after the one containing today)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header fw-bold">HoD / contributor reminders (before deadline)</div>
+            <div class="card-body">
+                <p class="small text-muted">For the <strong>default filing ISO week</strong>, reminders go out on each listed calendar day counting back from the submission deadline (same deadline as submission close for that week). Sends stop once the deadline has passed.</p>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">Days before deadline <span class="text-muted fw-normal">(comma-separated)</span></label>
+                        <input type="text" name="hod_reminder_days_before_deadline" class="form-control" value="{{ old('hod_reminder_days_before_deadline', implode(', ', $settings->normalizedHodReminderDaysBeforeDeadline())) }}" required placeholder="1, 0" autocomplete="off">
+                        <small class="text-muted">Example: <code>1, 0</code> = one send the day before the deadline and one on deadline day.</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Send at this clock time</label>
+                        <select name="hod_reminder_clock" class="form-select">
+                            <option value="submission_close_time" @selected(old('hod_reminder_clock', $settings->hodReminderClockColumn()) === 'submission_close_time')>Submission closes — {{ substr($settings->submission_close_time,0,5) }}</option>
+                            <option value="hod_reminder_time" @selected(old('hod_reminder_clock', $settings->hodReminderClockColumn()) === 'hod_reminder_time')>HoD reminder time — {{ substr($settings->hod_reminder_time,0,5) }}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header fw-bold">Director review reminders (before deadline)</div>
+            <div class="card-body">
+                <p class="small text-muted">Division directors receive a grouped email listing <strong>submitted</strong> division briefs (<code>d-…</code>) that still need director sign-off, on the same day-offset pattern. Reminders stop after the submission deadline.</p>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">Days before deadline <span class="text-muted fw-normal">(comma-separated)</span></label>
+                        <input type="text" name="director_review_reminder_days_before_deadline" class="form-control" value="{{ old('director_review_reminder_days_before_deadline', implode(', ', $settings->normalizedDirectorReviewReminderDaysBeforeDeadline())) }}" required placeholder="1, 0" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Send at this clock time</label>
+                        <select name="director_review_reminder_clock" class="form-select">
+                            <option value="submission_close_time" @selected(old('director_review_reminder_clock', $settings->directorReviewReminderClockColumn()) === 'submission_close_time')>Submission closes — {{ substr($settings->submission_close_time,0,5) }}</option>
+                            <option value="hod_reminder_time" @selected(old('director_review_reminder_clock', $settings->directorReviewReminderClockColumn()) === 'hod_reminder_time')>HoD reminder time — {{ substr($settings->hod_reminder_time,0,5) }}</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -219,6 +274,11 @@
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" name="cc_division_hod_on_compiled" value="1" id="ccHod" @checked(old('cc_division_hod_on_compiled', $settings->cc_division_hod_on_compiled))>
                     <label class="form-check-label" for="ccHod">Email division HoDs their division’s submitted briefing PDF; email each division director (from the divisions table) a <strong>separate director report</strong> (submitted division briefings only for divisions where they are director — not the organisation-wide compiled pack) plus a completion summary for those division rows only. Divisions without a director are skipped for the director copy.</label>
+                </div>
+                <input type="hidden" name="compiled_exclude_unreviewed_director_divisions" value="0">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="compiled_exclude_unreviewed_director_divisions" value="1" id="wbCompiledExcludeUnreviewed" @checked(filter_var(old('compiled_exclude_unreviewed_director_divisions', $settings->compiled_exclude_unreviewed_director_divisions ?? false), FILTER_VALIDATE_BOOLEAN))>
+                    <label class="form-check-label" for="wbCompiledExcludeUnreviewed">Exclude from the <strong>organisation-wide</strong> compiled PDF (and central compiled attachment) any <strong>submitted</strong> division brief that requires director review but is not yet marked reviewed — default is off (include all submitted division pages).</label>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="reminders_enabled" value="1" id="remOn" @checked(old('reminders_enabled', $settings->reminders_enabled))>

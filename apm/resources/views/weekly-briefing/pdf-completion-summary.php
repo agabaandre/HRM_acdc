@@ -31,7 +31,10 @@ foreach ($rows as $r) {
 }
 ?>
 <h1>Weekly brief — completion summary</h1>
-<div class="meta">ISO week <strong>W<?php echo (int) $isoWeek; ?> / <?php echo (int) $isoYear; ?></strong>
+<div class="meta"><?php
+$rangeLine = \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) $isoYear, (int) $isoWeek, true);
+echo htmlspecialchars($rangeLine, ENT_QUOTES, 'UTF-8');
+?>
     · Expected reporting units (from settings): <strong><?php echo (int) $total; ?></strong>
     · Submitted: <strong><?php echo (int) $submitted; ?></strong>
     · Not-submitted: <strong><?php echo max(0, $total - $submitted); ?></strong>
@@ -75,7 +78,7 @@ foreach ($rows as $r) {
     </tr>
     <?php } ?>
 </table>
-<p class="note">Statuses reflect reports in APM for this ISO week. “missing” means no report row exists yet. The <strong>Directorate</strong> column uses names from the directorates table when the reporting unit is linked to a directorate (division or directorate brief). For division units with a director in the divisions table, director review shows whether the director marked review before the deadline; the trail lists director edits and review actions.</p>
+<p class="note">Statuses reflect reports in APM for this reporting week (Monday–Sunday window above). “missing” means no report row exists yet. The <strong>Directorate</strong> column uses names from the directorates table when the reporting unit is linked to a directorate (division or directorate brief). For division units with a director in the divisions table, director review shows whether the director marked review before the deadline; the trail lists director edits and review actions.</p>
 <?php } ?>
 </body>
 </html>

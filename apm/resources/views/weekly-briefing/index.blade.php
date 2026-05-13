@@ -7,8 +7,9 @@
 @php
     $directorReviewKeySet = $directorReviewKeySet ?? [];
     $tab = $tab ?? 'this_week';
-    $cy = $cy ?? \Carbon\Carbon::now()->isoWeekYear();
-    $cw = $cw ?? \Carbon\Carbon::now()->isoWeek();
+    $filingIsoYear = $filingIsoYear ?? \Carbon\Carbon::now()->isoWeekYear();
+    $filingIsoWeek = $filingIsoWeek ?? \Carbon\Carbon::now()->isoWeek();
+    $filingWeekHumanRange = $filingWeekHumanRange ?? \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) $filingIsoYear, (int) $filingIsoWeek);
 @endphp
 <div class="container-fluid py-3">
     @if (session('status'))
@@ -21,16 +22,17 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
             <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Weekly brief</h4>
-            <small class="text-muted">Reporting units by ISO week. Contributors edit assigned units; division directors may open and review division briefs where they are the director in the divisions table.</small>
+            <small class="text-muted d-block">Contributors edit assigned units; division directors may review division briefs where they are the director.@if(\App\Services\DivisionWeeklyBriefGate::isSystemAdmin()) Default reporting week: <a href="{{ route('weekly-briefing.settings.edit') }}">Weekly briefing settings</a> (current vs next ISO week).@else The default reporting week is set by an administrator (current vs next ISO week).@endif</small>
+            <small class="text-muted"><strong>Active reporting week:</strong> {{ $filingWeekHumanRange }}</small>
         </div>
         <div class="d-flex flex-wrap gap-2">
             @if($filingWeekReports->count() === 1)
                 @php $only = $filingWeekReports->first(); @endphp
-                <a href="{{ route('weekly-briefing.edit', $only) }}" class="btn btn-success"><i class="fas fa-edit me-1"></i> Continue this week</a>
+                <a href="{{ route('weekly-briefing.edit', $only) }}" class="btn btn-success"><i class="fas fa-edit me-1"></i> Continue reporting week</a>
                 <a href="{{ route('weekly-briefing.pdf', $only) }}" class="btn btn-outline-secondary" target="_blank"><i class="fas fa-file-pdf me-1"></i> PDF</a>
             @elseif($filingWeekReports->count() > 1)
                 <div class="dropdown">
-                    <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">Continue this week</button>
+                    <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">Continue reporting week</button>
                     <ul class="dropdown-menu">
                         @foreach($filingWeekReports as $r)
                             <li><a class="dropdown-item" href="{{ route('weekly-briefing.edit', $r) }}">{{ $r->contributionEntityLabel() }} ({{ $r->status }})</a></li>
@@ -48,10 +50,10 @@
             @if(count($wbDirectorCombinedOptions ?? []) > 0)
                 @if(count($wbDirectorCombinedOptions) === 1)
                     @php $o0 = $wbDirectorCombinedOptions[0]; @endphp
-                    <a href="{{ route('weekly-briefing.directorate-combined-pdf', ['year' => $wbNowY, 'week' => $wbNowW, 'directorate_id' => $o0['directorate_id']]) }}" class="btn btn-outline-info" target="_blank"><i class="fas fa-layer-group me-1"></i> Director report — my divisions (W{{ $wbNowW }})</a>
+                    <a href="{{ route('weekly-briefing.directorate-combined-pdf', ['year' => $wbNowY, 'week' => $wbNowW, 'directorate_id' => $o0['directorate_id']]) }}" class="btn btn-outline-info" target="_blank"><i class="fas fa-layer-group me-1"></i> Director report — my divisions</a>
                 @else
                     <div class="dropdown">
-                        <button class="btn btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-layer-group me-1"></i> Director report — my divisions (W{{ $wbNowW }})</button>
+                        <button class="btn btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-layer-group me-1"></i> Director report — my divisions</button>
                         <ul class="dropdown-menu">
                             @foreach($wbDirectorCombinedOptions as $o)
                                 <li>
@@ -73,7 +75,7 @@
         ], fn ($v) => $v !== null && $v !== '');
         $allTabQuery = array_filter([
             'tab' => 'all',
-            'year' => $filterYear ?? $cy,
+            'year' => $filterYear ?? $filingIsoYear,
             'week' => isset($filterWeek) && $filterWeek !== null ? $filterWeek : null,
             'status' => $filterStatus ?? '',
             'search' => $filterSearch ?? '',
@@ -81,7 +83,7 @@
     @endphp
     <ul class="nav nav-tabs mb-0">
         <li class="nav-item">
-            <a class="nav-link @if($tab === 'this_week') active @endif fw-semibold" href="{{ route('weekly-briefing.index', $thisWeekTabQuery) }}">This ISO week (W{{ $cw }})</a>
+            <a class="nav-link @if($tab === 'this_week') active @endif fw-semibold" href="{{ route('weekly-briefing.index', $thisWeekTabQuery) }}">This reporting week</a>
         </li>
         <li class="nav-item">
             <a class="nav-link @if($tab === 'all') active @endif fw-semibold" href="{{ route('weekly-briefing.index', $allTabQuery) }}">All reports</a>
@@ -91,6 +93,7 @@
     <div class="card shadow-sm border-top-0 rounded-top-0">
         @if($tab === 'this_week')
             <div class="card-body border-bottom bg-light py-3">
+                <p class="small text-muted mb-2">{{ $filingWeekHumanRange }}</p>
                 <form method="get" action="{{ route('weekly-briefing.index') }}" class="row g-2 align-items-end">
                     <input type="hidden" name="tab" value="this_week">
                     <div class="col-md-3">
@@ -180,16 +183,17 @@
                         <label class="form-label small mb-0 text-muted">ISO year</label>
                         <select name="year" class="form-select form-select-sm">
                             @foreach($yearOptions as $yOpt)
-                                <option value="{{ $yOpt }}" @selected((int)($filterYear ?? $cy) === (int) $yOpt)>{{ $yOpt }}</option>
+                                <option value="{{ $yOpt }}" @selected((int)($filterYear ?? $filingIsoYear) === (int) $yOpt)>{{ $yOpt }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small mb-0 text-muted">ISO week</label>
+                        <label class="form-label small mb-0 text-muted">Week (ISO)</label>
                         <select name="week" class="form-select form-select-sm">
                             <option value="">Any week</option>
                             @for($w = 1; $w <= 53; $w++)
-                                <option value="{{ $w }}" @selected(isset($filterWeek) && (int) $filterWeek === $w)>W{{ $w }}</option>
+                                @php $wl = \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) ($filterYear ?? $filingIsoYear), $w, true); @endphp
+                                <option value="{{ $w }}" title="{{ $wl }}" @selected(isset($filterWeek) && (int) $filterWeek === $w)>W{{ $w }}</option>
                             @endfor
                         </select>
                     </div>
@@ -218,9 +222,9 @@
                         <thead class="table-light">
                             <tr>
                                 <th style="width:3rem" class="text-center">#</th>
-                                <th>Week</th>
+                                <th>Reporting week</th>
                                 <th>Reporting unit</th>
-                                <th>Period (Mon)</th>
+                                <th>Week start → end</th>
                                 <th>Status</th>
                                 <th class="text-end">Actions</th>
                             </tr>
@@ -230,9 +234,9 @@
                                 @php $canFile = ! empty($filingKeySet[$r->contribution_key]); @endphp
                                 <tr>
                                     <td class="text-center text-muted">{{ $reports->firstItem() + $loop->index }}</td>
-                                    <td>W{{ $r->report_iso_week }} / {{ $r->report_iso_week_year }}</td>
+                                    <td><span class="small text-muted">W{{ $r->report_iso_week }}/{{ $r->report_iso_week_year }}</span><br>{{ $r->isoWeekDateRangeLabel(false) }}</td>
                                     <td>{{ $r->contributionEntityLabel() }}</td>
-                                    <td>{{ $r->period_start?->format('Y-m-d') }}</td>
+                                    <td class="small">{{ $r->period_start?->format('M j, Y') }} → {{ $r->period_start ? \Carbon\Carbon::parse($r->period_start)->addDays(6)->format('M j, Y') : '—' }}</td>
                                     <td><span class="badge bg-{{ $r->status === 'submitted' ? 'success' : ($r->status === 'locked' ? 'secondary' : 'warning') }}">{{ $r->status }}</span></td>
                                     <td class="text-end">
                                         @if($canFile)

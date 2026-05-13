@@ -38,17 +38,21 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             }
         }
 
-        $y = Carbon::now()->isoWeekYear();
-        $w = Carbon::now()->isoWeek();
+        $filing = $settings->filingIsoWeekPair();
+        $y = $filing['iso_year'];
+        $w = $filing['iso_week'];
+        $weekHuman = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8');
 
-        $reports = WeeklyBriefingReport::query()
+        $reportsAllSubmitted = WeeklyBriefingReport::query()
             ->where('report_iso_week_year', $y)
             ->where('report_iso_week', $w)
             ->where('status', WeeklyBriefingReport::STATUS_SUBMITTED)
             ->with(['division', 'directorate', 'submittedBy', 'directorReviewedBy'])
             ->get();
 
-        $reports = WeeklyBriefingCompletionSummary::sortReportsForCompiled($reports);
+        $reportsAllSubmitted = WeeklyBriefingCompletionSummary::sortReportsForCompiled($reportsAllSubmitted);
+        $reportsForCentral = WeeklyBriefingReport::filterForOrganisationCompiledExport($reportsAllSubmitted, $settings);
+        $centralExcludedCount = $reportsAllSubmitted->count() - $reportsForCentral->count();
 
         $recipients = collect(explode(',', (string) $settings->compiled_recipient_emails))
             ->map(fn ($e) => trim((string) $e))
@@ -65,7 +69,7 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             return self::SUCCESS;
         }
 
-        if ($reports->isEmpty()) {
+        if ($reportsAllSubmitted->isEmpty()) {
             Log::info('weekly-briefing:compiled-summary — no submitted reports');
 
             return self::SUCCESS;
@@ -74,15 +78,18 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
         $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
 
         if ($sendCompiled) {
-            $pdf = mpdf_print('weekly-briefing.pdf-compiled', [
-                'reports' => $reports,
-                'settings' => $settings,
-                'isoYear' => $y,
-                'isoWeek' => $w,
-            ], ['orientation' => 'L']);
-
-            $compiledBinary = $pdf->Output('', 'S');
-            $compiledFilename = 'Weekly_Briefing_Compiled_W'.$w.'_'.$y.'.pdf';
+            $graphAttachments = [];
+            if ($reportsForCentral->isNotEmpty()) {
+                $pdf = mpdf_print('weekly-briefing.pdf-compiled', [
+                    'reports' => $reportsForCentral,
+                    'settings' => $settings,
+                    'isoYear' => $y,
+                    'isoWeek' => $w,
+                ], ['orientation' => 'L']);
+                $compiledBinary = $pdf->Output('', 'S');
+                $compiledFilename = 'Weekly_Briefing_Compiled_W'.$w.'_'.$y.'.pdf';
+                $graphAttachments[] = ['name' => $compiledFilename, 'content' => $compiledBinary, 'content_type' => 'application/pdf'];
+            }
 
             $completionRows = WeeklyBriefingCompletionSummary::rows($settings, $y, $w);
             $summaryPdf = mpdf_print('weekly-briefing.pdf-completion-summary', [
@@ -94,22 +101,27 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             ], ['orientation' => 'L']);
             $summaryBinary = $summaryPdf->Output('', 'S');
             $summaryFilename = 'Weekly_Briefing_Completion_Summary_FULL_AUDIT_W'.$w.'_'.$y.'.pdf';
+            $graphAttachments[] = ['name' => $summaryFilename, 'content' => $summaryBinary, 'content_type' => 'application/pdf'];
 
             $subject = $subjectPrefix."Weekly brief compiled — W{$w}/{$y}".WeeklyBriefingMailTemplate::subjectSuffix();
+            $omitPdfNote = ($centralExcludedCount > 0 && $reportsForCentral->isNotEmpty())
+                ? '<p style="color:#92400e;"><strong>Note:</strong> '.$centralExcludedCount.' submitted division brief(s) that require director review were omitted from the compiled PDF because review was not recorded before the deadline (per weekly briefing settings).</p>'
+                : '';
+            $emptyPdfNote = $reportsForCentral->isEmpty()
+                ? '<p style="color:#92400e;"><strong>Note:</strong> No division briefs were included in the compiled PDF this week (submitted briefs that require director review are still pending review, per settings).</p>'
+                : '';
             $innerCentral = <<<HTML
-<p>We write to inform you that the compiled <strong>Weekly brief</strong> materials for ISO week <strong>W{$w} / {$y}</strong> are ready for your attention.</p>
+<p>We write to inform you that the compiled <strong>Weekly brief</strong> materials for the reporting week below are ready for your attention.</p>
+<p><strong>{$weekHuman}</strong></p>
+{$omitPdfNote}{$emptyPdfNote}
 <p>Attached, for audit and organisational oversight, you will find:</p>
 <ul style="color:#444444;font-size:14px;line-height:1.6;">
-<li>The <strong>compiled PDF</strong> containing all submitted reporting units for this week; and</li>
+<li>The <strong>compiled PDF</strong> (when present) containing submitted reporting units included in the organisation-wide pack; and</li>
 <li>The <strong>organisational completion summary</strong>, listing every configured reporting unit in the weekly brief settings.</li>
 </ul>
 <p>Should you require any clarification, please contact your APM administrator or the relevant focal point.</p>
 HTML;
             $body = WeeklyBriefingMailTemplate::wrap(null, 'Weekly brief — compiled package', $innerCentral);
-            $graphAttachments = [
-                ['name' => $compiledFilename, 'content' => $compiledBinary, 'content_type' => 'application/pdf'],
-                ['name' => $summaryFilename, 'content' => $summaryBinary, 'content_type' => 'application/pdf'],
-            ];
 
             try {
                 if (! sendEmail($recipients, $subject, $body, null, null, [], [], $graphAttachments)) {
@@ -121,7 +133,7 @@ HTML;
         }
 
         if ($sendDivisionLeaderPdfs) {
-            $reportsByKey = $reports->keyBy(fn (WeeklyBriefingReport $r) => (string) $r->contribution_key);
+            $reportsByKey = $reportsAllSubmitted->keyBy(fn (WeeklyBriefingReport $r) => (string) $r->contribution_key);
             $divisions = Division::query()->orderBy('id')->get();
 
             $staffIds = [];
@@ -180,7 +192,7 @@ HTML;
                 }
                 $divLabelEsc = htmlspecialchars($divLabel, ENT_QUOTES, 'UTF-8');
                 $hodStaff = $hodStaffById->get((int) $division->division_head);
-                $innerDiv = '<p>Please find attached the submitted <strong>Weekly brief</strong> for <strong>'.$divLabelEsc.'</strong> (ISO week <strong>W'.$w.' / '.$y.'</strong>), for your records and onward distribution as appropriate.</p>';
+                $innerDiv = '<p>Please find attached the submitted <strong>Weekly brief</strong> for <strong>'.$divLabelEsc.'</strong>. Reporting week: <strong>'.$weekHuman.'</strong></p>';
                 $divBody = WeeklyBriefingMailTemplate::wrap($hodStaff instanceof Staff ? $hodStaff : null, 'Weekly brief — division submission', $innerDiv);
                 $divSubject = $subjectPrefix.'Weekly brief — '.$divLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
 
@@ -195,7 +207,7 @@ HTML;
                 }
             }
 
-            foreach (WeeklyBriefingDirectorateCombined::directorCombinedMailGroups($reports, $y, $w) as $group) {
+            foreach (WeeklyBriefingDirectorateCombined::directorCombinedMailGroups($reportsAllSubmitted, $y, $w) as $group) {
                 $directorId = $group['director_id'];
                 $dirTorateId = $group['directorate_id'];
                 $groupReports = $group['reports'];
@@ -211,7 +223,8 @@ HTML;
                     : 'Directed divisions (no directorate)';
                 $safeDir = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $dirLabel);
                 $divisionCount = $groupReports->count();
-                $metaHtml = 'ISO week <strong>W'.(int) $w.' / '.(int) $y.'</strong> · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s).';
+                $metaHtml = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8')
+                    .' · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s).';
 
                 $compiled = mpdf_print('weekly-briefing.pdf-compiled', [
                     'reports' => $groupReports,
@@ -251,7 +264,7 @@ HTML;
                 }
 
                 $dirLabelEsc = htmlspecialchars($dirLabel, ENT_QUOTES, 'UTF-8');
-                $combinedInner = '<p>Please find attached (1) the <strong>Director report</strong>, comprising submitted <strong>Weekly brief</strong> returns for divisions for which you are recorded as director in the system (ISO week <strong>W'.$w.' / '.$y.'</strong>). This package is <strong>not</strong> the organisation-wide compiled document sent to central recipients. (2) A completion summary covering those division reporting units only.</p>';
+                $combinedInner = '<p>Please find attached (1) the <strong>Director report</strong>, comprising submitted <strong>Weekly brief</strong> returns for divisions for which you are recorded as director in the system. Reporting week: <strong>'.$weekHuman.'</strong> This package is <strong>not</strong> the organisation-wide compiled document sent to central recipients. (2) A completion summary covering those division reporting units only.</p>';
                 $combinedBody = WeeklyBriefingMailTemplate::wrap($directorStaff, 'Weekly brief — director report', $combinedInner);
                 $combinedSubject = $subjectPrefix.'Weekly brief — director report — '.$dirLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
 

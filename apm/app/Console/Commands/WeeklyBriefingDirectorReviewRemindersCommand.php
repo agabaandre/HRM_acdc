@@ -1,0 +1,128 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\Staff;
+use App\Models\WeeklyBriefingReport;
+use App\Models\WeeklyBriefingSetting;
+use App\Support\WeeklyBriefingMailTemplate;
+use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+
+class WeeklyBriefingDirectorReviewRemindersCommand extends Command
+{
+    protected $signature = 'weekly-briefing:director-review-reminders {--force : Run immediately, ignoring schedule gates}';
+
+    protected $description = 'Remind division directors of submitted weekly briefs still pending director review before the submission deadline (per configured day offsets and clock time).';
+
+    public function handle(): int
+    {
+        $settings = WeeklyBriefingSetting::current();
+        $force = (bool) $this->option('force');
+
+        if (! $force && ! $settings->reminders_enabled) {
+            return self::SUCCESS;
+        }
+
+        $filing = $settings->filingIsoWeekPair();
+        $y = $filing['iso_year'];
+        $w = $filing['iso_week'];
+        $deadline = WeeklyBriefingReport::syntheticDeadlineForIsoWeek($settings, $y, $w);
+
+        if (! $force) {
+            if (Carbon::now()->greaterThan($deadline)) {
+                return self::SUCCESS;
+            }
+            $offsets = $settings->normalizedDirectorReviewReminderDaysBeforeDeadline();
+            $clockCol = $settings->directorReviewReminderClockColumn();
+            if (! $settings->matchesTimeNow($clockCol)) {
+                return self::SUCCESS;
+            }
+            $today = Carbon::now()->startOfDay();
+            $deadlineDay = $deadline->copy()->startOfDay();
+            $matched = false;
+            foreach ($offsets as $offset) {
+                if ($today->equalTo($deadlineDay->copy()->subDays($offset))) {
+                    $matched = true;
+                    break;
+                }
+            }
+            if (! $matched) {
+                return self::SUCCESS;
+            }
+        }
+
+        $pending = WeeklyBriefingReport::query()
+            ->where('report_iso_week_year', $y)
+            ->where('report_iso_week', $w)
+            ->where('status', WeeklyBriefingReport::STATUS_SUBMITTED)
+            ->with(['division'])
+            ->get()
+            ->filter(fn (WeeklyBriefingReport $r) => $r->requiresDirectorReview() && ! $r->isDirectorReviewed());
+
+        if ($pending->isEmpty()) {
+            return self::SUCCESS;
+        }
+
+        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
+        $deadlineHuman = htmlspecialchars($deadline->format('l, F j, Y \a\t g:i A'), ENT_QUOTES, 'UTF-8');
+        $weekHuman = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8');
+
+        $byDirector = [];
+        foreach ($pending as $report) {
+            $div = $report->divisionForContribution();
+            if (! $div) {
+                continue;
+            }
+            $dirId = $div->primaryOrActiveDirectorStaffIdForWeeklyBrief();
+            if (! $dirId || $dirId <= 0) {
+                continue;
+            }
+            if ((int) $dirId === (int) ($report->submitted_by_staff_id ?? 0)) {
+                continue;
+            }
+            $byDirector[$dirId][] = $report;
+        }
+
+        foreach ($byDirector as $directorStaffId => $reports) {
+            $director = Staff::query()->find($directorStaffId);
+            $email = $director?->work_email;
+            if (! $email) {
+                Log::info('weekly-briefing:director-review-reminders — no director email', ['staff_id' => $directorStaffId]);
+
+                continue;
+            }
+
+            $lines = [];
+            foreach ($reports as $rep) {
+                $label = htmlspecialchars($rep->contributionEntityLabel(), ENT_QUOTES, 'UTF-8');
+                $edit = htmlspecialchars(route('weekly-briefing.edit', ['report' => $rep->id], true), ENT_QUOTES, 'UTF-8');
+                $lines[] = "<li><strong>{$label}</strong> — <a href=\"{$edit}\">Open to review</a></li>";
+            }
+            $listHtml = '<ul style="margin:8px 0;padding-left:20px;">'.implode('', $lines).'</ul>';
+
+            $inner = <<<HTML
+<p>This is a reminder to review <strong>submitted</strong> division weekly brief(s) pending your sign-off before the submission deadline.</p>
+<p><strong>Reporting week:</strong> {$weekHuman}</p>
+<p><strong>Deadline:</strong> {$deadlineHuman}</p>
+{$listHtml}
+<p style="font-size:12px;color:#64748b;">If you have already marked these as reviewed, you can ignore this message.</p>
+HTML;
+
+            $html = WeeklyBriefingMailTemplate::wrap($director, 'Weekly brief — director review reminder', $inner);
+            $subject = $subjectPrefix.'Weekly brief — director review pending'.WeeklyBriefingMailTemplate::subjectSuffix();
+            try {
+                if (! sendEmail($email, $subject, $html)) {
+                    Log::warning('weekly-briefing:director-review-reminders sendEmail returned false', ['to' => $email]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('weekly-briefing:director-review-reminders mail failed', ['e' => $e->getMessage(), 'to' => $email]);
+            }
+        }
+
+        $this->info('weekly-briefing:director-review-reminders completed.');
+
+        return self::SUCCESS;
+    }
+}

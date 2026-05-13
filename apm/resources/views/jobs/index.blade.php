@@ -467,9 +467,9 @@
                     <div class="col-12">
                         <hr class="my-2">
                         <h6 class="mb-2 text-secondary"><i class="bx bx-news me-1"></i>Weekly brief (email)</h6>
-                        <p class="small text-muted mb-3">Production sends are also triggered by the scheduler every minute (<code>weekly-briefing:hod-reminders</code>, <code>weekly-briefing:compiled-summary</code>). Use <strong>Send test emails</strong> to verify SMTP to a safe inbox; force buttons email <em>real</em> contributors or compiled recipients.</p>
+                        <p class="small text-muted mb-3">Production sends are also triggered by the scheduler every minute (<code>weekly-briefing:hod-reminders</code>, <code>weekly-briefing:director-review-reminders</code>, <code>weekly-briefing:compiled-summary</code>). Use <strong>Send test emails</strong> to verify SMTP to a safe inbox; force buttons email <em>real</em> contributors, directors, or compiled recipients.</p>
                     </div>
-                    <div class="col-md-6 col-lg-4">
+                    <div class="col-md-6 col-lg-3">
                         <div class="card border-0 shadow-sm h-100 border-start border-success border-3">
                             <div class="card-body text-center">
                                 <div class="mb-2">
@@ -485,7 +485,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6 col-lg-4">
+                    <div class="col-md-6 col-lg-3">
                         <div class="card border-0 shadow-sm h-100 border-start border-warning border-3">
                             <div class="card-body text-center">
                                 <div class="mb-2">
@@ -499,7 +499,21 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6 col-lg-4">
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100 border-start border-secondary border-3">
+                            <div class="card-body text-center">
+                                <div class="mb-2">
+                                    <i class="bx bx-check-shield text-secondary" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Director review reminders</h6>
+                                <p class="card-text small text-muted">Runs <code>--force</code>: emails division directors about submitted briefs still pending review (same as scheduled command).</p>
+                                <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="executeWeeklyBriefingMail('director_review_reminders', this)">
+                                    <i class="bx bx-play me-1"></i> Run now (force)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
                         <div class="card border-0 shadow-sm h-100 border-start border-primary border-3">
                             <div class="card-body text-center">
                                 <div class="mb-2">

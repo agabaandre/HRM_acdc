@@ -25,6 +25,7 @@
 /** @var \App\Models\WeeklyBriefingReport $report */
 /** @var \App\Models\WeeklyBriefingSetting $settings */
 use App\Helpers\PrintHelper;
+
 $dirName = $report->directorate?->name ?? 'Directorate / Office';
 $unitLabel = $report->contributionEntityLabel();
 $apmDiv = $report->division?->division_name ?? '';
@@ -37,31 +38,33 @@ $apmDiv = $report->division?->division_name ?? '';
         <br><span style="font-size:9pt;color:#64748b;">APM division (context): <?php echo htmlspecialchars($apmDiv); ?></span>
     <?php } ?>
     <br>
-    ISO week <strong>W<?php echo (int) $report->report_iso_week; ?> / <?php echo (int) $report->report_iso_week_year; ?></strong>
-    · Period <?php echo $report->period_start ? $report->period_start->format('Y-m-d') : ''; ?>
+    <?php
+    $rangeLine = \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) $report->report_iso_week_year, (int) $report->report_iso_week, true);
+echo htmlspecialchars($rangeLine, ENT_QUOTES, 'UTF-8');
+?>
     · Status: <?php echo htmlspecialchars($report->status); ?>
     <?php
-    if ($report->requiresDirectorReview()) {
-        echo '<br><span style="font-size:9pt;color:#334155;"><strong>Director review:</strong> '.htmlspecialchars($report->directorReviewSummaryLine(), ENT_QUOTES, 'UTF-8').'</span>';
-        $trailSum = $report->directorReviewTrailSummary();
-        if ($trailSum !== '—') {
-            echo '<br><span style="font-size:8.5pt;color:#64748b;">Trail: '.htmlspecialchars($trailSum, ENT_QUOTES, 'UTF-8').'</span>';
-        }
+if ($report->requiresDirectorReview()) {
+    echo '<br><span style="font-size:9pt;color:#334155;"><strong>Director review:</strong> '.htmlspecialchars($report->directorReviewSummaryLine(), ENT_QUOTES, 'UTF-8').'</span>';
+    $trailSum = $report->directorReviewTrailSummary();
+    if ($trailSum !== '—') {
+        echo '<br><span style="font-size:8.5pt;color:#64748b;">Trail: '.htmlspecialchars($trailSum, ENT_QUOTES, 'UTF-8').'</span>';
     }
-    ?>
+}
+?>
     <?php
-    if ($report->submitted_by_staff_id && $report->submittedBy) {
-        $sn = trim((string) (($report->submittedBy->fname ?? '').' '.($report->submittedBy->lname ?? '')));
-        if ($sn === '') {
-            $sn = 'Staff #'.(int) $report->submitted_by_staff_id;
-        }
-        echo '<br><span style="font-size:9pt;">Submitted by: <strong>'.htmlspecialchars($sn, ENT_QUOTES, 'UTF-8').'</strong>';
-        if ($report->submitted_at) {
-            echo ' · '.htmlspecialchars($report->submitted_at->format('Y-m-d H:i'), ENT_QUOTES, 'UTF-8');
-        }
-        echo '</span>';
+if ($report->submitted_by_staff_id && $report->submittedBy) {
+    $sn = trim((string) (($report->submittedBy->fname ?? '').' '.($report->submittedBy->lname ?? '')));
+    if ($sn === '') {
+        $sn = 'Staff #'.(int) $report->submitted_by_staff_id;
     }
-    ?>
+    echo '<br><span style="font-size:9pt;">Submitted by: <strong>'.htmlspecialchars($sn, ENT_QUOTES, 'UTF-8').'</strong>';
+    if ($report->submitted_at) {
+        echo ' · '.htmlspecialchars($report->submitted_at->format('Y-m-d H:i'), ENT_QUOTES, 'UTF-8');
+    }
+    echo '</span>';
+}
+?>
 </div>
 
 <h2>Section 1 — Major happenings (max 3)</h2>
@@ -107,7 +110,7 @@ if (count($bodyRows) > 0) {
     </thead>
     <tbody>
     <?php foreach ($report->section2_bottlenecks ?? [] as $b) {
-        if (trim((string)($b['issue'] ?? '')) === '' && trim((string)($b['impact_risk'] ?? '')) === '' && trim((string)($b['required_action'] ?? '')) === '') {
+        if (trim((string) ($b['issue'] ?? '')) === '' && trim((string) ($b['impact_risk'] ?? '')) === '' && trim((string) ($b['required_action'] ?? '')) === '') {
             continue;
         }
         echo '<tr>';

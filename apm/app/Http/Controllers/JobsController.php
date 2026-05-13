@@ -484,7 +484,7 @@ class JobsController extends Controller
     public function executeWeeklyBriefing(Request $request): JsonResponse
     {
         $request->validate([
-            'action' => 'required|string|in:test_emails,hod_reminders,compiled_summary',
+            'action' => 'required|string|in:test_emails,hod_reminders,director_review_reminders,compiled_summary',
             'email' => 'nullable|email|max:255',
         ]);
 
@@ -500,6 +500,9 @@ class JobsController extends Controller
             } elseif ($action === 'hod_reminders') {
                 $exitCode = Artisan::call('weekly-briefing:hod-reminders', ['--force' => true]);
                 $commandLabel = 'weekly-briefing:hod-reminders --force';
+            } elseif ($action === 'director_review_reminders') {
+                $exitCode = Artisan::call('weekly-briefing:director-review-reminders', ['--force' => true]);
+                $commandLabel = 'weekly-briefing:director-review-reminders --force';
             } else {
                 $exitCode = Artisan::call('weekly-briefing:compiled-summary', ['--force' => true]);
                 $commandLabel = 'weekly-briefing:compiled-summary --force';
