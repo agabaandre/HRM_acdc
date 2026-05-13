@@ -46,13 +46,13 @@ if ($midterm_exists) {
 <div class="table-responsive">
   <table class="table table-bordered align-middle text-sm objective-table">
     <colgroup>
-      <col style="width: 4%;">
-      <col style="width: 22%;">
-      <col style="width: 10%;">
-      <col style="width: 14%;">
-      <col style="width: 8%;">
-      <col style="width: 24%;">
+      <col style="width: 2%;">
       <col style="width: 18%;">
+      <col style="width: 10%;">
+      <col style="width: 24%;">
+      <col style="width: 5%;">
+      <col style="width: 24%;">
+      <col style="width: 17%;">
     </colgroup>
     <thead class="table-light">
       <tr>
