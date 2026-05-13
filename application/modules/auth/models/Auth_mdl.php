@@ -867,4 +867,26 @@ class Auth_mdl extends CI_Model
 			return "Failed to reset password. Please try again";
 		}
 	}
+
+	/**
+	 * Remove GET-only rows from user_logs (route access noise from LogUserAccess).
+	 * Requires http_method column (extended audit). Respects audit_log.php staff_audit_iso.prune_get_access_logs_enabled.
+	 *
+	 * @return int deleted row count
+	 */
+	public function prune_user_logs_get_access()
+	{
+		$this->config->load('audit_log', true);
+		$iso = $this->config->item('staff_audit_iso', 'audit_log');
+		if (!is_array($iso) || empty($iso['prune_get_access_logs_enabled'])) {
+			return 0;
+		}
+		if (!$this->db->table_exists('user_logs') || !$this->db->field_exists('http_method', 'user_logs')) {
+			return 0;
+		}
+		$this->db->where("(UPPER(TRIM(COALESCE(http_method, '')))) = 'GET'", null, false);
+		$this->db->delete('user_logs');
+
+		return (int) $this->db->affected_rows();
+	}
 }

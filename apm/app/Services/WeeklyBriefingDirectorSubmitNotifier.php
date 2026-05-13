@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Staff;
+use App\Models\WeeklyBriefingContributor;
+use App\Models\WeeklyBriefingReport;
+use App\Support\WeeklyBriefingMailTemplate;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Emails division director(s) when a contributor submits a weekly brief that requires director review (division d-* keys).
+ * Uses {@see sendEmail} and {@see WeeklyBriefingMailTemplate} like other weekly briefing notifications.
+ */
+final class WeeklyBriefingDirectorSubmitNotifier
+{
+    public static function notifyDirectorsAfterContributorSubmit(WeeklyBriefingReport $report): void
+    {
+        $report->loadMissing(['submittedBy', 'division']);
+
+        if ($report->status !== WeeklyBriefingReport::STATUS_SUBMITTED) {
+            return;
+        }
+
+        if (! $report->requiresDirectorReview()) {
+            return;
+        }
+
+        $div = $report->divisionForContribution();
+        if (! $div) {
+            return;
+        }
+
+        $directorStaffId = $div->primaryOrActiveDirectorStaffIdForWeeklyBrief();
+        if (! $directorStaffId || $directorStaffId <= 0) {
+            return;
+        }
+
+        if ((int) $directorStaffId === (int) ($report->submitted_by_staff_id ?? 0)) {
+            return;
+        }
+
+        $director = Staff::query()->find($directorStaffId);
+        if (! $director || ! $director->work_email) {
+            Log::info('weekly-briefing:director-submit-reminder — no director work email', [
+                'report_id' => $report->id,
+                'director_staff_id' => $directorStaffId,
+            ]);
+
+            return;
+        }
+
+        $y = (int) $report->report_iso_week_year;
+        $w = (int) $report->report_iso_week;
+        $label = htmlspecialchars(
+            WeeklyBriefingContributor::presentationLabelForContributionKey((string) $report->contribution_key),
+            ENT_QUOTES,
+            'UTF-8'
+        );
+        $editUrl = htmlspecialchars(route('weekly-briefing.edit', ['report' => $report->id], true), ENT_QUOTES, 'UTF-8');
+        $indexUrl = htmlspecialchars(route('weekly-briefing.index', [], true), ENT_QUOTES, 'UTF-8');
+
+        $submitter = $report->submittedBy;
+        $submitterName = 'A contributor';
+        if ($submitter) {
+            $submitterName = htmlspecialchars(
+                trim(($submitter->fname ?? '').' '.($submitter->lname ?? '')),
+                ENT_QUOTES,
+                'UTF-8'
+            );
+            if ($submitterName === '') {
+                $submitterName = 'A contributor';
+            }
+        }
+
+        $inner = <<<HTML
+<p><strong>{$submitterName}</strong> has submitted the <strong>Weekly brief</strong> for reporting unit <strong>{$label}</strong> (ISO week <strong>W{$w} / {$y}</strong>).</p>
+<p>Please review it in APM before the division brief is included in the organisation-wide compilation.</p>
+<p style="text-align:center;"><a class="btn" href="{$editUrl}">Open briefing to review</a></p>
+<p>You can also open the <strong>Weekly brief</strong> module from the <a href="{$indexUrl}">APM home navigation</a>.</p>
+<p style="font-size:12px;color:#64748b;">This message was sent automatically because director review is required for this division brief.</p>
+HTML;
+
+        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
+        $subject = $subjectPrefix.'Weekly brief submitted — please review — '.$label.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
+        $html = WeeklyBriefingMailTemplate::wrap($director, 'Weekly brief — director review requested', $inner);
+
+        try {
+            if (! sendEmail($director->work_email, $subject, $html)) {
+                Log::warning('weekly-briefing:director-submit-reminder sendEmail returned false', [
+                    'to' => $director->work_email,
+                    'report_id' => $report->id,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('weekly-briefing:director-submit-reminder mail failed', [
+                'e' => $e->getMessage(),
+                'to' => $director->work_email,
+                'report_id' => $report->id,
+            ]);
+        }
+    }
+}
