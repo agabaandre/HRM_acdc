@@ -918,6 +918,46 @@ if (!function_exists('staff_secure_upload_url')) {
     }
 }
 
+if (!function_exists('staff_signature_print_src')) {
+    /**
+     * Data URI for signature image for print/PDF (embeds file bytes — no session required).
+     * Returns empty string if file missing or not a valid image.
+     *
+     * @param  string|null  $filename  value from staff.signature
+     */
+    function staff_signature_print_src($filename)
+    {
+        if ($filename === null || $filename === '') {
+            return '';
+        }
+        $safe = basename(str_replace('\\', '/', (string) $filename));
+        if ($safe === '' || $safe === '.' || $safe === '..') {
+            return '';
+        }
+        $path = FCPATH . 'uploads/staff/signature/' . $safe;
+        if (!is_valid_image($path)) {
+            return '';
+        }
+        $image_type = @exif_imagetype($path);
+        $mime = '';
+        if ($image_type !== false && $image_type > 0 && function_exists('image_type_to_mime_type')) {
+            $mime = (string) @image_type_to_mime_type($image_type);
+        }
+        if ($mime === '' || $mime === 'application/octet-stream') {
+            $mime = @mime_content_type($path);
+        }
+        if (!is_string($mime) || $mime === '' || strpos($mime, 'image/') !== 0) {
+            $mime = 'image/png';
+        }
+        $raw = @file_get_contents($path);
+        if ($raw === false || $raw === '') {
+            return '';
+        }
+
+        return 'data:'.$mime.';base64,'.base64_encode($raw);
+    }
+}
+
 if (!function_exists('generate_user_avatar')) {
     function generate_user_avatar($surname, $other_name, $image_path, $photo = false)
     {
