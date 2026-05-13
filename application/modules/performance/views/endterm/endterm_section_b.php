@@ -51,12 +51,12 @@ if (!is_array($objectives)) {
   <table class="table table-bordered align-middle text-sm objective-table">
     <colgroup>
       <col style="width: 4%;">
-      <col style="width: 22%;">
-      <col style="width: 10%;">
-      <col style="width: 14%;">
-      <col style="width: 8%;">
+      <col style="width: 27%;">
+      <col style="width: 5%;">
+      <col style="width: 29%;">
+      <col style="width: 3%;">
       <col style="width: 24%;">
-      <col style="width: 18%;">
+      <col style="width: 8%;">
     </colgroup>
     <thead class="table-light">
       <tr>

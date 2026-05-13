@@ -132,7 +132,7 @@ input[type="number"] {
 
   .objective-table th, .objective-table td { text-align: left; padding: 0px; border: 1px solid #ccc; }
 
-  /* Fixed layout so column % and colgroup are respected (Summernote cannot stretch cells) */
+  /* Fixed layout so column % and colgroup are respected */
   .objective-table {
     table-layout: fixed;
     width: 100%;
@@ -142,43 +142,12 @@ input[type="number"] {
     overflow: hidden;
   }
 
-  /* Deliverables/KPI column — keep Summernote narrow */
+  /* Deliverables/KPI column — constrain rich editor width */
   .objective-table td.ppa-deliverables-cell {
     max-width: 0;
   }
-  .objective-table td.ppa-deliverables-cell .ppa-summernote + .note-editor {
-    max-width: 100% !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box;
-  }
-  .objective-table td.ppa-deliverables-cell .note-toolbar {
-    flex-wrap: wrap;
-  }
-
-  /* Other Summernote cells (objective column) */
-  .objective-table td .ppa-summernote + .note-editor {
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-  .objective-table td .ppa-summernote + .note-editor .note-editable {
-    min-height: 120px;
-  }
-
-  /* Summernote (PPA rich text) — Arial, 14px */
-  .ppa-summernote + .note-editor .note-editable,
-  .ppa-summernote + .note-editor .note-editable * {
-    font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 14px !important;
-  }
-  #ppaApproverPreviewModal .preview-readonly-text.ppa-html-preview {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 14px;
-    white-space: normal;
-    word-break: break-word;
-  }
-  #ppaApproverPreviewModal .preview-readonly-text.ppa-html-preview p { margin: 0 0 0.5em 0; }
 </style>
+<?php $this->load->view('performance/partials/ppa_plan_rich_text_assets', ['wrap_ppa_training_toggle' => true]); ?>
 <?php $this->load->view('ppa_tabs')?>
 <?php //$this->load->view('performance/partials/show_mid_endbtns.php')?>
 
@@ -559,7 +528,9 @@ if($showApprovalBtns!='show'){
   if (!modalEl || !srcEl || !bodyEl) return;
 
   modalEl.addEventListener('show.bs.modal', function () {
-    if (typeof jQuery !== 'undefined') {
+    if (typeof window.syncPpaPlanRichTextToTextareas === 'function') {
+      window.syncPpaPlanRichTextToTextareas();
+    } else if (typeof jQuery !== 'undefined') {
       jQuery('#ppaPreviewSource .ppa-summernote').each(function () {
         var $t = jQuery(this);
         if ($t.next('.note-editor').length) {
@@ -742,73 +713,3 @@ if($showApprovalBtns!='show'){
   }
 </script>
 
-<script>
-$(function () {
-  window.initPpaSummernote = function () {
-    $('.ppa-summernote').each(function () {
-      var $ta = $(this);
-      if ($ta.next('.note-editor').length) {
-        return;
-      }
-      var readOnly = $ta.prop('readonly') || $ta.prop('disabled');
-      $ta.removeAttr('readonly').removeAttr('disabled');
-      $ta.summernote({
-        placeholder: 'Type here…',
-        tabsize: 2,
-        height: 170,
-        dialogsInBody: true,
-        fontNames: ['Arial', 'Arial Black', 'Helvetica', 'sans-serif'],
-        fontNamesIgnoreCheck: ['Arial', 'Arial Black', 'Helvetica', 'sans-serif'],
-        toolbar: [
-          ['style', ['bold', 'italic', 'underline', 'clear']],
-          ['para', ['ul', 'ol', 'paragraph']],
-          ['insert', ['link']],
-          ['view', ['fullscreen', 'codeview']]
-        ],
-        callbacks: {
-          onInit: function () {
-            $(this).next('.note-editor').find('.note-editable').css({
-              fontFamily: 'Arial, Helvetica, sans-serif',
-              fontSize: '14px'
-            });
-          }
-        }
-      });
-      if (readOnly) {
-        $ta.summernote('disable');
-      }
-    });
-  };
-  setTimeout(window.initPpaSummernote, 0);
-  $('#staff_ppa').on('submit', function () {
-    $('.ppa-summernote').each(function () {
-      var $ta = $(this);
-      if ($ta.next('.note-editor').length) {
-        $ta.val($ta.summernote('code'));
-      }
-    });
-  });
-  setTimeout(function () {
-    var _toggleTraining = window.toggleTrainingSection;
-    if (typeof _toggleTraining === 'function' && !_toggleTraining._ppaWrapped) {
-      window.toggleTrainingSection = function (show) {
-        _toggleTraining(show);
-        if (show && typeof window.initPpaSummernote === 'function') {
-          setTimeout(function () {
-            $('#training-section .ppa-summernote').each(function () {
-              var $t = $(this);
-              if ($t.next('.note-editor').length) {
-                try {
-                  $t.summernote('destroy');
-                } catch (e) { /* ignore */ }
-              }
-            });
-            window.initPpaSummernote();
-          }, 80);
-        }
-      };
-      window.toggleTrainingSection._ppaWrapped = true;
-    }
-  }, 0);
-});
-</script>

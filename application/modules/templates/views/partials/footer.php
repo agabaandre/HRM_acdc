@@ -705,6 +705,8 @@ $__is_cbp_home = ($CI->uri->segment(1) === 'home');
 
       if (typeof window.syncMteSummernoteToTextareas === 'function') {
         window.syncMteSummernoteToTextareas();
+      } else if (typeof window.syncPpaPlanRichTextToTextareas === 'function') {
+        window.syncPpaPlanRichTextToTextareas();
       } else if (typeof jQuery !== 'undefined') {
         jQuery(form).find('.ppa-summernote').each(function () {
           var $ta = jQuery(this);
