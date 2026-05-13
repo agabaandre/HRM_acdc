@@ -151,7 +151,10 @@
                                 <tr>
                                     <td class="text-center text-muted fw-semibold">{{ $idx + 1 }}</td>
                                     <td>
-                                        <textarea class="form-control form-control-sm" id="wb-major-{{ $idx }}" name="section1[{{ $idx }}][major_happening]" rows="3" maxlength="500" placeholder="Short title">{{ $row['major_happening'] ?? '' }}</textarea>
+                                        <div class="wb-quill-wrap">
+                                            <div id="wb-major-q-{{ $idx }}" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>
+                                            <input type="hidden" name="section1[{{ $idx }}][major_happening]" id="wb-major-h-{{ $idx }}" value="{{ $row['major_happening'] ?? '' }}">
+                                        </div>
                                     </td>
                                     <td>
                                         <div class="wb-quill-wrap">
@@ -190,10 +193,26 @@
                         </thead>
                         <tbody>
                             @foreach($s2 as $idx => $row)
-                                <tr class="bottleneck-row">
-                                    <td><textarea class="form-control" name="section2[{{ $idx }}][issue]" rows="3">{{ $row['issue'] ?? '' }}</textarea></td>
-                                    <td><textarea class="form-control" name="section2[{{ $idx }}][impact_risk]" rows="3">{{ $row['impact_risk'] ?? '' }}</textarea></td>
-                                    <td><textarea class="form-control" name="section2[{{ $idx }}][required_action]" rows="3">{{ $row['required_action'] ?? '' }}</textarea></td>
+                                @php $btUid = 'e'.$idx; @endphp
+                                <tr class="bottleneck-row" data-wb-bt-uid="{{ $btUid }}" data-wb-bt-row="{{ $idx }}">
+                                    <td>
+                                        <div class="wb-quill-wrap">
+                                            <div id="wb-bt-issue-{{ $btUid }}" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>
+                                            <input type="hidden" name="section2[{{ $idx }}][issue]" id="wb-bt-issue-h-{{ $btUid }}" value="{{ $row['issue'] ?? '' }}">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="wb-quill-wrap">
+                                            <div id="wb-bt-impact-{{ $btUid }}" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>
+                                            <input type="hidden" name="section2[{{ $idx }}][impact_risk]" id="wb-bt-impact-h-{{ $btUid }}" value="{{ $row['impact_risk'] ?? '' }}">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="wb-quill-wrap">
+                                            <div id="wb-bt-action-{{ $btUid }}" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>
+                                            <input type="hidden" name="section2[{{ $idx }}][required_action]" id="wb-bt-action-h-{{ $btUid }}" value="{{ $row['required_action'] ?? '' }}">
+                                        </div>
+                                    </td>
                                     <td class="text-nowrap">
                                         <button type="button" class="btn btn-sm btn-outline-danger wb-remove-row" title="Remove row">×</button>
                                     </td>
@@ -229,8 +248,10 @@
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet" />
 <style>
     #weekly-briefing-page .wb-quill-editor .ql-editor { min-height: 120px; }
-    #weekly-briefing-page #wb-major-happenings-table td { vertical-align: top; }
-    #weekly-briefing-page #wb-major-happenings-table .wb-quill-editor .ql-toolbar { flex-wrap: wrap; }
+    #weekly-briefing-page #wb-major-happenings-table td,
+    #weekly-briefing-page #bottleneck-table td { vertical-align: top; }
+    #weekly-briefing-page #wb-major-happenings-table .wb-quill-editor .ql-toolbar,
+    #weekly-briefing-page #bottleneck-table .wb-quill-editor .ql-toolbar { flex-wrap: wrap; }
     #weekly-briefing-page fieldset:disabled { opacity: 0.65; pointer-events: none; }
 </style>
 @endpush
@@ -245,24 +266,47 @@
     return;
     @endif
 
+    var toolbar = [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link'], ['clean']];
+    var quillOpts = { theme: 'snow', modules: { toolbar: toolbar } };
     var editors = [];
+    var wbBtJsSeq = 1000;
 
-    function initPair(idx) {
-        var dh = document.getElementById('wb-desc-h-' + idx);
-        var sh = document.getElementById('wb-strat-h-' + idx);
-        var de = document.getElementById('wb-desc-' + idx);
-        var se = document.getElementById('wb-strat-' + idx);
-        if (!dh || !sh || !de || !se) return;
-
-        var qd = new Quill('#wb-desc-' + idx, { theme: 'snow', modules: { toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link'], ['clean']] } });
-        var qs = new Quill('#wb-strat-' + idx, { theme: 'snow', modules: { toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link'], ['clean']] } });
-        if (dh.value) { qd.root.innerHTML = dh.value; }
-        if (sh.value) { qs.root.innerHTML = sh.value; }
-        editors.push({ quill: qd, hidden: dh });
-        editors.push({ quill: qs, hidden: sh });
+    function bindQuill(editorId, hiddenEl) {
+        var host = document.getElementById(editorId);
+        if (!host || !hiddenEl || host.__quill) return;
+        var q = new Quill('#' + editorId, quillOpts);
+        if (hiddenEl.value) {
+            q.root.innerHTML = hiddenEl.value;
+        }
+        editors.push({ quill: q, hidden: hiddenEl });
     }
 
-    for (var i = 0; i < 3; i++) initPair(i);
+    function initSection1Row(idx) {
+        var mh = document.getElementById('wb-major-h-' + idx);
+        var mq = document.getElementById('wb-major-q-' + idx);
+        if (mh && mq) {
+            bindQuill('wb-major-q-' + idx, mh);
+        }
+        bindQuill('wb-desc-' + idx, document.getElementById('wb-desc-h-' + idx));
+        bindQuill('wb-strat-' + idx, document.getElementById('wb-strat-h-' + idx));
+    }
+
+    function initBottleneckRow(tr) {
+        var uid = tr.getAttribute('data-wb-bt-uid');
+        if (!uid) return;
+        bindQuill('wb-bt-issue-' + uid, document.getElementById('wb-bt-issue-h-' + uid));
+        bindQuill('wb-bt-impact-' + uid, document.getElementById('wb-bt-impact-h-' + uid));
+        bindQuill('wb-bt-action-' + uid, document.getElementById('wb-bt-action-h-' + uid));
+    }
+
+    for (var i = 0; i < 3; i++) {
+        initSection1Row(i);
+    }
+
+    var tbody = document.querySelector('#bottleneck-table tbody');
+    if (tbody) {
+        tbody.querySelectorAll('tr.bottleneck-row').forEach(initBottleneckRow);
+    }
 
     form.addEventListener('submit', function () {
         editors.forEach(function (pair) {
@@ -270,23 +314,35 @@
         });
     });
 
-    var tbody = document.querySelector('#bottleneck-table tbody');
     var addBtn = document.getElementById('wb-add-bottleneck');
     if (addBtn && tbody) {
         addBtn.addEventListener('click', function () {
             var n = tbody.querySelectorAll('tr.bottleneck-row').length;
+            var uid = 'j' + (++wbBtJsSeq);
             var tr = document.createElement('tr');
             tr.className = 'bottleneck-row';
-            tr.innerHTML = '<td><textarea class="form-control" name="section2[' + n + '][issue]" rows="3"></textarea></td>' +
-                '<td><textarea class="form-control" name="section2[' + n + '][impact_risk]" rows="3"></textarea></td>' +
-                '<td><textarea class="form-control" name="section2[' + n + '][required_action]" rows="3"></textarea></td>' +
+            tr.setAttribute('data-wb-bt-uid', uid);
+            tr.setAttribute('data-wb-bt-row', String(n));
+            tr.innerHTML =
+                '<td><div class="wb-quill-wrap"><div id="wb-bt-issue-' + uid + '" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>' +
+                '<input type="hidden" name="section2[' + n + '][issue]" id="wb-bt-issue-h-' + uid + '" value=""></div></td>' +
+                '<td><div class="wb-quill-wrap"><div id="wb-bt-impact-' + uid + '" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>' +
+                '<input type="hidden" name="section2[' + n + '][impact_risk]" id="wb-bt-impact-h-' + uid + '" value=""></div></td>' +
+                '<td><div class="wb-quill-wrap"><div id="wb-bt-action-' + uid + '" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>' +
+                '<input type="hidden" name="section2[' + n + '][required_action]" id="wb-bt-action-h-' + uid + '" value=""></div></td>' +
                 '<td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-danger wb-remove-row">×</button></td>';
             tbody.appendChild(tr);
+            initBottleneckRow(tr);
         });
         tbody.addEventListener('click', function (e) {
             if (e.target.closest('.wb-remove-row')) {
                 var tr = e.target.closest('tr.bottleneck-row');
-                if (tr && tbody.querySelectorAll('tr.bottleneck-row').length > 1) tr.remove();
+                if (tr && tbody.querySelectorAll('tr.bottleneck-row').length > 1) {
+                    tr.remove();
+                    editors = editors.filter(function (p) {
+                        return p.hidden && form.contains(p.hidden);
+                    });
+                }
             }
         });
     }

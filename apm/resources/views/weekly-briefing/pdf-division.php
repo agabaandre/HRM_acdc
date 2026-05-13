@@ -72,10 +72,10 @@ if ($report->submitted_by_staff_id && $report->submittedBy) {
 $rows = $report->section1_major_happenings ?? [];
 $bodyRows = [];
 foreach ($rows as $row) {
-    $mh = trim((string) ($row['major_happening'] ?? ''));
+    $mhPlain = trim(strip_tags((string) ($row['major_happening'] ?? '')));
     $dPlain = trim(strip_tags((string) ($row['description_key_actions'] ?? '')));
     $sPlain = trim(strip_tags((string) ($row['strategic_relevance'] ?? '')));
-    if ($mh === '' && $dPlain === '' && $sPlain === '') {
+    if ($mhPlain === '' && $dPlain === '' && $sPlain === '') {
         continue;
     }
     $bodyRows[] = $row;
@@ -87,7 +87,7 @@ if (count($bodyRows) > 0) {
     foreach ($bodyRows as $idx => $row) {
         $mh = trim((string) ($row['major_happening'] ?? ''));
         $num = $idx + 1;
-        $mhBody = $mh !== '' ? htmlspecialchars($mh, ENT_QUOTES, 'UTF-8') : '<span style="color:#64748b;">—</span>';
+        $mhBody = trim(strip_tags($mh)) !== '' ? \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($mh) : '<span style="color:#64748b;">—</span>';
         $mhOut = '<strong>'.(int) $num.'.</strong> '.$mhBody;
         echo '<tr>';
         echo '<td class="major">'.$mhOut.'</td>';
@@ -110,13 +110,16 @@ if (count($bodyRows) > 0) {
     </thead>
     <tbody>
     <?php foreach ($report->section2_bottlenecks ?? [] as $b) {
-        if (trim((string) ($b['issue'] ?? '')) === '' && trim((string) ($b['impact_risk'] ?? '')) === '' && trim((string) ($b['required_action'] ?? '')) === '') {
+        $iPlain = trim(strip_tags((string) ($b['issue'] ?? '')));
+        $pPlain = trim(strip_tags((string) ($b['impact_risk'] ?? '')));
+        $aPlain = trim(strip_tags((string) ($b['required_action'] ?? '')));
+        if ($iPlain === '' && $pPlain === '' && $aPlain === '') {
             continue;
         }
         echo '<tr>';
-        echo '<td><div class="rich">'.nl2br(htmlspecialchars((string) ($b['issue'] ?? ''), ENT_QUOTES, 'UTF-8')).'</div></td>';
-        echo '<td><div class="rich">'.nl2br(htmlspecialchars((string) ($b['impact_risk'] ?? ''), ENT_QUOTES, 'UTF-8')).'</div></td>';
-        echo '<td><div class="rich">'.nl2br(htmlspecialchars((string) ($b['required_action'] ?? ''), ENT_QUOTES, 'UTF-8')).'</div></td>';
+        echo '<td><div class="rich">'.\App\Helpers\PrintHelper::sanitizeRichTextForMpdf((string) ($b['issue'] ?? '')).'</div></td>';
+        echo '<td><div class="rich">'.\App\Helpers\PrintHelper::sanitizeRichTextForMpdf((string) ($b['impact_risk'] ?? '')).'</div></td>';
+        echo '<td><div class="rich">'.\App\Helpers\PrintHelper::sanitizeRichTextForMpdf((string) ($b['required_action'] ?? '')).'</div></td>';
         echo '</tr>';
     } ?>
     </tbody>

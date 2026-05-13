@@ -323,7 +323,7 @@ class WeeklyBriefingController extends Controller
 
         $validated = $request->validate([
             'section1' => 'required|array|max:3',
-            'section1.*.major_happening' => 'nullable|string|max:500',
+            'section1.*.major_happening' => 'nullable|string|max:15000',
             'section1.*.description_key_actions' => 'nullable|string',
             'section1.*.strategic_relevance' => 'nullable|string',
             'section2' => 'nullable|array',
@@ -337,9 +337,10 @@ class WeeklyBriefingController extends Controller
             $m = trim((string) ($row['major_happening'] ?? ''));
             $d = trim((string) ($row['description_key_actions'] ?? ''));
             $s = trim((string) ($row['strategic_relevance'] ?? ''));
+            $mPlain = trim(strip_tags($m));
             $dPlain = trim(strip_tags($d));
             $sPlain = trim(strip_tags($s));
-            if ($m === '' && $dPlain === '' && $sPlain === '') {
+            if ($mPlain === '' && $dPlain === '' && $sPlain === '') {
                 continue;
             }
             $section1[] = [
@@ -367,7 +368,7 @@ class WeeklyBriefingController extends Controller
             $issue = trim((string) ($row['issue'] ?? ''));
             $impact = trim((string) ($row['impact_risk'] ?? ''));
             $action = trim((string) ($row['required_action'] ?? ''));
-            if ($issue === '' && $impact === '' && $action === '') {
+            if (trim(strip_tags($issue)) === '' && trim(strip_tags($impact)) === '' && trim(strip_tags($action)) === '') {
                 continue;
             }
             $section2[] = [
