@@ -423,8 +423,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <?php else: ?>
           <p style="text-decoration:underline;"><?= htmlspecialchars(staff_print_honorific_name($_ppa_print_staff_sd) ?: '—') ?></p><br>
         <?php endif; ?>
-    
-       <b> Staff Signature</b>
         <?php if (empty($is_draft_print) && $_ppa_print_staff_sd): ?>
           <?php
             $_ppa_nm = staff_print_honorific_name($_ppa_print_staff_sd);
@@ -456,8 +454,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <?php else: ?>
           <p style="text-decoration:underline;"><?= $_ppa_print_sup_sd ? htmlspecialchars(staff_print_honorific_name($_ppa_print_sup_sd) ?: '—') : '—' ?></p><br>
         <?php endif; ?>
-  
-        <b>Supervisor Signature</b>
         <?php if (empty($is_draft_print) && !empty($ppa->supervisor_id) && $_ppa_print_sup_sd): ?>
           <?php
             $_ppa_sup_nm = staff_print_honorific_name($_ppa_print_sup_sd);
@@ -518,8 +514,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <?php else: ?>
             <p style="text-decoration:underline;"><?= htmlspecialchars(staff_print_honorific_name($_ppa_print_sup2_sd) ?: '—') ?></p><br>
           <?php endif; ?>
-       
-          <b>Supervisor Signature</b>
           <?php if (empty($is_draft_print) && !empty($ppa->supervisor2_id) && $_ppa_print_sup2_sd): ?>
             <?php
               $_ppa_sup2_nm = staff_print_honorific_name($_ppa_print_sup2_sd);
