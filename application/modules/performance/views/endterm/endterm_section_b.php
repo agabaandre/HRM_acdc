@@ -50,13 +50,13 @@ if (!is_array($objectives)) {
 <div class="table-responsive">
   <table class="table table-bordered align-middle text-sm objective-table">
     <colgroup>
-      <col style="width: 4%;">
-      <col style="width: 27%;">
-      <col style="width: 5%;">
-      <col style="width: 29%;">
-      <col style="width: 3%;">
-      <col style="width: 24%;">
-      <col style="width: 8%;">
+      <col style="width: 2%;">
+      <col style="width: 18%;">
+      <col style="width: 10%;">
+      <col style="width: 25%;">
+      <col style="width: 10%;">
+      <col style="width: 20%;">
+      <col style="width: 15%;">
     </colgroup>
     <thead class="table-light">
       <tr>
