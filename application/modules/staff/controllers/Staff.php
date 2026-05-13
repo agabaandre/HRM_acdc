@@ -953,6 +953,7 @@ class Staff extends MX_Controller
 		$data['this_staff'] = $staff_info;
 		$data['title'] = ($staff_info->lname ?? '') . " " . ($staff_info->fname ?? '');
 		$data['links'] = pagination("staff/staff_contracts/{$staff_id}", $count, $per_page);
+		$data['profile_audit_trail'] = $this->staff_mdl->get_staff_profile_audit_trail($staff_id, 100);
 		
 		render('staff_contracts', $data);
 	}

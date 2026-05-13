@@ -891,8 +891,8 @@ public function revert()
       return;
     }
     $searchkey = $this->input->get();
-    if (empty($searchkey)) {
-      $searchkey = "";
+    if (!is_array($searchkey)) {
+      $searchkey = array();
     }
     $this->load->library('pagination');
     $config = array();
@@ -921,10 +921,25 @@ public function revert()
     $config['num_tag_open'] = '<li class="page-item">';
     $config['num_tag_close'] = '</li>';
     $config['use_page_numbers'] = false;
+    if (!empty($searchkey)) {
+      $config['suffix'] = '?' . http_build_query($searchkey);
+      $config['first_url'] = $config['base_url'] . $config['suffix'];
+    }
     $this->pagination->initialize($config);
     $page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0; //default starting point for limits 
     $data['links'] = $this->pagination->create_links();
     $data['logs'] = $this->auth_mdl->get_logs($searchkey, $config['per_page'], $page);
+    $data['total_filtered'] = (int) $config['total_rows'];
+    $data['log_filter_lists'] = $this->auth_mdl->get_user_logs_filter_lists();
+    $data['extended_audit'] = $this->auth_mdl->user_logs_extended_audit_enabled();
+    $data['integrity_audit'] = $this->auth_mdl->user_logs_integrity_enabled();
+    $this->config->load('audit_log', true);
+    $iso = $this->config->item('staff_audit_iso', 'audit_log');
+    $data['iso_retention_guidance_days'] = (is_array($iso) && isset($iso['retention_guidance_days']))
+      ? (int) $iso['retention_guidance_days'] : 365;
+    $this->config->load('audit_revert', true);
+    $wt = $this->config->item('staff_audit_revert_tables', 'audit_revert');
+    $data['revert_whitelist_tables'] = is_array($wt) ? array_keys($wt) : array();
 
    // dd($this->db->last_query());
     $data['module'] = "auth";
@@ -932,6 +947,142 @@ public function revert()
     $data['uptitle'] = "User Access Logs";
     render("users/user_logs", $data);
   }
+
+  /**
+   * JSON: revert a structured user_logs row using whitelist in application/config/audit_revert.php
+   */
+  public function revert_log()
+  {
+    $this->config->load('audit_log', true);
+    $iso = $this->config->item('staff_audit_iso', 'audit_log');
+    $revertPermId = 17;
+    if (is_array($iso) && array_key_exists('revert_permission_id', $iso) && $iso['revert_permission_id'] !== null && $iso['revert_permission_id'] !== '') {
+      $revertPermId = (int) $iso['revert_permission_id'];
+    }
+    if (!staff_user_has_permission_id($revertPermId)) {
+      return $this->output
+        ->set_status_header(403)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'Forbidden')));
+    }
+
+    $logId = (int) $this->input->post('log_id');
+    if ($logId < 1) {
+      return $this->output
+        ->set_status_header(422)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'Invalid log id')));
+    }
+
+    $this->config->load('audit_revert', true);
+    $whitelist = $this->config->item('staff_audit_revert_tables', 'audit_revert');
+    if (!is_array($whitelist)) {
+      $whitelist = array();
+    }
+
+    $log = $this->auth_mdl->get_log_by_id($logId);
+    if (!$log) {
+      return $this->output
+        ->set_status_header(404)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'Log not found')));
+    }
+
+    if (!$this->auth_mdl->user_logs_extended_audit_enabled()) {
+      return $this->output
+        ->set_status_header(400)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'Audit schema not upgraded. Run application/sql/add_user_logs_audit_columns.sql')));
+    }
+
+    if (!empty($log->reverted_at)) {
+      return $this->output
+        ->set_status_header(400)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'This log entry was already reverted')));
+    }
+
+    $table = isset($log->target_table) ? (string) $log->target_table : '';
+    if ($table === '' || !isset($whitelist[$table])) {
+      return $this->output
+        ->set_status_header(400)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'Revert is not enabled for this table. Edit application/config/audit_revert.php')));
+    }
+
+    $oldJson = isset($log->old_values) ? $log->old_values : '';
+    $old = json_decode($oldJson, true);
+    if (!is_array($old) || $old === array()) {
+      return $this->output
+        ->set_status_header(400)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'No old_values snapshot to restore')));
+    }
+
+    $cfg = $whitelist[$table];
+    $pk = isset($cfg['pk']) ? (string) $cfg['pk'] : 'id';
+    $allowedCols = isset($cfg['columns']) && is_array($cfg['columns']) ? $cfg['columns'] : array();
+    $targetId = isset($log->target_id) ? $log->target_id : null;
+    if ($targetId === null || $targetId === '') {
+      return $this->output
+        ->set_status_header(400)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'Missing target id')));
+    }
+
+    $payload = array();
+    foreach ($allowedCols as $col) {
+      if (!array_key_exists($col, $old)) {
+        continue;
+      }
+      $payload[$col] = $old[$col];
+    }
+    if ($payload === array()) {
+      return $this->output
+        ->set_status_header(400)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'Nothing to restore from snapshot')));
+    }
+
+    $this->db->from($table);
+    $this->db->where($pk, $targetId);
+    if ((int) $this->db->count_all_results() < 1) {
+      return $this->output
+        ->set_status_header(404)
+        ->set_content_type('application/json')
+        ->set_output(json_encode(array('ok' => false, 'message' => 'Target row not found')));
+    }
+
+    $this->db->where($pk, $targetId);
+    $this->db->update($table, $payload);
+
+    $actorId = isset($this->session->userdata('user')->user_id) ? (int) $this->session->userdata('user')->user_id : null;
+    $this->db->where('id', $logId);
+    $this->db->update('user_logs', array(
+      'reverted_at' => date('Y-m-d H:i:s'),
+      'reverted_by_user_id' => $actorId,
+    ));
+
+    if (function_exists('log_user_action')) {
+      log_user_action('Audit revert executed from whitelisted snapshot', array(
+        'event_type' => 'record_revert',
+        'target_table' => 'user_logs',
+        'target_id' => (string) $logId,
+        'new_values' => array(
+          'source_log_event_type' => isset($log->event_type) ? (string) $log->event_type : '',
+          'restored_table' => $table,
+          'restored_pk' => $pk,
+          'restored_row_id' => (string) $targetId,
+          'restored_columns' => array_keys($payload),
+        ),
+      ));
+    }
+
+    return $this->output
+      ->set_content_type('application/json')
+      ->set_output(json_encode(array('ok' => true, 'message' => 'Changes reverted from audit snapshot')));
+  }
+
   public function addUser()
   {
     
