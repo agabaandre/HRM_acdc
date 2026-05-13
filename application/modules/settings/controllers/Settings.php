@@ -728,6 +728,10 @@ public function force_generate_short_names() {
 				'label' => 'Performance notifications (PPA, Midterm, Endterm)',
 				'bundle' => 'performance_notifications',
 			],
+			'prune_user_logs_get_access' => [
+				'label' => 'Prune user_logs GET access rows',
+				'route' => 'jobs/jobs/prune_user_logs_get_access',
+			],
 		];
 	}
 
@@ -774,6 +778,11 @@ public function force_generate_short_names() {
 			'cron_register' => [
 				'label' => 'Cron register bundle',
 				'help' => 'Legacy bundle (birthday, accounts, contracts).',
+			],
+			'user_logs_prune_get_access' => [
+				'label' => 'Prune user_logs GET access',
+				'help' => 'Weekly (default Tuesday 00:00): deletes user_logs rows where http_method is GET. Keeps POST/structured audit rows. Disable in audit_log.php (prune_get_access_logs_enabled) to block deletes even if scheduled.',
+				'weekday_select' => true,
 			],
 		];
 		$data['instant_jobs'] = $this->staff_jobs_instant_definitions();

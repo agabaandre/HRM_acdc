@@ -29,6 +29,7 @@ class Run extends MX_Controller
      * - mark_due_contracts / staff_birthday: daily at hour:minute, or false.
      * - staff_profile_completion_reminder: once daily (cron) — queue profile reminder at most every 2 days per staff.
      * - manage_accounts_hourly_minute: every hour at this minute, or null to disable.
+     * - user_logs_prune_get_access: weekly (default Tuesday 00:00 server local time) — deletes user_logs GET access rows; requires extended audit columns. Spec may include weekday (0=Sun … 6=Sat, PHP date('w')).
      */
     private function tick_schedule()
     {
@@ -52,6 +53,7 @@ class Run extends MX_Controller
         $now    = time();
         $minute = (int) date('i', $now);
         $hour   = (int) date('H', $now);
+        $dow    = (int) date('w', $now);
 
         echo '[' . date('Y-m-d H:i:s') . "] jobs/run/tick\n";
 
@@ -66,31 +68,31 @@ class Run extends MX_Controller
             Modules::run('jobs/jobs/send_mails');
         }
 
-        if ($this->tick_match_clock($s['performance_notifications'] ?? false, $hour, $minute)) {
+        if ($this->tick_match_clock($s['performance_notifications'] ?? false, $hour, $minute, $dow)) {
             echo "  → performance_notifications (PPA / Midterm / Endterm queue)\n";
             $this->_run_performance_notifications();
         }
-        if ($this->tick_match_clock($s['performance_approval_reminder'] ?? false, $hour, $minute)) {
+        if ($this->tick_match_clock($s['performance_approval_reminder'] ?? false, $hour, $minute, $dow)) {
             echo "  → performance_approval_reminder\n";
             Modules::run('jobs/jobs/notify_supervisors_pending_performance_approval');
         }
 
-        if ($this->tick_match_clock($s['cron_register'] ?? false, $hour, $minute)) {
+        if ($this->tick_match_clock($s['cron_register'] ?? false, $hour, $minute, $dow)) {
             echo "  → cron_register\n";
             Modules::run('jobs/jobs/cron_register');
         }
 
-        if ($this->tick_match_clock($s['mark_due_contracts'] ?? false, $hour, $minute)) {
+        if ($this->tick_match_clock($s['mark_due_contracts'] ?? false, $hour, $minute, $dow)) {
             echo "  → mark_due_contracts\n";
             Modules::run('jobs/jobs/mark_due_contracts');
         }
 
-        if ($this->tick_match_clock($s['staff_birthday'] ?? false, $hour, $minute)) {
+        if ($this->tick_match_clock($s['staff_birthday'] ?? false, $hour, $minute, $dow)) {
             echo "  → staff_birthday\n";
             Modules::run('jobs/jobs/staff_birthday');
         }
 
-        // if ($this->tick_match_clock($s['staff_profile_completion_reminder'] ?? false, $hour, $minute)) {
+        // if ($this->tick_match_clock($s['staff_profile_completion_reminder'] ?? false, $hour, $minute, $dow)) {
         //     echo "  → staff_profile_completion_reminder\n";
         //     Modules::run('jobs/jobs/notify_staff_incomplete_profile_extension');
         // }
@@ -102,20 +104,33 @@ class Run extends MX_Controller
             }
         }
 
+        if ($this->tick_match_clock($s['user_logs_prune_get_access'] ?? false, $hour, $minute, $dow)) {
+            echo "  → user_logs_prune_get_access\n";
+            Modules::run('jobs/jobs/prune_user_logs_get_access');
+        }
+
         echo "  done.\n";
     }
 
     /**
-     * @param array|false $spec ['hour'=>int,'minute'=>int] or false
+     * @param array|false $spec ['hour'=>int,'minute'=>int] and optional 'weekday'=>0–6 (PHP date('w'), 0=Sunday)
+     * @param int         $dow  current day of week (same convention)
      */
-    private function tick_match_clock($spec, $hour, $minute)
+    private function tick_match_clock($spec, $hour, $minute, $dow)
     {
         if ($spec === false || empty($spec) || !is_array($spec)) {
             return false;
         }
         $h = isset($spec['hour']) ? (int) $spec['hour'] : 0;
         $m = isset($spec['minute']) ? (int) $spec['minute'] : 0;
-        return $hour === $h && $minute === $m;
+        if ($hour !== $h || $minute !== $m) {
+            return false;
+        }
+        if (array_key_exists('weekday', $spec)) {
+            return (int) $spec['weekday'] === (int) $dow;
+        }
+
+        return true;
     }
 
     /**
@@ -318,5 +333,20 @@ class Run extends MX_Controller
         echo "  php index.php jobs/run/performance_notifications_and_send\n";
         echo "  php index.php jobs/run/test_performance_notifications\n";
         echo "  TEST_EMAIL=you@example.com php index.php jobs/run/test_performance_notifications\n";
+        echo "  php index.php jobs/run/prune_user_logs_get_access\n";
+    }
+
+    /**
+     * One-shot: prune GET rows from user_logs (same as scheduled weekly tick when enabled).
+     */
+    public function prune_user_logs_get_access()
+    {
+        if (!$this->input->is_cli_request()) {
+            show_error('CLI only.', 403);
+            return;
+        }
+        echo "--- prune_user_logs_get_access " . date('Y-m-d H:i:s') . " ---\n";
+        Modules::run('jobs/jobs/prune_user_logs_get_access');
+        echo "done.\n";
     }
 }

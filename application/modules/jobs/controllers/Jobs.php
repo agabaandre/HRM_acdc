@@ -246,9 +246,22 @@ public function cron_register(){
     $this->manage_accounts();
     //run everyday at 23:30
     $this->mark_due_contracts();
-    
-    
+
+
 }
+
+	/**
+	 * Scheduled via jobs/run/tick (default Tuesday 00:00): delete user_logs GET access rows.
+	 */
+	public function prune_user_logs_get_access()
+	{
+		$n = (int) $this->auth_mdl->prune_user_logs_get_access();
+		log_message('info', 'prune_user_logs_get_access: deleted ' . $n . ' row(s)');
+		echo json_encode([
+			'msg' => $n . ' GET access row(s) pruned from user_logs.',
+			'type' => 'info',
+		]);
+	}
 
 //   * * * * * cd /var/www/staff_tracker && php index.php person send_mails. runs every minute.
     public function send_mails()

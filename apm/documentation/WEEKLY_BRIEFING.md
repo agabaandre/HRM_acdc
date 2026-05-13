@@ -77,6 +77,7 @@ Statuses and helpers live on `App\Models\WeeklyBriefingReport`.
 
 - Templates use `App\Support\WeeklyBriefingMailTemplate` and Blade under `resources/views/emails/` (e.g. weekly briefing notification).
 - Compiled / reminder behaviour is implemented in `WeeklyBriefingCompiledSummaryCommand` and `WeeklyBriefingHodRemindersCommand` (see below).
+- When a **contributor** submits a **division** brief (`d-*`) that **requires director review** (division has `director_id` / active director OIC), `WeeklyBriefingController::update` dispatches `SendWeeklyBriefingDirectorReviewReminderJob`, which sends the director’s `work_email` via `sendEmail` + `WeeklyBriefingMailTemplate` (`WeeklyBriefingDirectorSubmitNotifier`). Skipped if submitter is the same as the resolved director or director has no email. Directorate-only briefs (`dr-*`) do not use division director review in this path.
 
 ## Artisan commands
 

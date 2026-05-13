@@ -18,6 +18,8 @@ if (!function_exists('staff_jobs_schedule_defaults')) {
             'staff_birthday'                    => ['hour' => 3, 'minute' => 0],
             'staff_profile_completion_reminder' => ['hour' => 8, 'minute' => 30],
             'manage_accounts_hourly_minute'     => 0,
+            // weekday: PHP date('w') — 0=Sun … 2=Tue … 6=Sat (weekly, not daily).
+            'user_logs_prune_get_access'        => ['hour' => 0, 'minute' => 0, 'weekday' => 2],
         ];
     }
 }
@@ -63,8 +65,13 @@ if (!function_exists('staff_jobs_schedule_normalize_key')) {
             $mm = isset($value['minute']) ? (int) $value['minute'] : 0;
             $h = max(0, min(23, $h));
             $mm = max(0, min(59, $mm));
+            $out = ['hour' => $h, 'minute' => $mm];
+            if (isset($defaults[$key]) && is_array($defaults[$key]) && array_key_exists('weekday', $defaults[$key])) {
+                $wd = isset($value['weekday']) ? (int) $value['weekday'] : (int) $defaults[$key]['weekday'];
+                $out['weekday'] = max(0, min(6, $wd));
+            }
 
-            return ['hour' => $h, 'minute' => $mm];
+            return $out;
         }
 
         return $defaults[$key];
@@ -146,6 +153,7 @@ if (!function_exists('staff_jobs_schedule_from_post')) {
             'mark_due_contracts',
             'staff_birthday',
             'staff_profile_completion_reminder',
+            'user_logs_prune_get_access',
         ];
         foreach ($dailyKeys as $dk) {
             if (empty($post[$dk . '_enabled'])) {
@@ -153,7 +161,12 @@ if (!function_exists('staff_jobs_schedule_from_post')) {
             } else {
                 $h = isset($post[$dk . '_hour']) ? (int) $post[$dk . '_hour'] : 0;
                 $m = isset($post[$dk . '_minute']) ? (int) $post[$dk . '_minute'] : 0;
-                $out[$dk] = ['hour' => max(0, min(23, $h)), 'minute' => max(0, min(59, $m))];
+                $row = ['hour' => max(0, min(23, $h)), 'minute' => max(0, min(59, $m))];
+                if ($dk === 'user_logs_prune_get_access') {
+                    $wd = isset($post[$dk . '_weekday']) ? (int) $post[$dk . '_weekday'] : 2;
+                    $row['weekday'] = max(0, min(6, $wd));
+                }
+                $out[$dk] = $row;
             }
         }
 

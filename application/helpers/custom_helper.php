@@ -1314,6 +1314,108 @@ if (!function_exists('log_staff_profile_contract_audit')) {
     }
 }
 
+if (!function_exists('staff_profile_audit_values_equal')) {
+    /**
+     * Loose equality for audit diff (handles int vs string from JSON/DB).
+     *
+     * @param mixed $a
+     * @param mixed $b
+     */
+    function staff_profile_audit_values_equal($a, $b): bool
+    {
+        if ($a === $b) {
+            return true;
+        }
+        return serialize($a) === serialize($b);
+    }
+}
+
+if (!function_exists('staff_profile_audit_value_string_for_display')) {
+    /**
+     * @param mixed $v
+     */
+    function staff_profile_audit_value_string_for_display($v): string
+    {
+        if ($v === null) {
+            return '';
+        }
+        if (is_array($v)) {
+            $j = json_encode($v, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            if ($j === false) {
+                return '[array]';
+            }
+            if (strlen($j) > 6000) {
+                return substr($j, 0, 6000) . "\n… [truncated]";
+            }
+            return $j;
+        }
+        if (is_bool($v)) {
+            return $v ? 'true' : 'false';
+        }
+        return (string) $v;
+    }
+}
+
+if (!function_exists('staff_profile_audit_diff_table_rows')) {
+    /**
+     * Flat key-by-key diff for audit old_values vs new_values (associative JSON objects).
+     *
+     * @param array<string,mixed>|null $old
+     * @param array<string,mixed>|null $new
+     * @return list<array{field: string, old: string, new: string, type: 'added'|'removed'|'changed'}>
+     */
+    function staff_profile_audit_diff_table_rows($old, $new): array
+    {
+        $old = is_array($old) ? $old : array();
+        $new = is_array($new) ? $new : array();
+        $skip = array('_subject_staff_id' => true);
+        $keys = array_unique(array_merge(array_keys($old), array_keys($new)));
+        $keys = array_values(array_filter($keys, function ($k) use ($skip) {
+            return is_string($k) && !isset($skip[$k]);
+        }));
+        natcasesort($keys);
+        $rows = array();
+        foreach ($keys as $k) {
+            $hasOld = array_key_exists($k, $old);
+            $hasNew = array_key_exists($k, $new);
+            $ov = $hasOld ? $old[$k] : null;
+            $nv = $hasNew ? $new[$k] : null;
+            if ($hasOld && $hasNew && staff_profile_audit_values_equal($ov, $nv)) {
+                continue;
+            }
+            if (!$hasOld && $hasNew) {
+                $type = 'added';
+            } elseif ($hasOld && !$hasNew) {
+                $type = 'removed';
+            } else {
+                $type = 'changed';
+            }
+            $rows[] = array(
+                'field' => (string) $k,
+                'old' => staff_profile_audit_value_string_for_display($ov),
+                'new' => staff_profile_audit_value_string_for_display($nv),
+                'type' => $type,
+            );
+        }
+        return $rows;
+    }
+}
+
+if (!function_exists('staff_profile_audit_format_cell_html')) {
+    /**
+     * Safe HTML for a table cell (pre-wrap, escaped).
+     */
+    function staff_profile_audit_format_cell_html(string $text, int $maxLen = 1200): string
+    {
+        if (strlen($text) > $maxLen) {
+            $text = substr($text, 0, $maxLen) . '…';
+        }
+        return '<div class="staff-audit-diff-cell text-break" style="white-space:pre-wrap;font-size:11px;max-height:180px;overflow:auto;">'
+            . htmlspecialchars($text, ENT_QUOTES, 'UTF-8')
+            . '</div>';
+    }
+}
+
     function getRandomAUColor() {
         // Define AU color palette with background colors
         $colors = [

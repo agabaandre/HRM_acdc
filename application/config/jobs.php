@@ -9,8 +9,9 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 // Copy the lines between CUT lines into: crontab -e
 //
 // -----8<----- CUT BELOW -----8<-----
-// Staff portal — single scheduler (edit times in Run.php → tick_schedule)
+// Staff portal — single scheduler (edit times in Settings → Staff jobs or staff_jobs_schedule_helper defaults)
 // * * * * * /usr/bin/php /var/lib/ACDC_SYSTEMS/staff/index.php jobs/run/tick >> /var/lib/ACDC_SYSTEMS/staff/application/logs/cron-tick.log 2>&1
+//   Includes weekly user_logs GET prune (default Tuesday 00:00); optional: php index.php jobs/run/prune_user_logs_get_access
 //
 // APM Laravel — queue worker (your existing command)
 // * * * * * cd /var/lib/ACDC_SYSTEMS/staff/apm && /usr/bin/php artisan queue:work --quiet >> /dev/null 2>&1

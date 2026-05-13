@@ -47,12 +47,15 @@ $s = $schedule;
 					</div>
 				</div>
 				<hr>
-				<h6 class="text-muted">Daily jobs (once per day at local server time)</h6>
-				<?php foreach ($daily_jobs_meta as $jobKey => $meta) :
+				<h6 class="text-muted">Daily / weekly jobs (local server time)</h6>
+				<?php
+				$weekdayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+				foreach ($daily_jobs_meta as $jobKey => $meta) :
 					$spec = $s[$jobKey] ?? false;
 					$enabled = $spec !== false && is_array($spec);
 					$h = $enabled ? (int) $spec['hour'] : 8;
 					$m = $enabled ? (int) $spec['minute'] : 0;
+					$wd = $enabled && isset($spec['weekday']) ? (int) $spec['weekday'] : 2;
 					?>
 					<div class="border rounded p-3 mb-3">
 						<div class="form-check mb-2">
@@ -61,6 +64,16 @@ $s = $schedule;
 						</div>
 						<p class="small text-muted mb-2"><?= htmlspecialchars($meta['help'], ENT_QUOTES, 'UTF-8') ?></p>
 						<div class="row">
+							<?php if (!empty($meta['weekday_select'])) : ?>
+								<div class="col-4">
+									<label class="form-label small">Day</label>
+									<select name="<?= htmlspecialchars($jobKey, ENT_QUOTES, 'UTF-8') ?>_weekday" class="form-control form-control-sm">
+										<?php for ($d = 0; $d <= 6; $d++) : ?>
+											<option value="<?= $d ?>" <?= $d === $wd ? 'selected' : '' ?>><?= htmlspecialchars($weekdayLabels[$d], ENT_QUOTES, 'UTF-8') ?></option>
+										<?php endfor; ?>
+									</select>
+								</div>
+							<?php endif; ?>
 							<div class="col-4">
 								<label class="form-label small">Hour</label>
 								<select name="<?= htmlspecialchars($jobKey, ENT_QUOTES, 'UTF-8') ?>_hour" class="form-control form-control-sm">

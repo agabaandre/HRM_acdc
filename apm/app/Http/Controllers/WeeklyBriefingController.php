@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendWeeklyBriefingDirectorReviewReminderJob;
 use App\Models\Directorate;
 use App\Models\Division;
 use App\Models\WeeklyBriefingContributor;
@@ -377,7 +378,11 @@ class WeeklyBriefingController extends Controller
             $report->appendDirectorReviewTrail('edited', (int) user_session('staff_id'));
         }
 
-        if ($request->boolean('submit_final') && $window->canSubmitReport($report) && DivisionWeeklyBriefGate::mayEditReport($report)) {
+        $contributorSubmitted = $request->boolean('submit_final')
+            && $window->canSubmitReport($report)
+            && DivisionWeeklyBriefGate::mayEditReport($report);
+
+        if ($contributorSubmitted) {
             $report->status = WeeklyBriefingReport::STATUS_SUBMITTED;
             $report->submitted_at = now();
             $report->submitted_by_staff_id = (int) user_session('staff_id');
@@ -385,7 +390,11 @@ class WeeklyBriefingController extends Controller
 
         $report->save();
 
-        $msg = $request->boolean('submit_final') && DivisionWeeklyBriefGate::mayEditReport($report)
+        if ($contributorSubmitted) {
+            SendWeeklyBriefingDirectorReviewReminderJob::dispatch($report->id);
+        }
+
+        $msg = $contributorSubmitted
             ? 'Weekly brief submitted.'
             : ($directorOnly ? 'Changes saved (director edit recorded on trail).' : 'Draft saved.');
 

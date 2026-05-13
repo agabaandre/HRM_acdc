@@ -526,6 +526,11 @@
             <?php elseif (empty($profile_audit_trail)): ?>
                 <p class="text-muted small mb-0">No structured change records yet for this staff member. Edits to biodata, contracts, or linked PPA supervisors will appear here.</p>
             <?php else: ?>
+                <style>
+                    .staff-audit-diff-table code { font-size: 11px; }
+                    .staff-audit-diff-col-before { background-color: rgba(220, 53, 69, 0.07); vertical-align: top; }
+                    .staff-audit-diff-col-after { background-color: rgba(25, 135, 84, 0.08); vertical-align: top; }
+                </style>
                 <div class="table-responsive">
                     <table class="table table-sm table-striped table-bordered mb-0">
                         <thead class="table-light">
@@ -536,7 +541,7 @@
                                 <th>Target</th>
                                 <th>HTTP</th>
                                 <th>Route</th>
-                                <th>Details</th>
+                                <th style="min-width: 280px;">Details</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -573,6 +578,9 @@
                                     $tmp = json_decode((string) $new_raw, true);
                                     $new_dec = (json_last_error() === JSON_ERROR_NONE) ? $tmp : (string) $new_raw;
                                 }
+                                $diff_rows = function_exists('staff_profile_audit_diff_table_rows')
+                                    ? staff_profile_audit_diff_table_rows(is_array($old_dec) ? $old_dec : null, is_array($new_dec) ? $new_dec : null)
+                                    : array();
                                 $snap = array('old_values' => $old_dec, 'new_values' => $new_dec);
                                 $snap_json = json_encode($snap, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
                                 if ($snap_json === false) {
@@ -586,10 +594,58 @@
                                     <td class="small"><?= $target_label ?></td>
                                     <td><span class="badge bg-secondary"><?= htmlspecialchars($method ?: '—', ENT_QUOTES, 'UTF-8') ?></span></td>
                                     <td class="small text-break"><code><?= $uri ?></code></td>
-                                    <td style="max-width: 280px;">
-                                        <details class="small">
-                                            <summary class="text-primary" style="cursor:pointer;">Before / after (JSON)</summary>
-                                            <pre class="mt-2 mb-0 p-2 bg-light border rounded text-wrap" style="font-size:11px;max-height:240px;overflow:auto;"><?= htmlspecialchars($snap_json, ENT_QUOTES, 'UTF-8') ?></pre>
+                                    <td class="small p-2">
+                                        <details>
+                                            <summary class="text-primary fw-semibold" style="cursor:pointer;">What changed</summary>
+                                            <div class="mt-2">
+                                                <?php if (!empty($diff_rows)): ?>
+                                                    <table class="table table-bordered table-sm staff-audit-diff-table mb-2">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th style="width:22%">Field</th>
+                                                                <th class="staff-audit-diff-col-before" style="width:39%">Before</th>
+                                                                <th class="staff-audit-diff-col-after" style="width:39%">After</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php foreach ($diff_rows as $dr): ?>
+                                                                <?php
+                                                                $badge = '';
+                                                                $badgeCls = 'bg-secondary';
+                                                                if ($dr['type'] === 'added') {
+                                                                    $badge = 'New';
+                                                                    $badgeCls = 'bg-success';
+                                                                } elseif ($dr['type'] === 'removed') {
+                                                                    $badge = 'Removed';
+                                                                    $badgeCls = 'bg-danger';
+                                                                } else {
+                                                                    $badge = 'Updated';
+                                                                    $badgeCls = 'bg-warning text-dark';
+                                                                }
+                                                                $fn = htmlspecialchars($dr['field'], ENT_QUOTES, 'UTF-8');
+                                                                ?>
+                                                                <tr>
+                                                                    <td class="align-top">
+                                                                        <span class="badge <?= $badgeCls ?>"><?= htmlspecialchars($badge, ENT_QUOTES, 'UTF-8') ?></span>
+                                                                        <br><code class="d-inline-block mt-1"><?= $fn ?></code>
+                                                                    </td>
+                                                                    <td class="staff-audit-diff-col-before align-top"><?php echo staff_profile_audit_format_cell_html($dr['old']); ?></td>
+                                                                    <td class="staff-audit-diff-col-after align-top"><?php echo staff_profile_audit_format_cell_html($dr['new']); ?></td>
+                                                                </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
+                                                <?php elseif (is_string($old_dec) || is_string($new_dec)): ?>
+                                                    <p class="text-muted small mb-1">Non-JSON snapshot; raw values below.</p>
+                                                    <pre class="p-2 bg-light border rounded text-wrap" style="font-size:11px;max-height:160px;overflow:auto;"><?= htmlspecialchars($snap_json, ENT_QUOTES, 'UTF-8') ?></pre>
+                                                <?php else: ?>
+                                                    <p class="text-muted small mb-1">No differing fields (or empty snapshot). Open raw JSON for full payload.</p>
+                                                <?php endif; ?>
+                                                <details class="mt-1">
+                                                    <summary class="text-muted" style="cursor:pointer;font-size:11px;">Raw JSON</summary>
+                                                    <pre class="mt-1 mb-0 p-2 bg-light border rounded text-wrap" style="font-size:10px;max-height:200px;overflow:auto;"><?= htmlspecialchars($snap_json, ENT_QUOTES, 'UTF-8') ?></pre>
+                                                </details>
+                                            </div>
                                         </details>
                                     </td>
                                 </tr>
