@@ -54,8 +54,8 @@ if (!is_array($objectives)) {
       <col style="width: 18%;">
       <col style="width: 10%;">
       <col style="width: 25%;">
-      <col style="width: 10%;">
-      <col style="width: 20%;">
+      <col style="width: 5%;">
+      <col style="width: 25%;">
       <col style="width: 15%;">
     </colgroup>
     <thead class="table-light">
