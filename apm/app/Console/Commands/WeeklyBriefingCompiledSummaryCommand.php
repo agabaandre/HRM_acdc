@@ -211,7 +211,7 @@ HTML;
                     : 'Directed divisions (no directorate)';
                 $safeDir = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $dirLabel);
                 $divisionCount = $groupReports->count();
-                $metaHtml = 'ISO week <strong>W'.(int) $w.' / '.(int) $y.'</strong> · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s) where you are the director (divisions table) · <em>Not the organisation-wide compiled pack sent to central recipients.</em>';
+                $metaHtml = 'ISO week <strong>W'.(int) $w.' / '.(int) $y.'</strong> · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s).';
 
                 $compiled = mpdf_print('weekly-briefing.pdf-compiled', [
                     'reports' => $groupReports,
