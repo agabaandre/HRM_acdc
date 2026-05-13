@@ -28,7 +28,7 @@ $compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
 if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
     echo $compiledPdfMetaHtml;
 } else {
-    echo 'ISO week <strong>W'.(int) $isoWeek.' / '.(int) $isoYear.'</strong> · '.(int) count($reports).' reporting unit(s) · Grouped by directorate / office';
+    echo 'ISO week <strong>W'.(int) $isoWeek.' / '.(int) $isoYear.'</strong> · '.(int) count($reports).' reporting unit(s)';
 }
 ?></div>
 
