@@ -352,6 +352,39 @@ $is_draft_print = !empty($performance_draft_watermark_text);
     </tr>
   </table>
   <?php endif; ?>
+  <?php
+    $ppa_print_staff_signed_at = $ppa->created_at;
+    $ppa_print_sup_signed_at = $ppa->created_at;
+    $ppa_print_sup2_signed_at = $ppa->created_at;
+    if (empty($is_draft_print)) {
+        $_ppa_tr = get_last_ppa_approval_action($ppa->entry_id, $ppa->staff_id);
+        if (!empty($_ppa_tr->created_at)) {
+            $ppa_print_staff_signed_at = $_ppa_tr->created_at;
+        }
+        if (!empty($ppa->supervisor_id)) {
+            $_ppa_tr = get_last_ppa_approval_action($ppa->entry_id, $ppa->supervisor_id);
+            if (!empty($_ppa_tr->created_at)) {
+                $ppa_print_sup_signed_at = $_ppa_tr->created_at;
+            }
+        }
+        if (!empty($ppa->supervisor2_id)) {
+            $_ppa_tr = get_last_ppa_approval_action($ppa->entry_id, $ppa->supervisor2_id);
+            if (!empty($_ppa_tr->created_at)) {
+                $ppa_print_sup2_signed_at = $_ppa_tr->created_at;
+            }
+        }
+    }
+    $ppa_print_staff_sig_hash = strtoupper(substr(md5(sha1($ppa->staff_id.$ppa_print_staff_signed_at)), 0, 15));
+    $ppa_print_sup_sig_hash = !empty($ppa->supervisor_id)
+        ? strtoupper(substr(md5(sha1($ppa->supervisor_id.$ppa_print_sup_signed_at)), 0, 15))
+        : '';
+    $ppa_print_sup2_sig_hash = !empty($ppa->supervisor2_id)
+        ? strtoupper(substr(md5(sha1($ppa->supervisor2_id.$ppa_print_sup2_signed_at)), 0, 15))
+        : '';
+    $_ppa_print_staff_sd = staff_details($ppa->staff_id);
+    $_ppa_print_sup_sd = !empty($ppa->supervisor_id) ? staff_details($ppa->supervisor_id) : null;
+    $_ppa_print_sup2_sd = !empty($ppa->supervisor2_id) ? staff_details($ppa->supervisor2_id) : null;
+  ?>
   <div style="margin-top: 20px;">
   <table width="100%" border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse;">
    <thead>
@@ -380,36 +413,76 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       <td>
         <?php if ($is_draft_print): ?>
           <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px;"></div>
-        <?php elseif (!empty(staff_details($ppa->staff_id)->signature)):
-          $_ppa_staff_sd = staff_details($ppa->staff_id);
-          $_ppa_staff_sig_src = staff_signature_print_src($_ppa_staff_sd->signature ?? '');
+        <?php elseif (!empty($_ppa_print_staff_sd->signature)):
+          $_ppa_staff_sig_src = staff_signature_print_src($_ppa_print_staff_sd->signature ?? '');
           if ($_ppa_staff_sig_src !== ''): ?>
           <img src="<?= htmlspecialchars($_ppa_staff_sig_src) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
         <?php else: ?>
-          <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_staff_sd->work_email ?? '')) ?></p><br>
+          <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_staff_sd->work_email ?? '')) ?></p><br>
         <?php endif; ?>
         <?php else: ?>
-          <p style="text-decoration:underline;"><?=staff_details($staff_id)->title.' '.staff_details($staff_id)->lname;?></p><br>
+          <p style="text-decoration:underline;"><?= htmlspecialchars(trim(($_ppa_print_staff_sd->title ?? '').' '.($_ppa_print_staff_sd->lname ?? ''))) ?></p><br>
         <?php endif; ?>
     
        <b> Staff Signature</b>
+        <?php if (empty($is_draft_print) && $_ppa_print_staff_sd): ?>
+          <?php
+            $_ppa_nm = trim(($_ppa_print_staff_sd->fname ?? '').' '.($_ppa_print_staff_sd->lname ?? ''));
+            if ($_ppa_nm === '') {
+                $_ppa_nm = trim(($_ppa_print_staff_sd->title ?? '').' '.($_ppa_print_staff_sd->lname ?? ''));
+            }
+            $_ppa_ttl = trim((string) ($_ppa_print_staff_sd->title ?? ''));
+            $_ppa_pos = trim((string) ($_ppa_print_staff_sd->position ?? ''));
+            $_ppa_role = $_ppa_ttl !== '' && $_ppa_pos !== '' ? $_ppa_ttl.' — '.$_ppa_pos : ($_ppa_ttl !== '' ? $_ppa_ttl : ($_ppa_pos !== '' ? $_ppa_pos : 'Staff'));
+          ?>
+          <div style="margin-top: 8px;">
+            <div style="font-weight: bold; color: #0f172a; font-size: 13px;"><?= htmlspecialchars($_ppa_nm) ?></div>
+            <div style="color: #666; font-size: 11px;"><?= htmlspecialchars($_ppa_role) ?></div>
+          </div>
+        <?php endif; ?>
+        <?php if (empty($is_draft_print)): ?>
+          <div style="font-size: 10px; color: #888; margin-top: 6px; line-height: 1.4;">
+            <div>Signing date: <?= date('M j, Y | H:i', strtotime($ppa_print_staff_signed_at)) ?> EAST</div>
+            <div style="font-family: monospace; font-size: 9px; color: #aaa;">Verify hash: <?= htmlspecialchars($ppa_print_staff_sig_hash) ?></div>
+          </div>
+        <?php endif; ?>
       </td>
       <td>
         <?php if ($is_draft_print): ?>
           <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px;"></div>
-        <?php elseif (!empty(staff_details($ppa->supervisor_id)->signature)):
-          $_ppa_sup_sd = staff_details($ppa->supervisor_id);
-          $_ppa_sup_sig_src = staff_signature_print_src($_ppa_sup_sd->signature ?? '');
+        <?php elseif (!empty($_ppa_print_sup_sd->signature)):
+          $_ppa_sup_sig_src = staff_signature_print_src($_ppa_print_sup_sd->signature ?? '');
           if ($_ppa_sup_sig_src !== ''): ?>
           <img src="<?= htmlspecialchars($_ppa_sup_sig_src) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
         <?php else: ?>
-          <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_sup_sd->work_email ?? '')) ?></p><br>
+          <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_sup_sd->work_email ?? '')) ?></p><br>
         <?php endif; ?>
         <?php else: ?>
-          <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor_id)->title.' '.staff_details($ppa->supervisor_id)->lname;?></p><br>
+          <p style="text-decoration:underline;"><?= $_ppa_print_sup_sd ? htmlspecialchars(trim(($_ppa_print_sup_sd->title ?? '').' '.($_ppa_print_sup_sd->lname ?? ''))) : '—' ?></p><br>
         <?php endif; ?>
   
         <b>Supervisor Signature</b>
+        <?php if (empty($is_draft_print) && !empty($ppa->supervisor_id) && $_ppa_print_sup_sd): ?>
+          <?php
+            $_ppa_sup_nm = trim(($_ppa_print_sup_sd->fname ?? '').' '.($_ppa_print_sup_sd->lname ?? ''));
+            if ($_ppa_sup_nm === '') {
+                $_ppa_sup_nm = trim(($_ppa_print_sup_sd->title ?? '').' '.($_ppa_print_sup_sd->lname ?? ''));
+            }
+            $_ppa_sup_ttl = trim((string) ($_ppa_print_sup_sd->title ?? ''));
+            $_ppa_sup_pos = trim((string) ($_ppa_print_sup_sd->position ?? ''));
+            $_ppa_sup_role = $_ppa_sup_ttl !== '' && $_ppa_sup_pos !== '' ? $_ppa_sup_ttl.' — '.$_ppa_sup_pos : ($_ppa_sup_ttl !== '' ? $_ppa_sup_ttl : ($_ppa_sup_pos !== '' ? $_ppa_sup_pos : 'Supervisor'));
+          ?>
+          <div style="margin-top: 8px;">
+            <div style="font-weight: bold; color: #0f172a; font-size: 13px;"><?= htmlspecialchars($_ppa_sup_nm) ?></div>
+            <div style="color: #666; font-size: 11px;"><?= htmlspecialchars($_ppa_sup_role) ?></div>
+          </div>
+        <?php endif; ?>
+        <?php if (empty($is_draft_print) && !empty($ppa->supervisor_id)): ?>
+          <div style="font-size: 10px; color: #888; margin-top: 6px; line-height: 1.4;">
+            <div>Signing date: <?= date('M j, Y | H:i', strtotime($ppa_print_sup_signed_at)) ?> EAST</div>
+            <div style="font-family: monospace; font-size: 9px; color: #aaa;">Verify hash: <?= htmlspecialchars($ppa_print_sup_sig_hash) ?></div>
+          </div>
+        <?php endif; ?>
       </td>
     </tr>
     <tr>
@@ -443,19 +516,39 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <td colspan="2" style="text-align: left;">
           <?php if ($is_draft_print): ?>
             <div style="min-height: 72px; border-bottom: 1px solid #94a3b8; margin-bottom: 8px; max-width: 200px;"></div>
-          <?php elseif (!empty(staff_details($ppa->supervisor2_id)->signature)):
-            $_ppa_sup2_sd = staff_details($ppa->supervisor2_id);
-            $_ppa_sup2_sig_src = staff_signature_print_src($_ppa_sup2_sd->signature ?? '');
+          <?php elseif (!empty($_ppa_print_sup2_sd->signature)):
+            $_ppa_sup2_sig_src = staff_signature_print_src($_ppa_print_sup2_sd->signature ?? '');
             if ($_ppa_sup2_sig_src !== ''): ?>
             <img src="<?= htmlspecialchars($_ppa_sup2_sig_src) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
           <?php else: ?>
-            <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_sup2_sd->work_email ?? '')) ?></p><br>
+            <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_sup2_sd->work_email ?? '')) ?></p><br>
           <?php endif; ?>
           <?php else: ?>
-            <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor2_id)->title.' '.staff_details($ppa->supervisor2_id)->lname;?></p><br>
+            <p style="text-decoration:underline;"><?= htmlspecialchars(trim(($_ppa_print_sup2_sd->title ?? '').' '.($_ppa_print_sup2_sd->lname ?? ''))) ?></p><br>
           <?php endif; ?>
        
           <b>Supervisor Signature</b>
+          <?php if (empty($is_draft_print) && !empty($ppa->supervisor2_id) && $_ppa_print_sup2_sd): ?>
+            <?php
+              $_ppa_sup2_nm = trim(($_ppa_print_sup2_sd->fname ?? '').' '.($_ppa_print_sup2_sd->lname ?? ''));
+              if ($_ppa_sup2_nm === '') {
+                  $_ppa_sup2_nm = trim(($_ppa_print_sup2_sd->title ?? '').' '.($_ppa_print_sup2_sd->lname ?? ''));
+              }
+              $_ppa_sup2_ttl = trim((string) ($_ppa_print_sup2_sd->title ?? ''));
+              $_ppa_sup2_pos = trim((string) ($_ppa_print_sup2_sd->position ?? ''));
+              $_ppa_sup2_role = $_ppa_sup2_ttl !== '' && $_ppa_sup2_pos !== '' ? $_ppa_sup2_ttl.' — '.$_ppa_sup2_pos : ($_ppa_sup2_ttl !== '' ? $_ppa_sup2_ttl : ($_ppa_sup2_pos !== '' ? $_ppa_sup2_pos : 'Second supervisor'));
+            ?>
+            <div style="margin-top: 8px;">
+              <div style="font-weight: bold; color: #0f172a; font-size: 13px;"><?= htmlspecialchars($_ppa_sup2_nm) ?></div>
+              <div style="color: #666; font-size: 11px;"><?= htmlspecialchars($_ppa_sup2_role) ?></div>
+            </div>
+          <?php endif; ?>
+          <?php if (empty($is_draft_print) && !empty($ppa->supervisor2_id)): ?>
+            <div style="font-size: 10px; color: #888; margin-top: 6px; line-height: 1.4;">
+              <div>Signing date: <?= date('M j, Y | H:i', strtotime($ppa_print_sup2_signed_at)) ?> EAST</div>
+              <div style="font-family: monospace; font-size: 9px; color: #aaa;">Verify hash: <?= htmlspecialchars($ppa_print_sup2_sig_hash) ?></div>
+            </div>
+          <?php endif; ?>
         </td>
       </tr>
       <tr>
