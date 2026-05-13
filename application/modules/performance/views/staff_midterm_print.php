@@ -511,7 +511,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           </div>
           <div style="text-align: center; margin-top: 15px;">
             <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
-              <?= $supervisor->fname . ' ' . $supervisor->lname ?>
+              <?= htmlspecialchars(staff_print_honorific_name($supervisor)) ?>
             </div>
             <div style="color: #666; font-size: 11px; margin-bottom: 8px;">
               <?= $supervisor->position ?? 'Supervisor' ?>
@@ -556,7 +556,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           </div>
           <div style="text-align: center; margin-top: 15px;">
             <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
-              <?= $staff->fname . ' ' . $staff->lname ?>
+              <?= htmlspecialchars(staff_print_honorific_name($staff)) ?>
             </div>
             <div style="color: #666; font-size: 11px;">
               <?= 'Staff' ?>
