@@ -12,6 +12,30 @@ class Staff_mdl extends CI_Model
 		$this->load->model("Contracts");
 	}
 
+	/**
+	 * @param object|null $row
+	 * @return array<string,mixed>
+	 */
+	private function _staff_contract_row_for_audit($row)
+	{
+		if (!$row || !is_object($row)) {
+			return array();
+		}
+		$keys = array(
+			'staff_contract_id', 'staff_id', 'job_id', 'job_acting_id', 'grade_id',
+			'contracting_institution_id', 'funder_id', 'first_supervisor', 'second_supervisor',
+			'contract_type_id', 'duty_station_id', 'division_id', 'other_associated_divisions',
+			'unit_id', 'start_date', 'end_date', 'status_id', 'comments',
+		);
+		$out = array();
+		foreach ($keys as $k) {
+			if (property_exists($row, $k)) {
+				$out[$k] = $row->$k;
+			}
+		}
+		return $out;
+	}
+
 	public function get_active_staff_data($filters = array(), $limit = FALSE, $start = FALSE)
 	{
 		$subquery = $this->db
@@ -900,37 +924,49 @@ class Staff_mdl extends CI_Model
 		$this->db->insert('staff_contracts', $data);
 		$lastid = $this->db->insert_id();
 		if ($this->db->affected_rows() > 0) {
-           
-            $this->mark_enabled($this->input->post('staff_id'),$this->input->post('status_id')) ;
-			return  $lastid;
+			$this->mark_enabled($this->input->post('staff_id'), $this->input->post('status_id'));
+			if (function_exists('log_staff_profile_contract_audit')) {
+				$row = $this->db->get_where('staff_contracts', array('staff_contract_id' => (int) $lastid))->row();
+				$snap = $row ? $this->_staff_contract_row_for_audit($row) : array();
+				$sid = (string) $this->input->post('staff_id');
+				log_staff_profile_contract_audit('contract_create', 'staff_contracts', (string) $lastid, $sid, array(), $snap);
+			}
+			return $lastid;
+		}
+		$error = $this->db->error();
+		log_message('error', 'DB Insert Error: ' . $error['message']);
+		return false;
+	}
 
+	public function mark_enabled($staff_id, $status_id)
+	{
+		$user = $this->session->userdata('user')->staff_id;
+		$data = array(
+			'email_disabled_by' => 0,
+			'email_status' => 1,
+			'email_disabled_at' => date('Y-m-d H:i:s'),
+		);
+		if ((int) $status_id === 1) {
+			$staff_id = (int) $staff_id;
+			$old = $this->db->get_where('staff', array('staff_id' => $staff_id))->row();
+			$this->db->where('staff_id', $staff_id);
+			$this->db->update('staff', $data);
+			if (function_exists('log_staff_profile_contract_audit') && $old) {
+				$new = $this->db->get_where('staff', array('staff_id' => $staff_id))->row();
+				$keys = array('email_disabled_by', 'email_status', 'email_disabled_at');
+				$o = array();
+				$n = array();
+				foreach ($keys as $k) {
+					$o[$k] = property_exists($old, $k) ? $old->$k : null;
+					$n[$k] = $new && property_exists($new, $k) ? $new->$k : null;
+				}
+				log_staff_profile_contract_audit('staff_email_enable', 'staff', (string) $staff_id, (string) $staff_id, $o, $n);
+			}
+			echo 'OK';
 		} else {
-			// Log or handle the error:
-			$error = $this->db->error();
-			log_message('error', 'DB Insert Error: ' . $error['message']);
-			return false;
+			echo 'Failed';
 		}
 	}
-
-	public function mark_enabled($staff_id,$status_id){
-        $user = $this->session->userdata('user')->staff_id; 
-        //dd($user);
-        $data['email_disabled_by']= 0;
-        $data['email_status'] = 1;
-        $data['email_disabled_at'] = date('Y-m-d H:i:s');
-		if($status_id==1){
-
-        $this->db->where('staff_id',$staff_id);
-        $this->db->update('staff',$data);
-		
-	   echo  "OK";
-		}
-
-	else{
-		echo "Failed";
-	}
-
-    }
 
    
 	public function max_contract($staff_id)
@@ -964,50 +1000,94 @@ class Staff_mdl extends CI_Model
 	}
 	public function update_staff($data)
 	{
-		$this->db->where('staff_id', $data['staff_id']);
-		$query = $this->db->update("staff", $data);
-		$log_message = "Updated staff Bio Data details. Staff Name:". staff_name($data['staff_id']);
-		log_user_action($log_message);
+		if (empty($data['staff_id'])) {
+			return false;
+		}
+		$sid = (int) $data['staff_id'];
+		$old = $this->db->get_where('staff', array('staff_id' => $sid))->row();
+		$this->db->where('staff_id', $sid);
+		$query = $this->db->update('staff', $data);
+		if ($query && function_exists('log_staff_profile_contract_audit') && $old) {
+			$new = $this->db->get_where('staff', array('staff_id' => $sid))->row();
+			$o = array();
+			$n = array();
+			foreach ($data as $k => $_v) {
+				if ($k === 'staff_id') {
+					continue;
+				}
+				if (!is_string($k) || !property_exists($old, $k)) {
+					continue;
+				}
+				$o[$k] = $old->$k;
+				$n[$k] = $new && property_exists($new, $k) ? $new->$k : null;
+			}
+			if ($o !== array() && $o !== $n) {
+				log_staff_profile_contract_audit('staff_biodata', 'staff', (string) $sid, (string) $sid, $o, $n);
+			}
+		}
 		return $query;
 	}
 	public function update_contract($data)
 	{
-		$this->db->where('staff_contract_id', $data['staff_contract_id']);
-		$query = $this->db->update('staff_contracts', $data);
-		if($query){
-			$log_message = "Updated staff Contract details of". staff_name($data['staff_id']);
-		log_user_action($log_message);
-			$ppa['supervisor_id']=$data['first_supervisor'];
-			// $ppa['supervisor2_id'] = NULL;
-			$ppa['staff_id'] = $data['staff_id'];
-		$this->update_ppa_details($ppa);
-
-		
+		if (empty($data['staff_contract_id'])) {
+			return false;
 		}
-
+		$cid = (int) $data['staff_contract_id'];
+		$sid = isset($data['staff_id']) ? (int) $data['staff_id'] : 0;
+		$old_row = $this->db->get_where('staff_contracts', array('staff_contract_id' => $cid))->row();
+		if (!$old_row) {
+			return false;
+		}
+		if ($sid < 1) {
+			$sid = (int) $old_row->staff_id;
+		}
+		$this->db->where('staff_contract_id', $cid);
+		$query = $this->db->update('staff_contracts', $data);
+		if ($query && function_exists('log_staff_profile_contract_audit')) {
+			$new_row = $this->db->get_where('staff_contracts', array('staff_contract_id' => $cid))->row();
+			$old_s = $this->_staff_contract_row_for_audit($old_row);
+			$new_s = $this->_staff_contract_row_for_audit($new_row);
+			if ($old_s !== $new_s) {
+				log_staff_profile_contract_audit('contract_update', 'staff_contracts', (string) $cid, (string) $sid, $old_s, $new_s);
+			}
+		}
+		if ($query) {
+			$ppa['supervisor_id'] = isset($data['first_supervisor']) ? $data['first_supervisor'] : null;
+			$ppa['staff_id'] = $sid;
+			$this->update_ppa_details($ppa);
+		}
 		return $query;
 	}
 	public function update_ppa_details($data)
-{
-    // Ensure only expected fields are updated
-    $update = [
-        'supervisor_id'   => $data['supervisor_id'] ?? null,
-        'supervisor2_id'  => $data['supervisor2_id'] ?? null,
-        'updated_at'      => date('Y-m-d H:i:s'),
-    ];
-
-    $this->db->where('staff_id', $data['staff_id']);
-    $this->db->where_in('draft_status', [0, 1]); // restrict to draft or submitted only
-
-    $result = $this->db->update('ppa_entries', $update);
-
-    // Optional: Log or return last query for debugging
-   // log_message('debug', $this->db->last_query());
-   $log_message = "Updated staff PPA supervisor details of". staff_name($data['staff_id']);
-   log_user_action($log_message);
-
-    return $result;
-}
+	{
+		$staff_id = isset($data['staff_id']) ? (int) $data['staff_id'] : 0;
+		$prev = null;
+		if ($staff_id > 0) {
+			$this->db->where('staff_id', $staff_id);
+			$this->db->where_in('draft_status', array(0, 1));
+			$this->db->order_by('entry_id', 'DESC');
+			$this->db->limit(1);
+			$prev = $this->db->get('ppa_entries')->row();
+		}
+		$update = array(
+			'supervisor_id' => isset($data['supervisor_id']) ? $data['supervisor_id'] : null,
+			'supervisor2_id' => isset($data['supervisor2_id']) ? $data['supervisor2_id'] : null,
+			'updated_at' => date('Y-m-d H:i:s'),
+		);
+		$this->db->where('staff_id', $data['staff_id']);
+		$this->db->where_in('draft_status', array(0, 1));
+		$result = $this->db->update('ppa_entries', $update);
+		if ($result && $staff_id > 0 && function_exists('log_staff_profile_contract_audit')) {
+			$o = array(
+				'supervisor_id' => $prev && property_exists($prev, 'supervisor_id') ? $prev->supervisor_id : null,
+				'supervisor2_id' => $prev && property_exists($prev, 'supervisor2_id') ? $prev->supervisor2_id : null,
+				'scope' => 'ppa_entries where draft_status in (0,1)',
+			);
+			$n = array_merge($update, array('scope' => 'ppa_entries where draft_status in (0,1)'));
+			log_staff_profile_contract_audit('ppa_supervisors', 'ppa_entries', (string) $staff_id, (string) $staff_id, $o, $n);
+		}
+		return $result;
+	}
 
 
 
@@ -1377,6 +1457,43 @@ public function getBirthdays($days)
 		return $this->db->insert_id();
 	}
 
+	/**
+	 * user_logs rows for this person's staff row, their contracts, and PPA supervisor syncs (structured record_* events).
+	 *
+	 * @return array<int,object>
+	 */
+	public function get_staff_profile_audit_trail($staff_id, $limit = 75)
+	{
+		$staff_id = (int) $staff_id;
+		if ($staff_id < 1) {
+			return array();
+		}
+		$cidStrings = array();
+		$crows = $this->db->select('staff_contract_id')->from('staff_contracts')->where('staff_id', $staff_id)->get()->result_array();
+		foreach ($crows as $r) {
+			$cidStrings[] = (string) $r['staff_contract_id'];
+		}
+		$sidStr = (string) $staff_id;
+		$this->db->select('user_logs.id, user_logs.user_id, user_logs.action, user_logs.created_at, user_logs.date_loged_in, user_logs.http_method, user_logs.request_uri, user_logs.event_type, user_logs.target_table, user_logs.target_id, user_logs.old_values, user_logs.new_values, u.name AS actor_name', false);
+		$this->db->from('user_logs');
+		$this->db->join('user u', 'u.user_id = user_logs.user_id', 'left');
+		$this->db->group_start();
+		$this->db->where(array('user_logs.target_table' => 'staff', 'user_logs.target_id' => $sidStr));
+		if (!empty($cidStrings)) {
+			$this->db->or_group_start();
+			$this->db->where('user_logs.target_table', 'staff_contracts');
+			$this->db->where_in('user_logs.target_id', $cidStrings);
+			$this->db->group_end();
+		}
+		$this->db->or_where(array('user_logs.target_table' => 'ppa_entries', 'user_logs.target_id' => $sidStr));
+		$this->db->group_end();
+		$this->db->like('user_logs.event_type', 'record_', 'after');
+		$dateCol = $this->db->field_exists('created_at', 'user_logs') ? 'user_logs.created_at' : 'user_logs.date_loged_in';
+		$this->db->order_by($dateCol, 'DESC');
+		$this->db->limit((int) $limit);
+		return $this->db->get()->result();
+	}
+
 	public function add_contract_information($staff_id, $job_id, $job_acting_id, $grade_id, $contracting_institution_id, $funder_id, $first_supervisor, $second_supervisor, $contract_type_id, $duty_station_id, $division_id, $unit_id, $other_associated_divisions, $start_date, $end_date, $status_id, $file_name, $comments)
 	{
 		$data = array(
@@ -1406,7 +1523,13 @@ public function getBirthdays($days)
 		//dd($data);
 
 		$this->db->insert('staff_contracts', $data);
-		return $this->db->insert_id();
+		$newId = (int) $this->db->insert_id();
+		if ($newId > 0 && function_exists('log_staff_profile_contract_audit')) {
+			$row = $this->db->get_where('staff_contracts', array('staff_contract_id' => $newId))->row();
+			$snap = $row ? $this->_staff_contract_row_for_audit($row) : array();
+			log_staff_profile_contract_audit('contract_create', 'staff_contracts', (string) $newId, (string) $staff_id, array(), $snap);
+		}
+		return $newId;
 	}
-	
+
 }

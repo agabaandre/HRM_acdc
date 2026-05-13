@@ -510,7 +510,98 @@
         <?php endif; ?>
         </div>
     </div>
-  </div>
+
+    <div class="card shadow-sm mt-3 mb-4">
+        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0"><i class="fa fa-user-shield me-2"></i>Profile &amp; contract change trail</h5>
+            <span class="text-muted small">Monitors POST/updates on this profile and contracts (who changed what).</span>
+        </div>
+        <div class="card-body">
+            <?php
+            $profile_audit_trail = isset($profile_audit_trail) ? $profile_audit_trail : array();
+            $audit_cols = function_exists('user_logs_audit_columns_active') && user_logs_audit_columns_active();
+            ?>
+            <?php if (!$audit_cols): ?>
+                <p class="text-muted small mb-0">Enable structured audit columns on <code>user_logs</code> to capture HTTP method, URI, and before/after snapshots. Run <code>application/sql/add_user_logs_audit_columns.sql</code>.</p>
+            <?php elseif (empty($profile_audit_trail)): ?>
+                <p class="text-muted small mb-0">No structured change records yet for this staff member. Edits to biodata, contracts, or linked PPA supervisors will appear here.</p>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>When</th>
+                                <th>Actor</th>
+                                <th>Event</th>
+                                <th>Target</th>
+                                <th>HTTP</th>
+                                <th>Route</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($profile_audit_trail as $entry): ?>
+                                <?php
+                                $ts = !empty($entry->created_at) ? $entry->created_at : ($entry->date_loged_in ?? '');
+                                $actor = $entry->actor_name ?? ('User #' . (int) ($entry->user_id ?? 0));
+                                $ev = htmlspecialchars((string) ($entry->event_type ?? ''), ENT_QUOTES, 'UTF-8');
+                                $tt = (string) ($entry->target_table ?? '');
+                                $tid = (string) ($entry->target_id ?? '');
+                                if ($tt === 'staff_contracts') {
+                                    $target_label = 'Contract #' . htmlspecialchars($tid, ENT_QUOTES, 'UTF-8');
+                                } elseif ($tt === 'staff') {
+                                    $target_label = 'Staff profile';
+                                } elseif ($tt === 'ppa_entries') {
+                                    $target_label = 'PPA supervisors';
+                                } else {
+                                    $target_label = htmlspecialchars($tt . ' #' . $tid, ENT_QUOTES, 'UTF-8');
+                                }
+                                $method = strtoupper((string) ($entry->http_method ?? ''));
+                                $uri = htmlspecialchars((string) ($entry->request_uri ?? ''), ENT_QUOTES, 'UTF-8');
+                                if (strlen($uri) > 60) {
+                                    $uri = substr($uri, 0, 60) . '…';
+                                }
+                                $old_raw = $entry->old_values ?? null;
+                                $new_raw = $entry->new_values ?? null;
+                                $old_dec = null;
+                                if ($old_raw !== null && $old_raw !== '') {
+                                    $tmp = json_decode((string) $old_raw, true);
+                                    $old_dec = (json_last_error() === JSON_ERROR_NONE) ? $tmp : (string) $old_raw;
+                                }
+                                $new_dec = null;
+                                if ($new_raw !== null && $new_raw !== '') {
+                                    $tmp = json_decode((string) $new_raw, true);
+                                    $new_dec = (json_last_error() === JSON_ERROR_NONE) ? $tmp : (string) $new_raw;
+                                }
+                                $snap = array('old_values' => $old_dec, 'new_values' => $new_dec);
+                                $snap_json = json_encode($snap, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+                                if ($snap_json === false) {
+                                    $snap_json = '{}';
+                                }
+                                ?>
+                                <tr>
+                                    <td class="text-nowrap small"><?= htmlspecialchars($ts, ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td class="small"><?= htmlspecialchars($actor, ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td><code class="small"><?= $ev ?></code></td>
+                                    <td class="small"><?= $target_label ?></td>
+                                    <td><span class="badge bg-secondary"><?= htmlspecialchars($method ?: '—', ENT_QUOTES, 'UTF-8') ?></span></td>
+                                    <td class="small text-break"><code><?= $uri ?></code></td>
+                                    <td style="max-width: 280px;">
+                                        <details class="small">
+                                            <summary class="text-primary" style="cursor:pointer;">Before / after (JSON)</summary>
+                                            <pre class="mt-2 mb-0 p-2 bg-light border rounded text-wrap" style="font-size:11px;max-height:240px;overflow:auto;"><?= htmlspecialchars($snap_json, ENT_QUOTES, 'UTF-8') ?></pre>
+                                        </details>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted small mt-2 mb-0">Route access (GET) for this page is also logged globally. For organisation-wide search and filters, use <a href="<?= base_url('auth/logs') ?>">User access logs</a>.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
 
 <script>
 function openImageModal(imageSrc) {

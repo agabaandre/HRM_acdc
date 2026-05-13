@@ -251,54 +251,188 @@ class Auth_mdl extends CI_Model
 	}
 
     public function get_logs($key = array(), $limit = 10, $offset = 0) {
-        // Retrieve filter values with defaults
         $email     = isset($key['email']) ? $key['email'] : '';
         $name      = isset($key['name']) ? $key['name'] : '';
         $date_from = isset($key['date_from']) ? $key['date_from'] : '';
         $date_to   = isset($key['date_to']) ? $key['date_to'] : '';
+        $search    = isset($key['search']) ? trim($key['search']) : '';
+        $http_method = isset($key['http_method']) ? trim($key['http_method']) : '';
+        $event_type = isset($key['event_type']) ? trim($key['event_type']) : '';
 
-        // Start building the query
-        $this->db->select('*');
+        $dateCol = 'user_logs.created_at';
+        if (!$this->db->field_exists('created_at', 'user_logs')) {
+            $dateCol = 'user_logs.date_loged_in';
+        }
+        $extendedAudit = $this->db->field_exists('http_method', 'user_logs');
+
+        $this->db->select('user_logs.*, user.name, staff.work_email');
         $this->db->from('user_logs');
-		$this->db->join('user','user.user_id=user_logs.user_id');
-		$this->db->join('staff','user.auth_staff_id=staff.staff_id');
+        $this->db->join('user', 'user.user_id = user_logs.user_id', 'left');
+        $this->db->join('staff', 'user.auth_staff_id = staff.staff_id', 'left');
 
-        // Add search conditions for email and name
         if (!empty($email) || !empty($name)) {
             $this->db->group_start();
             if (!empty($email)) {
-                // Using "after" to search for emails that start with the given value
                 $this->db->like('staff.work_email', $email, 'after');
             }
             if (!empty($name)) {
-                // Using "after" to search for names that start with the given value
-                $this->db->like('name', $name, 'after');
+                $this->db->like('user.name', $name, 'after');
             }
             $this->db->group_end();
         }
 
-        // Add date range filter if both dates are provided
-        if (!empty($date_from) && !empty($date_to)) {
-            $this->db->where('date_loged_in >=', $date_from);
-            $this->db->where('date_loged_in <=', $date_to);
+        if ($search !== '') {
+            $this->db->group_start();
+            $this->db->like('user_logs.action', $search);
+            if ($extendedAudit) {
+                $this->db->or_like('user_logs.request_uri', $search);
+                $this->db->or_like('user_logs.target_table', $search);
+                $this->db->or_like('user_logs.target_id', $search);
+            }
+            $this->db->group_end();
         }
 
-        // Add limit and offset for pagination
+        if ($extendedAudit && $http_method !== '') {
+            $this->db->where('user_logs.http_method', strtoupper($http_method));
+        }
+
+        if ($extendedAudit && $event_type !== '') {
+            $this->db->where('user_logs.event_type', $event_type);
+        }
+
+        if (!empty($date_from) && !empty($date_to)) {
+            $this->db->where('DATE('.$dateCol.') >=', $date_from);
+            $this->db->where('DATE('.$dateCol.') <=', $date_to);
+        }
+
+        $this->db->order_by($dateCol, 'DESC');
         $this->db->limit($limit, $offset);
 
-        // Execute the query and return the results
         $query = $this->db->get();
-		//dd($this->db->last_query());
         return $query->result();
     }
 
+    public function count_logs($key = array())
+    {
+        $email     = isset($key['email']) ? $key['email'] : '';
+        $name      = isset($key['name']) ? $key['name'] : '';
+        $date_from = isset($key['date_from']) ? $key['date_from'] : '';
+        $date_to   = isset($key['date_to']) ? $key['date_to'] : '';
+        $search    = isset($key['search']) ? trim($key['search']) : '';
+        $http_method = isset($key['http_method']) ? trim($key['http_method']) : '';
+        $event_type = isset($key['event_type']) ? trim($key['event_type']) : '';
 
+        $dateCol = 'user_logs.created_at';
+        if (!$this->db->field_exists('created_at', 'user_logs')) {
+            $dateCol = 'user_logs.date_loged_in';
+        }
+        $extendedAudit = $this->db->field_exists('http_method', 'user_logs');
 
-public function count_logs($key)
-{
-$qry = $this->db->get('user_logs');
-return $qry->num_rows();
-}
+        $this->db->from('user_logs');
+        $this->db->join('user', 'user.user_id = user_logs.user_id', 'left');
+        $this->db->join('staff', 'user.auth_staff_id = staff.staff_id', 'left');
+
+        if (!empty($email) || !empty($name)) {
+            $this->db->group_start();
+            if (!empty($email)) {
+                $this->db->like('staff.work_email', $email, 'after');
+            }
+            if (!empty($name)) {
+                $this->db->like('user.name', $name, 'after');
+            }
+            $this->db->group_end();
+        }
+
+        if ($search !== '') {
+            $this->db->group_start();
+            $this->db->like('user_logs.action', $search);
+            if ($extendedAudit) {
+                $this->db->or_like('user_logs.request_uri', $search);
+                $this->db->or_like('user_logs.target_table', $search);
+                $this->db->or_like('user_logs.target_id', $search);
+            }
+            $this->db->group_end();
+        }
+
+        if ($extendedAudit && $http_method !== '') {
+            $this->db->where('user_logs.http_method', strtoupper($http_method));
+        }
+
+        if ($extendedAudit && $event_type !== '') {
+            $this->db->where('user_logs.event_type', $event_type);
+        }
+
+        if (!empty($date_from) && !empty($date_to)) {
+            $this->db->where('DATE('.$dateCol.') >=', $date_from);
+            $this->db->where('DATE('.$dateCol.') <=', $date_to);
+        }
+
+        return (int) $this->db->count_all_results();
+    }
+
+    /**
+     * Whether extended audit columns exist on user_logs (after SQL upgrade).
+     */
+    public function user_logs_extended_audit_enabled()
+    {
+        return $this->db->field_exists('http_method', 'user_logs');
+    }
+
+    /**
+     * SHA-256 hash chain columns present (application/sql/add_user_logs_iso_audit_columns.sql).
+     */
+    public function user_logs_integrity_enabled()
+    {
+        return $this->db->field_exists('audit_row_hash', 'user_logs');
+    }
+
+    /**
+     * @return array{http_methods: list<string>, event_types: list<string>}
+     */
+    public function get_user_logs_filter_lists()
+    {
+        $empty = array('http_methods' => array(), 'event_types' => array());
+        if (!$this->db->field_exists('http_method', 'user_logs')) {
+            return $empty;
+        }
+        $methods = $this->db->query(
+            'SELECT DISTINCT `http_method` AS v FROM `user_logs` WHERE `http_method` IS NOT NULL AND `http_method` != \'\' ORDER BY `http_method` ASC'
+        )->result_array();
+        $events = $this->db->query(
+            'SELECT DISTINCT `event_type` AS v FROM `user_logs` WHERE `event_type` IS NOT NULL AND `event_type` != \'\' ORDER BY `event_type` ASC'
+        )->result_array();
+        $mh = array();
+        foreach ($methods as $r) {
+            if (!empty($r['v'])) {
+                $mh[] = (string) $r['v'];
+            }
+        }
+        $ev = array();
+        foreach ($events as $r) {
+            if (!empty($r['v'])) {
+                $ev[] = (string) $r['v'];
+            }
+        }
+        return array(
+            'http_methods' => $mh,
+            'event_types' => $ev,
+        );
+    }
+
+    public function get_log_by_id($id)
+    {
+        $id = (int) $id;
+        if ($id < 1) {
+            return null;
+        }
+        $this->db->select('user_logs.*, user.name, staff.work_email');
+        $this->db->from('user_logs');
+        $this->db->join('user', 'user.user_id = user_logs.user_id', 'left');
+        $this->db->join('staff', 'user.auth_staff_id = staff.staff_id', 'left');
+        $this->db->where('user_logs.id', $id);
+        return $this->db->get()->row();
+    }
+
 	public function addUser($postdata)
 	{
 
@@ -335,6 +469,9 @@ return $qry->num_rows();
 
 		$uid = (int) $postdata['user_id'];
 		$allowed = ['name', 'role', 'status', 'allow_email_login'];
+		$this->db->where('user_id', $uid);
+		$prevRow = $this->db->get($this->table)->row_array();
+
 		$data = [];
 		foreach ($allowed as $key) {
 			if (!array_key_exists($key, $postdata)) {
@@ -357,6 +494,19 @@ return $qry->num_rows();
 		$this->db->update($this->table, $data);
 
 		if ($this->db->affected_rows() > 0) {
+			if (function_exists('log_user_record_audit') && is_array($prevRow)) {
+				$oldSubset = array();
+				$newSubset = array();
+				foreach ($allowed as $k) {
+					if (array_key_exists($k, $prevRow)) {
+						$oldSubset[$k] = $prevRow[$k];
+					}
+					if (array_key_exists($k, $data)) {
+						$newSubset[$k] = $data[$k];
+					}
+				}
+				log_user_record_audit('updated', 'user', (string) $uid, $oldSubset, $newSubset);
+			}
 			return "User details updated successfully.";
 		}
 

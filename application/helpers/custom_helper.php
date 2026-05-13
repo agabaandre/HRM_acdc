@@ -972,25 +972,346 @@ if (!function_exists('generate_user_avatar')) {
 }
 
 
+if (!function_exists('user_logs_audit_columns_active')) {
+    /**
+     * True when user_logs has extended audit columns (run application/sql/add_user_logs_audit_columns.sql).
+     */
+    function user_logs_audit_columns_active()
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+        $cached = false;
+        $CI =& get_instance();
+        if (!isset($CI->db) || !is_object($CI->db)) {
+            return $cached;
+        }
+        $cached = $CI->db->field_exists('http_method', 'user_logs');
+        return $cached;
+    }
+}
+
+if (!function_exists('user_logs_integrity_active')) {
+    /**
+     * True when user_logs has ISO hash-chain columns (application/sql/add_user_logs_iso_audit_columns.sql).
+     */
+    function user_logs_integrity_active()
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+        $cached = false;
+        $CI =& get_instance();
+        if (!isset($CI->db) || !is_object($CI->db)) {
+            return $cached;
+        }
+        $cached = $CI->db->field_exists('audit_row_hash', 'user_logs');
+        return $cached;
+    }
+}
+
+if (!function_exists('staff_audit_iso_integrity_chain_requested')) {
+    function staff_audit_iso_integrity_chain_requested()
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+        $cached = false;
+        $CI =& get_instance();
+        if (!isset($CI->config)) {
+            return $cached;
+        }
+        $CI->config->load('audit_log', true);
+        $iso = $CI->config->item('staff_audit_iso', 'audit_log');
+        if (is_array($iso) && !empty($iso['integrity_chain'])) {
+            $cached = true;
+        }
+        return $cached;
+    }
+}
+
+if (!function_exists('staff_user_logs_audit_genesis_prev_hash')) {
+    function staff_user_logs_audit_genesis_prev_hash()
+    {
+        return str_repeat('0', 64);
+    }
+}
+
+if (!function_exists('staff_user_logs_audit_canonical_row')) {
+    /**
+     * Deterministic string for integrity hash (excludes chain fields and post-insert lifecycle columns).
+     *
+     * @param object $row
+     */
+    function staff_user_logs_audit_canonical_row($row)
+    {
+        if (!is_object($row)) {
+            return '';
+        }
+        $cols = array(
+            'id', 'user_id', 'action', 'ip_address', 'user_agent',
+            'http_method', 'request_uri', 'event_type', 'target_table', 'target_id',
+            'old_values', 'new_values', 'created_at', 'date_loged_in',
+        );
+        $parts = array();
+        foreach ($cols as $c) {
+            $v = '';
+            if (isset($row->$c) && $row->$c !== null) {
+                $v = (string) $row->$c;
+            }
+            $parts[] = $c . '=' . $v;
+        }
+        return implode("\n", $parts);
+    }
+}
+
+if (!function_exists('staff_user_logs_insert_with_optional_integrity')) {
+    /**
+     * Insert user_logs row; optionally seal with SHA-256 chain (GET_LOCK serializes writers).
+     *
+     * @param object $CI
+     * @param array<string,mixed> $data
+     */
+    function staff_user_logs_insert_with_optional_integrity($CI, $data)
+    {
+        $useChain = user_logs_integrity_active() && staff_audit_iso_integrity_chain_requested();
+        if (!$useChain) {
+            $CI->db->insert('user_logs', $data);
+            return;
+        }
+        $lockName = 'staff_audit_log_chain';
+        $glRow = $CI->db->query('SELECT GET_LOCK(?, 8) AS gl', array($lockName))->row();
+        $got = isset($glRow->gl) ? (int) $glRow->gl : 0;
+        if ($got !== 1) {
+            $CI->db->insert('user_logs', $data);
+            return;
+        }
+        try {
+            $CI->db->trans_begin();
+            $genesis = staff_user_logs_audit_genesis_prev_hash();
+            $prev = $genesis;
+            $last = $CI->db->query('SELECT `audit_row_hash` FROM `user_logs` ORDER BY `id` DESC LIMIT 1')->row();
+            if ($last && isset($last->audit_row_hash) && is_string($last->audit_row_hash) && strlen($last->audit_row_hash) === 64) {
+                $prev = $last->audit_row_hash;
+            }
+            $CI->db->insert('user_logs', $data);
+            $newId = (int) $CI->db->insert_id();
+            if ($newId < 1) {
+                $CI->db->trans_rollback();
+                return;
+            }
+            $ins = $CI->db->get_where('user_logs', array('id' => $newId))->row();
+            if (!$ins) {
+                $CI->db->trans_rollback();
+                return;
+            }
+            $canon = staff_user_logs_audit_canonical_row($ins);
+            $self = hash('sha256', $prev . "\n" . $canon);
+            $CI->db->where('id', $newId)->update('user_logs', array(
+                'audit_prev_hash' => $prev,
+                'audit_row_hash' => $self,
+            ));
+            if ($CI->db->trans_status() === false) {
+                $CI->db->trans_rollback();
+            } else {
+                $CI->db->trans_commit();
+            }
+        } finally {
+            $CI->db->query('SELECT RELEASE_LOCK(?) AS rl', array($lockName));
+        }
+    }
+}
+
+if (!function_exists('staff_user_audit_infer_event_type')) {
+    function staff_user_audit_infer_event_type($method)
+    {
+        $m = strtoupper((string) $method);
+        if ($m === 'POST') {
+            return 'submit';
+        }
+        if ($m === 'PUT' || $m === 'PATCH') {
+            return 'update';
+        }
+        if ($m === 'DELETE') {
+            return 'delete';
+        }
+        return 'access';
+    }
+}
+
+if (!function_exists('staff_user_audit_sanitize_payload')) {
+    /**
+     * Redacted snapshot of POST body for mutation logging (never log raw passwords).
+     *
+     * @return array<string,mixed>
+     */
+    function staff_user_audit_sanitize_payload()
+    {
+        if (empty($_POST) || !is_array($_POST)) {
+            return [];
+        }
+        $deny = array_flip(array(
+            'password', 'oldpass', 'newpass', 'confirm_password', 'confirm', 'user_password',
+            'csrf_test_name', 'csrf_token', 'ci_csrf_token',
+        ));
+        $CI =& get_instance();
+        if (isset($CI->config) && $CI->config->item('csrf_token_name')) {
+            $tn = strtolower((string) $CI->config->item('csrf_token_name'));
+            if ($tn !== '') {
+                $deny[$tn] = true;
+            }
+        }
+        $out = [];
+        foreach ($_POST as $k => $v) {
+            if (isset($deny[strtolower((string) $k)])) {
+                $out[$k] = '[redacted]';
+                continue;
+            }
+            if (is_array($v)) {
+                $out[$k] = '[array:' . count($v) . ' keys]';
+                continue;
+            }
+            $s = (string) $v;
+            if (strlen($s) > 2000) {
+                $s = substr($s, 0, 2000) . '…[truncated]';
+            }
+            $out[$k] = $s;
+        }
+        return $out;
+    }
+}
+
 if (!function_exists('log_user_action')) {
-    function log_user_action($action)
-{
-    $CI =& get_instance(); // Get CodeIgniter instance
+    /**
+     * Log user activity. Optional $context when audit columns exist:
+     * - http_method, request_uri (auto-filled if omitted)
+     * - event_type (defaults from HTTP method)
+     * - target_table, target_id, old_values, new_values (arrays are JSON-encoded)
+     * - mutation_payload: array merged into new_values under _request key
+     *
+     * When application/sql/add_user_logs_iso_audit_columns.sql is applied and audit_log.php
+     * has integrity_chain enabled, each insert is sealed with a SHA-256 hash chain.
+     */
+    function log_user_action($action, $context = array())
+    {
+        $CI =& get_instance();
 
-    $user_id = $CI->session->userdata('user')->user_id ?? null;
+        $user_id = $CI->session->userdata('user')->user_id ?? null;
 
-    // Suppress deprecated filter_var warning for null IPs
-    $ip_address = @($CI->input->ip_address()) ?: '0.0.0.0';
-    $user_agent = $CI->input->user_agent() ?? 'Unknown';
+        $ip_address = @($CI->input->ip_address()) ?: '0.0.0.0';
+        $ua = $CI->input->user_agent() ?? 'Unknown';
+        $user_agent = strlen($ua) > 500 ? substr($ua, 0, 500) : $ua;
 
-    $data = [
-        'user_id'    => $user_id,
-        'action'     => $action,
-        'ip_address' => $ip_address,
-        'user_agent' => $user_agent,
-    ];
+        $data = array(
+            'user_id' => $user_id,
+            'action' => is_string($action) ? $action : json_encode($action),
+            'ip_address' => $ip_address,
+            'user_agent' => $user_agent,
+        );
 
-    $CI->db->insert('user_logs', $data);
+        if (user_logs_audit_columns_active()) {
+            $method = isset($context['http_method'])
+                ? strtoupper((string) $context['http_method'])
+                : strtoupper((string) ($CI->input->server('REQUEST_METHOD') ?: 'GET'));
+            $uri = isset($context['request_uri'])
+                ? (string) $context['request_uri']
+                : (string) $CI->uri->uri_string();
+            if (strlen($uri) > 500) {
+                $uri = substr($uri, 0, 500) . '…';
+            }
+            $data['http_method'] = $method;
+            $data['request_uri'] = $uri;
+            $data['event_type'] = isset($context['event_type']) && $context['event_type'] !== ''
+                ? (string) $context['event_type']
+                : staff_user_audit_infer_event_type($method);
+
+            if (!empty($context['target_table'])) {
+                $data['target_table'] = substr((string) $context['target_table'], 0, 190);
+            }
+            if (isset($context['target_id']) && $context['target_id'] !== null && $context['target_id'] !== '') {
+                $data['target_id'] = substr((string) $context['target_id'], 0, 64);
+            }
+
+            $newVals = array();
+            if (!empty($context['new_values']) && is_array($context['new_values'])) {
+                $newVals = $context['new_values'];
+            }
+            if (!empty($context['mutation_payload']) && is_array($context['mutation_payload'])) {
+                $newVals['_http_request'] = $context['mutation_payload'];
+            }
+            if ($newVals !== array()) {
+                $json = json_encode($newVals, JSON_UNESCAPED_UNICODE);
+                if (strlen($json) > 60000) {
+                    $json = substr($json, 0, 60000) . '…';
+                }
+                $data['new_values'] = $json;
+            }
+
+            if (!empty($context['old_values']) && is_array($context['old_values'])) {
+                $json = json_encode($context['old_values'], JSON_UNESCAPED_UNICODE);
+                if (strlen($json) > 60000) {
+                    $json = substr($json, 0, 60000) . '…';
+                }
+                $data['old_values'] = $json;
+            }
+        }
+
+        staff_user_logs_insert_with_optional_integrity($CI, $data);
+    }
+}
+
+if (!function_exists('log_user_record_audit')) {
+    /**
+     * Structured row for revert support (old/new snapshots). Inserts one user_logs row.
+     */
+    function log_user_record_audit($event_type, $target_table, $target_id, $old_values, $new_values)
+    {
+        $msg = 'Record audit: ' . $target_table . ' #' . $target_id . ' — ' . $event_type;
+        $ctx = array(
+            'event_type' => 'record_' . preg_replace('/[^a-z0-9_]+/i', '', (string) $event_type),
+            'target_table' => $target_table,
+            'target_id' => (string) $target_id,
+        );
+        if (is_array($old_values)) {
+            $ctx['old_values'] = $old_values;
+        }
+        if (is_array($new_values)) {
+            $ctx['new_values'] = $new_values;
+        }
+        log_user_action($msg, $ctx);
+    }
+}
+
+if (!function_exists('log_staff_profile_contract_audit')) {
+    /**
+     * Structured audit for staff profile / contracts / related PPA rows (user_logs).
+     * new_values and old_values include _subject_staff_id for filtering on the contracts page.
+     *
+     * @param string $event_slug      Alphanumeric slug (becomes event_type record_{slug})
+     * @param string $target_table    e.g. staff, staff_contracts, ppa_entries
+     * @param string $target_id       Primary key or logical id as string
+     * @param int|string $subject_staff_id Person whose profile/contracts are affected
+     * @param array<string,mixed> $old_values
+     * @param array<string,mixed> $new_values
+     */
+    function log_staff_profile_contract_audit($event_slug, $target_table, $target_id, $subject_staff_id, $old_values, $new_values)
+    {
+        if (!function_exists('log_user_record_audit')) {
+            return;
+        }
+        $sid = (string) $subject_staff_id;
+        $wrap = function ($arr) use ($sid) {
+            if (!is_array($arr)) {
+                $arr = array();
+            }
+            $arr['_subject_staff_id'] = $sid;
+            return $arr;
+        };
+        log_user_record_audit($event_slug, $target_table, (string) $target_id, $wrap($old_values), $wrap($new_values));
+    }
 }
 
     function getRandomAUColor() {
@@ -1494,6 +1815,4 @@ if (!function_exists('calculate_endterm_overall_rating')) {
             'annotation' => $annotation
         ];
     }
-}
-
 }
