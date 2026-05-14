@@ -27,7 +27,7 @@ class WeeklyBriefingSettingsController extends Controller
         $staffList = Staff::query()->active()
             ->orderBy('lname')
             ->orderBy('fname')
-            ->get(['staff_id', 'fname', 'lname', 'job_name']);
+            ->get(['staff_id', 'title', 'fname', 'lname', 'oname', 'job_name']);
 
         $divisions = Division::query()->orderBy('division_name')->get(['id', 'division_name', 'division_short_name']);
 
@@ -92,6 +92,8 @@ class WeeklyBriefingSettingsController extends Controller
             if ($apmDivisionId <= 0) {
                 return back()->withInput()->with('error', 'Each contributor row needs an APM division.');
             }
+            $rowDisplay = trim((string) ($row['display_name'] ?? ''));
+            $hasPdfLabel = $rowDisplay !== '';
             $kind = (string) ($row['contribution_kind'] ?? 'division');
             if ($kind === 'directorate') {
                 $dirId = (int) ($row['contribution_directorate_id'] ?? 0);
@@ -102,17 +104,21 @@ class WeeklyBriefingSettingsController extends Controller
                     return back()->withInput()->with('error', 'Invalid directorate selected.');
                 }
                 $divId = (int) ($row['contribution_division_id'] ?? 0);
-                if ($divId <= 0) {
-                    return back()->withInput()->with('error', 'Each row must select the contributing division whose weekly brief this is (PDF display name is optional). Directorate is only used to group divisions for director review and combined PDFs — it must not replace the division key.');
+                if ($divId > 0) {
+                    if (! Division::query()->whereKey($divId)->exists()) {
+                        return back()->withInput()->with('error', 'Invalid contributing division selected.');
+                    }
+                    $div = Division::query()->find($divId);
+                    if (! $div || (int) ($div->directorate_id ?? 0) !== $dirId) {
+                        return back()->withInput()->with('error', 'The contributing division must belong to the selected directorate.');
+                    }
+                    $key = WeeklyBriefingContributor::contributionKeyForDivision($divId);
+                } else {
+                    if (! $hasPdfLabel) {
+                        return back()->withInput()->with('error', 'For Directorate rows, select a contributing division, or enter a PDF display name to file a single directorate-level brief without a division.');
+                    }
+                    $key = WeeklyBriefingContributor::contributionKeyForDirectorate($dirId);
                 }
-                if (! Division::query()->whereKey($divId)->exists()) {
-                    return back()->withInput()->with('error', 'Invalid contributing division selected.');
-                }
-                $div = Division::query()->find($divId);
-                if (! $div || (int) ($div->directorate_id ?? 0) !== $dirId) {
-                    return back()->withInput()->with('error', 'The contributing division must belong to the selected directorate.');
-                }
-                $key = WeeklyBriefingContributor::contributionKeyForDivision($divId);
             } else {
                 $divId = (int) ($row['contribution_division_id'] ?? 0);
                 if ($divId <= 0) {
@@ -133,7 +139,7 @@ class WeeklyBriefingSettingsController extends Controller
                 'staff_id' => $staffId,
                 'apm_division_id' => $apmDivisionId,
                 'contribution_key' => $key,
-                'display_name' => (($dn = trim((string) ($row['display_name'] ?? ''))) !== '' ? Str::limit($dn, 255, '') : null),
+                'display_name' => ($hasPdfLabel ? Str::limit($rowDisplay, 255, '') : null),
             ];
         }
 

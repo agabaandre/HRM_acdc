@@ -65,10 +65,17 @@ final class WeeklyBriefingDirectorSubmitNotifier
         $submitterName = 'A contributor';
         if ($submitter) {
             $submitterName = htmlspecialchars(
-                trim(($submitter->fname ?? '').' '.($submitter->lname ?? '')),
+                trim((string) ($submitter->name ?? '')),
                 ENT_QUOTES,
                 'UTF-8'
             );
+            if ($submitterName === '') {
+                $submitterName = htmlspecialchars(
+                    trim(($submitter->fname ?? '').' '.($submitter->lname ?? '')),
+                    ENT_QUOTES,
+                    'UTF-8'
+                );
+            }
             if ($submitterName === '') {
                 $submitterName = 'A contributor';
             }

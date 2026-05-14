@@ -94,7 +94,7 @@ class WeeklyBriefingController extends Controller
                 if ($c instanceof WeeklyBriefingContributor) {
                     $st = $c->staff;
                     if ($st) {
-                        $staffHay = mb_strtolower(trim(($st->fname ?? '').' '.($st->lname ?? '')));
+                        $staffHay = mb_strtolower(trim((string) $st->name));
                     }
                 }
                 if (! str_contains($labelHay, $needle) && ($staffHay === '' || ! str_contains($staffHay, $needle))) {
@@ -168,7 +168,7 @@ class WeeklyBriefingController extends Controller
                         continue;
                     }
                     $st = $contrib->staff;
-                    $staffHay = $st ? mb_strtolower(trim(($st->fname ?? '').' '.($st->lname ?? ''))) : '';
+                    $staffHay = $st ? mb_strtolower(trim((string) $st->name)) : '';
                     if (str_contains(mb_strtolower($contrib->hubLabel()), $needle)
                         || str_contains(mb_strtolower(WeeklyBriefingContributor::presentationLabelForContributionKey($k)), $needle)
                         || ($staffHay !== '' && str_contains($staffHay, $needle))) {

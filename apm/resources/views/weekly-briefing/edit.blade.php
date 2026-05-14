@@ -68,7 +68,7 @@
                 @endif
                 @if($report->submitted_by_staff_id && $report->submittedBy)
                     @php
-                        $subName = trim(($report->submittedBy->fname ?? '').' '.($report->submittedBy->lname ?? ''));
+                        $subName = trim((string) ($report->submittedBy->name ?? ''));
                     @endphp
                     <div class="small text-muted mt-1">
                         Submitted by <strong>{{ $subName !== '' ? $subName : 'Staff #'.$report->submitted_by_staff_id }}</strong>
@@ -97,7 +97,7 @@
                 @if($report->isDirectorReviewed() && $report->director_reviewed_at)
                     <p class="small mb-2"><strong>Reviewed at:</strong> {{ $report->director_reviewed_at->format('M j, Y g:i A') }}
                         @if($report->directorReviewedBy)
-                            @php $dn = trim(($report->directorReviewedBy->fname ?? '').' '.($report->directorReviewedBy->lname ?? '')); @endphp
+                            @php $dn = trim((string) ($report->directorReviewedBy->name ?? '')); @endphp
                             · <strong>{{ $dn !== '' ? $dn : 'Staff #'.$report->director_reviewed_by_staff_id }}</strong>
                         @endif
                     </p>

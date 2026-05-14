@@ -156,7 +156,7 @@
                                             @if(! empty($row['contributor']))
                                                 @php $st = $row['contributor']->staff; @endphp
                                                 @if($st)
-                                                    <div class="small text-muted">{{ trim(($st->fname ?? '').' '.($st->lname ?? '')) }}</div>
+                                                    <div class="small text-muted">{{ $st->name }}</div>
                                                 @endif
                                             @endif
                                         </td>

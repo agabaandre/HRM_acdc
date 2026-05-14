@@ -5,7 +5,7 @@
             <option value="">— Staff —</option>
             @foreach($staffList as $s)
                 <option value="{{ $s->staff_id }}" @selected((int)$viewerStaffId === (int)$s->staff_id)>
-                    {{ trim(($s->fname ?? '').' '.($s->lname ?? '')) }} @if($s->job_name) — {{ $s->job_name }} @endif
+                    {{ trim((string) ($s->name ?? '')) }} @if($s->job_name) — {{ $s->job_name }} @endif
                 </option>
             @endforeach
         </select>

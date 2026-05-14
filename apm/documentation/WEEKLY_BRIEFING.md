@@ -41,7 +41,7 @@ The top menu item **Weekly brief** and the home dashboard card are shown when `D
 - **Division brief**: `d-{apm_division_id}` (matches `divisions.id` / APM division).
 - **Directorate brief**: `dr-{directorate_id}`.
 
-Contributors and listing keys are driven by **`weekly_briefing_contributors`** linked to **`weekly_briefing_settings`**. Each row is one **contributing division** brief (`d-{division_id}`). **Directorate** on a row is validated against `divisions.directorate_id` and is only for director review / combined PDF scope — it does **not** replace the division key. The Weekly brief hub lists **one line per contributor row** (with optional **PDF display name** per row). Legacy `dr-*` keys from older configs should be re-saved from **Weekly briefing settings** so every division row has a contributing division selected.
+Contributors and listing keys are driven by **`weekly_briefing_contributors`** linked to **`weekly_briefing_settings`**. Each hub row is one contributor record. **Division** type always uses **`d-{division_id}`** from the contributing division. **Directorate** type uses **`d-{division_id}`** when a contributing division is selected (validated against the directorate), or **`dr-{directorate_id}`** when the division is left blank **and** a **PDF display name** is set (single directorate-level brief). Use **PDF display name** to override labels on the hub and PDFs.
 
 ## Settings (admin)
 
