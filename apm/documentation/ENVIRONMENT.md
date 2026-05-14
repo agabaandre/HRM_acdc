@@ -33,6 +33,7 @@ Copy that file to `.env` and replace placeholders. The sections below summarize 
 | **Staff portal** | `CI_*`, `STAFF_API_USERNAME`, `STAFF_API_PASSWORD`, optional `STAFF_API_TOKEN`, `STAFF_UPLOADS_PATH` | Reading CodeIgniter sessions from the shared DB; optional staff API and uploads path for resolving assets. |
 | **Mail / Exchange** | `MAIL_*`, `USE_EXCHANGE_EMAIL`, `EXCHANGE_*` | Outbound email via Microsoft Graph (`exchange_oauth`). Register an app in Azure AD and set tenant, client ID, secret, and redirect URI. |
 | **PHPMailer** | `PHPMailer_*` | SMTP fallback when not using Exchange. |
+| **Helpdesk (ITSM)** | `HELPDESK_*`, `HELPDESK_BRIDGE_SECRET`, Helpdesk `MAIL_*` / `MAIL_FAILOVER_MAILERS` | Separate Laravel API under `helpdesk/backend/`. Uses Sanctum + HMAC exchange (see [Helpdesk integration](./HELPDESK_INTEGRATION.md)). Reuse the same `EXCHANGE_*` and `JWT_SECRET` naming as APM/Finance where helpful; secrets only in each app’s own `.env`. |
 | **Firebase** | `FIREBASE_PROJECT_ID`, optional `FIREBASE_CREDENTIALS` | FCM push for pending approvals; place service account JSON at `storage/app/firebase-credentials.json` by default. See [FIREBASE_PUSH_NOTIFICATIONS.md](./FIREBASE_PUSH_NOTIFICATIONS.md). |
 | **Features** | `ALLOW_QUARTER_CONTROL`, `ALLOW_ACTIVITY_OPERATIONS`, `SHOW_QUOTES`, `NOTIFICATION_CC_ADMIN_ASSISTANTS` | UI and notification behaviour toggles. |
 | **Retention** | `LOGS_RETENTION_PERIOD` | Audit log retention (see `config/audit-logger.php`). |
@@ -53,6 +54,7 @@ Copy that file to `.env` and replace placeholders. The sections below summarize 
 
 ## Related documentation
 
+- [Helpdesk (ITSM) integration](./HELPDESK_INTEGRATION.md) — token exchange, URLs, mail/JWT alignment with Helpdesk API
 - [Deployment Guide](./DEPLOYMENT.md)
 - [API Documentation](./API_DOCUMENTATION.md) — API base URL derives from the same host as `APP_URL`.
 - [Firebase / FCM](./FIREBASE_PUSH_NOTIFICATIONS.md)

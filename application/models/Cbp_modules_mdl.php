@@ -166,6 +166,24 @@ class Cbp_modules_mdl extends CI_Model
 				'target_resolver' => 'finance_host',
 				'sort_order' => 30,
 			],
+			[
+				'module_key' => 'helpdesk_itsm',
+				'system_name' => 'IT Service Desk (Helpdesk)',
+				'description' => 'Log incidents and service requests; opens from the Staff portal with the same SSO token as Finance.',
+				'base_url' => '',
+				'base_url_development' => 'http://127.0.0.1:5174',
+				'base_url_production' => 'helpdesk',
+				'icon_class' => 'fa-headset',
+				'permission_code' => '93',
+				'uses_staff_portal_token' => 1,
+				'is_production' => 1,
+				'is_enabled' => 1,
+				'show_in_apm_menu' => 0,
+				'alternate_base_url' => null,
+				'alternate_for_role_id' => null,
+				'target_resolver' => 'finance_host',
+				'sort_order' => 35,
+			],
 		];
 	}
 

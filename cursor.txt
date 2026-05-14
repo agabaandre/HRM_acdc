@@ -1,0 +1,249 @@
+Build a complete enterprise-grade Helpdesk & IT Service Management (ITSM) platform for Africa CDC using Laravel 11 API backend and Vue.js 3 frontend.
+
+SYSTEM REQUIREMENTS:
+*Refer to the laravel approval managemt app apm for settings and system Colors found in  http://localhost/staff/apm/system-settings and ci app for urls is http://localhost/staff/
+*Note we shall add the tab for helpdesk on http://localhost/staff/home/index. we shall reqgister the module mnaully so need to it.
+
+1. Architecture
+
+* API-first architecture
+* Laravel 11 backend
+* Vue.js 3 frontend
+* Mysql database / Postgres
+* Redis queues and caching
+* Swagger/OpenAPI documentation
+* Docker-ready deployment
+
+2. Authentication
+
+* Integrate with existing CI/APM login system
+* Use token/session-based authentication
+* Consume Staff API, Directorate API, and Division API
+* Implement RBAC roles:
+
+  * User
+  * Agent
+  * Supervisor
+  * Admin
+  * Auditor
+
+3. Multilingual Support
+   Support:
+
+* English
+* French
+* Portuguese
+* Swahili
+* Arabic (FULL RTL SUPPORT)
+
+Arabic RTL must support:
+
+* Full layout reversal
+* RTL forms
+* RTL dashboards
+* RTL reports
+* RTL Quill Editor
+* RTL emails and notifications
+
+4. Ticket Management
+   Implement:
+
+* Ticket creation
+* Ticket assignment
+* Ticket escalation
+* Ticket reopening
+* SLA tracking
+* Attachments
+* Ticket history
+* Internal comments
+* Ticket categories
+
+Default categories:
+
+* Email Access Support
+* Computer Troubleshooting
+* Staff Portal Support
+* APM Support
+* Knowledge Hub Support
+* PRA Support
+* Other Systems Support
+
+5. Rich Text Editor
+   Use Quill Editor with:
+
+* Image uploads
+* Tables
+* Code blocks
+* RTL support
+* Drag/drop uploads
+* Clipboard image paste
+
+6. AI Integration
+   Implement configurable AI providers:
+
+* OpenAI
+* Gemini
+* Custom AI APIs
+
+Admin settings must allow:
+
+* Add/edit AI providers
+* API keys
+* API endpoints
+* Model names
+* Fallback priority
+* Enable/disable providers
+
+AI Features:
+
+* Smart ticket assignment
+* Ticket categorization
+* Priority prediction
+* AI ticket summaries
+* FAQ recommendations
+* Duplicate detection
+* Sentiment analysis
+
+7. AI Ticket Summaries
+   Allow users and agents to generate:
+
+* Short summaries
+* Technical summaries
+* Executive summaries
+* Timeline summaries
+
+8. WhatsApp Integration
+   Support:
+
+* WhatsApp Business API
+* Ticket creation via WhatsApp
+* Attachments
+* Notifications
+* Resolution confirmation
+* AI-assisted replies
+
+9. Microsoft Teams Integration
+   Support:
+
+* Teams bot
+* Ticket creation
+* Notifications
+* AI recommendations
+* Resolution confirmation
+
+10. FAQ & Knowledge Base
+    Implement:
+
+* FAQ categories
+* Rich content articles
+* AI recommendations
+* Search
+* Ratings
+* Analytics
+
+11. Resolution Workflow
+    Require agents to complete a resolution modal with:
+
+* Resolution summary
+* Detailed actions taken
+* Root cause
+* Preventive actions
+* Quill rich text notes
+
+12. Dashboards
+    Create:
+
+* Admin dashboard
+* Agent dashboard
+* User dashboard
+
+Include:
+
+* Charts
+* SLA metrics
+* AI analytics
+* WhatsApp analytics
+* Teams analytics
+* Ticket trends
+
+13. Reports
+    Implement advanced reports with filters:
+
+* Date range
+* Directorate
+* Division
+* Country
+* Agent
+* Status
+* Category
+* SLA
+* AI provider
+* Ticket source
+
+Export:
+
+* Excel
+* CSV
+* PDF
+* Word
+
+14. Branding & Settings
+    Implement dynamic branding system similar to APM:
+
+* Logo
+* Colors
+* Favicon
+* Footer
+* Email branding
+* Login branding
+
+15. Security & Compliance
+    Implement:
+
+* ISO 27001 controls
+* ISO 20000 workflows
+* ISO 9001 reporting
+* Audit logs
+* RBAC
+* Encryption
+* API throttling
+* Malware scanning
+* Secure uploads
+
+16. Database
+    Design normalized enterprise-grade schema for:
+
+* tickets
+* comments
+* attachments
+* ai_models
+* notifications
+* faq_articles
+* whatsapp_messages
+* teams_messages
+* sla_rules
+* audit_logs
+
+17. Frontend Requirements
+
+* Responsive design
+* Enterprise UI
+* RTL support
+* Dark/light themes
+* Accessibility support
+* Mobile optimized
+
+18. Deliverables
+    Generate:
+
+* Full Laravel backend
+* Full Vue frontend
+* API documentation
+* Database migrations
+* Seeders
+* Docker setup
+* Swagger docs
+* Example integrations
+* Production-ready code
+
+*Ensure the architecture is scalable, maintainable, enterprise-grade, multilingual, AI-ready, and ISO compliant.

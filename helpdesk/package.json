@@ -1,0 +1,15 @@
+{
+  "name": "africa-cdc-helpdesk",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Root scripts mirroring finance/ — orchestrate Laravel API + Vue SPA",
+  "scripts": {
+    "install:all": "cd backend && composer install && cd ../frontend && npm install --cache ./.npm-cache --legacy-peer-deps",
+    "dev:api": "cd backend && composer run dev",
+    "dev:web": "cd frontend && npm run dev -- --cache ./.npm-cache",
+    "dev:all": "npx concurrently -c \"#119a48,#0d7a3a\" \"npm run dev:api\" \"npm run dev:web\" --names=api,web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

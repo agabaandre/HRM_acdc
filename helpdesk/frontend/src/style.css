@@ -1,0 +1,55 @@
+:root {
+  --cdc-green: #119a48;
+  --cdc-green-deep: #0d7a3a;
+  --cdc-green-soft: #e8f5ee;
+  --cdc-gold: #c9a227;
+  --cdc-gold-soft: #faf6e7;
+  --cdc-ink: #0c1a12;
+  --cdc-ink-muted: #3d5247;
+  --cdc-paper: #fafbf9;
+  --cdc-white: #ffffff;
+  --cdc-line: rgba(12, 26, 18, 0.08);
+  --cdc-shadow: 0 18px 48px rgba(6, 95, 44, 0.12);
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Instrument Sans', 'DM Sans', system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--cdc-ink);
+  background: var(--cdc-paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+
+a {
+  color: var(--cdc-green-deep);
+}
+
+code {
+  font-size: 0.88em;
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+  background: var(--cdc-green-soft);
+  color: var(--cdc-green-deep);
+}

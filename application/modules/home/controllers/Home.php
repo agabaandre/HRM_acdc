@@ -186,6 +186,31 @@ class Home extends MX_Controller
 			];
 		}
 
+		if (in_array('85', $permissions, true) || in_array(85, $permissions, true)
+			|| in_array('92', $permissions, true) || in_array(92, $permissions, true)
+			|| in_array('93', $permissions, true) || in_array(93, $permissions, true)) {
+			$token = rawurlencode($this->build_sso_jwt($session));
+			$host = $_SERVER['HTTP_HOST'] ?? '';
+			if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
+				$helpdeskUrl = 'http://127.0.0.1:5174?token=' . $token;
+			} else {
+				$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+				$prodPath = trim((string) getenv('HELPDESK_SPA_PATH'), '/');
+				if ($prodPath === '') {
+					$prodPath = 'helpdesk';
+				}
+				$helpdeskUrl = $scheme . '://' . $host . '/' . $prodPath . '?token=' . $token;
+			}
+			$settings[] = [
+				'href' => $helpdeskUrl,
+				'label' => 'IT Service Desk (Helpdesk)',
+				'icon' => 'fa-headset',
+				'absolute' => true,
+				'desc' => 'Log incidents and service requests; session opens from the Staff portal (same sign-on as Finance).',
+				'module_key' => 'helpdesk_itsm',
+			];
+		}
+
 		return $settings;
 	}
 

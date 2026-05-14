@@ -1,0 +1,72 @@
+openapi: 3.0.3
+info:
+  title: Africa CDC Helpdesk API
+  version: 0.1.0
+  description: |
+    Laravel 11 JSON API. Expand with tickets, comments, AI, SLA, FAQ, exports.
+servers:
+  - url: http://127.0.0.1:8000/api
+    description: Local API
+paths:
+  /v1/health:
+    get:
+      summary: Health and branding hints
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  laravel:
+                    type: string
+                  branding:
+                    type: object
+  /v1/tickets/{ticket}/comments:
+    parameters:
+      - name: ticket
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: List ticket comments (internal notes hidden from end users)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Paginated comment resources
+    post:
+      summary: Add a comment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+                is_internal:
+                  type: boolean
+                  description: Staff only (agent+); others receive 403
+      responses:
+        '201':
+          description: Created
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum

@@ -476,7 +476,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
     </td>
   </tr>
       <tr>
-      <!-- Supervisor Signature -->
       <td style="padding: 25px; text-align: center; vertical-align: top;">
         <?php
           $supervisor = staff_details($ppa->midterm_supervisor_1);
@@ -521,7 +520,6 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <?php endif; ?>
       </td>
 
-      <!-- Staff Signature -->
       <td style="padding: 25px; text-align: center; vertical-align: top;">
         <?php
           $staff = staff_details($ppa->staff_id);

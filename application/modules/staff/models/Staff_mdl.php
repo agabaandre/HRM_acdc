@@ -454,7 +454,11 @@ class Staff_mdl extends CI_Model
 
 	
 		if (!empty($filters)) {
+			$reserved = ['limit' => true, 'start' => true];
 			foreach ($filters as $key => $value) {
+				if (isset($reserved[$key])) {
+					continue;
+				}
 				if (!empty($value) && $key != 'staff_id') {
 					$this->db->where("s.$key", $value);
 				} elseif ($key == 'staff_id') {

@@ -576,7 +576,7 @@ class ChangeRequestController extends Controller
                         'participant_start' => $startDate,
                         'participant_end' => $participantEnds[$staffId] ?? $participantEnds[$sid] ?? null,
                         'participant_days' => $participantDays[$staffId] ?? $participantDays[$sid] ?? null,
-                        'international_travel' => (isset($internationalTravel[$staffId]) || isset($internationalTravel[$sid])) ? 1 : 0,
+                        'international_travel' => (int) ($internationalTravel[$staffId] ?? $internationalTravel[$sid] ?? 0),
                     ];
                 }
 
