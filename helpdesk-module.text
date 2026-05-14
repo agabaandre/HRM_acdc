@@ -1,0 +1,536 @@
+# Africa CDC Helpdesk & IT Service Management Platform
+
+# Full User Requirements Specification (URS)
+
+---
+
+# 1. Document Information
+
+| Item         | Description                                        |
+| ------------ | -------------------------------------------------- |
+| Project Name | Africa CDC Helpdesk & IT Service Management System |
+| System Type  | Enterprise Helpdesk & ITSM Platform                |
+| Architecture | API-First                                          |
+| Backend      | Laravel 11+                                        |
+| Frontend     | Vue.js 3                                           |
+| Database     | PostgreSQL/MySQL                                   |
+| Deployment   | Ubuntu Linux                                       |
+| Compliance   | ISO 20000, ISO 27001, ISO 9001                     |
+| Organization | Africa CDC                                         |
+
+---
+
+# 2. Executive Summary
+
+The Africa CDC Helpdesk & IT Service Management Platform shall be a centralized enterprise support system that enables Africa CDC staff to report, track, manage, and resolve technical and operational issues across all systems and departments.
+
+The platform shall provide:
+
+* Enterprise-grade ticket management
+* AI-powered support automation
+* Multi-channel support intake
+* WhatsApp integration
+* Microsoft Teams integration
+* SLA management
+* Multilingual support
+* AI-assisted routing and summaries
+* Knowledge base & FAQ management
+* ISO-compliant auditing and security
+
+---
+
+# 3. Core Objectives
+
+The system shall:
+
+1. Centralize support operations
+2. Improve support response times
+3. Automate issue assignment
+4. Improve support quality
+5. Provide analytics and reporting
+6. Support multilingual operations
+7. Enable AI-enhanced workflows
+8. Improve user satisfaction
+9. Provide enterprise security and compliance
+10. Support future scalability
+
+---
+
+# 4. Technology Stack
+
+## 4.1 Backend Stack
+
+| Component         | Technology                     |
+| ----------------- | ------------------------------ |
+| Framework         | Laravel 11+                    |
+| API Standard      | RESTful JSON APIs              |
+| Authentication    | Existing CI/APM Authentication |
+| Queue System      | Redis                          |
+| Search Engine     | Meilisearch                    |
+| Cache             | Redis                          |
+| File Storage      | MinIO/S3                       |
+| API Documentation | Swagger/OpenAPI                |
+
+---
+
+## 4.2 Frontend Stack
+
+| Component        | Technology          |
+| ---------------- | ------------------- |
+| Framework        | Vue.js 3            |
+| UI Framework     | Vuetify or PrimeVue |
+| State Management | Pinia               |
+| Charts           | ApexCharts          |
+| Rich Text Editor | Quill Editor        |
+| API Client       | Axios               |
+
+---
+
+# 5. Authentication & User Management
+
+## 5.1 Authentication Requirements
+
+The system shall:
+
+* Use existing CI/APM login credentials
+* Support SSO-ready architecture
+* Use secure API tokens
+* Support future MFA
+
+---
+
+## 5.2 User Synchronization
+
+The platform shall consume:
+
+* Staff API
+* Directorate API
+* Division API
+
+---
+
+## Synced User Fields
+
+| Field             |
+| ----------------- |
+| Staff ID          |
+| Name              |
+| Email             |
+| Phone Number      |
+| Directorate       |
+| Division          |
+| Duty Station      |
+| Employment Status |
+
+---
+
+# 6. Roles & Permissions
+
+| Role       | Access                      |
+| ---------- | --------------------------- |
+| User       | Submit/view tickets         |
+| Agent      | Resolve assigned tickets    |
+| Supervisor | Manage team tickets         |
+| Admin      | Full access                 |
+| Auditor    | Read-only compliance access |
+
+---
+
+# 7. Multilingual Requirements
+
+## Supported Languages
+
+| Language   | Direction |
+| ---------- | --------- |
+| English    | LTR       |
+| French     | LTR       |
+| Portuguese | LTR       |
+| Swahili    | LTR       |
+| Arabic     | RTL       |
+
+---
+
+## RTL Requirements for Arabic
+
+The system shall fully support RTL rendering for:
+
+* Menus
+* Forms
+* Dashboards
+* Reports
+* Quill content
+* Emails
+* Notifications
+* FAQs
+
+---
+
+# 8. Ticket Management Module
+
+## Ticket Categories
+
+Default categories:
+
+1. Email Access Support
+2. Computer Troubleshooting
+3. Staff Portal Support
+4. APM Support
+5. Knowledge Hub Support
+6. PRA Support
+7. Other Systems Support
+
+---
+
+## Ticket Fields
+
+| Field          | Type               |
+| -------------- | ------------------ |
+| Ticket Number  | Auto-generated     |
+| Subject        | Text               |
+| Description    | Quill Editor       |
+| Priority       | Dropdown           |
+| Category       | Dropdown           |
+| Status         | Dynamic            |
+| Attachments    | File upload        |
+| Assigned Agent | Auto/manual        |
+| Directorate    | Auto-fetched       |
+| Division       | Auto-fetched       |
+| Source         | Web/WhatsApp/Teams |
+
+---
+
+# 9. Rich Text Editor Requirements
+
+Quill Editor shall support:
+
+* Images
+* Tables
+* Links
+* Code blocks
+* Drag/drop uploads
+* Clipboard image paste
+* RTL support
+* Multilingual content
+
+---
+
+# 10. AI Integration Module
+
+## AI Provider Support
+
+Supported providers:
+
+* OpenAI
+* Gemini
+* Custom AI APIs
+
+---
+
+## AI Configuration Settings
+
+Admins shall configure:
+
+| Setting        | Description       |
+| -------------- | ----------------- |
+| AI Provider    | OpenAI/Gemini     |
+| API Endpoint   | API URL           |
+| API Key        | Encrypted         |
+| Model Name     | GPT/Gemini        |
+| Active Status  | Enabled/Disabled  |
+| Fallback Order | Provider priority |
+
+---
+
+## AI Features
+
+| Feature                | Purpose                 |
+| ---------------------- | ----------------------- |
+| AI Assignment          | Smart routing           |
+| AI Categorization      | Auto category detection |
+| AI Priority Detection  | Smart urgency           |
+| AI Ticket Summaries    | Ticket summaries        |
+| AI FAQ Suggestions     | Suggested help          |
+| AI Duplicate Detection | Repeated issues         |
+| AI Sentiment Analysis  | Frustration detection   |
+
+---
+
+# 11. AI Ticket Assignment
+
+AI shall analyze:
+
+* Issue description
+* User location
+* Historical tickets
+* Agent expertise
+* Agent workload
+* Ticket urgency
+
+---
+
+# 12. AI Ticket Summaries
+
+Users and agents shall generate:
+
+* Short summaries
+* Technical summaries
+* Executive summaries
+* Timeline summaries
+
+---
+
+# 13. WhatsApp Integration
+
+## WhatsApp Features
+
+Users shall:
+
+* Log issues
+* Upload screenshots
+* Receive updates
+* Confirm resolution
+* Check status
+
+---
+
+## WhatsApp Settings
+
+| Setting         |
+| --------------- |
+| Business Number |
+| API Provider    |
+| API Key         |
+| Webhook URL     |
+| Auto Replies    |
+
+---
+
+# 14. Microsoft Teams Integration
+
+## Teams Features
+
+Users shall:
+
+* Create tickets
+* Receive updates
+* Use Teams bot
+* Confirm resolutions
+* Receive AI recommendations
+
+---
+
+# 15. FAQ & Knowledge Base
+
+## FAQ Features
+
+* Categorized articles
+* Rich content
+* AI recommendations
+* Search
+* Ratings
+* Analytics
+
+---
+
+# 16. Resolution Workflow
+
+Agents resolving tickets shall complete:
+
+* Resolution summary
+* Detailed actions taken
+* Preventive actions
+* Root cause
+* Resolution notes using Quill editor
+
+---
+
+# 17. SLA Management
+
+## SLA Features
+
+* Response tracking
+* Resolution tracking
+* Escalation
+* SLA warnings
+* SLA dashboards
+
+---
+
+# 18. Dashboards
+
+## Admin Dashboard
+
+Features:
+
+* Global analytics
+* AI analytics
+* SLA analytics
+* Ticket trends
+* Directorate trends
+* WhatsApp analytics
+* Teams analytics
+
+---
+
+## Agent Dashboard
+
+Features:
+
+* Assigned tickets
+* Pending issues
+* SLA warnings
+* AI suggestions
+* Workload metrics
+
+---
+
+## User Dashboard
+
+Features:
+
+* Submitted tickets
+* Status tracking
+* Assigned agents
+* Resolution summaries
+
+---
+
+# 19. Reports & Filters
+
+## Report Filters
+
+* Date range
+* Directorate
+* Division
+* Country
+* Agent
+* Status
+* Category
+* SLA
+* AI provider
+* Ticket source
+
+---
+
+## Export Formats
+
+* Excel
+* CSV
+* PDF
+* Word
+
+---
+
+# 20. Audit & ISO Compliance
+
+## ISO 27001
+
+Requirements:
+
+* RBAC
+* Encryption
+* Secure APIs
+* Audit trails
+* Credential encryption
+
+---
+
+## ISO 20000
+
+Requirements:
+
+* Incident lifecycle management
+* SLA management
+* Escalation tracking
+* Service reporting
+
+---
+
+## ISO 9001
+
+Requirements:
+
+* Continuous improvement
+* User satisfaction
+* Service quality metrics
+
+---
+
+# 21. Security Requirements
+
+The system shall implement:
+
+* HTTPS
+* CSRF protection
+* XSS prevention
+* SQL injection protection
+* Malware scanning
+* File validation
+* API throttling
+
+---
+
+# 22. Branding & Settings Module
+
+The platform shall use dynamic branding similar to APM.
+
+## Branding Features
+
+* Logo
+* Colors
+* Favicon
+* Footer
+* Email templates
+* Login screen
+
+---
+
+# 23. Database Core Tables
+
+Main entities:
+
+* users
+* tickets
+* ticket_comments
+* ticket_attachments
+* ticket_history
+* categories
+* agents
+* notifications
+* faq_articles
+* ai_models
+* ai_logs
+* whatsapp_messages
+* teams_messages
+* sla_rules
+* audit_logs
+
+---
+
+# 24. Infrastructure Requirements
+
+| Component  | Recommendation |
+| ---------- | -------------- |
+| OS         | Ubuntu 22.04   |
+| Web Server | Nginx          |
+| PHP        | 8.3+           |
+| Database   | PostgreSQL     |
+| Cache      | Redis          |
+| Queue      | Redis          |
+| Storage    | MinIO/S3       |
+
+---
+
+# 25. Deliverables
+
+The implementation shall include:
+
+* Laravel API backend
+* Vue.js frontend
+* Swagger docs
+* Docker deployment
+* Database schema
+* ISO checklist
+* User manuals
+* Admin manuals
+* AI integration layer

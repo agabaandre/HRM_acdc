@@ -1,0 +1,9 @@
+/.npm-cache
+/node_modules
+/backend/.composer-cache
+/backend/vendor
+/backend/.env
+/backend/.phpunit.result.cache
+/frontend/dist
+/frontend/node_modules
+/frontend/.npm-cache

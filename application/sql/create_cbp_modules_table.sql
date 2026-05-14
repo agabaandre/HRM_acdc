@@ -84,4 +84,22 @@ INSERT IGNORE INTO `cbp_modules` (
   NULL,
   'finance_host',
   30
+),
+(
+  'helpdesk_itsm',
+  'IT Service Desk (Helpdesk)',
+  'Log incidents and service requests; opens from the Staff portal with the same SSO token as Finance.',
+  '',
+  'http://127.0.0.1:5174',
+  'helpdesk',
+  'fa-headset',
+  '93',
+  1,
+  1,
+  1,
+  0,
+  NULL,
+  NULL,
+  'finance_host',
+  35
 );

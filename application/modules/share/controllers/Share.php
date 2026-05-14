@@ -368,8 +368,11 @@ public function get_current_staff(){
     if($this->api_login()){
 		try {
 			$filters = $this->input->get();
-			$limit = isset($filters['limit']) ? $filters['limit'] : FALSE;
-			$start = isset($filters['start']) ? $filters['start'] : FALSE;
+			$limit = isset($filters['limit']) ? (int) $filters['limit'] : false;
+			$start = isset($filters['start']) ? (int) $filters['start'] : false;
+			// Pagination keys must not stay in $filters: Staff_mdl adds WHERE s.{key} for each filter
+			// and would generate invalid SQL (e.g. s.limit) for ?limit=&start= from API clients.
+			unset($filters['limit'], $filters['start']);
 
 			// Get staff data
 			$data = $this->staff_mdl->get_all_staff_data($filters, $limit, $start);
