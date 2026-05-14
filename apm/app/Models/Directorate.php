@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Directorate extends Model
 {
@@ -19,6 +18,7 @@ class Directorate extends Model
     protected $fillable = [
         'name',
         'is_active',
+        'director_id',
         'created_at',
         'updated_at',
     ];
@@ -33,6 +33,12 @@ class Directorate extends Model
         return [
             'id' => 'integer',
             'is_active' => 'boolean',
+            'director_id' => 'integer',
         ];
+    }
+
+    public function director(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'director_id', 'staff_id');
     }
 }

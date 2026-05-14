@@ -92,11 +92,23 @@ class SyncDirectoratesCommand extends Command
                         continue; // Skip if no name
                     }
                     $isActive = isset($data['is_active']) ? (bool)$data['is_active'] : true;
-                    $id = $data['id'] ?? null;
+                    $directorRaw = $data['director_id'] ?? null;
+                    if (($directorRaw === null || $directorRaw === '' || $directorRaw === false)
+                        && ! empty($data['director']) && is_array($data['director'])) {
+                        $directorRaw = $data['director']['id'] ?? $data['director']['staff_id'] ?? null;
+                    }
+                    $directorId = null;
+                    if ($directorRaw !== null && $directorRaw !== '' && $directorRaw !== false) {
+                        $directorId = (int) $directorRaw;
+                        if ($directorId <= 0) {
+                            $directorId = null;
+                        }
+                    }
 
                     $directorateData = [
                         'name' => $name,
                         'is_active' => $isActive,
+                        'director_id' => $directorId,
                     ];
 
                     // Use name as the unique identifier for updateOrCreate

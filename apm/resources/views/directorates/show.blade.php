@@ -37,6 +37,16 @@
                     <h6 class="text-muted mb-1">Directorate Name</h6>
                     <h5>{{ $directorate->name }}</h5>
                 </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted mb-1">Director</h6>
+                    @if($directorate->director)
+                        <h5 class="mb-0">{{ $directorate->director->lname }} {{ $directorate->director->fname }}</h5>
+                        <small class="text-muted">Staff ID {{ $directorate->director->staff_id }}</small>
+                    @else
+                        <p class="text-muted mb-0">Not assigned</p>
+                    @endif
+                </div>
             </div>
         </div>
 
