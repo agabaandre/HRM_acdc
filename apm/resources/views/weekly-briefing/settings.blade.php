@@ -116,7 +116,7 @@
                                 <th style="min-width:200px">Staff</th>
                                 <th style="min-width:160px">APM division</th>
                                 <th style="min-width:130px">Reporting unit type</th>
-                                <th style="min-width:200px">Contributing division <span class="text-muted fw-normal">(required for Division; for Directorate, optional if PDF display name is set)</span></th>
+                                <th style="min-width:200px">Contributing division <span class="text-muted fw-normal">(Division: required; Directorate: optional if PDF display name set)</span></th>
                                 <th style="min-width:200px">Directorate <span class="text-muted fw-normal">(validation / director scope)</span></th>
                                 <th style="min-width:200px">PDF display name <span class="text-muted fw-normal">(optional)</span></th>
                                 <th style="width:48px"></th>
@@ -375,8 +375,8 @@
         if (kind === 'directorate') {
             hint.classList.remove('d-none');
             hint.textContent = hasDn
-                ? 'Optional: leave blank for one directorate-level brief (dr-…), or choose a division for that unit’s brief (d-…).'
-                : 'Required unless you enter a PDF display name for a directorate-level brief without a division.';
+                ? 'Optional if PDF display name set.'
+                : 'Required unless PDF display name set.';
         } else {
             hint.classList.add('d-none');
             hint.textContent = '';
