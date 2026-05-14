@@ -54,7 +54,7 @@ if ($report->requiresDirectorReview()) {
 ?>
     <?php
 if ($report->submitted_by_staff_id && $report->submittedBy) {
-    $sn = trim((string) (($report->submittedBy->fname ?? '').' '.($report->submittedBy->lname ?? '')));
+    $sn = trim((string) ($report->submittedBy->name ?? ''));
     if ($sn === '') {
         $sn = 'Staff #'.(int) $report->submitted_by_staff_id;
     }

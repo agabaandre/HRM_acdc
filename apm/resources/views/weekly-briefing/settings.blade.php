@@ -107,7 +107,7 @@
                 <button type="button" class="btn btn-sm btn-outline-success" id="wb-add-contributor">+ Add row</button>
             </div>
             <div class="card-body">
-                <p class="small text-muted">Pick <strong>staff</strong>, their <strong>APM division</strong> (organisational context), and the <strong>contributing division</strong> whose brief they file (<code>d-…</code> — one hub row per row here). For <strong>Directorate</strong> rows, also pick the directorate that division belongs to (validated); the directorate only drives director review and combined PDFs, not the stored reporting key. Use <strong>PDF display name</strong> when the label should differ from the division name. The Weekly brief hub lists <strong>every row</strong> below, not de-duplicated by directorate.</p>
+                <p class="small text-muted">Pick <strong>staff</strong>, their <strong>APM division</strong>, and <strong>Reporting unit type</strong>. <strong>Division</strong> rows always need a contributing division. <strong>Directorate</strong> rows need a directorate; contributing division is <strong>required</strong> unless you enter a <strong>PDF display name</strong> (then you may leave division blank for one directorate-level brief per directorate, <code>dr-…</code>) or select a division for that unit’s brief (<code>d-…</code>). The hub lists one line per row.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle" id="wb-contributors-table">
                         <thead class="table-light">
@@ -116,7 +116,7 @@
                                 <th style="min-width:200px">Staff</th>
                                 <th style="min-width:160px">APM division</th>
                                 <th style="min-width:130px">Reporting unit type</th>
-                                <th style="min-width:200px">Contributing division <span class="text-muted fw-normal">(brief for this unit)</span></th>
+                                <th style="min-width:200px">Contributing division <span class="text-muted fw-normal">(required for Division; for Directorate, optional if PDF display name is set)</span></th>
                                 <th style="min-width:200px">Directorate <span class="text-muted fw-normal">(validation / director scope)</span></th>
                                 <th style="min-width:200px">PDF display name <span class="text-muted fw-normal">(optional)</span></th>
                                 <th style="width:48px"></th>
@@ -365,11 +365,33 @@
         return max + 1;
     }
 
+    function wbSyncContribDivOptional(tr) {
+        var kindEl = tr.querySelector('.wb-kind');
+        var dnEl = tr.querySelector('input.wb-display-name');
+        var hint = tr.querySelector('.wb-contrib-div-hint');
+        if (!kindEl || !hint) return;
+        var kind = kindEl.value;
+        var hasDn = dnEl && dnEl.value.trim() !== '';
+        if (kind === 'directorate') {
+            hint.classList.remove('d-none');
+            hint.textContent = hasDn
+                ? 'Optional: leave blank for one directorate-level brief (dr-…), or choose a division for that unit’s brief (d-…).'
+                : 'Required unless you enter a PDF display name for a directorate-level brief without a division.';
+        } else {
+            hint.classList.add('d-none');
+            hint.textContent = '';
+        }
+    }
+
     function wbWireRow(tr) {
         tr.querySelectorAll('.wb-kind').forEach(function (sel) {
             sel.addEventListener('change', function () {
                 wbToggleKind(tr, sel.value);
             });
+        });
+        tr.querySelectorAll('.wb-display-name').forEach(function (inp) {
+            inp.addEventListener('input', function () { wbSyncContribDivOptional(tr); });
+            inp.addEventListener('change', function () { wbSyncContribDivOptional(tr); });
         });
         tr.querySelectorAll('.wb-remove-row').forEach(function (b) {
             b.addEventListener('click', function () {
@@ -379,6 +401,7 @@
         });
         var k = tr.querySelector('.wb-kind');
         if (k) wbToggleKind(tr, k.value);
+        wbSyncContribDivOptional(tr);
     }
 
     function wbWireViewerRow(tr) {
@@ -405,6 +428,7 @@
             rCol.style.opacity = '0.45';
             rCol.querySelectorAll('select').forEach(function (s) { s.disabled = true; });
         }
+        wbSyncContribDivOptional(tr);
     }
 
     btn.addEventListener('click', function () {

@@ -7,7 +7,7 @@
             <option value="">— Staff —</option>
             @foreach($staffList as $s)
                 <option value="{{ $s->staff_id }}" @selected((int)$staffId === (int)$s->staff_id)>
-                    {{ trim(($s->fname ?? '').' '.($s->lname ?? '')) }} @if($s->job_name) — {{ $s->job_name }} @endif
+                    {{ trim((string) ($s->name ?? '')) }} @if($s->job_name) — {{ $s->job_name }} @endif
                 </option>
             @endforeach
         </select>
@@ -27,12 +27,13 @@
         </select>
     </td>
     <td class="wb-col-div">
-        <select name="contributors[{{ $idx }}][contribution_division_id]" class="form-select form-select-sm">
+        <select name="contributors[{{ $idx }}][contribution_division_id]" class="form-select form-select-sm wb-contrib-division">
             <option value="">— Division —</option>
             @foreach($divisions as $d)
                 <option value="{{ $d->id }}" @selected((int)$contribDiv === (int)$d->id)>{{ $d->division_name }}</option>
             @endforeach
         </select>
+        <small class="form-text text-muted wb-contrib-div-hint d-none"></small>
     </td>
     <td class="wb-col-dir">
         <select name="contributors[{{ $idx }}][contribution_directorate_id]" class="form-select form-select-sm">
@@ -43,7 +44,7 @@
         </select>
     </td>
     <td>
-        <input type="text" name="contributors[{{ $idx }}][display_name]" class="form-control form-control-sm" value="{{ $displayName ?? '' }}" maxlength="255" placeholder="As on PDF if different from system name">
+        <input type="text" name="contributors[{{ $idx }}][display_name]" class="form-control form-control-sm wb-display-name" value="{{ $displayName ?? '' }}" maxlength="255" placeholder="As on PDF if different from system name">
     </td>
     <td class="text-center">
         <button type="button" class="btn btn-sm btn-outline-danger wb-remove-row" title="Remove">&times;</button>
