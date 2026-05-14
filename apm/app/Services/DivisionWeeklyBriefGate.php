@@ -4,12 +4,12 @@ namespace App\Services;
 
 use App\Models\Directorate;
 use App\Models\Division;
-use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 
 /**
- * Weekly brief: module access, filing (contributor rows), full listing (admin / report viewers), view vs edit on reports.
+ * Weekly brief: module access, filing (contributor rows), full listing (system admin, report viewers,
+ * permissions 87/88 / compiled-export cohort), view vs edit on reports.
  */
 final class DivisionWeeklyBriefGate
 {
@@ -112,13 +112,13 @@ final class DivisionWeeklyBriefGate
 
     public static function canAccessModule(): bool
     {
-        if (self::isSystemAdmin()) {
+        if (self::mayAccessCompiledBriefingExports()) {
             return true;
         }
 
         $sid = self::sessionStaffId();
 
-        return self::isListedContributor($sid) || self::isListedReportViewer($sid) || self::mayActAsDivisionDirector($sid);
+        return self::isListedContributor($sid) || self::mayActAsDivisionDirector($sid);
     }
 
     /**
@@ -257,7 +257,9 @@ final class DivisionWeeklyBriefGate
     }
 
     /**
-     * Keys to include in report lists (all configured units for admin / report viewers; otherwise filing keys only).
+     * Keys to include in report lists: all distinct configured contribution keys for anyone with
+     * organisation-wide oversight ({@see self::mayAccessCompiledBriefingExports}: role 10, listed report
+     * viewers, permissions 87 / 88); otherwise the user’s filing keys plus any director-managed keys.
      *
      * @return list<string>
      */
@@ -272,9 +274,8 @@ final class DivisionWeeklyBriefGate
             return [];
         }
 
-        if (self::isSystemAdmin() || self::isListedReportViewer()) {
+        if (self::mayAccessCompiledBriefingExports()) {
             return $settings->contributors()
-                ->distinct()
                 ->pluck('contribution_key')
                 ->filter()
                 ->unique()
@@ -306,7 +307,7 @@ final class DivisionWeeklyBriefGate
         if (! self::canAccessModule()) {
             return false;
         }
-        if (self::isSystemAdmin() || self::isListedReportViewer()) {
+        if (self::mayAccessCompiledBriefingExports()) {
             return true;
         }
 
