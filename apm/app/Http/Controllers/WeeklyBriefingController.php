@@ -31,6 +31,7 @@ class WeeklyBriefingController extends Controller
         $filingIsoYear = $filing['iso_year'];
         $filingIsoWeek = $filing['iso_week'];
         $filingWeekHumanRange = WeeklyBriefingReport::humanIsoWeekRange($filingIsoYear, $filingIsoWeek);
+        $filingSubmissionDeadline = WeeklyBriefingReport::syntheticDeadlineForIsoWeek($settings, $filingIsoYear, $filingIsoWeek);
 
         $tab = (string) $request->query('tab', 'this_week');
         if ($tab !== 'all') {
@@ -193,6 +194,7 @@ class WeeklyBriefingController extends Controller
             'filingIsoYear',
             'filingIsoWeek',
             'filingWeekHumanRange',
+            'filingSubmissionDeadline',
             'wbNowY',
             'wbNowW',
             'wbDirectorCombinedOptions',

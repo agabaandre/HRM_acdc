@@ -10,6 +10,11 @@
     $filingIsoYear = $filingIsoYear ?? \Carbon\Carbon::now()->isoWeekYear();
     $filingIsoWeek = $filingIsoWeek ?? \Carbon\Carbon::now()->isoWeek();
     $filingWeekHumanRange = $filingWeekHumanRange ?? \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) $filingIsoYear, (int) $filingIsoWeek);
+    $filingSubmissionDeadline = $filingSubmissionDeadline ?? \App\Models\WeeklyBriefingReport::syntheticDeadlineForIsoWeek(
+        \App\Models\WeeklyBriefingSetting::current(),
+        (int) $filingIsoYear,
+        (int) $filingIsoWeek
+    );
 @endphp
 <div class="container-fluid py-3">
     @if (session('status'))
@@ -23,7 +28,8 @@
         <div>
             <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Weekly brief</h4>
             <small class="text-muted d-block">Contributors edit assigned units.</small>
-            <small class="text-muted"><strong>Active reporting week:</strong> {{ $filingWeekHumanRange }}</small>
+            <small class="text-muted d-block"><strong>Active reporting week:</strong> {{ $filingWeekHumanRange }}</small>
+            <small class="text-muted"><strong><i class="fas fa-calendar-check me-1"></i>Submission deadline</strong> {{ $filingSubmissionDeadline->format('l, F j, Y') }} at {{ $filingSubmissionDeadline->format('g:i A') }}</small>
         </div>
         <div class="d-flex flex-wrap gap-2">
             @if($filingWeekReports->count() === 1)
