@@ -23,9 +23,14 @@ class WeeklyBriefingController extends Controller
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
 
-        $listingKeys = $this->sortContributionKeysForWeeklyBriefIndex(
-            DivisionWeeklyBriefGate::contributionKeysForReportListing()
-        );
+        $contributorRows = DivisionWeeklyBriefGate::contributorsForReportListing();
+        $listingKeys = $contributorRows
+            ->pluck('contribution_key')
+            ->map(fn ($k) => trim((string) $k))
+            ->filter(fn ($k) => $k !== '')
+            ->unique()
+            ->values()
+            ->all();
         $filingKeys = DivisionWeeklyBriefGate::contributionKeysForFiling();
 
         $settings = WeeklyBriefingSetting::current();
@@ -52,11 +57,24 @@ class WeeklyBriefingController extends Controller
         }
         $currentWeekReports = $currentQuery->get()->keyBy('contribution_key');
 
-        $weekRowsBase = collect($listingKeys)->map(function (string $k) use ($currentWeekReports) {
+        $sortedUniqueKeys = $this->sortContributionKeysForWeeklyBriefIndex($listingKeys);
+        $keyRank = array_flip($sortedUniqueKeys);
+
+        $weekRowsBase = $contributorRows->map(function (WeeklyBriefingContributor $c) use ($currentWeekReports) {
+            $k = trim((string) ($c->contribution_key ?? ''));
+
             return [
+                'contributor' => $c,
                 'key' => $k,
                 'report' => $currentWeekReports->get($k),
+                'label' => $c->hubLabel(),
             ];
+        })->sortBy(function (array $row) use ($keyRank) {
+            $k = $row['key'];
+            $rank = $keyRank[$k] ?? 99999;
+            $id = $row['contributor'] instanceof WeeklyBriefingContributor ? (int) $row['contributor']->id : 0;
+
+            return [$rank, $id];
         })->values();
 
         $twStatus = (string) $request->query('tw_status', '');
@@ -67,11 +85,19 @@ class WeeklyBriefingController extends Controller
         $twSearch = trim((string) $request->query('tw_search', ''));
 
         $filteredThisWeek = $weekRowsBase->filter(function (array $row) use ($twStatus, $twSearch) {
-            $k = $row['key'];
             $r = $row['report'];
             if ($twSearch !== '') {
-                $label = strtolower(WeeklyBriefingContributor::presentationLabelForContributionKey($k));
-                if (! str_contains($label, strtolower($twSearch))) {
+                $needle = mb_strtolower($twSearch);
+                $labelHay = mb_strtolower((string) ($row['label'] ?? ''));
+                $c = $row['contributor'] ?? null;
+                $staffHay = '';
+                if ($c instanceof WeeklyBriefingContributor) {
+                    $st = $c->staff;
+                    if ($st) {
+                        $staffHay = mb_strtolower(trim(($st->fname ?? '').' '.($st->lname ?? '')));
+                    }
+                }
+                if (! str_contains($labelHay, $needle) && ($staffHay === '' || ! str_contains($staffHay, $needle))) {
                     return false;
                 }
             }
@@ -134,10 +160,22 @@ class WeeklyBriefingController extends Controller
                 $reportsQuery->where('status', $filterStatus);
             }
             if ($filterSearch !== '' && $listingKeys !== []) {
-                $needle = strtolower($filterSearch);
-                $matchingKeys = array_values(array_filter($listingKeys, function (string $k) use ($needle) {
-                    return str_contains(strtolower(WeeklyBriefingContributor::presentationLabelForContributionKey($k)), $needle);
-                }));
+                $needle = mb_strtolower($filterSearch);
+                $matchingKeysSet = [];
+                foreach ($settings->contributors()->with('staff')->get() as $contrib) {
+                    $k = trim((string) ($contrib->contribution_key ?? ''));
+                    if ($k === '' || ! in_array($k, $listingKeys, true)) {
+                        continue;
+                    }
+                    $st = $contrib->staff;
+                    $staffHay = $st ? mb_strtolower(trim(($st->fname ?? '').' '.($st->lname ?? ''))) : '';
+                    if (str_contains(mb_strtolower($contrib->hubLabel()), $needle)
+                        || str_contains(mb_strtolower(WeeklyBriefingContributor::presentationLabelForContributionKey($k)), $needle)
+                        || ($staffHay !== '' && str_contains($staffHay, $needle))) {
+                        $matchingKeysSet[$k] = true;
+                    }
+                }
+                $matchingKeys = array_keys($matchingKeysSet);
                 if ($matchingKeys === []) {
                     $reportsQuery->whereRaw('0 = 1');
                 } else {
@@ -175,7 +213,7 @@ class WeeklyBriefingController extends Controller
         $directorReviewKeySet = array_fill_keys(DivisionWeeklyBriefGate::directorManagedContributionKeysForListing(), true);
 
         $yearOptions = range($filingIsoYear - 2, $filingIsoYear + 1);
-        $configuredUnitCount = count($listingKeys);
+        $configuredUnitCount = $contributorRows->count();
 
         return view('weekly-briefing.index', compact(
             'tab',
