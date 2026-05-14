@@ -84,14 +84,23 @@ class SyncDirectoratesCommand extends Command
             
             foreach ($directoratesData as $data) {
                 try {
-                    $name = $data['name'] ?? null;
-                    if (empty($name)) {
+                    $sourceId = (int) ($data['id'] ?? $data['directorate_id'] ?? 0);
+                    if ($sourceId <= 0) {
                         $skipped++;
-                        Log::warning("Skipped directorate: Missing name");
+                        Log::warning('Skipped directorate: missing or invalid id', ['row' => $data]);
                         $progressBar->advance();
-                        continue; // Skip if no name
+                        continue;
                     }
-                    $isActive = isset($data['is_active']) ? (bool)$data['is_active'] : true;
+
+                    $name = isset($data['name']) ? trim((string) $data['name']) : '';
+                    if ($name === '') {
+                        $skipped++;
+                        Log::warning("Skipped directorate id={$sourceId}: empty name");
+                        $progressBar->advance();
+                        continue;
+                    }
+
+                    $isActive = isset($data['is_active']) ? (bool) $data['is_active'] : true;
                     $directorRaw = $data['director_id'] ?? null;
                     if (($directorRaw === null || $directorRaw === '' || $directorRaw === false)
                         && ! empty($data['director']) && is_array($data['director'])) {
@@ -106,29 +115,30 @@ class SyncDirectoratesCommand extends Command
                     }
 
                     $directorateData = [
+                        'id' => $sourceId,
                         'name' => $name,
                         'is_active' => $isActive,
                         'director_id' => $directorId,
                     ];
 
-                    // Use name as the unique identifier for updateOrCreate
+                    // Match Staff tracker primary key so renames sync; do not key by name.
                     $directorate = Directorate::updateOrCreate(
-                        ['name' => $name],
+                        ['id' => $sourceId],
                         $directorateData
                     );
-                    
+
                     if ($directorate->wasRecentlyCreated) {
                         $created++;
-                        Log::info("Created directorate: {$name} (ID: {$directorate->id})");
+                        Log::info("Created directorate id={$sourceId}: {$name}");
                     } else {
                         $updated++;
-                        Log::info("Updated directorate: {$name} (ID: {$directorate->id})");
+                        Log::info("Updated directorate id={$sourceId}: {$name}");
                     }
                 } catch (Exception $e) {
                     $failed++;
-                    $directorateName = $data['name'] ?? 'unknown';
-                    Log::error("Failed to sync directorate {$directorateName}: " . $e->getMessage());
-                    $this->error("Failed to sync directorate {$directorateName}: " . $e->getMessage());
+                    $directorateLabel = (string) (($data['id'] ?? $data['directorate_id'] ?? '?').':'.($data['name'] ?? 'unknown'));
+                    Log::error("Failed to sync directorate {$directorateLabel}: ".$e->getMessage());
+                    $this->error("Failed to sync directorate {$directorateLabel}: ".$e->getMessage());
                 }
                 
                 $progressBar->advance();

@@ -88,17 +88,39 @@ class SyncDivisionsCommand extends Command
             
             foreach ($divisionsData as $data) {
                 try {
-                    // Map division_id from API to id in the model, and name to division_name
-                    $id = $data['division_id'] ?? $data['id'] ?? null;
-                    
+                    // Staff Share uses division_id; treat it as divisions.id in APM.
+                    $id = (int) ($data['division_id'] ?? $data['id'] ?? 0);
+                    if ($id <= 0) {
+                        $skipped++;
+                        try {
+                            Log::warning('Skipped division: missing or invalid id', ['row' => $data]);
+                        } catch (\Exception $logException) {
+                            // Ignore logging errors
+                        }
+                        $progressBar->advance();
+                        continue;
+                    }
+
                     // Helper function to convert '0000-00-00' to null
-                    $cleanDate = function($date) {
+                    $cleanDate = function ($date) {
                         return ($date === '0000-00-00' || $date === '0000-00-00 00:00:00' || empty($date)) ? null : $date;
                     };
-                    
+
+                    $divisionName = trim((string) ($data['division_name'] ?? $data['name'] ?? ''));
+                    if ($divisionName === '') {
+                        $skipped++;
+                        try {
+                            Log::warning("Skipped division id={$id}: empty division_name");
+                        } catch (\Exception $logException) {
+                            // Ignore logging errors
+                        }
+                        $progressBar->advance();
+                        continue;
+                    }
+
                     $divisionData = [
                         'id' => $id,
-                        'division_name' => $data['name'] ?? $data['division_name'] ?? null,
+                        'division_name' => $divisionName,
                         'division_short_name' => $data['division_short_name'] ?? null,
                         'division_head' => $data['division_head'] ?? null,
                         'focal_person' => $data['focal_person'] ?? null,
@@ -115,20 +137,9 @@ class SyncDivisionsCommand extends Command
                         'category' => $data['category'] ?? null,
                     ];
 
-                    if (empty($divisionData['division_name'])) {
-                        $skipped++;
-                        try {
-                            Log::warning("Skipped division: Missing division_name");
-                        } catch (\Exception $logException) {
-                            // Ignore logging errors
-                        }
-                        $progressBar->advance();
-                        continue; // Skip if no division_name
-                    }
-
-                    // Use division_name as the unique identifier for updateOrCreate
+                    // Match Staff tracker primary key so renames sync; do not key by division_name.
                     $division = Division::updateOrCreate(
-                        ['division_name' => $divisionData['division_name']],
+                        ['id' => $id],
                         $divisionData
                     );
                     
