@@ -255,6 +255,46 @@ class WeeklyBriefingReport extends Model
         })->values();
     }
 
+    /**
+     * Directorate name and assigned director for hub tables; empty strings when the contribution has no directorate.
+     *
+     * @return array{directorate_name: string, director_name: string}
+     */
+    public function hubDirectorateDisplayRow(): array
+    {
+        $k = trim((string) ($this->contribution_key ?? ''));
+        $directorate = null;
+
+        if (str_starts_with($k, 'd-')) {
+            $divId = (int) substr($k, 2);
+            if ($divId <= 0) {
+                return ['directorate_name' => '', 'director_name' => ''];
+            }
+            $div = $this->relationLoaded('division') && $this->division && (int) $this->division->id === $divId
+                ? $this->division
+                : Division::query()->with(['directorate.director'])->find($divId);
+            $directorate = $div?->directorate;
+        } elseif (str_starts_with($k, 'dr-')) {
+            $dirId = (int) substr($k, 3);
+            if ($dirId <= 0) {
+                return ['directorate_name' => '', 'director_name' => ''];
+            }
+            $directorate = $this->relationLoaded('directorate') && $this->directorate && (int) $this->directorate->id === $dirId
+                ? $this->directorate
+                : Directorate::query()->with(['director'])->find($dirId);
+        }
+
+        if (! $directorate) {
+            return ['directorate_name' => '', 'director_name' => ''];
+        }
+        $directorate->loadMissing('director');
+
+        return [
+            'directorate_name' => trim((string) ($directorate->name ?? '')),
+            'director_name' => $directorate->director ? trim((string) $directorate->director->name) : '',
+        ];
+    }
+
     public function contributionEntityLabel(): string
     {
         $k = (string) ($this->contribution_key ?? '');
