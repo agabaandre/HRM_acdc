@@ -16,7 +16,8 @@ Access is enforced by `App\Services\DivisionWeeklyBriefGate` (nav, routes, and r
 | Audience | Access |
 |----------|--------|
 | **System admin** (role `10`) | Full access, including **Weekly briefing settings**. |
-| **Configured contributors** | Rows in `weekly_briefing_contributors` for their `staff_id` and `contribution_key`. |
+| **Permissions `87` / `88`** (same cohort as organisation compiled PDF / completion summary) | **Weekly brief** hub and **all configured reporting units** on the index (read-only on others’ drafts unless also a contributor); settings remain role `10` only. |
+| **Configured contributors** | Every `contribution_key` they are assigned in `weekly_briefing_contributors` (division `d-*` or directorate `dr-*`); they file and edit their own units. |
 | **Report viewers** | `report_viewer_staff_ids` on settings: read all configured units’ reports (and compiled exports where allowed). |
 | **Directorate directors** | When **`division_directors_can_access_module`** is enabled (name is legacy): staff listed as **`directorates.director_id`** on at least one **active** directorate. Session staff id is resolved from `staff_id` or `auth_staff_id`. |
 
