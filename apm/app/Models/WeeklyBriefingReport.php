@@ -88,14 +88,34 @@ class WeeklyBriefingReport extends Model
             : Division::query()->find($id);
     }
 
-    public function requiresDirectorReview(): bool
+    /**
+     * Directorate whose director (directorates.director_id) may review this report: dr-* is explicit;
+     * d-* resolves via the division's directorate_id.
+     */
+    public function directorateForDirectorReview(): ?Directorate
     {
-        $div = $this->divisionForContribution();
-        if (! $div) {
-            return false;
+        $k = (string) ($this->contribution_key ?? '');
+        if (str_starts_with($k, 'dr-')) {
+            $id = (int) substr($k, 3);
+
+            return $id > 0 ? Directorate::query()->find($id) : null;
+        }
+        if (str_starts_with($k, 'd-')) {
+            $divId = (int) substr($k, 2);
+            $div = Division::query()->find($divId);
+            $dirId = (int) ($div?->directorate_id ?? 0);
+
+            return $dirId > 0 ? Directorate::query()->find($dirId) : null;
         }
 
-        return (int) ($div->director_id ?? 0) > 0;
+        return null;
+    }
+
+    public function requiresDirectorReview(): bool
+    {
+        $dir = $this->directorateForDirectorReview();
+
+        return $dir !== null && (int) ($dir->director_id ?? 0) > 0;
     }
 
     public function isDirectorReviewed(): bool
@@ -123,7 +143,7 @@ class WeeklyBriefingReport extends Model
     public function directorReviewSummaryLine(): string
     {
         if (! $this->requiresDirectorReview()) {
-            return 'N/A (no director on division)';
+            return 'N/A (no directorate director)';
         }
         if ($this->status !== self::STATUS_SUBMITTED) {
             return '—';
@@ -202,8 +222,8 @@ class WeeklyBriefingReport extends Model
     }
 
     /**
-     * Organisation-wide compiled PDF / central completion summary: optionally omit division briefs
-     * that still require director review when a director is assigned.
+     * Organisation-wide compiled PDF / central completion summary: optionally omit briefs
+     * that still require director review when a directorate director is assigned (`d-*` and `dr-*`).
      *
      * @param  Collection<int, self>  $reports
      * @return Collection<int, self>
@@ -215,7 +235,8 @@ class WeeklyBriefingReport extends Model
         }
 
         return $reports->filter(function (self $r) {
-            if (! str_starts_with((string) ($r->contribution_key ?? ''), 'd-')) {
+            $k = (string) ($r->contribution_key ?? '');
+            if (! str_starts_with($k, 'd-') && ! str_starts_with($k, 'dr-')) {
                 return true;
             }
             if (! $r->requiresDirectorReview()) {

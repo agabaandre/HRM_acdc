@@ -22,8 +22,8 @@
     </td>
     <td>
         <select name="contributors[{{ $idx }}][contribution_kind]" class="form-select form-select-sm wb-kind">
-            <option value="division" @selected($kind === 'division')>Division</option>
             <option value="directorate" @selected($kind === 'directorate')>Directorate</option>
+            <option value="division" @selected($kind === 'division')>Division (legacy)</option>
         </select>
     </td>
     <td class="wb-col-div">

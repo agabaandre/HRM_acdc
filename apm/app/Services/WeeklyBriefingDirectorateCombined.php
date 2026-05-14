@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Directorate;
 use App\Models\Division;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
@@ -9,10 +10,8 @@ use App\Models\WeeklyBriefingSetting;
 use Illuminate\Support\Collection;
 
 /**
- * Combined weekly briefing PDF for a division director: submitted division briefs (d-* only)
- * for divisions where they are the named director, active director OIC, Head of Division, or active head OIC
- * scoped by directorate_id (null directorates use id 0). Does not include directorate-level (dr-*) reports — those stay
- * on the organisation-wide compiled pack for central recipients only.
+ * Combined weekly briefing PDF for a **directorate director** ({@see Directorate::director_id}): submitted
+ * reports for that directorate’s `dr-*` key plus legacy `d-*` division briefs for divisions under the same directorate.
  */
 final class WeeklyBriefingDirectorateCombined
 {
@@ -37,22 +36,21 @@ final class WeeklyBriefingDirectorateCombined
                 ->keyBy(fn (WeeklyBriefingReport $r) => (string) $r->contribution_key);
         }
 
+        $dir = Directorate::query()->find($directorateId);
+        if (! $dir || (int) ($dir->director_id ?? 0) !== $directorStaffId) {
+            return collect();
+        }
+
         $picked = collect();
 
-        $divisions = Division::queryForWeeklyBriefDivisionAuthority($directorStaffId)
-            ->where(function ($q) use ($directorateId) {
-                if ($directorateId === 0) {
-                    $q->whereNull('directorate_id');
-                } else {
-                    $q->where('directorate_id', $directorateId);
-                }
-            })
-            ->get();
+        $keyDr = WeeklyBriefingContributor::contributionKeyForDirectorate($directorateId);
+        if ($rep = $reportsByKey->get($keyDr)) {
+            $picked->push($rep);
+        }
 
-        foreach ($divisions as $div) {
-            $key = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
-            $rep = $reportsByKey->get($key);
-            if ($rep) {
+        foreach (Division::query()->where('directorate_id', $directorateId)->pluck('id') as $divId) {
+            $key = WeeklyBriefingContributor::contributionKeyForDivision((int) $divId);
+            if ($rep = $reportsByKey->get($key)) {
                 $picked->push($rep);
             }
         }
@@ -61,8 +59,7 @@ final class WeeklyBriefingDirectorateCombined
     }
 
     /**
-     * Configured contributor keys (from settings) for divisions this director directs in this directorate scope
-     * (division d-* keys only; directorate dr-* rows are excluded from the director-scoped summary).
+     * Configured contributor keys for this directorate scope (dr-* for the id, and d-* for divisions in that directorate).
      *
      * @return list<string>
      */
@@ -71,30 +68,40 @@ final class WeeklyBriefingDirectorateCombined
         int $directorateId,
         WeeklyBriefingSetting $settings,
     ): array {
+        $dir = Directorate::query()->find($directorateId);
+        if (! $dir || (int) ($dir->director_id ?? 0) !== $directorStaffId) {
+            return [];
+        }
+
         $configured = $settings->contributors()->distinct()->pluck('contribution_key')->filter()->values();
         $out = [];
         foreach ($configured as $key) {
             $k = trim((string) $key);
-            if ($k === '' || ! str_starts_with($k, 'd-')) {
+            if ($k === '') {
                 continue;
             }
-            $divId = (int) substr($k, 2);
-            $div = Division::query()->find($divId);
-            if (! $div || ! $div->staffActsAsWeeklyBriefDivisionAuthority($directorStaffId)) {
+            if (str_starts_with($k, 'dr-')) {
+                $id = (int) substr($k, 3);
+                if ($id === $directorateId) {
+                    $out[] = $k;
+                }
+
                 continue;
             }
-            $divDir = (int) ($div->directorate_id ?? 0);
-            if ($divDir !== $directorateId) {
-                continue;
+            if (str_starts_with($k, 'd-')) {
+                $divId = (int) substr($k, 2);
+                $div = Division::query()->find($divId);
+                if ($div && (int) ($div->directorate_id ?? 0) === $directorateId) {
+                    $out[] = $k;
+                }
             }
-            $out[] = $k;
         }
 
         return array_values(array_unique($out));
     }
 
     /**
-     * One entry per distinct (director_id, directorate_id) that has at least one submitted division brief.
+     * One entry per distinct (directorate director, directorate) that has at least one submitted report in scope.
      *
      * @param  Collection<int, WeeklyBriefingReport>  $submittedReports
      * @return list<array{director_id: int, directorate_id: int, reports: Collection<int, WeeklyBriefingReport>}>
@@ -104,16 +111,21 @@ final class WeeklyBriefingDirectorateCombined
         $reportsByKey = $submittedReports->keyBy(fn (WeeklyBriefingReport $r) => (string) $r->contribution_key);
 
         $pairSeen = [];
-        foreach (Division::query()->orderBy('id')->get() as $div) {
-            $recipientId = $div->primaryOrActiveDirectorStaffIdForWeeklyBrief();
-            if (! $recipientId) {
+        foreach (Directorate::query()->whereNotNull('director_id')->where('director_id', '>', 0)->get() as $dirRow) {
+            $dirTorateId = (int) $dirRow->id;
+            $recipientId = (int) $dirRow->director_id;
+            $has = $reportsByKey->has(WeeklyBriefingContributor::contributionKeyForDirectorate($dirTorateId));
+            if (! $has) {
+                foreach (Division::query()->where('directorate_id', $dirTorateId)->pluck('id') as $divId) {
+                    if ($reportsByKey->has(WeeklyBriefingContributor::contributionKeyForDivision((int) $divId))) {
+                        $has = true;
+                        break;
+                    }
+                }
+            }
+            if (! $has) {
                 continue;
             }
-            $dKey = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
-            if (! $reportsByKey->has($dKey)) {
-                continue;
-            }
-            $dirTorateId = (int) ($div->directorate_id ?? 0);
             $pairSeen[$recipientId.':'.$dirTorateId] = [
                 'director_id' => $recipientId,
                 'directorate_id' => $dirTorateId,
@@ -158,30 +170,16 @@ final class WeeklyBriefingDirectorateCombined
             ->get()
             ->keyBy(fn (WeeklyBriefingReport $r) => (string) $r->contribution_key);
 
-        $directorateIds = [];
-        foreach (Division::queryForWeeklyBriefDivisionAuthority($staffId)->get() as $div) {
-            $dKey = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
-            if (! $reportsByKey->has($dKey)) {
-                continue;
-            }
-            $directorateIds[(int) ($div->directorate_id ?? 0)] = true;
-        }
-
         $options = [];
-        foreach (array_keys($directorateIds) as $dirId) {
-            $coll = self::submittedReportsForDirectorDirectorate($staffId, (int) $dirId, $isoYear, $isoWeek, $reportsByKey);
+        foreach (Directorate::query()->where('director_id', $staffId)->where('is_active', true)->orderBy('name')->get() as $dir) {
+            $dirId = (int) $dir->id;
+            $coll = self::submittedReportsForDirectorDirectorate($staffId, $dirId, $isoYear, $isoWeek, $reportsByKey);
             if ($coll->isEmpty()) {
                 continue;
             }
-            if ($dirId > 0) {
-                $first = Division::query()->where('directorate_id', $dirId)->with('directorate')->orderBy('id')->first();
-                $label = $first?->directorate?->name ?? ('Directorate #'.$dirId);
-            } else {
-                $label = 'Directed divisions (no directorate)';
-            }
             $options[] = [
-                'directorate_id' => (int) $dirId,
-                'label' => $label,
+                'directorate_id' => $dirId,
+                'label' => $dir->name !== '' ? (string) $dir->name : ('Directorate #'.$dirId),
             ];
         }
 

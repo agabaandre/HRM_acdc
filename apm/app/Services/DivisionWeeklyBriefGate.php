@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Directorate;
 use App\Models\Division;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
@@ -76,6 +77,10 @@ final class DivisionWeeklyBriefGate
         return 0;
     }
 
+    /**
+     * True when the user is assigned as director on at least one active directorate (`directorates.director_id`).
+     * (Method name kept for backwards compatibility with callers.)
+     */
     public static function mayActAsDivisionDirector(?int $staffId = null): bool
     {
         if (! self::divisionDirectorsModuleAccessEnabled()) {
@@ -86,11 +91,14 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        return Division::queryForWeeklyBriefDivisionAuthority($sid)->exists();
+        return Directorate::query()
+            ->where('is_active', true)
+            ->where('director_id', $sid)
+            ->exists();
     }
 
     /**
-     * Weekly brief settings: when false, division directors do not get module/nav (unless contributor/viewer).
+     * Weekly brief settings: when false, directorate directors do not get module/nav (unless contributor/viewer).
      */
     private static function divisionDirectorsModuleAccessEnabled(): bool
     {
@@ -114,7 +122,8 @@ final class DivisionWeeklyBriefGate
     }
 
     /**
-     * Contribution keys for reporting units this user may open as division director (divisions table).
+     * Contribution keys this user may manage as **directorate director** ({@see Directorate::director_id}),
+     * intersected with configured contributor keys (includes legacy d-* rows mapped via division.directorate_id).
      *
      * @return list<string>
      */
@@ -131,10 +140,24 @@ final class DivisionWeeklyBriefGate
         $configuredSet = array_fill_keys($configured, true);
         $sid = self::sessionStaffId();
         $out = [];
-        foreach (Division::queryForWeeklyBriefDivisionAuthority($sid)->get() as $div) {
-            $k = WeeklyBriefingContributor::contributionKeyForDivision((int) $div->id);
-            if (isset($configuredSet[$k])) {
-                $out[] = $k;
+        foreach (array_keys($configuredSet) as $k) {
+            if (str_starts_with($k, 'dr-')) {
+                $id = (int) substr($k, 3);
+                $dir = Directorate::query()->find($id);
+                if ($dir && (int) ($dir->director_id ?? 0) === $sid) {
+                    $out[] = $k;
+                }
+            } elseif (str_starts_with($k, 'd-')) {
+                $divId = (int) substr($k, 2);
+                $div = Division::query()->find($divId);
+                $dirId = (int) ($div?->directorate_id ?? 0);
+                if ($dirId <= 0) {
+                    continue;
+                }
+                $dir = Directorate::query()->find($dirId);
+                if ($dir && (int) ($dir->director_id ?? 0) === $sid) {
+                    $out[] = $k;
+                }
             }
         }
 
@@ -180,13 +203,13 @@ final class DivisionWeeklyBriefGate
 
     private static function currentUserIsDirectorForDivisionReport(WeeklyBriefingReport $report): bool
     {
-        $div = $report->divisionForContribution();
-        if (! $div) {
+        $dir = $report->directorateForDirectorReview();
+        if (! $dir) {
             return false;
         }
         $uid = self::sessionStaffId();
 
-        return $div->staffActsAsWeeklyBriefDivisionAuthority($uid);
+        return (int) ($dir->director_id ?? 0) === $uid;
     }
 
     public static function mayDownloadDirectorateCombinedPdf(int $isoYear, int $isoWeek, int $directorateId): bool

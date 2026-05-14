@@ -120,16 +120,11 @@ class WeeklyBriefingCompletionSummary
 
     private static function directorReviewCell(string $contributionKey, ?WeeklyBriefingReport $report): string
     {
-        if (! str_starts_with($contributionKey, 'd-')) {
-            return '—';
-        }
-        $divId = (int) substr($contributionKey, 2);
-        $div = Division::query()->find($divId);
-        if (! $div || (int) ($div->director_id ?? 0) <= 0) {
-            return 'N/A';
-        }
         if (! $report) {
             return '—';
+        }
+        if (! $report->requiresDirectorReview()) {
+            return 'N/A';
         }
 
         return $report->directorReviewSummaryLine();

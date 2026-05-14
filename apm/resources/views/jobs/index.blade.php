@@ -506,7 +506,7 @@
                                     <i class="bx bx-check-shield text-secondary" style="font-size: 2rem;"></i>
                                 </div>
                                 <h6 class="card-title">Director review reminders</h6>
-                                <p class="card-text small text-muted">Runs <code>--force</code>: emails division directors about submitted briefs still pending review (same as scheduled command).</p>
+                                <p class="card-text small text-muted">Runs <code>--force</code>: emails <strong>directorate directors</strong> about submitted briefs still pending review (same as scheduled command).</p>
                                 <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="executeWeeklyBriefingMail('director_review_reminders', this)">
                                     <i class="bx bx-play me-1"></i> Run now (force)
                                 </button>
