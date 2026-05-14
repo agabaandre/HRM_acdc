@@ -268,7 +268,7 @@ Full behaviour, routes, access, and PDF footer behaviour: **[WEEKLY_BRIEFING.md]
 | `weekly-briefing:hod-reminders` | Contributor reminders for missing briefs for the configured filing ISO week. Without `--force`, respects `reminders_enabled`, deadline-relative day offsets (`hod_reminder_days_before_deadline`), and `hod_reminder_clock` (which time column to match). |
 | `weekly-briefing:director-review-reminders` | Director reminders for submitted briefs pending **directorate director** review (`directorates.director_id`). Without `--force`, respects `reminders_enabled`, `director_review_reminder_days_before_deadline`, and `director_review_reminder_clock`. |
 | `weekly-briefing:lock-drafts` | Locks **draft** reports after the submission deadline (honours per-report unlock overrides). |
-| `weekly-briefing:compiled-summary` | Sends compiled weekly-brief email(s) and attachments per settings. Without `--force`, respects `reminders_enabled`, submission weekday, and `summary_send_time`. |
+| `weekly-briefing:compiled-summary` | Sends compiled weekly-brief email(s) and attachments per settings. Without `--force`, respects `reminders_enabled`, the **calendar day of the filing week submission deadline** (aligned with `WeeklyBriefingSetting::filingSubmissionDeadline()`), and `summary_send_time`. |
 | `weekly-briefing:test-notifications` | Sends sample weekly-brief emails to a test address (SMTP verification). |
 
 - **Jobs UI**: `POST jobs/weekly-briefing` can invoke test notifications or `--force` runs for HoD reminders, director review reminders, and compiled summary (`JobsController`).

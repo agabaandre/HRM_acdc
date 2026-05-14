@@ -42,14 +42,14 @@
                         <input type="time" name="summary_send_time" class="form-control" value="{{ old('summary_send_time', substr($settings->summary_send_time,0,5)) }}" required>
                     </div>
                 </div>
-                <p class="small text-muted mt-2 mb-0">The server scheduler runs weekly briefing commands every minute; each command self-gates (e.g. compiled summary on the submission weekday at <strong>Compiled summary send</strong> time). HoD and director review reminders use the <strong>days before deadline</strong> settings below, matched at the chosen clock column (minute precision). Ensure <code>php artisan schedule:run</code> runs every minute.</p>
+                <p class="small text-muted mt-2 mb-0">The server scheduler runs weekly briefing commands every minute; each command self-gates (e.g. compiled summary on the <strong>same calendar day as the filing week submission deadline</strong> at <strong>Compiled summary send</strong> time). HoD and director review reminders use the <strong>days before deadline</strong> settings below, matched at the chosen clock column (minute precision). Ensure <code>php artisan schedule:run</code> runs every minute.</p>
             </div>
         </div>
 
         <div class="card shadow-sm mb-3">
             <div class="card-header fw-bold">Default reporting week (hub &amp; reminders)</div>
             <div class="card-body">
-                <p class="small text-muted">Controls which ISO week the <strong>Weekly brief</strong> index tab, <strong>Start</strong> links, HoD reminder emails, and the compiled summary send target by default. Individual reports still store their own ISO week; the <strong>All reports</strong> tab can list any week.</p>
+                <p class="small text-muted">Controls which ISO week the <strong>Weekly brief</strong> index tab, <strong>Start</strong> links, HoD reminder emails, and the compiled summary send target by default. Individual reports still store their own ISO week; the <strong>All reports</strong> tab can list any week. When <strong>Next ISO week</strong> is selected, the submission deadline for that filing week is the <strong>Friday before</strong> that reporting week begins (at <strong>Submission closes</strong> time), so briefs are filed in advance.</p>
                 <div class="mb-0">
                     <label class="form-label">HoDs file for</label>
                     <select name="filing_iso_week_offset" class="form-select" style="max-width:28rem;">

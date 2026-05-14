@@ -24,7 +24,7 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
         $filing = $settings->filingIsoWeekPair();
         $y = $filing['iso_year'];
         $w = $filing['iso_week'];
-        $deadline = WeeklyBriefingReport::syntheticDeadlineForIsoWeek($settings, $y, $w);
+        $deadline = $settings->filingSubmissionDeadline();
 
         if (Carbon::now()->greaterThan($deadline)) {
             return self::SUCCESS;

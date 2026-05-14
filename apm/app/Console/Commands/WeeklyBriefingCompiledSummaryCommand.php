@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 
 class WeeklyBriefingCompiledSummaryCommand extends Command
 {
-    protected $signature = 'weekly-briefing:compiled-summary {--force : Run immediately, ignoring reminders_enabled, weekday, and summary_send_time}';
+    protected $signature = 'weekly-briefing:compiled-summary {--force : Run immediately, ignoring reminders_enabled, deadline calendar-day gate, and summary_send_time}';
 
     protected $description = 'Email organisation-wide compiled Weekly brief only to central recipients; optionally email HoDs per division and directors a separate division-only director report plus scoped completion summary.';
 
@@ -26,21 +26,24 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
     {
         $settings = WeeklyBriefingSetting::current();
         $force = (bool) $this->option('force');
+        $filing = $settings->filingIsoWeekPair();
+        $y = $filing['iso_year'];
+        $w = $filing['iso_week'];
+        $filingDeadline = $settings->filingSubmissionDeadline();
+
         if (! $force) {
             if (! $settings->reminders_enabled) {
                 return self::SUCCESS;
             }
-            if ((int) Carbon::now()->dayOfWeek !== (int) $settings->submission_weekday) {
+            // Same calendar day as the configured filing week’s submission deadline (not raw
+            // `submission_weekday`, so advance filing — deadline Friday before the reporting week — matches).
+            if (! Carbon::now()->startOfDay()->equalTo($filingDeadline->copy()->startOfDay())) {
                 return self::SUCCESS;
             }
             if (! $settings->matchesTimeNow('summary_send_time')) {
                 return self::SUCCESS;
             }
         }
-
-        $filing = $settings->filingIsoWeekPair();
-        $y = $filing['iso_year'];
-        $w = $filing['iso_week'];
         $weekHuman = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8');
 
         $reportsAllSubmitted = WeeklyBriefingReport::query()

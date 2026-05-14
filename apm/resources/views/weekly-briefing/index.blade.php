@@ -113,8 +113,8 @@
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small mb-0 text-muted">Reporting unit</label>
-                        <input type="search" name="tw_search" class="form-control form-control-sm" value="{{ $twSearch ?? '' }}" placeholder="Search by name…" autocomplete="off">
+                        <label class="form-label small mb-0 text-muted">Division / unit</label>
+                        <input type="search" name="tw_search" class="form-control form-control-sm" value="{{ $twSearch ?? '' }}" placeholder="Search by division or unit name…" autocomplete="off">
                     </div>
                     <div class="col-md-auto d-flex gap-2">
                         <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Apply</button>
@@ -128,12 +128,15 @@
                 @elseif(($thisWeekPaginator->total() ?? 0) === 0)
                     <p class="text-muted p-4 mb-0">No rows match the current filters.</p>
                 @else
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-2 border-bottom bg-white small text-muted">
+                        <span>Showing <strong>{{ $thisWeekPaginator->firstItem() }}</strong>–<strong>{{ $thisWeekPaginator->lastItem() }}</strong> of <strong>{{ $thisWeekPaginator->total() }}</strong> divisions / reporting units</span>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-sm table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width:3rem" class="text-center">#</th>
-                                    <th>Reporting unit</th>
+                                    <th>Division / reporting unit</th>
                                     <th>Status</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
@@ -177,7 +180,10 @@
                         </table>
                     </div>
                     @if($thisWeekPaginator->hasPages())
-                        <div class="card-body border-top py-2">{{ $thisWeekPaginator->withQueryString()->links() }}</div>
+                        <div class="card-body border-top py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span class="small text-muted">Page {{ $thisWeekPaginator->currentPage() }} of {{ $thisWeekPaginator->lastPage() }}</span>
+                            <nav aria-label="Weekly brief divisions pagination" class="ms-auto">{{ $thisWeekPaginator->withQueryString()->links() }}</nav>
+                        </div>
                     @endif
                 @endif
             </div>

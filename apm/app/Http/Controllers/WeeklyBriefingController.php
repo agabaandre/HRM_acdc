@@ -23,7 +23,9 @@ class WeeklyBriefingController extends Controller
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
 
-        $listingKeys = DivisionWeeklyBriefGate::contributionKeysForReportListing();
+        $listingKeys = $this->sortContributionKeysForWeeklyBriefIndex(
+            DivisionWeeklyBriefGate::contributionKeysForReportListing()
+        );
         $filingKeys = DivisionWeeklyBriefGate::contributionKeysForFiling();
 
         $settings = WeeklyBriefingSetting::current();
@@ -31,7 +33,7 @@ class WeeklyBriefingController extends Controller
         $filingIsoYear = $filing['iso_year'];
         $filingIsoWeek = $filing['iso_week'];
         $filingWeekHumanRange = WeeklyBriefingReport::humanIsoWeekRange($filingIsoYear, $filingIsoWeek);
-        $filingSubmissionDeadline = WeeklyBriefingReport::syntheticDeadlineForIsoWeek($settings, $filingIsoYear, $filingIsoWeek);
+        $filingSubmissionDeadline = $settings->filingSubmissionDeadline();
 
         $tab = (string) $request->query('tab', 'this_week');
         if ($tab !== 'all') {
@@ -83,7 +85,7 @@ class WeeklyBriefingController extends Controller
             return $r && (string) $r->status === $twStatus;
         })->values();
 
-        $twPerPage = 15;
+        $twPerPage = 20;
         $twPage = max(1, (int) $request->query('tw_page', 1));
         $twTotal = $filteredThisWeek->count();
         $twItems = $filteredThisWeek->slice(($twPage - 1) * $twPerPage, $twPerPage)->values()->all();
@@ -142,7 +144,7 @@ class WeeklyBriefingController extends Controller
                     $reportsQuery->whereIn('contribution_key', $matchingKeys);
                 }
             }
-            $reports = $reportsQuery->paginate(15)->withQueryString();
+            $reports = $reportsQuery->paginate(20)->withQueryString();
         }
 
         $filingKeySet = array_fill_keys($filingKeys, true);
@@ -573,6 +575,48 @@ class WeeklyBriefingController extends Controller
         $id = user_session('division_id');
 
         return $id !== null && $id !== '' ? (int) $id : null;
+    }
+
+    /**
+     * @param  list<string>  $keys
+     * @return list<string>
+     */
+    private function sortContributionKeysForWeeklyBriefIndex(array $keys): array
+    {
+        if ($keys === []) {
+            return [];
+        }
+
+        $divIds = [];
+        foreach ($keys as $k) {
+            if (str_starts_with((string) $k, 'd-')) {
+                $divIds[] = (int) substr((string) $k, 2);
+            }
+        }
+        $divIds = array_values(array_unique(array_filter($divIds)));
+        $nameById = $divIds === []
+            ? []
+            : Division::query()->whereIn('id', $divIds)->pluck('division_name', 'id')->all();
+
+        usort($keys, function (string $a, string $b) use ($nameById): int {
+            $tuple = function (string $k) use ($nameById): string {
+                if (str_starts_with($k, 'd-')) {
+                    $id = (int) substr($k, 2);
+                    $name = mb_strtolower((string) ($nameById[$id] ?? ''));
+
+                    return 'd:'.$name."\0".str_pad((string) $id, 10, '0', STR_PAD_LEFT);
+                }
+                if (str_starts_with($k, 'dr-')) {
+                    return 'dr:'.mb_strtolower(WeeklyBriefingContributor::presentationLabelForContributionKey($k));
+                }
+
+                return 'z:'.$k;
+            };
+
+            return strcmp($tuple($a), $tuple($b));
+        });
+
+        return $keys;
     }
 
     private function assertDivisionWeeklyBriefModuleAccess(): void
