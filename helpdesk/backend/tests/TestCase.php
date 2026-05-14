@@ -29,7 +29,12 @@ abstract class TestCase extends BaseTestCase
                 ],
             ],
             'directorates' => [
-                ['id' => $directorateId, 'name' => 'Test Directorate'],
+                [
+                    'id' => $directorateId,
+                    'name' => 'Test Directorate',
+                    'director_id' => null,
+                    'director' => null,
+                ],
             ],
         ], 3600);
 

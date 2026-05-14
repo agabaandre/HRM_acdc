@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Controllers\Api\V1\ReferenceDataController;
+use App\Support\StaffShareNormalizer;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
@@ -70,15 +71,10 @@ class ReferenceDataSyncService
 
     /**
      * @param  array<string, mixed>  $r
-     * @return array{id:int,name:string}
+     * @return array{id:int,name:string,director_id:?int,director:?array<string,mixed>}
      */
     private function normalizeDirectorate(array $r): array
     {
-        $id = (int) ($r['directorate_id'] ?? $r['id'] ?? 0);
-
-        return [
-            'id' => $id,
-            'name' => (string) ($r['name'] ?? $r['directorate_name'] ?? ''),
-        ];
+        return StaffShareNormalizer::directorate($r);
     }
 }

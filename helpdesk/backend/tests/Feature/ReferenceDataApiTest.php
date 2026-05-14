@@ -28,7 +28,18 @@ class ReferenceDataApiTest extends TestCase
                 ['division_id' => 21, 'division_name' => 'IT Division', 'directorate_id' => 4],
             ]),
             'http://staff.test/share/directorates/testtoken' => Http::response([
-                ['directorate_id' => 4, 'name' => 'Operations'],
+                [
+                    'directorate_id' => 4,
+                    'name' => 'Operations',
+                    'director_id' => 101,
+                    'director' => [
+                        'id' => 101,
+                        'fname' => 'Ada',
+                        'lname' => 'Lovelace',
+                        'title' => null,
+                        'name' => 'Ada Lovelace',
+                    ],
+                ],
             ]),
             'http://staff.test/share/get_current_staff/testtoken*' => Http::response([
                 [
@@ -53,7 +64,9 @@ class ReferenceDataApiTest extends TestCase
         $this->getJson('/api/v1/reference-data')
             ->assertOk()
             ->assertJsonPath('data.divisions.0.id', 21)
-            ->assertJsonPath('data.directorates.0.id', 4);
+            ->assertJsonPath('data.directorates.0.id', 4)
+            ->assertJsonPath('data.directorates.0.director_id', 101)
+            ->assertJsonPath('data.directorates.0.director.name', 'Ada Lovelace');
 
         $this->getJson('/api/v1/reference-data/staff?division_id=21')
             ->assertOk()
@@ -76,7 +89,18 @@ class ReferenceDataApiTest extends TestCase
                 ['division_id' => 21, 'division_name' => 'IT Division', 'directorate_id' => 4],
             ]),
             'http://staff.test/share/directorates/testtoken' => Http::response([
-                ['directorate_id' => 4, 'name' => 'Operations'],
+                [
+                    'directorate_id' => 4,
+                    'name' => 'Operations',
+                    'director_id' => 101,
+                    'director' => [
+                        'id' => 101,
+                        'fname' => 'Ada',
+                        'lname' => 'Lovelace',
+                        'title' => null,
+                        'name' => 'Ada Lovelace',
+                    ],
+                ],
             ]),
             'http://staff.test/share/get_current_staff/testtoken*' => Http::response([]),
         ]);

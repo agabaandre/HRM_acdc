@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Proxies Staff Share API for divisions / directorates / staff with the same shapes as
- * the APM reference-data lists, and similar fetch cadence via short-lived server cache (default 300s, configurable).
+ * the APM reference-data lists (directorates include director_id and director summary), and similar fetch cadence via short-lived server cache (default 300s, configurable).
  */
 class ReferenceDataController extends Controller
 {
