@@ -27,15 +27,64 @@ final class StaffShareNormalizer
 
     /**
      * @param  array<string, mixed>  $r
-     * @return array{id:int,name:string}
+     * @return array{id:int,name:string,director_id:?int,director:?array{id:int,name:string,fname:string,lname:string,title:?string}}
      */
     public static function directorate(array $r): array
     {
         $id = (int) ($r['directorate_id'] ?? $r['id'] ?? 0);
+        $rawDir = $r['director_id'] ?? null;
+        $directorId = ($rawDir !== null && $rawDir !== '' && (int) $rawDir > 0) ? (int) $rawDir : null;
+
+        $director = null;
+        if (isset($r['director']) && is_array($r['director'])) {
+            $nested = $r['director'];
+            $nid = (int) ($nested['id'] ?? $nested['staff_id'] ?? 0);
+            if ($nid > 0) {
+                $fname = trim((string) ($nested['fname'] ?? ''));
+                $lname = trim((string) ($nested['lname'] ?? ''));
+                $title = isset($nested['title']) ? trim((string) $nested['title']) : '';
+                $titleOrNull = $title !== '' ? $title : null;
+                $name = trim((string) ($nested['name'] ?? ''));
+                if ($name === '') {
+                    $name = trim(implode(' ', array_filter([$titleOrNull, $fname, $lname])));
+                }
+                if ($name === '') {
+                    $name = 'Staff '.$nid;
+                }
+                $director = [
+                    'id' => $nid,
+                    'fname' => $fname,
+                    'lname' => $lname,
+                    'title' => $titleOrNull,
+                    'name' => $name,
+                ];
+                if ($directorId === null) {
+                    $directorId = $nid;
+                }
+            }
+        } elseif ($directorId !== null) {
+            $fname = trim((string) ($r['director_fname'] ?? ''));
+            $lname = trim((string) ($r['director_lname'] ?? ''));
+            $title = isset($r['director_title']) ? trim((string) $r['director_title']) : '';
+            $titleOrNull = $title !== '' ? $title : null;
+            $name = trim(implode(' ', array_filter([$titleOrNull, $fname, $lname])));
+            if ($name === '') {
+                $name = 'Staff '.$directorId;
+            }
+            $director = [
+                'id' => $directorId,
+                'fname' => $fname,
+                'lname' => $lname,
+                'title' => $titleOrNull,
+                'name' => $name,
+            ];
+        }
 
         return [
             'id' => $id,
             'name' => (string) ($r['name'] ?? $r['directorate_name'] ?? ''),
+            'director_id' => $directorId,
+            'director' => $director,
         ];
     }
 

@@ -17,6 +17,31 @@ class Settings_mdl extends CI_Model
         return $query;
     }
 
+    /**
+     * Directorates with optional director name (staff join) for settings UI.
+     */
+    public function get_directorates_for_settings()
+    {
+        $this->db->select('dir.*, s.fname AS director_fname, s.lname AS director_lname');
+        $this->db->from('directorates dir');
+        $this->db->join('staff s', 's.staff_id = dir.director_id', 'left');
+        $this->db->order_by('dir.name', 'asc');
+        return $this->db->get();
+    }
+
+    /**
+     * Normalize optional staff_id from POST (empty → null for DB).
+     */
+    private function nullable_staff_id_post($field)
+    {
+        $v = $this->input->post($field, true);
+        if ($v === null || $v === '' || $v === false) {
+            return null;
+        }
+        $n = (int) $v;
+        return $n > 0 ? $n : null;
+    }
+
     public function get_divisions_paginated($limit = 15, $offset = 0, $search = '') {
         $this->db->select('d.*, 
             dh.fname as head_fname, dh.lname as head_lname,
@@ -203,6 +228,7 @@ class Settings_mdl extends CI_Model
             $data = [
                 'name'      => $this->input->post('directorate_name', true),
                 'is_active' => (int)$this->input->post('is_active'),
+                'director_id' => $this->nullable_staff_id_post('director_id'),
                 'created_at' => date('Y-m-d H:i:s'),
             ];
         } elseif ($table === 'nationalities') {
@@ -329,6 +355,7 @@ class Settings_mdl extends CI_Model
             $data = [
                 'name'       => $this->input->post('directorate_name', true),
                 'is_active'  => (int)$this->input->post('is_active'),
+                'director_id' => $this->nullable_staff_id_post('director_id'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ];
         } elseif ($table === 'nationalities') {

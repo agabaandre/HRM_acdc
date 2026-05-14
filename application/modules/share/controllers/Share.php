@@ -345,8 +345,40 @@ public function visualise()
 public function directorates(){
 	if($this->api_login()){
 		try {
-			$result = $this->db->get("directorates")->result_array();
-			
+			$this->db->select('dir.*, s.fname AS director_fname, s.lname AS director_lname, s.title AS director_title');
+			$this->db->from('directorates dir');
+			$this->db->join('staff s', 's.staff_id = dir.director_id', 'left');
+			$this->db->order_by('dir.name', 'asc');
+			$result = $this->db->get()->result_array();
+
+			foreach ($result as &$row) {
+				if (array_key_exists('director_id', $row)) {
+					$raw = $row['director_id'];
+					$row['director_id'] = ($raw !== null && $raw !== '' && (int) $raw > 0) ? (int) $raw : null;
+				}
+				$did = $row['director_id'] ?? null;
+				$fname = isset($row['director_fname']) ? trim((string) $row['director_fname']) : '';
+				$lname = isset($row['director_lname']) ? trim((string) $row['director_lname']) : '';
+				$title = isset($row['director_title']) ? trim((string) $row['director_title']) : '';
+				unset($row['director_fname'], $row['director_lname'], $row['director_title']);
+				if ($did) {
+					$name = trim(implode(' ', array_filter(array($title, $fname, $lname))));
+					if ($name === '') {
+						$name = 'Staff '.$did;
+					}
+					$row['director'] = array(
+						'id' => $did,
+						'fname' => $fname,
+						'lname' => $lname,
+						'title' => $title !== '' ? $title : null,
+						'name' => $name,
+					);
+				} else {
+					$row['director'] = null;
+				}
+			}
+			unset($row);
+
 			header('Content-Type: application/json');
 			http_response_code(200);
 			echo json_encode($result);

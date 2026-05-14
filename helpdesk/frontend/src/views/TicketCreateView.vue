@@ -17,6 +17,8 @@ interface DivisionRow {
 interface DirectorateRow {
   id: number
   name: string
+  director_id?: number | null
+  director?: { id: number; name: string; fname?: string; lname?: string; title?: string | null } | null
 }
 
 interface StaffRow {

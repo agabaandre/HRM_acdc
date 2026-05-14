@@ -229,7 +229,7 @@ class Settings extends MX_Controller
 	{
 		$this->load->model('settings_mdl');
 	
-		$data['directorates'] = $this->settings_mdl->get_content('directorates');
+		$data['directorates'] = $this->settings_mdl->get_directorates_for_settings();
 
 	
 		// Additional metadata
