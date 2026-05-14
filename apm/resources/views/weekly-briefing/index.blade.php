@@ -22,7 +22,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
             <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Weekly brief</h4>
-            <small class="text-muted d-block">Contributors edit assigned units; division directors may review division briefs where they are the director.</small>
+            <small class="text-muted d-block">Contributors edit assigned units; <strong>directorate directors</strong> (from the <code>directorates</code> table) may review briefs for their directorate.</small>
             <small class="text-muted"><strong>Active reporting week:</strong> {{ $filingWeekHumanRange }}</small>
         </div>
         <div class="d-flex flex-wrap gap-2">
@@ -50,10 +50,10 @@
             @if(count($wbDirectorCombinedOptions ?? []) > 0)
                 @if(count($wbDirectorCombinedOptions) === 1)
                     @php $o0 = $wbDirectorCombinedOptions[0]; @endphp
-                    <a href="{{ route('weekly-briefing.directorate-combined-pdf', ['year' => $wbNowY, 'week' => $wbNowW, 'directorate_id' => $o0['directorate_id']]) }}" class="btn btn-outline-info" target="_blank"><i class="fas fa-layer-group me-1"></i> Director report — my divisions</a>
+                    <a href="{{ route('weekly-briefing.directorate-combined-pdf', ['year' => $wbNowY, 'week' => $wbNowW, 'directorate_id' => $o0['directorate_id']]) }}" class="btn btn-outline-info" target="_blank"><i class="fas fa-layer-group me-1"></i> Director report — my directorate</a>
                 @else
                     <div class="dropdown">
-                        <button class="btn btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-layer-group me-1"></i> Director report — my divisions</button>
+                        <button class="btn btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-layer-group me-1"></i> Director report — my directorates</button>
                         <ul class="dropdown-menu">
                             @foreach($wbDirectorCombinedOptions as $o)
                                 <li>

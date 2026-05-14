@@ -9,14 +9,14 @@ use App\Support\WeeklyBriefingMailTemplate;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Emails division director(s) when a contributor submits a weekly brief that requires director review (division d-* keys).
+ * Emails the **directorate director** ({@see Directorate::director_id}) when a contributor submits a weekly brief that requires director review.
  * Uses {@see sendEmail} and {@see WeeklyBriefingMailTemplate} like other weekly briefing notifications.
  */
 final class WeeklyBriefingDirectorSubmitNotifier
 {
     public static function notifyDirectorsAfterContributorSubmit(WeeklyBriefingReport $report): void
     {
-        $report->loadMissing(['submittedBy', 'division']);
+        $report->loadMissing(['submittedBy']);
 
         if ($report->status !== WeeklyBriefingReport::STATUS_SUBMITTED) {
             return;
@@ -26,12 +26,12 @@ final class WeeklyBriefingDirectorSubmitNotifier
             return;
         }
 
-        $div = $report->divisionForContribution();
-        if (! $div) {
+        $dir = $report->directorateForDirectorReview();
+        if (! $dir) {
             return;
         }
 
-        $directorStaffId = $div->primaryOrActiveDirectorStaffIdForWeeklyBrief();
+        $directorStaffId = (int) ($dir->director_id ?? 0);
         if (! $directorStaffId || $directorStaffId <= 0) {
             return;
         }
@@ -77,10 +77,10 @@ final class WeeklyBriefingDirectorSubmitNotifier
         $inner = <<<HTML
 <p><strong>{$submitterName}</strong> has submitted the <strong>Weekly brief</strong> for reporting unit <strong>{$label}</strong>.</p>
 <p><strong>Reporting week:</strong> {$weekHuman}</p>
-<p>Please review it in APM before the division brief is included in the organisation-wide compilation.</p>
+<p>Please review it in APM before the brief is included in the organisation-wide compilation.</p>
 <p style="text-align:center;"><a class="btn" href="{$editUrl}">Open briefing to review</a></p>
 <p>You can also open the <strong>Weekly brief</strong> module from the <a href="{$indexUrl}">APM home navigation</a>.</p>
-<p style="font-size:12px;color:#64748b;">This message was sent automatically because director review is required for this division brief.</p>
+<p style="font-size:12px;color:#64748b;">This message was sent automatically because director review is required for this reporting unit (directorate director on the directorates table).</p>
 HTML;
 
         $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';

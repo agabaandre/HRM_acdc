@@ -224,17 +224,17 @@ HTML;
                 $safeDir = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $dirLabel);
                 $divisionCount = $groupReports->count();
                 $metaHtml = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8')
-                    .' · <strong>'.(int) $divisionCount.'</strong> submitted division briefing(s).';
+                    .' · <strong>'.(int) $divisionCount.'</strong> submitted briefing(s) in this directorate scope.';
 
                 $compiled = mpdf_print('weekly-briefing.pdf-compiled', [
                     'reports' => $groupReports,
                     'settings' => $settings,
                     'isoYear' => $y,
                     'isoWeek' => $w,
-                    'compiledPdfHeading' => 'Weekly brief — director report (your divisions only)',
+                    'compiledPdfHeading' => 'Weekly brief — director report (your directorate scope)',
                     'compiledPdfMetaHtml' => $metaHtml,
                 ], ['orientation' => 'L']);
-                $combinedFilename = 'Weekly_Briefing_Director_Divisions_'.$safeDir.'_W'.$w.'_'.$y.'.pdf';
+                $combinedFilename = 'Weekly_Briefing_Director_Directorate_'.$safeDir.'_W'.$w.'_'.$y.'.pdf';
                 $combinedBinary = $compiled->Output('', 'S');
                 $attachments = [
                     ['name' => $combinedFilename, 'content' => $combinedBinary, 'content_type' => 'application/pdf'],
@@ -247,7 +247,7 @@ HTML;
                 );
                 $scopeRows = WeeklyBriefingCompletionSummary::rowsForContributionKeys($settings, $y, $w, $scopeKeys);
                 if ($scopeRows !== []) {
-                    $scopeNote = 'Director view: completion status for division reporting units you direct in this directorate (from settings). Directorate-only (dr-) rows are not included here.';
+                    $scopeNote = 'Director view: completion status for reporting units in this directorate scope (from settings), including directorate-level (dr-) and division (d-) keys under the same directorate.';
                     $scopeSummaryPdf = mpdf_print('weekly-briefing.pdf-completion-summary', [
                         'rows' => $scopeRows,
                         'settings' => $settings,
@@ -255,7 +255,7 @@ HTML;
                         'isoWeek' => $w,
                         'pdfScopeNote' => $scopeNote,
                     ], ['orientation' => 'L']);
-                    $scopeSummaryFilename = 'Weekly_Briefing_Completion_Summary_Director_Divisions_'.$safeDir.'_W'.$w.'_'.$y.'.pdf';
+                    $scopeSummaryFilename = 'Weekly_Briefing_Completion_Summary_Director_Directorate_'.$safeDir.'_W'.$w.'_'.$y.'.pdf';
                     $attachments[] = [
                         'name' => $scopeSummaryFilename,
                         'content' => $scopeSummaryPdf->Output('', 'S'),
@@ -264,7 +264,7 @@ HTML;
                 }
 
                 $dirLabelEsc = htmlspecialchars($dirLabel, ENT_QUOTES, 'UTF-8');
-                $combinedInner = '<p>Please find attached (1) the <strong>Director report</strong>, comprising submitted <strong>Weekly brief</strong> returns for divisions for which you are recorded as director in the system. Reporting week: <strong>'.$weekHuman.'</strong> This package is <strong>not</strong> the organisation-wide compiled document sent to central recipients. (2) A completion summary covering those division reporting units only.</p>';
+                $combinedInner = '<p>Please find attached (1) the <strong>Director report</strong>, comprising submitted <strong>Weekly brief</strong> returns for your directorate (as the director assigned on the <strong>directorates</strong> table). Reporting week: <strong>'.$weekHuman.'</strong> This package is <strong>not</strong> the organisation-wide compiled document sent to central recipients. (2) A completion summary for the same directorate scope.</p>';
                 $combinedBody = WeeklyBriefingMailTemplate::wrap($directorStaff, 'Weekly brief — director report', $combinedInner);
                 $combinedSubject = $subjectPrefix.'Weekly brief — director report — '.$dirLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
 

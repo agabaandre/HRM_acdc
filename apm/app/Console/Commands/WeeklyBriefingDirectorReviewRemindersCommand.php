@@ -14,7 +14,7 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
 {
     protected $signature = 'weekly-briefing:director-review-reminders {--force : Run immediately, ignoring schedule gates}';
 
-    protected $description = 'Remind division directors of submitted weekly briefs still pending director review before the submission deadline (per configured day offsets and clock time).';
+    protected $description = 'Remind directorate directors (directorates.director_id) of submitted weekly briefs still pending director review before the submission deadline (per configured day offsets and clock time).';
 
     public function handle(): int
     {
@@ -58,7 +58,6 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
             ->where('report_iso_week_year', $y)
             ->where('report_iso_week', $w)
             ->where('status', WeeklyBriefingReport::STATUS_SUBMITTED)
-            ->with(['division'])
             ->get()
             ->filter(fn (WeeklyBriefingReport $r) => $r->requiresDirectorReview() && ! $r->isDirectorReviewed());
 
@@ -72,18 +71,18 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
 
         $byDirector = [];
         foreach ($pending as $report) {
-            $div = $report->divisionForContribution();
-            if (! $div) {
+            $dir = $report->directorateForDirectorReview();
+            if (! $dir) {
                 continue;
             }
-            $dirId = $div->primaryOrActiveDirectorStaffIdForWeeklyBrief();
-            if (! $dirId || $dirId <= 0) {
+            $directorStaffId = (int) ($dir->director_id ?? 0);
+            if ($directorStaffId <= 0) {
                 continue;
             }
-            if ((int) $dirId === (int) ($report->submitted_by_staff_id ?? 0)) {
+            if ($directorStaffId === (int) ($report->submitted_by_staff_id ?? 0)) {
                 continue;
             }
-            $byDirector[$dirId][] = $report;
+            $byDirector[$directorStaffId][] = $report;
         }
 
         foreach ($byDirector as $directorStaffId => $reports) {
@@ -104,7 +103,7 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
             $listHtml = '<ul style="margin:8px 0;padding-left:20px;">'.implode('', $lines).'</ul>';
 
             $inner = <<<HTML
-<p>This is a reminder to review <strong>submitted</strong> division weekly brief(s) pending your sign-off before the submission deadline.</p>
+<p>This is a reminder to review <strong>submitted</strong> weekly brief(s) pending your sign-off before the submission deadline.</p>
 <p><strong>Reporting week:</strong> {$weekHuman}</p>
 <p><strong>Deadline:</strong> {$deadlineHuman}</p>
 {$listHtml}

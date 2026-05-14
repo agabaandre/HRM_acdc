@@ -93,7 +93,7 @@
         <div class="card shadow-sm mb-3 border-primary">
             <div class="card-header fw-bold text-primary"><i class="fas fa-user-tie me-1"></i>Director review</div>
             <div class="card-body">
-                <p class="small text-muted mb-2">This reporting unit has a director in the divisions table. Directors may adjust the submitted content until the deadline; use <strong>Mark reviewed by director</strong> when your review is complete. All director saves and this action are recorded on the trail.</p>
+                <p class="small text-muted mb-2">This reporting unit is tied to a <strong>directorate</strong> with a director on the <code>directorates</code> table. The director may adjust the submitted content until the deadline; use <strong>Mark reviewed by director</strong> when your review is complete. All director saves and this action are recorded on the trail.</p>
                 @if($report->isDirectorReviewed() && $report->director_reviewed_at)
                     <p class="small mb-2"><strong>Reviewed at:</strong> {{ $report->director_reviewed_at->format('M j, Y g:i A') }}
                         @if($report->directorReviewedBy)
@@ -114,7 +114,7 @@
                     </ol>
                 @endif
                 @if($canMarkDirectorReview && ! $report->isDirectorReviewed())
-                    <form method="post" action="{{ route('weekly-briefing.director-review', $report) }}" class="mt-3 d-inline" onsubmit="return confirm('Record that you have reviewed this weekly briefing as division director?');">
+                    <form method="post" action="{{ route('weekly-briefing.director-review', $report) }}" class="mt-3 d-inline" onsubmit="return confirm('Record that you have reviewed this weekly briefing as directorate director?');">
                         @csrf
                         <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-1"></i>Mark reviewed by director</button>
                     </form>

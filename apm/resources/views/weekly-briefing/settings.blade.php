@@ -84,7 +84,7 @@
         <div class="card shadow-sm mb-3">
             <div class="card-header fw-bold">Director review reminders (before deadline)</div>
             <div class="card-body">
-                <p class="small text-muted">Division directors receive a grouped email listing <strong>submitted</strong> division briefs (<code>d-…</code>) that still need director sign-off, on the same day-offset pattern. Reminders stop after the submission deadline.</p>
+                <p class="small text-muted">Directorate directors receive a grouped email listing <strong>submitted</strong> briefs that still need their sign-off (<code>directorates.director_id</code>), on the same day-offset pattern. Reminders stop after the submission deadline.</p>
                 <div class="row g-2">
                     <div class="col-md-6">
                         <label class="form-label">Days before deadline <span class="text-muted fw-normal">(comma-separated)</span></label>
@@ -107,7 +107,7 @@
                 <button type="button" class="btn btn-sm btn-outline-success" id="wb-add-contributor">+ Add row</button>
             </div>
             <div class="card-body">
-                <p class="small text-muted">Pick <strong>staff</strong> who may submit, their <strong>APM division</strong> (context), and the <strong>contribution division or directorate</strong> the weekly report is for. Use <strong>PDF display name</strong> when the name on reports should differ from the system division/directorate title. Expected reporting units for reminders and the completion summary come from the distinct contribution targets in this list.</p>
+                <p class="small text-muted">Pick <strong>staff</strong> who may submit, their <strong>APM division</strong> (organisational context only), and the <strong>contribution directorate</strong> the weekly report is for (authoritative reporting unit — from the <code>directorates</code> table). Use <strong>PDF display name</strong> when the label on reports should differ from the directorate title. Expected reporting units for reminders and the completion summary come from the distinct contribution targets in this list.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle" id="wb-contributors-table">
                         <thead class="table-light">
@@ -115,9 +115,9 @@
                                 <th style="width:2.5rem" class="text-center">#</th>
                                 <th style="min-width:200px">Staff</th>
                                 <th style="min-width:160px">APM division</th>
-                                <th style="min-width:130px">Contribution type</th>
-                                <th style="min-width:180px">Contribution division</th>
-                                <th style="min-width:180px">Contribution directorate</th>
+                                <th style="min-width:130px">Reporting unit type</th>
+                                <th style="min-width:180px">Contribution division <span class="text-muted fw-normal">(legacy)</span></th>
+                                <th style="min-width:200px">Contribution directorate</th>
                                 <th style="min-width:200px">PDF display name <span class="text-muted fw-normal">(optional)</span></th>
                                 <th style="width:48px"></th>
                             </tr>
@@ -206,12 +206,12 @@
         </div>
 
         <div class="card shadow-sm mb-3">
-            <div class="card-header fw-bold">Division director access</div>
+            <div class="card-header fw-bold">Directorate director access</div>
             <div class="card-body">
                 <input type="hidden" name="division_directors_can_access_module" value="0">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="division_directors_can_access_module" value="1" id="wbDirModule" @checked(filter_var(old('division_directors_can_access_module', $settings->division_directors_can_access_module ?? true), FILTER_VALIDATE_BOOLEAN))>
-                    <label class="form-check-label" for="wbDirModule">Allow staff who act as <strong>division director</strong> (<code>divisions.director_id</code> or active director OIC) or <strong>Head of Division</strong> (<code>division_head</code> or active head OIC, same date rules as elsewhere in APM) to open <strong>Weekly brief</strong> in the top menu and home dashboard, and to review or download reports for reporting units they lead. If unchecked, they only see the module if they are also a contributor or a configured report viewer.</label>
+                    <label class="form-check-label" for="wbDirModule">Allow staff who are the <strong>directorate director</strong> on the <code>directorates</code> table (<code>directorates.director_id</code>) to open <strong>Weekly brief</strong> in the top menu and home dashboard, and to review or download reports for configured reporting units in their directorate. If unchecked, they only see the module if they are also a contributor or a configured report viewer.</label>
                 </div>
             </div>
         </div>
@@ -219,7 +219,7 @@
         <div class="card shadow-sm mb-3 border-warning">
             <div class="card-header fw-bold">Late submission unlock (administrative)</div>
             <div class="card-body">
-                <p class="small text-muted">When the ISO-week deadline has passed, drafts are normally locked and <strong>cannot be submitted</strong>. Use this window only when you need to let contributors (and division directors for submitted briefs) work again until a fixed end time. Scope <strong>All reporting units</strong> applies to every weekly brief row; <strong>One division</strong> limits the unlock to division briefs (<code>d-…</code>) for that contribution division, or directorate briefs (<code>dr-…</code>) whose APM division on the report matches the selected division.</p>
+                <p class="small text-muted">When the ISO-week deadline has passed, drafts are normally locked and <strong>cannot be submitted</strong>. Use this window only when you need to let contributors (and <strong>directorate directors</strong> for submitted briefs) work again until a fixed end time. Scope <strong>All reporting units</strong> applies to every weekly brief row; <strong>One division</strong> limits the unlock to division briefs (<code>d-…</code>) for that contribution division, or directorate briefs (<code>dr-…</code>) whose APM division on the report matches the selected division.</p>
                 <input type="hidden" name="report_unlock_override_enabled" value="0">
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" name="report_unlock_override_enabled" value="1" id="wbUnlockEn" @checked(filter_var(old('report_unlock_override_enabled', $settings->report_unlock_override_enabled ?? false), FILTER_VALIDATE_BOOLEAN))>
@@ -273,7 +273,7 @@
                 </div>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" name="cc_division_hod_on_compiled" value="1" id="ccHod" @checked(old('cc_division_hod_on_compiled', $settings->cc_division_hod_on_compiled))>
-                    <label class="form-check-label" for="ccHod">Email division HoDs their division’s submitted briefing PDF; email each division director (from the divisions table) a <strong>separate director report</strong> (submitted division briefings only for divisions where they are director — not the organisation-wide compiled pack) plus a completion summary for those division rows only. Divisions without a director are skipped for the director copy.</label>
+                    <label class="form-check-label" for="ccHod">Email division HoDs their division’s submitted briefing PDF; email each <strong>directorate director</strong> (from the <code>directorates</code> table) a <strong>separate director report</strong> for their directorate scope (submitted briefs under that directorate — not the organisation-wide compiled pack) plus a completion summary for that scope only. Directorates without a director are skipped for the director copy.</label>
                 </div>
                 <input type="hidden" name="compiled_exclude_unreviewed_director_divisions" value="0">
                 <div class="form-check mb-2">
@@ -298,7 +298,7 @@
             'showRowNum' => true,
             'staffId' => 0,
             'apmDiv' => 0,
-            'kind' => 'division',
+            'kind' => 'directorate',
             'contribDiv' => 0,
             'contribDir' => 0,
             'displayName' => '',
