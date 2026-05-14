@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WeeklyBriefingCompletionSummary;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -62,6 +63,19 @@ class WeeklyBriefingContributor extends Model
     {
         return self::displayNameForContributionKey($key)
             ?? \App\Services\WeeklyBriefingCompletionSummary::labelForKey($key);
+    }
+
+    /**
+     * Label for this contributor row on the Weekly brief hub (PDF display name when set, else division/directorate name for this key).
+     */
+    public function hubLabel(): string
+    {
+        $dn = trim((string) ($this->display_name ?? ''));
+        if ($dn !== '') {
+            return $dn;
+        }
+
+        return WeeklyBriefingCompletionSummary::labelForKey((string) ($this->contribution_key ?? ''));
     }
 
     public function setting(): BelongsTo

@@ -107,7 +107,7 @@
                 <button type="button" class="btn btn-sm btn-outline-success" id="wb-add-contributor">+ Add row</button>
             </div>
             <div class="card-body">
-                <p class="small text-muted">Pick <strong>staff</strong> who may submit, their <strong>APM division</strong> (organisational context only), and the <strong>contribution directorate</strong> the weekly report is for (authoritative reporting unit — from the <code>directorates</code> table). Use <strong>PDF display name</strong> when the label on reports should differ from the directorate title. Expected reporting units for reminders and the completion summary come from the distinct contribution targets in this list.</p>
+                <p class="small text-muted">Pick <strong>staff</strong>, their <strong>APM division</strong> (organisational context), and the <strong>contributing division</strong> whose brief they file (<code>d-…</code> — one hub row per row here). For <strong>Directorate</strong> rows, also pick the directorate that division belongs to (validated); the directorate only drives director review and combined PDFs, not the stored reporting key. Use <strong>PDF display name</strong> when the label should differ from the division name. The Weekly brief hub lists <strong>every row</strong> below, not de-duplicated by directorate.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle" id="wb-contributors-table">
                         <thead class="table-light">
@@ -116,8 +116,8 @@
                                 <th style="min-width:200px">Staff</th>
                                 <th style="min-width:160px">APM division</th>
                                 <th style="min-width:130px">Reporting unit type</th>
-                                <th style="min-width:180px">Contribution division <span class="text-muted fw-normal">(legacy)</span></th>
-                                <th style="min-width:200px">Contribution directorate</th>
+                                <th style="min-width:200px">Contributing division <span class="text-muted fw-normal">(brief for this unit)</span></th>
+                                <th style="min-width:200px">Directorate <span class="text-muted fw-normal">(validation / director scope)</span></th>
                                 <th style="min-width:200px">PDF display name <span class="text-muted fw-normal">(optional)</span></th>
                                 <th style="width:48px"></th>
                             </tr>
@@ -395,8 +395,8 @@
         var rCol = tr.querySelector('td.wb-col-dir');
         if (!dCol || !rCol) return;
         if (kind === 'directorate') {
-            dCol.style.opacity = '0.45';
-            dCol.querySelectorAll('select').forEach(function (s) { s.disabled = true; });
+            dCol.style.opacity = '1';
+            dCol.querySelectorAll('select').forEach(function (s) { s.disabled = false; });
             rCol.style.opacity = '1';
             rCol.querySelectorAll('select').forEach(function (s) { s.disabled = false; });
         } else {

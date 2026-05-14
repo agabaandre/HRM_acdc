@@ -16,8 +16,7 @@ Access is enforced by `App\Services\DivisionWeeklyBriefGate` (nav, routes, and r
 | Audience | Access |
 |----------|--------|
 | **System admin** (role `10`) | Full access, including **Weekly briefing settings**. |
-| **Permissions `87` / `88`** (same cohort as organisation compiled PDF / completion summary) | **Weekly brief** hub and **all configured reporting units** on the index (read-only on others’ drafts unless also a contributor); settings remain role `10` only. |
-| **Configured contributors** | Every `contribution_key` they are assigned in `weekly_briefing_contributors` (division `d-*` or directorate `dr-*`); they file and edit their own units. |
+| **Configured contributors** | Rows in `weekly_briefing_contributors` for their `staff_id` and `contribution_key`. |
 | **Report viewers** | `report_viewer_staff_ids` on settings: read all configured units’ reports (and compiled exports where allowed). |
 | **Directorate directors** | When **`division_directors_can_access_module`** is enabled (name is legacy): staff listed as **`directorates.director_id`** on at least one **active** directorate. Session staff id is resolved from `staff_id` or `auth_staff_id`. |
 
@@ -42,7 +41,7 @@ The top menu item **Weekly brief** and the home dashboard card are shown when `D
 - **Division brief**: `d-{apm_division_id}` (matches `divisions.id` / APM division).
 - **Directorate brief**: `dr-{directorate_id}`.
 
-Contributors and listing keys are driven by **`weekly_briefing_contributors`** linked to **`weekly_briefing_settings`**.
+Contributors and listing keys are driven by **`weekly_briefing_contributors`** linked to **`weekly_briefing_settings`**. Each row is one **contributing division** brief (`d-{division_id}`). **Directorate** on a row is validated against `divisions.directorate_id` and is only for director review / combined PDF scope — it does **not** replace the division key. The Weekly brief hub lists **one line per contributor row** (with optional **PDF display name** per row). Legacy `dr-*` keys from older configs should be re-saved from **Weekly briefing settings** so every division row has a contributing division selected.
 
 ## Settings (admin)
 

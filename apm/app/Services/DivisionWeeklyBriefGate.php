@@ -4,12 +4,13 @@ namespace App\Services;
 
 use App\Models\Directorate;
 use App\Models\Division;
+use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
+use Illuminate\Support\Collection;
 
 /**
- * Weekly brief: module access, filing (contributor rows), full listing (system admin, report viewers,
- * permissions 87/88 / compiled-export cohort), view vs edit on reports.
+ * Weekly brief: module access, filing (contributor rows), full listing (admin / report viewers), view vs edit on reports.
  */
 final class DivisionWeeklyBriefGate
 {
@@ -112,13 +113,13 @@ final class DivisionWeeklyBriefGate
 
     public static function canAccessModule(): bool
     {
-        if (self::mayAccessCompiledBriefingExports()) {
+        if (self::isSystemAdmin()) {
             return true;
         }
 
         $sid = self::sessionStaffId();
 
-        return self::isListedContributor($sid) || self::mayActAsDivisionDirector($sid);
+        return self::isListedContributor($sid) || self::isListedReportViewer($sid) || self::mayActAsDivisionDirector($sid);
     }
 
     /**
@@ -257,9 +258,7 @@ final class DivisionWeeklyBriefGate
     }
 
     /**
-     * Keys to include in report lists: all distinct configured contribution keys for anyone with
-     * organisation-wide oversight ({@see self::mayAccessCompiledBriefingExports}: role 10, listed report
-     * viewers, permissions 87 / 88); otherwise the user’s filing keys plus any director-managed keys.
+     * Keys to include in report lists (all configured units for admin / report viewers; otherwise filing keys only).
      *
      * @return list<string>
      */
@@ -274,8 +273,9 @@ final class DivisionWeeklyBriefGate
             return [];
         }
 
-        if (self::mayAccessCompiledBriefingExports()) {
+        if (self::isSystemAdmin() || self::isListedReportViewer()) {
             return $settings->contributors()
+                ->distinct()
                 ->pluck('contribution_key')
                 ->filter()
                 ->unique()
@@ -287,6 +287,41 @@ final class DivisionWeeklyBriefGate
         $directorKeys = self::directorManagedContributionKeysForListing();
 
         return array_values(array_unique(array_merge($filing, $directorKeys)));
+    }
+
+    /**
+     * Contributor rows visible on the Weekly brief hub (one row per configured contributor, not de-duplicated by key).
+     *
+     * @return Collection<int, WeeklyBriefingContributor>
+     */
+    public static function contributorsForReportListing(): Collection
+    {
+        if (! self::canAccessModule()) {
+            return collect();
+        }
+
+        $settings = WeeklyBriefingSetting::current();
+        if (! $settings->contributors()->exists()) {
+            return collect();
+        }
+
+        $q = $settings->contributors()->with(['staff', 'apmDivision'])->orderBy('id');
+
+        if (self::isSystemAdmin() || self::isListedReportViewer()) {
+            return $q->get();
+        }
+
+        $sid = self::sessionStaffId();
+        $directorKeys = array_fill_keys(self::directorManagedContributionKeysForListing(), true);
+
+        return $q->get()->filter(function (WeeklyBriefingContributor $c) use ($sid, $directorKeys): bool {
+            if ((int) ($c->staff_id ?? 0) === $sid) {
+                return true;
+            }
+            $k = trim((string) ($c->contribution_key ?? ''));
+
+            return $k !== '' && isset($directorKeys[$k]);
+        })->values();
     }
 
     public static function mayUseContributionKey(string $contributionKey): bool
@@ -307,7 +342,7 @@ final class DivisionWeeklyBriefGate
         if (! self::canAccessModule()) {
             return false;
         }
-        if (self::mayAccessCompiledBriefingExports()) {
+        if (self::isSystemAdmin() || self::isListedReportViewer()) {
             return true;
         }
 

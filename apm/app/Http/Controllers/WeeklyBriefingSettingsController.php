@@ -96,12 +96,23 @@ class WeeklyBriefingSettingsController extends Controller
             if ($kind === 'directorate') {
                 $dirId = (int) ($row['contribution_directorate_id'] ?? 0);
                 if ($dirId <= 0) {
-                    return back()->withInput()->with('error', 'Directorate contribution rows need a directorate.');
+                    return back()->withInput()->with('error', 'Directorate-scoped rows need a directorate (for validation and director compilation).');
                 }
                 if (! Directorate::query()->whereKey($dirId)->exists()) {
                     return back()->withInput()->with('error', 'Invalid directorate selected.');
                 }
-                $key = WeeklyBriefingContributor::contributionKeyForDirectorate($dirId);
+                $divId = (int) ($row['contribution_division_id'] ?? 0);
+                if ($divId <= 0) {
+                    return back()->withInput()->with('error', 'Each row must select the contributing division whose weekly brief this is (PDF display name is optional). Directorate is only used to group divisions for director review and combined PDFs — it must not replace the division key.');
+                }
+                if (! Division::query()->whereKey($divId)->exists()) {
+                    return back()->withInput()->with('error', 'Invalid contributing division selected.');
+                }
+                $div = Division::query()->find($divId);
+                if (! $div || (int) ($div->directorate_id ?? 0) !== $dirId) {
+                    return back()->withInput()->with('error', 'The contributing division must belong to the selected directorate.');
+                }
+                $key = WeeklyBriefingContributor::contributionKeyForDivision($divId);
             } else {
                 $divId = (int) ($row['contribution_division_id'] ?? 0);
                 if ($divId <= 0) {

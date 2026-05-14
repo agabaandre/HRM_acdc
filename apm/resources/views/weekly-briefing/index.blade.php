@@ -151,7 +151,15 @@
                                     @endphp
                                     <tr>
                                         <td class="text-center text-muted">{{ $thisWeekPaginator->firstItem() + $loop->index }}</td>
-                                        <td>{{ \App\Models\WeeklyBriefingContributor::presentationLabelForContributionKey($k) }}</td>
+                                        <td>
+                                            <div class="fw-medium">{{ $row['label'] ?? \App\Models\WeeklyBriefingContributor::presentationLabelForContributionKey($k) }}</div>
+                                            @if(! empty($row['contributor']))
+                                                @php $st = $row['contributor']->staff; @endphp
+                                                @if($st)
+                                                    <div class="small text-muted">{{ trim(($st->fname ?? '').' '.($st->lname ?? '')) }}</div>
+                                                @endif
+                                            @endif
+                                        </td>
                                         <td>
                                             @if($r)
                                                 <span class="badge bg-{{ $r->status === 'submitted' ? 'success' : ($r->status === 'locked' ? 'secondary' : 'warning') }}">{{ $r->status }}</span>
