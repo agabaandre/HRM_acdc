@@ -116,7 +116,7 @@
                                 <th style="min-width:200px">Staff</th>
                                 <th style="min-width:160px">APM division</th>
                                 <th style="min-width:130px">Reporting unit type</th>
-                                <th style="min-width:200px">Contributing division <span class="text-muted fw-normal">(Division: required; Directorate: optional if PDF display name set)</span></th>
+                                <th style="min-width:200px">Contributing division <span class="text-muted fw-normal">(Division: required; Directorate: optional)</span></th>
                                 <th style="min-width:200px">Directorate <span class="text-muted fw-normal">(validation / director scope)</span></th>
                                 <th style="min-width:200px">PDF display name <span class="text-muted fw-normal">(optional)</span></th>
                                 <th style="width:48px"></th>
