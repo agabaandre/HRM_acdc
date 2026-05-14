@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Directorate;
 use App\Models\Division;
+use App\Models\Staff;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class DirectorateController extends Controller
 {
@@ -14,7 +14,7 @@ class DirectorateController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Directorate::query();
+        $query = Directorate::query()->with('director');
 
         // Search filter
         if ($request->has('search') && !empty($request->search)) {
@@ -42,7 +42,9 @@ class DirectorateController extends Controller
      */
     public function create()
     {
-        return view('directorates.create');
+        $staffForDirector = $this->staffForDirectorPicker();
+
+        return view('directorates.create', compact('staffForDirector'));
     }
 
     /**
@@ -54,7 +56,8 @@ class DirectorateController extends Controller
             'name' => 'required|string|max:255|unique:directorates,name',
             'code' => 'required|string|max:50|unique:directorates,code',
             'description' => 'nullable|string',
-            'is_active' => 'nullable'
+            'is_active' => 'nullable',
+            'director_id' => 'nullable|integer|exists:staff,staff_id',
         ]);
 
         $directorate = new Directorate();
@@ -62,6 +65,7 @@ class DirectorateController extends Controller
         $directorate->code = $request->code;
         $directorate->description = $request->description;
         $directorate->is_active = $request->has('is_active') ? 1 : 0;
+        $directorate->director_id = $request->filled('director_id') ? (int) $request->input('director_id') : null;
         $directorate->save();
 
         return redirect()->route('directorates.index')
@@ -73,7 +77,7 @@ class DirectorateController extends Controller
      */
     public function show(string $id)
     {
-        $directorate = Directorate::findOrFail($id);
+        $directorate = Directorate::with('director')->findOrFail($id);
         $divisions = Division::where('directorate_id', $id)->get();
 
         return view('directorates.show', compact('directorate', 'divisions'));
@@ -85,7 +89,9 @@ class DirectorateController extends Controller
     public function edit(string $id)
     {
         $directorate = Directorate::findOrFail($id);
-        return view('directorates.edit', compact('directorate'));
+        $staffForDirector = $this->staffForDirectorPicker();
+
+        return view('directorates.edit', compact('directorate', 'staffForDirector'));
     }
 
     /**
@@ -99,13 +105,15 @@ class DirectorateController extends Controller
             'name' => 'required|string|max:255|unique:directorates,name,' . $id,
             'code' => 'required|string|max:50|unique:directorates,code,' . $id,
             'description' => 'nullable|string',
-            'is_active' => 'nullable'
+            'is_active' => 'nullable',
+            'director_id' => 'nullable|integer|exists:staff,staff_id',
         ]);
 
         $directorate->name = $request->name;
         $directorate->code = $request->code;
         $directorate->description = $request->description;
         $directorate->is_active = $request->has('is_active') ? 1 : 0;
+        $directorate->director_id = $request->filled('director_id') ? (int) $request->input('director_id') : null;
         $directorate->save();
 
         return redirect()->route('directorates.index')
@@ -130,5 +138,17 @@ class DirectorateController extends Controller
         $directorate->delete();
         return redirect()->route('directorates.index')
             ->with('success', 'Directorate deleted successfully.');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Staff>
+     */
+    private function staffForDirectorPicker()
+    {
+        return Staff::query()
+            ->whereNotIn('status', ['Expired', 'Separated'])
+            ->orderBy('lname')
+            ->orderBy('fname')
+            ->get(['staff_id', 'fname', 'lname', 'title']);
     }
 }

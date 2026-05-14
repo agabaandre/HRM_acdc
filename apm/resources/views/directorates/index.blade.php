@@ -40,6 +40,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Name</th>
+                        <th>Director</th>
                         <th>Status</th>
                         <th>Created At</th>
                         <th>Updated At</th>
@@ -51,6 +52,13 @@
                         <tr>
                             <td>{{ $directorate->id }}</td>
                             <td><strong>{{ $directorate->name }}</strong></td>
+                            <td>
+                                @if($directorate->director)
+                                    <span class="text-nowrap">{{ $directorate->director->lname }} {{ $directorate->director->fname }}</span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>
                                 @if($directorate->is_active)
                                     <span class="badge bg-success">Active</span>
@@ -68,7 +76,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center py-4">
+                            <td colspan="7" class="text-center py-4">
                                 <div class="text-muted">
                                     <i class="bx bx-folder-open fs-1"></i>
                                     <p class="mt-2">No directorates found</p>

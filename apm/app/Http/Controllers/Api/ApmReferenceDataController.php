@@ -116,7 +116,25 @@ class ApmReferenceDataController extends Controller
 
     private function getDirectorates(): Collection
     {
-        return Directorate::orderBy('name')->get(['id', 'name'])->map(fn ($row) => ['id' => $row->id, 'name' => $row->name]);
+        $directorates = Directorate::orderBy('name')->get(['id', 'name', 'director_id']);
+        $ids = $directorates->pluck('director_id')->filter()->unique()->values();
+        $staffById = $ids->isEmpty()
+            ? collect()
+            : Staff::query()->whereIn('staff_id', $ids)->get(['staff_id', 'title', 'fname', 'lname', 'oname'])->keyBy('staff_id');
+
+        return $directorates->map(function ($row) use ($staffById) {
+            $dir = $row->director_id && $staffById->has($row->director_id) ? $staffById->get($row->director_id) : null;
+
+            return [
+                'id' => $row->id,
+                'name' => $row->name,
+                'director_id' => $row->director_id,
+                'director' => $dir ? [
+                    'id' => (int) $dir->staff_id,
+                    'name' => $dir->name,
+                ] : null,
+            ];
+        });
     }
 
     private function getFundTypes(): Collection

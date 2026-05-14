@@ -68,6 +68,26 @@
                     </div>
                 </div>
 
+                <div class="row g-4 mb-4">
+                    <div class="col-md-12">
+                        <label for="director_id" class="form-label fw-semibold">
+                            <i class="bx bx-user-pin me-1 text-primary"></i>Director <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <select class="form-select @error('director_id') is-invalid @enderror" id="director_id" name="director_id">
+                            <option value="">— None —</option>
+                            @foreach($staffForDirector as $s)
+                                <option value="{{ $s->staff_id }}" @selected((string) old('director_id') === (string) $s->staff_id)>
+                                    {{ $s->lname }} {{ $s->fname }}@if($s->title) ({{ $s->title }})@endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted d-block">Linked to <code>staff.staff_id</code>; synced from Staff when present.</small>
+                        @error('director_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+
                 <div class="mb-4">
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', '1') == '1' ? 'checked' : '' }}>
