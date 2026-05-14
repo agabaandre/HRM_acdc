@@ -31,6 +31,7 @@ class WeeklyBriefingController extends Controller
             ->unique()
             ->values()
             ->all();
+        $directorateDisplayByContributionKey = $this->weeklyBriefDirectorateDisplayByContributionKeys($listingKeys);
         $filingKeys = DivisionWeeklyBriefGate::contributionKeysForFiling();
 
         $settings = WeeklyBriefingSetting::current();
@@ -60,7 +61,7 @@ class WeeklyBriefingController extends Controller
         $sortedUniqueKeys = $this->sortContributionKeysForWeeklyBriefIndex($listingKeys);
         $keyRank = array_flip($sortedUniqueKeys);
 
-        $weekRowsBase = $contributorRows->map(function (WeeklyBriefingContributor $c) use ($currentWeekReports) {
+        $weekRowsBase = $contributorRows->map(function (WeeklyBriefingContributor $c) use ($currentWeekReports, $directorateDisplayByContributionKey) {
             $k = trim((string) ($c->contribution_key ?? ''));
 
             return [
@@ -68,6 +69,10 @@ class WeeklyBriefingController extends Controller
                 'key' => $k,
                 'report' => $currentWeekReports->get($k),
                 'label' => $c->hubLabel(),
+                'directorate_display' => $directorateDisplayByContributionKey[$k] ?? [
+                    'directorate_name' => '',
+                    'director_name' => '',
+                ],
             ];
         })->sortBy(function (array $row) use ($keyRank) {
             $k = $row['key'];
@@ -97,7 +102,16 @@ class WeeklyBriefingController extends Controller
                         $staffHay = mb_strtolower(trim((string) $st->name));
                     }
                 }
-                if (! str_contains($labelHay, $needle) && ($staffHay === '' || ! str_contains($staffHay, $needle))) {
+                $dd = $row['directorate_display'] ?? null;
+                $dirHay = '';
+                if (is_array($dd)) {
+                    $dirHay = mb_strtolower(trim(
+                        trim((string) ($dd['directorate_name'] ?? '')).' '.trim((string) ($dd['director_name'] ?? ''))
+                    ));
+                }
+                if (! str_contains($labelHay, $needle)
+                    && ($staffHay === '' || ! str_contains($staffHay, $needle))
+                    && ($dirHay === '' || ! str_contains($dirHay, $needle))) {
                     return false;
                 }
             }
@@ -147,7 +161,7 @@ class WeeklyBriefingController extends Controller
                 ->where('report_iso_week_year', $filterYear)
                 ->orderByDesc('report_iso_week')
                 ->orderBy('contribution_key')
-                ->with(['division', 'directorate']);
+                ->with(['division.directorate.director', 'directorate.director']);
             if ($listingKeys !== []) {
                 $reportsQuery->whereIn('contribution_key', $listingKeys);
             } else {
@@ -169,9 +183,17 @@ class WeeklyBriefingController extends Controller
                     }
                     $st = $contrib->staff;
                     $staffHay = $st ? mb_strtolower(trim((string) $st->name)) : '';
+                    $dd = $directorateDisplayByContributionKey[$k] ?? [
+                        'directorate_name' => '',
+                        'director_name' => '',
+                    ];
+                    $dirHay = mb_strtolower(trim(
+                        trim((string) ($dd['directorate_name'] ?? '')).' '.trim((string) ($dd['director_name'] ?? ''))
+                    ));
                     if (str_contains(mb_strtolower($contrib->hubLabel()), $needle)
                         || str_contains(mb_strtolower(WeeklyBriefingContributor::presentationLabelForContributionKey($k)), $needle)
-                        || ($staffHay !== '' && str_contains($staffHay, $needle))) {
+                        || ($staffHay !== '' && str_contains($staffHay, $needle))
+                        || ($dirHay !== '' && str_contains($dirHay, $needle))) {
                         $matchingKeysSet[$k] = true;
                     }
                 }
@@ -613,6 +635,68 @@ class WeeklyBriefingController extends Controller
         $id = user_session('division_id');
 
         return $id !== null && $id !== '' ? (int) $id : null;
+    }
+
+    /**
+     * @param  list<string>  $keys
+     * @return array<string, array{directorate_name: string, director_name: string}>
+     */
+    private function weeklyBriefDirectorateDisplayByContributionKeys(array $keys): array
+    {
+        $divIds = [];
+        $drIds = [];
+        foreach ($keys as $raw) {
+            $k = trim((string) $raw);
+            if (str_starts_with($k, 'd-')) {
+                $id = (int) substr($k, 2);
+                if ($id > 0) {
+                    $divIds[] = $id;
+                }
+            } elseif (str_starts_with($k, 'dr-')) {
+                $id = (int) substr($k, 3);
+                if ($id > 0) {
+                    $drIds[] = $id;
+                }
+            }
+        }
+        $divIds = array_values(array_unique($divIds));
+        $drIds = array_values(array_unique($drIds));
+
+        $out = [];
+
+        $divisions = $divIds === []
+            ? collect()
+            : Division::query()->whereIn('id', $divIds)->with(['directorate.director'])->get()->keyBy('id');
+        foreach ($divIds as $id) {
+            $div = $divisions->get($id);
+            $out['d-'.$id] = $this->weeklyBriefDirectorateDisplayTuple($div?->directorate);
+        }
+
+        $directorates = $drIds === []
+            ? collect()
+            : Directorate::query()->whereIn('id', $drIds)->with(['director'])->get()->keyBy('id');
+        foreach ($drIds as $id) {
+            $dir = $directorates->get($id);
+            $out['dr-'.$id] = $this->weeklyBriefDirectorateDisplayTuple($dir);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array{directorate_name: string, director_name: string}
+     */
+    private function weeklyBriefDirectorateDisplayTuple(?Directorate $directorate): array
+    {
+        if (! $directorate) {
+            return ['directorate_name' => '', 'director_name' => ''];
+        }
+        $directorate->loadMissing('director');
+
+        return [
+            'directorate_name' => trim((string) ($directorate->name ?? '')),
+            'director_name' => $directorate->director ? trim((string) $directorate->director->name) : '',
+        ];
     }
 
     /**

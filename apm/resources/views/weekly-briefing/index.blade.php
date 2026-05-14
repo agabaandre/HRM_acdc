@@ -114,7 +114,7 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small mb-0 text-muted">Division / unit</label>
-                        <input type="search" name="tw_search" class="form-control form-control-sm" value="{{ $twSearch ?? '' }}" placeholder="Search by division or unit name…" autocomplete="off">
+                        <input type="search" name="tw_search" class="form-control form-control-sm" value="{{ $twSearch ?? '' }}" placeholder="Search by unit, contributor, directorate…" autocomplete="off">
                     </div>
                     <div class="col-md-auto d-flex gap-2">
                         <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Apply</button>
@@ -137,6 +137,7 @@
                                 <tr>
                                     <th style="width:3rem" class="text-center">#</th>
                                     <th>Division / reporting unit</th>
+                                    <th>Directorate</th>
                                     <th>Status</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
@@ -159,6 +160,9 @@
                                                     <div class="small text-muted">{{ $st->name }}</div>
                                                 @endif
                                             @endif
+                                        </td>
+                                        <td class="align-top">
+                                            @include('weekly-briefing.partials.directorate-cell', ['dd' => $row['directorate_display'] ?? []])
                                         </td>
                                         <td>
                                             @if($r)
@@ -228,7 +232,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small mb-0 text-muted">Reporting unit</label>
-                        <input type="search" name="search" class="form-control form-control-sm" value="{{ $filterSearch ?? '' }}" placeholder="Search by name…" autocomplete="off">
+                        <input type="search" name="search" class="form-control form-control-sm" value="{{ $filterSearch ?? '' }}" placeholder="Search by unit, contributor, directorate…" autocomplete="off">
                     </div>
                     <div class="col-md-auto d-flex gap-2">
                         <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Apply</button>
@@ -244,6 +248,7 @@
                                 <th style="width:3rem" class="text-center">#</th>
                                 <th>Reporting week</th>
                                 <th>Reporting unit</th>
+                                <th>Directorate</th>
                                 <th>Week start → end</th>
                                 <th>Status</th>
                                 <th class="text-end">Actions</th>
@@ -256,6 +261,7 @@
                                     <td class="text-center text-muted">{{ $reports->firstItem() + $loop->index }}</td>
                                     <td><span class="small text-muted">W{{ $r->report_iso_week }}/{{ $r->report_iso_week_year }}</span><br>{{ $r->isoWeekDateRangeLabel(false) }}</td>
                                     <td>{{ $r->contributionEntityLabel() }}</td>
+                                    <td class="align-top small">@include('weekly-briefing.partials.directorate-cell', ['dd' => $r->hubDirectorateDisplayRow()])</td>
                                     <td class="small">{{ $r->period_start?->format('M j, Y') }} → {{ $r->period_start ? \Carbon\Carbon::parse($r->period_start)->addDays(6)->format('M j, Y') : '—' }}</td>
                                     <td><span class="badge bg-{{ $r->status === 'submitted' ? 'success' : ($r->status === 'locked' ? 'secondary' : 'warning') }}">{{ $r->status }}</span></td>
                                     <td class="text-end">
@@ -266,7 +272,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="text-center text-muted py-4">No reports match the current filters.</td></tr>
+                                <tr><td colspan="7" class="text-center text-muted py-4">No reports match the current filters.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

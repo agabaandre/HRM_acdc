@@ -26,7 +26,7 @@ The top menu item **Weekly brief** and the home dashboard card are shown when `D
 
 | Method | Path (relative to APM base) | Name | Notes |
 |--------|-----------------------------|------|--------|
-| GET | `weekly-briefing` | `weekly-briefing.index` | Tabs: **This reporting week** (uses configured filing ISO week) / **All reports**; filters and pagination. |
+| GET | `weekly-briefing` | `weekly-briefing.index` | Tabs: **This reporting week** (uses configured filing ISO week) / **All reports**; filters and pagination. Each tab lists a **Directorate** column when the row’s contribution key maps to a directorate (`d-*` via `divisions.directorate_id`, `dr-*` via the directorate id): directorate name and assigned director (`directorates.director_id` → `Staff::name`); otherwise the cell is empty. Search on both tabs matches directorate and director names where present. |
 | GET | `weekly-briefing/create` | `weekly-briefing.create` | Start a report (`contribution_key` query). |
 | GET/PUT | `weekly-briefing/{report}/edit`, `weekly-briefing/{report}` | `weekly-briefing.edit`, `weekly-briefing.update` | Draft / submitted editing per rules. |
 | POST | `weekly-briefing/{report}/director-review` | `weekly-briefing.director-review` | Record director review when applicable. |
