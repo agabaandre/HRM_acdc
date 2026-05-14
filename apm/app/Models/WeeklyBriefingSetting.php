@@ -98,6 +98,18 @@ class WeeklyBriefingSetting extends Model
     }
 
     /**
+     * Submission deadline for the default filing ISO week (see {@see WeeklyBriefingReport::submissionDeadline}).
+     * Used by the hub, contributor / director reminders, and compiled-summary scheduling so they stay aligned
+     * with advance filing (`filing_iso_week_offset === 1`, Friday before the reporting week).
+     */
+    public function filingSubmissionDeadline(?Carbon $at = null): Carbon
+    {
+        $filing = $this->filingIsoWeekPair($at);
+
+        return WeeklyBriefingReport::syntheticDeadlineForIsoWeek($this, $filing['iso_year'], $filing['iso_week']);
+    }
+
+    /**
      * Whether the current clock time (H:i) matches a stored time column (e.g. hod_reminder_time).
      */
     public function matchesTimeNow(string $attribute): bool

@@ -206,6 +206,14 @@ class WeeklyBriefingReport extends Model
     public function submissionDeadline(WeeklyBriefingSetting $settings): Carbon
     {
         $monday = Carbon::parse($this->period_start)->startOfDay();
+
+        // Next ISO week on the hub (`filing_iso_week_offset === 1`): contributors file ahead for the
+        // upcoming reporting week; close on the Friday immediately *before* that week starts (not the
+        // Friday inside the reporting week).
+        if (((int) ($settings->filing_iso_week_offset ?? 0)) === 1) {
+            return $monday->copy()->subDays(3)->setTimeFromTimeString($settings->submission_close_time);
+        }
+
         $targetDow = (int) $settings->submission_weekday;
         $daysAdd = ($targetDow - $monday->dayOfWeek + 7) % 7;
 

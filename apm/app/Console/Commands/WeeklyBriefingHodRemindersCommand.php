@@ -26,7 +26,7 @@ class WeeklyBriefingHodRemindersCommand extends Command
         $filing = $settings->filingIsoWeekPair();
         $y = $filing['iso_year'];
         $w = $filing['iso_week'];
-        $deadline = WeeklyBriefingReport::syntheticDeadlineForIsoWeek($settings, $y, $w);
+        $deadline = $settings->filingSubmissionDeadline();
         $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
 
         if (Carbon::now()->greaterThan($deadline)) {
@@ -77,7 +77,7 @@ class WeeklyBriefingHodRemindersCommand extends Command
                         continue;
                     }
                     try {
-                        $html = $this->contributorReminderHtml($settings, (string) $contributionKey, $y, $w, $report, $c->staff);
+                        $html = $this->contributorReminderHtml($settings, (string) $contributionKey, $y, $w, $report, $c->staff, $deadline);
                         $label = WeeklyBriefingContributor::presentationLabelForContributionKey((string) $contributionKey);
                         $subject = $subjectPrefix.'Weekly brief reminder — '.$label.WeeklyBriefingMailTemplate::subjectSuffix();
                         if (! sendEmail($email, $subject, $html)) {
@@ -119,7 +119,7 @@ class WeeklyBriefingHodRemindersCommand extends Command
             }
 
             try {
-                $html = $this->legacyHodReminderHtml($settings, $division->division_name ?? 'Division', $y, $w, $report, $hod);
+                $html = $this->legacyHodReminderHtml($settings, $division->division_name ?? 'Division', $y, $w, $report, $hod, $deadline);
                 $subject = $subjectPrefix.'Weekly brief reminder — '.($division->division_name ?? 'Division').WeeklyBriefingMailTemplate::subjectSuffix();
                 if (! sendEmail($email, $subject, $html)) {
                     Log::warning('weekly-briefing:hod-reminders sendEmail returned false', ['to' => $email, 'division_id' => $division->id]);
@@ -134,21 +134,10 @@ class WeeklyBriefingHodRemindersCommand extends Command
         return self::SUCCESS;
     }
 
-    private function deadlineLine(WeeklyBriefingSetting $settings, int $y, int $w, ?WeeklyBriefingReport $report): string
-    {
-        $r = $report;
-        if (! $r) {
-            $r = new WeeklyBriefingReport;
-            $r->period_start = WeeklyBriefingReport::periodMonday($y, $w);
-        }
-
-        return $r->submissionDeadline($settings)->format('l, F j, Y \a\t g:i A');
-    }
-
-    private function contributorReminderHtml(WeeklyBriefingSetting $settings, string $contributionKey, int $y, int $w, ?WeeklyBriefingReport $report, ?Staff $recipient): string
+    private function contributorReminderHtml(WeeklyBriefingSetting $settings, string $contributionKey, int $y, int $w, ?WeeklyBriefingReport $report, ?Staff $recipient, Carbon $filingDeadline): string
     {
         $label = htmlspecialchars(WeeklyBriefingContributor::presentationLabelForContributionKey($contributionKey), ENT_QUOTES, 'UTF-8');
-        $deadline = htmlspecialchars($this->deadlineLine($settings, $y, $w, $report), ENT_QUOTES, 'UTF-8');
+        $deadline = htmlspecialchars($filingDeadline->format('l, F j, Y \a\t g:i A'), ENT_QUOTES, 'UTF-8');
         $indexUrl = htmlspecialchars(route('weekly-briefing.index', [], true), ENT_QUOTES, 'UTF-8');
         if ($report) {
             $actionUrl = htmlspecialchars(route('weekly-briefing.edit', ['report' => $report->id], true), ENT_QUOTES, 'UTF-8');
@@ -176,9 +165,9 @@ HTML;
         return WeeklyBriefingMailTemplate::wrap($recipient, 'Weekly brief reminder', $inner);
     }
 
-    private function legacyHodReminderHtml(WeeklyBriefingSetting $settings, string $divisionName, int $y, int $w, ?WeeklyBriefingReport $report, Staff $hod): string
+    private function legacyHodReminderHtml(WeeklyBriefingSetting $settings, string $divisionName, int $y, int $w, ?WeeklyBriefingReport $report, Staff $hod, Carbon $filingDeadline): string
     {
-        $deadline = htmlspecialchars($this->deadlineLine($settings, $y, $w, $report), ENT_QUOTES, 'UTF-8');
+        $deadline = htmlspecialchars($filingDeadline->format('l, F j, Y \a\t g:i A'), ENT_QUOTES, 'UTF-8');
         $dn = htmlspecialchars($divisionName, ENT_QUOTES, 'UTF-8');
         $indexUrl = htmlspecialchars(route('weekly-briefing.index', [], true), ENT_QUOTES, 'UTF-8');
 
