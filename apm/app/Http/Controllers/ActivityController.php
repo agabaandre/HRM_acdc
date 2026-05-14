@@ -659,10 +659,8 @@ class ActivityController extends Controller
             ? json_decode($activity->attachment, true)
             : ($activity->attachment ?? []);
 
-        // Decode internal participants (new format)
-        $rawParticipants = is_string($activity->internal_participants)
-            ? json_decode($activity->internal_participants, true)
-            : ($activity->internal_participants ?? []);
+        // Internal participants: when editing a change request, use the CR row snapshot (raw JSON from change_request), not a decode of the parent activity only.
+        $rawParticipants = $this->internalParticipantsPayloadForActivityEdit($activity, $changeRequestForEdit);
 
         [$internalParticipants, $externalParticipants] = $this->partitionActivityParticipantsByMatrixDivision(
             $rawParticipants,
@@ -830,10 +828,8 @@ class ActivityController extends Controller
             ? json_decode($activity->attachment, true)
             : ($activity->attachment ?? []);
 
-        // Decode internal participants (new format)
-        $rawParticipants = is_string($activity->internal_participants)
-            ? json_decode($activity->internal_participants, true)
-            : ($activity->internal_participants ?? []);
+        // Internal participants: when editing a change request, use the CR row snapshot (raw JSON from change_request), not a decode of the parent activity only.
+        $rawParticipants = $this->internalParticipantsPayloadForActivityEdit($activity, $changeRequestForEdit);
 
         [$internalParticipants, $externalParticipants] = $this->partitionActivityParticipantsByMatrixDivision(
             $rawParticipants,
@@ -3782,6 +3778,51 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         }
 
         return [$internalParticipants, $externalParticipants];
+    }
+
+    /**
+     * Decode internal_participants JSON (handles double-encoded strings, same pattern as change-requests/show).
+     *
+     * @return array<int|string, mixed>
+     */
+    private function decodeInternalParticipantsJson(mixed $raw): array
+    {
+        if ($raw === null || $raw === '') {
+            return [];
+        }
+        if (is_array($raw)) {
+            return $raw;
+        }
+        if (! is_string($raw)) {
+            return [];
+        }
+        $firstDecode = json_decode($raw, true);
+        if (is_string($firstDecode)) {
+            $secondDecode = json_decode($firstDecode, true);
+
+            return is_array($secondDecode) ? $secondDecode : [];
+        }
+
+        return is_array($firstDecode) ? $firstDecode : [];
+    }
+
+    /**
+     * Participant map for the activity edit UI. When a change request is open, prefer the CR's internal_participants from the database row so the form matches what is stored on the change request.
+     *
+     * @return array<int|string, mixed>
+     */
+    private function internalParticipantsPayloadForActivityEdit(Activity $activity, ?ChangeRequest $changeRequest): array
+    {
+        if ($changeRequest === null) {
+            return $this->decodeInternalParticipantsJson($activity->internal_participants);
+        }
+
+        $rawColumn = $changeRequest->getRawOriginal('internal_participants');
+        if ($rawColumn !== null && $rawColumn !== '') {
+            return $this->decodeInternalParticipantsJson($rawColumn);
+        }
+
+        return $this->decodeInternalParticipantsJson($changeRequest->internal_participants);
     }
 
     /**
