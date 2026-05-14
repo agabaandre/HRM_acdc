@@ -214,7 +214,7 @@ class PendingApprovalsService
             $isAdminAssistantView = $isAdminAssistant && !$this->isCurrentApprover($matrix);
             $approvableActivities = $this->getApprovableActivitiesForMatrix($matrix);
             return $this->formatPendingItem($matrix, 'Matrix', [
-                'title' => "Matrix - {$matrix->quarter} {$matrix->year}",
+                'title' => $matrix->listDisplayTitle(),
                 'division' => $matrix->division->division_name ?? 'N/A',
                 'submitted_by' => $matrix->focalPerson ?
                     ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) :

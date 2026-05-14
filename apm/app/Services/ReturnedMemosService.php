@@ -110,7 +110,7 @@ class ReturnedMemosService
             return [
                 'id' => $matrix->id,
                 'type' => 'Matrix',
-                'title' => $matrix->activity_title ?? 'Untitled Matrix',
+                'title' => $this->formatReturnedMatrixTitle($matrix),
                 'document_number' => $matrix->document_number ?? 'N/A',
                 'division' => $matrix->division?->division_name ?? 'N/A',
                 'submitted_by' => $this->formatSubmittedBy($matrix),
@@ -402,7 +402,7 @@ class ReturnedMemosService
             return [
                 'id' => $request->id,
                 'type' => 'Change Request',
-                'title' => $request->change_title ?? 'Untitled Change Request',
+                'title' => $this->formatReturnedChangeRequestTitle($request),
                 'document_number' => $request->document_number ?? 'N/A',
                 'division' => $request->division?->division_name ?? 'N/A',
                 'submitted_by' => $this->formatSubmittedBy($request),
@@ -483,6 +483,32 @@ class ReturnedMemosService
             'categories' => $categories,
             'divisions' => $divisions
         ];
+    }
+
+    /**
+     * Display title for a returned matrix (matrices have no activity_title; use division + quarter + year).
+     */
+    protected function formatReturnedMatrixTitle(Matrix $matrix): string
+    {
+        return $matrix->listDisplayTitle();
+    }
+
+    /**
+     * Display title for a returned change request (stored on change_request.activity_title).
+     */
+    protected function formatReturnedChangeRequestTitle(ChangeRequest $request): string
+    {
+        $title = trim(strip_tags((string) ($request->activity_title ?? '')));
+        if ($title !== '') {
+            return $title;
+        }
+
+        $doc = trim((string) ($request->document_number ?? ''));
+        if ($doc !== '') {
+            return $doc;
+        }
+
+        return 'Change request #' . $request->id;
     }
 
     /**
