@@ -2861,7 +2861,7 @@ class MatrixController extends Controller
             foreach ($matrices as $matrix) {
                 fputcsv($file, [
                     $matrix->id,
-                    $matrix->title ?? 'N/A',
+                    $matrix->listDisplayTitle(),
                     $matrix->year,
                     $matrix->quarter,
                     $matrix->division ? $matrix->division->division_name : 'N/A',

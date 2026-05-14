@@ -149,6 +149,36 @@ class Matrix extends Model
         return $this->belongsTo(Division::class,"division_id");
     }
 
+    /**
+     * Human-readable label for lists (returned memos, pending approvals): "{Division} — {Quarter} {Year}".
+     */
+    public function listDisplayTitle(): string
+    {
+        $divisionName = $this->division?->division_name;
+        $divisionName = is_string($divisionName) ? trim($divisionName) : '';
+        $quarter = trim((string) ($this->quarter ?? ''));
+        $year = $this->year;
+        $yearStr = $year !== null && $year !== '' ? (string) (int) $year : '';
+        $period = trim($quarter . ($quarter !== '' && $yearStr !== '' ? ' ' : '') . $yearStr);
+
+        if ($divisionName !== '' && $period !== '') {
+            return $divisionName . ' — ' . $period;
+        }
+        if ($divisionName !== '') {
+            return $divisionName;
+        }
+        if ($period !== '') {
+            return $period;
+        }
+
+        $doc = trim((string) ($this->document_number ?? ''));
+        if ($doc !== '') {
+            return $doc;
+        }
+
+        return 'Matrix #' . ($this->id ?? '');
+    }
+
     public function staff(): BelongsTo
     {
         return $this->belongsTo(Staff::class,"staff_id","staff_id");
