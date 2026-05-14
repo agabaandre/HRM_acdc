@@ -318,19 +318,29 @@ trait HasApprovalWorkflow
             
             // Archive approval trails to restart approval process
             archive_approval_trails($this);
-        } elseif ($action !== 'approved') {
-            // Check if HOD (level 1) is returning - if so, go to level 0 (focal person)
-            if ($this->approval_level == 1) {
-                // HOD returning: go to level 0 (focal person/creator)
+        } elseif ($action === 'returned') {
+            // HOD → focal (level 0): clear forward_workflow_id. Higher level → HOD: keep workflow id.
+            if ((int) $this->approval_level === 1) {
+                $this->forward_workflow_id = null;
                 $this->approval_level = 0;
                 $this->overall_status = 'draft';
             } else {
-                // Other approvers returning: go to level 1 (HOD)
                 $this->approval_level = 1;
                 $this->overall_status = 'returned';
             }
-            
-            // Archive approval trails to restart approval process
+
+            archive_approval_trails($this);
+        } elseif ($action !== 'approved') {
+            if ($this->approval_level == 1) {
+                $this->forward_workflow_id = null;
+                $this->approval_level = 0;
+                $this->overall_status = 'draft';
+            } else {
+                $this->forward_workflow_id = null;
+                $this->approval_level = 1;
+                $this->overall_status = 'returned';
+            }
+
             archive_approval_trails($this);
         } else {
             $next_approver = $this->getNextApprover();

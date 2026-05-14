@@ -281,21 +281,31 @@ class ApprovalService
             
             // Archive approval trails to restart approval process
             archive_approval_trails($model);
-        } elseif ($action !== 'approved') {
-            // Check if HOD (level 1) is returning - if so, go to level 0 (focal person)
-            if ($model->approval_level == 1) {
-                // HOD returning: go to level 0 (focal person/creator)
-                $model->forward_workflow_id = NULL;
+        } elseif ($action === 'returned') {
+            // Return to focal (level 0): only then clear forward_workflow_id so the memo is "with creator" for resubmit.
+            // Return to HOD (level 1): keep forward_workflow_id so pending-approvals and workflow routing still resolve.
+            if ((int) $model->approval_level === 1) {
+                $model->forward_workflow_id = null;
                 $model->approval_level = 0;
                 $model->overall_status = 'draft';
             } else {
-                // Other approvers returning: go to level 1 (HOD)
-                $model->forward_workflow_id = NULL;
                 $model->approval_level = 1;
                 $model->overall_status = 'returned';
             }
-            
-            // Archive approval trails to restart approval process
+
+            archive_approval_trails($model);
+        } elseif ($action !== 'approved') {
+            // rejected and other non-approved actions: preserve previous behaviour (e.g. clear workflow when sent back)
+            if ($model->approval_level == 1) {
+                $model->forward_workflow_id = null;
+                $model->approval_level = 0;
+                $model->overall_status = 'draft';
+            } else {
+                $model->forward_workflow_id = null;
+                $model->approval_level = 1;
+                $model->overall_status = 'returned';
+            }
+
             archive_approval_trails($model);
         } else {
             $next_approver = $this->getNextApprover($model);
