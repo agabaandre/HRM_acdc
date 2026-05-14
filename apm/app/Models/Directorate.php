@@ -16,6 +16,7 @@ class Directorate extends Model
      * @var array
      */
     protected $fillable = [
+        'id',
         'name',
         'is_active',
         'director_id',
