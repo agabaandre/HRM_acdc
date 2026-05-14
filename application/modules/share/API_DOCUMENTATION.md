@@ -432,6 +432,33 @@ curl -u "email:password" \
   "https://cbp.africacdc.org/staff/share/directorates"
 ```
 
+**Response:** JSON array of directorate rows. Each row includes all `directorates` table columns (including `director_id` when the column exists) plus:
+
+- **`director_id`:** `integer` or `null` — `staff.staff_id` of the assigned director.
+- **`director`:** `null`, or an object when `director_id` is set: `id` (same as `director_id`), `fname`, `lname`, `title`, `name` (display string built from title + names; falls back to `"Staff {id}"` if the staff row is missing).
+
+Requires migration `application/sql/add_director_id_to_directorates.sql` on the Staff database so `directorates.director_id` exists.
+
+**Example Response:**
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Health Security",
+    "is_active": 1,
+    "director_id": 42,
+    "director": {
+      "id": 42,
+      "fname": "Jane",
+      "lname": "Doe",
+      "title": "Dr",
+      "name": "Dr Jane Doe"
+    }
+  }
+]
+```
+
 ---
 
 ### 9. Staff
