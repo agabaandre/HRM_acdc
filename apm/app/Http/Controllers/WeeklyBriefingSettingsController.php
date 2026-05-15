@@ -118,13 +118,16 @@ class WeeklyBriefingSettingsController extends Controller
             }
             if ($kind === 'directorate') {
                 $dirId = (int) ($row['contribution_directorate_id'] ?? 0);
+                $div = Division::query()->find($contribDivId);
+                if ($dirId <= 0 && $div) {
+                    $dirId = DirectorateDivisionLink::resolveDirectorateIdForDivision($div);
+                }
                 if ($dirId <= 0) {
-                    return back()->withInput()->with('error', 'Directorate rows need a directorate when grouping under a director.');
+                    return back()->withInput()->with('error', 'Directorate rows need a directorate when grouping under a director. Pick a contributing division whose director matches a directorate, or select the directorate manually.');
                 }
                 if (! Directorate::query()->whereKey($dirId)->exists()) {
                     return back()->withInput()->with('error', 'Invalid directorate selected.');
                 }
-                $div = Division::query()->find($contribDivId);
                 if (! $div || ! DirectorateDivisionLink::divisionBelongsToDirectorate($div, $dirId)) {
                     return back()->withInput()->with('error', 'The contributing division must belong to the selected directorate.');
                 }
