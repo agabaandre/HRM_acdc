@@ -5,7 +5,10 @@
     body { font-family: freesans, dejavusans, sans-serif; font-size: 11pt; color: #0f172a; margin: 24px; line-height: 1.45; }
     h1 { text-align: center; font-size: 16pt; color: #0d5c2f; margin: 0 0 6px 0; }
     .meta { text-align: center; font-size: 10pt; color: #64748b; margin-bottom: 20px; }
-    .page-break { page-break-before: always; }
+    /* Cover on its own page; each division brief starts on a new page (mPDF). */
+    .compiled-pdf-cover { page-break-after: always; }
+    .compiled-division-page { page-break-before: always; }
+    .compiled-division-page.first { page-break-before: auto; }
     table.happenings { width: 100%; border-collapse: collapse; margin: 8px 0 12px 0; }
     table.happenings th, table.happenings td { border: 1px solid #94a3b8; padding: 6px; vertical-align: top; font-size: 10pt; }
     table.happenings th { background: #ffffff; font-weight: bold; }
@@ -23,6 +26,7 @@
 $compiledPdfHeading = $compiledPdfHeading ?? null;
 $compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
 ?>
+<div class="compiled-pdf-cover">
 <h1><?php echo htmlspecialchars($compiledPdfHeading ?? 'Weekly brief — compiled', ENT_QUOTES, 'UTF-8'); ?></h1>
 <div class="meta"><?php
 if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
@@ -32,16 +36,14 @@ if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
     echo htmlspecialchars($rangeLine, ENT_QUOTES, 'UTF-8').' · <strong>'.(int) count($reports).'</strong> reporting unit(s)';
 }
 ?></div>
+</div>
 
-<?php $first = true; ?>
-<?php foreach ($reports as $report) {
-    if (! $first) {
-        echo '<div class="page-break"></div>';
-    }
-    $first = false;
+<?php foreach ($reports as $idx => $report) {
+    $isFirstDivision = ((int) $idx) === 0;
     $dirName = $report->directorate?->name ?? 'Directorate / Office';
     $unitLabel = $report->contributionEntityLabel();
     ?>
+<div class="compiled-division-page<?php echo $isFirstDivision ? ' first' : ''; ?>">
     <h2 style="font-size:13pt;color:#0d5c2f;border-bottom:1px solid #cbd5e1;"><?php echo htmlspecialchars($unitLabel); ?> <span style="font-weight:normal;color:#64748b;">(<?php echo htmlspecialchars($dirName); ?>)</span></h2>
     <p><strong>Status:</strong> <?php echo htmlspecialchars($report->status); ?>
     <?php
@@ -58,7 +60,7 @@ if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
     }
     ?></p>
     <?php if ($report->requiresDirectorReview()) { ?>
-    <p style="font-size:10pt;color:#334155;margin-top:6px;"><strong>Director review (divisions table):</strong> <?php echo htmlspecialchars($report->directorReviewSummaryLine(), ENT_QUOTES, 'UTF-8'); ?>
+    <p style="font-size:10pt;color:#334155;margin-top:6px;"><strong>Director review:</strong> <?php echo htmlspecialchars($report->directorReviewSummaryLine(), ENT_QUOTES, 'UTF-8'); ?>
         <?php
         $trailSum = $report->directorReviewTrailSummary();
         if ($trailSum !== '—') {
@@ -84,9 +86,9 @@ if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
         echo '<table class="happenings"><thead><tr>';
         echo '<th>Major Happening</th><th>Description and Key Actions</th><th>Strategic Relevance to Africa CDC</th>';
         echo '</tr></thead><tbody>';
-        foreach ($bodyRows as $idx => $row) {
+        foreach ($bodyRows as $rowIdx => $row) {
             $mh = trim((string) ($row['major_happening'] ?? ''));
-            $num = $idx + 1;
+            $num = $rowIdx + 1;
             $mhBody = trim(strip_tags($mh)) !== '' ? \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($mh) : '<span style="color:#64748b;">—</span>';
             $mhOut = '<strong>'.(int) $num.'.</strong> '.$mhBody;
             echo '<tr>';
@@ -117,6 +119,7 @@ if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
         }
     ?>
     </table>
+</div>
 <?php } ?>
 </body>
 </html>
