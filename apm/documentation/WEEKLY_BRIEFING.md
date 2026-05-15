@@ -41,7 +41,7 @@ The top menu item **Weekly brief** and the home dashboard card are shown when `D
 - **Division brief**: `d-{apm_division_id}` (matches `divisions.id` / APM division).
 - **Directorate brief**: `dr-{directorate_id}`.
 
-Contributors and listing keys are driven by **`weekly_briefing_contributors`** linked to **`weekly_briefing_settings`**. Each hub row is one contributor record. **Division** type always uses **`d-{division_id}`** from the contributing division. **Directorate** type uses **`d-{division_id}`** when a contributing division is selected (validated against the directorate), or **`dr-{directorate_id}`** when the division is left blank **and** a **PDF display name** is set (single directorate-level brief). Use **PDF display name** to override labels on the hub and PDFs.
+Contributors and listing keys are driven by **`weekly_briefing_contributors`** linked to **`weekly_briefing_settings`**. Each hub row is one contributor record with its own **`d-{division_id}`** brief (contributing division required). **Directorate** on a row is optional metadata for director review and directorate combined PDFs — not a shared report. Use **PDF display name** to override labels on the hub and PDFs. Legacy **`dr-{directorate_id}`** keys are migrated to division keys via `php artisan weekly-briefing:repair-contribution-keys` or by saving settings.
 
 ## Settings (admin)
 
@@ -92,6 +92,7 @@ Statuses and helpers live on `App\Models\WeeklyBriefingReport`.
 | `weekly-briefing:lock-drafts` | Locks **draft** reports past their submission deadline (skips rows covered by **report unlock override**). |
 | `weekly-briefing:compiled-summary` | Sends compiled / summary emails per settings; without `--force`, respects **`reminders_enabled`**, the **calendar day of the filing week submission deadline** (same rule as `WeeklyBriefingSetting::filingSubmissionDeadline()` / advance filing), and **`summary_send_time`**. Organisation-wide compiled PDF honours **`compiled_exclude_unreviewed_director_divisions`**. |
 | `weekly-briefing:test-notifications` | Sends **sample** weekly-brief emails to a given address to verify SMTP. |
+| `weekly-briefing:repair-contribution-keys` | Migrates legacy shared **`dr-*`** contributor/report rows to per-division **`d-*`** keys (run once after deploy if divisions were entangled). |
 
 ## Scheduler (Laravel)
 

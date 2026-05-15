@@ -196,10 +196,13 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        return WeeklyBriefingSetting::current()
-            ->contributors()
-            ->where('contribution_key', $k)
-            ->exists();
+        foreach (WeeklyBriefingSetting::current()->contributors()->get() as $contributor) {
+            if (WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor) === $k) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function currentUserIsDirectorForDivisionReport(WeeklyBriefingReport $report): bool
@@ -251,7 +254,9 @@ final class DivisionWeeklyBriefGate
         return WeeklyBriefingSetting::current()
             ->contributors()
             ->where('staff_id', $staffId)
-            ->pluck('contribution_key')
+            ->get()
+            ->map(fn (WeeklyBriefingContributor $c) => WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($c))
+            ->filter(fn (string $k) => $k !== '')
             ->unique()
             ->values()
             ->all();
@@ -330,11 +335,44 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        return WeeklyBriefingSetting::current()
-            ->contributors()
-            ->where('staff_id', self::sessionStaffId())
-            ->where('contribution_key', $contributionKey)
-            ->exists();
+        $uid = self::sessionStaffId();
+
+        foreach (WeeklyBriefingSetting::current()->contributors()->where('staff_id', $uid)->get() as $contributor) {
+            $stored = trim((string) ($contributor->contribution_key ?? ''));
+            if ($stored === $contributionKey || WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor) === $contributionKey) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function contributorRowForEffectiveKey(int $staffId, string $contributionKey): ?WeeklyBriefingContributor
+    {
+        foreach (WeeklyBriefingSetting::current()->contributors()->where('staff_id', $staffId)->get() as $contributor) {
+            $stored = trim((string) ($contributor->contribution_key ?? ''));
+            if ($stored === $contributionKey || WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor) === $contributionKey) {
+                return $contributor;
+            }
+        }
+
+        return null;
+    }
+
+    private static function userIsContributorForReport(int $staffId, WeeklyBriefingReport $report): bool
+    {
+        $reportKey = trim((string) ($report->contribution_key ?? ''));
+        if ($reportKey === '') {
+            return false;
+        }
+
+        foreach (WeeklyBriefingSetting::current()->contributors()->where('staff_id', $staffId)->get() as $contributor) {
+            if (WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor) === $reportKey) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function mayViewReport(WeeklyBriefingReport $report): bool
@@ -348,11 +386,7 @@ final class DivisionWeeklyBriefGate
 
         $uid = self::sessionStaffId();
 
-        return WeeklyBriefingSetting::current()
-            ->contributors()
-            ->where('staff_id', $uid)
-            ->where('contribution_key', $report->contribution_key)
-            ->exists()
+        return self::userIsContributorForReport($uid, $report)
             || self::mayViewAsDivisionDirector($report);
     }
 
@@ -362,13 +396,7 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        $uid = self::sessionStaffId();
-
-        return WeeklyBriefingSetting::current()
-            ->contributors()
-            ->where('staff_id', $uid)
-            ->where('contribution_key', $report->contribution_key)
-            ->exists();
+        return self::userIsContributorForReport(self::sessionStaffId(), $report);
     }
 
     /**

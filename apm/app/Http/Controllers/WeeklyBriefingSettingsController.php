@@ -8,6 +8,7 @@ use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingSetting;
 use App\Services\DivisionWeeklyBriefGate;
+use App\Services\WeeklyBriefingContributionKeyResolver;
 use App\Services\WeeklyBriefingScheduleGate;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -98,39 +99,30 @@ class WeeklyBriefingSettingsController extends Controller
             $rowDisplay = trim((string) ($row['display_name'] ?? ''));
             $hasPdfLabel = $rowDisplay !== '';
             $kind = (string) ($row['contribution_kind'] ?? 'division');
+            $contribDivId = WeeklyBriefingContributionKeyResolver::contributingDivisionIdFromRow($row);
+            if ($contribDivId <= 0) {
+                return back()->withInput()->with('error', 'Each contributor row needs a contributing division (required). Directorate is optional and used for director review and combined PDFs.');
+            }
+            if (! Division::query()->whereKey($contribDivId)->exists()) {
+                return back()->withInput()->with('error', 'Invalid contributing division selected.');
+            }
             if ($kind === 'directorate') {
                 $dirId = (int) ($row['contribution_directorate_id'] ?? 0);
                 if ($dirId <= 0) {
-                    return back()->withInput()->with('error', 'Directorate-scoped rows need a directorate (for validation and director compilation).');
+                    return back()->withInput()->with('error', 'Directorate rows need a directorate when grouping under a director.');
                 }
                 if (! Directorate::query()->whereKey($dirId)->exists()) {
                     return back()->withInput()->with('error', 'Invalid directorate selected.');
                 }
-                $divId = (int) ($row['contribution_division_id'] ?? 0);
-                if ($divId > 0) {
-                    if (! Division::query()->whereKey($divId)->exists()) {
-                        return back()->withInput()->with('error', 'Invalid contributing division selected.');
-                    }
-                    $div = Division::query()->find($divId);
-                    if (! $div || (int) ($div->directorate_id ?? 0) !== $dirId) {
-                        return back()->withInput()->with('error', 'The contributing division must belong to the selected directorate.');
-                    }
-                    $key = WeeklyBriefingContributor::contributionKeyForDivision($divId);
-                } else {
-                    if (! $hasPdfLabel) {
-                        return back()->withInput()->with('error', 'For Directorate rows, select a contributing division, or enter a PDF display name to file a single directorate-level brief without a division.');
-                    }
-                    $key = WeeklyBriefingContributor::contributionKeyForDirectorate($dirId);
+                $div = Division::query()->find($contribDivId);
+                if (! $div || (int) ($div->directorate_id ?? 0) !== $dirId) {
+                    return back()->withInput()->with('error', 'The contributing division must belong to the selected directorate.');
                 }
-            } else {
-                $divId = (int) ($row['contribution_division_id'] ?? 0);
-                if ($divId <= 0) {
-                    return back()->withInput()->with('error', 'Division contribution rows need a contribution division.');
-                }
-                if (! Division::query()->whereKey($divId)->exists()) {
-                    return back()->withInput()->with('error', 'Invalid division selected.');
-                }
-                $key = WeeklyBriefingContributor::contributionKeyForDivision($divId);
+            }
+            try {
+                $key = WeeklyBriefingContributionKeyResolver::keyFromSettingsRow($row);
+            } catch (\InvalidArgumentException $e) {
+                return back()->withInput()->with('error', $e->getMessage());
             }
             if (! Division::query()->whereKey($apmDivisionId)->exists()) {
                 return back()->withInput()->with('error', 'Invalid APM division.');
@@ -201,6 +193,8 @@ class WeeklyBriefingSettingsController extends Controller
             'report_viewer_staff_ids' => $viewerIds,
         ]);
         $settings->save();
+
+        WeeklyBriefingContributionKeyResolver::migrateLegacyDirectorateReportsForNormalizedRows($normalized);
 
         $settings->contributors()->delete();
         foreach ($normalized as $n) {
