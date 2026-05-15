@@ -197,6 +197,94 @@ class Settings_mdl extends CI_Model
         return $buttons;
     }
 
+    /**
+     * Build division insert/update payload from POST.
+     *
+     * @param bool $forCopy When true, uniquify name and drop conflicting short name.
+     */
+    public function division_data_from_post($forCopy = false)
+    {
+        $cleanDate = function ($date) {
+            return (empty($date) || $date === '0000-00-00' || $date === '0000-00-00 00:00:00') ? null : $date;
+        };
+
+        $name = trim((string) $this->input->post('division_name', true));
+        if ($forCopy) {
+            $name = $this->make_unique_copy_division_name($name);
+        }
+
+        $shortName = trim((string) $this->input->post('division_short_name', true));
+        if ($forCopy && $shortName !== '' && $this->division_short_name_exists($shortName)) {
+            $shortName = null;
+        }
+
+        return [
+            'division_name'           => $name,
+            'division_short_name'     => $shortName !== '' ? $shortName : null,
+            'division_head'           => $this->input->post('division_head', true),
+            'focal_person'            => $this->input->post('focal_person', true),
+            'finance_officer'         => $this->input->post('finance_officer', true),
+            'admin_assistant'         => $this->input->post('admin_assistant', true),
+            'directorate_id'          => $this->input->post('directorate_id', true),
+            'head_oic_id'             => $this->input->post('head_oic_id', true),
+            'head_oic_start_date'     => $cleanDate($this->input->post('head_oic_start_date', true)),
+            'head_oic_end_date'       => $cleanDate($this->input->post('head_oic_end_date', true)),
+            'director_id'             => $this->input->post('director_id', true),
+            'director_oic_id'         => $this->input->post('director_oic_id', true),
+            'director_oic_start_date' => $cleanDate($this->input->post('director_oic_start_date', true)),
+            'director_oic_end_date'   => $cleanDate($this->input->post('director_oic_end_date', true)),
+            'category'                => $this->input->post('category', true),
+        ];
+    }
+
+    /**
+     * Insert a new division from the edit form (save as copy). Returns new division_id or false.
+     */
+    public function insert_division_copy_from_post()
+    {
+        $data = $this->division_data_from_post(true);
+        if ($data['division_name'] === '') {
+            return false;
+        }
+
+        if ($this->db->insert('divisions', $data)) {
+            return (int) $this->db->insert_id();
+        }
+
+        return false;
+    }
+
+    private function division_short_name_exists($shortName)
+    {
+        $this->db->where('division_short_name', $shortName);
+
+        return $this->db->count_all_results('divisions') > 0;
+    }
+
+    private function division_name_exists($name)
+    {
+        $this->db->where('division_name', $name);
+
+        return $this->db->count_all_results('divisions') > 0;
+    }
+
+    private function make_unique_copy_division_name($baseName)
+    {
+        $baseName = trim($baseName);
+        if ($baseName === '') {
+            return '';
+        }
+
+        $candidate = $baseName . ' (Copy)';
+        $i = 2;
+        while ($this->division_name_exists($candidate)) {
+            $candidate = $baseName . ' (Copy ' . $i . ')';
+            $i++;
+        }
+
+        return $candidate;
+    }
+
     public function add_content($table)
     {
         if ($table === 'duty_stations') {

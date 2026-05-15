@@ -159,10 +159,21 @@
 
           <div class="row mt-4">
             <div class="col-md-12">
-              <div class="d-flex gap-2 justify-content-end">
+              <div class="d-flex gap-2 justify-content-end flex-wrap">
                 <button type="reset" class="btn btn-outline-secondary">
                   <i class="fas fa-undo me-1"></i> Reset Form
                 </button>
+                <?php if (!empty($is_settings_admin)): ?>
+                <button
+                  type="submit"
+                  class="btn btn-outline-primary"
+                  formaction="<?= base_url('settings/copy_division') ?>"
+                  formmethod="post"
+                  onclick="return confirm('Create a new division from this form? The original division will not be changed.');"
+                >
+                  <i class="fas fa-copy me-1"></i> Save as Copy
+                </button>
+                <?php endif; ?>
                 <button type="submit" class="btn btn-success">
                   <i class="fas fa-save me-1"></i> Update Division
                 </button>
