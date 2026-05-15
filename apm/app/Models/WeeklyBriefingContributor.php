@@ -75,7 +75,15 @@ class WeeklyBriefingContributor extends Model
             return $dn;
         }
 
-        return WeeklyBriefingCompletionSummary::labelForKey((string) ($this->contribution_key ?? ''));
+        return WeeklyBriefingCompletionSummary::labelForKey($this->effectiveContributionKey());
+    }
+
+    /**
+     * Division-scoped storage key for this row (never a shared directorate {@code dr-*} key when APM division is set).
+     */
+    public function effectiveContributionKey(): string
+    {
+        return \App\Services\WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($this);
     }
 
     public function setting(): BelongsTo

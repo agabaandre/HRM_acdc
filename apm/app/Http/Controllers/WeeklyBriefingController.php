@@ -9,6 +9,7 @@ use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 use App\Services\DivisionWeeklyBriefGate;
+use App\Services\WeeklyBriefingContributionKeyResolver;
 use App\Services\WeeklyBriefingCompletionSummary;
 use App\Services\WeeklyBriefingDirectorateCombined;
 use App\Services\WeeklyBriefingWindowService;
@@ -24,13 +25,14 @@ class WeeklyBriefingController extends Controller
         $this->assertDivisionWeeklyBriefModuleAccess();
 
         $contributorRows = DivisionWeeklyBriefGate::contributorsForReportListing();
-        $listingKeys = $contributorRows
+        $effectiveKeys = WeeklyBriefingContributionKeyResolver::effectiveKeysForContributors($contributorRows);
+        $storedKeys = $contributorRows
             ->pluck('contribution_key')
             ->map(fn ($k) => trim((string) $k))
             ->filter(fn ($k) => $k !== '')
-            ->unique()
             ->values()
             ->all();
+        $listingKeys = array_values(array_unique(array_merge($effectiveKeys, $storedKeys)));
         $directorateDisplayByContributionKey = $this->weeklyBriefDirectorateDisplayByContributionKeys($listingKeys);
         $filingKeys = DivisionWeeklyBriefGate::contributionKeysForFiling();
 
@@ -62,7 +64,7 @@ class WeeklyBriefingController extends Controller
         $keyRank = array_flip($sortedUniqueKeys);
 
         $weekRowsBase = $contributorRows->map(function (WeeklyBriefingContributor $c) use ($currentWeekReports, $directorateDisplayByContributionKey) {
-            $k = trim((string) ($c->contribution_key ?? ''));
+            $k = $c->effectiveContributionKey();
 
             return [
                 'contributor' => $c,
@@ -177,7 +179,7 @@ class WeeklyBriefingController extends Controller
                 $needle = mb_strtolower($filterSearch);
                 $matchingKeysSet = [];
                 foreach ($settings->contributors()->with('staff')->get() as $contrib) {
-                    $k = trim((string) ($contrib->contribution_key ?? ''));
+                    $k = $contrib->effectiveContributionKey();
                     if ($k === '' || ! in_array($k, $listingKeys, true)) {
                         continue;
                     }
@@ -281,57 +283,38 @@ class WeeklyBriefingController extends Controller
             abort(403);
         }
 
-        $contributorRow = $settings->contributors()
-            ->where('contribution_key', $contributionKey)
-            ->where('staff_id', $staffId)
-            ->first();
+        $contributorRow = DivisionWeeklyBriefGate::contributorRowForEffectiveKey($staffId, $contributionKey);
         if (! $contributorRow) {
             abort(403);
         }
 
-        $apmDivisionId = (int) $contributorRow->apm_division_id;
+        $storageKey = $contributorRow->effectiveContributionKey();
+        if (! str_starts_with($storageKey, 'd-')) {
+            abort(403, 'This reporting unit must use a division-scoped brief.');
+        }
 
         $defaults = $settings->filingIsoWeekPair();
         $isoYear = (int) $request->get('iso_year', $defaults['iso_year']);
         $isoWeek = (int) $request->get('iso_week', $defaults['iso_week']);
         $periodStart = WeeklyBriefingReport::periodMonday($isoYear, $isoWeek);
 
-        if (str_starts_with($contributionKey, 'dr-')) {
-            $dirId = (int) substr($contributionKey, 3);
-            $report = WeeklyBriefingReport::query()->firstOrCreate(
-                [
-                    'contribution_key' => $contributionKey,
-                    'report_iso_week_year' => $isoYear,
-                    'report_iso_week' => $isoWeek,
-                ],
-                [
-                    'division_id' => $apmDivisionId,
-                    'directorate_id' => $dirId,
-                    'period_start' => $periodStart->toDateString(),
-                    'status' => WeeklyBriefingReport::STATUS_DRAFT,
-                    'section1_major_happenings' => $this->defaultSection1(),
-                    'section2_bottlenecks' => [['issue' => '', 'impact_risk' => '', 'required_action' => '']],
-                ]
-            );
-        } else {
-            $divId = (int) substr($contributionKey, 2);
-            $division = Division::query()->findOrFail($divId);
-            $report = WeeklyBriefingReport::query()->firstOrCreate(
-                [
-                    'contribution_key' => $contributionKey,
-                    'report_iso_week_year' => $isoYear,
-                    'report_iso_week' => $isoWeek,
-                ],
-                [
-                    'division_id' => $division->id,
-                    'directorate_id' => $division->directorate_id,
-                    'period_start' => $periodStart->toDateString(),
-                    'status' => WeeklyBriefingReport::STATUS_DRAFT,
-                    'section1_major_happenings' => $this->defaultSection1(),
-                    'section2_bottlenecks' => [['issue' => '', 'impact_risk' => '', 'required_action' => '']],
-                ]
-            );
-        }
+        $divId = (int) substr($storageKey, 2);
+        $division = Division::query()->findOrFail($divId);
+        $report = WeeklyBriefingReport::query()->firstOrCreate(
+            [
+                'contribution_key' => $storageKey,
+                'report_iso_week_year' => $isoYear,
+                'report_iso_week' => $isoWeek,
+            ],
+            [
+                'division_id' => $division->id,
+                'directorate_id' => $division->directorate_id,
+                'period_start' => $periodStart->toDateString(),
+                'status' => WeeklyBriefingReport::STATUS_DRAFT,
+                'section1_major_happenings' => $this->defaultSection1(),
+                'section2_bottlenecks' => [['issue' => '', 'impact_risk' => '', 'required_action' => '']],
+            ]
+        );
 
         return redirect()->route('weekly-briefing.edit', $report);
     }

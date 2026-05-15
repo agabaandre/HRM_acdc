@@ -127,7 +127,7 @@
                 <button type="button" class="btn btn-sm btn-outline-success" id="wb-add-contributor">+ Add row</button>
             </div>
             <div class="card-body">
-                <p class="small text-muted">Pick <strong>staff</strong>, their <strong>APM division</strong>, and <strong>Reporting unit type</strong>. <strong>Division</strong> rows always need a contributing division. <strong>Directorate</strong> rows need a directorate; contributing division is <strong>required</strong> unless you enter a <strong>PDF display name</strong> (then you may leave division blank for one directorate-level brief per directorate, <code>dr-…</code>) or select a division for that unit’s brief (<code>d-…</code>). The hub lists one line per row.</p>
+                <p class="small text-muted">Pick <strong>staff</strong>, their <strong>APM division</strong>, and <strong>Reporting unit type</strong>. Every row needs a <strong>contributing division</strong> — each division files its own weekly brief (<code>d-…</code>). <strong>Directorate</strong> is optional metadata for director review and combined directorate PDFs only. The hub lists one line per row.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle" id="wb-contributors-table">
                         <thead class="table-light">
@@ -155,8 +155,11 @@
                                     $staffId = $row ? (int)($row['staff_id'] ?? 0) : (int)($c->staff_id ?? 0);
                                     $apmDiv = $row ? (int)($row['apm_division_id'] ?? 0) : (int)($c->apm_division_id ?? 0);
                                     $kind = $row ? ($row['contribution_kind'] ?? 'division') : (str_starts_with((string)($c->contribution_key ?? ''), 'dr-') ? 'directorate' : 'division');
-                                    $contribDiv = $row ? (int)($row['contribution_division_id'] ?? 0) : ($kind === 'division' ? (int)substr((string)($c->contribution_key ?? ''), 2) : 0);
-                                    $contribDir = $row ? (int)($row['contribution_directorate_id'] ?? 0) : ($kind === 'directorate' ? (int)substr((string)($c->contribution_key ?? ''), 3) : 0);
+                                    $contribDiv = $row ? (int)($row['contribution_division_id'] ?? 0) : (str_starts_with((string)($c->contribution_key ?? ''), 'd-') ? (int)substr((string)($c->contribution_key ?? ''), 2) : (int)($c->apm_division_id ?? 0));
+                                    $contribDir = $row ? (int)($row['contribution_directorate_id'] ?? 0) : 0;
+                                    if (! $row && $contribDir <= 0 && $contribDiv > 0) {
+                                        $contribDir = (int) (\App\Models\Division::query()->whereKey($contribDiv)->value('directorate_id') ?? 0);
+                                    }
                                     $displayName = $row ? (string)($row['display_name'] ?? '') : (string)($c->display_name ?? '');
                                 @endphp
                                 @include('weekly-briefing.partials.contributor-row', [
@@ -394,9 +397,7 @@
         var hasDn = dnEl && dnEl.value.trim() !== '';
         if (kind === 'directorate') {
             hint.classList.remove('d-none');
-            hint.textContent = hasDn
-                ? 'Optional if PDF display name set.'
-                : 'Required unless PDF display name set.';
+            hint.textContent = 'Required — each division has its own brief; directorate PDFs merge at export.';
         } else {
             hint.classList.add('d-none');
             hint.textContent = '';
