@@ -116,6 +116,23 @@ class Division extends Model
     /**
      * Divisions where this staff member is the named director or is the active director OIC (within OIC dates).
      */
+    /**
+     * Divisions where this staff member is the configured admin assistant (`divisions.admin_assistant`).
+     */
+    public static function queryForStaffAdminAssistant(int $staffId): Builder
+    {
+        return static::query()->where('admin_assistant', $staffId);
+    }
+
+    public function staffIsAdminAssistant(int $staffId): bool
+    {
+        if ($staffId <= 0) {
+            return false;
+        }
+
+        return (int) ($this->admin_assistant ?? 0) === $staffId;
+    }
+
     public static function queryForStaffActingAsDirector(int $staffId): Builder
     {
         $today = Carbon::now()->toDateString();

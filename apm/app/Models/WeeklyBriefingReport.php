@@ -225,6 +225,39 @@ class WeeklyBriefingReport extends Model
         $this->director_review_trail = $trail;
     }
 
+    public function appendSubmissionFiledOnBehalfTrail(int $filerStaffId, int $attributedToStaffId): void
+    {
+        $trail = $this->director_review_trail;
+        if (! is_array($trail)) {
+            $trail = [];
+        }
+        $trail[] = [
+            'at' => now()->toIso8601String(),
+            'staff_id' => $filerStaffId,
+            'action' => 'submitted_on_behalf',
+            'attributed_to_staff_id' => $attributedToStaffId,
+        ];
+        $this->director_review_trail = $trail;
+    }
+
+    public function submissionFiledOnBehalfByStaffId(): ?int
+    {
+        $trail = $this->director_review_trail;
+        if (! is_array($trail)) {
+            return null;
+        }
+        foreach (array_reverse($trail) as $entry) {
+            if (! is_array($entry) || ($entry['action'] ?? '') !== 'submitted_on_behalf') {
+                continue;
+            }
+            $sid = (int) ($entry['staff_id'] ?? 0);
+
+            return $sid > 0 ? $sid : null;
+        }
+
+        return null;
+    }
+
     public function directorReviewSummaryLine(): string
     {
         if (! $this->requiresDirectorReview()) {
@@ -255,6 +288,12 @@ class WeeklyBriefingReport extends Model
             $act = isset($entry['action']) ? (string) $entry['action'] : '';
             $sid = isset($entry['staff_id']) ? (int) $entry['staff_id'] : 0;
             if ($at === '' && $act === '') {
+                continue;
+            }
+            if ($act === 'submitted_on_behalf') {
+                $attr = isset($entry['attributed_to_staff_id']) ? (int) $entry['attributed_to_staff_id'] : 0;
+                $parts[] = trim('submitted on behalf of staff #'.$attr.' by staff #'.$sid.' @ '.$at);
+
                 continue;
             }
             $parts[] = trim($act.' staff #'.$sid.' @ '.$at);

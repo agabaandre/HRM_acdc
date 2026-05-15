@@ -14,7 +14,14 @@
 
     @php
         $unlockOverrideActive = $unlockOverrideActive ?? false;
+        $filingAsAdminAssistant = $filingAsAdminAssistant ?? false;
     @endphp
+    @if($filingAsAdminAssistant)
+        <div class="alert alert-info border shadow-sm mb-3">
+            <strong><i class="fas fa-user-edit me-1"></i>Filing on behalf of the division head.</strong>
+            You are the admin assistant for this division. When you submit, the briefing is attributed to the division head; your filing is recorded on the completion trail.
+        </div>
+    @endif
     @if($unlockOverrideActive && $settings->report_unlock_override_until)
         <div class="alert alert-warning border shadow-sm mb-3">
             <strong><i class="fas fa-unlock-alt me-1"></i>Administrative unlock is active.</strong>
@@ -80,6 +87,10 @@
                         Submitted by <strong>{{ $subName !== '' ? $subName : 'Staff #'.$report->submitted_by_staff_id }}</strong>
                         @if($report->submitted_at)
                             <span>· {{ $report->submitted_at->format('M j, Y g:i A') }}</span>
+                        @endif
+                        @if($filedOnBehalfBy ?? null)
+                            @php $filerName = trim((string) ($filedOnBehalfBy->name ?? '')); @endphp
+                            <span>· Filed by admin assistant <strong>{{ $filerName !== '' ? $filerName : 'Staff #'.$filedOnBehalfBy->staff_id }}</strong></span>
                         @endif
                     </div>
                 @endif

@@ -135,7 +135,52 @@ final class DivisionWeeklyBriefGate
 
         $sid = self::sessionStaffId();
 
-        return self::isListedContributor($sid) || self::isListedReportViewer($sid) || self::mayActAsDivisionDirector($sid);
+        return self::isListedContributor($sid)
+            || self::isListedReportViewer($sid)
+            || self::mayActAsDivisionDirector($sid)
+            || self::mayActAsDivisionAdminAssistant($sid);
+    }
+
+    /**
+     * True when {@code divisions.admin_assistant} is this staff member on at least one division.
+     */
+    public static function mayActAsDivisionAdminAssistant(?int $staffId = null): bool
+    {
+        $sid = $staffId ?? self::sessionStaffId();
+
+        return $sid > 0 && self::divisionIdsForStaffAdminAssistant($sid) !== [];
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function divisionIdsForStaffAdminAssistant(?int $staffId = null): array
+    {
+        $sid = $staffId ?? self::sessionStaffId();
+        if ($sid <= 0) {
+            return [];
+        }
+
+        return Division::queryForStaffAdminAssistant($sid)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    public static function contributorRowVisibleToAdminAssistant(WeeklyBriefingContributor $contributor, ?int $staffId = null): bool
+    {
+        if (! self::mayActAsDivisionAdminAssistant($staffId)) {
+            return false;
+        }
+
+        $sid = $staffId ?? self::sessionStaffId();
+        $divId = WeeklyBriefingContributionKeyResolver::divisionIdForContributor($contributor);
+        if ($divId <= 0) {
+            return false;
+        }
+
+        return in_array($divId, self::divisionIdsForStaffAdminAssistant($sid), true);
     }
 
     /**
@@ -405,15 +450,25 @@ final class DivisionWeeklyBriefGate
 
         $staffId = self::sessionStaffId();
 
-        return WeeklyBriefingSetting::current()
+        $keys = WeeklyBriefingSetting::current()
             ->contributors()
             ->where('staff_id', $staffId)
             ->get()
             ->map(fn (WeeklyBriefingContributor $c) => WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($c))
             ->filter(fn (string $k) => $k !== '')
-            ->unique()
-            ->values()
             ->all();
+
+        foreach (WeeklyBriefingSetting::current()->contributors()->get() as $contributor) {
+            if (! self::contributorRowVisibleToAdminAssistant($contributor, $staffId)) {
+                continue;
+            }
+            $key = WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor);
+            if ($key !== '') {
+                $keys[] = $key;
+            }
+        }
+
+        return array_values(array_unique($keys));
     }
 
     /**
@@ -473,6 +528,10 @@ final class DivisionWeeklyBriefGate
                 return true;
             }
 
+            if (self::contributorRowVisibleToAdminAssistant($c, $sid)) {
+                return true;
+            }
+
             return self::contributorRowVisibleToDirector($c, $sid);
         })->values();
     }
@@ -484,20 +543,37 @@ final class DivisionWeeklyBriefGate
 
     public static function mayUseContributionKey(string $contributionKey): bool
     {
+        return self::contributorRowForSessionFiling($contributionKey) !== null;
+    }
+
+    /**
+     * Contributor settings row the session user may file for (listed contributor or division admin assistant).
+     */
+    public static function contributorRowForSessionFiling(string $contributionKey): ?WeeklyBriefingContributor
+    {
         if ($contributionKey === '' || ! self::canAccessModule()) {
-            return false;
+            return null;
         }
 
         $uid = self::sessionStaffId();
 
-        foreach (WeeklyBriefingSetting::current()->contributors()->where('staff_id', $uid)->get() as $contributor) {
+        foreach (WeeklyBriefingSetting::current()->contributors()->get() as $contributor) {
             $stored = trim((string) ($contributor->contribution_key ?? ''));
-            if ($stored === $contributionKey || WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor) === $contributionKey) {
-                return true;
+            $effective = WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor);
+            if ($stored !== $contributionKey && $effective !== $contributionKey) {
+                continue;
+            }
+
+            if ((int) ($contributor->staff_id ?? 0) === $uid) {
+                return $contributor;
+            }
+
+            if (self::contributorRowVisibleToAdminAssistant($contributor, $uid)) {
+                return $contributor;
             }
         }
 
-        return false;
+        return null;
     }
 
     public static function contributorRowForEffectiveKey(int $staffId, string $contributionKey): ?WeeklyBriefingContributor
@@ -523,6 +599,28 @@ final class DivisionWeeklyBriefGate
         return false;
     }
 
+    private static function userIsAdminAssistantForReport(int $staffId, WeeklyBriefingReport $report): bool
+    {
+        if ($staffId <= 0 || ! self::mayActAsDivisionAdminAssistant($staffId)) {
+            return false;
+        }
+
+        if (! self::reportHasConfiguredContributionKey($report)) {
+            return false;
+        }
+
+        $divId = (int) ($report->division_id ?? 0);
+        if ($divId <= 0 && str_starts_with((string) ($report->contribution_key ?? ''), 'd-')) {
+            $divId = (int) substr((string) $report->contribution_key, 2);
+        }
+
+        if ($divId <= 0) {
+            return false;
+        }
+
+        return in_array($divId, self::divisionIdsForStaffAdminAssistant($staffId), true);
+    }
+
     /**
      * System admin (role 10) or staff in {@see reportViewerStaffIds}: see every configured unit on the hub with view/PDF actions.
      */
@@ -543,6 +641,7 @@ final class DivisionWeeklyBriefGate
         $uid = self::sessionStaffId();
 
         return self::userIsContributorForReport($uid, $report)
+            || self::userIsAdminAssistantForReport($uid, $report)
             || self::mayViewAsDivisionDirector($report);
     }
 
@@ -552,7 +651,60 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        return self::userIsContributorForReport(self::sessionStaffId(), $report);
+        $uid = self::sessionStaffId();
+
+        return self::userIsContributorForReport($uid, $report)
+            || self::userIsAdminAssistantForReport($uid, $report);
+    }
+
+    public static function mayEditReportAsAdminAssistant(WeeklyBriefingReport $report, ?int $staffId = null): bool
+    {
+        $sid = $staffId ?? self::sessionStaffId();
+
+        return self::userIsAdminAssistantForReport($sid, $report);
+    }
+
+    /**
+     * Settings contributor row that owns this report (any staff), for attribution and labels.
+     */
+    public static function contributorRowForReport(WeeklyBriefingReport $report): ?WeeklyBriefingContributor
+    {
+        foreach (WeeklyBriefingSetting::current()->contributors()->get() as $contributor) {
+            if (WeeklyBriefingContributionKeyResolver::contributorOwnsReport($contributor, $report)) {
+                return $contributor;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Staff id recorded as submitter: configured contributor (HoD), else effective division head.
+     */
+    public static function submissionAttributionStaffId(WeeklyBriefingReport $report): int
+    {
+        $contributor = self::contributorRowForReport($report);
+        if ($contributor && (int) ($contributor->staff_id ?? 0) > 0) {
+            return (int) $contributor->staff_id;
+        }
+
+        $division = $report->relationLoaded('division') ? $report->division : $report->divisionForContribution();
+        if ($division) {
+            if (function_exists('effective_division_head_staff_id')) {
+                $head = effective_division_head_staff_id($division);
+                if ($head !== null && $head > 0) {
+                    return $head;
+                }
+            }
+            $rawHead = $division->division_head ?? null;
+            if ($rawHead !== null && $rawHead !== '' && (int) $rawHead > 0) {
+                return (int) $rawHead;
+            }
+        }
+
+        $session = self::sessionStaffId();
+
+        return $session > 0 ? $session : 0;
     }
 
     /**

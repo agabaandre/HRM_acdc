@@ -19,6 +19,7 @@ Access is enforced by `App\Services\DivisionWeeklyBriefGate` (nav, routes, and r
 | **Configured contributors** | Rows in `weekly_briefing_contributors` for their `staff_id` and `contribution_key`. |
 | **Report viewers** | `report_viewer_staff_ids` on settings: read all configured units’ reports (and compiled exports where allowed). |
 | **Directorate directors** | When **`division_directors_can_access_module`** is enabled (name is legacy): staff listed as **`directorates.director_id`** on at least one **active** directorate. Session staff id is resolved from `staff_id` or `auth_staff_id`. |
+| **Division admin assistants** | Staff listed as **`divisions.admin_assistant`** on at least one division. They see only configured contributor rows for those divisions and may **view, edit, and submit** weekly briefs on behalf of the assigned division head (same filing window as the contributor). **Submission** is attributed to the configured contributor / division head (`submitted_by_staff_id`); the admin assistant is recorded on the director completion trail (`submitted_on_behalf`). |
 
 The top menu item **Weekly brief** and the home dashboard card are shown when `DivisionWeeklyBriefGate::canAccessModule()` is true (`App\Providers\AppServiceProvider` passes `showDivisionWeeklyBriefNav` into `layouts.partials.nav`).
 
