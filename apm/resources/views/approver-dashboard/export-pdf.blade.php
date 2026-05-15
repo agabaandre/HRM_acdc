@@ -14,13 +14,14 @@
             <tr style="background: #119a48; color: #ffffff;">
                 <th style="text-align: center; width: 28px; color: #ffffff;">#</th>
                 <th style="text-align: left; color: #ffffff;">Approver</th>
+                <th style="text-align: center; color: #ffffff;">Avg. time</th>
+                <th style="text-align: center; color: #ffffff;">Total pending</th>
+                <th style="text-align: center; color: #ffffff;">Total handled</th>
+                <th style="text-align: left; color: #ffffff;">Pending items</th>
+                <th style="text-align: left; color: #ffffff;">Roles</th>
                 <th style="text-align: left; color: #ffffff;">Last approval</th>
                 <th style="text-align: left; color: #ffffff;">Email</th>
                 <th style="text-align: left; color: #ffffff;">Division</th>
-                <th style="text-align: left; color: #ffffff;">Roles</th>
-                <th style="text-align: center; color: #ffffff;">Total pending</th>
-                <th style="text-align: center; color: #ffffff;">Total handled</th>
-                <th style="text-align: center; color: #ffffff;">Avg. time</th>
             </tr>
         </thead>
         <tbody>
@@ -28,17 +29,18 @@
             <tr style="{{ $index % 2 === 1 ? 'background: #f8f9fa;' : '' }}">
                 <td style="text-align: center;">{{ $index + 1 }}</td>
                 <td>{{ $row['approver_name'] ?? '—' }}</td>
+                <td style="text-align: center;">{{ $row['avg_approval_time_display'] ?? 'No data' }}</td>
+                <td style="text-align: center;">{{ $row['total_pending'] ?? 0 }}</td>
+                <td style="text-align: center;">{{ $row['total_handled'] ?? 0 }}</td>
+                <td>{{ $row['pending_items_display'] ?? '—' }}</td>
+                <td>{{ is_array($row['roles'] ?? null) ? implode(', ', $row['roles']) : ($row['role'] ?? '—') }}</td>
                 <td>{{ $row['last_approval_date_display'] ?? '—' }}</td>
                 <td>{{ $row['approver_email'] ?? '—' }}</td>
                 <td>{{ $row['division_name'] ?? 'N/A' }}</td>
-                <td>{{ is_array($row['roles'] ?? null) ? implode(', ', $row['roles']) : ($row['role'] ?? '—') }}</td>
-                <td style="text-align: center;">{{ $row['total_pending'] ?? 0 }}</td>
-                <td style="text-align: center;">{{ $row['total_handled'] ?? 0 }}</td>
-                <td style="text-align: center;">{{ $row['avg_approval_time_display'] ?? 'No data' }}</td>
             </tr>
             @empty
             <tr>
-                <td colspan="9" style="text-align: center; padding: 16px; color: #6c757d;">No approvers to display.</td>
+                <td colspan="10" style="text-align: center; padding: 16px; color: #6c757d;">No approvers to display.</td>
             </tr>
             @endforelse
         </tbody>

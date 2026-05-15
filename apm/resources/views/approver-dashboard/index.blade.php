@@ -858,7 +858,7 @@ function initializeDataTable() {
         serverSide: true,
         searching: false, // Disable DataTables search box
         ordering: true,
-        order: [[7, 'desc']], // Sort by Avg. Time (highest days) descending by default
+        order: [[2, 'desc']], // Sort by Avg. Time (highest days) descending by default
         ajax: function(data, callback, settings) {
             var params = buildTableRequestParams(data);
             var cacheKey = getTableCacheKey(params);
@@ -961,25 +961,47 @@ function initializeDataTable() {
                 }
             },
             {
-                data: 'last_approval_date_display',
+                data: 'avg_approval_time_display',
                 orderable: true,
                 searchable: false,
                 render: function(data, type, row) {
                     if (type === 'sort' || type === 'type') {
-                        return row.last_approval_date || '';
+                        return row.avg_approval_time_hours || 0;
                     }
-                    return row.last_approval_date_display ? `<span class="text-nowrap">${row.last_approval_date_display}</span>` : '<span class="text-muted">—</span>';
+                    var label = row.avg_approval_time_display || 'No data';
+                    if (approverTimingReportWideAccess || Number(row.staff_id) === sessionStaffIdForTiming) {
+                        var params = new URLSearchParams();
+                        params.set('staff_id', row.staff_id);
+                        var fy = $('#filterYear').val();
+                        var fm = $('#filterMonth').val();
+                        if (fy) { params.set('year', fy); }
+                        if (fm) { params.set('month', fm); }
+                        var href = approvalTimingReportUrl + '?' + params.toString();
+                        return `<a href="${href}" class="text-decoration-none" wire:navigate title="Open average time per document"><span class="badge bg-info">${label}</span></a>`;
+                    }
+                    return `<span class="badge bg-info">${label}</span>`;
                 }
             },
             {
-                data: 'roles',
-                orderable: false,
-                searchable: true,
+                data: 'total_pending',
+                orderable: true,
+                searchable: false,
                 render: function(data, type, row) {
-                    if (row.roles && row.roles.length > 0) {
-                        return row.roles.map(role => `<span class="badge bg-info me-1 mb-1 d-inline-block">${role}</span>`).join('');
+                    if (type === 'sort' || type === 'type') {
+                        return row.total_pending || 0;
                     }
-                    return `<span class="badge bg-info">${row.role || 'N/A'}</span>`;
+                    return `<span class="badge ${row.total_pending > 0 ? 'bg-danger' : 'bg-success'}">${row.total_pending}</span>`;
+                }
+            },
+            {
+                data: 'total_handled',
+                orderable: true,
+                searchable: false,
+                render: function(data, type, row) {
+                    if (type === 'sort' || type === 'type') {
+                        return row.total_handled || 0;
+                    }
+                    return `<span class="badge bg-primary">${row.total_handled || 0}</span>`;
                 }
             },
             {
@@ -1021,60 +1043,35 @@ function initializeDataTable() {
                 }
             },
             {
-                data: 'total_pending',
-                orderable: true,
-                searchable: false,
+                data: 'roles',
+                orderable: false,
+                searchable: true,
                 render: function(data, type, row) {
-                    // Return numeric value for sorting
-                    if (type === 'sort' || type === 'type') {
-                        return row.total_pending || 0;
+                    if (row.roles && row.roles.length > 0) {
+                        return row.roles.map(role => `<span class="badge bg-info me-1 mb-1 d-inline-block">${role}</span>`).join('');
                     }
-                    return `<span class="badge ${row.total_pending > 0 ? 'bg-danger' : 'bg-success'}">${row.total_pending}</span>`;
+                    return `<span class="badge bg-info">${row.role || 'N/A'}</span>`;
                 }
             },
             {
-                data: 'total_handled',
+                data: 'last_approval_date_display',
                 orderable: true,
                 searchable: false,
                 render: function(data, type, row) {
-                    // Return numeric value for sorting
                     if (type === 'sort' || type === 'type') {
-                        return row.total_handled || 0;
+                        return row.last_approval_date || '';
                     }
-                    return `<span class="badge bg-primary">${row.total_handled || 0}</span>`;
-                }
-            },
-            {
-                data: 'avg_approval_time_display',
-                orderable: true,
-                searchable: false,
-                render: function(data, type, row) {
-                    // Return numeric value for sorting (use hours for proper numeric sorting)
-                    if (type === 'sort' || type === 'type') {
-                        return row.avg_approval_time_hours || 0;
-                    }
-                    var label = row.avg_approval_time_display || 'No data';
-                    if (approverTimingReportWideAccess || Number(row.staff_id) === sessionStaffIdForTiming) {
-                        var params = new URLSearchParams();
-                        params.set('staff_id', row.staff_id);
-                        var fy = $('#filterYear').val();
-                        var fm = $('#filterMonth').val();
-                        if (fy) { params.set('year', fy); }
-                        if (fm) { params.set('month', fm); }
-                        var href = approvalTimingReportUrl + '?' + params.toString();
-                        return `<a href="${href}" class="text-decoration-none" wire:navigate title="Open average time per document"><span class="badge bg-info">${label}</span></a>`;
-                    }
-                    return `<span class="badge bg-info">${label}</span>`;
+                    return row.last_approval_date_display ? `<span class="text-nowrap">${row.last_approval_date_display}</span>` : '<span class="text-muted">—</span>';
                 }
             }
         ],
         columnDefs: [
             { targets: 1, className: 'approver-dashboard-approver-col' },
-            { targets: 3, className: 'approver-role-cell' }
+            { targets: 6, className: 'approver-role-cell' }
         ],
         pageLength: 25,
         lengthMenu: [[25, 50, 100], [25, 50, 100]],
-        order: [[7, 'desc']], // Sort by Avg. Time (highest days) descending by default
+        order: [[2, 'desc']], // Sort by Avg. Time (highest days) descending by default
         language: {
             processing: '<i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i> Loading...'
         },
@@ -1135,14 +1132,14 @@ function initializeDataTable() {
 
 function updateSummaryStats(response) {
     var sc = response && response.summary_cards ? response.summary_cards : null;
-    var tr = sc && sc.total_approval_requests != null ? sc.total_approval_requests : 0;
+    var avg = sc && sc.overall_avg_display != null ? sc.overall_avg_display : '—';
+    var submitted = sc && sc.total_submitted != null ? sc.total_submitted : (sc && sc.total_approval_requests != null ? sc.total_approval_requests : 0);
     var tp = sc && sc.total_pending != null ? sc.total_pending : 0;
     var ta = sc && sc.total_approved != null ? sc.total_approved : 0;
-    var tret = sc && sc.total_returned != null ? sc.total_returned : 0;
-    $('#totalApprovalRequests').text(tr);
-    $('#totalPending').text(tp);
+    $('#overallAvgTime').text(avg);
+    $('#totalSubmitted').text(submitted);
     $('#totalApproved').text(ta);
-    $('#totalReturned').text(tret);
+    $('#totalPending').text(tp);
 }
 
 function refreshDashboard() {
