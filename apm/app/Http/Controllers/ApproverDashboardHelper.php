@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 trait ApproverDashboardHelper
 {
@@ -47,7 +47,7 @@ trait ApproverDashboardHelper
         }
 
         if ($month) {
-            $quarter = 'Q' . ceil($month / 3);
+            $quarter = 'Q'.ceil($month / 3);
             $query->where('quarter', $quarter);
         }
 
@@ -100,7 +100,7 @@ trait ApproverDashboardHelper
         }
 
         if ($month) {
-            $quarter = 'Q' . ceil($month / 3);
+            $quarter = 'Q'.ceil($month / 3);
             $query->whereHas('matrix', function ($q) use ($quarter) {
                 $q->where('quarter', $quarter);
             });
@@ -179,7 +179,7 @@ trait ApproverDashboardHelper
         }
 
         if ($month) {
-            $quarter = 'Q' . ceil($month / 3);
+            $quarter = 'Q'.ceil($month / 3);
             $query->where(function ($q) use ($quarter, $month) {
                 $q->whereHas('matrix', function ($matrixQuery) use ($quarter) {
                     $matrixQuery->where('quarter', $quarter);
@@ -232,7 +232,7 @@ trait ApproverDashboardHelper
                 'wd.role',
                 'wd.is_division_specific',
                 'wd.division_reference_column',
-                DB::raw("'approvers_table' as source")
+                DB::raw("'approvers_table' as source"),
             ])
             ->where('wd.workflow_id', $workflowId)
             ->where('wd.is_enabled', 1)
@@ -243,9 +243,9 @@ trait ApproverDashboardHelper
         if ($search) {
             $approversQuery->where(function ($q) use ($search) {
                 $q->where('s.fname', 'like', "%{$search}%")
-                  ->orWhere('s.lname', 'like', "%{$search}%")
-                  ->orWhere('s.work_email', 'like', "%{$search}%")
-                  ->orWhere('wd.role', 'like', "%{$search}%");
+                    ->orWhere('s.lname', 'like', "%{$search}%")
+                    ->orWhere('s.work_email', 'like', "%{$search}%")
+                    ->orWhere('wd.role', 'like', "%{$search}%");
             });
         }
 
@@ -266,18 +266,20 @@ trait ApproverDashboardHelper
             ->get();
 
         $divisionsResults = collect();
-        
+
         foreach ($divisionSpecificRoles as $role) {
             $columnName = $role->division_reference_column;
-            if (!$columnName) continue;
-            
+            if (! $columnName) {
+                continue;
+            }
+
             // Skip this role if approval level filter is specified and doesn't match
             if ($approvalLevel && $role->approval_order != $approvalLevel) {
                 continue;
             }
-            
+
             $roleQuery = DB::table('divisions as d')
-                ->join('staff as s', "s.staff_id", "=", "d.{$columnName}")
+                ->join('staff as s', 's.staff_id', '=', "d.{$columnName}")
                 ->select([
                     's.id as approver_id',
                     's.staff_id',
@@ -291,9 +293,9 @@ trait ApproverDashboardHelper
                     DB::raw("{$role->approval_order} as level_no"),
                     DB::raw("{$role->workflow_id} as workflow_id"),
                     DB::raw("'{$role->role}' as role"),
-                    DB::raw("1 as is_division_specific"),
+                    DB::raw('1 as is_division_specific'),
                     DB::raw("'{$columnName}' as division_reference_column"),
-                    DB::raw("'divisions_table' as source")
+                    DB::raw("'divisions_table' as source"),
                 ])
                 ->where('s.active', 1)
                 ->whereNotNull("d.{$columnName}");
@@ -302,9 +304,9 @@ trait ApproverDashboardHelper
             if ($search) {
                 $roleQuery->where(function ($q) use ($search) {
                     $q->where('s.fname', 'like', "%{$search}%")
-                      ->orWhere('s.lname', 'like', "%{$search}%")
-                      ->orWhere('s.work_email', 'like', "%{$search}%")
-                      ->orWhere('role', 'like', "%{$search}%");
+                        ->orWhere('s.lname', 'like', "%{$search}%")
+                        ->orWhere('s.work_email', 'like', "%{$search}%")
+                        ->orWhere('role', 'like', "%{$search}%");
                 });
             }
 
@@ -317,16 +319,16 @@ trait ApproverDashboardHelper
 
         // Get results from both queries and combine them
         $approversResults = $approversQuery->get();
-        
+
         // Combine results (don't deduplicate - show each assignment separately)
         $combinedResults = $approversResults->concat($divisionsResults)
             ->sortBy([
                 ['level_no', 'asc'],
                 ['division_name', 'asc'],
                 ['fname', 'asc'],
-                ['lname', 'asc']
+                ['lname', 'asc'],
             ]);
-        
+
         return $combinedResults;
     }
 
@@ -345,11 +347,11 @@ trait ApproverDashboardHelper
         foreach ($approversList as $approver) {
             $approverObj = is_array($approver) ? (object) $approver : $approver;
             $staffId = $approverObj->staff_id;
-            
-            if (!isset($approversByStaffId[$staffId])) {
+
+            if (! isset($approversByStaffId[$staffId])) {
                 $title = $approverObj->title ?? '';
-                $fullName = trim(($title ? $title . ' ' : '') . $approverObj->fname . ' ' . $approverObj->lname);
-                
+                $fullName = trim(($title ? $title.' ' : '').$approverObj->fname.' '.$approverObj->lname);
+
                 $approversByStaffId[$staffId] = [
                     'staff_id' => $staffId,
                     'approver_id' => $approverObj->approver_id,
@@ -377,20 +379,20 @@ trait ApproverDashboardHelper
                     'total_handled' => 0,
                 ];
             }
-            
+
             // Add role and level if not already present
-            $roleLevel = $approverObj->role . ' (Level ' . $approverObj->level_no . ')';
-            if (!in_array($roleLevel, $approversByStaffId[$staffId]['roles'])) {
+            $roleLevel = $approverObj->role.' (Level '.$approverObj->level_no.')';
+            if (! in_array($roleLevel, $approversByStaffId[$staffId]['roles'])) {
                 $approversByStaffId[$staffId]['roles'][] = $roleLevel;
             }
-            if (!in_array($approverObj->level_no, $approversByStaffId[$staffId]['levels'])) {
+            if (! in_array($approverObj->level_no, $approversByStaffId[$staffId]['levels'])) {
                 $approversByStaffId[$staffId]['levels'][] = $approverObj->level_no;
             }
 
-            if (empty($approversByStaffId[$staffId]['photo']) && !empty($approverObj->photo)) {
+            if (empty($approversByStaffId[$staffId]['photo']) && ! empty($approverObj->photo)) {
                 $approversByStaffId[$staffId]['photo'] = self::normalizeStaffPhotoBasename($approverObj->photo);
             }
-            
+
             // Note: Pending counts, total handled, and avg approval time are now calculated
             // across all workflows/levels in the second pass, so we don't need to calculate them per level here
         }
@@ -405,25 +407,25 @@ trait ApproverDashboardHelper
         foreach ($approversByStaffId as $staffId => $data) {
             // Get pending counts across ALL workflows using PendingApprovalsService logic
             $allPendingCounts = $this->getPendingCountsForApproverAll($staffId, $divisionId, $year, $month);
-            
+
             // Use the aggregated counts from all workflows
             $data['pending_counts'] = $allPendingCounts;
-            
+
             // Calculate total pending (sum of all pending counts)
             $totalPending = array_sum(array_diff_key($data['pending_counts'], ['total' => '', 'memos' => '']));
-            
+
             // Calculate total handled across ALL workflows and levels for this approver
             $totalHandled = $this->getTotalHandledForApproverAll($staffId, $divisionId, $year, $month);
-            
+
             // Average approval time uses each approver's staff.division_id (same as pending-approvals when opened with ?staff_id=…);
             // the dashboard division filter does not apply to this metric so values match that page.
             $avgDivisionForTime = $this->divisionIdForAverageApprovalTime((int) $staffId);
             $avgApprovalTime = $this->getAverageApprovalTimeAll((int) $staffId, $avgDivisionForTime, $year, $month);
-            
+
             // Sort roles and levels for display
             sort($data['levels']);
             sort($data['roles']);
-            
+
             $lastApprovalRaw = $lastApprovalDates[$staffId] ?? null;
             $lastApprovalDisplay = $lastApprovalRaw ? Carbon::parse($lastApprovalRaw)->format('M j, Y g:i A') : null;
 
@@ -474,6 +476,7 @@ trait ApproverDashboardHelper
         foreach ($rows as $row) {
             $result[(int) $row->staff_id] = $row->last_approval_date;
         }
+
         return $result;
     }
 
@@ -577,18 +580,18 @@ trait ApproverDashboardHelper
         $approvalService = app(\App\Services\ApprovalService::class);
 
         // Get pending matrices
-        if (!$docType || $docType === 'matrix') {
+        if (! $docType || $docType === 'matrix') {
             $query = \App\Models\Matrix::with(['division', 'staff', 'focalPerson', 'forwardWorkflow'])
                 ->where('overall_status', 'pending')
                 ->where('forward_workflow_id', '!=', null)
                 ->where('approval_level', '>', 0)
                 ->where('forward_workflow_id', $workflowId)
                 ->where('approval_level', $levelNo);
-            
+
             if ($divisionId) {
                 $query->where('division_id', $divisionId);
             }
-            
+
             $matrices = $query->get();
             foreach ($matrices as $matrix) {
                 if ($approvalService->canTakeAction($matrix, $staffId)) {
@@ -598,18 +601,18 @@ trait ApproverDashboardHelper
         }
 
         // Get pending special memos
-        if (!$docType || $docType === 'special') {
+        if (! $docType || $docType === 'special') {
             $query = \App\Models\SpecialMemo::with(['staff', 'division'])
                 ->where('overall_status', 'pending')
                 ->where('forward_workflow_id', '!=', null)
                 ->where('approval_level', '>', 0)
                 ->where('forward_workflow_id', $workflowId)
                 ->where('approval_level', $levelNo);
-            
+
             if ($divisionId) {
                 $query->where('division_id', $divisionId);
             }
-            
+
             $memos = $query->get();
             foreach ($memos as $memo) {
                 if ($approvalService->canTakeAction($memo, $staffId)) {
@@ -619,18 +622,18 @@ trait ApproverDashboardHelper
         }
 
         // Get pending non-travel memos
-        if (!$docType || $docType === 'non_travel') {
+        if (! $docType || $docType === 'non_travel') {
             $query = \App\Models\NonTravelMemo::with(['staff', 'division'])
                 ->where('overall_status', 'pending')
                 ->where('forward_workflow_id', '!=', null)
                 ->where('approval_level', '>', 0)
                 ->where('forward_workflow_id', $workflowId)
                 ->where('approval_level', $levelNo);
-            
+
             if ($divisionId) {
                 $query->where('division_id', $divisionId);
             }
-            
+
             $memos = $query->get();
             foreach ($memos as $memo) {
                 if ($approvalService->canTakeAction($memo, $staffId)) {
@@ -640,7 +643,7 @@ trait ApproverDashboardHelper
         }
 
         // Get pending single memos (activities with is_single_memo = true)
-        if (!$docType || $docType === 'single_memos') {
+        if (! $docType || $docType === 'single_memos') {
             $query = \App\Models\Activity::with(['staff', 'division'])
                 ->where('is_single_memo', true)
                 ->where('overall_status', 'pending')
@@ -648,11 +651,11 @@ trait ApproverDashboardHelper
                 ->where('approval_level', '>', 0)
                 ->where('forward_workflow_id', $workflowId)
                 ->where('approval_level', $levelNo);
-            
+
             if ($divisionId) {
                 $query->where('division_id', $divisionId);
             }
-            
+
             $activities = $query->get();
             foreach ($activities as $activity) {
                 if ($approvalService->canTakeAction($activity, $staffId)) {
@@ -676,18 +679,18 @@ trait ApproverDashboardHelper
         }
 
         // Get pending ARF requests
-        if (!$docType || $docType === 'arf') {
+        if (! $docType || $docType === 'arf') {
             $query = \App\Models\RequestARF::with(['staff', 'division', 'forwardWorkflow'])
                 ->where('overall_status', 'pending')
                 ->where('forward_workflow_id', '!=', null)
                 ->where('approval_level', '>', 0)
                 ->where('forward_workflow_id', $workflowId)
                 ->where('approval_level', $levelNo);
-            
+
             if ($divisionId) {
                 $query->where('division_id', $divisionId);
             }
-            
+
             $arfs = $query->get();
             foreach ($arfs as $arf) {
                 if ($approvalService->canTakeAction($arf, $staffId)) {
@@ -697,18 +700,18 @@ trait ApproverDashboardHelper
         }
 
         // Get pending service requests
-        if (!$docType || $docType === 'requests_for_service') {
+        if (! $docType || $docType === 'requests_for_service') {
             $query = \App\Models\ServiceRequest::with(['staff', 'division', 'forwardWorkflow'])
                 ->where('overall_status', 'pending')
                 ->where('forward_workflow_id', '!=', null)
                 ->where('approval_level', '>', 0)
                 ->where('forward_workflow_id', $workflowId)
                 ->where('approval_level', $levelNo);
-            
+
             if ($divisionId) {
                 $query->where('division_id', $divisionId);
             }
-            
+
             $serviceRequests = $query->get();
             foreach ($serviceRequests as $serviceRequest) {
                 if ($approvalService->canTakeAction($serviceRequest, $staffId)) {
@@ -718,7 +721,7 @@ trait ApproverDashboardHelper
         }
 
         // Get pending change requests (uses workflows 1, 6, 7)
-        if (!$docType || $docType === 'change_requests') {
+        if (! $docType || $docType === 'change_requests') {
             $possibleWorkflowIds = [1, 6, 7];
             $query = \App\Models\ChangeRequest::with(['staff', 'division', 'forwardWorkflow'])
                 ->where('overall_status', 'pending')
@@ -726,11 +729,11 @@ trait ApproverDashboardHelper
                 ->where('approval_level', '>', 0)
                 ->whereIn('forward_workflow_id', $possibleWorkflowIds)
                 ->where('approval_level', $levelNo);
-            
+
             if ($divisionId) {
                 $query->where('division_id', $divisionId);
             }
-            
+
             $changeRequests = $query->get();
             foreach ($changeRequests as $changeRequest) {
                 if ($approvalService->canTakeAction($changeRequest, $staffId)) {
@@ -740,6 +743,7 @@ trait ApproverDashboardHelper
         }
 
         $counts['total'] = array_sum($counts);
+
         return $counts;
     }
 
@@ -750,7 +754,7 @@ trait ApproverDashboardHelper
     protected function getPendingCountForARF($workflowId, $levelNo, $divisionId = null)
     {
         try {
-            if (!DB::getSchemaBuilder()->hasTable('request_arfs')) {
+            if (! DB::getSchemaBuilder()->hasTable('request_arfs')) {
                 return 0;
             }
 
@@ -766,7 +770,8 @@ trait ApproverDashboardHelper
 
             return $query->count();
         } catch (\Exception $e) {
-            Log::error('Error getting pending count for ARF: ' . $e->getMessage());
+            Log::error('Error getting pending count for ARF: '.$e->getMessage());
+
             return 0;
         }
     }
@@ -778,7 +783,7 @@ trait ApproverDashboardHelper
     protected function getPendingCountForServiceRequests($workflowId, $levelNo, $divisionId = null)
     {
         try {
-            if (!DB::getSchemaBuilder()->hasTable('service_requests')) {
+            if (! DB::getSchemaBuilder()->hasTable('service_requests')) {
                 return 0;
             }
 
@@ -794,7 +799,8 @@ trait ApproverDashboardHelper
 
             return $query->count();
         } catch (\Exception $e) {
-            Log::error('Error getting pending count for service requests: ' . $e->getMessage());
+            Log::error('Error getting pending count for service requests: '.$e->getMessage());
+
             return 0;
         }
     }
@@ -805,14 +811,14 @@ trait ApproverDashboardHelper
     protected function getPendingCountForChangeRequests($workflowId, $levelNo, $divisionId = null)
     {
         try {
-            if (!DB::getSchemaBuilder()->hasTable('change_request')) {
+            if (! DB::getSchemaBuilder()->hasTable('change_request')) {
                 return 0;
             }
 
             // Change requests use dynamic workflows (1, 6, 7) based on change type
             // Check if the workflow ID matches any of the possible change request workflows
             $possibleWorkflowIds = [1, 6, 7];
-            if (!in_array($workflowId, $possibleWorkflowIds)) {
+            if (! in_array($workflowId, $possibleWorkflowIds)) {
                 return 0;
             }
 
@@ -828,7 +834,8 @@ trait ApproverDashboardHelper
 
             return $query->count();
         } catch (\Exception $e) {
-            Log::error('Error getting pending count for change requests: ' . $e->getMessage());
+            Log::error('Error getting pending count for change requests: '.$e->getMessage());
+
             return 0;
         }
     }
@@ -894,7 +901,7 @@ trait ApproverDashboardHelper
                         AND at2.action IN ('approved', 'rejected')
                     )
                                         ";
-                    $params = [$workflowId, $levelNo];
+                $params = [$workflowId, $levelNo];
             } else {
                 // Other levels: Documents approved at previous level but not yet approved at current level
                 $sql = "
@@ -913,14 +920,15 @@ trait ApproverDashboardHelper
                         AND at2.action IN ('approved', 'rejected')
                     )
                                         ";
-                    $params = [$workflowId, $levelNo - 1, $levelNo];
+                $params = [$workflowId, $levelNo - 1, $levelNo];
             }
             $result = DB::select($sql, $params);
-            
+
             return $result[0]->total_count ?? 0;
 
         } catch (\Exception $e) {
-            Log::error('Error calculating total pending for approver: ' . $e->getMessage());
+            Log::error('Error calculating total pending for approver: '.$e->getMessage());
+
             return 0;
         }
     }
@@ -1024,13 +1032,13 @@ trait ApproverDashboardHelper
                 }
                 $approvalTime = Carbon::parse($result->approval_time);
                 $submittedTime = Carbon::parse($result->submitted_time);
-                
+
                 // Calculate seconds between when document was received at this level and when it was approved
                 $seconds = abs($approvalTime->getTimestamp() - $submittedTime->getTimestamp());
-                
+
                 // Convert to hours (with decimal precision)
                 $hours = $seconds / 3600;
-                
+
                 // Only count when approval is after receipt
                 if ($approvalTime->getTimestamp() >= $submittedTime->getTimestamp()) {
                     $totalHours += $hours;
@@ -1041,7 +1049,8 @@ trait ApproverDashboardHelper
             return $count > 0 ? round($totalHours / $count, 2) : 0;
 
         } catch (\Exception $e) {
-            Log::error('Error calculating average approval time: ' . $e->getMessage());
+            Log::error('Error calculating average approval time: '.$e->getMessage());
+
             return 0;
         }
     }
@@ -1057,12 +1066,14 @@ trait ApproverDashboardHelper
 
         if ($hours < 1) {
             $minutes = round($hours * 60);
-            return $minutes . ' min';
+
+            return $minutes.' min';
         } elseif ($hours < 24) {
-            return round($hours, 1) . ' hrs';
+            return round($hours, 1).' hrs';
         } else {
             $days = round($hours / 24, 1);
-            return $days . ' days';
+
+            return $days.' days';
         }
     }
 
@@ -1118,7 +1129,8 @@ trait ApproverDashboardHelper
 
             return $result;
         } catch (\Exception $e) {
-            Log::error('Error calculating average approval time by workflow: ' . $e->getMessage());
+            Log::error('Error calculating average approval time by workflow: '.$e->getMessage());
+
             return [];
         }
     }
@@ -1151,6 +1163,7 @@ trait ApproverDashboardHelper
             'change_requests' => 'App\\Models\\ChangeRequest',
             'other_memo' => 'App\\Models\\OtherMemo',
         ];
+
         return $map[$docType] ?? null;
     }
 
@@ -1167,6 +1180,7 @@ trait ApproverDashboardHelper
             'App\\Models\\ChangeRequest' => 'Change Request',
             'App\\Models\\OtherMemo' => 'Other Memo',
         ];
+
         return $map[$modelType ?? ''] ?? $modelType;
     }
 
@@ -1383,7 +1397,7 @@ trait ApproverDashboardHelper
             }
 
             $modelType = $docType ? self::getModelTypeByDocType($docType) : null;
-            $quarter = ($month && $year) ? 'Q' . ceil($month / 3) : null;
+            $quarter = ($month && $year) ? 'Q'.ceil($month / 3) : null;
 
             $result = [];
             foreach ($workflows as $wf) {
@@ -1502,30 +1516,30 @@ trait ApproverDashboardHelper
                                             $parent->where(function ($noParent) {
                                                 $noParent->whereNull('r.source_id')->orWhereNull('r.model_type');
                                             })
-                                            ->orWhere(function ($act) {
-                                                $act->where('r.model_type', 'App\\Models\\Activity')
-                                                    ->whereExists(function ($pa) {
-                                                        $pa->select(DB::raw(1))->from('activities as pa')
-                                                            ->whereColumn('pa.id', 'r.source_id')
-                                                            ->where('pa.overall_status', 'approved');
-                                                    });
-                                            })
-                                            ->orWhere(function ($nt) {
-                                                $nt->where('r.model_type', 'App\\Models\\NonTravelMemo')
-                                                    ->whereExists(function ($pa) {
-                                                        $pa->select(DB::raw(1))->from('non_travel_memos as pa')
-                                                            ->whereColumn('pa.id', 'r.source_id')
-                                                            ->where('pa.overall_status', 'approved');
-                                                    });
-                                            })
-                                            ->orWhere(function ($sm) {
-                                                $sm->where('r.model_type', 'App\\Models\\SpecialMemo')
-                                                    ->whereExists(function ($pa) {
-                                                        $pa->select(DB::raw(1))->from('special_memos as pa')
-                                                            ->whereColumn('pa.id', 'r.source_id')
-                                                            ->where('pa.overall_status', 'approved');
-                                                    });
-                                            });
+                                                ->orWhere(function ($act) {
+                                                    $act->where('r.model_type', 'App\\Models\\Activity')
+                                                        ->whereExists(function ($pa) {
+                                                            $pa->select(DB::raw(1))->from('activities as pa')
+                                                                ->whereColumn('pa.id', 'r.source_id')
+                                                                ->where('pa.overall_status', 'approved');
+                                                        });
+                                                })
+                                                ->orWhere(function ($nt) {
+                                                    $nt->where('r.model_type', 'App\\Models\\NonTravelMemo')
+                                                        ->whereExists(function ($pa) {
+                                                            $pa->select(DB::raw(1))->from('non_travel_memos as pa')
+                                                                ->whereColumn('pa.id', 'r.source_id')
+                                                                ->where('pa.overall_status', 'approved');
+                                                        });
+                                                })
+                                                ->orWhere(function ($sm) {
+                                                    $sm->where('r.model_type', 'App\\Models\\SpecialMemo')
+                                                        ->whereExists(function ($pa) {
+                                                            $pa->select(DB::raw(1))->from('special_memos as pa')
+                                                                ->whereColumn('pa.id', 'r.source_id')
+                                                                ->where('pa.overall_status', 'approved');
+                                                        });
+                                                });
                                         });
                                 });
                         })
@@ -1540,42 +1554,42 @@ trait ApproverDashboardHelper
                                             $parent->where(function ($noParent) {
                                                 $noParent->whereNull('sr.source_id')->whereNull('sr.source_type')->whereNull('sr.activity_id');
                                             })
-                                            ->orWhere(function ($act) {
-                                                $act->where(function ($a) {
-                                                    $a->whereNotNull('sr.activity_id')
-                                                        ->whereExists(function ($pa) {
-                                                            $pa->select(DB::raw(1))->from('activities as pa')
-                                                                ->whereColumn('pa.id', 'sr.activity_id')
-                                                                ->where('pa.overall_status', 'approved');
-                                                        });
-                                                })->orWhere(function ($a) {
-                                                    $a->where('sr.source_type', 'activity')
+                                                ->orWhere(function ($act) {
+                                                    $act->where(function ($a) {
+                                                        $a->whereNotNull('sr.activity_id')
+                                                            ->whereExists(function ($pa) {
+                                                                $pa->select(DB::raw(1))->from('activities as pa')
+                                                                    ->whereColumn('pa.id', 'sr.activity_id')
+                                                                    ->where('pa.overall_status', 'approved');
+                                                            });
+                                                    })->orWhere(function ($a) {
+                                                        $a->where('sr.source_type', 'activity')
+                                                            ->whereNotNull('sr.source_id')
+                                                            ->whereExists(function ($pa) {
+                                                                $pa->select(DB::raw(1))->from('activities as pa')
+                                                                    ->whereColumn('pa.id', 'sr.source_id')
+                                                                    ->where('pa.overall_status', 'approved');
+                                                            });
+                                                    });
+                                                })
+                                                ->orWhere(function ($sm) {
+                                                    $sm->where('sr.source_type', 'special_memo')
                                                         ->whereNotNull('sr.source_id')
                                                         ->whereExists(function ($pa) {
-                                                            $pa->select(DB::raw(1))->from('activities as pa')
+                                                            $pa->select(DB::raw(1))->from('special_memos as pa')
+                                                                ->whereColumn('pa.id', 'sr.source_id')
+                                                                ->where('pa.overall_status', 'approved');
+                                                        });
+                                                })
+                                                ->orWhere(function ($nt) {
+                                                    $nt->where('sr.source_type', 'non_travel_memo')
+                                                        ->whereNotNull('sr.source_id')
+                                                        ->whereExists(function ($pa) {
+                                                            $pa->select(DB::raw(1))->from('non_travel_memos as pa')
                                                                 ->whereColumn('pa.id', 'sr.source_id')
                                                                 ->where('pa.overall_status', 'approved');
                                                         });
                                                 });
-                                            })
-                                            ->orWhere(function ($sm) {
-                                                $sm->where('sr.source_type', 'special_memo')
-                                                    ->whereNotNull('sr.source_id')
-                                                    ->whereExists(function ($pa) {
-                                                        $pa->select(DB::raw(1))->from('special_memos as pa')
-                                                            ->whereColumn('pa.id', 'sr.source_id')
-                                                            ->where('pa.overall_status', 'approved');
-                                                    });
-                                            })
-                                            ->orWhere(function ($nt) {
-                                                $nt->where('sr.source_type', 'non_travel_memo')
-                                                    ->whereNotNull('sr.source_id')
-                                                    ->whereExists(function ($pa) {
-                                                        $pa->select(DB::raw(1))->from('non_travel_memos as pa')
-                                                            ->whereColumn('pa.id', 'sr.source_id')
-                                                            ->where('pa.overall_status', 'approved');
-                                                    });
-                                            });
                                         });
                                 });
                         })
@@ -1666,68 +1680,96 @@ trait ApproverDashboardHelper
                             $subQ->where('at.model_type', 'App\\Models\\Matrix')
                                 ->whereExists(function ($exists) use ($year, $quarter) {
                                     $exists->select(DB::raw(1))->from('matrices as m')->whereColumn('m.id', 'at.model_id');
-                                    if ($year) $exists->where('m.year', $year);
-                                    if ($quarter) $exists->where('m.quarter', $quarter);
+                                    if ($year) {
+                                        $exists->where('m.year', $year);
+                                    }
+                                    if ($quarter) {
+                                        $exists->where('m.quarter', $quarter);
+                                    }
                                 });
                         })
-                        ->orWhere(function ($subQ) use ($year, $quarter) {
-                            $subQ->where('at.model_type', 'App\\Models\\Activity')
-                                ->whereExists(function ($exists) use ($year, $quarter) {
-                                    $exists->select(DB::raw(1))
-                                        ->from('activities as a')
-                                        ->join('matrices as m', 'm.id', '=', 'a.matrix_id')
-                                        ->whereColumn('a.id', 'at.model_id');
-                                    if ($year) $exists->where('m.year', $year);
-                                    if ($quarter) $exists->where('m.quarter', $quarter);
-                                });
-                        })
-                        ->orWhere(function ($subQ) use ($year, $quarter) {
-                            $subQ->where('at.model_type', 'App\\Models\\ChangeRequest')
-                                ->whereExists(function ($exists) use ($year, $quarter) {
-                                    $exists->select(DB::raw(1))
-                                        ->from('change_request as cr')
-                                        ->join('matrices as m', 'm.id', '=', 'cr.matrix_id')
-                                        ->whereColumn('cr.id', 'at.model_id');
-                                    if ($year) $exists->where('m.year', $year);
-                                    if ($quarter) $exists->where('m.quarter', $quarter);
-                                });
-                        })
-                        ->orWhere(function ($subQ) use ($year, $month) {
-                            $subQ->where('at.model_type', 'App\\Models\\NonTravelMemo')
-                                ->whereExists(function ($exists) use ($year, $month) {
-                                    $exists->select(DB::raw(1))->from('non_travel_memos as n')
-                                        ->whereColumn('n.id', 'at.model_id');
-                                    if ($year) $exists->whereYear('n.created_at', $year);
-                                    if ($month) $exists->whereMonth('n.created_at', $month);
-                                });
-                        })
-                        ->orWhere(function ($subQ) use ($year, $month) {
-                            $subQ->where('at.model_type', 'App\\Models\\SpecialMemo')
-                                ->whereExists(function ($exists) use ($year, $month) {
-                                    $exists->select(DB::raw(1))->from('special_memos as s')
-                                        ->whereColumn('s.id', 'at.model_id');
-                                    if ($year) $exists->whereYear('s.created_at', $year);
-                                    if ($month) $exists->whereMonth('s.created_at', $month);
-                                });
-                        })
-                        ->orWhere(function ($subQ) use ($year, $month) {
-                            $subQ->where('at.model_type', 'App\\Models\\RequestARF')
-                                ->whereExists(function ($exists) use ($year, $month) {
-                                    $exists->select(DB::raw(1))->from('request_arfs as r')
-                                        ->whereColumn('r.id', 'at.model_id');
-                                    if ($year) $exists->whereYear('r.created_at', $year);
-                                    if ($month) $exists->whereMonth('r.created_at', $month);
-                                });
-                        })
-                        ->orWhere(function ($subQ) use ($year, $month) {
-                            $subQ->where('at.model_type', 'App\\Models\\ServiceRequest')
-                                ->whereExists(function ($exists) use ($year, $month) {
-                                    $exists->select(DB::raw(1))->from('service_requests as sr')
-                                        ->whereColumn('sr.id', 'at.model_id');
-                                    if ($year) $exists->whereYear('sr.created_at', $year);
-                                    if ($month) $exists->whereMonth('sr.created_at', $month);
-                                });
-                        });
+                            ->orWhere(function ($subQ) use ($year, $quarter) {
+                                $subQ->where('at.model_type', 'App\\Models\\Activity')
+                                    ->whereExists(function ($exists) use ($year, $quarter) {
+                                        $exists->select(DB::raw(1))
+                                            ->from('activities as a')
+                                            ->join('matrices as m', 'm.id', '=', 'a.matrix_id')
+                                            ->whereColumn('a.id', 'at.model_id');
+                                        if ($year) {
+                                            $exists->where('m.year', $year);
+                                        }
+                                        if ($quarter) {
+                                            $exists->where('m.quarter', $quarter);
+                                        }
+                                    });
+                            })
+                            ->orWhere(function ($subQ) use ($year, $quarter) {
+                                $subQ->where('at.model_type', 'App\\Models\\ChangeRequest')
+                                    ->whereExists(function ($exists) use ($year, $quarter) {
+                                        $exists->select(DB::raw(1))
+                                            ->from('change_request as cr')
+                                            ->join('matrices as m', 'm.id', '=', 'cr.matrix_id')
+                                            ->whereColumn('cr.id', 'at.model_id');
+                                        if ($year) {
+                                            $exists->where('m.year', $year);
+                                        }
+                                        if ($quarter) {
+                                            $exists->where('m.quarter', $quarter);
+                                        }
+                                    });
+                            })
+                            ->orWhere(function ($subQ) use ($year, $month) {
+                                $subQ->where('at.model_type', 'App\\Models\\NonTravelMemo')
+                                    ->whereExists(function ($exists) use ($year, $month) {
+                                        $exists->select(DB::raw(1))->from('non_travel_memos as n')
+                                            ->whereColumn('n.id', 'at.model_id');
+                                        if ($year) {
+                                            $exists->whereYear('n.created_at', $year);
+                                        }
+                                        if ($month) {
+                                            $exists->whereMonth('n.created_at', $month);
+                                        }
+                                    });
+                            })
+                            ->orWhere(function ($subQ) use ($year, $month) {
+                                $subQ->where('at.model_type', 'App\\Models\\SpecialMemo')
+                                    ->whereExists(function ($exists) use ($year, $month) {
+                                        $exists->select(DB::raw(1))->from('special_memos as s')
+                                            ->whereColumn('s.id', 'at.model_id');
+                                        if ($year) {
+                                            $exists->whereYear('s.created_at', $year);
+                                        }
+                                        if ($month) {
+                                            $exists->whereMonth('s.created_at', $month);
+                                        }
+                                    });
+                            })
+                            ->orWhere(function ($subQ) use ($year, $month) {
+                                $subQ->where('at.model_type', 'App\\Models\\RequestARF')
+                                    ->whereExists(function ($exists) use ($year, $month) {
+                                        $exists->select(DB::raw(1))->from('request_arfs as r')
+                                            ->whereColumn('r.id', 'at.model_id');
+                                        if ($year) {
+                                            $exists->whereYear('r.created_at', $year);
+                                        }
+                                        if ($month) {
+                                            $exists->whereMonth('r.created_at', $month);
+                                        }
+                                    });
+                            })
+                            ->orWhere(function ($subQ) use ($year, $month) {
+                                $subQ->where('at.model_type', 'App\\Models\\ServiceRequest')
+                                    ->whereExists(function ($exists) use ($year, $month) {
+                                        $exists->select(DB::raw(1))->from('service_requests as sr')
+                                            ->whereColumn('sr.id', 'at.model_id');
+                                        if ($year) {
+                                            $exists->whereYear('sr.created_at', $year);
+                                        }
+                                        if ($month) {
+                                            $exists->whereMonth('sr.created_at', $month);
+                                        }
+                                    });
+                            });
                     });
                 }
 
@@ -1742,12 +1784,14 @@ trait ApproverDashboardHelper
                 $count = 0;
                 $modelTypesSeen = [];
                 foreach ($rows as $row) {
-                    if (!$row->submitted_time || !$row->last_approval_time) continue;
+                    if (! $row->submitted_time || ! $row->last_approval_time) {
+                        continue;
+                    }
                     $submitted = Carbon::parse($row->submitted_time);
                     $lastApproval = Carbon::parse($row->last_approval_time);
                     $totalHours += $submitted->diffInSeconds($lastApproval) / 3600;
                     $count++;
-                    if (!empty($row->model_type)) {
+                    if (! empty($row->model_type)) {
                         $modelTypesSeen[$row->model_type] = true;
                     }
                 }
@@ -1771,7 +1815,8 @@ trait ApproverDashboardHelper
 
             return $result;
         } catch (\Exception $e) {
-            Log::error('Error calculating average approval time by workflow (filtered): ' . $e->getMessage());
+            Log::error('Error calculating average approval time by workflow (filtered): '.$e->getMessage());
+
             return [];
         }
     }
@@ -1789,81 +1834,82 @@ trait ApproverDashboardHelper
                 ->where('at.staff_id', $staffId)
                 ->whereIn('at.action', ['approved', 'rejected'])
                 ->where('at.is_archived', 0); // Only non-archived trails
-            
+
             // Apply year and month filters
             if ($year || $month) {
-                $query->where(function($q) use ($year, $month) {
-                    $quarter = $month ? 'Q' . ceil($month / 3) : null;
-                    
+                $query->where(function ($q) use ($year, $month) {
+                    $quarter = $month ? 'Q'.ceil($month / 3) : null;
+
                     // For matrices, filter by matrix year and quarter
-                    $q->where(function($subQ) use ($year, $quarter) {
+                    $q->where(function ($subQ) use ($year, $quarter) {
                         $subQ->where('at.model_type', 'App\\Models\\Matrix')
-                             ->whereExists(function($exists) use ($year, $quarter) {
-                                 $exists->select(DB::raw(1))
-                                       ->from('matrices as m')
-                                       ->whereColumn('m.id', 'at.model_id');
-                                 if ($year) {
-                                     $exists->where('m.year', $year);
-                                 }
-                                 if ($quarter) {
-                                     $exists->where('m.quarter', $quarter);
-                                 }
-                             });
+                            ->whereExists(function ($exists) use ($year, $quarter) {
+                                $exists->select(DB::raw(1))
+                                    ->from('matrices as m')
+                                    ->whereColumn('m.id', 'at.model_id');
+                                if ($year) {
+                                    $exists->where('m.year', $year);
+                                }
+                                if ($quarter) {
+                                    $exists->where('m.quarter', $quarter);
+                                }
+                            });
                     })
                     // For activities (single memos), filter by matrix year and quarter
-                    ->orWhere(function($subQ) use ($year, $quarter) {
-                        $subQ->where('at.model_type', 'App\\Models\\Activity')
-                             ->whereExists(function($exists) use ($year, $quarter) {
-                                 $exists->select(DB::raw(1))
-                                       ->from('activities as a')
-                                       ->join('matrices as m', 'm.id', '=', 'a.matrix_id')
-                                       ->whereColumn('a.id', 'at.model_id');
-                                 if ($year) {
-                                     $exists->where('m.year', $year);
-                                 }
-                                 if ($quarter) {
-                                     $exists->where('m.quarter', $quarter);
-                                 }
-                             });
-                    })
+                        ->orWhere(function ($subQ) use ($year, $quarter) {
+                            $subQ->where('at.model_type', 'App\\Models\\Activity')
+                                ->whereExists(function ($exists) use ($year, $quarter) {
+                                    $exists->select(DB::raw(1))
+                                        ->from('activities as a')
+                                        ->join('matrices as m', 'm.id', '=', 'a.matrix_id')
+                                        ->whereColumn('a.id', 'at.model_id');
+                                    if ($year) {
+                                        $exists->where('m.year', $year);
+                                    }
+                                    if ($quarter) {
+                                        $exists->where('m.quarter', $quarter);
+                                    }
+                                });
+                        })
                     // For change requests with matrix, filter by matrix year and quarter
-                    ->orWhere(function($subQ) use ($year, $quarter) {
-                        $subQ->where('at.model_type', 'App\\Models\\ChangeRequest')
-                             ->whereExists(function($exists) use ($year, $quarter) {
-                                 $exists->select(DB::raw(1))
-                                       ->from('change_request as cr')
-                                       ->join('matrices as m', 'm.id', '=', 'cr.matrix_id')
-                                       ->whereColumn('cr.id', 'at.model_id');
-                                 if ($year) {
-                                     $exists->where('m.year', $year);
-                                 }
-                                 if ($quarter) {
-                                     $exists->where('m.quarter', $quarter);
-                                 }
-                             });
-                    })
+                        ->orWhere(function ($subQ) use ($year, $quarter) {
+                            $subQ->where('at.model_type', 'App\\Models\\ChangeRequest')
+                                ->whereExists(function ($exists) use ($year, $quarter) {
+                                    $exists->select(DB::raw(1))
+                                        ->from('change_request as cr')
+                                        ->join('matrices as m', 'm.id', '=', 'cr.matrix_id')
+                                        ->whereColumn('cr.id', 'at.model_id');
+                                    if ($year) {
+                                        $exists->where('m.year', $year);
+                                    }
+                                    if ($quarter) {
+                                        $exists->where('m.quarter', $quarter);
+                                    }
+                                });
+                        })
                     // For other types, filter by created_at year and month
-                    ->orWhere(function($subQ) use ($year, $month) {
-                        $subQ->whereNotIn('at.model_type', ['App\\Models\\Matrix', 'App\\Models\\Activity', 'App\\Models\\ChangeRequest']);
-                        if ($year) {
-                            $subQ->whereYear('at.created_at', $year);
-                        }
-                        if ($month) {
-                            $subQ->whereMonth('at.created_at', $month);
-                        }
-                    });
+                        ->orWhere(function ($subQ) use ($year, $month) {
+                            $subQ->whereNotIn('at.model_type', ['App\\Models\\Matrix', 'App\\Models\\Activity', 'App\\Models\\ChangeRequest']);
+                            if ($year) {
+                                $subQ->whereYear('at.created_at', $year);
+                            }
+                            if ($month) {
+                                $subQ->whereMonth('at.created_at', $month);
+                            }
+                        });
                 });
             }
-            
+
             $result = $query->select(DB::raw('COUNT(DISTINCT CONCAT(at.model_type, "-", at.model_id)) as total_count'))
                 ->first();
 
             $base = (int) ($result->total_count ?? 0);
 
             return $base + $this->getTotalHandledOtherMemoForApprover((int) $staffId, $divisionId, $year, $month);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error calculating total handled for approver (all): ' . $e->getMessage());
+            Log::error('Error calculating total handled for approver (all): '.$e->getMessage());
+
             return 0;
         }
     }
@@ -1891,7 +1937,7 @@ trait ApproverDashboardHelper
 
             return (int) $q->select(DB::raw('COUNT(DISTINCT om.id) as cnt'))->value('cnt');
         } catch (\Exception $e) {
-            Log::error('Error calculating total handled other memo for approver: ' . $e->getMessage());
+            Log::error('Error calculating total handled other memo for approver: '.$e->getMessage());
 
             return 0;
         }
@@ -1929,96 +1975,96 @@ trait ApproverDashboardHelper
             // Build year and month filter conditions
             $yearMonthConditions = '';
             $params = [$staffId];
-            
+
             if ($year || $month) {
                 // Use parameterized queries for model types to avoid SQL injection
                 $matrixType = 'App\\Models\\Matrix';
                 $activityType = 'App\\Models\\Activity';
                 $changeRequestType = 'App\\Models\\ChangeRequest';
-                $quarter = $month ? 'Q' . ceil($month / 3) : null;
-                
+                $quarter = $month ? 'Q'.ceil($month / 3) : null;
+
                 $conditions = [];
                 $tempParams = [];
-                
+
                 // For matrices, filter by matrix year and quarter
-                $matrixCond = "at.model_type = ?";
+                $matrixCond = 'at.model_type = ?';
                 $tempParams[] = $matrixType;
-                $matrixExists = "EXISTS (SELECT 1 FROM matrices m WHERE m.id = at.model_id";
+                $matrixExists = 'EXISTS (SELECT 1 FROM matrices m WHERE m.id = at.model_id';
                 if ($year) {
-                    $matrixExists .= " AND m.year = ?";
+                    $matrixExists .= ' AND m.year = ?';
                     $tempParams[] = $year;
                 }
                 if ($quarter) {
-                    $matrixExists .= " AND m.quarter = ?";
+                    $matrixExists .= ' AND m.quarter = ?';
                     $tempParams[] = $quarter;
                 }
-                $matrixExists .= ")";
+                $matrixExists .= ')';
                 $conditions[] = "({$matrixCond} AND {$matrixExists})";
-                
+
                 // For activities (single memos), filter by matrix year and quarter
-                $activityCond = "at.model_type = ?";
+                $activityCond = 'at.model_type = ?';
                 $tempParams[] = $activityType;
-                $activityExists = "EXISTS (SELECT 1 FROM activities a JOIN matrices m ON m.id = a.matrix_id WHERE a.id = at.model_id";
+                $activityExists = 'EXISTS (SELECT 1 FROM activities a JOIN matrices m ON m.id = a.matrix_id WHERE a.id = at.model_id';
                 if ($year) {
-                    $activityExists .= " AND m.year = ?";
+                    $activityExists .= ' AND m.year = ?';
                     $tempParams[] = $year;
                 }
                 if ($quarter) {
-                    $activityExists .= " AND m.quarter = ?";
+                    $activityExists .= ' AND m.quarter = ?';
                     $tempParams[] = $quarter;
                 }
-                $activityExists .= ")";
+                $activityExists .= ')';
                 $conditions[] = "({$activityCond} AND {$activityExists})";
-                
+
                 // Change requests: matrix year/quarter OR document created_at year/month (same as addPendingApprovalWaitContributions)
-                $crCond = "at.model_type = ?";
+                $crCond = 'at.model_type = ?';
                 $tempParams[] = $changeRequestType;
-                $crMatrixMatch = "EXISTS (SELECT 1 FROM matrices m WHERE m.id = cr.matrix_id";
+                $crMatrixMatch = 'EXISTS (SELECT 1 FROM matrices m WHERE m.id = cr.matrix_id';
                 if ($year) {
-                    $crMatrixMatch .= " AND m.year = ?";
+                    $crMatrixMatch .= ' AND m.year = ?';
                     $tempParams[] = $year;
                 }
                 if ($quarter) {
-                    $crMatrixMatch .= " AND m.quarter = ?";
+                    $crMatrixMatch .= ' AND m.quarter = ?';
                     $tempParams[] = $quarter;
                 }
-                $crMatrixMatch .= ")";
+                $crMatrixMatch .= ')';
                 $crCreatedMatch = '';
                 if ($year) {
-                    $crCreatedMatch = "YEAR(cr.created_at) = ?";
+                    $crCreatedMatch = 'YEAR(cr.created_at) = ?';
                     $tempParams[] = $year;
                     if ($month) {
-                        $crCreatedMatch .= " AND MONTH(cr.created_at) = ?";
+                        $crCreatedMatch .= ' AND MONTH(cr.created_at) = ?';
                         $tempParams[] = $month;
                     }
                 } elseif ($month) {
-                    $crCreatedMatch = "MONTH(cr.created_at) = ?";
+                    $crCreatedMatch = 'MONTH(cr.created_at) = ?';
                     $tempParams[] = $month;
                 }
                 $crExists = "EXISTS (SELECT 1 FROM change_request cr WHERE cr.id = at.model_id AND ({$crMatrixMatch}";
                 $crExists .= $crCreatedMatch !== '' ? " OR ({$crCreatedMatch})" : '';
                 $crExists .= '))';
                 $conditions[] = "({$crCond} AND {$crExists})";
-                
+
                 // For other types, filter by created_at year and month
-                $otherCond = "at.model_type NOT IN (?, ?, ?)";
+                $otherCond = 'at.model_type NOT IN (?, ?, ?)';
                 $tempParams[] = $matrixType;
                 $tempParams[] = $activityType;
                 $tempParams[] = $changeRequestType;
                 if ($year) {
-                    $otherCond .= " AND YEAR(at.created_at) = ?";
+                    $otherCond .= ' AND YEAR(at.created_at) = ?';
                     $tempParams[] = $year;
                 }
                 if ($month) {
-                    $otherCond .= " AND MONTH(at.created_at) = ?";
+                    $otherCond .= ' AND MONTH(at.created_at) = ?';
                     $tempParams[] = $month;
                 }
                 $conditions[] = "({$otherCond})";
-                
-                $yearMonthConditions = " AND (" . implode(" OR ", $conditions) . ")";
+
+                $yearMonthConditions = ' AND ('.implode(' OR ', $conditions).')';
                 $params = array_merge($params, $tempParams);
             }
-            
+
             // Get all approval actions by this approver.
             // received_time = when item came to this approver:
             // - Order >= 2: latest previous-level approved/rejected before this action; if none, latest order-0 submitted/resubmitted (return/resubmit cycles).
@@ -2110,23 +2156,23 @@ trait ApproverDashboardHelper
                   AND approval_time >= received_time
                 ORDER BY at.updated_at DESC
             ";
-            
+
             $results = DB::select($sql, $params);
-            
+
             $totalHours = 0.0;
             $count = 0;
-            
+
             foreach ($results as $result) {
                 try {
                     $approvalTime = Carbon::parse($result->approval_time);
                     $receivedTime = Carbon::parse($result->received_time);
-                    
+
                     // Calculate seconds between when item was received at this level and when it was approved
                     $seconds = abs($approvalTime->getTimestamp() - $receivedTime->getTimestamp());
-                    
+
                     // Convert to hours (with decimal precision)
                     $hours = $seconds / 3600;
-                    
+
                     // Only count positive time differences (approval after receipt)
                     if ($approvalTime->getTimestamp() >= $receivedTime->getTimestamp()) {
                         $totalHours += $hours;
@@ -2139,11 +2185,12 @@ trait ApproverDashboardHelper
             }
 
             $this->addPendingApprovalWaitContributions((int) $staffId, $divisionId, $year, $month, $totalHours, $count);
-            
+
             return $count > 0 ? round($totalHours / $count, 2) : 0;
-            
+
         } catch (\Exception $e) {
-            Log::error('Error calculating average approval time (all): ' . $e->getMessage());
+            Log::error('Error calculating average approval time (all): '.$e->getMessage());
+
             return 0;
         }
     }
@@ -2278,7 +2325,7 @@ trait ApproverDashboardHelper
             $query->where('year', $year);
         }
         if ($month) {
-            $query->where('quarter', 'Q' . ceil($month / 3));
+            $query->where('quarter', 'Q'.ceil($month / 3));
         }
         foreach ($query->get() as $matrix) {
             if ($approvalService->canTakeAction($matrix, $staffId)) {
@@ -2338,7 +2385,7 @@ trait ApproverDashboardHelper
             });
         }
         if ($month) {
-            $quarter = 'Q' . ceil($month / 3);
+            $quarter = 'Q'.ceil($month / 3);
             $query->whereHas('matrix', function ($q) use ($quarter): void {
                 $q->where('quarter', $quarter);
             });
@@ -2420,7 +2467,7 @@ trait ApproverDashboardHelper
             });
         }
         if ($month) {
-            $quarter = 'Q' . ceil($month / 3);
+            $quarter = 'Q'.ceil($month / 3);
             $query->where(function ($q) use ($quarter, $month): void {
                 $q->whereHas('matrix', function ($matrixQuery) use ($quarter): void {
                     $matrixQuery->where('quarter', $quarter);
@@ -2436,7 +2483,7 @@ trait ApproverDashboardHelper
 
     /**
      * Dashboard header cards: document counts by status for the selected division / doc type / year / month.
-     * Total approval requests = pending + approved + returned (same scope).
+     * Submitted = pending + approved in scope; overall average time matches the workflow stats weighted average.
      */
     protected function getDashboardSummaryMetrics(?int $divisionId, ?string $docType, ?int $year, ?int $month): array
     {
@@ -2444,29 +2491,60 @@ trait ApproverDashboardHelper
             $types = $this->expandDashboardDocTypes($docType);
             $pending = 0;
             $approved = 0;
-            $returned = 0;
             foreach ($types as $t) {
                 $pending += $this->dashboardCountDocumentsByStatus($t, 'pending', $divisionId, $year, $month);
                 $approved += $this->dashboardCountDocumentsByStatus($t, 'approved', $divisionId, $year, $month);
-                $returned += $this->dashboardCountDocumentsByStatus($t, 'returned', $divisionId, $year, $month);
             }
 
-            return [
-                'total_approval_requests' => $pending + $approved + $returned,
-                'total_pending' => $pending,
-                'total_approved' => $approved,
-                'total_returned' => $returned,
-            ];
-        } catch (\Exception $e) {
-            Log::error('Error calculating dashboard summary metrics: ' . $e->getMessage());
+            $overallAvg = $this->computeWeightedOverallWorkflowAvg($divisionId, $docType, $year, $month);
 
             return [
-                'total_approval_requests' => 0,
+                'overall_avg_hours' => $overallAvg['overall_avg_hours'],
+                'overall_avg_display' => $overallAvg['overall_avg_display'],
+                'total_submitted' => $pending + $approved,
+                'total_pending' => $pending,
+                'total_approved' => $approved,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error calculating dashboard summary metrics: '.$e->getMessage());
+
+            return [
+                'overall_avg_hours' => 0,
+                'overall_avg_display' => '—',
+                'total_submitted' => 0,
                 'total_pending' => 0,
                 'total_approved' => 0,
-                'total_returned' => 0,
             ];
         }
+    }
+
+    /**
+     * Weighted average time to last approver across workflows (same formula as the workflow stats footer).
+     *
+     * @return array{overall_avg_hours: float, overall_avg_display: string}
+     */
+    protected function computeWeightedOverallWorkflowAvg(?int $divisionId, ?string $docType, ?int $year, ?int $month): array
+    {
+        $stats = $this->getAverageApprovalTimeByWorkflowFiltered($divisionId, $docType, $year, $month);
+        $totalApproved = 0;
+        $totalHours = 0.0;
+        foreach ($stats as $row) {
+            $count = (int) ($row['memos'] ?? 0);
+            $avgHours = (float) ($row['avg_hours'] ?? 0);
+            if ($count > 0 && $avgHours > 0) {
+                $totalApproved += $count;
+                $totalHours += ($count * $avgHours);
+            }
+        }
+        if ($totalApproved === 0 || $totalHours <= 0) {
+            return ['overall_avg_hours' => 0.0, 'overall_avg_display' => '—'];
+        }
+        $avgHours = $totalHours / $totalApproved;
+
+        return [
+            'overall_avg_hours' => round($avgHours, 2),
+            'overall_avg_display' => $this->formatApprovalTime($avgHours),
+        ];
     }
 
     /**
@@ -2509,7 +2587,7 @@ trait ApproverDashboardHelper
                     });
                 }
                 if ($month) {
-                    $quarter = 'Q' . ceil($month / 3);
+                    $quarter = 'Q'.ceil($month / 3);
                     $q->whereHas('matrix', function ($mq) use ($quarter): void {
                         $mq->where('quarter', $quarter);
                     });
@@ -2538,7 +2616,7 @@ trait ApproverDashboardHelper
                     });
                 }
                 if ($month) {
-                    $quarter = 'Q' . ceil($month / 3);
+                    $quarter = 'Q'.ceil($month / 3);
                     $q->where(function ($qq) use ($quarter, $month): void {
                         $qq->whereHas('matrix', function ($mq) use ($quarter): void {
                             $mq->where('quarter', $quarter);
@@ -2571,7 +2649,7 @@ trait ApproverDashboardHelper
             $q->where('year', $year);
         }
         if ($month && $isMatrix) {
-            $q->where('quarter', 'Q' . ceil($month / 3));
+            $q->where('quarter', 'Q'.ceil($month / 3));
         }
 
         return (int) $q->count();

@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\View\View;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Workflow;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class ApproverDashboardController extends Controller
 {
     use ApproverDashboardHelper;
+
     /**
      * Display the approver dashboard page.
      */
@@ -78,21 +78,21 @@ class ApproverDashboardController extends Controller
 
             // If user doesn't have permission 88, restrict to their division
             // Only apply restriction if we have valid session data
-            if (!$hasPermission88 && $userDivisionId && $userDivisionId > 0) {
+            if (! $hasPermission88 && $userDivisionId && $userDivisionId > 0) {
                 $divisionId = $userDivisionId;
             }
 
             // Get active workflow if not specified
-            if (!$workflowDefinitionId) {
+            if (! $workflowDefinitionId) {
                 $activeWorkflow = Workflow::where('is_active', 1)->first();
                 $workflowDefinitionId = $activeWorkflow ? $activeWorkflow->id : null;
             }
 
-            if (!$workflowDefinitionId) {
+            if (! $workflowDefinitionId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No active workflow found',
-                    'data' => []
+                    'data' => [],
                 ]);
             }
 
@@ -104,17 +104,17 @@ class ApproverDashboardController extends Controller
             $allApproversWithCounts = $this->getPendingCountsForApprovers($approversCollection, $workflowDefinitionId, $docType, $divisionId, $year, $month);
 
             // Handle sorting - check for DataTables order parameter or use default
-            $orderColumn = 7; // Default: Avg. Time (column index 7)
+            $orderColumn = 2; // Default: Avg. Time (column index 2)
             $orderDirection = 'desc'; // Default: descending (highest days first)
-            
+
             $orderFirst = null;
             if ($request->has('order')) {
                 $orderParam = $request->get('order');
-                if (is_array($orderParam) && !empty($orderParam)) {
+                if (is_array($orderParam) && ! empty($orderParam)) {
                     $orderFirst = $orderParam[0];
                 } elseif (is_string($orderParam)) {
                     $orderData = json_decode($orderParam, true);
-                    if (is_array($orderData) && !empty($orderData)) {
+                    if (is_array($orderData) && ! empty($orderData)) {
                         $orderFirst = $orderData[0];
                     }
                 }
@@ -129,21 +129,21 @@ class ApproverDashboardController extends Controller
                     $orderDirection = (strtolower((string) $orderFirst[1]) === 'asc') ? 'asc' : 'desc';
                 }
             }
-            
-            // Map column index to sort field (0=#, 1=Approver, 2=Last approval date, 3=Role, 4=Pending, 5=Total Pending, 6=Total Handled, 7=Avg. Time)
+
+            // Map column index to sort field (0=#, 1=Approver, 2=Avg. Time, 3=Total Pending, 4=Total Handled, 5=Pending Items, 6=Role, 7=Last approval date)
             $sortFields = [
                 1 => 'approver_name',
-                2 => 'last_approval_date',
-                3 => 'roles',
-                5 => 'total_pending',
-                6 => 'total_handled',
-                7 => 'avg_approval_time_hours'
+                2 => 'avg_approval_time_hours',
+                3 => 'total_pending',
+                4 => 'total_handled',
+                6 => 'roles',
+                7 => 'last_approval_date',
             ];
-            
+
             $sortField = $sortFields[$orderColumn] ?? 'avg_approval_time_hours';
-            
+
             // Sort approvers based on selected column
-            usort($allApproversWithCounts, function($a, $b) use ($sortField, $orderDirection) {
+            usort($allApproversWithCounts, function ($a, $b) use ($sortField, $orderDirection) {
                 $aValue = $a[$sortField] ?? 0;
                 $bValue = $b[$sortField] ?? 0;
                 // For last_approval_date use empty string for null so datetime comparison works and nulls sort last when desc
@@ -158,7 +158,7 @@ class ApproverDashboardController extends Controller
                 if (is_array($bValue)) {
                     $bValue = implode(', ', $bValue);
                 }
-                
+
                 // Handle string comparison
                 if (is_string($aValue) && is_string($bValue)) {
                     $result = strcasecmp($aValue, $bValue);
@@ -166,7 +166,7 @@ class ApproverDashboardController extends Controller
                     // Numeric comparison
                     $result = ($aValue <=> $bValue);
                 }
-                
+
                 return $orderDirection === 'asc' ? $result : -$result;
             });
 
@@ -182,6 +182,7 @@ class ApproverDashboardController extends Controller
                 if ($format === 'csv') {
                     return $this->exportToCsv($allApproversWithCounts);
                 }
+
                 return $this->exportToPdf($request, $allApproversWithCounts);
             }
 
@@ -215,14 +216,14 @@ class ApproverDashboardController extends Controller
                     'approval_level' => $approvalLevel,
                     'month' => $month,
                     'year' => $year,
-                ]
+                ],
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error retrieving dashboard data: ' . $e->getMessage(),
-                'data' => []
+                'message' => 'Error retrieving dashboard data: '.$e->getMessage(),
+                'data' => [],
             ], 500);
         }
     }
@@ -241,7 +242,7 @@ class ApproverDashboardController extends Controller
             // Get divisions - restrict to user's division if no permission 88
             $divisionsQuery = DB::table('divisions')->select('id', 'division_name');
             // Only apply restriction if we have valid session data
-            if (!$hasPermission88 && $userDivisionId && $userDivisionId > 0) {
+            if (! $hasPermission88 && $userDivisionId && $userDivisionId > 0) {
                 $divisionsQuery->where('id', $userDivisionId);
             }
             $divisions = $divisionsQuery->orderBy('division_name')->get();
@@ -253,7 +254,7 @@ class ApproverDashboardController extends Controller
 
             // Get active workflow
             $activeWorkflow = Workflow::where('is_active', 1)->first();
-            
+
             // Get approval levels from workflow_definition with role names
             $approvalLevels = DB::table('workflow_definition')
                 ->select('approval_order', 'role')
@@ -261,8 +262,8 @@ class ApproverDashboardController extends Controller
                 ->where('is_enabled', 1)
                 ->orderBy('approval_order')
                 ->get()
-                ->map(function($item) {
-                    return ['value' => $item->approval_order, 'label' => $item->role . ' (Level ' . $item->approval_order . ')'];
+                ->map(function ($item) {
+                    return ['value' => $item->approval_order, 'label' => $item->role.' (Level '.$item->approval_order.')'];
                 });
 
             $documentTypes = [
@@ -300,14 +301,14 @@ class ApproverDashboardController extends Controller
                     'years' => $years,
                     'user_division_id' => $userDivisionId,
                     'has_permission_88' => $hasPermission88,
-                ]
+                ],
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error retrieving filter options: ' . $e->getMessage(),
-                'data' => []
+                'message' => 'Error retrieving filter options: '.$e->getMessage(),
+                'data' => [],
             ], 500);
         }
     }
@@ -323,16 +324,16 @@ class ApproverDashboardController extends Controller
             $dateTo = $request->get('date_to');
 
             // Get active workflow if not specified
-            if (!$workflowDefinitionId) {
+            if (! $workflowDefinitionId) {
                 $activeWorkflow = Workflow::where('is_active', 1)->first();
                 $workflowDefinitionId = $activeWorkflow ? $activeWorkflow->id : null;
             }
 
-            if (!$workflowDefinitionId) {
+            if (! $workflowDefinitionId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No active workflow found',
-                    'data' => []
+                    'data' => [],
                 ]);
             }
 
@@ -353,14 +354,14 @@ class ApproverDashboardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $stats
+                'data' => $stats,
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error retrieving summary statistics: ' . $e->getMessage(),
-                'data' => []
+                'message' => 'Error retrieving summary statistics: '.$e->getMessage(),
+                'data' => [],
             ], 500);
         }
     }
@@ -381,7 +382,7 @@ class ApproverDashboardController extends Controller
             $month = $request->get('month') ? (int) $request->get('month') : null;
             $year = $request->get('year') ? (int) $request->get('year') : null;
 
-            if (!$hasPermission88 && $userDivisionId && $userDivisionId > 0) {
+            if (! $hasPermission88 && $userDivisionId && $userDivisionId > 0) {
                 $divisionId = $userDivisionId;
             }
 
@@ -389,13 +390,13 @@ class ApproverDashboardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $workflowStats
+                'data' => $workflowStats,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error retrieving workflow stats: ' . $e->getMessage(),
-                'data' => []
+                'message' => 'Error retrieving workflow stats: '.$e->getMessage(),
+                'data' => [],
             ], 500);
         }
     }
@@ -409,54 +410,55 @@ class ApproverDashboardController extends Controller
             $pendingItems = [];
             $counts = $row['pending_counts'] ?? [];
             if (($counts['matrix'] ?? 0) > 0) {
-                $pendingItems[] = 'Matrix: ' . $counts['matrix'];
+                $pendingItems[] = 'Matrix: '.$counts['matrix'];
             }
             if (($counts['non_travel'] ?? 0) > 0) {
-                $pendingItems[] = 'Non-Travel: ' . $counts['non_travel'];
+                $pendingItems[] = 'Non-Travel: '.$counts['non_travel'];
             }
             if (($counts['single_memos'] ?? 0) > 0) {
-                $pendingItems[] = 'Single: ' . $counts['single_memos'];
+                $pendingItems[] = 'Single: '.$counts['single_memos'];
             }
             if (($counts['special'] ?? 0) > 0) {
-                $pendingItems[] = 'Special: ' . $counts['special'];
+                $pendingItems[] = 'Special: '.$counts['special'];
             }
             if (($counts['arf'] ?? 0) > 0) {
-                $pendingItems[] = 'ARF: ' . $counts['arf'];
+                $pendingItems[] = 'ARF: '.$counts['arf'];
             }
             if (($counts['requests_for_service'] ?? 0) > 0) {
-                $pendingItems[] = 'Requests: ' . $counts['requests_for_service'];
+                $pendingItems[] = 'Requests: '.$counts['requests_for_service'];
             }
             if (($counts['change_requests'] ?? 0) > 0) {
-                $pendingItems[] = 'Change: ' . ($counts['change_requests'] ?? 0);
+                $pendingItems[] = 'Change: '.($counts['change_requests'] ?? 0);
             }
-            $row['pending_items_display'] = !empty($pendingItems) ? implode(', ', $pendingItems) : '—';
+            $row['pending_items_display'] = ! empty($pendingItems) ? implode(', ', $pendingItems) : '—';
+
             return $row;
         }, $data, array_keys($data));
 
         $filters = [];
         if ($request->filled('division_id')) {
             $div = \Illuminate\Support\Facades\DB::table('divisions')->where('id', $request->get('division_id'))->value('division_name');
-            $filters[] = 'Division: ' . ($div ?: $request->get('division_id'));
+            $filters[] = 'Division: '.($div ?: $request->get('division_id'));
         }
         if ($request->filled('doc_type')) {
-            $filters[] = 'Doc type: ' . $request->get('doc_type');
+            $filters[] = 'Doc type: '.$request->get('doc_type');
         }
         if ($request->filled('approval_level')) {
-            $filters[] = 'Level: ' . $request->get('approval_level');
+            $filters[] = 'Level: '.$request->get('approval_level');
         }
         if ($request->filled('year')) {
-            $filters[] = 'Year: ' . $request->get('year');
+            $filters[] = 'Year: '.$request->get('year');
         }
         if ($request->filled('month')) {
-            $filters[] = 'Month: ' . $request->get('month');
+            $filters[] = 'Month: '.$request->get('month');
         }
         if ($request->filled('q')) {
-            $filters[] = 'Search: ' . $request->get('q');
+            $filters[] = 'Search: '.$request->get('q');
         }
         $filtersSummary = empty($filters) ? 'None' : implode('; ', $filters);
 
         $totalPending = array_sum(array_column($data, 'total_pending'));
-        $summary = count($data) . ' approver(s), ' . $totalPending . ' total pending item(s).';
+        $summary = count($data).' approver(s), '.$totalPending.' total pending item(s).';
 
         $htmlData = [
             'approvers' => $approvers,
@@ -465,10 +467,11 @@ class ApproverDashboardController extends Controller
         ];
 
         $mpdf = generate_pdf('approver-dashboard.export-pdf', $htmlData);
-        $filename = 'approver_report_' . date('Y-m-d_H-i-s') . '.pdf';
+        $filename = 'approver_report_'.date('Y-m-d_H-i-s').'.pdf';
+
         return response($mpdf->Output('', 'S'), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
         ]);
     }
 
@@ -478,48 +481,78 @@ class ApproverDashboardController extends Controller
      */
     private function exportToCsv($data)
     {
-        $filename = 'approver_report_' . date('Y-m-d_H-i-s') . '.csv';
-        
+        $filename = 'approver_report_'.date('Y-m-d_H-i-s').'.csv';
+
         $headers = [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        $callback = function() use ($data) {
+        $callback = function () use ($data) {
             $file = fopen('php://output', 'w');
-            
+
             // Add BOM for UTF-8 to ensure proper encoding in Excel
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
+
             // Add CSV headers (Pending Items column removed)
             fputcsv($file, [
                 '#',
                 'Approver Name',
+                'Avg Approval Time (Display)',
+                'Avg Approval Time (Hours)',
+                'Total Pending',
+                'Total Handled',
+                'Pending Items',
+                'Roles',
+                'Levels',
                 'Last Approval Date',
                 'Email',
                 'Division',
-                'Roles',
-                'Levels',
-                'Total Pending',
-                'Total Handled',
-                'Avg Approval Time (Hours)',
-                'Avg Approval Time (Display)'
             ]);
 
             // Add data rows
             foreach ($data as $index => $approver) {
+                $pendingItems = [];
+                $counts = $approver['pending_counts'] ?? [];
+                if (($counts['matrix'] ?? 0) > 0) {
+                    $pendingItems[] = 'Matrix: '.$counts['matrix'];
+                }
+                if (($counts['non_travel'] ?? 0) > 0) {
+                    $pendingItems[] = 'Non-Travel: '.$counts['non_travel'];
+                }
+                if (($counts['single_memos'] ?? 0) > 0) {
+                    $pendingItems[] = 'Single: '.$counts['single_memos'];
+                }
+                if (($counts['special'] ?? 0) > 0) {
+                    $pendingItems[] = 'Special: '.$counts['special'];
+                }
+                if (($counts['other_memo'] ?? 0) > 0) {
+                    $pendingItems[] = 'Other memo: '.$counts['other_memo'];
+                }
+                if (($counts['arf'] ?? 0) > 0) {
+                    $pendingItems[] = 'ARF: '.$counts['arf'];
+                }
+                if (($counts['requests_for_service'] ?? 0) > 0) {
+                    $pendingItems[] = 'Requests: '.$counts['requests_for_service'];
+                }
+                if (($counts['change_requests'] ?? 0) > 0) {
+                    $pendingItems[] = 'Change: '.($counts['change_requests'] ?? 0);
+                }
+                $pendingItemsDisplay = ! empty($pendingItems) ? implode('; ', $pendingItems) : '—';
+
                 fputcsv($file, [
                     $index + 1,
                     $approver['approver_name'] ?? '',
+                    $approver['avg_approval_time_display'] ?? 'No data',
+                    $approver['avg_approval_time_hours'] ?? 0,
+                    $approver['total_pending'] ?? 0,
+                    $approver['total_handled'] ?? 0,
+                    $pendingItemsDisplay,
+                    is_array($approver['roles'] ?? null) ? implode('; ', $approver['roles']) : ($approver['role'] ?? ''),
+                    is_array($approver['levels'] ?? null) ? implode(', ', $approver['levels']) : ($approver['level_no'] ?? ''),
                     $approver['last_approval_date_display'] ?? '',
                     $approver['approver_email'] ?? '',
                     $approver['division_name'] ?? 'N/A',
-                    is_array($approver['roles'] ?? null) ? implode('; ', $approver['roles']) : ($approver['role'] ?? ''),
-                    is_array($approver['levels'] ?? null) ? implode(', ', $approver['levels']) : ($approver['level_no'] ?? ''),
-                    $approver['total_pending'] ?? 0,
-                    $approver['total_handled'] ?? 0,
-                    $approver['avg_approval_time_hours'] ?? 0,
-                    $approver['avg_approval_time_display'] ?? 'No data'
                 ]);
             }
 
