@@ -167,6 +167,7 @@ class Settings extends MX_Controller
 
 		$data['module'] = $this->module;
 		$data['title'] = "Divisions";
+		$data['is_settings_admin'] = $this->is_settings_admin();
 		render('divisions', $data);
 	}
 
@@ -210,6 +211,41 @@ class Settings extends MX_Controller
 		$this->output
 			->set_content_type('application/json')
 			->set_output(json_encode(['success' => true, 'division' => $division]));
+	}
+
+	/**
+	 * Admin only: insert a new division from the edit form without updating the original.
+	 */
+	public function copy_division()
+	{
+		if (!$this->is_settings_admin()) {
+			show_error('You are not authorized to perform this action.', 403);
+		}
+
+		$newId = $this->settings_mdl->insert_division_copy_from_post();
+
+		if ($newId) {
+			$msg = [
+				'msg' => 'Division copied successfully (new ID: ' . $newId . ').',
+				'type' => 'success',
+			];
+			Modules::run('utility/setFlash', $msg);
+		} else {
+			$msg = [
+				'msg' => 'Failed to save division copy. Check the form and try again.',
+				'type' => 'error',
+			];
+			Modules::run('utility/setFlash', $msg);
+		}
+
+		redirect('settings/divisions');
+	}
+
+	private function is_settings_admin()
+	{
+		$user = $this->session->userdata('user');
+
+		return $user && (int) $user->role === 10;
 	}
 
 	public function kin_relationship_types()

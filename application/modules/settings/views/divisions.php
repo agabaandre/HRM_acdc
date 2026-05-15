@@ -3,6 +3,7 @@ $session = $this->session->userdata('user');
 $permissions = $session->permissions;
 $can_edit_divisions = in_array('78', $permissions);
 $can_delete_divisions = in_array('77', $permissions);
+$is_settings_admin = !empty($is_settings_admin) || (isset($session->role) && (int) $session->role === 10);
 ?>
 
 <div class="row">
