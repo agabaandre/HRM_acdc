@@ -6,6 +6,7 @@
 @section('content')
 @php
     $directorReviewKeySet = $directorReviewKeySet ?? [];
+    $hubCanViewAllReports = $hubCanViewAllReports ?? false;
     $tab = $tab ?? 'this_week';
     $filingIsoYear = $filingIsoYear ?? \Carbon\Carbon::now()->isoWeekYear();
     $filingIsoWeek = $filingIsoWeek ?? \Carbon\Carbon::now()->isoWeek();
@@ -178,17 +179,22 @@
                                         </td>
                                         <td class="text-end">
                                             @if($r)
-                                                @if($canFile)
-                                                    <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                                                @elseif($canDirectorReview)
-                                                    <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-info">Director review</a>
-                                                @elseif($canDirectorView)
+                                                @if($hubCanViewAllReports)
                                                     <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-secondary">View</a>
-                                                @endif
-                                                @if($canFile || $canDirectorView || $canDirectorReview)
                                                     <a href="{{ route('weekly-briefing.pdf', $r) }}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
+                                                @else
+                                                    @if($canFile)
+                                                        <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                                    @elseif($canDirectorReview)
+                                                        <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-info">Director review</a>
+                                                    @elseif($canDirectorView)
+                                                        <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-secondary">View</a>
+                                                    @endif
+                                                    @if($canFile || $canDirectorView || $canDirectorReview)
+                                                        <a href="{{ route('weekly-briefing.pdf', $r) }}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
+                                                    @endif
                                                 @endif
-                                            @elseif($canFile)
+                                            @elseif($canFile && ! $hubCanViewAllReports)
                                                 <a href="{{ route('weekly-briefing.create', ['contribution_key' => $k]) }}" class="btn btn-sm btn-success">Start</a>
                                             @endif
                                         </td>
@@ -284,15 +290,20 @@
                                         @endif
                                     </td>
                                     <td class="text-end">
-                                        @if($canFile)
-                                            <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                                        @elseif($canDirectorReview)
-                                            <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-info">Director review</a>
-                                        @elseif($canDirectorView)
+                                        @if($hubCanViewAllReports)
                                             <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-secondary">View</a>
-                                        @endif
-                                        @if($canFile || $canDirectorView || $canDirectorReview)
                                             <a href="{{ route('weekly-briefing.pdf', $r) }}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
+                                        @else
+                                            @if($canFile)
+                                                <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                            @elseif($canDirectorReview)
+                                                <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-info">Director review</a>
+                                            @elseif($canDirectorView)
+                                                <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-secondary">View</a>
+                                            @endif
+                                            @if($canFile || $canDirectorView || $canDirectorReview)
+                                                <a href="{{ route('weekly-briefing.pdf', $r) }}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
+                                            @endif
                                         @endif
                                     </td>
                                 </tr>
