@@ -40,6 +40,8 @@ class WeeklyBriefingController extends Controller
         $filing = $settings->filingIsoWeekPair();
         $filingIsoYear = $filing['iso_year'];
         $filingIsoWeek = $filing['iso_week'];
+
+        WeeklyBriefingContributionKeyResolver::migrateLegacyReportsByDivisionId();
         $filingWeekHumanRange = WeeklyBriefingReport::humanIsoWeekRange($filingIsoYear, $filingIsoWeek);
         $filingSubmissionDeadline = $settings->filingSubmissionDeadline();
 
@@ -48,28 +50,58 @@ class WeeklyBriefingController extends Controller
             $tab = 'this_week';
         }
 
+        $contributorDivisionIds = $contributorRows
+            ->map(fn (WeeklyBriefingContributor $c) => WeeklyBriefingContributionKeyResolver::divisionIdForContributor($c))
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
         $currentQuery = WeeklyBriefingReport::query()
             ->where('report_iso_week_year', $filingIsoYear)
             ->where('report_iso_week', $filingIsoWeek)
             ->orderBy('contribution_key')
             ->with(['division', 'directorate', 'submittedBy', 'directorReviewedBy']);
-        if ($listingKeys !== []) {
-            $currentQuery->whereIn('contribution_key', $listingKeys);
-        } else {
+
+        if ($listingKeys === [] && $contributorDivisionIds === []) {
             $currentQuery->whereRaw('0 = 1');
+        } else {
+            $currentQuery->where(function ($q) use ($listingKeys, $contributorDivisionIds) {
+                if ($listingKeys !== []) {
+                    $q->whereIn('contribution_key', $listingKeys);
+                }
+                if ($contributorDivisionIds !== []) {
+                    $method = $listingKeys !== [] ? 'orWhereIn' : 'whereIn';
+                    $q->{$method}('division_id', $contributorDivisionIds);
+                }
+            });
         }
-        $currentWeekReports = $currentQuery->get()->keyBy('contribution_key');
+
+        $currentWeekReports = WeeklyBriefingContributionKeyResolver::reportsIndexedWithDivisionAliases(
+            $currentQuery->get()
+        );
 
         $sortedUniqueKeys = $this->sortContributionKeysForWeeklyBriefIndex($listingKeys);
         $keyRank = array_flip($sortedUniqueKeys);
 
-        $weekRowsBase = $contributorRows->map(function (WeeklyBriefingContributor $c) use ($currentWeekReports, $directorateDisplayByContributionKey) {
+        $weekRowsBase = $contributorRows->map(function (WeeklyBriefingContributor $c) use (
+            $currentWeekReports,
+            $directorateDisplayByContributionKey,
+            $filingIsoYear,
+            $filingIsoWeek,
+        ) {
             $k = $c->effectiveContributionKey();
+            $report = WeeklyBriefingContributionKeyResolver::resolveReportForContributor(
+                $c,
+                $currentWeekReports,
+                $filingIsoYear,
+                $filingIsoWeek,
+            );
 
             return [
                 'contributor' => $c,
                 'key' => $k,
-                'report' => $currentWeekReports->get($k),
+                'report' => $report,
                 'label' => $c->hubLabel(),
                 'directorate_display' => $directorateDisplayByContributionKey[$k] ?? [
                     'directorate_name' => '',
@@ -164,10 +196,18 @@ class WeeklyBriefingController extends Controller
                 ->orderByDesc('report_iso_week')
                 ->orderBy('contribution_key')
                 ->with(['division.directorate.director', 'directorate.director']);
-            if ($listingKeys !== []) {
-                $reportsQuery->whereIn('contribution_key', $listingKeys);
-            } else {
+            if ($listingKeys === [] && $contributorDivisionIds === []) {
                 $reportsQuery->whereRaw('0 = 1');
+            } else {
+                $reportsQuery->where(function ($q) use ($listingKeys, $contributorDivisionIds) {
+                    if ($listingKeys !== []) {
+                        $q->whereIn('contribution_key', $listingKeys);
+                    }
+                    if ($contributorDivisionIds !== []) {
+                        $method = $listingKeys !== [] ? 'orWhereIn' : 'whereIn';
+                        $q->{$method}('division_id', $contributorDivisionIds);
+                    }
+                });
             }
             if ($filterWeek !== null) {
                 $reportsQuery->where('report_iso_week', $filterWeek);
@@ -211,8 +251,12 @@ class WeeklyBriefingController extends Controller
 
         $filingKeySet = array_fill_keys($filingKeys, true);
         $startUrls = [];
+        $filingWeekReports = collect();
         foreach ($filingKeys as $k) {
-            if ($currentWeekReports->has($k)) {
+            $matched = $currentWeekReports->get($k);
+            if ($matched instanceof WeeklyBriefingReport) {
+                $filingWeekReports->put((int) $matched->id, $matched);
+
                 continue;
             }
             $startUrls[$k] = route('weekly-briefing.create', [
@@ -221,8 +265,7 @@ class WeeklyBriefingController extends Controller
                 'iso_week' => $filingIsoWeek,
             ]);
         }
-
-        $filingWeekReports = $currentWeekReports->only($filingKeys)->values();
+        $filingWeekReports = $filingWeekReports->values();
 
         $divisionId = $this->userPrimaryDivisionId();
 
@@ -300,6 +343,24 @@ class WeeklyBriefingController extends Controller
 
         $divId = (int) substr($storageKey, 2);
         $division = Division::query()->findOrFail($divId);
+
+        $existing = WeeklyBriefingReport::query()
+            ->where('report_iso_week_year', $isoYear)
+            ->where('report_iso_week', $isoWeek)
+            ->where('division_id', $division->id)
+            ->first();
+
+        if ($existing) {
+            if ((string) $existing->contribution_key !== $storageKey) {
+                $existing->update([
+                    'contribution_key' => $storageKey,
+                    'directorate_id' => $division->directorate_id,
+                ]);
+            }
+
+            return redirect()->route('weekly-briefing.edit', $existing);
+        }
+
         $report = WeeklyBriefingReport::query()->firstOrCreate(
             [
                 'contribution_key' => $storageKey,
