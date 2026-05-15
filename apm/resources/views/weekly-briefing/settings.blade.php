@@ -22,7 +22,7 @@
                 <div class="mb-3">
                     <label class="form-label">Day HoDs are reminded &amp; submissions close</label>
                     <select name="submission_weekday" class="form-select">
-                        @foreach(['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] as $d => $label)
+                        @foreach(\App\Models\WeeklyBriefingSetting::SUBMISSION_WEEKDAY_LABELS as $d => $label)
                             <option value="{{ $d }}" @selected((int)$settings->submission_weekday === $d)>{{ $label }}</option>
                         @endforeach
                     </select>
@@ -75,7 +75,7 @@
         <div class="card shadow-sm mb-3">
             <div class="card-header fw-bold">Default reporting week (hub &amp; reminders)</div>
             <div class="card-body">
-                <p class="small text-muted">Controls which ISO week the <strong>Weekly brief</strong> index tab, <strong>Start</strong> links, HoD reminder emails, and the compiled summary send target by default. Individual reports still store their own ISO week; the <strong>All reports</strong> tab can list any week. When <strong>Next ISO week</strong> is selected, the submission deadline for that filing week is the <strong>Friday before</strong> that reporting week begins (at <strong>Submission closes</strong> time), so briefs are filed in advance.</p>
+                <p class="small text-muted">Controls which ISO week the <strong>Weekly brief</strong> index tab, <strong>Start</strong> links, HoD reminder emails, and the compiled summary send target by default. Individual reports still store their own ISO week; the <strong>All reports</strong> tab can list any week. When <strong>Next ISO week</strong> is selected, the submission deadline for that filing week is the configured <strong>{{ $settings->submissionWeekdayLabel() }}</strong> in the calendar week <em>before</em> that reporting week begins (at <strong>Submission closes</strong> time), so briefs are filed in advance.</p>
                 <div class="mb-0">
                     <label class="form-label">HoDs file for</label>
                     <select name="filing_iso_week_offset" class="form-select" style="max-width:28rem;">
