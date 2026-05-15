@@ -494,9 +494,20 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
             dCol.style.opacity = '1';
             dCol.querySelectorAll('select').forEach(function (s) { s.disabled = false; });
             rCol.style.opacity = '0.45';
-            rCol.querySelectorAll('select').forEach(function (s) { s.disabled = true; });
+            rCol.querySelectorAll('select').forEach(function (s) {
+                s.disabled = false;
+            });
         }
         wbSyncContribDivOptional(tr);
+    }
+
+    var wbForm = document.getElementById('wb-settings-form');
+    if (wbForm) {
+        wbForm.addEventListener('submit', function () {
+            body.querySelectorAll('select').forEach(function (s) {
+                s.disabled = false;
+            });
+        });
     }
 
     btn.addEventListener('click', function () {
