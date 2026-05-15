@@ -647,16 +647,16 @@ $(document).ready(function() {
                 dropdownParent: dropdownParent,
                 placeholder: $el.data('placeholder') || 'Select...',
                 allowClear: !$el.prop('required')
-            });
-        });
+    });
+});
     }
 
     function initDatepickersIn($container) {
         $container.find('.datepicker').datepicker({
-            format: 'yyyy-mm-dd',
-            autoclose: true,
-            todayHighlight: true
-        });
+        format: 'yyyy-mm-dd',
+        autoclose: true,
+        todayHighlight: true
+    });
     }
 
     function populateAddFormStaffSelects() {
