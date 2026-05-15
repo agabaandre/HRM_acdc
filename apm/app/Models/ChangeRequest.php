@@ -749,7 +749,7 @@ class ChangeRequest extends Model
 
     public function getResourceUrlAttribute()
     {
-        return route('change-request.show', $this->id);
+        return route('change-requests.show', $this);
     }
      public function getMyLastActionAttribute(){
         $userStaffId = user_session('staff_id');

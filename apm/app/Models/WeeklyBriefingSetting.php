@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WeeklyBriefingScheduleGate;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -61,9 +62,9 @@ class WeeklyBriefingSetting extends Model
             'submission_weekday' => 5,
             'hod_reminder_time' => '09:00',
             'hod_reminder_days_before_deadline' => [1, 0],
-            'hod_reminder_clock' => 'submission_close_time',
+            'hod_reminder_clock' => 'hod_reminder_time',
             'director_review_reminder_days_before_deadline' => [1, 0],
-            'director_review_reminder_clock' => 'submission_close_time',
+            'director_review_reminder_clock' => 'hod_reminder_time',
             'compiled_exclude_unreviewed_director_divisions' => false,
             'submission_close_time' => '14:00',
             'summary_send_time' => '14:10',
@@ -110,17 +111,11 @@ class WeeklyBriefingSetting extends Model
     }
 
     /**
-     * Whether the current clock time (H:i) matches a stored time column (e.g. hod_reminder_time).
+     * Whether the current clock time matches a stored time column (exact minute or grace window).
      */
     public function matchesTimeNow(string $attribute): bool
     {
-        $value = $this->getAttribute($attribute);
-        if ($value === null || $value === '') {
-            return false;
-        }
-        $hm = is_string($value) ? substr($value, 0, 5) : Carbon::parse($value)->format('H:i');
-
-        return Carbon::now()->format('H:i') === $hm;
+        return WeeklyBriefingScheduleGate::for($this)->isWithinScheduledClock($attribute);
     }
 
     /**

@@ -5,8 +5,8 @@ namespace App\Console\Commands;
 use App\Models\Staff;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
+use App\Services\WeeklyBriefingScheduleGate;
 use App\Support\WeeklyBriefingMailTemplate;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -20,38 +20,20 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
     {
         $settings = WeeklyBriefingSetting::current();
         $force = (bool) $this->option('force');
+        $gate = WeeklyBriefingScheduleGate::for($settings);
 
         $filing = $settings->filingIsoWeekPair();
         $y = $filing['iso_year'];
         $w = $filing['iso_week'];
         $deadline = $settings->filingSubmissionDeadline();
 
-        if (Carbon::now()->greaterThan($deadline)) {
+        if (! $gate->passesDirectorReviewReminderSchedule($force)) {
             return self::SUCCESS;
         }
 
-        if (! $force && ! $settings->reminders_enabled) {
+        $slotKey = $gate->directorReviewReminderSlotKey();
+        if (! $force && ! $gate->tryClaimDispatch('director_review', $slotKey)) {
             return self::SUCCESS;
-        }
-
-        if (! $force) {
-            $offsets = $settings->normalizedDirectorReviewReminderDaysBeforeDeadline();
-            $clockCol = $settings->directorReviewReminderClockColumn();
-            if (! $settings->matchesTimeNow($clockCol)) {
-                return self::SUCCESS;
-            }
-            $today = Carbon::now()->startOfDay();
-            $deadlineDay = $deadline->copy()->startOfDay();
-            $matched = false;
-            foreach ($offsets as $offset) {
-                if ($today->equalTo($deadlineDay->copy()->subDays($offset))) {
-                    $matched = true;
-                    break;
-                }
-            }
-            if (! $matched) {
-                return self::SUCCESS;
-            }
         }
 
         $pending = WeeklyBriefingReport::query()
@@ -62,10 +44,15 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
             ->filter(fn (WeeklyBriefingReport $r) => $r->requiresDirectorReview() && ! $r->isDirectorReviewed());
 
         if ($pending->isEmpty()) {
+            if (! $force) {
+                $gate->releaseDispatch('director_review', $slotKey);
+            }
+
             return self::SUCCESS;
         }
 
         $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
+        $dispatched = false;
         $deadlineHuman = htmlspecialchars($deadline->format('l, F j, Y \a\t g:i A'), ENT_QUOTES, 'UTF-8');
         $weekHuman = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8');
 
@@ -113,12 +100,18 @@ HTML;
             $html = WeeklyBriefingMailTemplate::wrap($director, 'Weekly brief — director review reminder', $inner);
             $subject = $subjectPrefix.'Weekly brief — director review pending'.WeeklyBriefingMailTemplate::subjectSuffix();
             try {
-                if (! sendEmail($email, $subject, $html)) {
+                if (sendEmail($email, $subject, $html)) {
+                    $dispatched = true;
+                } else {
                     Log::warning('weekly-briefing:director-review-reminders sendEmail returned false', ['to' => $email]);
                 }
             } catch (\Throwable $e) {
                 Log::warning('weekly-briefing:director-review-reminders mail failed', ['e' => $e->getMessage(), 'to' => $email]);
             }
+        }
+
+        if (! $dispatched && ! $force) {
+            $gate->releaseDispatch('director_review', $slotKey);
         }
 
         $this->info('weekly-briefing:director-review-reminders completed.');

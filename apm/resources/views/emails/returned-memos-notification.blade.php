@@ -297,8 +297,8 @@
                                             <div class="item-meta">
                                                 <span class="badge badge-danger">{{ $item['workflow_role'] }}</span>
                                                 <span class="badge badge-warning">Level {{ $item['approval_level'] }}</span>
-                                                @if($item['status'])
-                                                    <span class="badge badge-info">{{ ucfirst($item['status']) }}</span>
+                                                @if(!empty($item['status'] ?? $item['overall_status'] ?? null))
+                                                    <span class="badge badge-info">{{ ucfirst($item['status'] ?? $item['overall_status']) }}</span>
                                                 @endif
                                             </div>
                                             <div class="item-actions">

@@ -42,7 +42,35 @@
                         <input type="time" name="summary_send_time" class="form-control" value="{{ old('summary_send_time', substr($settings->summary_send_time,0,5)) }}" required>
                     </div>
                 </div>
-                <p class="small text-muted mt-2 mb-0">The server scheduler runs weekly briefing commands every minute; each command self-gates (e.g. compiled summary on the <strong>same calendar day as the filing week submission deadline</strong> at <strong>Compiled summary send</strong> time). HoD and director review reminders use the <strong>days before deadline</strong> settings below, matched at the chosen clock column (minute precision). Ensure <code>php artisan schedule:run</code> runs every minute.</p>
+                <p class="small text-muted mt-2 mb-0">The server scheduler runs weekly briefing commands every minute; each command self-gates (e.g. compiled summary on the <strong>same calendar day as the filing week submission deadline</strong> at <strong>Compiled summary send</strong> time). HoD and director review reminders use the <strong>days before deadline</strong> settings below, matched at the chosen clock column (exact minute, plus a {{ \App\Services\WeeklyBriefingScheduleGate::DISPATCH_GRACE_MINUTES }}-minute grace window if the scheduler tick is late). Ensure <code>php artisan schedule:run</code> runs every minute (server timezone: <strong>{{ config('app.timezone') }}</strong>).</p>
+                @php $wb = $wbScheduleStatus ?? null; @endphp
+                @if(is_array($wb))
+                    <div class="alert alert-secondary small mt-3 mb-0">
+                        <strong>Schedule check (now):</strong>
+                        Filing week W{{ $wb['filing']['iso_week'] }}/{{ $wb['filing']['iso_year'] }} ·
+                        Deadline {{ $wb['deadline']->format('l, M j, Y g:i A') }} ·
+                        Reminders {{ ($wb['reminders_enabled'] ?? false) ? 'enabled' : 'disabled' }}.
+                        <ul class="mb-0 mt-2">
+                            <li>HoD / contributor: send at <strong>{{ $wb['hod_clock_label'] ?? '—' }}</strong>
+                                @if(!empty($wb['hod_is_reminder_day']))
+                                    — today is a configured reminder day
+                                @else
+                                    — <span class="text-warning">today is not a configured reminder day</span>
+                                @endif
+                                @if(($wb['hod_clock_column'] ?? '') === 'submission_close_time' && substr((string)$settings->hod_reminder_time,0,5) !== substr((string)$settings->submission_close_time,0,5))
+                                    <span class="text-danger d-block">HoD reminder time ({{ substr($settings->hod_reminder_time,0,5) }}) differs from submission close; choose <em>HoD reminder time</em> under “Send at this clock time” or reminders will fire at submission close instead.</span>
+                                @endif
+                            </li>
+                            <li>Compiled summary: {{ substr($settings->summary_send_time,0,5) }} on deadline day
+                                @if(!empty($wb['compiled_is_deadline_day']))
+                                    (today)
+                                @else
+                                    — <span class="text-warning">not today</span>
+                                @endif
+                            </li>
+                        </ul>
+                    </div>
+                @endif
             </div>
         </div>
 
