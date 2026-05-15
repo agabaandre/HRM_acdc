@@ -82,7 +82,7 @@ final class WeeklyBriefingContributionKeyResolver
                 continue;
             }
 
-            $dirId = (int) ($division->directorate_id ?? 0);
+            $dirId = DirectorateDivisionLink::resolveDirectorateIdForDivision($division);
             if ($dirId <= 0) {
                 continue;
             }
