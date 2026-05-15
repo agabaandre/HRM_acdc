@@ -127,17 +127,16 @@
                 <button type="button" class="btn btn-sm btn-outline-success" id="wb-add-contributor">+ Add row</button>
             </div>
             <div class="card-body">
-                <p class="small text-muted">Pick <strong>staff</strong>, their <strong>APM division</strong>, and <strong>Reporting unit type</strong>. Every row needs a <strong>contributing division</strong> — each division files its own weekly brief (<code>d-…</code>). <strong>Directorate</strong> is optional metadata for director review and combined directorate PDFs only. The hub lists one line per row.</p>
+                <p class="small text-muted">Pick <strong>staff</strong>, one <strong>division</strong> per row (that division’s weekly brief, <code>d-…</code>), and <strong>reporting unit type</strong>. For <strong>Directorate</strong> rows, the directorate is filled automatically from the division’s director when possible. The hub lists one line per row.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle" id="wb-contributors-table">
                         <thead class="table-light">
                             <tr>
                                 <th style="width:2.5rem" class="text-center">#</th>
                                 <th style="min-width:200px">Staff</th>
-                                <th style="min-width:160px">APM division</th>
-                                <th style="min-width:130px">Reporting unit type</th>
-                                <th style="min-width:200px">Contributing division <span class="text-muted fw-normal">(Division: required; Directorate: optional)</span></th>
-                                <th style="min-width:200px">Directorate <span class="text-muted fw-normal">(validation / director scope)</span></th>
+                                <th style="min-width:220px">Division</th>
+                                <th style="min-width:150px">Reporting unit type</th>
+                                <th style="min-width:200px">Directorate <span class="text-muted fw-normal">(auto from division)</span></th>
                                 <th style="min-width:200px">PDF display name <span class="text-muted fw-normal">(optional)</span></th>
                                 <th style="width:48px"></th>
                             </tr>
@@ -153,12 +152,16 @@
                                 @php
                                     $row = is_array($c) ? $c : null;
                                     $staffId = $row ? (int)($row['staff_id'] ?? 0) : (int)($c->staff_id ?? 0);
-                                    $apmDiv = $row ? (int)($row['apm_division_id'] ?? 0) : (int)($c->apm_division_id ?? 0);
+                                    $divisionId = $row
+                                        ? (int) ($row['apm_division_id'] ?? 0) ?: (int) ($row['contribution_division_id'] ?? 0)
+                                        : (int) ($c->apm_division_id ?? 0);
+                                    if ($divisionId <= 0 && ! $row && str_starts_with((string) ($c->contribution_key ?? ''), 'd-')) {
+                                        $divisionId = (int) substr((string) ($c->contribution_key ?? ''), 2);
+                                    }
                                     $kind = $row ? ($row['contribution_kind'] ?? 'division') : (str_starts_with((string)($c->contribution_key ?? ''), 'dr-') ? 'directorate' : 'division');
-                                    $contribDiv = $row ? (int)($row['contribution_division_id'] ?? 0) : (str_starts_with((string)($c->contribution_key ?? ''), 'd-') ? (int)substr((string)($c->contribution_key ?? ''), 2) : (int)($c->apm_division_id ?? 0));
                                     $contribDir = $row ? (int)($row['contribution_directorate_id'] ?? 0) : 0;
-                                    if ($contribDir <= 0 && $contribDiv > 0) {
-                                        $divForDir = \App\Models\Division::query()->find($contribDiv);
+                                    if ($contribDir <= 0 && $divisionId > 0) {
+                                        $divForDir = \App\Models\Division::query()->find($divisionId);
                                         $contribDir = $divForDir
                                             ? \App\Services\DirectorateDivisionLink::resolveDirectorateIdForDivision($divForDir)
                                             : 0;
@@ -170,9 +173,8 @@
                                     'rowNum' => $loop->iteration,
                                     'showRowNum' => true,
                                     'staffId' => $staffId,
-                                    'apmDiv' => $apmDiv,
+                                    'divisionId' => $divisionId,
                                     'kind' => $kind,
-                                    'contribDiv' => $contribDiv,
                                     'contribDir' => $contribDir,
                                     'displayName' => $displayName,
                                     'staffList' => $staffList,
@@ -323,9 +325,8 @@
             'rowNum' => '',
             'showRowNum' => true,
             'staffId' => 0,
-            'apmDiv' => 0,
+            'divisionId' => 0,
             'kind' => 'directorate',
-            'contribDiv' => 0,
             'contribDir' => 0,
             'displayName' => '',
             'staffList' => $staffList,
@@ -404,7 +405,7 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
         var hasDn = dnEl && dnEl.value.trim() !== '';
         if (kind === 'directorate') {
             hint.classList.remove('d-none');
-            hint.textContent = 'Required — each division has its own brief; directorate PDFs merge at export.';
+            hint.textContent = 'Each division files its own brief; directorate PDFs merge at export.';
         } else {
             hint.classList.add('d-none');
             hint.textContent = '';
@@ -417,30 +418,45 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
         return parseInt(divisionDirectorateMap[key] || divisionDirectorateMap[divisionId] || 0, 10) || 0;
     }
 
+    function wbSyncDivisionHidden(tr) {
+        var divSel = tr.querySelector('.wb-division-select');
+        var hidden = tr.querySelector('.wb-contrib-division-hidden');
+        if (divSel && hidden) {
+            hidden.value = divSel.value || '';
+        }
+    }
+
     function wbAutoFillDirectorate(tr, options) {
         options = options || {};
-        var divSel = tr.querySelector('.wb-contrib-division');
+        wbSyncDivisionHidden(tr);
+        var divSel = tr.querySelector('.wb-division-select');
         var dirSel = tr.querySelector('.wb-contrib-directorate');
         var kindEl = tr.querySelector('.wb-kind');
         if (!divSel || !dirSel) return;
         var divId = parseInt(divSel.value, 10);
         if (isNaN(divId) || divId <= 0) return;
         var dirId = wbResolveDirectorateForDivision(divId);
-        if (dirId <= 0) return;
+        var dirHint = tr.querySelector('.wb-dir-hint');
+        if (dirId <= 0) {
+            if (dirHint && kindEl && kindEl.value === 'directorate') {
+                dirHint.classList.remove('d-none');
+                dirHint.textContent = 'No directorate matched this division’s director — pick one manually.';
+            }
+            return;
+        }
         if (options.switchKind !== false && kindEl && kindEl.value === 'division') {
             kindEl.value = 'directorate';
             wbToggleKind(tr, 'directorate');
         }
         dirSel.value = String(dirId);
-        var hint = tr.querySelector('.wb-contrib-div-hint');
-        if (hint) {
-            hint.classList.remove('d-none');
-            hint.textContent = 'Directorate set automatically from division director.';
+        if (dirHint) {
+            dirHint.classList.remove('d-none');
+            dirHint.textContent = 'Directorate set from division director.';
         }
     }
 
     function wbWireRow(tr) {
-        tr.querySelectorAll('.wb-contrib-division').forEach(function (sel) {
+        tr.querySelectorAll('.wb-division-select').forEach(function (sel) {
             sel.addEventListener('change', function () {
                 wbAutoFillDirectorate(tr);
             });
@@ -482,30 +498,20 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
     }
 
     function wbToggleKind(tr, kind) {
-        var dCol = tr.querySelector('td.wb-col-div');
         var rCol = tr.querySelector('td.wb-col-dir');
-        if (!dCol || !rCol) return;
-        if (kind === 'directorate') {
-            dCol.style.opacity = '1';
-            dCol.querySelectorAll('select').forEach(function (s) { s.disabled = false; });
-            rCol.style.opacity = '1';
-            rCol.querySelectorAll('select').forEach(function (s) { s.disabled = false; });
-        } else {
-            dCol.style.opacity = '1';
-            dCol.querySelectorAll('select').forEach(function (s) { s.disabled = false; });
-            rCol.style.opacity = '0.45';
-            rCol.querySelectorAll('select').forEach(function (s) {
-                s.disabled = false;
-            });
-        }
+        if (!rCol) return;
+        rCol.style.opacity = kind === 'directorate' ? '1' : '0.55';
         wbSyncContribDivOptional(tr);
+        if (kind === 'directorate') {
+            wbAutoFillDirectorate(tr, { switchKind: false });
+        }
     }
 
     var wbForm = document.getElementById('wb-settings-form');
     if (wbForm) {
         wbForm.addEventListener('submit', function () {
-            body.querySelectorAll('select').forEach(function (s) {
-                s.disabled = false;
+            body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
+                wbSyncDivisionHidden(tr);
             });
         });
     }

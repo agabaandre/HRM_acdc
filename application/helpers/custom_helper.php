@@ -1271,17 +1271,17 @@ if (!function_exists('log_user_action')) {
     {
         $CI =& get_instance();
 
-        $user_id = $CI->session->userdata('user')->user_id ?? null;
+    $user_id = $CI->session->userdata('user')->user_id ?? null;
 
-        $ip_address = @($CI->input->ip_address()) ?: '0.0.0.0';
+    $ip_address = @($CI->input->ip_address()) ?: '0.0.0.0';
         $ua = $CI->input->user_agent() ?? 'Unknown';
         $user_agent = strlen($ua) > 500 ? substr($ua, 0, 500) : $ua;
 
         $data = array(
             'user_id' => $user_id,
             'action' => is_string($action) ? $action : json_encode($action),
-            'ip_address' => $ip_address,
-            'user_agent' => $user_agent,
+        'ip_address' => $ip_address,
+        'user_agent' => $user_agent,
         );
 
         if (user_logs_audit_columns_active()) {

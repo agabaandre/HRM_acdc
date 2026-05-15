@@ -1,3 +1,12 @@
+@php
+    $divisionId = (int) ($divisionId ?? 0);
+    if ($divisionId <= 0) {
+        $divisionId = (int) ($apmDiv ?? 0);
+    }
+    if ($divisionId <= 0) {
+        $divisionId = (int) ($contribDiv ?? 0);
+    }
+@endphp
 <tr data-wb-row="{{ $idx }}">
     @if(! empty($showRowNum))
     <td class="text-muted small text-center wb-contrib-row-num">{{ $rowNum ?? '' }}</td>
@@ -13,35 +22,29 @@
         </select>
     </td>
     <td>
-        <select name="contributors[{{ $idx }}][apm_division_id]" class="form-select form-select-sm">
-            <option value="">— APM division —</option>
+        <select name="contributors[{{ $idx }}][apm_division_id]" class="form-select form-select-sm wb-division-select">
+            <option value="">— Division —</option>
             @foreach($divisions as $d)
-                <option value="{{ $d->id }}" @selected((int)$apmDiv === (int)$d->id)>{{ $d->division_name }}</option>
+                <option value="{{ $d->id }}" @selected($divisionId === (int) $d->id)>{{ $d->division_name }}</option>
             @endforeach
         </select>
+        <input type="hidden" name="contributors[{{ $idx }}][contribution_division_id]" class="wb-contrib-division-hidden" value="{{ $divisionId > 0 ? $divisionId : '' }}">
+        <small class="form-text text-muted wb-contrib-div-hint d-none"></small>
     </td>
     <td>
         <select name="contributors[{{ $idx }}][contribution_kind]" class="form-select form-select-sm wb-kind">
-            <option value="directorate" @selected($kind === 'directorate')>Directorate (division + directorate)</option>
-            <option value="division" @selected($kind === 'division')>Division</option>
+            <option value="directorate" @selected($kind === 'directorate')>Directorate (division + director)</option>
+            <option value="division" @selected($kind === 'division')>Division only</option>
         </select>
-    </td>
-    <td class="wb-col-div">
-        <select name="contributors[{{ $idx }}][contribution_division_id]" class="form-select form-select-sm wb-contrib-division">
-            <option value="">— Division —</option>
-            @foreach($divisions as $d)
-                <option value="{{ $d->id }}" @selected((int)$contribDiv === (int)$d->id)>{{ $d->division_name }}</option>
-            @endforeach
-        </select>
-        <small class="form-text text-muted wb-contrib-div-hint d-none"></small>
     </td>
     <td class="wb-col-dir">
         <select name="contributors[{{ $idx }}][contribution_directorate_id]" class="form-select form-select-sm wb-contrib-directorate">
-            <option value="">— Directorate —</option>
+            <option value="">— Directorate (auto) —</option>
             @foreach($directorates as $dir)
                 <option value="{{ $dir->id }}" @selected((int)$contribDir === (int)$dir->id)>{{ $dir->name }}</option>
             @endforeach
         </select>
+        <small class="form-text text-muted wb-dir-hint d-none">Filled from division director when possible.</small>
     </td>
     <td>
         <input type="text" name="contributors[{{ $idx }}][display_name]" class="form-control form-control-sm wb-display-name" value="{{ $displayName ?? '' }}" maxlength="255" placeholder="As on PDF if different from system name">

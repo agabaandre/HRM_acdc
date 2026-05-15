@@ -102,34 +102,37 @@ class WeeklyBriefingSettingsController extends Controller
             if ($staffId <= 0) {
                 continue;
             }
-            $apmDivisionId = (int) ($row['apm_division_id'] ?? 0);
-            if ($apmDivisionId <= 0) {
-                return back()->withInput()->with('error', 'Each contributor row needs an APM division.');
+            $divisionId = (int) ($row['apm_division_id'] ?? 0);
+            if ($divisionId <= 0) {
+                $divisionId = WeeklyBriefingContributionKeyResolver::contributingDivisionIdFromRow($row);
             }
+            if ($divisionId <= 0) {
+                return back()->withInput()->with('error', 'Each contributor row needs a division.');
+            }
+            if (! Division::query()->whereKey($divisionId)->exists()) {
+                return back()->withInput()->with('error', 'Invalid division selected.');
+            }
+            $apmDivisionId = $divisionId;
+            $row['apm_division_id'] = $divisionId;
+            $row['contribution_division_id'] = $divisionId;
+
             $rowDisplay = trim((string) ($row['display_name'] ?? ''));
             $hasPdfLabel = $rowDisplay !== '';
             $kind = (string) ($row['contribution_kind'] ?? 'division');
-            $contribDivId = WeeklyBriefingContributionKeyResolver::contributingDivisionIdFromRow($row);
-            if ($contribDivId <= 0) {
-                return back()->withInput()->with('error', 'Each contributor row needs a contributing division (required). Directorate is optional and used for director review and combined PDFs.');
-            }
-            if (! Division::query()->whereKey($contribDivId)->exists()) {
-                return back()->withInput()->with('error', 'Invalid contributing division selected.');
-            }
+            $div = Division::query()->find($divisionId);
+
             if ($kind === 'directorate') {
-                $dirId = (int) ($row['contribution_directorate_id'] ?? 0);
-                $div = Division::query()->find($contribDivId);
-                if ($dirId <= 0 && $div) {
-                    $dirId = DirectorateDivisionLink::resolveDirectorateIdForDivision($div);
-                }
+                $resolvedDir = $div ? DirectorateDivisionLink::resolveDirectorateIdForDivision($div) : 0;
+                $postedDir = (int) ($row['contribution_directorate_id'] ?? 0);
+                $dirId = $resolvedDir > 0 ? $resolvedDir : $postedDir;
                 if ($dirId <= 0) {
-                    return back()->withInput()->with('error', 'Directorate rows need a directorate when grouping under a director. Pick a contributing division whose director matches a directorate, or select the directorate manually.');
+                    return back()->withInput()->with('error', 'Directorate rows need a directorate linked to this division. Set the division director in staff settings to match a directorate director, or pick a directorate manually.');
                 }
                 if (! Directorate::query()->whereKey($dirId)->exists()) {
                     return back()->withInput()->with('error', 'Invalid directorate selected.');
                 }
-                if (! $div || ! DirectorateDivisionLink::divisionBelongsToDirectorate($div, $dirId)) {
-                    return back()->withInput()->with('error', 'The contributing division must belong to the selected directorate.');
+                if ($div && ! DirectorateDivisionLink::divisionBelongsToDirectorate($div, $dirId)) {
+                    return back()->withInput()->with('error', 'The division must belong to the selected directorate. Choose the division first; the directorate is set automatically from its director.');
                 }
             }
             try {
