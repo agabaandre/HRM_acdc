@@ -108,4 +108,54 @@ final class DirectorateDivisionLink
 
         return array_values($ids);
     }
+
+    /**
+     * Map division id → suggested directorate id for settings UI (FK, else director match).
+     *
+     * @return array<int, int>
+     */
+    public static function buildDivisionDirectorateMap(): array
+    {
+        if (! Schema::hasTable('divisions')) {
+            return [];
+        }
+
+        $map = [];
+
+        $directorToDirectorate = [];
+        if (Schema::hasTable('directorates') && Schema::hasColumn('directorates', 'director_id')) {
+            $q = Directorate::query()->orderBy('id');
+            if (Schema::hasColumn('directorates', 'is_active')) {
+                $q->where('is_active', true);
+            }
+            foreach ($q->get(['id', 'director_id']) as $directorate) {
+                $directorStaffId = (int) ($directorate->director_id ?? 0);
+                if ($directorStaffId > 0 && ! isset($directorToDirectorate[$directorStaffId])) {
+                    $directorToDirectorate[$directorStaffId] = (int) $directorate->id;
+                }
+            }
+        }
+
+        $columns = ['id', 'directorate_id'];
+        if (Schema::hasColumn((new Division)->getTable(), 'director_id')) {
+            $columns[] = 'director_id';
+        }
+
+        foreach (Division::query()->get($columns) as $division) {
+            $divisionId = (int) $division->id;
+            $fk = (int) ($division->directorate_id ?? 0);
+            if ($fk > 0) {
+                $map[$divisionId] = $fk;
+
+                continue;
+            }
+
+            $divDirector = (int) ($division->director_id ?? 0);
+            if ($divDirector > 0 && isset($directorToDirectorate[$divDirector])) {
+                $map[$divisionId] = $directorToDirectorate[$divDirector];
+            }
+        }
+
+        return $map;
+    }
 }

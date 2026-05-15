@@ -38,7 +38,16 @@ class WeeklyBriefingSettingsController extends Controller
 
         $wbScheduleStatus = WeeklyBriefingScheduleGate::for($settings)->scheduleStatus();
 
-        return view('weekly-briefing.settings', compact('settings', 'staffList', 'divisions', 'directorates', 'wbScheduleStatus'));
+        $divisionDirectorateMap = DirectorateDivisionLink::buildDivisionDirectorateMap();
+
+        return view('weekly-briefing.settings', compact(
+            'settings',
+            'staffList',
+            'divisions',
+            'directorates',
+            'wbScheduleStatus',
+            'divisionDirectorateMap',
+        ));
     }
 
     public function update(Request $request): RedirectResponse

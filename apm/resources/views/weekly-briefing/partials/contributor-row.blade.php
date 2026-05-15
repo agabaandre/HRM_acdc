@@ -36,7 +36,7 @@
         <small class="form-text text-muted wb-contrib-div-hint d-none"></small>
     </td>
     <td class="wb-col-dir">
-        <select name="contributors[{{ $idx }}][contribution_directorate_id]" class="form-select form-select-sm">
+        <select name="contributors[{{ $idx }}][contribution_directorate_id]" class="form-select form-select-sm wb-contrib-directorate">
             <option value="">— Directorate —</option>
             @foreach($directorates as $dir)
                 <option value="{{ $dir->id }}" @selected((int)$contribDir === (int)$dir->id)>{{ $dir->name }}</option>

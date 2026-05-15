@@ -35,4 +35,5 @@ class DirectorateDivisionLinkTest extends TestCase
         // Stale FK should not block when director_id aligns with selected directorate's director.
         $this->assertTrue(DirectorateDivisionLink::belongs(99, 55, 7, 55));
     }
+
 }
