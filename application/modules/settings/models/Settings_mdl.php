@@ -93,6 +93,18 @@ class Settings_mdl extends CI_Model
         return $this->db->count_all_results();
     }
 
+    public function get_division_by_id($division_id)
+    {
+        $id = (int) $division_id;
+        if ($id <= 0) {
+            return null;
+        }
+
+        $this->db->where('division_id', $id);
+
+        return $this->db->get('divisions')->row_array();
+    }
+
     public function get_divisions_for_datatables() {
         $this->db->select('d.*, 
             dh.fname as head_fname, dh.lname as head_lname,
@@ -165,13 +177,17 @@ class Settings_mdl extends CI_Model
         $session = $this->session->userdata('user');
         $permissions = $session->permissions;
         
+        $id = (int) $division_id;
         $buttons = '<div class="btn-group" role="group">';
-        $buttons .= '<button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#update_divisions' . $division_id . '" title="Edit Division">';
-        $buttons .= '<i class="fa fa-edit"></i>';
-        $buttons .= '</button>';
-        
+
+        if (in_array('78', $permissions)) {
+            $buttons .= '<button type="button" class="btn btn-sm btn-outline-info btn-division-edit" data-division-id="' . $id . '" title="Edit Division">';
+            $buttons .= '<i class="fa fa-edit"></i>';
+            $buttons .= '</button>';
+        }
+
         if (in_array('77', $permissions)) {
-            $buttons .= '<button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete_divisions' . $division_id . '" title="Delete Division">';
+            $buttons .= '<button type="button" class="btn btn-sm btn-outline-danger btn-division-delete" data-division-id="' . $id . '" title="Delete Division">';
             $buttons .= '<i class="fa fa-trash"></i>';
             $buttons .= '</button>';
         }

@@ -1,7 +1,8 @@
 <?php
 $session = $this->session->userdata('user');
 $permissions = $session->permissions;
-$lists = $this->staff_mdl->get_all_staff_data([]);
+$can_edit_divisions = in_array('78', $permissions);
+$can_delete_divisions = in_array('77', $permissions);
 ?>
 
 <div class="row">
@@ -71,12 +72,7 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                     <label class="form-label fw-semibold">
                       <i class="fas fa-user-tie me-1 text-primary"></i>Division Head <span class="text-danger">*</span>
                     </label>
-                    <select class="form-control select2" name="division_head" required>
-                      <option value="">Select Division Head</option>
-                      <?php foreach ($lists as $staff): ?>
-                        <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
-                      <?php endforeach; ?>
-                    </select>
+                    <select class="form-control select2 staff-select" name="division_head" data-placeholder="Select Division Head" required></select>
                   </div>
                 </td>
                 <td class="form-cell">
@@ -84,12 +80,7 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                     <label class="form-label fw-semibold">
                       <i class="fas fa-user me-1 text-info"></i>Focal Person <span class="text-danger">*</span>
                     </label>
-                    <select class="form-control select2" name="focal_person" required>
-                      <option value="">Select Focal Person</option>
-                      <?php foreach ($lists as $staff): ?>
-                        <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
-                      <?php endforeach; ?>
-                    </select>
+                    <select class="form-control select2 staff-select" name="focal_person" data-placeholder="Select Focal Person" required></select>
                   </div>
                 </td>
                 <td class="form-cell">
@@ -97,12 +88,7 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                     <label class="form-label fw-semibold">
                       <i class="fas fa-calculator me-1 text-success"></i>Finance Officer <span class="text-danger">*</span>
                     </label>
-                    <select class="form-control select2" name="finance_officer" required>
-                      <option value="">Select Finance Officer</option>
-                      <?php foreach ($lists as $staff): ?>
-                        <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
-                      <?php endforeach; ?>
-                    </select>
+                    <select class="form-control select2 staff-select" name="finance_officer" data-placeholder="Select Finance Officer" required></select>
                   </div>
                 </td>
               </tr>
@@ -114,12 +100,7 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                     <label class="form-label fw-semibold">
                       <i class="fas fa-user-cog me-1 text-warning"></i>Admin Assistant <span class="text-danger">*</span>
                     </label>
-                    <select class="form-control select2" name="admin_assistant" required>
-                      <option value="">Select Admin Assistant</option>
-                      <?php foreach ($lists as $staff): ?>
-                        <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
-                      <?php endforeach; ?>
-                    </select>
+                    <select class="form-control select2 staff-select" name="admin_assistant" data-placeholder="Select Admin Assistant" required></select>
                   </div>
                 </td>
                 <td class="form-cell">
@@ -127,12 +108,7 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                     <label class="form-label fw-semibold">
                       <i class="fas fa-crown me-1 text-danger"></i>Director
                     </label>
-                    <select class="form-control select2" name="director_id">
-                      <option value="">Select Director (Optional)</option>
-                      <?php foreach ($lists as $staff): ?>
-                        <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
-                      <?php endforeach; ?>
-                    </select>
+                    <select class="form-control select2 staff-select" name="director_id" data-placeholder="Select Director (Optional)"></select>
                     <small class="form-text text-muted">Optional: Division director</small>
                   </div>
                 </td>
@@ -148,12 +124,7 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                     <label class="form-label fw-semibold">
                       <i class="fas fa-user-clock me-1 text-secondary"></i>Head OIC
                     </label>
-                    <select class="form-control select2" name="head_oic_id">
-                      <option value="">Select Head OIC (Optional)</option>
-                      <?php foreach ($lists as $staff): ?>
-                        <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
-                      <?php endforeach; ?>
-                    </select>
+                    <select class="form-control select2 staff-select" name="head_oic_id" data-placeholder="Select Head OIC (Optional)"></select>
                     <small class="form-text text-muted">Optional: Officer in charge of division head</small>
                   </div>
                 </td>
@@ -184,12 +155,7 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                     <label class="form-label fw-semibold">
                       <i class="fas fa-user-shield me-1 text-dark"></i>Director OIC
                     </label>
-                    <select class="form-control select2" name="director_oic_id">
-                      <option value="">Select Director OIC (Optional)</option>
-                      <?php foreach ($lists as $staff): ?>
-                        <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
-                      <?php endforeach; ?>
-                    </select>
+                    <select class="form-control select2 staff-select" name="director_oic_id" data-placeholder="Select Director OIC (Optional)"></select>
                     <small class="form-text text-muted">Optional: Officer in charge of director</small>
                   </div>
                 </td>
@@ -611,31 +577,216 @@ $(document).ready(function() {
     }
 });
 
-// Initialize Select2 for modals when they are shown
-$(document).on('shown.bs.modal', '.modal', function() {
-    $('.select2').select2({
-        dropdownParent: $(this)
-    });
-});
-
-// Initialize datepicker for modals when they are shown
-$(document).on('shown.bs.modal', '.modal', function() {
-    $('.datepicker').datepicker({
-        format: 'yyyy-mm-dd',
-        autoclose: true,
-        todayHighlight: true
-    });
-});
 </script>
 
-<!-- Include Modals -->
-<?php
-// We need to get divisions data for modals
-$divisions_for_modals = $this->settings_mdl->get_divisions_for_datatables();
-if ($divisions_for_modals->num_rows() > 0):
-    foreach ($divisions_for_modals->result() as $division):
-        if (in_array('78', $permissions)) include('modals/update_divisions.php');
-        if (in_array('77', $permissions)) include('modals/delete/delete_divisions.php');
-    endforeach;
-endif;
-?>
+<?php if ($can_edit_divisions): ?>
+  <?php include('modals/division_edit_modal.php'); ?>
+<?php endif; ?>
+<?php if ($can_delete_divisions): ?>
+  <?php include('modals/division_delete_modal.php'); ?>
+<?php endif; ?>
+
+<script>
+(function($) {
+    var staffOptionsCache = null;
+    var staffOptionsPromise = null;
+    var staffSelectsInitialized = false;
+    var divisionStaffUrl = '<?= base_url('settings/staff_select_options') ?>';
+    var divisionJsonUrl = '<?= base_url('settings/division_json/') ?>';
+
+    function loadStaffOptions() {
+        if (staffOptionsCache) {
+            return $.Deferred().resolve(staffOptionsCache).promise();
+        }
+        if (staffOptionsPromise) {
+            return staffOptionsPromise;
+        }
+        staffOptionsPromise = $.getJSON(divisionStaffUrl).then(function(resp) {
+            staffOptionsCache = (resp && resp.success) ? (resp.options || []) : [];
+            return staffOptionsCache;
+        }).fail(function() {
+            staffOptionsCache = [];
+            staffOptionsPromise = null;
+            return staffOptionsCache;
+        });
+        return staffOptionsPromise;
+    }
+
+    function fillStaffSelect($select, selectedId) {
+        var placeholder = $select.data('placeholder') || 'Select...';
+        $select.empty();
+        $select.append($('<option value="">').text(placeholder));
+        $.each(staffOptionsCache || [], function(_, opt) {
+            var $opt = $('<option>').val(opt.id).text(opt.text);
+            if (selectedId && String(opt.id) === String(selectedId)) {
+                $opt.prop('selected', true);
+            }
+            $select.append($opt);
+        });
+    }
+
+    function destroySelect2In($container) {
+        $container.find('.select2').each(function() {
+            var $el = $(this);
+            if ($el.data('select2')) {
+                $el.select2('destroy');
+            }
+        });
+    }
+
+    function initSelect2In($container) {
+        var $modal = $container.closest('.modal');
+        var dropdownParent = $modal.length ? $modal : $('#divisionForm');
+        $container.find('.select2').each(function() {
+            var $el = $(this);
+            if ($el.data('select2')) {
+                $el.select2('destroy');
+            }
+            $el.select2({
+                dropdownParent: dropdownParent,
+                placeholder: $el.data('placeholder') || 'Select...',
+                allowClear: !$el.prop('required')
+            });
+        });
+    }
+
+    function initDatepickersIn($container) {
+        $container.find('.datepicker').datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true,
+            todayHighlight: true
+        });
+    }
+
+    function populateAddFormStaffSelects() {
+        if (staffSelectsInitialized) {
+            return;
+        }
+        loadStaffOptions().then(function() {
+            $('#divisionForm .staff-select').each(function() {
+                fillStaffSelect($(this), null);
+            });
+            initSelect2In($('#divisionForm'));
+            staffSelectsInitialized = true;
+        });
+    }
+
+    function setVal(id, val) {
+        $(id).val(val === null || val === undefined ? '' : val);
+    }
+
+    function populateEditModal(division) {
+        $('#divisionEditModalTitle').text('Edit Division: ' + (division.division_name || ''));
+        $('#divisionEditCallerValue').val(division.division_id);
+        setVal('#divisionEditName', division.division_name);
+        setVal('#divisionEditShortName', division.division_short_name);
+        setVal('#divisionEditCategory', division.category);
+        setVal('#divisionEditHeadOicStart', division.head_oic_start_date);
+        setVal('#divisionEditHeadOicEnd', division.head_oic_end_date);
+        setVal('#divisionEditDirectorOicStart', division.director_oic_start_date);
+        setVal('#divisionEditDirectorOicEnd', division.director_oic_end_date);
+        $('#divisionEditModal .division-staff-select').each(function() {
+            fillStaffSelect($(this), division[$(this).attr('name')] || '');
+        });
+    }
+
+    function showEditModalLoading() {
+        $('#divisionEditModal .division-modal-loading').removeClass('d-none');
+        $('#divisionEditModal .division-modal-form').addClass('d-none');
+    }
+
+    function showEditModalForm() {
+        $('#divisionEditModal .division-modal-loading').addClass('d-none');
+        $('#divisionEditModal .division-modal-form').removeClass('d-none');
+    }
+
+    function openEditModal(divisionId) {
+        var $modal = $('#divisionEditModal');
+        if (!$modal.length) {
+            return;
+        }
+        showEditModalLoading();
+        var modal = bootstrap.Modal.getOrCreateInstance($modal[0]);
+        modal.show();
+
+        $.when(loadStaffOptions(), $.getJSON(divisionJsonUrl + divisionId))
+            .done(function(staffData, divisionResp) {
+                var resp = divisionResp[0];
+                if (!resp || !resp.success) {
+                    alert(resp && resp.message ? resp.message : 'Could not load division.');
+                    modal.hide();
+                    return;
+                }
+                destroySelect2In($modal);
+                populateEditModal(resp.division);
+                showEditModalForm();
+                initSelect2In($modal);
+                initDatepickersIn($modal);
+            })
+            .fail(function() {
+                alert('Could not load division. Please try again.');
+                modal.hide();
+            });
+    }
+
+    function openDeleteModal(divisionId) {
+        var $modal = $('#divisionDeleteModal');
+        if (!$modal.length) {
+            return;
+        }
+        $modal.find('.division-delete-loading').removeClass('d-none');
+        $modal.find('.division-delete-content').addClass('d-none');
+        var modal = bootstrap.Modal.getOrCreateInstance($modal[0]);
+        modal.show();
+
+        $.getJSON(divisionJsonUrl + divisionId)
+            .done(function(resp) {
+                if (!resp || !resp.success) {
+                    alert(resp && resp.message ? resp.message : 'Could not load division.');
+                    modal.hide();
+                    return;
+                }
+                var d = resp.division;
+                $('#divisionDeleteCallerValue').val(d.division_id);
+                $('#divisionDeleteName').text(d.division_name || '');
+                if (d.division_short_name) {
+                    $('#divisionDeleteShort').text(d.division_short_name);
+                    $('#divisionDeleteShortWrap').removeClass('d-none');
+                } else {
+                    $('#divisionDeleteShortWrap').addClass('d-none');
+                }
+                if (d.category) {
+                    $('#divisionDeleteCategory').text(d.category);
+                    $('#divisionDeleteCategoryWrap').removeClass('d-none');
+                } else {
+                    $('#divisionDeleteCategoryWrap').addClass('d-none');
+                }
+                $modal.find('.division-delete-loading').addClass('d-none');
+                $modal.find('.division-delete-content').removeClass('d-none');
+            })
+            .fail(function() {
+                alert('Could not load division. Please try again.');
+                modal.hide();
+            });
+    }
+
+    $('#divisionForm').on('show.bs.collapse', function() {
+        populateAddFormStaffSelects();
+    });
+
+    $(document).on('click', '.btn-division-edit', function(e) {
+        e.preventDefault();
+        openEditModal($(this).data('division-id'));
+    });
+
+    $(document).on('click', '.btn-division-delete', function(e) {
+        e.preventDefault();
+        openDeleteModal($(this).data('division-id'));
+    });
+
+    $('#divisionEditModal').on('hidden.bs.modal', function() {
+        destroySelect2In($(this));
+        showEditModalLoading();
+    });
+})(jQuery);
+</script>
