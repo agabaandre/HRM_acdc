@@ -25,12 +25,12 @@
 
     @php
         $submissionDeadline = $report->submissionDeadline($settings);
-        $s1 = old('section1', $report->section1_major_happenings ?? []);
+        $s1 = old('section1', $report->section1RowsForForm());
         while (count($s1) < 3) {
             $s1[] = ['major_happening' => '', 'description_key_actions' => '', 'strategic_relevance' => ''];
         }
         $s1 = array_slice($s1, 0, 3);
-        $s2 = old('section2', $report->section2_bottlenecks ?? []);
+        $s2 = old('section2', $report->section2RowsForForm());
         if (count($s2) === 0) {
             $s2[] = ['issue' => '', 'impact_risk' => '', 'required_action' => ''];
         }
@@ -38,7 +38,13 @@
 
     @php
         $anyEditsOpen = $formEditable;
+        $hubViewOnly = ! $formEditable;
     @endphp
+    @if($hubViewOnly)
+        <div class="alert alert-secondary border shadow-sm mb-3">
+            <strong>View only.</strong> You can read this briefing here; use <strong>PDF</strong> from the hub for a printable copy. Editing is limited to the assigned contributor or director when the deadline allows.
+        </div>
+    @endif
     <div class="alert alert-{{ $anyEditsOpen ? 'info' : 'secondary' }} border shadow-sm mb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
         <div>
             <strong><i class="fas fa-calendar-check me-1"></i>Submission deadline</strong>
@@ -153,19 +159,19 @@
                                     <td>
                                         <div class="wb-quill-wrap">
                                             <div id="wb-major-q-{{ $idx }}" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>
-                                            <input type="hidden" name="section1[{{ $idx }}][major_happening]" id="wb-major-h-{{ $idx }}" value="{{ $row['major_happening'] ?? '' }}">
+                                            <textarea class="d-none wb-quill-source" name="section1[{{ $idx }}][major_happening]" id="wb-major-h-{{ $idx }}">{{ $row['major_happening'] ?? '' }}</textarea>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="wb-quill-wrap">
                                             <div id="wb-desc-{{ $idx }}" class="wb-quill-editor border rounded bg-white" style="min-height:140px;"></div>
-                                            <input type="hidden" name="section1[{{ $idx }}][description_key_actions]" id="wb-desc-h-{{ $idx }}" value="{{ $row['description_key_actions'] ?? '' }}">
+                                            <textarea class="d-none wb-quill-source" name="section1[{{ $idx }}][description_key_actions]" id="wb-desc-h-{{ $idx }}">{{ $row['description_key_actions'] ?? '' }}</textarea>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="wb-quill-wrap">
                                             <div id="wb-strat-{{ $idx }}" class="wb-quill-editor border rounded bg-white" style="min-height:140px;"></div>
-                                            <input type="hidden" name="section1[{{ $idx }}][strategic_relevance]" id="wb-strat-h-{{ $idx }}" value="{{ $row['strategic_relevance'] ?? '' }}">
+                                            <textarea class="d-none wb-quill-source" name="section1[{{ $idx }}][strategic_relevance]" id="wb-strat-h-{{ $idx }}">{{ $row['strategic_relevance'] ?? '' }}</textarea>
                                         </div>
                                     </td>
                                 </tr>
@@ -198,19 +204,19 @@
                                     <td>
                                         <div class="wb-quill-wrap">
                                             <div id="wb-bt-issue-{{ $btUid }}" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>
-                                            <input type="hidden" name="section2[{{ $idx }}][issue]" id="wb-bt-issue-h-{{ $btUid }}" value="{{ $row['issue'] ?? '' }}">
+                                            <textarea class="d-none wb-quill-source" name="section2[{{ $idx }}][issue]" id="wb-bt-issue-h-{{ $btUid }}">{{ $row['issue'] ?? '' }}</textarea>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="wb-quill-wrap">
                                             <div id="wb-bt-impact-{{ $btUid }}" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>
-                                            <input type="hidden" name="section2[{{ $idx }}][impact_risk]" id="wb-bt-impact-h-{{ $btUid }}" value="{{ $row['impact_risk'] ?? '' }}">
+                                            <textarea class="d-none wb-quill-source" name="section2[{{ $idx }}][impact_risk]" id="wb-bt-impact-h-{{ $btUid }}">{{ $row['impact_risk'] ?? '' }}</textarea>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="wb-quill-wrap">
                                             <div id="wb-bt-action-{{ $btUid }}" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>
-                                            <input type="hidden" name="section2[{{ $idx }}][required_action]" id="wb-bt-action-h-{{ $btUid }}" value="{{ $row['required_action'] ?? '' }}">
+                                            <textarea class="d-none wb-quill-source" name="section2[{{ $idx }}][required_action]" id="wb-bt-action-h-{{ $btUid }}">{{ $row['required_action'] ?? '' }}</textarea>
                                         </div>
                                     </td>
                                     <td class="text-nowrap">
@@ -252,7 +258,10 @@
     #weekly-briefing-page #bottleneck-table td { vertical-align: top; }
     #weekly-briefing-page #wb-major-happenings-table .wb-quill-editor .ql-toolbar,
     #weekly-briefing-page #bottleneck-table .wb-quill-editor .ql-toolbar { flex-wrap: wrap; }
-    #weekly-briefing-page fieldset:disabled { opacity: 0.65; pointer-events: none; }
+    #weekly-briefing-page fieldset:disabled { opacity: 1; }
+    #weekly-briefing-page fieldset:disabled .ql-toolbar { display: none; }
+    #weekly-briefing-page fieldset:disabled .wb-quill-editor { border-color: #dee2e6 !important; background: #f8f9fa !important; }
+    #weekly-briefing-page fieldset:disabled .ql-editor { cursor: default; }
 </style>
 @endpush
 
@@ -262,23 +271,34 @@
 (function () {
     var form = document.getElementById('weekly-briefing-form');
     if (!form || typeof Quill === 'undefined') return;
-    @if(! $formEditable)
-    return;
-    @endif
 
+    var formEditable = @json($formEditable);
     var toolbar = [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link'], ['clean']];
     var quillOpts = { theme: 'snow', modules: { toolbar: toolbar } };
     var editors = [];
     var wbBtJsSeq = 1000;
 
-    function bindQuill(editorId, hiddenEl) {
+    function sourceHtml(el) {
+        if (!el) return '';
+        return (el.value !== undefined && el.value !== '') ? el.value : (el.textContent || '');
+    }
+
+    function bindQuill(editorId, sourceEl) {
         var host = document.getElementById(editorId);
-        if (!host || !hiddenEl || host.__quill) return;
-        var q = new Quill('#' + editorId, quillOpts);
-        if (hiddenEl.value) {
-            q.root.innerHTML = hiddenEl.value;
+        if (!host || !sourceEl || host.__quill) return;
+        var opts = formEditable ? quillOpts : { theme: 'snow', modules: { toolbar: false } };
+        var q = new Quill('#' + editorId, opts);
+        var html = sourceHtml(sourceEl);
+        if (html) {
+            q.root.innerHTML = html;
+            if (sourceEl.value !== undefined) {
+                sourceEl.value = html;
+            }
         }
-        editors.push({ quill: q, hidden: hiddenEl });
+        if (!formEditable) {
+            q.enable(false);
+        }
+        editors.push({ quill: q, hidden: sourceEl });
     }
 
     function initSection1Row(idx) {
@@ -308,14 +328,16 @@
         tbody.querySelectorAll('tr.bottleneck-row').forEach(initBottleneckRow);
     }
 
-    form.addEventListener('submit', function () {
-        editors.forEach(function (pair) {
-            pair.hidden.value = pair.quill.root.innerHTML;
+    if (formEditable) {
+        form.addEventListener('submit', function () {
+            editors.forEach(function (pair) {
+                pair.hidden.value = pair.quill.root.innerHTML;
+            });
         });
-    });
+    }
 
     var addBtn = document.getElementById('wb-add-bottleneck');
-    if (addBtn && tbody) {
+    if (formEditable && addBtn && tbody) {
         addBtn.addEventListener('click', function () {
             var n = tbody.querySelectorAll('tr.bottleneck-row').length;
             var uid = 'j' + (++wbBtJsSeq);
@@ -325,11 +347,11 @@
             tr.setAttribute('data-wb-bt-row', String(n));
             tr.innerHTML =
                 '<td><div class="wb-quill-wrap"><div id="wb-bt-issue-' + uid + '" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>' +
-                '<input type="hidden" name="section2[' + n + '][issue]" id="wb-bt-issue-h-' + uid + '" value=""></div></td>' +
+                '<textarea class="d-none wb-quill-source" name="section2[' + n + '][issue]" id="wb-bt-issue-h-' + uid + '"></textarea></div></td>' +
                 '<td><div class="wb-quill-wrap"><div id="wb-bt-impact-' + uid + '" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>' +
-                '<input type="hidden" name="section2[' + n + '][impact_risk]" id="wb-bt-impact-h-' + uid + '" value=""></div></td>' +
+                '<textarea class="d-none wb-quill-source" name="section2[' + n + '][impact_risk]" id="wb-bt-impact-h-' + uid + '"></textarea></div></td>' +
                 '<td><div class="wb-quill-wrap"><div id="wb-bt-action-' + uid + '" class="wb-quill-editor border rounded bg-white" style="min-height:120px;"></div>' +
-                '<input type="hidden" name="section2[' + n + '][required_action]" id="wb-bt-action-h-' + uid + '" value=""></div></td>' +
+                '<textarea class="d-none wb-quill-source" name="section2[' + n + '][required_action]" id="wb-bt-action-h-' + uid + '"></textarea></div></td>' +
                 '<td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-danger wb-remove-row">×</button></td>';
             tbody.appendChild(tr);
             initBottleneckRow(tr);

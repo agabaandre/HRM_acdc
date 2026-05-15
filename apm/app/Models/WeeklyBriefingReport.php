@@ -128,6 +128,56 @@ class WeeklyBriefingReport extends Model
         return null;
     }
 
+    /**
+     * @return list<array{major_happening?: string, description_key_actions?: string, strategic_relevance?: string}>
+     */
+    public function section1RowsForForm(): array
+    {
+        return self::normalizeSectionRows($this->section1_major_happenings, [
+            'major_happening' => '',
+            'description_key_actions' => '',
+            'strategic_relevance' => '',
+        ]);
+    }
+
+    /**
+     * @return list<array{issue?: string, impact_risk?: string, required_action?: string}>
+     */
+    public function section2RowsForForm(): array
+    {
+        return self::normalizeSectionRows($this->section2_bottlenecks, [
+            'issue' => '',
+            'impact_risk' => '',
+            'required_action' => '',
+        ]);
+    }
+
+    /**
+     * @param  array<string, string>  $emptyRow
+     * @return list<array<string, string>>
+     */
+    private static function normalizeSectionRows(mixed $raw, array $emptyRow): array
+    {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($raw as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $merged = array_merge($emptyRow, $row);
+            $out[] = array_map(fn ($v) => is_string($v) ? $v : (string) ($v ?? ''), $merged);
+        }
+
+        return $out;
+    }
+
     public function requiresDirectorReview(): bool
     {
         $divId = (int) ($this->division_id ?? 0);
