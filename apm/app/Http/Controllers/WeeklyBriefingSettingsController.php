@@ -184,7 +184,7 @@ class WeeklyBriefingSettingsController extends Controller
             'filing_iso_week_offset' => (int) ($data['filing_iso_week_offset'] ?? 0),
             'hod_reminder_time' => $this->normalizeTime($data['hod_reminder_time']),
             'hod_reminder_days_before_deadline' => $hodReminderDays,
-            'hod_reminder_clock' => $data['hod_reminder_clock'],
+            'hod_reminder_clock' => 'hod_reminder_time',
             'director_review_reminder_days_before_deadline' => $directorReminderDays,
             'director_review_reminder_clock' => $data['director_review_reminder_clock'],
             'submission_close_time' => $this->normalizeTime($data['submission_close_time']),

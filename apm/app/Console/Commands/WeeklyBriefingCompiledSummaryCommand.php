@@ -10,6 +10,7 @@ use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 use App\Services\WeeklyBriefingCompletionSummary;
 use App\Services\WeeklyBriefingDirectorateCombined;
+use App\Services\WeeklyBriefingNotificationMailer;
 use App\Services\WeeklyBriefingScheduleGate;
 use App\Support\WeeklyBriefingMailTemplate;
 use Illuminate\Console\Command;
@@ -82,8 +83,6 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             return self::SUCCESS;
         }
 
-        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
-
         if ($sendCompiled) {
             $graphAttachments = [];
             if ($reportsForCentral->isNotEmpty()) {
@@ -110,7 +109,7 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             $summaryFilename = 'Weekly_Briefing_Completion_Summary_FULL_AUDIT_W'.$w.'_'.$y.'.pdf';
             $graphAttachments[] = ['name' => $summaryFilename, 'content' => $summaryBinary, 'content_type' => 'application/pdf'];
 
-            $subject = $subjectPrefix."Weekly brief compiled — W{$w}/{$y}".WeeklyBriefingMailTemplate::subjectSuffix();
+            $subject = "Weekly brief compiled — W{$w}/{$y}".WeeklyBriefingMailTemplate::subjectSuffix();
             $omitPdfNote = ($centralExcludedCount > 0 && $reportsForCentral->isNotEmpty())
                 ? '<p style="color:#92400e;"><strong>Note:</strong> '.$centralExcludedCount.' submitted division brief(s) that require director review were omitted from the compiled PDF because review was not recorded before the deadline (per weekly briefing settings).</p>'
                 : '';
@@ -128,16 +127,10 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
 </ul>
 <p>Should you require any clarification, please contact your APM administrator or the relevant focal point.</p>
 HTML;
-            $body = WeeklyBriefingMailTemplate::wrap(null, 'Weekly brief — compiled package', $innerCentral);
-
-            try {
-                if (sendEmail($recipients, $subject, $body, null, null, [], [], $graphAttachments)) {
+            foreach ($recipients as $addr) {
+                if (WeeklyBriefingNotificationMailer::sendToAddress($addr, $subject, 'Weekly brief — compiled package', $innerCentral, 'weekly_briefing_compiled', $graphAttachments)) {
                     $compiledDispatched = true;
-                } else {
-                    Log::warning('weekly-briefing:compiled-summary sendEmail returned false');
                 }
-            } catch (\Throwable $e) {
-                Log::warning('weekly-briefing:compiled-summary mail failed', ['e' => $e->getMessage()]);
             }
         }
 
@@ -202,19 +195,15 @@ HTML;
                 $divLabelEsc = htmlspecialchars($divLabel, ENT_QUOTES, 'UTF-8');
                 $hodStaff = $hodStaffById->get((int) $division->division_head);
                 $innerDiv = '<p>Please find attached the submitted <strong>Weekly brief</strong> for <strong>'.$divLabelEsc.'</strong>. Reporting week: <strong>'.$weekHuman.'</strong></p>';
-                $divBody = WeeklyBriefingMailTemplate::wrap($hodStaff instanceof Staff ? $hodStaff : null, 'Weekly brief — division submission', $innerDiv);
-                $divSubject = $subjectPrefix.'Weekly brief — '.$divLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
+                $divSubject = 'Weekly brief — '.$divLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
 
                 foreach ($leaderAddresses as $addr) {
-                    try {
-                        if (sendEmail($addr, $divSubject, $divBody, null, null, [], [], $divisionAttachments)) {
+                    $sent = $hodStaff instanceof Staff
+                            ? WeeklyBriefingNotificationMailer::sendToStaff($hodStaff, $divSubject, 'Weekly brief — division submission', $innerDiv, 'weekly_briefing_division_pdf', null, $divisionAttachments)
+                            : WeeklyBriefingNotificationMailer::sendToAddress($addr, $divSubject, 'Weekly brief — division submission', $innerDiv, 'weekly_briefing_division_pdf', $divisionAttachments);
+                        if ($sent) {
                             $compiledDispatched = true;
-                        } else {
-                            Log::warning('weekly-briefing:compiled-summary division sendEmail returned false', ['to' => $addr, 'division_id' => $division->id]);
                         }
-                    } catch (\Throwable $e) {
-                        Log::warning('weekly-briefing:compiled-summary division mail failed', ['e' => $e->getMessage(), 'to' => $addr, 'division_id' => $division->id]);
-                    }
                 }
             }
 
@@ -276,17 +265,9 @@ HTML;
 
                 $dirLabelEsc = htmlspecialchars($dirLabel, ENT_QUOTES, 'UTF-8');
                 $combinedInner = '<p>Please find attached (1) the <strong>Director report</strong>, comprising submitted <strong>Weekly brief</strong> returns for your directorate (as the director assigned on the <strong>directorates</strong> table). Reporting week: <strong>'.$weekHuman.'</strong> This package is <strong>not</strong> the organisation-wide compiled document sent to central recipients. (2) A completion summary for the same directorate scope.</p>';
-                $combinedBody = WeeklyBriefingMailTemplate::wrap($directorStaff, 'Weekly brief — director report', $combinedInner);
-                $combinedSubject = $subjectPrefix.'Weekly brief — director report — '.$dirLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
-
-                try {
-                    if (sendEmail($raw, $combinedSubject, $combinedBody, null, null, [], [], $attachments)) {
-                        $compiledDispatched = true;
-                    } else {
-                        Log::warning('weekly-briefing:compiled-summary director combined sendEmail returned false', ['to' => $raw, 'director_id' => $directorId, 'directorate_id' => $dirTorateId]);
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('weekly-briefing:compiled-summary director combined mail failed', ['e' => $e->getMessage(), 'to' => $raw, 'director_id' => $directorId]);
+                $combinedSubject = 'Weekly brief — director report — '.$dirLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
+                if ($directorStaff && WeeklyBriefingNotificationMailer::sendToStaff($directorStaff, $combinedSubject, 'Weekly brief — director report', $combinedInner, 'weekly_briefing_director_compiled', null, $attachments)) {
+                    $compiledDispatched = true;
                 }
             }
         }

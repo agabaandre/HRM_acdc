@@ -209,12 +209,19 @@ class WeeklyBriefingScheduleGate
      */
     public function clockLabel(string $column): string
     {
-        $col = $column === 'hod_reminder_time' ? 'hod_reminder_time' : 'submission_close_time';
-        $time = substr((string) $this->settings->getAttribute($col), 0, 5);
+        $time = match ($column) {
+            'hod_reminder_time' => $this->settings->hodReminderTimeHm(),
+            'submission_close_time' => $this->settings->submissionCloseTimeHm(),
+            'summary_send_time' => $this->settings->summarySendTimeHm(),
+            default => substr((string) $this->settings->getAttribute($column), 0, 5),
+        };
 
-        return $col === 'hod_reminder_time'
-            ? "HoD reminder time ({$time})"
-            : "Submission closes ({$time})";
+        return match ($column) {
+            'hod_reminder_time' => "HoD reminder time ({$time})",
+            'submission_close_time' => "Submission closes ({$time})",
+            'summary_send_time' => "Compiled summary send ({$time})",
+            default => "{$column} ({$time})",
+        };
     }
 
     /**
