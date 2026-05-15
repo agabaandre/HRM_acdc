@@ -27,7 +27,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
             <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Weekly brief</h4>
-            <small class="text-muted d-block">Contributors edit assigned units.</small>
+            <small class="text-muted d-block">@if(! empty($hubShowsDirectorateOversight))You are viewing submission status for divisions in your directorate; open <strong>Director review</strong> on submitted briefs to review and mark complete.@else Contributors edit assigned units.@endif</small>
             <small class="text-muted d-block"><strong>Active reporting week:</strong> {{ $filingWeekHumanRange }}</small>
             <small class="text-muted"><strong><i class="fas fa-calendar-check me-1"></i>Submission deadline</strong> {{ $filingSubmissionDeadline->format('l, F j, Y') }} at {{ $filingSubmissionDeadline->format('g:i A') }}</small>
         </div>
@@ -149,6 +149,8 @@
                                         $r = $row['report'];
                                         $canFile = ! empty($filingKeySet[$k]);
                                         $canDirReview = ! empty($directorReviewKeySet[$k]);
+                                        $canDirectorReview = $r && $canDirReview && \App\Services\DivisionWeeklyBriefGate::mayDirectorReviewReportOnHub($r);
+                                        $canDirectorView = $r && $canDirReview && \App\Services\DivisionWeeklyBriefGate::mayDirectorAccessReportOnHub($r);
                                     @endphp
                                     <tr>
                                         <td class="text-center text-muted">{{ $thisWeekPaginator->firstItem() + $loop->index }}</td>
@@ -178,10 +180,14 @@
                                             @if($r)
                                                 @if($canFile)
                                                     <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                                                @elseif($canDirReview)
+                                                @elseif($canDirectorReview)
                                                     <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-info">Director review</a>
+                                                @elseif($canDirectorView)
+                                                    <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-secondary">View</a>
                                                 @endif
-                                                <a href="{{ route('weekly-briefing.pdf', $r) }}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
+                                                @if($canFile || $canDirectorView || $canDirectorReview)
+                                                    <a href="{{ route('weekly-briefing.pdf', $r) }}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
+                                                @endif
                                             @elseif($canFile)
                                                 <a href="{{ route('weekly-briefing.create', ['contribution_key' => $k]) }}" class="btn btn-sm btn-success">Start</a>
                                             @endif
@@ -256,19 +262,38 @@
                         </thead>
                         <tbody>
                             @forelse($reports ?? [] as $r)
-                                @php $canFile = ! empty($filingKeySet[$r->contribution_key]); @endphp
+                                @php
+                                    $listKey = (int) ($r->division_id ?? 0) > 0
+                                        ? \App\Models\WeeklyBriefingContributor::contributionKeyForDivision((int) $r->division_id)
+                                        : (string) $r->contribution_key;
+                                    $canFile = ! empty($filingKeySet[$listKey]);
+                                    $canDirReview = ! empty($directorReviewKeySet[$listKey]);
+                                    $canDirectorReview = $canDirReview && \App\Services\DivisionWeeklyBriefGate::mayDirectorReviewReportOnHub($r);
+                                    $canDirectorView = $canDirReview && \App\Services\DivisionWeeklyBriefGate::mayDirectorAccessReportOnHub($r);
+                                @endphp
                                 <tr>
                                     <td class="text-center text-muted">{{ $reports->firstItem() + $loop->index }}</td>
                                     <td><span class="small text-muted">W{{ $r->report_iso_week }}/{{ $r->report_iso_week_year }}</span><br>{{ $r->isoWeekDateRangeLabel(false) }}</td>
                                     <td>{{ $r->contributionEntityLabel() }}</td>
                                     <td class="align-top small">@include('weekly-briefing.partials.directorate-cell', ['dd' => $r->hubDirectorateDisplayRow()])</td>
                                     <td class="small">{{ $r->period_start?->format('M j, Y') }} → {{ $r->period_start ? \Carbon\Carbon::parse($r->period_start)->addDays(6)->format('M j, Y') : '—' }}</td>
-                                    <td><span class="badge bg-{{ $r->status === 'submitted' ? 'success' : ($r->status === 'locked' ? 'secondary' : 'warning') }}">{{ $r->status }}</span></td>
+                                    <td>
+                                        <span class="badge bg-{{ $r->status === 'submitted' ? 'success' : ($r->status === 'locked' ? 'secondary' : 'warning') }}">{{ $r->status }}</span>
+                                        @if($r->requiresDirectorReview())
+                                            <span class="small mt-1 d-block {{ $r->isDirectorReviewed() ? 'text-success' : 'text-muted' }}">{{ $r->directorReviewSummaryLine() }}</span>
+                                        @endif
+                                    </td>
                                     <td class="text-end">
                                         @if($canFile)
                                             <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                        @elseif($canDirectorReview)
+                                            <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-info">Director review</a>
+                                        @elseif($canDirectorView)
+                                            <a href="{{ route('weekly-briefing.edit', $r) }}" class="btn btn-sm btn-outline-secondary">View</a>
                                         @endif
-                                        <a href="{{ route('weekly-briefing.pdf', $r) }}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
+                                        @if($canFile || $canDirectorView || $canDirectorReview)
+                                            <a href="{{ route('weekly-briefing.pdf', $r) }}" class="btn btn-sm btn-outline-secondary" target="_blank">PDF</a>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty

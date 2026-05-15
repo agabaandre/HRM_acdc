@@ -278,6 +278,9 @@ class WeeklyBriefingController extends Controller
         );
 
         $directorReviewKeySet = array_fill_keys(DivisionWeeklyBriefGate::directorManagedContributionKeysForListing(), true);
+        $hubShowsDirectorateOversight = DivisionWeeklyBriefGate::isDirectorateDirector()
+            && ! DivisionWeeklyBriefGate::isSystemAdmin()
+            && ! DivisionWeeklyBriefGate::isListedReportViewer();
 
         $yearOptions = range($filingIsoYear - 2, $filingIsoYear + 1);
         $configuredUnitCount = $contributorRows->count();
@@ -305,7 +308,8 @@ class WeeklyBriefingController extends Controller
             'wbNowY',
             'wbNowW',
             'wbDirectorCombinedOptions',
-            'directorReviewKeySet'
+            'directorReviewKeySet',
+            'hubShowsDirectorateOversight'
         ));
     }
 
