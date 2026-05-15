@@ -80,14 +80,14 @@ Statuses and helpers live on `App\Models\WeeklyBriefingReport`.
 ## Email
 
 - Templates use `App\Support\WeeklyBriefingMailTemplate` and Blade under `resources/views/emails/` (e.g. weekly briefing notification).
-- Compiled / reminder behaviour is implemented in `WeeklyBriefingCompiledSummaryCommand`, `WeeklyBriefingHodRemindersCommand`, and `WeeklyBriefingDirectorReviewRemindersCommand` (see below).
+- Compiled / reminder behaviour is implemented in `WeeklyBriefingCompiledSummaryCommand`, `WeeklyBriefingHodRemindersCommand`, and `WeeklyBriefingDirectorReviewRemindersCommand` (see below). All use `WeeklyBriefingNotificationMailer` → `SendNotificationEmailJob::dispatchSync` (same Exchange/SMTP path as approval alerts).
 - When a **contributor** submits a brief that **requires director review** (the **directorate** for the reporting unit has `directorates.director_id`), `WeeklyBriefingController::update` dispatches `SendWeeklyBriefingDirectorReviewReminderJob`, which emails that director’s `work_email` via `sendEmail` + `WeeklyBriefingMailTemplate` (`WeeklyBriefingDirectorSubmitNotifier`). Skipped if submitter is the same as the director or the director has no email. Applies to both `d-*` (via `divisions.directorate_id`) and `dr-*` keys.
 
 ## Artisan commands
 
 | Command | Purpose |
 |---------|---------|
-| `weekly-briefing:hod-reminders` | Reminds contributors (and related staff) about **missing** briefs for the configured filing ISO week. Without `--force`, respects `reminders_enabled`, **deadline-relative days** (`hod_reminder_days_before_deadline`), and **`hod_reminder_clock`** (match `hod_reminder_time` or `submission_close_time` at minute precision, plus a short grace window if `schedule:run` is late). Sends stop after the submission deadline. **Important:** if HoD reminder time is 08:45 but “Send at this clock time” is set to **Submission closes**, reminders fire at close time (e.g. 17:00), not at HoD reminder time. |
+| `weekly-briefing:hod-reminders` | Reminds contributors (and related staff) about **missing** briefs for the configured filing ISO week. Without `--force`, respects `reminders_enabled`, **deadline-relative days** (`hod_reminder_days_before_deadline`), and **`hod_reminder_time`** from settings (same as the HoD reminder time field on the settings page). Uses the same mail path as approval notifications (`SendNotificationEmailJob`, Exchange + SMTP fallback). |
 | `weekly-briefing:director-review-reminders` | Reminds **directorate directors** about **submitted** briefs still pending director review. Without `--force`, respects `reminders_enabled`, `director_review_reminder_days_before_deadline`, and `director_review_reminder_clock`; stops after the deadline. |
 | `weekly-briefing:lock-drafts` | Locks **draft** reports past their submission deadline (skips rows covered by **report unlock override**). |
 | `weekly-briefing:compiled-summary` | Sends compiled / summary emails per settings; without `--force`, respects **`reminders_enabled`**, the **calendar day of the filing week submission deadline** (same rule as `WeeklyBriefingSetting::filingSubmissionDeadline()` / advance filing), and **`summary_send_time`**. Organisation-wide compiled PDF honours **`compiled_exclude_unreviewed_director_divisions`**. |

@@ -119,23 +119,44 @@ class WeeklyBriefingSetting extends Model
     }
 
     /**
-     * DB column used for clock comparison on HoD / contributor deadline-relative reminders.
+     * HoD / contributor reminders always use {@see hod_reminder_time} from settings
+     * (same as before deadline-offset scheduling was added).
      */
     public function hodReminderClockColumn(): string
     {
-        $v = (string) ($this->hod_reminder_clock ?? 'submission_close_time');
-
-        return $v === 'hod_reminder_time' ? 'hod_reminder_time' : 'submission_close_time';
+        return 'hod_reminder_time';
     }
 
     /**
-     * DB column used for clock comparison on director review reminders.
+     * Director review reminders: clock column from settings ({@see director_review_reminder_clock}).
      */
     public function directorReviewReminderClockColumn(): string
     {
-        $v = (string) ($this->director_review_reminder_clock ?? 'submission_close_time');
+        $v = (string) ($this->director_review_reminder_clock ?? 'hod_reminder_time');
 
-        return $v === 'hod_reminder_time' ? 'hod_reminder_time' : 'submission_close_time';
+        return $v === 'submission_close_time' ? 'submission_close_time' : 'hod_reminder_time';
+    }
+
+    public function hodReminderTimeHm(): string
+    {
+        return self::normalizeTimeHm((string) ($this->hod_reminder_time ?? ''));
+    }
+
+    public function submissionCloseTimeHm(): string
+    {
+        return self::normalizeTimeHm((string) ($this->submission_close_time ?? ''));
+    }
+
+    public function summarySendTimeHm(): string
+    {
+        return self::normalizeTimeHm((string) ($this->summary_send_time ?? ''));
+    }
+
+    protected static function normalizeTimeHm(string $value): string
+    {
+        $value = trim($value);
+
+        return $value === '' ? '' : substr($value, 0, 5);
     }
 
     /**

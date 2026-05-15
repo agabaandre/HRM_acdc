@@ -7,6 +7,7 @@ use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
+use App\Services\WeeklyBriefingNotificationMailer;
 use App\Services\WeeklyBriefingScheduleGate;
 use App\Support\WeeklyBriefingMailTemplate;
 use Carbon\Carbon;
@@ -29,8 +30,6 @@ class WeeklyBriefingHodRemindersCommand extends Command
         $y = $filing['iso_year'];
         $w = $filing['iso_week'];
         $deadline = $settings->filingSubmissionDeadline();
-        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
-
         if (! $gate->passesHodReminderSchedule($force)) {
             return self::SUCCESS;
         }
@@ -61,17 +60,11 @@ class WeeklyBriefingHodRemindersCommand extends Command
 
                         continue;
                     }
-                    try {
-                        $html = $this->contributorReminderHtml($settings, (string) $contributionKey, $y, $w, $report, $c->staff, $deadline);
-                        $label = WeeklyBriefingContributor::presentationLabelForContributionKey((string) $contributionKey);
-                        $subject = $subjectPrefix.'Weekly brief reminder — '.$label.WeeklyBriefingMailTemplate::subjectSuffix();
-                        if (sendEmail($email, $subject, $html)) {
-                            $dispatched = true;
-                        } else {
-                            Log::warning('weekly-briefing:hod-reminders sendEmail returned false', ['to' => $email, 'key' => $contributionKey]);
-                        }
-                    } catch (\Throwable $e) {
-                        Log::warning('weekly-briefing:hod-reminders mail failed', ['e' => $e->getMessage(), 'to' => $email]);
+                    $label = WeeklyBriefingContributor::presentationLabelForContributionKey((string) $contributionKey);
+                    $subject = 'Weekly brief reminder — '.$label.WeeklyBriefingMailTemplate::subjectSuffix();
+                    $inner = $this->contributorReminderInner((string) $contributionKey, $y, $w, $report, $deadline);
+                    if (WeeklyBriefingNotificationMailer::sendToStaff($c->staff, $subject, 'Weekly brief reminder', $inner, 'weekly_briefing_reminder', $report)) {
+                        $dispatched = true;
                     }
                 }
             }
@@ -108,16 +101,10 @@ class WeeklyBriefingHodRemindersCommand extends Command
                 continue;
             }
 
-            try {
-                $html = $this->legacyHodReminderHtml($settings, $division->division_name ?? 'Division', $y, $w, $report, $hod, $deadline);
-                $subject = $subjectPrefix.'Weekly brief reminder — '.($division->division_name ?? 'Division').WeeklyBriefingMailTemplate::subjectSuffix();
-                if (sendEmail($email, $subject, $html)) {
-                    $dispatched = true;
-                } else {
-                    Log::warning('weekly-briefing:hod-reminders sendEmail returned false', ['to' => $email, 'division_id' => $division->id]);
-                }
-            } catch (\Throwable $e) {
-                Log::warning('weekly-briefing:hod-reminders mail failed', ['e' => $e->getMessage(), 'to' => $email]);
+            $subject = 'Weekly brief reminder — '.($division->division_name ?? 'Division').WeeklyBriefingMailTemplate::subjectSuffix();
+            $inner = $this->legacyHodReminderInner($division->division_name ?? 'Division', $y, $w, $deadline);
+            if (WeeklyBriefingNotificationMailer::sendToStaff($hod, $subject, 'Weekly brief reminder', $inner, 'weekly_briefing_reminder', $report)) {
+                $dispatched = true;
             }
         }
 
@@ -130,7 +117,7 @@ class WeeklyBriefingHodRemindersCommand extends Command
         return self::SUCCESS;
     }
 
-    private function contributorReminderHtml(WeeklyBriefingSetting $settings, string $contributionKey, int $y, int $w, ?WeeklyBriefingReport $report, ?Staff $recipient, Carbon $filingDeadline): string
+    private function contributorReminderInner(string $contributionKey, int $y, int $w, ?WeeklyBriefingReport $report, Carbon $filingDeadline): string
     {
         $label = htmlspecialchars(WeeklyBriefingContributor::presentationLabelForContributionKey($contributionKey), ENT_QUOTES, 'UTF-8');
         $deadline = htmlspecialchars($filingDeadline->format('l, F j, Y \a\t g:i A'), ENT_QUOTES, 'UTF-8');
@@ -158,10 +145,10 @@ class WeeklyBriefingHodRemindersCommand extends Command
 <p style="font-size:12px;color:#64748b;">This message was sent because you are listed as a contributor for this reporting unit. If you have already submitted your report, please disregard this reminder.</p>
 HTML;
 
-        return WeeklyBriefingMailTemplate::wrap($recipient, 'Weekly brief reminder', $inner);
+        return $inner;
     }
 
-    private function legacyHodReminderHtml(WeeklyBriefingSetting $settings, string $divisionName, int $y, int $w, ?WeeklyBriefingReport $report, Staff $hod, Carbon $filingDeadline): string
+    private function legacyHodReminderInner(string $divisionName, int $y, int $w, Carbon $filingDeadline): string
     {
         $deadline = htmlspecialchars($filingDeadline->format('l, F j, Y \a\t g:i A'), ENT_QUOTES, 'UTF-8');
         $dn = htmlspecialchars($divisionName, ENT_QUOTES, 'UTF-8');
@@ -176,6 +163,6 @@ HTML;
 <p>Contributors may file their returns through the <a href="{$indexUrl}">Weekly brief</a> section in the Approvals Management System (APM).</p>
 HTML;
 
-        return WeeklyBriefingMailTemplate::wrap($hod, 'Weekly brief reminder', $inner);
+        return $inner;
     }
 }

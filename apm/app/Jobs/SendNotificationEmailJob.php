@@ -50,18 +50,20 @@ class SendNotificationEmailJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            if (!$this->recipient || !$this->recipient->work_email) {
+            $toEmail = $this->resolveRecipientEmail();
+            if ($toEmail === null) {
                 Log::warning('Recipient not found or no email address', [
                     'model_id' => $this->model ? $this->model->id : 'null',
                     'model_type' => $this->model ? get_class($this->model) : 'null',
-                    'recipient_id' => $this->recipient ? ($this->recipient->staff_id ?? 'unknown') : 'null'
+                    'recipient_id' => $this->recipient ? ($this->recipient->staff_id ?? 'unknown') : 'null',
                 ]);
+
                 return;
             }
 
             // Get admin assistant emails for CC (if enabled)
             $ccEmails = [];
-            if (env('NOTIFICATION_CC_ADMIN_ASSISTANTS', true)) {
+            if (env('NOTIFICATION_CC_ADMIN_ASSISTANTS', true) && empty($this->emailViewContext['skip_admin_cc'])) {
                 $ccEmails = $this->getAdminAssistantEmails();
             }
 
@@ -71,7 +73,9 @@ class SendNotificationEmailJob implements ShouldQueue
             $viewData = $this->buildNotificationViewData();
             $htmlContent = view($this->template, $viewData)->render();
 
-            $exchangeError = $this->sendWithExchange($htmlContent, $subject, $ccEmails, ['system@africacdc.org']);
+            $attachments = $this->emailViewContext['attachments'] ?? [];
+            $attachments = is_array($attachments) ? $attachments : [];
+            $exchangeError = $this->sendWithExchange($htmlContent, $subject, $ccEmails, ['system@africacdc.org'], $attachments, $toEmail);
 
             if ($exchangeError === null) {
                 Log::info('Notification email sent successfully via Exchange', [
@@ -93,7 +97,7 @@ class SendNotificationEmailJob implements ShouldQueue
                 'exchange_error' => $exchangeError,
             ]);
 
-            if ($this->sendViaSmtpFallback($htmlContent, $subject, $ccEmails, ['system@africacdc.org'])) {
+            if ($this->sendViaSmtpFallback($htmlContent, $subject, $ccEmails, ['system@africacdc.org'], $toEmail)) {
                 Log::info('Notification email sent via SMTP fallback', [
                     'model_id' => $this->model ? $this->model->id : 'null',
                     'model_type' => $this->model ? get_class($this->model) : 'null',
@@ -162,13 +166,38 @@ class SendNotificationEmailJob implements ShouldQueue
             $viewData = array_merge($viewData, $this->emailViewContext);
         }
 
+        if ($this->template === 'emails.weekly-briefing-notification') {
+            $viewData = array_merge($viewData, [
+                'headerTitle' => (string) ($this->emailViewContext['headerTitle'] ?? 'Weekly brief'),
+                'bodyHtml' => (string) ($this->emailViewContext['bodyHtml'] ?? ''),
+                'recipient' => $this->recipient,
+            ]);
+        }
+
         return $viewData;
+    }
+
+    private function resolveRecipientEmail(): ?string
+    {
+        $override = $this->emailViewContext['to_email'] ?? null;
+        if (is_string($override) && $override !== '' && str_contains($override, '@')) {
+            return trim($override);
+        }
+
+        if ($this->recipient && $this->recipient->work_email) {
+            return $this->recipient->work_email;
+        }
+
+        return null;
     }
 
     /**
      * Send via Microsoft Graph (Exchange OAuth). Returns null on success, or an error string on failure.
      */
-    private function sendWithExchange(string $htmlContent, string $subject, array $cc = [], array $bcc = []): ?string
+    /**
+     * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
+     */
+    private function sendWithExchange(string $htmlContent, string $subject, array $cc = [], array $bcc = [], array $attachments = [], ?string $toEmail = null): ?string
     {
         try {
             $config = config('exchange-email');
@@ -191,8 +220,13 @@ class SendNotificationEmailJob implements ShouldQueue
                 return 'Exchange OAuth is not configured (tenant_id / client_id / client_secret).';
             }
 
+            $toEmail = $toEmail ?? $this->resolveRecipientEmail();
+            if ($toEmail === null) {
+                return 'No recipient email address.';
+            }
+
             $ok = $oauth->sendEmail(
-                $this->recipient->work_email,
+                $toEmail,
                 $subject,
                 $htmlContent,
                 true,
@@ -200,7 +234,7 @@ class SendNotificationEmailJob implements ShouldQueue
                 null,
                 $cc,
                 $bcc,
-                []
+                $attachments
             );
 
             if ($ok) {
@@ -222,17 +256,24 @@ class SendNotificationEmailJob implements ShouldQueue
     /**
      * Optional SMTP fallback when Graph fails (uses Laravel "smtp" mailer).
      */
-    private function sendViaSmtpFallback(string $htmlContent, string $subject, array $cc, array $bcc): bool
+    private function sendViaSmtpFallback(string $htmlContent, string $subject, array $cc, array $bcc, ?string $toEmail = null): bool
     {
         if (!filter_var(env('NOTIFICATION_EMAIL_USE_SMTP_FALLBACK', true), FILTER_VALIDATE_BOOLEAN)) {
             return false;
         }
 
+        $toEmail = $toEmail ?? $this->resolveRecipientEmail();
+        if ($toEmail === null) {
+            return false;
+        }
+
         $mailerName = env('NOTIFICATION_EMAIL_FALLBACK_MAILER', 'smtp');
+        $attachments = $this->emailViewContext['attachments'] ?? [];
+        $attachments = is_array($attachments) ? $attachments : [];
 
         try {
-            Mail::mailer($mailerName)->html($htmlContent, function ($message) use ($subject, $cc, $bcc) {
-                $message->to($this->recipient->work_email)
+            Mail::mailer($mailerName)->html($htmlContent, function ($message) use ($subject, $cc, $bcc, $toEmail, $attachments) {
+                $message->to($toEmail)
                     ->subject($subject)
                     ->from(config('mail.from.address'), config('mail.from.name'));
 
@@ -245,6 +286,16 @@ class SendNotificationEmailJob implements ShouldQueue
                     if (is_string($addr) && filter_var($addr, FILTER_VALIDATE_EMAIL)) {
                         $message->bcc($addr);
                     }
+                }
+                foreach ($attachments as $attachment) {
+                    if (! is_array($attachment) || empty($attachment['name']) || ! isset($attachment['content'])) {
+                        continue;
+                    }
+                    $message->attachData(
+                        $attachment['content'],
+                        $attachment['name'],
+                        ['mime' => $attachment['content_type'] ?? 'application/octet-stream']
+                    );
                 }
             });
 

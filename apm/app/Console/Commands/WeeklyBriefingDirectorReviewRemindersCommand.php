@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Staff;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
+use App\Services\WeeklyBriefingNotificationMailer;
 use App\Services\WeeklyBriefingScheduleGate;
 use App\Support\WeeklyBriefingMailTemplate;
 use Illuminate\Console\Command;
@@ -51,7 +52,6 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
             return self::SUCCESS;
         }
 
-        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
         $dispatched = false;
         $deadlineHuman = htmlspecialchars($deadline->format('l, F j, Y \a\t g:i A'), ENT_QUOTES, 'UTF-8');
         $weekHuman = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8');
@@ -97,16 +97,9 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
 <p style="font-size:12px;color:#64748b;">If you have already marked these as reviewed, you can ignore this message.</p>
 HTML;
 
-            $html = WeeklyBriefingMailTemplate::wrap($director, 'Weekly brief — director review reminder', $inner);
-            $subject = $subjectPrefix.'Weekly brief — director review pending'.WeeklyBriefingMailTemplate::subjectSuffix();
-            try {
-                if (sendEmail($email, $subject, $html)) {
-                    $dispatched = true;
-                } else {
-                    Log::warning('weekly-briefing:director-review-reminders sendEmail returned false', ['to' => $email]);
-                }
-            } catch (\Throwable $e) {
-                Log::warning('weekly-briefing:director-review-reminders mail failed', ['e' => $e->getMessage(), 'to' => $email]);
+            $subject = 'Weekly brief — director review pending'.WeeklyBriefingMailTemplate::subjectSuffix();
+            if (WeeklyBriefingNotificationMailer::sendToStaff($director, $subject, 'Weekly brief — director review reminder', $inner, 'weekly_briefing_director_review')) {
+                $dispatched = true;
             }
         }
 

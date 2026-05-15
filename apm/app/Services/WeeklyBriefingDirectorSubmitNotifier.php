@@ -90,20 +90,9 @@ final class WeeklyBriefingDirectorSubmitNotifier
 <p style="font-size:12px;color:#64748b;">This message was sent automatically because director review is required for this reporting unit (directorate director on the directorates table).</p>
 HTML;
 
-        $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
-        $subject = $subjectPrefix.'Weekly brief submitted — please review — '.$label.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
-        $html = WeeklyBriefingMailTemplate::wrap($director, 'Weekly brief — director review requested', $inner);
-
-        try {
-            if (! sendEmail($director->work_email, $subject, $html)) {
-                Log::warning('weekly-briefing:director-submit-reminder sendEmail returned false', [
-                    'to' => $director->work_email,
-                    'report_id' => $report->id,
-                ]);
-            }
-        } catch (\Throwable $e) {
+        $subject = 'Weekly brief submitted — please review — '.$label.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
+        if (! WeeklyBriefingNotificationMailer::sendToStaff($director, $subject, 'Weekly brief — director review requested', $inner, 'weekly_briefing_director_submit', $report)) {
             Log::warning('weekly-briefing:director-submit-reminder mail failed', [
-                'e' => $e->getMessage(),
                 'to' => $director->work_email,
                 'report_id' => $report->id,
             ]);
