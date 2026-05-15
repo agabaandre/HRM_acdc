@@ -164,10 +164,52 @@ class Settings extends MX_Controller
 	public function divisions()
 	{
 		$this->load->model('settings_mdl');
-		
+
 		$data['module'] = $this->module;
 		$data['title'] = "Divisions";
 		render('divisions', $data);
+	}
+
+	/**
+	 * JSON staff options for division forms (add/edit modals).
+	 */
+	public function staff_select_options()
+	{
+		$this->load->model('staff/staff_mdl', 'staff_mdl');
+		$lists = $this->staff_mdl->get_all_staff_data([]);
+		$options = [];
+
+		foreach ($lists as $staff) {
+			$options[] = [
+				'id' => (int) $staff->staff_id,
+				'text' => trim($staff->lname . ' ' . $staff->fname),
+			];
+		}
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode(['success' => true, 'options' => $options]));
+	}
+
+	/**
+	 * JSON payload for a single division (edit/delete modals).
+	 */
+	public function division_json($id)
+	{
+		$division = $this->settings_mdl->get_division_by_id($id);
+
+		if ($division === null) {
+			$this->output
+				->set_status_header(404)
+				->set_content_type('application/json')
+				->set_output(json_encode(['success' => false, 'message' => 'Division not found']));
+
+			return;
+		}
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode(['success' => true, 'division' => $division]));
 	}
 
 	public function kin_relationship_types()
