@@ -409,14 +409,10 @@ final class DivisionWeeklyBriefGate
             return [];
         }
 
-        if (self::isSystemAdmin() || self::isListedReportViewer()) {
-            return $settings->contributors()
-                ->distinct()
-                ->pluck('contribution_key')
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
+        if (self::mayViewAllConfiguredReportsOnHub()) {
+            return WeeklyBriefingContributionKeyResolver::effectiveKeysForContributors(
+                $settings->contributors()->get()
+            );
         }
 
         $filing = self::contributionKeysForFiling();
@@ -443,7 +439,7 @@ final class DivisionWeeklyBriefGate
 
         $q = $settings->contributors()->with(['staff', 'apmDivision'])->orderBy('id');
 
-        if (self::isSystemAdmin() || self::isListedReportViewer()) {
+        if (self::mayViewAllConfiguredReportsOnHub()) {
             return $q->get();
         }
 
@@ -504,12 +500,20 @@ final class DivisionWeeklyBriefGate
         return false;
     }
 
+    /**
+     * System admin (role 10) or staff in {@see reportViewerStaffIds}: see every configured unit on the hub with view/PDF actions.
+     */
+    public static function mayViewAllConfiguredReportsOnHub(): bool
+    {
+        return self::isSystemAdmin() || self::isListedReportViewer();
+    }
+
     public static function mayViewReport(WeeklyBriefingReport $report): bool
     {
         if (! self::canAccessModule()) {
             return false;
         }
-        if (self::isSystemAdmin() || self::isListedReportViewer()) {
+        if (self::mayViewAllConfiguredReportsOnHub()) {
             return true;
         }
 
@@ -533,7 +537,7 @@ final class DivisionWeeklyBriefGate
      */
     public static function mayAccessCompiledBriefingExports(): bool
     {
-        if (self::isSystemAdmin() || self::isListedReportViewer()) {
+        if (self::mayViewAllConfiguredReportsOnHub()) {
             return true;
         }
         $perms = user_session('permissions', []) ?? [];

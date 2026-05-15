@@ -63,18 +63,21 @@ class WeeklyBriefingController extends Controller
             ->orderBy('contribution_key')
             ->with(['division', 'directorate', 'submittedBy', 'directorReviewedBy']);
 
-        if ($listingKeys === [] && $contributorDivisionIds === []) {
-            $currentQuery->whereRaw('0 = 1');
-        } else {
-            $currentQuery->where(function ($q) use ($listingKeys, $contributorDivisionIds) {
-                if ($listingKeys !== []) {
-                    $q->whereIn('contribution_key', $listingKeys);
-                }
-                if ($contributorDivisionIds !== []) {
-                    $method = $listingKeys !== [] ? 'orWhereIn' : 'whereIn';
-                    $q->{$method}('division_id', $contributorDivisionIds);
-                }
-            });
+        $hubCanViewAllReports = DivisionWeeklyBriefGate::mayViewAllConfiguredReportsOnHub();
+        if (! $hubCanViewAllReports) {
+            if ($listingKeys === [] && $contributorDivisionIds === []) {
+                $currentQuery->whereRaw('0 = 1');
+            } else {
+                $currentQuery->where(function ($q) use ($listingKeys, $contributorDivisionIds) {
+                    if ($listingKeys !== []) {
+                        $q->whereIn('contribution_key', $listingKeys);
+                    }
+                    if ($contributorDivisionIds !== []) {
+                        $method = $listingKeys !== [] ? 'orWhereIn' : 'whereIn';
+                        $q->{$method}('division_id', $contributorDivisionIds);
+                    }
+                });
+            }
         }
 
         $currentWeekReports = WeeklyBriefingContributionKeyResolver::reportsIndexedWithDivisionAliases(
@@ -196,18 +199,20 @@ class WeeklyBriefingController extends Controller
                 ->orderByDesc('report_iso_week')
                 ->orderBy('contribution_key')
                 ->with(['division.directorate.director', 'directorate.director']);
-            if ($listingKeys === [] && $contributorDivisionIds === []) {
-                $reportsQuery->whereRaw('0 = 1');
-            } else {
-                $reportsQuery->where(function ($q) use ($listingKeys, $contributorDivisionIds) {
-                    if ($listingKeys !== []) {
-                        $q->whereIn('contribution_key', $listingKeys);
-                    }
-                    if ($contributorDivisionIds !== []) {
-                        $method = $listingKeys !== [] ? 'orWhereIn' : 'whereIn';
-                        $q->{$method}('division_id', $contributorDivisionIds);
-                    }
-                });
+            if (! $hubCanViewAllReports) {
+                if ($listingKeys === [] && $contributorDivisionIds === []) {
+                    $reportsQuery->whereRaw('0 = 1');
+                } else {
+                    $reportsQuery->where(function ($q) use ($listingKeys, $contributorDivisionIds) {
+                        if ($listingKeys !== []) {
+                            $q->whereIn('contribution_key', $listingKeys);
+                        }
+                        if ($contributorDivisionIds !== []) {
+                            $method = $listingKeys !== [] ? 'orWhereIn' : 'whereIn';
+                            $q->{$method}('division_id', $contributorDivisionIds);
+                        }
+                    });
+                }
             }
             if ($filterWeek !== null) {
                 $reportsQuery->where('report_iso_week', $filterWeek);
@@ -215,12 +220,12 @@ class WeeklyBriefingController extends Controller
             if ($filterStatus !== '') {
                 $reportsQuery->where('status', $filterStatus);
             }
-            if ($filterSearch !== '' && $listingKeys !== []) {
+            if ($filterSearch !== '' && ($hubCanViewAllReports || $listingKeys !== [])) {
                 $needle = mb_strtolower($filterSearch);
                 $matchingKeysSet = [];
                 foreach ($settings->contributors()->with('staff')->get() as $contrib) {
                     $k = $contrib->effectiveContributionKey();
-                    if ($k === '' || ! in_array($k, $listingKeys, true)) {
+                    if ($k === '' || (! $hubCanViewAllReports && ! in_array($k, $listingKeys, true))) {
                         continue;
                     }
                     $st = $contrib->staff;
@@ -279,8 +284,7 @@ class WeeklyBriefingController extends Controller
 
         $directorReviewKeySet = array_fill_keys(DivisionWeeklyBriefGate::directorManagedContributionKeysForListing(), true);
         $hubShowsDirectorateOversight = DivisionWeeklyBriefGate::isDirectorateDirector()
-            && ! DivisionWeeklyBriefGate::isSystemAdmin()
-            && ! DivisionWeeklyBriefGate::isListedReportViewer();
+            && ! $hubCanViewAllReports;
 
         $yearOptions = range($filingIsoYear - 2, $filingIsoYear + 1);
         $configuredUnitCount = $contributorRows->count();
@@ -309,7 +313,8 @@ class WeeklyBriefingController extends Controller
             'wbNowW',
             'wbDirectorCombinedOptions',
             'directorReviewKeySet',
-            'hubShowsDirectorateOversight'
+            'hubShowsDirectorateOversight',
+            'hubCanViewAllReports'
         ));
     }
 
