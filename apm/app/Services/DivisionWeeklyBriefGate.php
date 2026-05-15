@@ -123,8 +123,46 @@ final class DivisionWeeklyBriefGate
     }
 
     /**
-     * Contribution keys this user may manage as **directorate director** ({@see Directorate::director_id}),
-     * intersected with configured contributor keys (includes legacy d-* rows mapped via division.directorate_id).
+     * @return list<int>
+     */
+    public static function directorateIdsForStaffDirector(?int $staffId = null): array
+    {
+        $sid = $staffId ?? self::sessionStaffId();
+        if ($sid <= 0) {
+            return [];
+        }
+
+        return Directorate::query()
+            ->where('is_active', true)
+            ->where('director_id', $sid)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  list<int>  $directorateIds
+     */
+    public static function contributorRowUnderDirectorates(WeeklyBriefingContributor $contributor, array $directorateIds): bool
+    {
+        if ($directorateIds === []) {
+            return false;
+        }
+        $divId = WeeklyBriefingContributionKeyResolver::divisionIdForContributor($contributor);
+        if ($divId <= 0) {
+            return false;
+        }
+        $div = Division::query()->find($divId);
+        if (! $div) {
+            return false;
+        }
+
+        return in_array((int) ($div->directorate_id ?? 0), $directorateIds, true);
+    }
+
+    /**
+     * Contribution keys for configured units in directorates this user directs.
      *
      * @return list<string>
      */
@@ -133,42 +171,20 @@ final class DivisionWeeklyBriefGate
         if (! self::mayActAsDivisionDirector()) {
             return [];
         }
-        $settings = WeeklyBriefingSetting::current();
-        $configured = $settings->contributors()
+        $directorateIds = self::directorateIdsForStaffDirector();
+        if ($directorateIds === []) {
+            return [];
+        }
+
+        return WeeklyBriefingSetting::current()
+            ->contributors()
             ->get()
+            ->filter(fn (WeeklyBriefingContributor $c) => self::contributorRowUnderDirectorates($c, $directorateIds))
             ->map(fn (WeeklyBriefingContributor $c) => WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($c))
             ->filter(fn (string $k) => $k !== '')
             ->unique()
             ->values()
             ->all();
-        if ($configured === []) {
-            return [];
-        }
-        $configuredSet = array_fill_keys($configured, true);
-        $sid = self::sessionStaffId();
-        $out = [];
-        foreach (array_keys($configuredSet) as $k) {
-            if (str_starts_with($k, 'dr-')) {
-                $id = (int) substr($k, 3);
-                $dir = Directorate::query()->find($id);
-                if ($dir && (int) ($dir->director_id ?? 0) === $sid) {
-                    $out[] = $k;
-                }
-            } elseif (str_starts_with($k, 'd-')) {
-                $divId = (int) substr($k, 2);
-                $div = Division::query()->find($divId);
-                $dirId = (int) ($div?->directorate_id ?? 0);
-                if ($dirId <= 0) {
-                    continue;
-                }
-                $dir = Directorate::query()->find($dirId);
-                if ($dir && (int) ($dir->director_id ?? 0) === $sid) {
-                    $out[] = $k;
-                }
-            }
-        }
-
-        return array_values(array_unique($out));
     }
 
     public static function mayViewAsDivisionDirector(WeeklyBriefingReport $report): bool
@@ -206,9 +222,23 @@ final class DivisionWeeklyBriefGate
         if (! $dir) {
             return false;
         }
-        $uid = self::sessionStaffId();
 
-        return (int) ($dir->director_id ?? 0) === $uid;
+        return (int) ($dir->director_id ?? 0) === self::sessionStaffId();
+    }
+
+    /**
+     * Directors may open submitted briefs for review; may open drafts/locked for status visibility (read-only on edit screen).
+     */
+    public static function mayDirectorAccessReportOnHub(WeeklyBriefingReport $report): bool
+    {
+        return self::mayViewAsDivisionDirector($report);
+    }
+
+    public static function mayDirectorReviewReportOnHub(WeeklyBriefingReport $report): bool
+    {
+        return self::mayDirectorAccessReportOnHub($report)
+            && $report->status === WeeklyBriefingReport::STATUS_SUBMITTED
+            && $report->requiresDirectorReview();
     }
 
     public static function mayDownloadDirectorateCombinedPdf(int $isoYear, int $isoWeek, int $directorateId): bool
@@ -312,16 +342,20 @@ final class DivisionWeeklyBriefGate
         }
 
         $sid = self::sessionStaffId();
-        $directorKeys = array_fill_keys(self::directorManagedContributionKeysForListing(), true);
+        $directorateIds = self::directorateIdsForStaffDirector($sid);
 
-        return $q->get()->filter(function (WeeklyBriefingContributor $c) use ($sid, $directorKeys): bool {
+        return $q->get()->filter(function (WeeklyBriefingContributor $c) use ($sid, $directorateIds): bool {
             if ((int) ($c->staff_id ?? 0) === $sid) {
                 return true;
             }
-            $k = WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($c);
 
-            return $k !== '' && isset($directorKeys[$k]);
+            return self::contributorRowUnderDirectorates($c, $directorateIds);
         })->values();
+    }
+
+    public static function isDirectorateDirector(): bool
+    {
+        return self::mayActAsDivisionDirector();
     }
 
     public static function mayUseContributionKey(string $contributionKey): bool

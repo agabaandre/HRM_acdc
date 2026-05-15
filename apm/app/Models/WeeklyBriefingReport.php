@@ -108,6 +108,23 @@ class WeeklyBriefingReport extends Model
             return $dirId > 0 ? Directorate::query()->find($dirId) : null;
         }
 
+        $dirId = (int) ($this->directorate_id ?? 0);
+        if ($dirId > 0) {
+            return $this->relationLoaded('directorate') && $this->directorate
+                ? $this->directorate
+                : Directorate::query()->find($dirId);
+        }
+
+        $divId = (int) ($this->division_id ?? 0);
+        if ($divId > 0) {
+            $div = $this->relationLoaded('division') && $this->division
+                ? $this->division
+                : Division::query()->find($divId);
+            $dirId = (int) ($div?->directorate_id ?? 0);
+
+            return $dirId > 0 ? Directorate::query()->find($dirId) : null;
+        }
+
         return null;
     }
 
