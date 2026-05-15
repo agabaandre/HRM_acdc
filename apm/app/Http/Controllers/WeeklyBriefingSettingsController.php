@@ -122,17 +122,14 @@ class WeeklyBriefingSettingsController extends Controller
             $div = Division::query()->find($divisionId);
 
             if ($kind === 'directorate') {
-                $resolvedDir = $div ? DirectorateDivisionLink::resolveDirectorateIdForDivision($div) : 0;
-                $postedDir = (int) ($row['contribution_directorate_id'] ?? 0);
-                $dirId = $resolvedDir > 0 ? $resolvedDir : $postedDir;
-                if ($dirId <= 0) {
-                    return back()->withInput()->with('error', 'Directorate rows need a directorate linked to this division. Set the division director in staff settings to match a directorate director, or pick a directorate manually.');
-                }
-                if (! Directorate::query()->whereKey($dirId)->exists()) {
-                    return back()->withInput()->with('error', 'Invalid directorate selected.');
-                }
-                if ($div && ! DirectorateDivisionLink::divisionBelongsToDirectorate($div, $dirId)) {
-                    return back()->withInput()->with('error', 'The division must belong to the selected directorate. Choose the division first; the directorate is set automatically from its director.');
+                $dirId = DirectorateDivisionLink::directorateIdForSettingsRow($divisionId, $row);
+                if ($dirId > 0) {
+                    if (! Directorate::query()->whereKey($dirId)->exists()) {
+                        return back()->withInput()->with('error', 'Invalid directorate for division "' . ($div->division_name ?? $divisionId) . '".');
+                    }
+                    if ($div && ! DirectorateDivisionLink::divisionBelongsToDirectorate($div, $dirId)) {
+                        return back()->withInput()->with('error', 'The division "' . ($div->division_name ?? '') . '" does not match the directorate. Re-select the division so the directorate can auto-fill.');
+                    }
                 }
             }
             try {

@@ -66,6 +66,11 @@ final class DirectorateDivisionLink
      */
     public static function resolveDirectorateIdForDivision(Division $division): int
     {
+        $fromMap = (int) (self::buildDivisionDirectorateMap()[(int) $division->id] ?? 0);
+        if ($fromMap > 0) {
+            return $fromMap;
+        }
+
         $dirId = (int) ($division->directorate_id ?? 0);
         if ($dirId > 0) {
             return $dirId;
@@ -80,14 +85,53 @@ final class DirectorateDivisionLink
             return 0;
         }
 
-        $q = Directorate::query()->where('director_id', $divDirector);
-        if (Schema::hasColumn('directorates', 'is_active')) {
-            $q->where('is_active', true);
-        }
-
-        $resolved = (int) ($q->orderBy('id')->value('id') ?? 0);
+        $resolved = self::directorateIdForDirectorStaffId($divDirector);
 
         return $resolved > 0 ? $resolved : 0;
+    }
+
+    /**
+     * Same resolution as the settings UI map + POST (for save).
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public static function directorateIdForSettingsRow(int $divisionId, array $row = []): int
+    {
+        if ($divisionId <= 0) {
+            return 0;
+        }
+
+        $map = self::buildDivisionDirectorateMap();
+        $fromMap = (int) ($map[$divisionId] ?? 0);
+        if ($fromMap > 0) {
+            return $fromMap;
+        }
+
+        $posted = (int) ($row['contribution_directorate_id'] ?? 0);
+        if ($posted > 0) {
+            return $posted;
+        }
+
+        $division = Division::query()->find($divisionId);
+
+        return $division ? self::resolveDirectorateIdForDivision($division) : 0;
+    }
+
+    private static function directorateIdForDirectorStaffId(int $staffId): int
+    {
+        if ($staffId <= 0) {
+            return 0;
+        }
+
+        $q = Directorate::query()->where('director_id', $staffId)->orderBy('id');
+        if (Schema::hasColumn('directorates', 'is_active')) {
+            $activeId = (int) ((clone $q)->where('is_active', true)->value('id') ?? 0);
+            if ($activeId > 0) {
+                return $activeId;
+            }
+        }
+
+        return (int) ($q->value('id') ?? 0);
     }
 
     /**

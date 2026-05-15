@@ -38,12 +38,13 @@
         </select>
     </td>
     <td class="wb-col-dir">
-        <select name="contributors[{{ $idx }}][contribution_directorate_id]" class="form-select form-select-sm wb-contrib-directorate">
+        <select class="form-select form-select-sm wb-contrib-directorate-ui" aria-label="Directorate">
             <option value="">— Directorate (auto) —</option>
             @foreach($directorates as $dir)
                 <option value="{{ $dir->id }}" @selected((int)$contribDir === (int)$dir->id)>{{ $dir->name }}</option>
             @endforeach
         </select>
+        <input type="hidden" name="contributors[{{ $idx }}][contribution_directorate_id]" class="wb-contrib-directorate-hidden" value="{{ (int) $contribDir > 0 ? (int) $contribDir : '' }}">
         <small class="form-text text-muted wb-dir-hint d-none">Filled from division director when possible.</small>
     </td>
     <td>

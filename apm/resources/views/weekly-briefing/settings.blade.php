@@ -426,11 +426,19 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
         }
     }
 
+    function wbSyncDirectorateHidden(tr) {
+        var dirUi = tr.querySelector('.wb-contrib-directorate-ui');
+        var dirHidden = tr.querySelector('.wb-contrib-directorate-hidden');
+        if (dirUi && dirHidden) {
+            dirHidden.value = dirUi.value || '';
+        }
+    }
+
     function wbAutoFillDirectorate(tr, options) {
         options = options || {};
         wbSyncDivisionHidden(tr);
         var divSel = tr.querySelector('.wb-division-select');
-        var dirSel = tr.querySelector('.wb-contrib-directorate');
+        var dirSel = tr.querySelector('.wb-contrib-directorate-ui');
         var kindEl = tr.querySelector('.wb-kind');
         if (!divSel || !dirSel) return;
         var divId = parseInt(divSel.value, 10);
@@ -449,6 +457,7 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
             wbToggleKind(tr, 'directorate');
         }
         dirSel.value = String(dirId);
+        wbSyncDirectorateHidden(tr);
         if (dirHint) {
             dirHint.classList.remove('d-none');
             dirHint.textContent = 'Directorate set from division director.';
@@ -459,6 +468,11 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
         tr.querySelectorAll('.wb-division-select').forEach(function (sel) {
             sel.addEventListener('change', function () {
                 wbAutoFillDirectorate(tr);
+            });
+        });
+        tr.querySelectorAll('.wb-contrib-directorate-ui').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                wbSyncDirectorateHidden(tr);
             });
         });
         tr.querySelectorAll('.wb-kind').forEach(function (sel) {
@@ -482,10 +496,14 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
         var k = tr.querySelector('.wb-kind');
         if (k) wbToggleKind(tr, k.value);
         wbSyncContribDivOptional(tr);
-        var dirSel = tr.querySelector('.wb-contrib-directorate');
-        if (dirSel && (!dirSel.value || dirSel.value === '0')) {
+        var dirUi = tr.querySelector('.wb-contrib-directorate-ui');
+        var dirHidden = tr.querySelector('.wb-contrib-directorate-hidden');
+        if (dirUi && dirHidden && dirUi.value) {
+            dirHidden.value = dirUi.value;
+        } else if (dirUi && (!dirUi.value || dirUi.value === '0')) {
             wbAutoFillDirectorate(tr, { switchKind: false });
         }
+        wbSyncDirectorateHidden(tr);
     }
 
     function wbWireViewerRow(tr) {
@@ -512,6 +530,11 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
         wbForm.addEventListener('submit', function () {
             body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
                 wbSyncDivisionHidden(tr);
+                var kindEl = tr.querySelector('.wb-kind');
+                if (kindEl && kindEl.value === 'directorate') {
+                    wbAutoFillDirectorate(tr, { switchKind: false });
+                }
+                wbSyncDirectorateHidden(tr);
             });
         });
     }
