@@ -475,7 +475,8 @@ if (! function_exists('generate_pdf')) {
 
         // Set PDF margins exactly like CodeIgniter
         $mpdf->SetMargins(10, 10, 35);         // left, top, right margins
-        $mpdf->SetAutoPageBreak(true, 30);
+        $pdfContentFooterGapMm = 4 * 25.4 / 96; // 4px breathing room above the HTML footer
+        $mpdf->SetAutoPageBreak(true, 30 + $pdfContentFooterGapMm);
         $header = '<div style="width: 100%; text-align: center; padding-bottom: 5px;">
             <div style="width: 100%; padding-bottom: 5px;">
                 <div style="width: 100%; padding: 10px 0;">
@@ -555,7 +556,7 @@ if (! function_exists('generate_pdf')) {
             ]);
 
             $mpdf->SetMargins(10, 10, 35);
-            $mpdf->SetAutoPageBreak(true, 30);
+            $mpdf->SetAutoPageBreak(true, 30 + $pdfContentFooterGapMm);
             $mpdf->SetHTMLHeader($header);
             $mpdf->SetHTMLFooter($footer);
 

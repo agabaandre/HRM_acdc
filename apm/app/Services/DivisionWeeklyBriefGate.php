@@ -8,6 +8,7 @@ use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Weekly brief: module access, filing (contributor rows), full listing (admin / report viewers), view vs edit on reports.
@@ -92,10 +93,25 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        return Directorate::query()
-            ->where('is_active', true)
-            ->where('director_id', $sid)
-            ->exists();
+        if (self::divisionIdsForStaffActingAsDirector($sid) !== []) {
+            return true;
+        }
+
+        if (! self::directoratesTableHasDirectorIdColumn()) {
+            return false;
+        }
+
+        $q = Directorate::query()->where('director_id', $sid);
+        if (Schema::hasColumn('directorates', 'is_active')) {
+            $q->where('is_active', true);
+        }
+
+        return $q->exists();
+    }
+
+    public static function directoratesTableHasDirectorIdColumn(): bool
+    {
+        return Schema::hasTable('directorates') && Schema::hasColumn('directorates', 'director_id');
     }
 
     /**
@@ -128,17 +144,92 @@ final class DivisionWeeklyBriefGate
     public static function directorateIdsForStaffDirector(?int $staffId = null): array
     {
         $sid = $staffId ?? self::sessionStaffId();
+        if ($sid <= 0 || ! self::directoratesTableHasDirectorIdColumn()) {
+            return [];
+        }
+
+        $q = Directorate::query()->where('director_id', $sid);
+        if (Schema::hasColumn('directorates', 'is_active')) {
+            $q->where('is_active', true);
+        }
+
+        return $q->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function divisionIdsForStaffActingAsDirector(?int $staffId = null): array
+    {
+        $sid = $staffId ?? self::sessionStaffId();
         if ($sid <= 0) {
             return [];
         }
 
-        return Directorate::query()
-            ->where('is_active', true)
-            ->where('director_id', $sid)
+        return Division::queryForStaffActingAsDirector($sid)
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->values()
             ->all();
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function divisionIdsUnderDirectorOversight(?int $staffId = null): array
+    {
+        $sid = $staffId ?? self::sessionStaffId();
+        $divisionIds = self::divisionIdsForStaffActingAsDirector($sid);
+        $directorateIds = self::directorateIdsForStaffDirector($sid);
+        if ($directorateIds !== []) {
+            $fromDirectorates = Division::query()
+                ->whereIn('directorate_id', $directorateIds)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            $divisionIds = array_merge($divisionIds, $fromDirectorates);
+        }
+
+        return array_values(array_unique(array_filter($divisionIds, fn (int $id) => $id > 0)));
+    }
+
+    public static function contributorRowVisibleToDirector(WeeklyBriefingContributor $contributor, ?int $staffId = null): bool
+    {
+        $divId = WeeklyBriefingContributionKeyResolver::divisionIdForContributor($contributor);
+        if ($divId <= 0) {
+            $stored = trim((string) ($contributor->contribution_key ?? ''));
+            if (str_starts_with($stored, 'dr-')) {
+                $dirId = (int) substr($stored, 3);
+
+                return in_array($dirId, self::directorateIdsForStaffDirector($staffId), true);
+            }
+
+            return false;
+        }
+
+        if (in_array($divId, self::divisionIdsUnderDirectorOversight($staffId), true)) {
+            return true;
+        }
+
+        $directorateIds = self::directorateIdsForStaffDirector($staffId);
+        if ($directorateIds === []) {
+            return false;
+        }
+
+        $stored = trim((string) ($contributor->contribution_key ?? ''));
+        if (str_starts_with($stored, 'dr-')) {
+            $dirId = (int) substr($stored, 3);
+
+            return in_array($dirId, $directorateIds, true);
+        }
+
+        return WeeklyBriefingReport::query()
+            ->where('division_id', $divId)
+            ->whereIn('directorate_id', $directorateIds)
+            ->exists();
     }
 
     /**
@@ -171,15 +262,14 @@ final class DivisionWeeklyBriefGate
         if (! self::mayActAsDivisionDirector()) {
             return [];
         }
-        $directorateIds = self::directorateIdsForStaffDirector();
-        if ($directorateIds === []) {
+        if (self::divisionIdsUnderDirectorOversight() === []) {
             return [];
         }
 
         return WeeklyBriefingSetting::current()
             ->contributors()
             ->get()
-            ->filter(fn (WeeklyBriefingContributor $c) => self::contributorRowUnderDirectorates($c, $directorateIds))
+            ->filter(fn (WeeklyBriefingContributor $c) => self::contributorRowVisibleToDirector($c))
             ->map(fn (WeeklyBriefingContributor $c) => WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($c))
             ->filter(fn (string $k) => $k !== '')
             ->unique()
@@ -218,12 +308,28 @@ final class DivisionWeeklyBriefGate
 
     private static function currentUserIsDirectorForDivisionReport(WeeklyBriefingReport $report): bool
     {
+        $sid = self::sessionStaffId();
+        $divId = (int) ($report->division_id ?? 0);
+        if ($divId <= 0 && str_starts_with((string) ($report->contribution_key ?? ''), 'd-')) {
+            $divId = (int) substr((string) $report->contribution_key, 2);
+        }
+        if ($divId > 0) {
+            $div = Division::query()->find($divId);
+            if ($div && $div->staffActsAsDivisionDirector($sid)) {
+                return true;
+            }
+        }
+
+        if (! self::directoratesTableHasDirectorIdColumn()) {
+            return false;
+        }
+
         $dir = $report->directorateForDirectorReview();
         if (! $dir) {
             return false;
         }
 
-        return (int) ($dir->director_id ?? 0) === self::sessionStaffId();
+        return (int) ($dir->director_id ?? 0) === $sid;
     }
 
     /**
@@ -342,14 +448,13 @@ final class DivisionWeeklyBriefGate
         }
 
         $sid = self::sessionStaffId();
-        $directorateIds = self::directorateIdsForStaffDirector($sid);
 
-        return $q->get()->filter(function (WeeklyBriefingContributor $c) use ($sid, $directorateIds): bool {
+        return $q->get()->filter(function (WeeklyBriefingContributor $c) use ($sid): bool {
             if ((int) ($c->staff_id ?? 0) === $sid) {
                 return true;
             }
 
-            return self::contributorRowUnderDirectorates($c, $directorateIds);
+            return self::contributorRowVisibleToDirector($c, $sid);
         })->values();
     }
 

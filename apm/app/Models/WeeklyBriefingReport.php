@@ -130,9 +130,27 @@ class WeeklyBriefingReport extends Model
 
     public function requiresDirectorReview(): bool
     {
-        $dir = $this->directorateForDirectorReview();
+        $divId = (int) ($this->division_id ?? 0);
+        if ($divId <= 0 && str_starts_with((string) ($this->contribution_key ?? ''), 'd-')) {
+            $divId = (int) substr((string) $this->contribution_key, 2);
+        }
+        if ($divId > 0) {
+            $div = Division::query()->find($divId);
+            if ($div && (int) ($div->director_id ?? 0) > 0) {
+                return true;
+            }
+        }
 
-        return $dir !== null && (int) ($dir->director_id ?? 0) > 0;
+        $dir = $this->directorateForDirectorReview();
+        if ($dir === null) {
+            return false;
+        }
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('directorates', 'director_id')) {
+            return (int) ($dir->director_id ?? 0) > 0;
+        }
+
+        return false;
     }
 
     public function isDirectorReviewed(): bool
