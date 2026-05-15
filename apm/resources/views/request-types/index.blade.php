@@ -42,7 +42,7 @@
                             <td>
                                 <strong>{{ $requestType->name }}</strong>
                             </td>
-                            <td>{{ $requestType->created_at->format('M d, Y') }}</td>
+                            <td>{{ $requestType->created_at?->format('M d, Y') ?? '—' }}</td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
                                     <a wire:navigate href="{{ route('request-types.show', $requestType) }}" 

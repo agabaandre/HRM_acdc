@@ -33,7 +33,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <h6 class="text-muted mb-1">Created At</h6>
-                            <p class="mb-0">{{ $requestType->created_at->format('M d, Y h:i A') }}</p>
+                            <p class="mb-0">{{ $requestType->created_at?->format('M d, Y h:i A') ?? '—' }}</p>
                         </div>
                     </div>
                 </div>
@@ -41,7 +41,7 @@
                     <div class="col-md-6">
                         <div class="mb-3">
                             <h6 class="text-muted mb-1">Last Updated</h6>
-                            <p class="mb-0">{{ $requestType->updated_at->format('M d, Y h:i A') }}</p>
+                            <p class="mb-0">{{ $requestType->updated_at?->format('M d, Y h:i A') ?? '—' }}</p>
                         </div>
                     </div>
                 </div>
