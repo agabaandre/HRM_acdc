@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\SendWeeklyBriefingDirectorReviewReminderJob;
 use App\Models\Directorate;
 use App\Models\Division;
+use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
@@ -323,8 +324,6 @@ class WeeklyBriefingController extends Controller
         $this->assertDivisionWeeklyBriefModuleAccess();
 
         $settings = WeeklyBriefingSetting::current();
-        $staffId = (int) user_session('staff_id');
-
         $contributionKey = (string) $request->query('contribution_key', '');
 
         if ($contributionKey === '') {
@@ -335,7 +334,7 @@ class WeeklyBriefingController extends Controller
             abort(403);
         }
 
-        $contributorRow = DivisionWeeklyBriefGate::contributorRowForEffectiveKey($staffId, $contributionKey);
+        $contributorRow = DivisionWeeklyBriefGate::contributorRowForSessionFiling($contributionKey);
         if (! $contributorRow) {
             abort(403);
         }
@@ -404,6 +403,12 @@ class WeeklyBriefingController extends Controller
         $canMarkDirectorReview = $window->canMarkDirectorReview($report);
         $formEditable = $canContributorEdit || $canDirectorEdit;
         $unlockOverrideActive = $settings->reportUnlockOverrideAppliesTo($report);
+        $filingAsAdminAssistant = DivisionWeeklyBriefGate::mayEditReportAsAdminAssistant($report);
+        $filedOnBehalfBy = null;
+        $filedOnBehalfStaffId = $report->submissionFiledOnBehalfByStaffId();
+        if ($filedOnBehalfStaffId) {
+            $filedOnBehalfBy = Staff::query()->find($filedOnBehalfStaffId);
+        }
 
         return view('weekly-briefing.edit', compact(
             'report',
@@ -414,7 +419,9 @@ class WeeklyBriefingController extends Controller
             'canContributorSubmit',
             'canMarkDirectorReview',
             'formEditable',
-            'unlockOverrideActive'
+            'unlockOverrideActive',
+            'filingAsAdminAssistant',
+            'filedOnBehalfBy'
         ));
     }
 
@@ -511,7 +518,13 @@ class WeeklyBriefingController extends Controller
         if ($contributorSubmitted) {
             $report->status = WeeklyBriefingReport::STATUS_SUBMITTED;
             $report->submitted_at = now();
-            $report->submitted_by_staff_id = (int) user_session('staff_id');
+            $attributionId = DivisionWeeklyBriefGate::submissionAttributionStaffId($report);
+            $filerId = DivisionWeeklyBriefGate::sessionStaffId();
+            $report->submitted_by_staff_id = $attributionId > 0 ? $attributionId : $filerId;
+            if ($filerId > 0 && $attributionId > 0 && $filerId !== $attributionId
+                && DivisionWeeklyBriefGate::mayEditReportAsAdminAssistant($report)) {
+                $report->appendSubmissionFiledOnBehalfTrail($filerId, $attributionId);
+            }
         }
 
         $report->save();

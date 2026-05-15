@@ -28,7 +28,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
             <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Weekly brief</h4>
-            <small class="text-muted d-block">@if(! empty($hubShowsDirectorateOversight))You are viewing submission status for divisions in your directorate; open <strong>Director review</strong> on submitted briefs to review and mark complete.@else Contributors edit assigned units.@endif</small>
+            <small class="text-muted d-block">@if(! empty($hubShowsDirectorateOversight))You are viewing submission status for divisions in your directorate; open <strong>Director review</strong> on submitted briefs to review and mark complete.@elseif(\App\Services\DivisionWeeklyBriefGate::mayActAsDivisionAdminAssistant())You may file weekly briefs for divisions where you are the <strong>admin assistant</strong> (on behalf of the division head).@else Contributors edit assigned units.@endif</small>
             <small class="text-muted d-block"><strong>Active reporting week:</strong> {{ $filingWeekHumanRange }}</small>
             <small class="text-muted"><strong><i class="fas fa-calendar-check me-1"></i>Submission deadline</strong> {{ $filingSubmissionDeadline->format('l, F j, Y') }} at {{ $filingSubmissionDeadline->format('g:i A') }}</small>
         </div>
