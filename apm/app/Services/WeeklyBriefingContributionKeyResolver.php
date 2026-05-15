@@ -7,6 +7,7 @@ use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Each configured contributor row maps to one division-scoped brief ({@code d-{division_id}}).
@@ -146,14 +147,190 @@ final class WeeklyBriefingContributionKeyResolver
     }
 
     /**
+     * Resolve the filing-week report for a hub row (handles legacy {@code dr-*} rows via {@see division_id}).
+     *
+     * @param  Collection<string, WeeklyBriefingReport>  $reportsByContributionKey
+     */
+    public static function resolveReportForContributor(
+        WeeklyBriefingContributor $contributor,
+        Collection $reportsByContributionKey,
+        int $isoYear,
+        int $isoWeek,
+    ): ?WeeklyBriefingReport {
+        $effectiveKey = self::effectiveKeyForContributor($contributor);
+        if ($effectiveKey !== '') {
+            $byKey = $reportsByContributionKey->get($effectiveKey);
+            if ($byKey instanceof WeeklyBriefingReport) {
+                return $byKey;
+            }
+        }
+
+        $stored = trim((string) ($contributor->contribution_key ?? ''));
+        if ($stored !== '' && $stored !== $effectiveKey) {
+            $legacy = $reportsByContributionKey->get($stored);
+            if ($legacy instanceof WeeklyBriefingReport && self::reportMatchesContributorDivision($legacy, $contributor)) {
+                return $legacy;
+            }
+        }
+
+        $divisionId = self::divisionIdForContributor($contributor);
+        if ($divisionId <= 0) {
+            return null;
+        }
+
+        foreach ($reportsByContributionKey as $candidate) {
+            if (! $candidate instanceof WeeklyBriefingReport) {
+                continue;
+            }
+            if ((int) $candidate->report_iso_week_year !== $isoYear || (int) $candidate->report_iso_week !== $isoWeek) {
+                continue;
+            }
+            if ((int) $candidate->division_id === $divisionId) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    public static function divisionIdForContributor(WeeklyBriefingContributor $contributor): int
+    {
+        $effectiveKey = self::effectiveKeyForContributor($contributor);
+        if (str_starts_with($effectiveKey, 'd-')) {
+            return (int) substr($effectiveKey, 2);
+        }
+
+        return (int) ($contributor->apm_division_id ?? 0);
+    }
+
+    public static function reportMatchesContributorDivision(WeeklyBriefingReport $report, WeeklyBriefingContributor $contributor): bool
+    {
+        $divisionId = self::divisionIdForContributor($contributor);
+
+        return $divisionId > 0 && (int) $report->division_id === $divisionId;
+    }
+
+    public static function contributorOwnsReport(WeeklyBriefingContributor $contributor, WeeklyBriefingReport $report): bool
+    {
+        $reportKey = trim((string) ($report->contribution_key ?? ''));
+        if ($reportKey === '') {
+            return false;
+        }
+
+        $effectiveKey = self::effectiveKeyForContributor($contributor);
+        if ($effectiveKey !== '' && $reportKey === $effectiveKey) {
+            return true;
+        }
+
+        $stored = trim((string) ($contributor->contribution_key ?? ''));
+        if ($stored !== '' && $reportKey === $stored) {
+            return self::reportMatchesContributorDivision($report, $contributor);
+        }
+
+        return self::reportMatchesContributorDivision($report, $contributor);
+    }
+
+    public static function reportMatchesConfiguredContributor(WeeklyBriefingReport $report): bool
+    {
+        foreach (WeeklyBriefingSetting::current()->contributors()->get() as $contributor) {
+            if (self::contributorOwnsReport($contributor, $report)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Index reports by contribution_key and alias each row under {@code d-{division_id}} when present.
+     *
+     * @param  Collection<int, WeeklyBriefingReport>  $reports
+     * @return Collection<string, WeeklyBriefingReport>
+     */
+    public static function reportsIndexedWithDivisionAliases(Collection $reports): Collection
+    {
+        /** @var Collection<string, WeeklyBriefingReport> $indexed */
+        $indexed = $reports->keyBy(fn (WeeklyBriefingReport $r) => (string) $r->contribution_key);
+
+        foreach ($reports as $report) {
+            $divisionId = (int) $report->division_id;
+            if ($divisionId <= 0) {
+                continue;
+            }
+            $divisionKey = WeeklyBriefingContributor::contributionKeyForDivision($divisionId);
+            if (! $indexed->has($divisionKey)) {
+                $indexed->put($divisionKey, $report);
+            }
+        }
+
+        return $indexed;
+    }
+
+    /**
+     * Re-key legacy {@code dr-*} reports using each row's {@code division_id} (e.g. division 8 → {@code d-8}).
+     */
+    public static function migrateLegacyReportsByDivisionId(): int
+    {
+        $migrated = 0;
+
+        $legacyReports = WeeklyBriefingReport::query()
+            ->where('contribution_key', 'like', 'dr-%')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($legacyReports as $report) {
+            $divisionId = (int) $report->division_id;
+            if ($divisionId <= 0) {
+                continue;
+            }
+
+            $toKey = WeeklyBriefingContributor::contributionKeyForDivision($divisionId);
+            if ((string) $report->contribution_key === $toKey) {
+                continue;
+            }
+
+            $exists = WeeklyBriefingReport::query()
+                ->where('contribution_key', $toKey)
+                ->where('report_iso_week_year', $report->report_iso_week_year)
+                ->where('report_iso_week', $report->report_iso_week)
+                ->where('id', '!=', $report->id)
+                ->exists();
+
+            if ($exists) {
+                Log::warning('weekly-briefing: skipped dr→d migration (target week already has a report)', [
+                    'report_id' => $report->id,
+                    'from' => $report->contribution_key,
+                    'to' => $toKey,
+                    'iso_year' => $report->report_iso_week_year,
+                    'iso_week' => $report->report_iso_week,
+                ]);
+
+                continue;
+            }
+
+            $division = Division::query()->find($divisionId);
+            $report->update([
+                'contribution_key' => $toKey,
+                'division_id' => $divisionId,
+                'directorate_id' => $division?->directorate_id,
+            ]);
+            $migrated++;
+        }
+
+        return $migrated;
+    }
+
+    /**
      * Persist division keys on contributor rows and split any shared {@code dr-*} reports (no settings form required).
      */
     public static function repairContributorKeysInDatabase(): int
     {
+        $reportsMigrated = self::migrateLegacyReportsByDivisionId();
+
         $settings = WeeklyBriefingSetting::current();
         $rows = $settings->contributors()->orderBy('id')->get();
         if ($rows->isEmpty()) {
-            return 0;
+            return $reportsMigrated;
         }
 
         $normalized = [];
@@ -174,7 +351,7 @@ final class WeeklyBriefingContributionKeyResolver
             self::migrateLegacyDirectorateReportsForNormalizedRows($normalized);
         }
 
-        $updated = 0;
+        $contributorsUpdated = 0;
         foreach ($rows as $contributor) {
             $targetKey = self::effectiveKeyForContributor($contributor);
             $stored = trim((string) ($contributor->contribution_key ?? ''));
@@ -182,9 +359,9 @@ final class WeeklyBriefingContributionKeyResolver
                 continue;
             }
             $contributor->update(['contribution_key' => $targetKey]);
-            $updated++;
+            $contributorsUpdated++;
         }
 
-        return $updated;
+        return $reportsMigrated + $contributorsUpdated;
     }
 }

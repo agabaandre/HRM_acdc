@@ -134,7 +134,13 @@ final class DivisionWeeklyBriefGate
             return [];
         }
         $settings = WeeklyBriefingSetting::current();
-        $configured = $settings->contributors()->distinct()->pluck('contribution_key')->filter()->values()->all();
+        $configured = $settings->contributors()
+            ->get()
+            ->map(fn (WeeklyBriefingContributor $c) => WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($c))
+            ->filter(fn (string $k) => $k !== '')
+            ->unique()
+            ->values()
+            ->all();
         if ($configured === []) {
             return [];
         }
@@ -191,18 +197,7 @@ final class DivisionWeeklyBriefGate
 
     private static function reportHasConfiguredContributionKey(WeeklyBriefingReport $report): bool
     {
-        $k = (string) ($report->contribution_key ?? '');
-        if ($k === '') {
-            return false;
-        }
-
-        foreach (WeeklyBriefingSetting::current()->contributors()->get() as $contributor) {
-            if (WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor) === $k) {
-                return true;
-            }
-        }
-
-        return false;
+        return WeeklyBriefingContributionKeyResolver::reportMatchesConfiguredContributor($report);
     }
 
     private static function currentUserIsDirectorForDivisionReport(WeeklyBriefingReport $report): bool
@@ -323,7 +318,7 @@ final class DivisionWeeklyBriefGate
             if ((int) ($c->staff_id ?? 0) === $sid) {
                 return true;
             }
-            $k = trim((string) ($c->contribution_key ?? ''));
+            $k = WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($c);
 
             return $k !== '' && isset($directorKeys[$k]);
         })->values();
@@ -361,13 +356,8 @@ final class DivisionWeeklyBriefGate
 
     private static function userIsContributorForReport(int $staffId, WeeklyBriefingReport $report): bool
     {
-        $reportKey = trim((string) ($report->contribution_key ?? ''));
-        if ($reportKey === '') {
-            return false;
-        }
-
         foreach (WeeklyBriefingSetting::current()->contributors()->where('staff_id', $staffId)->get() as $contributor) {
-            if (WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor) === $reportKey) {
+            if (WeeklyBriefingContributionKeyResolver::contributorOwnsReport($contributor, $report)) {
                 return true;
             }
         }

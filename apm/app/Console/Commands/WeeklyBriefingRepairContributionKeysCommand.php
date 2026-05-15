@@ -14,7 +14,7 @@ class WeeklyBriefingRepairContributionKeysCommand extends Command
     public function handle(): int
     {
         $updated = WeeklyBriefingContributionKeyResolver::repairContributorKeysInDatabase();
-        $this->info("Updated {$updated} contributor row(s) to division-scoped keys.");
+        $this->info("Repaired {$updated} weekly briefing row(s) (legacy dr-* reports re-keyed by division_id + contributor keys updated).");
 
         return self::SUCCESS;
     }
