@@ -7,6 +7,7 @@ use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
+use App\Services\WeeklyBriefingScheduleGate;
 use App\Support\WeeklyBriefingMailTemplate;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -22,6 +23,7 @@ class WeeklyBriefingHodRemindersCommand extends Command
     {
         $settings = WeeklyBriefingSetting::current();
         $force = (bool) $this->option('force');
+        $gate = WeeklyBriefingScheduleGate::for($settings);
 
         $filing = $settings->filingIsoWeekPair();
         $y = $filing['iso_year'];
@@ -29,33 +31,16 @@ class WeeklyBriefingHodRemindersCommand extends Command
         $deadline = $settings->filingSubmissionDeadline();
         $subjectPrefix = env('MAIL_SUBJECT_PREFIX', 'APM').': ';
 
-        if (Carbon::now()->greaterThan($deadline)) {
+        if (! $gate->passesHodReminderSchedule($force)) {
             return self::SUCCESS;
         }
 
-        if (! $force && ! $settings->reminders_enabled) {
+        $slotKey = $gate->hodReminderSlotKey();
+        if (! $force && ! $gate->tryClaimDispatch('hod', $slotKey)) {
             return self::SUCCESS;
         }
 
-        if (! $force) {
-            $offsets = $settings->normalizedHodReminderDaysBeforeDeadline();
-            $clockCol = $settings->hodReminderClockColumn();
-            if (! $settings->matchesTimeNow($clockCol)) {
-                return self::SUCCESS;
-            }
-            $today = Carbon::now()->startOfDay();
-            $deadlineDay = $deadline->copy()->startOfDay();
-            $matched = false;
-            foreach ($offsets as $offset) {
-                if ($today->equalTo($deadlineDay->copy()->subDays($offset))) {
-                    $matched = true;
-                    break;
-                }
-            }
-            if (! $matched) {
-                return self::SUCCESS;
-            }
-        }
+        $dispatched = false;
 
         if ($settings->contributors()->exists()) {
             $keys = $settings->contributors()->distinct()->pluck('contribution_key')->filter()->values();
@@ -80,7 +65,9 @@ class WeeklyBriefingHodRemindersCommand extends Command
                         $html = $this->contributorReminderHtml($settings, (string) $contributionKey, $y, $w, $report, $c->staff, $deadline);
                         $label = WeeklyBriefingContributor::presentationLabelForContributionKey((string) $contributionKey);
                         $subject = $subjectPrefix.'Weekly brief reminder — '.$label.WeeklyBriefingMailTemplate::subjectSuffix();
-                        if (! sendEmail($email, $subject, $html)) {
+                        if (sendEmail($email, $subject, $html)) {
+                            $dispatched = true;
+                        } else {
                             Log::warning('weekly-briefing:hod-reminders sendEmail returned false', ['to' => $email, 'key' => $contributionKey]);
                         }
                     } catch (\Throwable $e) {
@@ -89,6 +76,9 @@ class WeeklyBriefingHodRemindersCommand extends Command
                 }
             }
 
+            if (! $dispatched && ! $force) {
+                $gate->releaseDispatch('hod', $slotKey);
+            }
             $this->info('weekly-briefing:hod-reminders completed (contributor-based).');
 
             return self::SUCCESS;
@@ -121,12 +111,18 @@ class WeeklyBriefingHodRemindersCommand extends Command
             try {
                 $html = $this->legacyHodReminderHtml($settings, $division->division_name ?? 'Division', $y, $w, $report, $hod, $deadline);
                 $subject = $subjectPrefix.'Weekly brief reminder — '.($division->division_name ?? 'Division').WeeklyBriefingMailTemplate::subjectSuffix();
-                if (! sendEmail($email, $subject, $html)) {
+                if (sendEmail($email, $subject, $html)) {
+                    $dispatched = true;
+                } else {
                     Log::warning('weekly-briefing:hod-reminders sendEmail returned false', ['to' => $email, 'division_id' => $division->id]);
                 }
             } catch (\Throwable $e) {
                 Log::warning('weekly-briefing:hod-reminders mail failed', ['e' => $e->getMessage(), 'to' => $email]);
             }
+        }
+
+        if (! $dispatched && ! $force) {
+            $gate->releaseDispatch('hod', $slotKey);
         }
 
         $this->info('weekly-briefing:hod-reminders completed (legacy division HoDs).');

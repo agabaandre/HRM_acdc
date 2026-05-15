@@ -432,9 +432,20 @@ class ReturnedMemosService
             usort($grouped[$category], function ($a, $b) {
                 return $b['date_received'] <=> $a['date_received'];
             });
+            $grouped[$category] = array_map(fn (array $item) => $this->normalizeReturnedItemRow($item), $grouped[$category]);
         }
-        
+
         return $grouped;
+    }
+
+    /**
+     * Ensure email/UI consumers always have a display status key.
+     */
+    protected function normalizeReturnedItemRow(array $item): array
+    {
+        $item['status'] = $item['status'] ?? $item['overall_status'] ?? null;
+
+        return $item;
     }
 
     /**

@@ -10,8 +10,8 @@ use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 use App\Services\WeeklyBriefingCompletionSummary;
 use App\Services\WeeklyBriefingDirectorateCombined;
+use App\Services\WeeklyBriefingScheduleGate;
 use App\Support\WeeklyBriefingMailTemplate;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -26,24 +26,22 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
     {
         $settings = WeeklyBriefingSetting::current();
         $force = (bool) $this->option('force');
+        $gate = WeeklyBriefingScheduleGate::for($settings);
         $filing = $settings->filingIsoWeekPair();
         $y = $filing['iso_year'];
         $w = $filing['iso_week'];
         $filingDeadline = $settings->filingSubmissionDeadline();
 
-        if (! $force) {
-            if (! $settings->reminders_enabled) {
-                return self::SUCCESS;
-            }
-            // Same calendar day as the configured filing week’s submission deadline (not raw
-            // `submission_weekday`, so advance filing — deadline Friday before the reporting week — matches).
-            if (! Carbon::now()->startOfDay()->equalTo($filingDeadline->copy()->startOfDay())) {
-                return self::SUCCESS;
-            }
-            if (! $settings->matchesTimeNow('summary_send_time')) {
-                return self::SUCCESS;
-            }
+        if (! $gate->passesCompiledSummarySchedule($force)) {
+            return self::SUCCESS;
         }
+
+        $compiledSlotKey = $gate->compiledSummarySlotKey();
+        if (! $force && ! $gate->tryClaimDispatch('compiled', $compiledSlotKey)) {
+            return self::SUCCESS;
+        }
+
+        $compiledDispatched = false;
         $weekHuman = htmlspecialchars(WeeklyBriefingReport::humanIsoWeekRange($y, $w), ENT_QUOTES, 'UTF-8');
 
         $reportsAllSubmitted = WeeklyBriefingReport::query()
@@ -68,12 +66,18 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
 
         if (! $sendCompiled && ! $sendDivisionLeaderPdfs) {
             Log::info('weekly-briefing:compiled-summary — no compiled recipients and division PDF mail disabled');
+            if (! $force) {
+                $gate->releaseDispatch('compiled', $compiledSlotKey);
+            }
 
             return self::SUCCESS;
         }
 
         if ($reportsAllSubmitted->isEmpty()) {
             Log::info('weekly-briefing:compiled-summary — no submitted reports');
+            if (! $force) {
+                $gate->releaseDispatch('compiled', $compiledSlotKey);
+            }
 
             return self::SUCCESS;
         }
@@ -127,7 +131,9 @@ HTML;
             $body = WeeklyBriefingMailTemplate::wrap(null, 'Weekly brief — compiled package', $innerCentral);
 
             try {
-                if (! sendEmail($recipients, $subject, $body, null, null, [], [], $graphAttachments)) {
+                if (sendEmail($recipients, $subject, $body, null, null, [], [], $graphAttachments)) {
+                    $compiledDispatched = true;
+                } else {
                     Log::warning('weekly-briefing:compiled-summary sendEmail returned false');
                 }
             } catch (\Throwable $e) {
@@ -201,7 +207,9 @@ HTML;
 
                 foreach ($leaderAddresses as $addr) {
                     try {
-                        if (! sendEmail($addr, $divSubject, $divBody, null, null, [], [], $divisionAttachments)) {
+                        if (sendEmail($addr, $divSubject, $divBody, null, null, [], [], $divisionAttachments)) {
+                            $compiledDispatched = true;
+                        } else {
                             Log::warning('weekly-briefing:compiled-summary division sendEmail returned false', ['to' => $addr, 'division_id' => $division->id]);
                         }
                     } catch (\Throwable $e) {
@@ -272,13 +280,19 @@ HTML;
                 $combinedSubject = $subjectPrefix.'Weekly brief — director report — '.$dirLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
 
                 try {
-                    if (! sendEmail($raw, $combinedSubject, $combinedBody, null, null, [], [], $attachments)) {
+                    if (sendEmail($raw, $combinedSubject, $combinedBody, null, null, [], [], $attachments)) {
+                        $compiledDispatched = true;
+                    } else {
                         Log::warning('weekly-briefing:compiled-summary director combined sendEmail returned false', ['to' => $raw, 'director_id' => $directorId, 'directorate_id' => $dirTorateId]);
                     }
                 } catch (\Throwable $e) {
                     Log::warning('weekly-briefing:compiled-summary director combined mail failed', ['e' => $e->getMessage(), 'to' => $raw, 'director_id' => $directorId]);
                 }
             }
+        }
+
+        if (! $compiledDispatched && ! $force) {
+            $gate->releaseDispatch('compiled', $compiledSlotKey);
         }
 
         $this->info('weekly-briefing:compiled-summary dispatched.');

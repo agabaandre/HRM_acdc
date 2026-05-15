@@ -8,6 +8,7 @@ use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingSetting;
 use App\Services\DivisionWeeklyBriefGate;
+use App\Services\WeeklyBriefingScheduleGate;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,9 @@ class WeeklyBriefingSettingsController extends Controller
 
         $directorates = Directorate::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
-        return view('weekly-briefing.settings', compact('settings', 'staffList', 'divisions', 'directorates'));
+        $wbScheduleStatus = WeeklyBriefingScheduleGate::for($settings)->scheduleStatus();
+
+        return view('weekly-briefing.settings', compact('settings', 'staffList', 'divisions', 'directorates', 'wbScheduleStatus'));
     }
 
     public function update(Request $request): RedirectResponse
