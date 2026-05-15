@@ -191,6 +191,23 @@ final class DivisionWeeklyBriefGate
                 ->map(fn ($id) => (int) $id)
                 ->all();
             $divisionIds = array_merge($divisionIds, $fromDirectorates);
+
+            $directorStaffIds = Directorate::query()
+                ->whereIn('id', $directorateIds)
+                ->pluck('director_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn (int $id) => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+            if ($directorStaffIds !== []) {
+                $fromSharedDirector = Division::query()
+                    ->whereIn('director_id', $directorStaffIds)
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $divisionIds = array_merge($divisionIds, $fromSharedDirector);
+            }
         }
 
         return array_values(array_unique(array_filter($divisionIds, fn (int $id) => $id > 0)));
@@ -249,7 +266,13 @@ final class DivisionWeeklyBriefGate
             return false;
         }
 
-        return in_array((int) ($div->directorate_id ?? 0), $directorateIds, true);
+        foreach ($directorateIds as $dirId) {
+            if (DirectorateDivisionLink::divisionBelongsToDirectorate($div, (int) $dirId)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

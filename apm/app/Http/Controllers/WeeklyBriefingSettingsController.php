@@ -7,6 +7,7 @@ use App\Models\Division;
 use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
 use App\Models\WeeklyBriefingSetting;
+use App\Services\DirectorateDivisionLink;
 use App\Services\DivisionWeeklyBriefGate;
 use App\Services\WeeklyBriefingContributionKeyResolver;
 use App\Services\WeeklyBriefingScheduleGate;
@@ -115,7 +116,7 @@ class WeeklyBriefingSettingsController extends Controller
                     return back()->withInput()->with('error', 'Invalid directorate selected.');
                 }
                 $div = Division::query()->find($contribDivId);
-                if (! $div || (int) ($div->directorate_id ?? 0) !== $dirId) {
+                if (! $div || ! DirectorateDivisionLink::divisionBelongsToDirectorate($div, $dirId)) {
                     return back()->withInput()->with('error', 'The contributing division must belong to the selected directorate.');
                 }
             }
