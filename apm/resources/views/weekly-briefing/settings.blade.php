@@ -157,8 +157,11 @@
                                     $kind = $row ? ($row['contribution_kind'] ?? 'division') : (str_starts_with((string)($c->contribution_key ?? ''), 'dr-') ? 'directorate' : 'division');
                                     $contribDiv = $row ? (int)($row['contribution_division_id'] ?? 0) : (str_starts_with((string)($c->contribution_key ?? ''), 'd-') ? (int)substr((string)($c->contribution_key ?? ''), 2) : (int)($c->apm_division_id ?? 0));
                                     $contribDir = $row ? (int)($row['contribution_directorate_id'] ?? 0) : 0;
-                                    if (! $row && $contribDir <= 0 && $contribDiv > 0) {
-                                        $contribDir = (int) (\App\Models\Division::query()->whereKey($contribDiv)->value('directorate_id') ?? 0);
+                                    if ($contribDir <= 0 && $contribDiv > 0) {
+                                        $divForDir = \App\Models\Division::query()->find($contribDiv);
+                                        $contribDir = $divForDir
+                                            ? \App\Services\DirectorateDivisionLink::resolveDirectorateIdForDivision($divForDir)
+                                            : 0;
                                     }
                                     $displayName = $row ? (string)($row['display_name'] ?? '') : (string)($c->display_name ?? '');
                                 @endphp
@@ -343,8 +346,12 @@
 
 @push('scripts')
 <script>
+window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
+</script>
+<script>
 (function () {
     var body = document.getElementById('wb-contributors-body');
+    var divisionDirectorateMap = window.wbDivisionDirectorateMap || {};
     var tpl = document.getElementById('wb-contributor-template');
     var btn = document.getElementById('wb-add-contributor');
     var vBody = document.getElementById('wb-viewers-body');
@@ -404,10 +411,46 @@
         }
     }
 
+    function wbResolveDirectorateForDivision(divisionId) {
+        if (!divisionId) return 0;
+        var key = String(divisionId);
+        return parseInt(divisionDirectorateMap[key] || divisionDirectorateMap[divisionId] || 0, 10) || 0;
+    }
+
+    function wbAutoFillDirectorate(tr, options) {
+        options = options || {};
+        var divSel = tr.querySelector('.wb-contrib-division');
+        var dirSel = tr.querySelector('.wb-contrib-directorate');
+        var kindEl = tr.querySelector('.wb-kind');
+        if (!divSel || !dirSel) return;
+        var divId = parseInt(divSel.value, 10);
+        if (isNaN(divId) || divId <= 0) return;
+        var dirId = wbResolveDirectorateForDivision(divId);
+        if (dirId <= 0) return;
+        if (options.switchKind !== false && kindEl && kindEl.value === 'division') {
+            kindEl.value = 'directorate';
+            wbToggleKind(tr, 'directorate');
+        }
+        dirSel.value = String(dirId);
+        var hint = tr.querySelector('.wb-contrib-div-hint');
+        if (hint) {
+            hint.classList.remove('d-none');
+            hint.textContent = 'Directorate set automatically from division director.';
+        }
+    }
+
     function wbWireRow(tr) {
+        tr.querySelectorAll('.wb-contrib-division').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                wbAutoFillDirectorate(tr);
+            });
+        });
         tr.querySelectorAll('.wb-kind').forEach(function (sel) {
             sel.addEventListener('change', function () {
                 wbToggleKind(tr, sel.value);
+                if (sel.value === 'directorate') {
+                    wbAutoFillDirectorate(tr, { switchKind: false });
+                }
             });
         });
         tr.querySelectorAll('.wb-display-name').forEach(function (inp) {
@@ -423,6 +466,10 @@
         var k = tr.querySelector('.wb-kind');
         if (k) wbToggleKind(tr, k.value);
         wbSyncContribDivOptional(tr);
+        var dirSel = tr.querySelector('.wb-contrib-directorate');
+        if (dirSel && (!dirSel.value || dirSel.value === '0')) {
+            wbAutoFillDirectorate(tr, { switchKind: false });
+        }
     }
 
     function wbWireViewerRow(tr) {
