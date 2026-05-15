@@ -9,6 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WeeklyBriefingSetting extends Model
 {
+    /** @var list<string> PHP weekday index 0=Sunday … 6=Saturday */
+    public const SUBMISSION_WEEKDAY_LABELS = [
+        'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+    ];
+
     protected $fillable = [
         'submission_weekday',
         'filing_iso_week_offset',
@@ -101,8 +106,15 @@ class WeeklyBriefingSetting extends Model
     /**
      * Submission deadline for the default filing ISO week (see {@see WeeklyBriefingReport::submissionDeadline}).
      * Used by the hub, contributor / director reminders, and compiled-summary scheduling so they stay aligned
-     * with advance filing (`filing_iso_week_offset === 1`, Friday before the reporting week).
+     * with advance filing (`filing_iso_week_offset === 1`, configured weekday before the reporting week).
      */
+    public function submissionWeekdayLabel(?int $weekday = null): string
+    {
+        $d = $weekday ?? (int) $this->submission_weekday;
+
+        return self::SUBMISSION_WEEKDAY_LABELS[$d] ?? 'Unknown';
+    }
+
     public function filingSubmissionDeadline(?Carbon $at = null): Carbon
     {
         $filing = $this->filingIsoWeekPair($at);

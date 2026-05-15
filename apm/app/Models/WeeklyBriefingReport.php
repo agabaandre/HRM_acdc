@@ -327,21 +327,34 @@ class WeeklyBriefingReport extends Model
         return self::humanIsoWeekRange((int) $this->report_iso_week_year, (int) $this->report_iso_week, $includeIsoSuffix);
     }
 
+    /**
+     * Submission close datetime for an ISO reporting week.
+     *
+     * @param  Carbon  $reportWeekMonday  Monday 00:00 of the reporting ISO week
+     * @param  bool  $beforeWeekStarts  When true (next-week filing), the configured weekday in the calendar week before that Monday
+     */
+    public static function submissionCloseAt(
+        Carbon $reportWeekMonday,
+        int $submissionWeekday,
+        string $closeTime,
+        bool $beforeWeekStarts,
+    ): Carbon {
+        $anchorMonday = $beforeWeekStarts ? $reportWeekMonday->copy()->subWeek() : $reportWeekMonday->copy();
+        $daysAdd = ($submissionWeekday - $anchorMonday->dayOfWeek + 7) % 7;
+
+        return $anchorMonday->copy()->addDays($daysAdd)->setTimeFromTimeString($closeTime);
+    }
+
     public function submissionDeadline(WeeklyBriefingSetting $settings): Carbon
     {
         $monday = Carbon::parse($this->period_start)->startOfDay();
 
-        // Next ISO week on the hub (`filing_iso_week_offset === 1`): contributors file ahead for the
-        // upcoming reporting week; close on the Friday immediately *before* that week starts (not the
-        // Friday inside the reporting week).
-        if (((int) ($settings->filing_iso_week_offset ?? 0)) === 1) {
-            return $monday->copy()->subDays(3)->setTimeFromTimeString($settings->submission_close_time);
-        }
-
-        $targetDow = (int) $settings->submission_weekday;
-        $daysAdd = ($targetDow - $monday->dayOfWeek + 7) % 7;
-
-        return $monday->copy()->addDays($daysAdd)->setTimeFromTimeString($settings->submission_close_time);
+        return self::submissionCloseAt(
+            $monday,
+            (int) $settings->submission_weekday,
+            (string) $settings->submission_close_time,
+            ((int) ($settings->filing_iso_week_offset ?? 0)) === 1,
+        );
     }
 
     public static function syntheticDeadlineForIsoWeek(WeeklyBriefingSetting $settings, int $isoYear, int $isoWeek): Carbon
