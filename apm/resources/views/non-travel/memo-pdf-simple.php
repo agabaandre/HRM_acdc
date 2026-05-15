@@ -391,6 +391,16 @@
    <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($nonTravel->background ?? ''); ?></td>
   </tr>
  </table>
+ <!-- Justification -->
+ <table class="mb-15 mt-neg20">
+  <tr>
+    <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Justification:</strong></td>
+  </tr>
+  <tr>
+   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($nonTravel->justification ?? ''); ?></td>
+  </tr>
+ </table>
+
   
   <div>
     <div class="page-break"></div>
@@ -486,7 +496,7 @@
                 </div>
      <div style="margin-bottom: 0; color: #006633;"><strong>Request for Approval</strong></div>
      <div class="justify-text" style="padding: 10px;"><?php
-     $_approvalNt = $nonTravel->activity_request_remarks ?? $nonTravel->justification ?? '';
+     $_approvalNt = trim((string) ($nonTravel->activity_request_remarks ?? ''));
      echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($_approvalNt !== '' ? $_approvalNt : 'N/A');
      ?></div>
          
