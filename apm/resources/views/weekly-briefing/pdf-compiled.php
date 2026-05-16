@@ -104,10 +104,31 @@ $compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
         }
     }
     if ($report->requiresDirectorReview()) {
-        echo '<br><strong>Director review:</strong> '.htmlspecialchars($report->directorReviewSummaryLine(), ENT_QUOTES, 'UTF-8');
+        $assignedDirector = $report->assignedDirectorDisplayName();
+        if ($report->isDirectorReviewed()) {
+            $reviewer = '';
+            if ($report->directorReviewedBy) {
+                $reviewer = trim((string) ($report->directorReviewedBy->name ?? ''));
+            }
+            $directorLabel = $reviewer !== '' ? $reviewer : $assignedDirector;
+            echo '<br><strong>Director review:</strong> Reviewed';
+            if ($directorLabel !== '') {
+                echo ' · <strong>'.htmlspecialchars($directorLabel, ENT_QUOTES, 'UTF-8').'</strong>';
+            }
+        } else {
+            echo '<br><strong>Director review:</strong> Yet to be Reviewed';
+            if ($assignedDirector !== '') {
+                echo ' · <strong>'.htmlspecialchars($assignedDirector, ENT_QUOTES, 'UTF-8').'</strong>';
+            }
+        }
         $trailSum = $report->directorReviewTrailSummary();
-        if ($trailSum !== '—') {
-            echo ' · <span style="color:#64748b;">Trail:</span> '.htmlspecialchars($trailSum, ENT_QUOTES, 'UTF-8');
+        $showTrail = $trailSum !== '—' && (
+            ! $report->isDirectorReviewed()
+            || str_contains(strtolower($trailSum), 'edited')
+            || str_contains(strtolower($trailSum), 'on behalf')
+        );
+        if ($showTrail) {
+            echo '<br><span style="font-size:9.5pt;color:#64748b;">'.htmlspecialchars($trailSum, ENT_QUOTES, 'UTF-8').'</span>';
         }
     }
     ?></p>

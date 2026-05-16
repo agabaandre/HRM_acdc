@@ -316,6 +316,7 @@ class WeeklyBriefingReport extends Model
         if (! is_array($trail) || $trail === []) {
             return '—';
         }
+        $nameCache = [];
         $parts = [];
         foreach ($trail as $entry) {
             if (! is_array($entry)) {
@@ -327,16 +328,54 @@ class WeeklyBriefingReport extends Model
             if ($at === '' && $act === '') {
                 continue;
             }
+            $when = $at !== '' ? $this->formatTrailTimestamp($at) : '';
+            $who = $this->staffDisplayNameForTrail($sid, $nameCache);
             if ($act === 'submitted_on_behalf') {
                 $attr = isset($entry['attributed_to_staff_id']) ? (int) $entry['attributed_to_staff_id'] : 0;
-                $parts[] = trim('submitted on behalf of staff #'.$attr.' by staff #'.$sid.' @ '.$at);
+                $onBehalfOf = $this->staffDisplayNameForTrail($attr, $nameCache);
+                $parts[] = trim('Submitted on behalf of '.$onBehalfOf.' by '.$who.($when !== '' ? ' · '.$when : ''));
 
                 continue;
             }
-            $parts[] = trim($act.' staff #'.$sid.' @ '.$at);
+            if ($act === 'reviewed') {
+                $parts[] = trim('Reviewed by '.$who.($when !== '' ? ' · '.$when : ''));
+
+                continue;
+            }
+            if ($act === 'edited') {
+                $parts[] = trim('Edited by '.$who.($when !== '' ? ' · '.$when : ''));
+
+                continue;
+            }
+            $parts[] = trim($act.' · '.$who.($when !== '' ? ' · '.$when : ''));
         }
 
         return $parts === [] ? '—' : implode('; ', $parts);
+    }
+
+    /**
+     * @param  array<int, string>  $cache
+     */
+    private function staffDisplayNameForTrail(int $staffId, array &$cache): string
+    {
+        if ($staffId <= 0) {
+            return '—';
+        }
+        if (! array_key_exists($staffId, $cache)) {
+            $staff = Staff::query()->find($staffId);
+            $cache[$staffId] = $staff !== null ? trim((string) $staff->name) : '';
+        }
+
+        return $cache[$staffId] !== '' ? $cache[$staffId] : 'Staff #'.$staffId;
+    }
+
+    private function formatTrailTimestamp(string $at): string
+    {
+        try {
+            return Carbon::parse($at)->timezone(config('app.timezone'))->format('M j, Y g:i A');
+        } catch (\Throwable) {
+            return $at;
+        }
     }
 
     public static function periodMonday(int $isoYear, int $isoWeek): Carbon
