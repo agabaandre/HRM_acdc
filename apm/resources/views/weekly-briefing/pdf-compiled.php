@@ -5,9 +5,10 @@
     body { font-family: freesans, dejavusans, sans-serif; font-size: 10.5pt; color: #0f172a; margin: 16px 18px; line-height: 1.4; }
     h1 { text-align: center; font-size: 15pt; color: #0d5c2f; margin: 0 0 4px 0; }
     .meta { text-align: center; font-size: 9.5pt; color: #64748b; margin: 0; }
-    /* Page 1: compiled title only; each division report starts on its own page. */
-    .compiled-pdf-cover { page-break-after: always; margin-bottom: 0; }
-    .compiled-division-page { page-break-before: always; page-break-inside: auto; }
+    /* Title on page 1 with the first division; later divisions start on a new page (one break only). */
+    .compiled-pdf-cover { margin: 0 0 12px 0; padding-bottom: 10px; border-bottom: 1px solid #cbd5e1; }
+    .compiled-division-page { page-break-inside: auto; }
+    .compiled-division-page.new-page { page-break-before: always; }
     .compiled-division-page h2 { font-size: 12pt; color: #0d5c2f; border-bottom: 1px solid #e2e8f0; margin: 0 0 6px 0; padding-bottom: 4px; page-break-after: avoid; }
     .compiled-division-meta { font-size: 9.5pt; color: #475569; margin: 0 0 8px 0; line-height: 1.35; page-break-after: avoid; }
     h3.section-title { font-size: 10.5pt; margin: 10px 0 4px 0; page-break-after: avoid; }
@@ -49,19 +50,7 @@ use App\Helpers\PrintHelper;
 $compiledPdfHeading = $compiledPdfHeading ?? null;
 $compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
 ?>
-<div class="compiled-pdf-cover">
-    <h1><?php echo htmlspecialchars($compiledPdfHeading ?? 'Weekly brief — compiled', ENT_QUOTES, 'UTF-8'); ?></h1>
-    <div class="meta"><?php
-    if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
-        echo $compiledPdfMetaHtml;
-    } else {
-        $rangeLine = \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) $isoYear, (int) $isoWeek, true);
-        echo htmlspecialchars($rangeLine, ENT_QUOTES, 'UTF-8').' · <strong>'.(int) count($reports).'</strong> reporting unit(s)';
-    }
-    ?></div>
-</div>
-
-<?php foreach ($reports as $report) {
+<?php foreach ($reports as $divIdx => $report) {
     $dirName = $report->directorate?->name ?? 'Directorate / Office';
     $unitLabel = $report->contributionEntityLabel();
 
@@ -87,7 +76,20 @@ $compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
         $bottleneckRows[] = $b;
     }
     ?>
-<div class="compiled-division-page">
+<div class="compiled-division-page<?php echo ((int) $divIdx) > 0 ? ' new-page' : ''; ?>">
+    <?php if ((int) $divIdx === 0) { ?>
+    <div class="compiled-pdf-cover">
+        <h1><?php echo htmlspecialchars($compiledPdfHeading ?? 'Weekly brief — compiled', ENT_QUOTES, 'UTF-8'); ?></h1>
+        <div class="meta"><?php
+        if (is_string($compiledPdfMetaHtml) && $compiledPdfMetaHtml !== '') {
+            echo $compiledPdfMetaHtml;
+        } else {
+            $rangeLine = \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) $isoYear, (int) $isoWeek, true);
+            echo htmlspecialchars($rangeLine, ENT_QUOTES, 'UTF-8').' · <strong>'.(int) count($reports).'</strong> reporting unit(s)';
+        }
+        ?></div>
+    </div>
+    <?php } ?>
     <h2><?php echo htmlspecialchars($unitLabel, ENT_QUOTES, 'UTF-8'); ?> <span style="font-weight:normal;color:#64748b;">(<?php echo htmlspecialchars($dirName, ENT_QUOTES, 'UTF-8'); ?>)</span></h2>
     <p class="compiled-division-meta"><strong>Status:</strong> <?php echo htmlspecialchars($report->status, ENT_QUOTES, 'UTF-8'); ?>
     <?php
