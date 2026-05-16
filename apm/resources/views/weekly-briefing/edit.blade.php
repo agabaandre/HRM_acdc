@@ -97,9 +97,10 @@
             </div>
             <div class="text-end">
                 <span class="badge bg-{{ $report->status === 'submitted' ? 'success' : ($report->status === 'locked' ? 'dark' : 'warning') }}">{{ $report->status }}</span>
-                @if($report->requiresDirectorReview())
+                @if($report->requiresDirectorReview() && $report->status === \App\Models\WeeklyBriefingReport::STATUS_SUBMITTED)
+                    @php $assignedDirectorName = $report->assignedDirectorDisplayName(); @endphp
                     <div class="small mt-2 {{ $report->isDirectorReviewed() ? 'text-success' : 'text-muted' }}">
-                        {{ $report->directorReviewSummaryLine() }}
+                        {{ $report->directorReviewSummaryLine() }}@if($assignedDirectorName !== '') · {{ $assignedDirectorName }}@endif
                     </div>
                 @endif
             </div>
@@ -110,33 +111,27 @@
         <div class="card shadow-sm mb-3 border-primary">
             <div class="card-header fw-bold text-primary"><i class="fas fa-user-tie me-1"></i>Director review</div>
             <div class="card-body">
-                <p class="small text-muted mb-2">This reporting unit is tied to a <strong>directorate</strong> with a director on the <code>directorates</code> table. The director may adjust the submitted content until the deadline; use <strong>Mark reviewed by director</strong> when your review is complete. All director saves and this action are recorded on the trail.</p>
-                @if($report->isDirectorReviewed() && $report->director_reviewed_at)
-                    <p class="small mb-2"><strong>Reviewed at:</strong> {{ $report->director_reviewed_at->format('M j, Y g:i A') }}
-                        @if($report->directorReviewedBy)
-                            @php $dn = trim((string) ($report->directorReviewedBy->name ?? '')); @endphp
-                            · <strong>{{ $dn !== '' ? $dn : 'Staff #'.$report->director_reviewed_by_staff_id }}</strong>
-                        @endif
-                    </p>
-                @endif
-                @php $trail = $report->director_review_trail; @endphp
-                @if(is_array($trail) && count($trail) > 0)
-                    <h6 class="small fw-bold mb-1">Completion trail</h6>
-                    <ol class="small mb-0 ps-3">
-                        @foreach($trail as $entry)
-                            @if(is_array($entry))
-                                <li>{{ $entry['action'] ?? '—' }} — staff #{{ (int) ($entry['staff_id'] ?? 0) }} @ {{ $entry['at'] ?? '' }}</li>
-                            @endif
-                        @endforeach
-                    </ol>
+                @php
+                    $assignedDirectorName = $report->assignedDirectorDisplayName();
+                    $reviewerName = '';
+                    if ($report->isDirectorReviewed() && $report->directorReviewedBy) {
+                        $reviewerName = trim((string) ($report->directorReviewedBy->name ?? ''));
+                        if ($reviewerName === '') {
+                            $reviewerName = 'Staff #'.(int) $report->director_reviewed_by_staff_id;
+                        }
+                    }
+                    $directorLabel = $reviewerName !== '' ? $reviewerName : $assignedDirectorName;
+                @endphp
+                @if($report->isDirectorReviewed())
+                    <p class="mb-0 text-success"><strong>Reviewed</strong>@if($directorLabel !== '') · {{ $directorLabel }}@endif</p>
+                @else
+                    <p class="mb-0"><strong>Yet to be Reviewed</strong>@if($directorLabel !== '') · {{ $directorLabel }}@endif</p>
                 @endif
                 @if($canMarkDirectorReview && ! $report->isDirectorReviewed())
-                    <form method="post" action="{{ route('weekly-briefing.director-review', $report) }}" class="mt-3 d-inline" onsubmit="return confirm('Record that you have reviewed this weekly briefing as directorate director?');">
+                    <form method="post" action="{{ route('weekly-briefing.director-review', $report) }}" class="mt-3 d-inline" onsubmit="return confirm('Record that you have reviewed this weekly briefing?');">
                         @csrf
                         <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-1"></i>Mark reviewed by director</button>
                     </form>
-                @elseif($report->isDirectorReviewed() && $canDirectorEdit)
-                    <p class="small text-muted mb-0 mt-2">You can still edit content until the deadline; each save is added to the trail above.</p>
                 @endif
             </div>
         </div>

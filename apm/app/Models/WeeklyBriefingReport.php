@@ -267,10 +267,44 @@ class WeeklyBriefingReport extends Model
             return '—';
         }
         if ($this->director_reviewed_at) {
-            return 'Reviewed by director';
+            return 'Reviewed';
         }
 
-        return 'Not reviewed by director';
+        return 'Yet to be Reviewed';
+    }
+
+    /**
+     * Director name shown on the edit page (division director or directorate director).
+     */
+    public function assignedDirectorDisplayName(): string
+    {
+        $divId = (int) ($this->division_id ?? 0);
+        if ($divId <= 0 && str_starts_with((string) ($this->contribution_key ?? ''), 'd-')) {
+            $divId = (int) substr((string) $this->contribution_key, 2);
+        }
+        if ($divId > 0) {
+            $div = $this->relationLoaded('division') && $this->division && (int) $this->division->id === $divId
+                ? $this->division
+                : Division::query()->find($divId);
+            $dirStaffId = (int) ($div->director_id ?? 0);
+            if ($dirStaffId > 0) {
+                $name = Staff::query()->where('staff_id', $dirStaffId)->value('name');
+                if (is_string($name) && trim($name) !== '') {
+                    return trim($name);
+                }
+            }
+        }
+
+        $dir = $this->directorateForDirectorReview();
+        if ($dir !== null) {
+            $dir->loadMissing('director');
+            $name = trim((string) ($dir->director?->name ?? ''));
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        return $this->hubDirectorateDisplayRow()['director_name'];
     }
 
     public function directorReviewTrailSummary(): string
