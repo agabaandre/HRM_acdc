@@ -288,9 +288,12 @@ class WeeklyBriefingReport extends Model
                 : Division::query()->find($divId);
             $dirStaffId = (int) ($div->director_id ?? 0);
             if ($dirStaffId > 0) {
-                $name = Staff::query()->where('staff_id', $dirStaffId)->value('name');
-                if (is_string($name) && trim($name) !== '') {
-                    return trim($name);
+                $staff = Staff::query()->find($dirStaffId);
+                if ($staff !== null) {
+                    $name = trim((string) $staff->name);
+                    if ($name !== '') {
+                        return $name;
+                    }
                 }
             }
         }
