@@ -19,6 +19,9 @@ class WeeklyBriefingScheduleGate
     /** Longer window for compiled / HoD PDF / director packs on the submission deadline day. */
     public const COMPILED_DISPATCH_GRACE_MINUTES = 240;
 
+    /** Scheduled director nudge on the deadline calendar day (not at submission close). */
+    public const DIRECTOR_HOURS_BEFORE_CLOSE_REMINDER = 4;
+
     public function __construct(
         private readonly WeeklyBriefingSetting $settings,
         private readonly ?Carbon $now = null,
@@ -176,26 +179,69 @@ class WeeklyBriefingScheduleGate
         }
 
         $deadline = $this->filingDeadline();
-        if (! $this->isReminderDay($deadline, $this->settings->normalizedDirectorReviewReminderDaysBeforeDeadline())) {
-            return false;
+
+        if ($this->isWithinDirectorFourHoursBeforeCloseWindow($deadline)) {
+            return true;
         }
 
-        return $this->isWithinScheduledClock($this->settings->directorReviewReminderClockColumn());
+        $dayBeforeOffsets = $this->directorDayBeforeReminderOffsets();
+        if ($dayBeforeOffsets !== [] && $this->isReminderDay($deadline, $dayBeforeOffsets)) {
+            return $this->isWithinScheduledClock($this->settings->directorDayBeforeReminderClockColumn());
+        }
+
+        return false;
+    }
+
+    public function directorFourHoursBeforeCloseAt(Carbon $deadline): Carbon
+    {
+        return $deadline->copy()->subHours(self::DIRECTOR_HOURS_BEFORE_CLOSE_REMINDER);
+    }
+
+    public function isWithinDirectorFourHoursBeforeCloseWindow(Carbon $deadline): bool
+    {
+        $scheduledAt = $this->directorFourHoursBeforeCloseAt($deadline);
+
+        return $this->isWithinScheduledClockAt($scheduledAt, self::DISPATCH_GRACE_MINUTES);
+    }
+
+    /**
+     * Director day-offset reminders (e.g. 1 = day before deadline); offset 0 is handled by the 4-hour rule.
+     *
+     * @return list<int>
+     */
+    public function directorDayBeforeReminderOffsets(): array
+    {
+        return array_values(array_filter(
+            $this->settings->normalizedDirectorReviewReminderDaysBeforeDeadline(),
+            static fn (int $offset): bool => $offset > 0
+        ));
     }
 
     public function directorReviewReminderSlotKey(): string
     {
         $deadline = $this->filingDeadline();
         $filing = $this->filingWeek();
-        $offsets = $this->settings->normalizedDirectorReviewReminderDaysBeforeDeadline();
+
+        if ($this->isWithinDirectorFourHoursBeforeCloseWindow($deadline)) {
+            return implode(':', [
+                'director',
+                'four_hours_before_close',
+                $filing['iso_year'],
+                $filing['iso_week'],
+                $this->now()->toDateString(),
+            ]);
+        }
+
+        $offsets = $this->directorDayBeforeReminderOffsets();
 
         return implode(':', [
             'director',
+            'day_before',
             $filing['iso_year'],
             $filing['iso_week'],
             $this->now()->toDateString(),
             $this->matchedReminderOffset($deadline, $offsets),
-            $this->settings->directorReviewReminderClockColumn(),
+            $this->settings->directorDayBeforeReminderClockColumn(),
         ]);
     }
 
@@ -274,8 +320,10 @@ class WeeklyBriefingScheduleGate
         $deadline = $this->filingDeadline();
         $filing = $this->filingWeek();
         $hodClock = $this->settings->hodReminderClockColumn();
-        $dirClock = $this->settings->directorReviewReminderClockColumn();
+        $dirDayClock = $this->settings->directorDayBeforeReminderClockColumn();
         $summaryAt = $this->scheduledDateTimeToday('summary_send_time');
+        $dirFourHoursAt = $this->directorFourHoursBeforeCloseAt($deadline);
+        $dirDayBeforeOffsets = $this->directorDayBeforeReminderOffsets();
 
         return [
             'timezone' => config('app.timezone'),
@@ -289,11 +337,12 @@ class WeeklyBriefingScheduleGate
             'hod_is_reminder_day' => $this->isReminderDay($deadline, $this->settings->normalizedHodReminderDaysBeforeDeadline()),
             'hod_within_clock' => $this->isWithinScheduledClock($hodClock),
             'hod_would_dispatch' => $this->passesHodReminderSchedule(false),
-            'director_clock_column' => $dirClock,
-            'director_clock_label' => $this->clockLabel($dirClock),
-            'director_scheduled_at' => $this->scheduledDateTimeToday($dirClock),
-            'director_is_reminder_day' => $this->isReminderDay($deadline, $this->settings->normalizedDirectorReviewReminderDaysBeforeDeadline()),
-            'director_within_clock' => $this->isWithinScheduledClock($dirClock),
+            'director_day_before_clock_label' => $this->clockLabel($dirDayClock),
+            'director_day_before_offsets' => $dirDayBeforeOffsets,
+            'director_is_day_before_reminder_day' => $dirDayBeforeOffsets !== [] && $this->isReminderDay($deadline, $dirDayBeforeOffsets),
+            'director_four_hours_before_at' => $dirFourHoursAt,
+            'director_within_four_hours_window' => $this->isWithinDirectorFourHoursBeforeCloseWindow($deadline),
+            'director_within_day_before_clock' => $this->isWithinScheduledClock($dirDayClock),
             'director_would_dispatch' => $this->passesDirectorReviewReminderSchedule(false),
             'compiled_scheduled_at' => $summaryAt,
             'compiled_is_deadline_day' => $this->now()->copy()->startOfDay()->equalTo($deadline->copy()->startOfDay()),

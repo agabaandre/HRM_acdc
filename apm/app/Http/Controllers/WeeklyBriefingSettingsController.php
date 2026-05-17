@@ -61,7 +61,7 @@ class WeeklyBriefingSettingsController extends Controller
             'hod_reminder_days_before_deadline' => ['required', 'string', 'max:80', 'regex:/^\d+(\s*,\s*\d+)*$/'],
             'hod_reminder_clock' => ['required', 'string', 'in:submission_close_time,hod_reminder_time'],
             'director_review_reminder_days_before_deadline' => ['required', 'string', 'max:80', 'regex:/^\d+(\s*,\s*\d+)*$/'],
-            'director_review_reminder_clock' => ['required', 'string', 'in:submission_close_time,hod_reminder_time'],
+            'director_review_reminder_clock' => ['nullable', 'string', 'in:submission_close_time,hod_reminder_time'],
             'submission_close_time' => 'required|string|max:8',
             'summary_send_time' => 'required|string|max:8',
             'compiled_recipient_emails' => 'nullable|string|max:5000',
@@ -182,7 +182,10 @@ class WeeklyBriefingSettingsController extends Controller
         }
 
         $hodReminderDays = $this->parseReminderDaysBeforeDeadline($data['hod_reminder_days_before_deadline'], 'hod_reminder_days_before_deadline');
-        $directorReminderDays = $this->parseReminderDaysBeforeDeadline($data['director_review_reminder_days_before_deadline'], 'director_review_reminder_days_before_deadline');
+        $directorReminderDays = array_values(array_filter(
+            $this->parseReminderDaysBeforeDeadline($data['director_review_reminder_days_before_deadline'], 'director_review_reminder_days_before_deadline'),
+            static fn (int $offset): bool => $offset > 0
+        ));
 
         $settings->fill([
             'submission_weekday' => $data['submission_weekday'],
@@ -191,7 +194,7 @@ class WeeklyBriefingSettingsController extends Controller
             'hod_reminder_days_before_deadline' => $hodReminderDays,
             'hod_reminder_clock' => 'hod_reminder_time',
             'director_review_reminder_days_before_deadline' => $directorReminderDays,
-            'director_review_reminder_clock' => $data['director_review_reminder_clock'],
+            'director_review_reminder_clock' => 'hod_reminder_time',
             'submission_close_time' => $this->normalizeTime($data['submission_close_time']),
             'summary_send_time' => $this->normalizeTime($data['summary_send_time']),
             'compiled_recipient_emails' => $data['compiled_recipient_emails'] ?? null,

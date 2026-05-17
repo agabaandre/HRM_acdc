@@ -58,16 +58,13 @@
                                     — <span class="text-warning">today is not a configured reminder day</span>
                                 @endif
                             </li>
-                            <li>Director review: <strong>{{ $wb['director_clock_label'] ?? '—' }}</strong>
-                                @if(!empty($wb['director_is_reminder_day']))
-                                    — reminder day
-                                @else
-                                    — <span class="text-warning">not a reminder day</span>
+                            <li>Director review: on submit (immediate) · day-before at <strong>{{ $settings->hodReminderTimeHm() }}</strong>
+                                @if(!empty($wb['director_is_day_before_reminder_day']))
+                                    — day-before reminder today
                                 @endif
+                                · {{ \App\Services\WeeklyBriefingScheduleGate::DIRECTOR_HOURS_BEFORE_CLOSE_REMINDER }}h before close at <strong>{{ ($wb['director_four_hours_before_at'] ?? null) ? $wb['director_four_hours_before_at']->format('g:i A') : '—' }}</strong>
                                 @if(!empty($wb['director_would_dispatch']))
-                                    — <span class="text-success">would send now</span>
-                                @elseif(!empty($wb['director_is_reminder_day']) && !empty($wb['director_within_clock']))
-                                    — <span class="text-muted">within clock (may already be sent today)</span>
+                                    — <span class="text-success">scheduled reminder would send now</span>
                                 @endif
                             </li>
                             <li>Compiled summary: <strong>{{ $settings->summarySendTimeHm() }}</strong> on deadline day
@@ -116,20 +113,20 @@
         </div>
 
         <div class="card shadow-sm mb-3">
-            <div class="card-header fw-bold">Director review reminders (before deadline)</div>
+            <div class="card-header fw-bold">Director review reminders</div>
             <div class="card-body">
-                <p class="small text-muted">Directorate directors receive a grouped email listing <strong>submitted</strong> briefs that still need their sign-off (<code>directorates.director_id</code>), on the same day-offset pattern. Reminders stop after the submission deadline.</p>
+                <p class="small text-muted mb-2">Directors are notified in three ways (not at submission close time):</p>
+                <ul class="small text-muted mb-3">
+                    <li><strong>On submit</strong> — when a division brief is submitted and still needs director review.</li>
+                    <li><strong>Day before deadline</strong> — grouped reminder at <strong>HoD reminder time</strong> (above) on each day listed below (use <code>1</code> for one day before).</li>
+                    <li><strong>{{ \App\Services\WeeklyBriefingScheduleGate::DIRECTOR_HOURS_BEFORE_CLOSE_REMINDER }} hours before submission closes</strong> — automatic on the deadline calendar day.</li>
+                </ul>
+                <input type="hidden" name="director_review_reminder_clock" value="hod_reminder_time">
                 <div class="row g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label class="form-label">Days before deadline <span class="text-muted fw-normal">(comma-separated)</span></label>
-                        <input type="text" name="director_review_reminder_days_before_deadline" class="form-control" value="{{ old('director_review_reminder_days_before_deadline', implode(', ', $settings->normalizedDirectorReviewReminderDaysBeforeDeadline())) }}" required placeholder="1, 0" autocomplete="off">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Send at this clock time</label>
-                        <select name="director_review_reminder_clock" class="form-select">
-                            <option value="submission_close_time" @selected(old('director_review_reminder_clock', $settings->directorReviewReminderClockColumn()) === 'submission_close_time')>Submission closes — {{ substr($settings->submission_close_time,0,5) }}</option>
-                            <option value="hod_reminder_time" @selected(old('director_review_reminder_clock', $settings->directorReviewReminderClockColumn()) === 'hod_reminder_time')>HoD reminder time — {{ substr($settings->hod_reminder_time,0,5) }}</option>
-                        </select>
+                        <input type="text" name="director_review_reminder_days_before_deadline" class="form-control" value="{{ old('director_review_reminder_days_before_deadline', implode(', ', $settings->normalizedDirectorReviewReminderDaysBeforeDeadline())) }}" required placeholder="1" autocomplete="off">
+                        <small class="text-muted">Use <code>1</code> for the day-before reminder. Do not use <code>0</code> — the deadline-day nudge is always {{ \App\Services\WeeklyBriefingScheduleGate::DIRECTOR_HOURS_BEFORE_CLOSE_REMINDER }} hours before <strong>Submission closes</strong>.</small>
                     </div>
                 </div>
             </div>
