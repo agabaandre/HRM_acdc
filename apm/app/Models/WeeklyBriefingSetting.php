@@ -14,6 +14,9 @@ class WeeklyBriefingSetting extends Model
         'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
     ];
 
+    /** HoD / contributor reminders always include day-before (1) and deadline day (0). */
+    public const HOD_REMINDER_DAYS_BEFORE_DEADLINE = [1, 0];
+
     protected $fillable = [
         'submission_weekday',
         'filing_iso_week_offset',
@@ -66,7 +69,7 @@ class WeeklyBriefingSetting extends Model
         return static::query()->create([
             'submission_weekday' => 5,
             'hod_reminder_time' => '09:00',
-            'hod_reminder_days_before_deadline' => [1, 0],
+            'hod_reminder_days_before_deadline' => self::HOD_REMINDER_DAYS_BEFORE_DEADLINE,
             'hod_reminder_clock' => 'hod_reminder_time',
             'director_review_reminder_days_before_deadline' => [1],
             'director_review_reminder_clock' => 'hod_reminder_time',
@@ -180,7 +183,10 @@ class WeeklyBriefingSetting extends Model
      */
     public function normalizedHodReminderDaysBeforeDeadline(): array
     {
-        return self::normalizeDaysBeforeList($this->hod_reminder_days_before_deadline, [1, 0]);
+        return self::ensureReminderOffsets(
+            self::normalizeDaysBeforeList($this->hod_reminder_days_before_deadline, self::HOD_REMINDER_DAYS_BEFORE_DEADLINE),
+            self::HOD_REMINDER_DAYS_BEFORE_DEADLINE
+        );
     }
 
     /**
@@ -209,6 +215,25 @@ class WeeklyBriefingSetting extends Model
         }
 
         return $out === [] ? $fallback : array_values($out);
+    }
+
+    /**
+     * @param  list<int>  $offsets
+     * @param  list<int>  $required
+     * @return list<int>
+     */
+    public static function ensureReminderOffsets(array $offsets, array $required): array
+    {
+        $merged = [];
+        foreach (array_merge($offsets, $required) as $offset) {
+            $i = (int) $offset;
+            if ($i >= 0 && $i <= 30) {
+                $merged[$i] = $i;
+            }
+        }
+        krsort($merged);
+
+        return array_values($merged);
     }
 
     /**
