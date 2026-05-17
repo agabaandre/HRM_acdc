@@ -265,19 +265,13 @@ class WeeklyBriefingScheduleGate
             return false;
         }
 
-        $slotKey = $this->compiledSummarySlotKey();
-        if ($this->hasDispatched('compiled', $slotKey)) {
-            return false;
-        }
-
         $now = $this->now();
         if ($this->isWithinScheduledClockAt($scheduledAt, self::COMPILED_DISPATCH_GRACE_MINUTES)) {
             return true;
         }
 
         // Same deadline day after configured send time until end of day if the pack never went out.
-        return $now->greaterThanOrEqualTo($scheduledAt)
-            && $now->lessThanOrEqualTo($deadline->copy()->endOfDay());
+        return $this->isCompiledSummaryCatchUpWindow($deadline, $scheduledAt);
     }
 
     public function compiledSummarySlotKey(): string
@@ -347,8 +341,53 @@ class WeeklyBriefingScheduleGate
             'compiled_scheduled_at' => $summaryAt,
             'compiled_is_deadline_day' => $this->now()->copy()->startOfDay()->equalTo($deadline->copy()->startOfDay()),
             'compiled_within_clock' => $summaryAt !== null && $this->isWithinScheduledClockAt($summaryAt, self::COMPILED_DISPATCH_GRACE_MINUTES),
+            'compiled_in_catch_up_window' => $summaryAt !== null && $this->isCompiledSummaryCatchUpWindow($deadline, $summaryAt),
+            'compiled_slot_claimed' => $this->hasDispatched('compiled', $this->compiledSummarySlotKey()),
+            'compiled_block_reason' => $this->compiledSummaryBlockReason(),
             'compiled_would_dispatch' => $this->passesCompiledSummarySchedule(false),
         ];
+    }
+
+    /**
+     * Why the compiled pack is not eligible to run right now (null = schedule gate would pass).
+     */
+    public function compiledSummaryBlockReason(): ?string
+    {
+        if (! $this->settings->reminders_enabled) {
+            return 'Reminders are disabled in weekly briefing settings.';
+        }
+
+        $deadline = $this->filingDeadline();
+        if (! $this->now()->copy()->startOfDay()->equalTo($deadline->copy()->startOfDay())) {
+            return 'Today is not the submission deadline calendar day ('.$deadline->format('l, M j, Y').').';
+        }
+
+        $scheduledAt = $this->scheduledDateTimeToday('summary_send_time');
+        if ($scheduledAt === null) {
+            return 'Compiled summary send time is not configured.';
+        }
+
+        if ($this->passesCompiledSummarySchedule(false)) {
+            return null;
+        }
+
+        if ($this->now()->lessThan($scheduledAt)) {
+            return 'Before compiled summary send time ('.$scheduledAt->format('g:i A').').';
+        }
+
+        if ($this->hasDispatched('compiled', $this->compiledSummarySlotKey())) {
+            return 'This week’s compiled slot was already claimed today (check logs or run with --force).';
+        }
+
+        return 'Outside the compiled send / catch-up window for today.';
+    }
+
+    public function isCompiledSummaryCatchUpWindow(Carbon $deadline, Carbon $scheduledAt): bool
+    {
+        $now = $this->now();
+
+        return $now->greaterThanOrEqualTo($scheduledAt)
+            && $now->lessThanOrEqualTo($deadline->copy()->endOfDay());
     }
 
     public function scheduledDateTimeToday(string $timeAttribute): ?Carbon

@@ -78,6 +78,11 @@
                                 @endif
                                 @if(!empty($wb['compiled_would_dispatch']))
                                     — <span class="text-success">would send now</span>
+                                @elseif(!empty($wb['compiled_block_reason']))
+                                    — <span class="text-warning">{{ $wb['compiled_block_reason'] }}</span>
+                                @endif
+                                @if(!empty($wb['compiled_slot_claimed']))
+                                    — <span class="text-muted">slot already claimed today</span>
                                 @endif
                             </li>
                         </ul>
