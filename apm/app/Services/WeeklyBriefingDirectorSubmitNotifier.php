@@ -26,17 +26,12 @@ final class WeeklyBriefingDirectorSubmitNotifier
             return;
         }
 
-        $dir = $report->directorateForDirectorReview();
-        if (! $dir) {
+        $directorStaffId = $report->assignedDirectorStaffId();
+        if ($directorStaffId <= 0) {
             return;
         }
 
-        $directorStaffId = (int) ($dir->director_id ?? 0);
-        if (! $directorStaffId || $directorStaffId <= 0) {
-            return;
-        }
-
-        if ((int) $directorStaffId === (int) ($report->submitted_by_staff_id ?? 0)) {
+        if ($directorStaffId === (int) ($report->submitted_by_staff_id ?? 0)) {
             return;
         }
 
@@ -87,7 +82,7 @@ final class WeeklyBriefingDirectorSubmitNotifier
 <p>Please review it in APM before the brief is included in the organisation-wide compilation.</p>
 <p style="text-align:center;"><a class="btn" href="{$editUrl}">Open briefing to review</a></p>
 <p>You can also open the <strong>Weekly brief</strong> module from the <a href="{$indexUrl}">APM home navigation</a>.</p>
-<p style="font-size:12px;color:#64748b;">This message was sent automatically because director review is required for this reporting unit (directorate director on the directorates table).</p>
+<p style="font-size:12px;color:#64748b;">This message was sent automatically when the brief was submitted because director review is required for this reporting unit.</p>
 HTML;
 
         $subject = 'Weekly brief submitted — please review — '.$label.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();

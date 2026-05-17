@@ -52,7 +52,7 @@ Typical options include:
 
 - **Submission weekday** and times: HoD reminder, submission close, compiled/summary send time.
 - **HoD / contributor deadline reminders**: `hod_reminder_days_before_deadline` (JSON list of whole days **before** the submission deadline, e.g. `1, 0`) and `hod_reminder_clock` (`submission_close_time` or `hod_reminder_time`) — the scheduler matches **calendar day** and **H:i** on that clock column. Default offsets **1** and **0** (day before and deadline day).
-- **Director review deadline reminders**: `director_review_reminder_days_before_deadline` and `director_review_reminder_clock` — same pattern for emails to **directorate directors** about **submitted** briefs still pending review; stops after the deadline.
+- **Director review deadline reminders**: `director_review_reminder_days_before_deadline` (e.g. `1` for one day before the deadline; do not use `0`) — grouped emails at **HoD reminder time** on those calendar days. On the **deadline calendar day**, a separate nudge runs **4 hours before submission closes** (not at close time). Stops after the deadline. **On submit**, directors also get an immediate email when a brief still needs review (see **Email**).
 - **Compiled PDF filter**: `compiled_exclude_unreviewed_director_divisions` — when enabled, the organisation-wide compiled PDF and central compiled attachment omit submitted briefs (`d-*` and `dr-*`) that require director review but are not yet marked reviewed (default **off** / include all).
 - **Default reporting week (HoDs file for)**: `filing_iso_week_offset` — **0** = ISO week that contains “today”; **1** = the **next** ISO week (e.g. brief ahead for the coming week). Drives the index “This reporting week” tab, default `create` targets, `weekly-briefing:hod-reminders`, `weekly-briefing:director-review-reminders`, and `weekly-briefing:compiled-summary` week selection. When **1**, `WeeklyBriefingReport::submissionDeadline()` uses **submission weekday** in the calendar week **before** that reporting week’s Monday (same clock as **Submission closes**). When **0**, the deadline is that weekday **inside** the reporting ISO week.
 - **Reminders** on/off.
@@ -89,7 +89,7 @@ Statuses and helpers live on `App\Models\WeeklyBriefingReport`.
 | Command | Purpose |
 |---------|---------|
 | `weekly-briefing:hod-reminders` | Reminds contributors (and related staff) about **missing** briefs for the configured filing ISO week. Without `--force`, respects `reminders_enabled`, **deadline-relative days** (`hod_reminder_days_before_deadline`), and **`hod_reminder_time`** from settings (same as the HoD reminder time field on the settings page). Uses the same mail path as approval notifications (`SendNotificationEmailJob`, Exchange + SMTP fallback). |
-| `weekly-briefing:director-review-reminders` | Reminds **directorate directors** about **submitted** briefs still pending director review. Without `--force`, respects `reminders_enabled`, `director_review_reminder_days_before_deadline`, and `director_review_reminder_clock`; stops after the deadline. |
+| `weekly-briefing:director-review-reminders` | Reminds **directorate directors** about **submitted** briefs still pending director review. Without `--force`, respects `reminders_enabled`, day-before offsets in `director_review_reminder_days_before_deadline` (at **HoD reminder time**), plus a deadline-day send **4 hours before submission closes**; stops after the deadline. |
 | `weekly-briefing:lock-drafts` | Locks **draft** reports past their submission deadline (skips rows covered by **report unlock override**). |
 | `weekly-briefing:compiled-summary` | Sends compiled / summary emails per settings; without `--force`, respects **`reminders_enabled`**, the **calendar day of the filing week submission deadline** (same rule as `WeeklyBriefingSetting::filingSubmissionDeadline()` / advance filing), and **`summary_send_time`**. Organisation-wide compiled PDF honours **`compiled_exclude_unreviewed_director_divisions`**. |
 | `weekly-briefing:test-notifications` | Sends **sample** weekly-brief emails to a given address to verify SMTP. |
@@ -142,7 +142,7 @@ If QR generation fails (e.g. missing GD), the footer falls back to a small **pla
   - Ensure **`WeeklyBriefingSetting::current()`** is the row you edit (avoid duplicate settings rows with conflicting flags).
 
 - **Reminders or compiled mail never fire**  
-  - Check **`reminders_enabled`**, **times**, and for HoD/director mails the **days-before-deadline** list and **clock** (submission close vs HoD reminder time); use `--force` on the Artisan command once to verify mail outside the window.
+  - Check **`reminders_enabled`**, **times**, and for HoD mails the **days-before-deadline** list; for director mails, day-before offsets (at HoD reminder time) and the **4 hours before close** slot on deadline day; use `--force` on the Artisan command once to verify mail outside the window.
 
 ---
 

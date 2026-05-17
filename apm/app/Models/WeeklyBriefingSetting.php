@@ -68,7 +68,7 @@ class WeeklyBriefingSetting extends Model
             'hod_reminder_time' => '09:00',
             'hod_reminder_days_before_deadline' => [1, 0],
             'hod_reminder_clock' => 'hod_reminder_time',
-            'director_review_reminder_days_before_deadline' => [1, 0],
+            'director_review_reminder_days_before_deadline' => [1],
             'director_review_reminder_clock' => 'hod_reminder_time',
             'compiled_exclude_unreviewed_director_divisions' => false,
             'submission_close_time' => '14:00',
@@ -140,13 +140,17 @@ class WeeklyBriefingSetting extends Model
     }
 
     /**
-     * Director review reminders: clock column from settings ({@see director_review_reminder_clock}).
+     * Day-before director reminders use HoD reminder time (not submission close).
      */
+    public function directorDayBeforeReminderClockColumn(): string
+    {
+        return 'hod_reminder_time';
+    }
+
+    /** @deprecated Use {@see directorDayBeforeReminderClockColumn()} — submission close is not used for directors. */
     public function directorReviewReminderClockColumn(): string
     {
-        $v = (string) ($this->director_review_reminder_clock ?? 'hod_reminder_time');
-
-        return $v === 'submission_close_time' ? 'submission_close_time' : 'hod_reminder_time';
+        return $this->directorDayBeforeReminderClockColumn();
     }
 
     public function hodReminderTimeHm(): string
@@ -184,7 +188,7 @@ class WeeklyBriefingSetting extends Model
      */
     public function normalizedDirectorReviewReminderDaysBeforeDeadline(): array
     {
-        return self::normalizeDaysBeforeList($this->director_review_reminder_days_before_deadline, [1, 0]);
+        return self::normalizeDaysBeforeList($this->director_review_reminder_days_before_deadline, [1]);
     }
 
     /**
