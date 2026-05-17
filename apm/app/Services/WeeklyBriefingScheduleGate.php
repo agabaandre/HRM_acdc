@@ -16,6 +16,9 @@ class WeeklyBriefingScheduleGate
 {
     public const DISPATCH_GRACE_MINUTES = 20;
 
+    /** Longer window for compiled / HoD PDF / director packs on the submission deadline day. */
+    public const COMPILED_DISPATCH_GRACE_MINUTES = 240;
+
     public function __construct(
         private readonly WeeklyBriefingSetting $settings,
         private readonly ?Carbon $now = null,
@@ -65,13 +68,19 @@ class WeeklyBriefingScheduleGate
     /**
      * True when the configured time column matches now (exact minute) or we are still inside the grace window.
      */
-    public function isWithinScheduledClock(string $timeAttribute): bool
+    public function isWithinScheduledClock(string $timeAttribute, ?int $graceMinutes = null): bool
     {
         $scheduledAt = $this->scheduledDateTimeToday($timeAttribute);
         if ($scheduledAt === null) {
             return false;
         }
 
+        return $this->isWithinScheduledClockAt($scheduledAt, $graceMinutes ?? self::DISPATCH_GRACE_MINUTES);
+    }
+
+    public function isWithinScheduledClockAt(Carbon $scheduledAt, ?int $graceMinutes = null): bool
+    {
+        $graceMinutes = $graceMinutes ?? self::DISPATCH_GRACE_MINUTES;
         $now = $this->now();
         if ($now->format('H:i') === $scheduledAt->format('H:i')) {
             return true;
@@ -81,9 +90,25 @@ class WeeklyBriefingScheduleGate
             return false;
         }
 
-        $graceEnd = $scheduledAt->copy()->addMinutes(self::DISPATCH_GRACE_MINUTES);
+        $graceEnd = $scheduledAt->copy()->addMinutes($graceMinutes);
 
         return $now->greaterThan($scheduledAt) && $now->lessThanOrEqualTo($graceEnd);
+    }
+
+    /**
+     * Reminder sends are keyed off the deadline calendar day, not the exact close time
+     * (so a director reminder at submission close is not blocked once the clock passes close).
+     */
+    public function isOnOrBeforeDeadlineCalendarDay(): bool
+    {
+        return ! $this->now()->copy()->startOfDay()->greaterThan(
+            $this->filingDeadline()->copy()->startOfDay()
+        );
+    }
+
+    public function hasDispatched(string $kind, string $slotKey): bool
+    {
+        return Cache::has('weekly_briefing_dispatch:'.$kind.':'.md5($slotKey));
     }
 
     public function tryClaimDispatch(string $kind, string $slotKey): bool
@@ -108,11 +133,11 @@ class WeeklyBriefingScheduleGate
             return false;
         }
 
-        $deadline = $this->filingDeadline();
-        if ($this->now()->greaterThan($deadline)) {
+        if (! $this->isOnOrBeforeDeadlineCalendarDay()) {
             return false;
         }
 
+        $deadline = $this->filingDeadline();
         if (! $this->isReminderDay($deadline, $this->settings->normalizedHodReminderDaysBeforeDeadline())) {
             return false;
         }
@@ -146,11 +171,11 @@ class WeeklyBriefingScheduleGate
             return false;
         }
 
-        $deadline = $this->filingDeadline();
-        if ($this->now()->greaterThan($deadline)) {
+        if (! $this->isOnOrBeforeDeadlineCalendarDay()) {
             return false;
         }
 
+        $deadline = $this->filingDeadline();
         if (! $this->isReminderDay($deadline, $this->settings->normalizedDirectorReviewReminderDaysBeforeDeadline())) {
             return false;
         }
@@ -189,7 +214,24 @@ class WeeklyBriefingScheduleGate
             return false;
         }
 
-        return $this->isWithinScheduledClock('summary_send_time');
+        $scheduledAt = $this->scheduledDateTimeToday('summary_send_time');
+        if ($scheduledAt === null) {
+            return false;
+        }
+
+        $slotKey = $this->compiledSummarySlotKey();
+        if ($this->hasDispatched('compiled', $slotKey)) {
+            return false;
+        }
+
+        $now = $this->now();
+        if ($this->isWithinScheduledClockAt($scheduledAt, self::COMPILED_DISPATCH_GRACE_MINUTES)) {
+            return true;
+        }
+
+        // Same deadline day after configured send time until end of day if the pack never went out.
+        return $now->greaterThanOrEqualTo($scheduledAt)
+            && $now->lessThanOrEqualTo($deadline->copy()->endOfDay());
     }
 
     public function compiledSummarySlotKey(): string
@@ -233,6 +275,7 @@ class WeeklyBriefingScheduleGate
         $filing = $this->filingWeek();
         $hodClock = $this->settings->hodReminderClockColumn();
         $dirClock = $this->settings->directorReviewReminderClockColumn();
+        $summaryAt = $this->scheduledDateTimeToday('summary_send_time');
 
         return [
             'timezone' => config('app.timezone'),
@@ -246,10 +289,15 @@ class WeeklyBriefingScheduleGate
             'hod_is_reminder_day' => $this->isReminderDay($deadline, $this->settings->normalizedHodReminderDaysBeforeDeadline()),
             'hod_within_clock' => $this->isWithinScheduledClock($hodClock),
             'hod_would_dispatch' => $this->passesHodReminderSchedule(false),
+            'director_clock_column' => $dirClock,
             'director_clock_label' => $this->clockLabel($dirClock),
-            'compiled_scheduled_at' => $this->scheduledDateTimeToday('summary_send_time'),
+            'director_scheduled_at' => $this->scheduledDateTimeToday($dirClock),
+            'director_is_reminder_day' => $this->isReminderDay($deadline, $this->settings->normalizedDirectorReviewReminderDaysBeforeDeadline()),
+            'director_within_clock' => $this->isWithinScheduledClock($dirClock),
+            'director_would_dispatch' => $this->passesDirectorReviewReminderSchedule(false),
+            'compiled_scheduled_at' => $summaryAt,
             'compiled_is_deadline_day' => $this->now()->copy()->startOfDay()->equalTo($deadline->copy()->startOfDay()),
-            'compiled_within_clock' => $this->isWithinScheduledClock('summary_send_time'),
+            'compiled_within_clock' => $summaryAt !== null && $this->isWithinScheduledClockAt($summaryAt, self::COMPILED_DISPATCH_GRACE_MINUTES),
             'compiled_would_dispatch' => $this->passesCompiledSummarySchedule(false),
         ];
     }

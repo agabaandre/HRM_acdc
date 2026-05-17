@@ -58,11 +58,7 @@ class WeeklyBriefingDirectorReviewRemindersCommand extends Command
 
         $byDirector = [];
         foreach ($pending as $report) {
-            $dir = $report->directorateForDirectorReview();
-            if (! $dir) {
-                continue;
-            }
-            $directorStaffId = (int) ($dir->director_id ?? 0);
+            $directorStaffId = $report->assignedDirectorStaffId();
             if ($directorStaffId <= 0) {
                 continue;
             }
