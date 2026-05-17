@@ -42,7 +42,7 @@
                         <input type="time" name="summary_send_time" class="form-control" value="{{ old('summary_send_time', substr($settings->summary_send_time,0,5)) }}" required>
                     </div>
                 </div>
-                <p class="small text-muted mt-2 mb-0">Scheduler times come from the fields above: <strong>HoD reminder time</strong> for contributor/HoD emails, <strong>Submission closes</strong> for the filing deadline, <strong>Compiled summary send</strong> for the organisation pack. HoD and director review reminders also use <strong>days before deadline</strong> below (exact minute match, plus a {{ \App\Services\WeeklyBriefingScheduleGate::DISPATCH_GRACE_MINUTES }}-minute grace window). Ensure <code>php artisan schedule:run</code> runs every minute (timezone: <strong>{{ config('app.timezone') }}</strong>).</p>
+                <p class="small text-muted mt-2 mb-0">Scheduler times come from the fields above: <strong>HoD reminder time</strong> for contributor/HoD emails, <strong>Submission closes</strong> for the filing deadline, <strong>Compiled summary send</strong> for the organisation pack (HoD PDFs, director packs, and central compiled email run on the <strong>deadline calendar day</strong> at compiled send time, with a {{ \App\Services\WeeklyBriefingScheduleGate::COMPILED_DISPATCH_GRACE_MINUTES }}-minute grace window and same-day catch-up if the slot did not send). HoD and director review reminders use <strong>days before deadline</strong> below ({{ \App\Services\WeeklyBriefingScheduleGate::DISPATCH_GRACE_MINUTES }}-minute grace at the chosen clock). Ensure <code>php artisan schedule:run</code> runs every minute (timezone: <strong>{{ config('app.timezone') }}</strong>).</p>
                 @php $wb = $wbScheduleStatus ?? null; @endphp
                 @if(is_array($wb))
                     <div class="alert alert-secondary small mt-3 mb-0">
@@ -58,12 +58,26 @@
                                     — <span class="text-warning">today is not a configured reminder day</span>
                                 @endif
                             </li>
-                            <li>Director review: <strong>{{ $wb['director_clock_label'] ?? '—' }}</strong></li>
+                            <li>Director review: <strong>{{ $wb['director_clock_label'] ?? '—' }}</strong>
+                                @if(!empty($wb['director_is_reminder_day']))
+                                    — reminder day
+                                @else
+                                    — <span class="text-warning">not a reminder day</span>
+                                @endif
+                                @if(!empty($wb['director_would_dispatch']))
+                                    — <span class="text-success">would send now</span>
+                                @elseif(!empty($wb['director_is_reminder_day']) && !empty($wb['director_within_clock']))
+                                    — <span class="text-muted">within clock (may already be sent today)</span>
+                                @endif
+                            </li>
                             <li>Compiled summary: <strong>{{ $settings->summarySendTimeHm() }}</strong> on deadline day
                                 @if(!empty($wb['compiled_is_deadline_day']))
                                     (today)
                                 @else
                                     — <span class="text-warning">not today</span>
+                                @endif
+                                @if(!empty($wb['compiled_would_dispatch']))
+                                    — <span class="text-success">would send now</span>
                                 @endif
                             </li>
                         </ul>

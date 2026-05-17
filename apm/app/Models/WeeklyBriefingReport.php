@@ -274,6 +274,30 @@ class WeeklyBriefingReport extends Model
     }
 
     /**
+     * Staff id of the director who should review this report (division director, else directorate director).
+     */
+    public function assignedDirectorStaffId(): int
+    {
+        $divId = (int) ($this->division_id ?? 0);
+        if ($divId <= 0 && str_starts_with((string) ($this->contribution_key ?? ''), 'd-')) {
+            $divId = (int) substr((string) $this->contribution_key, 2);
+        }
+        if ($divId > 0) {
+            $div = $this->relationLoaded('division') && $this->division && (int) $this->division->id === $divId
+                ? $this->division
+                : Division::query()->find($divId);
+            $divisionDirectorId = (int) ($div->director_id ?? 0);
+            if ($divisionDirectorId > 0) {
+                return $divisionDirectorId;
+            }
+        }
+
+        $dir = $this->directorateForDirectorReview();
+
+        return (int) ($dir?->director_id ?? 0);
+    }
+
+    /**
      * Director name shown on the edit page (division director or directorate director).
      */
     public function assignedDirectorDisplayName(): string
