@@ -31,14 +31,15 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
         $filing = $settings->filingIsoWeekPair();
         $y = $filing['iso_year'];
         $w = $filing['iso_week'];
-        $filingDeadline = $settings->filingSubmissionDeadline();
+        $compiledSlotKey = $gate->compiledSummarySlotKey();
+        $dispatchClaimed = false;
 
         if (! $gate->passesCompiledSummarySchedule($force)) {
-            return self::SUCCESS;
-        }
+            $reason = $gate->compiledSummaryBlockReason();
+            if ($reason !== null) {
+                $this->line('weekly-briefing:compiled-summary skipped: '.$reason);
+            }
 
-        $compiledSlotKey = $gate->compiledSummarySlotKey();
-        if (! $force && ! $gate->tryClaimDispatch('compiled', $compiledSlotKey)) {
             return self::SUCCESS;
         }
 
@@ -66,24 +67,30 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
         $sendDivisionLeaderPdfs = (bool) $settings->cc_division_hod_on_compiled;
 
         if (! $sendCompiled && ! $sendDivisionLeaderPdfs) {
-            Log::info('weekly-briefing:compiled-summary — no compiled recipients and division PDF mail disabled');
-            if (! $force) {
-                $gate->releaseDispatch('compiled', $compiledSlotKey);
-            }
+            $this->warn('weekly-briefing:compiled-summary — no compiled recipient emails and division leadership mail is disabled.');
 
             return self::SUCCESS;
         }
 
         if ($reportsAllSubmitted->isEmpty()) {
-            Log::info('weekly-briefing:compiled-summary — no submitted reports');
-            if (! $force) {
-                $gate->releaseDispatch('compiled', $compiledSlotKey);
-            }
+            $this->line('weekly-briefing:compiled-summary — no submitted briefs for W'.$w.'/'.$y.'; central pack will still include the completion summary when configured.');
+        }
+
+        if (! $sendCompiled && $reportsAllSubmitted->isEmpty()) {
+            $this->warn('weekly-briefing:compiled-summary — nothing to send (no central recipients and no submitted briefs).');
 
             return self::SUCCESS;
         }
 
-        if ($sendCompiled) {
+        try {
+            if (! $force && ! $gate->tryClaimDispatch('compiled', $compiledSlotKey)) {
+                $this->line('weekly-briefing:compiled-summary skipped: compiled slot already claimed for today.');
+
+                return self::SUCCESS;
+            }
+            $dispatchClaimed = ! $force;
+
+            if ($sendCompiled) {
             $graphAttachments = [];
             if ($reportsForCentral->isNotEmpty()) {
                 $pdf = mpdf_print('weekly-briefing.pdf-compiled', [
@@ -113,9 +120,11 @@ class WeeklyBriefingCompiledSummaryCommand extends Command
             $omitPdfNote = ($centralExcludedCount > 0 && $reportsForCentral->isNotEmpty())
                 ? '<p style="color:#92400e;"><strong>Note:</strong> '.$centralExcludedCount.' submitted division brief(s) that require director review were omitted from the compiled PDF because review was not recorded before the deadline (per weekly briefing settings).</p>'
                 : '';
-            $emptyPdfNote = $reportsForCentral->isEmpty()
+            $emptyPdfNote = $reportsAllSubmitted->isEmpty()
+                ? '<p style="color:#92400e;"><strong>Note:</strong> No weekly briefs were submitted for this reporting week. The organisational completion summary is attached for audit.</p>'
+                : ($reportsForCentral->isEmpty()
                 ? '<p style="color:#92400e;"><strong>Note:</strong> No division briefs were included in the compiled PDF this week (submitted briefs that require director review are still pending review, per settings).</p>'
-                : '';
+                : '');
             $innerCentral = <<<HTML
 <p>We write to inform you that the compiled <strong>Weekly brief</strong> materials for the reporting week below are ready for your attention.</p>
 <p><strong>{$weekHuman}</strong></p>
@@ -132,9 +141,9 @@ HTML;
                     $compiledDispatched = true;
                 }
             }
-        }
+            }
 
-        if ($sendDivisionLeaderPdfs) {
+            if ($sendDivisionLeaderPdfs && $reportsAllSubmitted->isNotEmpty()) {
             $reportsByKey = $reportsAllSubmitted->keyBy(fn (WeeklyBriefingReport $r) => (string) $r->contribution_key);
             $divisions = Division::query()->orderBy('id')->get();
 
@@ -270,10 +279,28 @@ HTML;
                     $compiledDispatched = true;
                 }
             }
+            }
+        } catch (\Throwable $e) {
+            if ($dispatchClaimed) {
+                $gate->releaseDispatch('compiled', $compiledSlotKey);
+            }
+            Log::error('weekly-briefing:compiled-summary failed', [
+                'iso_year' => $y,
+                'iso_week' => $w,
+                'error' => $e->getMessage(),
+            ]);
+            $this->error('weekly-briefing:compiled-summary failed: '.$e->getMessage());
+
+            return self::FAILURE;
         }
 
-        if (! $compiledDispatched && ! $force) {
-            $gate->releaseDispatch('compiled', $compiledSlotKey);
+        if (! $compiledDispatched) {
+            if ($dispatchClaimed) {
+                $gate->releaseDispatch('compiled', $compiledSlotKey);
+            }
+            $this->warn('weekly-briefing:compiled-summary finished but no email was accepted by the mailer (check Exchange logs and recipient addresses).');
+
+            return self::SUCCESS;
         }
 
         $this->info('weekly-briefing:compiled-summary dispatched.');

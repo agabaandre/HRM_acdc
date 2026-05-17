@@ -94,9 +94,11 @@
 
         <div class="content">
             @php
-                $fullName = trim(implode(' ', array_filter([(string) ($recipient->title ?? ''), (string) ($recipient->fname ?? ''), (string) ($recipient->lname ?? '')])));
+                $fullName = $recipient
+                    ? trim(implode(' ', array_filter([(string) ($recipient->title ?? ''), (string) ($recipient->fname ?? ''), (string) ($recipient->lname ?? '')])))
+                    : '';
             @endphp
-            @if ($recipient && $fullName !== '')
+            @if ($fullName !== '')
                 <p>Dear <strong>{{ $fullName }}</strong>,</p>
             @else
                 <p>Dear Colleague,</p>
