@@ -181,7 +181,10 @@ class WeeklyBriefingSettingsController extends Controller
             }
         }
 
-        $hodReminderDays = $this->parseReminderDaysBeforeDeadline($data['hod_reminder_days_before_deadline'], 'hod_reminder_days_before_deadline');
+        $hodReminderDays = WeeklyBriefingSetting::ensureReminderOffsets(
+            $this->parseReminderDaysBeforeDeadline($data['hod_reminder_days_before_deadline'], 'hod_reminder_days_before_deadline'),
+            WeeklyBriefingSetting::HOD_REMINDER_DAYS_BEFORE_DEADLINE
+        );
         $directorReminderDays = array_values(array_filter(
             $this->parseReminderDaysBeforeDeadline($data['director_review_reminder_days_before_deadline'], 'director_review_reminder_days_before_deadline'),
             static fn (int $offset): bool => $offset > 0

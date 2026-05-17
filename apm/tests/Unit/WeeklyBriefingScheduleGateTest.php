@@ -67,6 +67,37 @@ class WeeklyBriefingScheduleGateTest extends TestCase
         $this->assertTrue($gate->passesCompiledSummarySchedule(false));
     }
 
+    public function test_hod_reminder_day_before_submission_day(): void
+    {
+        $settings = $this->baseSettings();
+        $ref = Carbon::parse('2026-05-14 16:46:00');
+        $gate = WeeklyBriefingScheduleGate::for($settings, $ref);
+
+        $this->assertTrue($gate->passesHodReminderSchedule(false));
+    }
+
+    public function test_hod_reminder_on_submission_deadline_day(): void
+    {
+        $settings = $this->baseSettings();
+        $ref = Carbon::parse('2026-05-15 16:46:00');
+        $gate = WeeklyBriefingScheduleGate::for($settings, $ref);
+
+        $this->assertTrue($gate->passesHodReminderSchedule(false));
+    }
+
+    public function test_hod_reminder_offsets_always_include_day_before_and_deadline_day(): void
+    {
+        $settings = $this->baseSettings();
+        $settings->hod_reminder_days_before_deadline = [0];
+
+        $this->assertSame([1, 0], $settings->normalizedHodReminderDaysBeforeDeadline());
+
+        $ref = Carbon::parse('2026-05-14 16:46:00');
+        $this->assertTrue(
+            WeeklyBriefingScheduleGate::for($settings, $ref)->passesHodReminderSchedule(false)
+        );
+    }
+
     public function test_compiled_summary_not_before_send_time_on_deadline_day(): void
     {
         $settings = $this->baseSettings();

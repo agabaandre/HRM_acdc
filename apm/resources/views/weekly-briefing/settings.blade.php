@@ -51,11 +51,14 @@
                         Deadline {{ $wb['deadline']->format('l, M j, Y g:i A') }} ·
                         Reminders {{ ($wb['reminders_enabled'] ?? false) ? 'enabled' : 'disabled' }}.
                         <ul class="mb-0 mt-2">
-                            <li>HoD / contributor: <strong>{{ $settings->hodReminderTimeHm() }}</strong> (HoD reminder time)
+                            <li>HoD / contributor: <strong>{{ $settings->hodReminderTimeHm() }}</strong> — always <strong>1 day before</strong> and on <strong>deadline day</strong>
                                 @if(!empty($wb['hod_is_reminder_day']))
-                                    — today is a configured reminder day
+                                    — today is a reminder day
                                 @else
-                                    — <span class="text-warning">today is not a configured reminder day</span>
+                                    — <span class="text-warning">today is not a reminder day</span>
+                                @endif
+                                @if(!empty($wb['hod_would_dispatch']))
+                                    — <span class="text-success">would send now</span>
                                 @endif
                             </li>
                             <li>Director review: on submit (immediate) · day-before at <strong>{{ $settings->hodReminderTimeHm() }}</strong>
@@ -100,13 +103,18 @@
         <div class="card shadow-sm mb-3">
             <div class="card-header fw-bold">HoD / contributor reminders (before deadline)</div>
             <div class="card-body">
-                <p class="small text-muted">For the <strong>default filing ISO week</strong>, reminders go out on each listed calendar day counting back from the submission deadline, at <strong>HoD reminder time</strong> (configured above). Sends stop once the deadline has passed.</p>
+                <p class="small text-muted mb-2">For the <strong>default filing ISO week</strong>, contributors receive a reminder at <strong>HoD reminder time</strong> (above) on:</p>
+                <ul class="small text-muted mb-3">
+                    <li><strong>One day before</strong> the submission deadline</li>
+                    <li><strong>Submission deadline day</strong> (same time)</li>
+                </ul>
+                <p class="small text-muted">Sends stop once the deadline has passed. You may add extra days in the field below (e.g. <code>2</code>); <code>1</code> and <code>0</code> are always included when settings are saved.</p>
                 <input type="hidden" name="hod_reminder_clock" value="hod_reminder_time">
                 <div class="row g-2">
                     <div class="col-md-12">
                         <label class="form-label">Days before deadline <span class="text-muted fw-normal">(comma-separated)</span></label>
                         <input type="text" name="hod_reminder_days_before_deadline" class="form-control" value="{{ old('hod_reminder_days_before_deadline', implode(', ', $settings->normalizedHodReminderDaysBeforeDeadline())) }}" required placeholder="1, 0" autocomplete="off">
-                        <small class="text-muted">Example: <code>1, 0</code> = one send the day before the deadline and one on deadline day.</small>
+                        <small class="text-muted">Default schedule: <code>1, 0</code> (day before + deadline day). Both are always enforced on save.</small>
                     </div>
                 </div>
             </div>
