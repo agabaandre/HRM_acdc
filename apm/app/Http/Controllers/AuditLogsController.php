@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class AuditLogsController extends Controller
@@ -484,6 +485,66 @@ class AuditLogsController extends Controller
     }
 
     /**
+     * Keep only real table columns and normalize values that audit logs often store incorrectly
+     * (e.g. Activity {@see Activity::getStatusAttribute()} display values like "Passed").
+     *
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function sanitizeRestoreRowForTable(string $table, array $values): array
+    {
+        if (! Schema::hasTable($table)) {
+            return $values;
+        }
+
+        $allowed = array_flip(Schema::getColumnListing($table));
+        $values = array_intersect_key($values, $allowed);
+
+        if ($table === 'activities' && array_key_exists('status', $values)) {
+            $values['status'] = $this->normalizeActivityDbStatus(
+                $values['status'],
+                $values['overall_status'] ?? null
+            );
+        }
+
+        return $values;
+    }
+
+    /**
+     * Map audit / UI status labels to activities.status enum (draft, submitted, approved, rejected).
+     */
+    private function normalizeActivityDbStatus(mixed $status, mixed $overallStatus = null): string
+    {
+        $valid = ['draft', 'submitted', 'approved', 'rejected'];
+        $normalized = strtolower(trim((string) $status));
+
+        if (in_array($normalized, $valid, true)) {
+            return $normalized;
+        }
+
+        $overall = strtolower(trim((string) ($overallStatus ?? '')));
+        $overallMap = [
+            'draft' => 'draft',
+            'approved' => 'approved',
+            'returned' => 'submitted',
+            'pending' => 'submitted',
+            'rejected' => 'rejected',
+        ];
+        if (isset($overallMap[$overall])) {
+            return $overallMap[$overall];
+        }
+
+        $displayMap = [
+            'passed' => 'approved',
+            'pending' => 'submitted',
+            'returned' => 'submitted',
+            'draft' => 'draft',
+        ];
+
+        return $displayMap[$normalized] ?? 'submitted';
+    }
+
+    /**
      * Whether a string looks like an ISO 8601 or common date/datetime value (MySQL rejects these raw).
      */
     private function looksLikeIsoDate(string $value): bool
@@ -565,8 +626,11 @@ class AuditLogsController extends Controller
                         'updated_at' => '',
                         'id' => ''
                     ]);
-                    $cleanValues = $this->prepareValuesForDb($cleanValues);
-                    
+                    $cleanValues = $this->sanitizeRestoreRowForTable(
+                        $modelTable,
+                        $this->prepareValuesForDb($cleanValues)
+                    );
+
                     $updated = DB::table($modelTable)
                         ->where('id', $entityId)
                         ->update($cleanValues);
@@ -600,7 +664,10 @@ class AuditLogsController extends Controller
                         $restoreData['date_to'] = \Carbon\Carbon::parse($restoreData['date_to'])->format('Y-m-d');
                     }
                     
-                    $restoreData = $this->prepareValuesForDb($restoreData);
+                    $restoreData = $this->sanitizeRestoreRowForTable(
+                        $modelTable,
+                        $this->prepareValuesForDb($restoreData)
+                    );
                     $restoreData['updated_at'] = now()->format('Y-m-d H:i:s');
                     $restoreData['created_at'] = isset($valuesToUse['created_at']) && is_string($valuesToUse['created_at'])
                         ? Carbon::parse($valuesToUse['created_at'])->format('Y-m-d H:i:s')
