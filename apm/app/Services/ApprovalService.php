@@ -392,7 +392,7 @@ class ApprovalService
     
     // triggers_category_check can jump to category heads — do not fire while still in directorate chain (1–5) if division has a director
     if ($current_definition && $current_definition->triggers_category_check) {
-        if (!$division_has_director || (int) $model->approval_level >= 6) {
+        if (!$division_has_director || (int) $model->approval_level >= 5) {
         $should_trigger_category_check = true;
         }
     }

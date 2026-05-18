@@ -346,6 +346,7 @@
                             <th width="12%">Document #</th>
                             <th width="12%">Submitted By</th>
                             <th width="10%">Date Returned</th>
+                            <th width="10%">Level</th>
                             <th width="8%">Status</th>
                             <th width="13%">Actions</th>
                         </tr>
@@ -375,6 +376,11 @@
                                     <td>
                                         <span class="text-muted">{{ $item['date_received']->format('M d, Y') }}</span>
                                         <br><small class="text-muted">{{ $item['date_received']->format('H:i') }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-{{ $item['approval_level'] }}">
+                                            {{ ucfirst($item['approval_level']) }}
+                                        </span>
                                     </td>
                                     <td>
                                         <span class="status-badge status-{{ $item['overall_status'] }}">
