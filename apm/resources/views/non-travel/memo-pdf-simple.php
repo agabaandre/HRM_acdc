@@ -432,6 +432,15 @@
         <th scope="row">Fund Type</th>
         <td><?php echo htmlspecialchars($nonTravel->fundType->name ?? 'N/A'); ?><span class="fill line"></span></td>
       </tr>
+      <?php
+      $wbActivityCode = trim((string) ($nonTravel->workplan_activity_code ?? ''));
+      if ((int) ($nonTravel->fund_type_id ?? 0) === 1 && $wbActivityCode !== ''):
+      ?>
+      <tr>
+        <th scope="row">World Bank Activity Code</th>
+        <td><?php echo htmlspecialchars($wbActivityCode); ?><span class="fill line"></span></td>
+      </tr>
+      <?php endif; ?>
     </table>
      
     <div class="page-break"></div>

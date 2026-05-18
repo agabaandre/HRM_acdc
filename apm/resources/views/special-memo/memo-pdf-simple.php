@@ -674,6 +674,19 @@
         </td>
       </tr>
       <tr>
+        <th scope="row">Fund Type</th>
+        <td><?php echo htmlspecialchars($specialMemo->fundType->name ?? 'N/A'); ?><span class="fill line"></span></td>
+      </tr>
+      <?php
+      $wbActivityCode = trim((string) ($specialMemo->workplan_activity_code ?? ''));
+      if ((int) ($specialMemo->fund_type_id ?? 0) === 1 && $wbActivityCode !== ''):
+      ?>
+      <tr>
+        <th scope="row">World Bank Activity Code</th>
+        <td><?php echo htmlspecialchars($wbActivityCode); ?><span class="fill line"></span></td>
+      </tr>
+      <?php endif; ?>
+      <tr>
         <th scope="row">Total Participants</th>
         <td><?php echo htmlspecialchars($specialMemo->total_participants ?? 'N/A'); ?><span class="fill line"></span></td>
       </tr>

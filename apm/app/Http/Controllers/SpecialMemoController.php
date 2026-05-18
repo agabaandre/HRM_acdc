@@ -1760,6 +1760,7 @@ class SpecialMemoController extends Controller
             'staff',
             'division',
             'requestType',
+            'fundType',
             'approvalTrails.staff',
             'approvalTrails.oicStaff',
             'approvalTrails.workflowDefinition'

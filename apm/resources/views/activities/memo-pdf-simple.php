@@ -443,6 +443,15 @@
         <th scope="row">Budget Type</th>
         <td><?php echo htmlspecialchars($activity->fundType->name ?? 'N/A'); ?><span class="fill line"></span></td>
       </tr>
+      <?php
+      $wbActivityCode = trim((string) ($activity->workplan_activity_code ?? ''));
+      if ((int) ($activity->fund_type_id ?? 0) === 1 && $wbActivityCode !== ''):
+      ?>
+      <tr>
+        <th scope="row">World Bank Activity Code</th>
+        <td><?php echo htmlspecialchars($wbActivityCode); ?><span class="fill line"></span></td>
+      </tr>
+      <?php endif; ?>
     </table>
     
     <div class="section-label mb-15"><strong>Internal Participants</strong></div>     
