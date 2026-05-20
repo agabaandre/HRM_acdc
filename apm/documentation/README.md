@@ -24,6 +24,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 - **[Signature Verification](./SIGNATURE_VERIFICATION.md)** - Validate APM document signature hashes (lookup, verify, upload PDF)
 - **[Change Tracking Feasibility](./CHANGE_TRACKING_FEASIBILITY.md)** - Change tracking implementation guide
 - **[Weekly brief (Weekly briefing)](./WEEKLY_BRIEFING.md)** - Division/directorate weekly reports, access rules, settings, PDFs, reminders, compiled email, scheduler and Artisan commands, PDF footer URL/QR behaviour
+- **[Child service requests](./CHILD_SERVICE_REQUESTS.md)** - Supplementary SRs for remaining memo balance, system setting, eligibility, budget cap, and database link to parent
 
 ### Infrastructure & Deployment
 
@@ -142,6 +143,9 @@ php artisan notifications:send-pending-approvals-fcm --sync
 
 5. **Weekly brief**
    - [WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md) — routes, `DivisionWeeklyBriefGate`, settings, lifecycle, PDFs, mail, and `weekly-briefing:*` scheduler
+
+6. **Child service requests**
+   - [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md) — parent/child link, `allow_child_service_requests`, eligibility, budget cap, UI/PDF
 
 ### For DevOps/System Administrators
 

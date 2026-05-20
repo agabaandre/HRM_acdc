@@ -307,7 +307,7 @@
     <!-- @stack('styles') -->
 </head>
 
-<body class="{{ !empty(session('user')) ? 'logged-in' : '' }}">
+<body class="{{ !empty(session('user')) ? 'logged-in' : '' }}" data-image-upload-url="{{ route('image.upload') }}">
     <!-- Google Translate Element (hidden) -->
     <div id="google_translate_element" style="display: none;"></div>
     

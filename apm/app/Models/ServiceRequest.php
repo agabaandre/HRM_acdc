@@ -10,6 +10,7 @@ use iamfarhad\LaravelAuditLog\Traits\Auditable;
 use App\Models\FundType;
 use App\Models\Approver;
 use App\Models\WorkflowDefinition;
+use App\Models\SystemSetting;
 use App\Traits\HasDocumentNumber;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\TrimsSummernoteHtmlFields;
@@ -65,6 +66,7 @@ class ServiceRequest extends Model
         'source_id',
         'source_type',
         'approval_order_map',
+        'parent_service_request_id',
     ];
 
     /**
@@ -98,7 +100,95 @@ class ServiceRequest extends Model
             'budget_id' => 'array',
             'approval_level' => 'integer',
             'next_approval_level' => 'integer',
+            'parent_service_request_id' => 'integer',
         ];
+    }
+
+    public function parentServiceRequest(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_service_request_id');
+    }
+
+    public function childServiceRequests(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_service_request_id');
+    }
+
+    public function isChildRequest(): bool
+    {
+        return (int) ($this->parent_service_request_id ?? 0) > 0;
+    }
+
+    public static function childRequestsEnabled(): bool
+    {
+        $value = SystemSetting::get('allow_child_service_requests', '1');
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN)
+            || $value === '1'
+            || $value === 1;
+    }
+
+    /**
+     * Unallocated memo amount on the parent (original memo budget minus what the parent SR already requested).
+     */
+    public function remainingMemoBalanceForChild(): float
+    {
+        $original = (float) ($this->original_total_budget ?? 0);
+        $requested = (float) ($this->new_total_budget ?? 0);
+
+        return max(0, round($original - $requested, 2));
+    }
+
+    /**
+     * Parent may spawn a child SR when under-funded and no child exists yet.
+     */
+    public function canCreateChildRequest(): bool
+    {
+        if (! self::childRequestsEnabled()) {
+            return false;
+        }
+
+        if ($this->isChildRequest()) {
+            return false;
+        }
+
+        if (! $this->source_type || ! $this->source_id) {
+            return false;
+        }
+
+        if ($this->remainingMemoBalanceForChild() <= 0) {
+            return false;
+        }
+
+        return ! $this->childServiceRequests()->exists();
+    }
+
+    /**
+     * Whether the given user may start a child SR from this parent (UI / create action).
+     * Unlike draft edit, an approved parent with remaining memo balance may still get a child.
+     */
+    public function userCanCreateChildRequest(?int $staffId = null): bool
+    {
+        if (! $this->canCreateChildRequest()) {
+            return false;
+        }
+
+        $staffId = $staffId ?? (int) (user_session('staff_id') ?? 0);
+        if ($staffId <= 0) {
+            return false;
+        }
+
+        $allowedStatuses = ['approved', 'draft', 'returned', 'pending', 'in_progress', 'completed'];
+        if (! in_array((string) ($this->overall_status ?? ''), $allowedStatuses, true)) {
+            return false;
+        }
+
+        $ownerIds = array_filter([
+            (int) ($this->staff_id ?? 0),
+            (int) ($this->responsible_person_id ?? 0),
+        ]);
+
+        return in_array($staffId, $ownerIds, true);
     }
 
     public function activity(): BelongsTo

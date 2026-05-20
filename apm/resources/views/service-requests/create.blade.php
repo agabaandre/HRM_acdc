@@ -6,7 +6,7 @@
 
 @section('title', $isEdit ? 'Edit Service Request' : 'Create Service Request')
 
-@section('header', $isEdit ? 'Edit Service Request' : 'Service Request Form')
+@section('header', $isEdit ? 'Edit Service Request' : (!empty($isChildRequestForm) ? 'Child Service Request' : 'Service Request Form'))
 
 @section('header-actions')
     @if($isEdit)
@@ -49,7 +49,9 @@
 
     if ($isEdit && isset($originalTotalBudget)) {
         $totalOriginal = (float) $originalTotalBudget;
-        if (!empty($budgetBreakdownView) && is_array($budgetBreakdownView)) {
+        if (!empty($isChildRequestForm)) {
+            // Child SR cap is fixed at creation; do not replace with breakdown grand_total.
+        } elseif (!empty($budgetBreakdownView) && is_array($budgetBreakdownView)) {
             foreach ($budgetBreakdownView as $key => $item) {
                 if ($key === 'grand_total') {
                     $totalOriginal = floatval($item);
@@ -131,6 +133,11 @@
     if (!$isEdit && !empty($changeRequestId ?? null) && isset($originalTotalBudget) && (float)$originalTotalBudget > 0 && $totalOriginal == 0) {
         $totalOriginal = (float) $originalTotalBudget;
     }
+    if (!empty($isChildRequestForm) && isset($childBalanceCap)) {
+        $totalOriginal = (float) $childBalanceCap;
+    } elseif (!empty($isChildRequestForm) && isset($originalTotalBudget)) {
+        $totalOriginal = (float) $originalTotalBudget;
+    }
     // When display vars were not set from source (create mode or edit without source budget), use main budget vars
     if (empty($displayBudgetByFundCode)) {
         $displayBudgetBreakdown = $budgetBreakdownView;
@@ -146,6 +153,12 @@
         </h4>
                 </div>
     <div class="card-body p-4">
+            @include('service-requests.partials.child-request-banner', [
+                'parentServiceRequest' => $parentServiceRequest ?? ($serviceRequest->parentServiceRequest ?? null),
+                'isChildRequest' => !empty($isChildRequestForm) || (!empty($serviceRequest) && $serviceRequest->isChildRequest()),
+                'childBalanceCap' => $childBalanceCap ?? null,
+                'serviceRequest' => $serviceRequest ?? null,
+            ])
             <form action="{{ $isEdit ? route('service-requests.update', $serviceRequest) : route('service-requests.store') }}" method="POST" enctype="multipart/form-data"
                 id="serviceRequestForm">
                         @csrf
@@ -171,6 +184,9 @@
              <input type="hidden" name="division_id" id="divisionId" value="{{ $isEdit ? $serviceRequest->division_id : ($sourceData->division_id ?? ($sourceData->matrix->division_id ?? 0)) }}">
             @if(!$isEdit && !empty($changeRequestId ?? null))
             <input type="hidden" name="change_request_id" value="{{ $changeRequestId }}">
+            @endif
+            @if(!empty($isChildRequestForm) && !empty($parentServiceRequest))
+            <input type="hidden" name="parent_service_request_id" value="{{ $parentServiceRequest->id }}">
             @endif
             <input type="hidden" name="internal_participants_cost" id="internalParticipantsCost" value="{{ $isEdit && $serviceRequest->internal_participants_cost ? (is_string($serviceRequest->internal_participants_cost) ? $serviceRequest->internal_participants_cost : json_encode($serviceRequest->internal_participants_cost)) : '' }}">
             <input type="hidden" name="external_participants_cost" id="externalParticipantsCost" value="{{ $isEdit && $serviceRequest->external_participants_cost ? (is_string($serviceRequest->external_participants_cost) ? $serviceRequest->external_participants_cost : json_encode($serviceRequest->external_participants_cost)) : '' }}">
@@ -272,7 +288,9 @@
                                     <div class="budget-icon bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
                                         <i class="fas fa-file-invoice-dollar text-success" style="font-size: 12px;"></i>
                                     </div>
-                                    <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">Original Memo Budget</h6>
+                                    <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">
+                                        {{ !empty($isChildRequestForm) ? 'Maximum allowable (remaining balance)' : 'Original Memo Budget' }}
+                                    </h6>
                                     <h6 class="text-success mb-0" id="originalBudgetAmount" style="font-size: 1.1rem;">
                                         ${{ number_format($totalOriginal, 2) }}</h6>
                                 </div>
@@ -903,7 +921,9 @@
                                     <div class="budget-icon bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
                                         <i class="fas fa-file-invoice-dollar text-success" style="font-size: 12px;"></i>
                                     </div>
-                                    <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">Original Memo Budget</h6>
+                                    <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">
+                                        {{ !empty($isChildRequestForm) ? 'Maximum allowable (remaining balance)' : 'Original Memo Budget' }}
+                                    </h6>
                                     <h6 class="text-success mb-0" id="originalBudgetAmountBottom" style="font-size: 1.1rem;">
                                         ${{ number_format($totalOriginal, 2) }}</h6>
                                 </div>
@@ -1112,6 +1132,8 @@
 // Make participant names available to JavaScript
 const participantNames = @json($participantNames ?? []);
 const sourceType = '{{ $sourceType ?? '' }}';
+const isChildRequestForm = {{ !empty($isChildRequestForm) ? 'true' : 'false' }};
+const childBalanceCap = {{ isset($childBalanceCap) ? (float) $childBalanceCap : 'null' }};
 const isEditMode = {{ isset($serviceRequest) ? 'true' : 'false' }};
 const initialInternalCount = {{ ($isEdit && !empty($internalParticipants)) ? count($internalParticipants) : 1 }};
 const initialExternalCount = {{ ($isEdit && !empty($externalParticipants ?? [])) ? count($externalParticipants) : 1 }};
@@ -1275,13 +1297,14 @@ function initServiceRequestCreatePage() {
             const newBudgetFormatted = newBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             if (newBudget > originalBudget) {
                 e.preventDefault();
+                const capLabel = isChildRequestForm ? 'maximum allowable remaining balance' : 'Original Memo Budget';
                 show_notification(
-                    'Total Requested Funds ($' + newBudgetFormatted + ') exceeds the Original Memo Budget ($' + originalBudgetFormatted + ') by $' + (newBudget - originalBudget).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '. Please adjust your request to stay within the original allocation before submitting or saving as draft.',
+                    'Total Requested Funds ($' + newBudgetFormatted + ') exceeds the ' + capLabel + ' ($' + originalBudgetFormatted + ') by $' + (newBudget - originalBudget).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '. Please adjust your request before submitting or saving as draft.',
                     'error'
                 );
                 return false;
             }
-            if (newBudget < originalBudget && newBudget > 0) {
+            if (!isChildRequestForm && newBudget < originalBudget && newBudget > 0) {
                 const shortfallFormatted = (originalBudget - newBudget).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 show_notification(
                     'Total Requested Funds ($' + newBudgetFormatted + ') is less than the Original Memo Budget ($' + originalBudgetFormatted + ') by $' + shortfallFormatted + '. Please check that all costs from the original memo are included in your request.',
@@ -1712,9 +1735,10 @@ function initServiceRequestCreatePage() {
         document.getElementById('originalTotalBudget').value = baseBudget; // Use allocated budget instead of original budget
         
         // Store budget validation state globally
-        // For non-travel memos, budget is never exceeded since newTotal = baseBudget
-        if (sourceType === 'non_travel_memo') {
-            window.isBudgetExceeded = false; // Never exceeded for non-travel memos
+        if (isChildRequestForm && childBalanceCap !== null) {
+            window.isBudgetExceeded = newTotal > childBalanceCap + 0.009;
+        } else if (sourceType === 'non_travel_memo') {
+            window.isBudgetExceeded = false;
         } else {
             window.isBudgetExceeded = difference < 0;
         }

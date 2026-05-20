@@ -21,6 +21,7 @@ class SystemSettingsController extends Controller
         'locale'     => 'Locale & format',
         'ui'         => 'UI',
         'approvals'  => 'Approvals & reminders',
+        'service_requests' => 'Service requests',
         'general'    => 'Other settings',
     ];
 
@@ -33,7 +34,7 @@ class SystemSettingsController extends Controller
             abort(403, 'Unauthorized access to app settings');
         }
         $grouped = SystemSetting::getGroupedForEditing();
-        $order = ['branding', 'app', 'locale', 'ui', 'approvals', 'general'];
+        $order = ['branding', 'app', 'locale', 'ui', 'approvals', 'service_requests', 'general'];
         $groups = [];
         foreach ($order as $g) {
             $groups[$g] = [

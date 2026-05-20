@@ -37,16 +37,16 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <!-- jQuery UI CSS -->
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-      <!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="{{ asset('assets/plugins/notifications/js/lobibox.min.js') }}"></script>
+      <!-- jQuery (data-navigate-once: avoid re-load on Livewire navigate/prefetch) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" data-navigate-once></script>
+<script src="{{ asset('assets/plugins/notifications/js/lobibox.min.js') }}" data-navigate-once></script>
 <!-- Core Highcharts (local assets to avoid code.highcharts.com 403) -->
-<script src="{{ asset('assets/plugins/highcharts/js/highcharts.js') }}"></script>
-<script src="{{ asset('assets/plugins/highcharts/js/highcharts-more.js') }}"></script>
-<script src="{{ asset('assets/plugins/highcharts/js/solid-gauge.js') }}"></script>
-<script src="{{ asset('assets/plugins/highcharts/js/exporting.js') }}"></script>
-<script src="{{ asset('assets/plugins/highcharts/js/export-data.js') }}"></script>
-<script src="{{ asset('assets/plugins/highcharts/js/accessibility.js') }}"></script>
+<script src="{{ asset('assets/plugins/highcharts/js/highcharts.js') }}" data-navigate-once></script>
+<script src="{{ asset('assets/plugins/highcharts/js/highcharts-more.js') }}" data-navigate-once></script>
+<script src="{{ asset('assets/plugins/highcharts/js/solid-gauge.js') }}" data-navigate-once></script>
+<script src="{{ asset('assets/plugins/highcharts/js/exporting.js') }}" data-navigate-once></script>
+<script src="{{ asset('assets/plugins/highcharts/js/export-data.js') }}" data-navigate-once></script>
+<script src="{{ asset('assets/plugins/highcharts/js/accessibility.js') }}" data-navigate-once></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" integrity="sha512-nMNlpuaDPrqlEls3IX/Q56H36qvBASwb3ipuo3MxeWbsQB1881ox0cRv7UPTgBlriqoynt35KjEwgGUeUXIPnw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <!-- Global: Disable Highcharts Credits -->
