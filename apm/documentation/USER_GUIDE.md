@@ -434,7 +434,8 @@ On the **parent** service request detail page, **Create child request** appears 
 
 ### Rules to remember
 
-- **One child per parent** service request.
+- **One direct child per service request** (each SR in the chain can have at most one child).
+- **Nested children** are allowed (a child SR can spawn another child if its own requested total is still below its cap).
 - The child’s maximum is fixed when created (`parent original budget − parent requested total` at that time).
 - The child does not replace the parent; both remain on the audit trail for the same memo.
 

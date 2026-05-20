@@ -577,7 +577,7 @@
                         $memoRequested = (float) ($serviceRequest->new_total_budget ?? 0);
                         $memoRemaining = max(0, $memoOriginal - $memoRequested);
                     @endphp
-                    @if(!$serviceRequest->isChildRequest() && $memoRemaining > 0.009 && $serviceRequest->childServiceRequests->isEmpty())
+                    @if($memoRemaining > 0.009 && $serviceRequest->childServiceRequests->isEmpty())
                         <div class="row mb-3">
                             <div class="col-12">
                                 <div class="alert alert-warning border-warning mb-0 py-2 small">
@@ -592,7 +592,7 @@
                                 </div>
                             </div>
                         </div>
-                    @elseif(!$serviceRequest->isChildRequest() && $memoRequested > $memoOriginal + 0.009)
+                    @elseif($memoRequested > $memoOriginal + 0.009)
                         <div class="row mb-3">
                             <div class="col-12">
                                 <div class="alert alert-danger border-danger mb-0 py-2 small">

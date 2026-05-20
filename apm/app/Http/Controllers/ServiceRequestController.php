@@ -2282,48 +2282,117 @@ class ServiceRequestController extends Controller
     }
 
     /**
+     * Approved ancestors up the parent_service_request_id chain (oldest root first when sorted).
+     */
+    private function collectApprovedAncestorServiceRequests(ServiceRequest $serviceRequest): \Illuminate\Support\Collection
+    {
+        $ancestors = collect();
+        $node = $serviceRequest;
+        $visited = [];
+
+        while ((int) ($node->parent_service_request_id ?? 0) > 0) {
+            $parentId = (int) $node->parent_service_request_id;
+            if (isset($visited[$parentId])) {
+                break;
+            }
+            $visited[$parentId] = true;
+
+            $parent = $node->relationLoaded('parentServiceRequest') && $node->parentServiceRequest?->id === $parentId
+                ? $node->parentServiceRequest
+                : ServiceRequest::query()->find($parentId);
+
+            if (! $parent) {
+                break;
+            }
+
+            if (($parent->overall_status ?? '') === 'approved') {
+                $ancestors->push($parent);
+            }
+
+            $node = $parent;
+        }
+
+        return $ancestors;
+    }
+
+    /**
+     * All approved descendants in the child chain (children, grandchildren, etc.).
+     */
+    private function collectApprovedDescendantServiceRequests(int $rootId): \Illuminate\Support\Collection
+    {
+        $descendants = collect();
+        $queue = [$rootId];
+        $visited = [$rootId => true];
+
+        while ($queue !== []) {
+            $parentId = array_shift($queue);
+            $children = ServiceRequest::query()
+                ->where('parent_service_request_id', $parentId)
+                ->where('overall_status', 'approved')
+                ->orderBy('created_at')
+                ->get();
+
+            foreach ($children as $child) {
+                $childId = (int) $child->id;
+                if (isset($visited[$childId])) {
+                    continue;
+                }
+                $visited[$childId] = true;
+                $descendants->push($child);
+                $queue[] = $childId;
+            }
+        }
+
+        return $descendants;
+    }
+
+    /**
      * @return list<array{serviceRequest: ServiceRequest, html: string, label: string}>
      */
     private function collectPreviousServiceRequestEmbedsForPrint(ServiceRequest $serviceRequest, array $disclaimerData): array
     {
-        $seen = [];
+        $currentId = (int) $serviceRequest->id;
+        $seen = [$currentId => true];
         $ordered = collect();
 
-        if ($serviceRequest->isChildRequest()) {
-            $parent = $serviceRequest->parentServiceRequest
-                ?? ServiceRequest::query()->find($serviceRequest->parent_service_request_id);
-            if ($parent && ($parent->overall_status ?? '') === 'approved') {
-                $ordered->push($parent);
-                $seen[(int) $parent->id] = true;
+        foreach ($this->collectApprovedAncestorServiceRequests($serviceRequest) as $ancestor) {
+            $id = (int) $ancestor->id;
+            if (! isset($seen[$id])) {
+                $ordered->push($ancestor);
+                $seen[$id] = true;
             }
         }
 
-        $childIdsOfCurrent = ServiceRequest::query()
-            ->where('parent_service_request_id', $serviceRequest->id)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        foreach ($this->collectApprovedDescendantServiceRequests($currentId) as $descendant) {
+            $id = (int) $descendant->id;
+            if (! isset($seen[$id])) {
+                $ordered->push($descendant);
+                $seen[$id] = true;
+            }
+        }
 
         $prevFromDisclaimer = $disclaimerData['previous_service_requests'] ?? collect();
-        foreach ($prevFromDisclaimer->sortBy('created_at') as $row) {
+        foreach ($prevFromDisclaimer as $row) {
             $id = (int) ($row->id ?? 0);
-            if ($id <= 0 || $id === (int) $serviceRequest->id || isset($seen[$id])) {
+            if ($id <= 0 || isset($seen[$id])) {
                 continue;
             }
-            if (in_array($id, $childIdsOfCurrent, true)) {
-                continue;
-            }
+
             $full = $row instanceof ServiceRequest ? $row : ServiceRequest::query()->find($id);
             if (! $full || ($full->overall_status ?? '') !== 'approved') {
                 continue;
             }
+
             if ($serviceRequest->created_at && $full->created_at
                 && $full->created_at->gt($serviceRequest->created_at)) {
                 continue;
             }
+
             $ordered->push($full);
             $seen[$id] = true;
         }
+
+        $ordered = $ordered->sortBy('created_at')->values();
 
         $embeds = [];
         foreach ($ordered as $prevSr) {
