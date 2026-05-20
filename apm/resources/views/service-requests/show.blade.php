@@ -199,6 +199,11 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
+
+    .child-service-request-banner {
+        border-left: 5px solid #f59e0b !important;
+        background: linear-gradient(90deg, #fffbeb 0%, #ffffff 100%);
+    }
 </style>
 @endsection
 
@@ -260,8 +265,32 @@
             $displayNewTotalBudget = $cr->available_budget;
         }
     }
+    $childBalanceCap = $serviceRequest->isChildRequest()
+        ? (float) ($serviceRequest->original_total_budget ?? 0)
+        : null;
 @endphp
 <div class="container-fluid">
+    @include('service-requests.partials.child-request-banner', [
+        'serviceRequest' => $serviceRequest,
+        'parentServiceRequest' => $serviceRequest->parentServiceRequest,
+        'isChildRequest' => $serviceRequest->isChildRequest(),
+        'childBalanceCap' => $childBalanceCap,
+    ])
+    @if($serviceRequest->childServiceRequests->isNotEmpty())
+        @php $childSr = $serviceRequest->childServiceRequests->first(); @endphp
+        <div class="alert alert-info border-info mb-4">
+            <i class="fas fa-link me-2"></i>
+            A <strong>child service request</strong> exists for the remaining memo balance:
+            <a wire:navigate href="{{ route('service-requests.show', $childSr) }}" class="fw-bold">{{ $childSr->document_number ?? ('SR #'.$childSr->id) }}</a>
+        </div>
+    @elseif(!empty($childRequestRemainingBalance) && $childRequestRemainingBalance > 0 && empty($canCreateChildRequest))
+        <div class="alert alert-secondary border mb-4">
+            <i class="fas fa-info-circle me-2"></i>
+            This parent has <strong>${{ number_format($childRequestRemainingBalance, 2) }}</strong> remaining memo balance
+            (original memo budget greater than total requested on this request).
+            Only the <strong>creator or responsible person</strong> can start a child service request.
+        </div>
+    @endif
     <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
@@ -274,12 +303,22 @@
                                 Service Request Details
                             </h1>
                             @if($serviceRequest->document_number)
-                                <p class="text-muted mb-0">{{ $serviceRequest->document_number }}</p>
+                                <p class="text-muted mb-0">
+                                    @if($serviceRequest->isChildRequest())
+                                        <span class="badge bg-warning text-dark me-1">Child service request</span>
+                                    @endif
+                                    {{ $serviceRequest->document_number }}
+                                </p>
                             @endif
                         </div>
                         <div class="col-md-4 text-end">
                             <div class="d-flex align-items-center justify-content-end gap-2 flex-wrap">
                                @php $isAdmin = user_session('role') == 10; @endphp
+                               @if(!empty($canCreateChildRequest))
+                                    <a wire:navigate href="{{ route('service-requests.create', ['parent_service_request_id' => $serviceRequest->id]) }}" class="btn btn-warning">
+                                        <i class="fas fa-layer-group me-1"></i> Create child request
+                                    </a>
+                               @endif
                                @if(($serviceRequest->overall_status ?? '') === 'draft' && is_with_creator_generic($serviceRequest))
                                     <div class="d-flex align-items-center gap-2 flex-nowrap flex-shrink-0">
                                         <form action="{{ route('service-requests.submit-for-approval', $serviceRequest) }}" method="POST" class="d-inline mb-0">
@@ -488,7 +527,9 @@
                     <div class="row mb-4">
                         <div class="col-md-3">
                             <div class="meta-card text-center">
-                                <label class="form-label text-muted small fw-semibold">Original Memo Budget</label>
+                                <label class="form-label text-muted small fw-semibold">
+                                    {{ $serviceRequest->isChildRequest() ? 'Maximum allowable (remaining balance)' : 'Original Memo Budget' }}
+                                </label>
                                 <p class="h4 mb-0 text-muted">${{ number_format($displayOriginalTotalBudget ?? $serviceRequest->original_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
@@ -531,6 +572,38 @@
                             </div>
                         </div>
                     </div>
+                    @php
+                        $memoOriginal = (float) ($serviceRequest->original_total_budget ?? 0);
+                        $memoRequested = (float) ($serviceRequest->new_total_budget ?? 0);
+                        $memoRemaining = max(0, $memoOriginal - $memoRequested);
+                    @endphp
+                    @if(!$serviceRequest->isChildRequest() && $memoRemaining > 0.009 && $serviceRequest->childServiceRequests->isEmpty())
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <div class="alert alert-warning border-warning mb-0 py-2 small">
+                                    <i class="fas fa-layer-group me-1"></i>
+                                    <strong>Remaining memo balance (for a child request):</strong>
+                                    ${{ number_format($memoRemaining, 2) }}
+                                    — original memo budget (<strong>${{ number_format($memoOriginal, 2) }}</strong>)
+                                    is greater than total requested on this request (<strong>${{ number_format($memoRequested, 2) }}</strong>).
+                                    @if(!empty($canCreateChildRequest))
+                                        Use <strong>Create child request</strong> above to request these funds.
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @elseif(!$serviceRequest->isChildRequest() && $memoRequested > $memoOriginal + 0.009)
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <div class="alert alert-danger border-danger mb-0 py-2 small">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Total requested funds exceed the original memo budget on this service request.
+                                    A <strong>child request</strong> is only when this request did <strong>not</strong> use the full memo amount
+                                    (original memo budget must be <strong>greater than</strong> total requested funds).
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     @endif
 
                     <!-- Service Request Budget Breakdown -->

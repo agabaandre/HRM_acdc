@@ -10,9 +10,10 @@ Welcome to the APM (Approvals Management) User Guide. This guide will help you c
 4. [Creating a Non-Travel Memo](#creating-a-non-travel-memo)
 5. [Creating a Change Request](#creating-a-change-request)
 6. [Creating a Service Request](#creating-a-service-request)
-7. [Creating an ARF Request](#creating-an-arf-request)
-8. [Reports](#reports)
-9. [Managing Your Documents](#managing-your-documents)
+7. [Child service requests](#child-service-requests)
+8. [Creating an ARF Request](#creating-an-arf-request)
+9. [Reports](#reports)
+10. [Managing Your Documents](#managing-your-documents)
 
 ---
 
@@ -399,6 +400,45 @@ Service Requests (RQS - Request for Services) are for requesting DSA, Imprest, a
 - **One Service Request per document** - If a Service Request already exists, you'll see a "View Request" button instead
 - Service Requests follow their own approval workflow
 - Service Requests are linked to the source document for tracking purposes
+
+For supplementary requests when the parent SR did not use the full memo budget, see **[Child service requests](#child-service-requests)** and the full guide [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md).
+
+---
+
+## Child service requests
+
+A **child service request** covers the **remaining memo balance** after a parent service request’s total requested funds are **less than** the original memo budget. It uses the same approved memo as the parent and follows the same approval process, with a strict spending cap.
+
+### When you can create a child
+
+On the **parent** service request detail page, **Create child request** appears when:
+
+- Child requests are **enabled** in [App Settings](https://cbp.africacdc.org/staff/apm/system-settings) (`allow_child_service_requests`, default **on**).
+- **Original Memo Budget** on the parent is **greater than** **Total Requested Funds** (there is unrequested balance).
+- **No child** service request already exists for that parent.
+- The parent is not itself a child request.
+- You are the **creator or responsible person** on the parent (including after the parent is **approved**).
+
+### Steps
+
+1. Open the parent service request.
+2. Click **Create child request**.
+3. Complete the form (pre-filled from the parent memo). The budget summary shows **Maximum allowable (remaining balance)** — your requested total cannot exceed this amount.
+4. Save as draft or submit for approval.
+
+### What you will see
+
+- A **Child service request** banner with the cap and a link to the **parent document number**.
+- On PDFs: a clear child label and the previous service request document number.
+- On the parent: once a child exists, an info message links to the child’s document number (the create button is no longer shown).
+
+### Rules to remember
+
+- **One child per parent** service request.
+- The child’s maximum is fixed when created (`parent original budget − parent requested total` at that time).
+- The child does not replace the parent; both remain on the audit trail for the same memo.
+
+Technical detail: [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md).
 
 ---
 

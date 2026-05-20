@@ -152,8 +152,27 @@ class ServiceRequestController extends Controller
     /**
      * Show the form for creating a new service request.
      */
-    public function create(Request $request): View
+    public function create(Request $request): View|RedirectResponse
     {
+        $parentServiceRequest = null;
+        $childBalanceCap = null;
+        $isChildRequestForm = false;
+
+        if ($request->filled('parent_service_request_id')) {
+            $parentServiceRequest = ServiceRequest::query()->find($request->integer('parent_service_request_id'));
+            if (! $parentServiceRequest || ! $parentServiceRequest->canCreateChildRequest()) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'A child service request cannot be created for this record (feature disabled, budget already fully requested, or a child already exists).');
+            }
+            $isChildRequestForm = true;
+            $childBalanceCap = $parentServiceRequest->remainingMemoBalanceForChild();
+            $request->merge([
+                'source_type' => $parentServiceRequest->source_type,
+                'source_id' => $parentServiceRequest->source_id,
+            ]);
+        }
+
         try {
         // Exclude Expired and Separated staff from dropdown
         $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])->get();
@@ -194,13 +213,19 @@ class ServiceRequestController extends Controller
                 $sourceId = $sourceId ?? $changeRequest->parent_memo_id;
             }
 
+            if ($isChildRequestForm && $parentServiceRequest) {
+                $originalTotalBudget = $childBalanceCap;
+            }
+
             if ($sourceType && $sourceId) {
                 $sourceData = $this->getSourceDataForForm($sourceType, $sourceId);
 
                 // Process budget breakdown and participants from source data
                 if ($sourceData) {
                     $budgetBreakdown = $this->processBudgetDataFromSource($sourceData, $sourceType);
-                    $originalTotalBudget = $budgetBreakdown['grand_total'] ?? 0;
+                    if (! $isChildRequestForm) {
+                        $originalTotalBudget = $budgetBreakdown['grand_total'] ?? 0;
+                    }
                     $internalParticipants = $this->processInternalParticipantsFromSource($sourceData, $sourceType);
                 }
 
@@ -345,7 +370,26 @@ class ServiceRequestController extends Controller
                 }
             }
 
-            return view('service-requests.create', compact('staff', 'divisions', 'workflows', 'activities', 'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId', 'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames', 'changeRequestId'));
+            return view('service-requests.create', compact(
+                'staff',
+                'divisions',
+                'workflows',
+                'activities',
+                'costItems',
+                'otherCostItems',
+                'requestNumber',
+                'sourceData',
+                'sourceType',
+                'sourceId',
+                'budgetBreakdown',
+                'originalTotalBudget',
+                'internalParticipants',
+                'participantNames',
+                'changeRequestId',
+                'parentServiceRequest',
+                'childBalanceCap',
+                'isChildRequestForm',
+            ));
         } catch (\Exception $e) {
             // Return a fallback view with minimal data
             return view('service-requests.create', [
@@ -364,6 +408,9 @@ class ServiceRequestController extends Controller
                 'internalParticipants' => [],
                 'participantNames' => [],
                 'changeRequestId' => null,
+                'parentServiceRequest' => null,
+                'childBalanceCap' => null,
+                'isChildRequestForm' => false,
             ]);
         }
     }
@@ -373,7 +420,17 @@ class ServiceRequestController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        
+        $parentForChild = null;
+        if ($request->filled('parent_service_request_id')) {
+            $parentForChild = ServiceRequest::query()->find($request->integer('parent_service_request_id'));
+            if (! $parentForChild || ! $parentForChild->canCreateChildRequest()) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'Cannot create child service request for this parent.');
+            }
+        }
+
         $validated = $request->validate([
             'request_date' => 'required|date',
             'service_title' => 'required|string|max:255',
@@ -400,6 +457,7 @@ class ServiceRequestController extends Controller
             'internal_participants' => 'nullable|array',
             'external_participants' => 'nullable|array',
             'change_request_id' => 'nullable|integer|exists:change_request,id',
+            'parent_service_request_id' => 'nullable|integer|exists:service_requests,id',
         ]);
         $validated['staff_id'] = user_session('staff_id');
         // Use division_id from request (source memo's division) instead of user's division
@@ -440,6 +498,28 @@ class ServiceRequestController extends Controller
         
         // Merge budget data with validated data
         $validated = array_merge($validated, $budgetData);
+
+        if ($parentForChild) {
+            $cap = $parentForChild->remainingMemoBalanceForChild();
+            $validated['parent_service_request_id'] = $parentForChild->id;
+            $validated['source_type'] = $parentForChild->source_type;
+            $validated['source_id'] = $parentForChild->source_id;
+            $validated['model_type'] = $parentForChild->model_type;
+            $validated['activity_id'] = $parentForChild->activity_id;
+            $validated['fund_type_id'] = $parentForChild->fund_type_id;
+            $validated['division_id'] = $parentForChild->division_id;
+            $validated['budget_id'] = $parentForChild->budget_id;
+            $validated['original_total_budget'] = $cap;
+            $requested = (float) ($validated['new_total_budget'] ?? 0);
+            if ($requested > $cap + 0.009) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'Child service request cannot exceed the remaining memo balance of $' . number_format($cap, 2) . '.');
+            }
+        } else {
+            unset($validated['parent_service_request_id']);
+        }
         
         $serviceRequest = ServiceRequest::create($validated);
 
@@ -879,7 +959,19 @@ class ServiceRequestController extends Controller
      */
     public function show(ServiceRequest $serviceRequest): View
     {
-        $serviceRequest->load(['staff', 'division', 'activity', 'forwardWorkflow', 'reverseWorkflow', 'serviceRequestApprovalTrails.staff', 'serviceRequestApprovalTrails.approverRole', 'approvalTrails.staff', 'approvalTrails.oicStaff']);
+        $serviceRequest->load([
+            'staff',
+            'division',
+            'activity',
+            'forwardWorkflow',
+            'reverseWorkflow',
+            'serviceRequestApprovalTrails.staff',
+            'serviceRequestApprovalTrails.approverRole',
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff',
+            'parentServiceRequest',
+            'childServiceRequests',
+        ]);
         
         // Load source data if available
         $sourceData = null;
@@ -906,7 +998,23 @@ class ServiceRequestController extends Controller
         $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
         $canEmailPdf = can_print_memo($serviceRequest) && count($emailPdfRecipientChoices) > 0;
 
-        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels', 'mainActivityUrl', 'disclaimerData', 'originatingChangeRequest', 'emailPdfRecipientChoices', 'canEmailPdf'));
+        $canCreateChildRequest = $serviceRequest->userCanCreateChildRequest();
+        $childRequestRemainingBalance = $serviceRequest->canCreateChildRequest()
+            ? $serviceRequest->remainingMemoBalanceForChild()
+            : null;
+
+        return view('service-requests.show', compact(
+            'serviceRequest',
+            'sourceData',
+            'approvalLevels',
+            'mainActivityUrl',
+            'disclaimerData',
+            'originatingChangeRequest',
+            'emailPdfRecipientChoices',
+            'canEmailPdf',
+            'canCreateChildRequest',
+            'childRequestRemainingBalance',
+        ));
     }
 
     /**
@@ -915,7 +1023,7 @@ class ServiceRequestController extends Controller
      */
     public function edit(ServiceRequest $serviceRequest): View
     {
-        $serviceRequest->load(['division', 'fundType']);
+        $serviceRequest->load(['division', 'fundType', 'parentServiceRequest']);
         $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])->get();
         if ($staff->isEmpty()) {
             $staff = Staff::whereNotIn('status', ['Expired', 'Separated'])->take(10)->get();
@@ -1038,11 +1146,18 @@ class ServiceRequestController extends Controller
             }
         }
 
+        $parentServiceRequest = $serviceRequest->parentServiceRequest;
+        $isChildRequestForm = $serviceRequest->isChildRequest();
+        $childBalanceCap = $isChildRequestForm
+            ? (float) ($serviceRequest->original_total_budget ?? 0)
+            : null;
+
         return view('service-requests.create', compact(
             'serviceRequest', 'staff', 'divisions', 'workflows', 'activities',
             'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId',
             'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames',
-            'externalParticipants', 'otherCostsForEdit', 'originalBudgetBreakdownFromSource', 'mainActivityUrl'
+            'externalParticipants', 'otherCostsForEdit', 'originalBudgetBreakdownFromSource', 'mainActivityUrl',
+            'parentServiceRequest', 'childBalanceCap', 'isChildRequestForm',
         ));
     }
 
@@ -1089,6 +1204,18 @@ class ServiceRequestController extends Controller
         // Re-apply preserved owners in case processBudgetData overwrote them
         $validated['staff_id'] = $serviceRequest->staff_id;
         $validated['responsible_person_id'] = $serviceRequest->responsible_person_id;
+
+        if ($serviceRequest->isChildRequest()) {
+            $cap = (float) ($serviceRequest->original_total_budget ?? 0);
+            $validated['original_total_budget'] = $cap;
+            $requested = (float) ($validated['new_total_budget'] ?? 0);
+            if ($requested > $cap + 0.009) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'Child service request cannot exceed the remaining memo balance of $' . number_format($cap, 2) . '.');
+            }
+        }
 
         $submitAction = $request->input('submit_action', 'draft');
 
@@ -2071,19 +2198,163 @@ class ServiceRequestController extends Controller
     }
 
     /**
+     * Display label for a service request on print (document number, then request number, then id).
+     */
+    private function serviceRequestPrintDocumentLabel(ServiceRequest $serviceRequest): string
+    {
+        $label = trim((string) ($serviceRequest->document_number ?? ''));
+        if ($label === '') {
+            $label = trim((string) ($serviceRequest->request_number ?? ''));
+        }
+        if ($label === '') {
+            $label = 'SR #' . (int) $serviceRequest->id;
+        }
+
+        return $label;
+    }
+
+    /**
+     * HTML fragment of this service request only (no nested previous SRs, CR, or approval memo).
+     * Used when embedding a prior SR before "Original Approval Memo" on a child or related SR print.
+     */
+    public function getPrintHtmlFragmentForEmbedding(ServiceRequest $serviceRequest): ?string
+    {
+        $serviceRequest->load([
+            'staff',
+            'division',
+            'activity',
+            'forwardWorkflow',
+            'reverseWorkflow',
+            'serviceRequestApprovalTrails.staff',
+            'serviceRequestApprovalTrails.approverRole',
+            'parentServiceRequest',
+        ]);
+
+        $sourceData = null;
+        if ($serviceRequest->source_type && $serviceRequest->source_id) {
+            $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
+            if ($sourceData && $serviceRequest->source_type === 'activity') {
+                $sourceData->load([
+                    'approvalTrails.staff',
+                    'approvalTrails.oicStaff',
+                    'activityApprovalTrails.staff',
+                    'activityApprovalTrails.oicStaff',
+                    'matrix.matrixApprovalTrails.staff',
+                    'matrix.matrixApprovalTrails.oicStaff',
+                ]);
+                if ((bool) ($sourceData->is_single_memo ?? false)) {
+                    $sourceTrails = $sourceData->approvalTrails;
+                    if (! $sourceTrails || $sourceTrails->isEmpty()) {
+                        $sourceTrails = $sourceData->activityApprovalTrails;
+                    }
+                    $sourceData->approval_trails = $sourceTrails;
+                } else {
+                    $sourceData->approval_trails = $sourceData->matrix->matrixApprovalTrails ?? collect();
+                }
+            } elseif ($sourceData && in_array($serviceRequest->source_type, ['special_memo', 'non_travel_memo'], true)) {
+                $sourceData->load(['approvalTrails.staff', 'approvalTrails.oicStaff']);
+                $sourceData->approval_trails = $sourceData->approvalTrails;
+            }
+        }
+
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($serviceRequest);
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+
+        $html = view('service-requests.print', [
+            'serviceRequest' => $serviceRequest,
+            'sourceData' => $sourceData,
+            'sourcePdfHtml' => null,
+            'organized_workflow_steps' => $organizedWorkflowSteps,
+            'disclaimerData' => [
+                'parent' => null,
+                'previous_arfs' => collect(),
+                'previous_service_requests' => collect(),
+                'previous_change_requests' => collect(),
+            ],
+            'changeRequestPdfHtml' => null,
+            'previousServiceRequestPdfHtmls' => [],
+            'embedFragment' => true,
+        ])->render();
+
+        $fragment = \App\Helpers\PrintHelper::htmlFullDocumentToEmbedFragment($html);
+
+        return $fragment !== '' ? \App\Helpers\PrintHelper::sanitizeHtmlForMpdf($fragment) : null;
+    }
+
+    /**
+     * @return list<array{serviceRequest: ServiceRequest, html: string, label: string}>
+     */
+    private function collectPreviousServiceRequestEmbedsForPrint(ServiceRequest $serviceRequest, array $disclaimerData): array
+    {
+        $seen = [];
+        $ordered = collect();
+
+        if ($serviceRequest->isChildRequest()) {
+            $parent = $serviceRequest->parentServiceRequest
+                ?? ServiceRequest::query()->find($serviceRequest->parent_service_request_id);
+            if ($parent && ($parent->overall_status ?? '') === 'approved') {
+                $ordered->push($parent);
+                $seen[(int) $parent->id] = true;
+            }
+        }
+
+        $childIdsOfCurrent = ServiceRequest::query()
+            ->where('parent_service_request_id', $serviceRequest->id)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $prevFromDisclaimer = $disclaimerData['previous_service_requests'] ?? collect();
+        foreach ($prevFromDisclaimer->sortBy('created_at') as $row) {
+            $id = (int) ($row->id ?? 0);
+            if ($id <= 0 || $id === (int) $serviceRequest->id || isset($seen[$id])) {
+                continue;
+            }
+            if (in_array($id, $childIdsOfCurrent, true)) {
+                continue;
+            }
+            $full = $row instanceof ServiceRequest ? $row : ServiceRequest::query()->find($id);
+            if (! $full || ($full->overall_status ?? '') !== 'approved') {
+                continue;
+            }
+            if ($serviceRequest->created_at && $full->created_at
+                && $full->created_at->gt($serviceRequest->created_at)) {
+                continue;
+            }
+            $ordered->push($full);
+            $seen[$id] = true;
+        }
+
+        $embeds = [];
+        foreach ($ordered as $prevSr) {
+            $fragment = $this->getPrintHtmlFragmentForEmbedding($prevSr);
+            if ($fragment) {
+                $embeds[] = [
+                    'serviceRequest' => $prevSr,
+                    'html' => $fragment,
+                    'label' => $this->serviceRequestPrintDocumentLabel($prevSr),
+                ];
+            }
+        }
+
+        return $embeds;
+    }
+
+    /**
      * @return array{0: object, 1: string}
      */
     private function buildServiceRequestPdfForOutput(ServiceRequest $serviceRequest): array
     {
         // Eager load needed relations
         $serviceRequest->load([
-            'staff', 
-            'division', 
+            'staff',
+            'division',
             'activity',
             'forwardWorkflow',
             'reverseWorkflow',
             'serviceRequestApprovalTrails.staff',
-            'serviceRequestApprovalTrails.approverRole'
+            'serviceRequestApprovalTrails.approverRole',
+            'parentServiceRequest',
         ]);
 
         // Get source data if available
@@ -2150,9 +2421,11 @@ class ServiceRequestController extends Controller
 
         $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
         $disclaimerData = $emptyDisclaimer;
-        if (function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type && \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->exists()) {
+        if (function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type) {
             $disclaimerData = parent_based_disclaimer_data($serviceRequest->source_id, $serviceRequest->model_type, 'service_request', $serviceRequest->id);
         }
+
+        $previousServiceRequestPdfHtmls = $this->collectPreviousServiceRequestEmbedsForPrint($serviceRequest, $disclaimerData);
 
         $changeRequestPdfHtml = null;
         $originatingCr = \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->first();
@@ -2180,6 +2453,8 @@ class ServiceRequestController extends Controller
                 'organized_workflow_steps' => $organizedWorkflowSteps,
                 'disclaimerData' => $disclaimerData,
                 'changeRequestPdfHtml' => $changeRequestPdfHtml,
+                'previousServiceRequestPdfHtmls' => $previousServiceRequestPdfHtmls,
+                'embedFragment' => false,
             ], ['preview_html' => $print]);
         } catch (\Throwable $e) {
             \Log::warning('Service request print failed; retrying without embedded fragments', [
@@ -2195,6 +2470,8 @@ class ServiceRequestController extends Controller
                 'organized_workflow_steps' => $organizedWorkflowSteps,
                 'disclaimerData' => $disclaimerData,
                 'changeRequestPdfHtml' => null,
+                'previousServiceRequestPdfHtmls' => [],
+                'embedFragment' => false,
             ], ['preview_html' => $print]);
         }
 

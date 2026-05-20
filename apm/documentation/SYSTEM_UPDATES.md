@@ -4,6 +4,29 @@ This document lists notable features, improvements, and changes to the APM (Appr
 
 ---
 
+## Child service requests (2026-05-20)
+
+### Summary
+
+- **Child service requests** let creators request the **remaining memo balance** after a parent SR’s total requested funds are below the original memo budget.
+- **One child per parent**; linked by `service_requests.parent_service_request_id`.
+- **System setting** `allow_child_service_requests` (group `service_requests`, default on) in App Settings.
+- UI banner, badges, parent document number on detail/PDF; server and client validation against the cap.
+
+### Documentation
+
+- Operator and developer guide: **[CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md)**
+- User steps: **[USER_GUIDE.md](./USER_GUIDE.md#child-service-requests)**
+
+### Deploy
+
+```bash
+php artisan migrate
+php artisan db:seed --class=SystemSettingsSeeder
+```
+
+---
+
 ## Weekly brief — documentation (2026-05-09)
 
 - Operator and developer guide: **[WEEKLY_BRIEFING.md](./WEEKLY_BRIEFING.md)** (access, settings, routes, PDFs, mail, `weekly-briefing:*` commands, scheduler in `bootstrap/app.php`, global `generate_pdf` footer URL/QR).
