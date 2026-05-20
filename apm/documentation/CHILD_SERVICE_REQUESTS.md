@@ -11,7 +11,7 @@ When a parent service request’s **Total Requested Funds** is less than the **O
 - Follows the **same approval workflow** as a normal service request.
 - Is linked to the parent via `service_requests.parent_service_request_id`.
 
-Only **one child** may exist per parent service request.
+Only **one direct child** may exist per service request (parent or child), but **child SRs may have their own children** while this record’s remaining balance (`original_total_budget − new_total_budget`) is greater than zero.
 
 ## System setting
 
@@ -36,10 +36,9 @@ On the parent service request **detail** page (`GET /service-requests/{id}`), th
 | Rule | Implementation |
 |------|----------------|
 | Feature enabled | `ServiceRequest::childRequestsEnabled()` → `allow_child_service_requests` |
-| Record is a **parent** (not already a child) | `parent_service_request_id` is null |
-| Parent has a linked source memo | `source_type` and `source_id` set |
-| Remaining memo balance &gt; 0 | `remainingMemoBalanceForChild()` &gt; 0 (parent `original_total_budget` &gt; parent `new_total_budget`) |
-| No child already exists | `childServiceRequests()->exists()` is false |
+| Linked source memo | `source_type` and `source_id` set (inherited from immediate parent when nested) |
+| Remaining balance on **this** SR | `remainingMemoBalanceForChild()` &gt; 0 (`original_total_budget` &gt; `new_total_budget` on this record; nested children supported) |
+| No direct child yet | `childServiceRequests()->exists()` is false |
 | User is creator or responsible person | `userCanCreateChildRequest()` — `staff_id` or `responsible_person_id` matches session |
 | Parent status allows follow-up | `overall_status` in `approved`, `draft`, `returned`, `pending`, `in_progress`, `completed` (not only draft) |
 
@@ -66,7 +65,13 @@ If the parent is not eligible, create redirects back with an error message.
 
 Child requests include a plain-text note after the subject on the PDF (remaining balance and previous document number).
 
-On print/PDF, **previous service request(s)** are embedded in full (same approach as Change Request memos) **before** **Original Approval Memo**: direct parent for a child SR, plus any older service requests on the same source memo. Labels use **document number**, then **request number**, then `SR #id` only if both are missing.
+On print/PDF, **related approved service requests** are embedded in full (same approach as Change Request memos) **before** **Original Approval Memo**, in **created_at** order:
+
+- **Ancestors** — every approved parent up the `parent_service_request_id` chain (e.g. printing SR 126 embeds 124, then 125).
+- **Descendants** — every approved child/grandchild in the chain (e.g. printing SR 124 embeds 125, then 126).
+- **Same-memo siblings** — other approved SRs on the source memo from the disclaimer list (deduplicated).
+
+Only **approved** SRs are embedded. Labels use **document number**, then **request number**, then `SR #id` only if both are missing.
 
 ## Budget rules
 
