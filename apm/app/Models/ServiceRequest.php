@@ -140,15 +140,12 @@ class ServiceRequest extends Model
     }
 
     /**
-     * Parent may spawn a child SR when under-funded and no child exists yet.
+     * May spawn a child SR when under-funded and no direct child exists yet.
+     * Applies to root and nested child SRs (each level may have one child for its remaining balance).
      */
     public function canCreateChildRequest(): bool
     {
         if (! self::childRequestsEnabled()) {
-            return false;
-        }
-
-        if ($this->isChildRequest()) {
             return false;
         }
 

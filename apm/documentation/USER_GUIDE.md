@@ -416,8 +416,8 @@ On the **parent** service request detail page, **Create child request** appears 
 - Child requests are **enabled** in [App Settings](https://cbp.africacdc.org/staff/apm/system-settings) (`allow_child_service_requests`, default **on**).
 - **Original Memo Budget** on the parent is **greater than** **Total Requested Funds** (there is unrequested balance).
 - **No child** service request already exists for that parent.
-- The parent is not itself a child request.
 - You are the **creator** (same rules as editing/submitting a draft parent).
+- A **child** service request may also get a child if it still has remaining balance (nested children).
 
 ### Steps
 
@@ -434,7 +434,7 @@ On the **parent** service request detail page, **Create child request** appears 
 
 ### Rules to remember
 
-- **One child per parent** service request.
+- **One direct child per service request** (root or child); further levels are allowed while each SR still has remaining balance.
 - The child’s maximum is fixed when created (`parent original budget − parent requested total` at that time).
 - The child does not replace the parent; both remain on the audit trail for the same memo.
 

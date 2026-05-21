@@ -19,6 +19,7 @@ use App\Models\Approver;
 use App\Services\ApprovalService;
 use App\Models\ApprovalTrail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -2195,11 +2196,57 @@ class ServiceRequestController extends Controller
     }
 
     /**
-     * @return array{0: object, 1: string}
+     * Approved service requests to embed before the Original Approval Memo (parent chain + same-memo, oldest first).
      */
-    private function buildServiceRequestPdfForOutput(ServiceRequest $serviceRequest): array
+    private function approvedPreviousServiceRequestsForPrint(ServiceRequest $serviceRequest): Collection
     {
-        // Eager load needed relations
+        $candidates = collect();
+
+        $ancestor = $serviceRequest->parentServiceRequest;
+        while ($ancestor) {
+            $candidates->push($ancestor);
+            if ($ancestor->parent_service_request_id && ! $ancestor->relationLoaded('parentServiceRequest')) {
+                $ancestor->load('parentServiceRequest');
+            }
+            $ancestor = $ancestor->parentServiceRequest;
+        }
+
+        if ($serviceRequest->source_id && $serviceRequest->model_type) {
+            $sameMemo = ServiceRequest::query()
+                ->where('source_id', $serviceRequest->source_id)
+                ->where('model_type', $serviceRequest->model_type)
+                ->where('id', '!=', $serviceRequest->id)
+                ->where('overall_status', 'approved')
+                ->orderBy('created_at')
+                ->get();
+            $candidates = $candidates->merge($sameMemo);
+        }
+
+        return $candidates
+            ->unique('id')
+            ->filter(fn (ServiceRequest $sr) => ($sr->overall_status ?? '') === 'approved')
+            ->sortBy('created_at')
+            ->values();
+    }
+
+    /**
+     * Service Request print body as an HTML fragment (no attachments appendix) for embedding in another SR print.
+     */
+    public function getPrintHtmlFragmentForEmbedding(ServiceRequest $serviceRequest): ?string
+    {
+        $viewData = $this->prepareServiceRequestPrintViewData($serviceRequest, forEmbed: true);
+
+        $html = view('service-requests.print', $viewData)->render();
+        $fragment = \App\Helpers\PrintHelper::htmlFullDocumentToEmbedFragment($html);
+
+        return $fragment !== '' ? $fragment : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function prepareServiceRequestPrintViewData(ServiceRequest $serviceRequest, bool $forEmbed = false): array
+    {
         $serviceRequest->load([
             'staff',
             'division',
@@ -2211,14 +2258,10 @@ class ServiceRequestController extends Controller
             'parentServiceRequest',
         ]);
 
-        // Get source data if available
         $sourceData = null;
-        $sourcePdfHtml = null;
-        
         if ($serviceRequest->source_type && $serviceRequest->source_id) {
             $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
-            
-            // Load approval trails for the source data
+
             if ($sourceData) {
                 if ($serviceRequest->source_type === 'activity') {
                     $sourceData->load([
@@ -2230,11 +2273,9 @@ class ServiceRequestController extends Controller
                         'matrix.matrixApprovalTrails.oicStaff',
                     ]);
 
-                    // Single memos use generic approval_trails as source of truth.
-                    // Keep legacy fallback to activityApprovalTrails for older records.
                     if ((bool) $sourceData->is_single_memo) {
                         $sourceTrails = $sourceData->approvalTrails;
-                        if (!$sourceTrails || $sourceTrails->isEmpty()) {
+                        if (! $sourceTrails || $sourceTrails->isEmpty()) {
                             $sourceTrails = $sourceData->activityApprovalTrails;
                         }
                         $sourceData->approval_trails = $sourceTrails;
@@ -2249,43 +2290,95 @@ class ServiceRequestController extends Controller
                     $sourceData->approval_trails = $sourceData->approvalTrails;
                 }
             }
-            
-            // Generate source memo HTML using existing controllers' data preparation
+        }
+
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($serviceRequest);
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+
+        $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
+        $disclaimerData = $emptyDisclaimer;
+        if (! $forEmbed && function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type && ChangeRequest::where('service_request_id', $serviceRequest->id)->exists()) {
+            $disclaimerData = parent_based_disclaimer_data($serviceRequest->source_id, $serviceRequest->model_type, 'service_request', $serviceRequest->id);
+        }
+
+        return [
+            'serviceRequest' => $serviceRequest,
+            'sourceData' => $sourceData,
+            'sourcePdfHtml' => null,
+            'organized_workflow_steps' => $organizedWorkflowSteps,
+            'disclaimerData' => $disclaimerData,
+            'changeRequestPdfHtml' => null,
+            'previousServiceRequestsPdfHtml' => [],
+            'embedFragment' => $forEmbed,
+        ];
+    }
+
+    /**
+     * @return array{0: object, 1: string}
+     */
+    private function buildServiceRequestPdfForOutput(ServiceRequest $serviceRequest): array
+    {
+        $serviceRequest->load([
+            'staff',
+            'division',
+            'activity',
+            'forwardWorkflow',
+            'reverseWorkflow',
+            'serviceRequestApprovalTrails.staff',
+            'serviceRequestApprovalTrails.approverRole',
+            'parentServiceRequest',
+        ]);
+
+        $viewData = $this->prepareServiceRequestPrintViewData($serviceRequest, forEmbed: false);
+        $sourceData = $viewData['sourceData'];
+        $organizedWorkflowSteps = $viewData['organized_workflow_steps'];
+        $disclaimerData = $viewData['disclaimerData'];
+
+        $sourcePdfHtml = null;
+        if ($serviceRequest->source_type && $serviceRequest->source_id) {
             if ($serviceRequest->source_type === 'activity') {
-                $activity = \App\Models\Activity::find($serviceRequest->source_id);
+                $activity = Activity::find($serviceRequest->source_id);
                 if ($activity && $activity->matrix) {
                     $sourcePdfHtml = $this->generateActivityMemoHtml($activity->matrix, $activity);
                 }
             } elseif ($serviceRequest->source_type === 'special_memo') {
-                $specialMemo = \App\Models\SpecialMemo::find($serviceRequest->source_id);
+                $specialMemo = SpecialMemo::find($serviceRequest->source_id);
                 if ($specialMemo) {
                     $sourcePdfHtml = $this->generateSpecialMemoHtml($specialMemo);
                 }
             } elseif ($serviceRequest->source_type === 'non_travel_memo') {
-                $nonTravelMemo = \App\Models\NonTravelMemo::find($serviceRequest->source_id);
+                $nonTravelMemo = NonTravelMemo::find($serviceRequest->source_id);
                 if ($nonTravelMemo) {
                     $sourcePdfHtml = $this->generateNonTravelMemoHtml($nonTravelMemo);
                 }
             }
         }
 
-        // Get workflow information for service request
-        $workflowInfo = $this->getComprehensiveWorkflowInfo($serviceRequest);
-        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
-
-        $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
-        $disclaimerData = $emptyDisclaimer;
-        if (function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type && \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->exists()) {
-            $disclaimerData = parent_based_disclaimer_data($serviceRequest->source_id, $serviceRequest->model_type, 'service_request', $serviceRequest->id);
-        }
-
         $changeRequestPdfHtml = null;
-        $originatingCr = \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->first();
+        $originatingCr = ChangeRequest::where('service_request_id', $serviceRequest->id)->first();
         if ($originatingCr) {
-            $changeRequestPdfHtml = app(\App\Http\Controllers\ChangeRequestController::class)->getPrintHtmlFragmentForEmbedding($originatingCr);
+            $changeRequestPdfHtml = app(ChangeRequestController::class)->getPrintHtmlFragmentForEmbedding($originatingCr);
         }
 
-        // Full memo HTML documents must not be nested inside the SR template (duplicated CSS + huge PCRE/mPDF failures).
+        $previousServiceRequestsPdfHtml = [];
+        foreach ($this->approvedPreviousServiceRequestsForPrint($serviceRequest) as $prevSr) {
+            $fragment = $this->getPrintHtmlFragmentForEmbedding($prevSr);
+            if (! is_string($fragment) || $fragment === '') {
+                continue;
+            }
+            $label = trim((string) ($prevSr->document_number ?? ''));
+            if ($label === '') {
+                $label = trim((string) ($prevSr->request_number ?? ''));
+            }
+            if ($label === '') {
+                $label = 'SR #' . $prevSr->id;
+            }
+            $previousServiceRequestsPdfHtml[] = [
+                'label' => $label,
+                'html' => \App\Helpers\PrintHelper::sanitizeHtmlForMpdf($fragment),
+            ];
+        }
+
         if (is_string($sourcePdfHtml) && $sourcePdfHtml !== '') {
             $sourcePdfHtml = \App\Helpers\PrintHelper::htmlFullDocumentToEmbedFragment($sourcePdfHtml);
             $sourcePdfHtml = \App\Helpers\PrintHelper::sanitizeHtmlForMpdf($sourcePdfHtml);
@@ -2295,32 +2388,26 @@ class ServiceRequestController extends Controller
             $changeRequestPdfHtml = \App\Helpers\PrintHelper::sanitizeHtmlForMpdf($changeRequestPdfHtml);
         }
 
-        // Use mPDF helper function for service request
         $print = false;
+        $mpdfPayload = array_merge($viewData, [
+            'sourcePdfHtml' => $sourcePdfHtml,
+            'changeRequestPdfHtml' => $changeRequestPdfHtml,
+            'previousServiceRequestsPdfHtml' => $previousServiceRequestsPdfHtml,
+        ]);
+
         try {
-            $pdf = mpdf_print('service-requests.print', [
-                'serviceRequest' => $serviceRequest,
-                'sourceData' => $sourceData,
-                'sourcePdfHtml' => $sourcePdfHtml,
-                'organized_workflow_steps' => $organizedWorkflowSteps,
-                'disclaimerData' => $disclaimerData,
-                'changeRequestPdfHtml' => $changeRequestPdfHtml,
-            ], ['preview_html' => $print]);
+            $pdf = mpdf_print('service-requests.print', $mpdfPayload, ['preview_html' => $print]);
         } catch (\Throwable $e) {
             \Log::warning('Service request print failed; retrying without embedded fragments', [
                 'service_request_id' => $serviceRequest->id,
                 'message' => $e->getMessage(),
             ]);
 
-            // Fallback for edge-case records that contain HTML mPDF cannot parse reliably.
-            $pdf = mpdf_print('service-requests.print', [
-                'serviceRequest' => $serviceRequest,
-                'sourceData' => $sourceData,
+            $pdf = mpdf_print('service-requests.print', array_merge($viewData, [
                 'sourcePdfHtml' => null,
-                'organized_workflow_steps' => $organizedWorkflowSteps,
-                'disclaimerData' => $disclaimerData,
                 'changeRequestPdfHtml' => null,
-            ], ['preview_html' => $print]);
+                'previousServiceRequestsPdfHtml' => [],
+            ]), ['preview_html' => $print]);
         }
 
         $filename = 'Service_Request_' . $serviceRequest->request_number . '_' . now()->format('Y-m-d') . '.pdf';

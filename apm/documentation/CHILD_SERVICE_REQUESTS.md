@@ -11,7 +11,7 @@ When a parent service request’s **Total Requested Funds** is less than the **O
 - Follows the **same approval workflow** as a normal service request.
 - Is linked to the parent via `service_requests.parent_service_request_id`.
 
-Only **one child** may exist per parent service request.
+Only **one direct child** may exist per service request (root or nested). **Nested children** are allowed: a child SR may have its own child when it still has **remaining balance** (`original_total_budget − new_total_budget` on that SR).
 
 ## System setting
 
@@ -36,7 +36,7 @@ On the parent service request **detail** page (`GET /service-requests/{id}`), th
 | Rule | Implementation |
 |------|----------------|
 | Feature enabled | `ServiceRequest::childRequestsEnabled()` → `allow_child_service_requests` |
-| Record is a **parent** (not already a child) | `parent_service_request_id` is null |
+| Parent still has unrequested balance | `remainingMemoBalanceForChild()` &gt; 0 on the SR you are creating from (root or child) |
 | Parent has a linked source memo | `source_type` and `source_id` set |
 | Remaining memo balance &gt; 0 | `remainingMemoBalanceForChild()` &gt; 0 (parent `original_total_budget` &gt; parent `new_total_budget`) |
 | No child already exists | `childServiceRequests()->exists()` is false |
@@ -63,7 +63,17 @@ If the parent is not eligible, create redirects back with an error message.
 
 ### PDF / print
 
-Child requests include a highlighted block on the memorandum PDF and a **CHILD SERVICE REQUEST** label on the subject line, plus the parent’s **document number**.
+Child requests show a plain-text note **after the Subject** on the memorandum PDF (no border): supplementary funds, the **balance remaining on the previous service request**, and the parent’s **document number** (falls back to `request_number`, then `SR #id` only if both are missing). The subject line may still show a **CHILD SERVICE REQUEST** label.
+
+### PDF attachments (print pack order)
+
+At the end of the service request PDF (same approach as **Change Request Memo** / **Original Approval Memo** embeds), approved **previous service requests** are included **before** the Original Approval Memo:
+
+1. Change Request memo (if this SR came from a CR)
+2. **Previous Service Request** section(s) — one embed per approved parent-chain and/or same-memo SR (oldest first); label uses `document_number`, then `request_number`, then `SR #id` only if both are missing
+3. **Original Approval Memo** (source memo)
+
+Only records with `overall_status = approved` are embedded. Pending/draft parents are omitted from the attachment block.
 
 ## Budget rules
 
@@ -72,11 +82,13 @@ Child requests include a highlighted block on the memorandum PDF and a **CHILD S
 | `original_total_budget` | Set to parent’s **remaining balance** at child **creation** (fixed cap for that child) |
 | `new_total_budget` | Sum of requested costs on the child; must be ≤ cap |
 
-**Parent remaining balance** (at create time):
+**Parent remaining balance** (at create time; same formula for root or nested parent):
 
 ```text
 remaining = max(0, parent.original_total_budget − parent.new_total_budget)
 ```
+
+On a **root** SR, `original_total_budget` is the full memo budget. On a **child** SR, `original_total_budget` is the cap allocated when that child was created; any further child uses what that SR did not request.
 
 **Validation:**
 
