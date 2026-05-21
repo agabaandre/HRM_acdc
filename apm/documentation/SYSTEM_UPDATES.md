@@ -9,7 +9,7 @@ This document lists notable features, improvements, and changes to the APM (Appr
 ### Summary
 
 - **Child service requests** let creators request the **remaining memo balance** after a parent SR’s total requested funds are below the original memo budget.
-- **One child per parent**; linked by `service_requests.parent_service_request_id`.
+- **One direct child per SR** (nested children allowed while balance remains); linked by `service_requests.parent_service_request_id`.
 - **System setting** `allow_child_service_requests` (group `service_requests`, default on) in App Settings.
 - UI banner, badges, parent document number on detail/PDF; server and client validation against the cap.
 
