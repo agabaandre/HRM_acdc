@@ -161,7 +161,7 @@
                 </ul>
             </div>
         @endif
-        @if($isStrictAdmin && ($matrix->overall_status ?? '') !== 'archived')
+        @if(function_exists('can_archive_memo') && can_archive_memo($matrix))
             <button type="button" class="btn btn-outline-danger btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#archiveMatrixModal">
                 <i class="bx bx-archive me-1"></i> Archive
             </button>
@@ -189,7 +189,7 @@
     </div>
 @endif
 
-@if(($isStrictAdmin ?? false) && ($matrix->overall_status ?? '') !== 'archived')
+@if(function_exists('can_archive_memo') && can_archive_memo($matrix))
     <div class="modal fade" id="archiveMatrixModal" tabindex="-1" aria-labelledby="archiveMatrixModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">

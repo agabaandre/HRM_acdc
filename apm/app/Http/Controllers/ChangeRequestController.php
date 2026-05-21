@@ -2097,20 +2097,16 @@ class ChangeRequestController extends Controller
 
     public function archive(ChangeRequest $changeRequest): RedirectResponse
     {
-        $user = session('user', []);
-        $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        $isAdmin = ((int) $userRole) === 10;
-
-        if (! $isAdmin) {
-            return redirect()->route('change-requests.show', $changeRequest)
-                ->with('error', 'Only system administrators can archive this memo.');
+        if (! function_exists('can_archive_memo') || ! can_archive_memo($changeRequest)) {
+            return redirect()->back()
+                ->with('error', 'You are not allowed to archive this memo.');
         }
 
         $changeRequest->previous_overall_status = $this->determineStatusBeforeArchive($changeRequest);
         $changeRequest->overall_status = 'archived';
         $changeRequest->save();
 
-        return redirect()->route('change-requests.show', $changeRequest)
+        return redirect()->back()
             ->with('success', 'Change request archived successfully.');
     }
 

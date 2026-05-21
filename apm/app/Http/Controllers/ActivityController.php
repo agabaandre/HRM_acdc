@@ -3475,28 +3475,21 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
      */
     public function archive(Matrix $matrix, Activity $activity): RedirectResponse
     {
-        $user = session('user', []);
-        $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        $isAdmin = ((int) $userRole) === 10;
-
-        if (! $isAdmin) {
-            return redirect()
-                ->route('matrices.activities.show', [$matrix, $activity])
-                ->with('error', 'Only system administrators can archive this memo.');
+        if ((int) $activity->matrix_id !== (int) $matrix->id) {
+            return redirect()->back()
+                ->with('error', 'Invalid activity context for archive action.');
         }
 
-        if ((int) $activity->matrix_id !== (int) $matrix->id) {
-            return redirect()
-                ->route('matrices.show', $matrix)
-                ->with('error', 'Invalid activity context for archive action.');
+        if (! function_exists('can_archive_memo') || ! can_archive_memo($activity)) {
+            return redirect()->back()
+                ->with('error', 'You are not allowed to archive this memo.');
         }
 
         $activity->previous_overall_status = $this->determineActivityStatusBeforeArchive($activity);
         $activity->overall_status = 'archived';
         $activity->save();
 
-        return redirect()
-            ->route('matrices.activities.show', [$matrix, $activity])
+        return redirect()->back()
             ->with('success', 'Activity archived successfully.');
     }
 
@@ -3541,22 +3534,16 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
      */
     public function archiveSingleMemo(Activity $activity): RedirectResponse
     {
-        $user = session('user', []);
-        $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        $isAdmin = ((int) $userRole) === 10;
-
-        if (! $isAdmin) {
-            return redirect()
-                ->route('activities.single-memos.show', $activity)
-                ->with('error', 'Only system administrators can archive this memo.');
+        if (! function_exists('can_archive_memo') || ! can_archive_memo($activity)) {
+            return redirect()->back()
+                ->with('error', 'You are not allowed to archive this memo.');
         }
 
         $activity->previous_overall_status = $this->determineActivityStatusBeforeArchive($activity);
         $activity->overall_status = 'archived';
         $activity->save();
 
-        return redirect()
-            ->route('activities.single-memos.show', $activity)
+        return redirect()->back()
             ->with('success', 'Single memo archived successfully.');
     }
 

@@ -64,7 +64,7 @@
                     </button>
                 @endif
 
-                @if($isStrictAdmin && ($changeRequest->overall_status ?? '') !== 'archived')
+                @if(function_exists('can_archive_memo') && can_archive_memo($changeRequest))
                     <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#archiveChangeRequestModal">
                         <i class="bx bx-archive"></i>
                         <span>Archive</span>
@@ -1409,7 +1409,7 @@
     </div>
 </div>
 
-@if($isStrictAdmin && ($changeRequest->overall_status ?? '') !== 'archived')
+@if(function_exists('can_archive_memo') && can_archive_memo($changeRequest))
 <div class="modal fade" id="archiveChangeRequestModal" tabindex="-1" aria-labelledby="archiveChangeRequestModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">

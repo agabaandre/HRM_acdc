@@ -38,7 +38,7 @@
                 <button type="submit" class="btn btn-outline-danger"><i class="bx bx-trash"></i> Delete draft</button>
             </form>
         @endif
-        @if (user_session('role') == 10 && ($memo->overall_status ?? '') !== 'archived')
+        @if (function_exists('can_archive_memo') && can_archive_memo($memo))
             <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#archiveOtherMemoModal">
                 <i class="bx bx-archive me-1"></i>Archive
             </button>
@@ -122,7 +122,7 @@
         <div class="alert alert-{{ session('type', 'info') }}">{{ session('msg') }}</div>
     @endif
 
-    @if (user_session('role') == 10 && ($memo->overall_status ?? '') !== 'archived')
+    @if (function_exists('can_archive_memo') && can_archive_memo($memo))
         <div class="modal fade" id="archiveOtherMemoModal" tabindex="-1" aria-labelledby="archiveOtherMemoModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">

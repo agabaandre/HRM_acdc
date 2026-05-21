@@ -1140,20 +1140,16 @@ class OtherMemoController extends Controller
 
     public function archive(OtherMemo $other_memo): RedirectResponse
     {
-        $user = session('user', []);
-        $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        $isAdmin = ((int) $userRole) === 10;
-
-        if (! $isAdmin) {
-            return redirect()->route('other-memos.show', $other_memo)
-                ->with('error', 'Only system administrators can archive this memo.');
+        if (! function_exists('can_archive_memo') || ! can_archive_memo($other_memo)) {
+            return redirect()->back()
+                ->with('error', 'You are not allowed to archive this memo.');
         }
 
         $other_memo->previous_overall_status = $this->determineOtherMemoStatusBeforeArchive($other_memo);
         $other_memo->overall_status = 'archived';
         $other_memo->save();
 
-        return redirect()->route('other-memos.show', $other_memo)
+        return redirect()->back()
             ->with('success', 'Other memo archived successfully.');
     }
 

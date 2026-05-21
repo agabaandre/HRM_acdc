@@ -1806,20 +1806,16 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
 
     public function archive(RequestARF $requestARF): RedirectResponse
     {
-        $user = session('user', []);
-        $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        $isAdmin = ((int) $userRole) === 10;
-
-        if (! $isAdmin) {
-            return redirect()->route('request-arf.show', $requestARF)
-                ->with('error', 'Only system administrators can archive this memo.');
+        if (! function_exists('can_archive_memo') || ! can_archive_memo($requestARF)) {
+            return redirect()->back()
+                ->with('error', 'You are not allowed to archive this memo.');
         }
 
         $requestARF->previous_overall_status = $this->determineStatusBeforeArchive($requestARF);
         $requestARF->overall_status = 'archived';
         $requestARF->save();
 
-        return redirect()->route('request-arf.show', $requestARF)
+        return redirect()->back()
             ->with('success', 'Activity request archived successfully.');
     }
 

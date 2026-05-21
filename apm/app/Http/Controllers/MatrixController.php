@@ -3245,20 +3245,16 @@ class MatrixController extends Controller
 
     public function archive(Matrix $matrix): RedirectResponse
     {
-        $user = session('user', []);
-        $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        $isAdmin = ((int) $userRole) === 10;
-
-        if (! $isAdmin) {
-            return redirect()->route('matrices.show', $matrix)
-                ->with('error', 'Only system administrators can archive this matrix.');
+        if (! function_exists('can_archive_memo') || ! can_archive_memo($matrix)) {
+            return redirect()->back()
+                ->with('error', 'You are not allowed to archive this matrix.');
         }
 
         $matrix->previous_overall_status = $this->determineStatusBeforeArchive($matrix);
         $matrix->overall_status = 'archived';
         $matrix->save();
 
-        return redirect()->route('matrices.show', $matrix)
+        return redirect()->back()
             ->with('success', 'Matrix archived successfully.');
     }
 

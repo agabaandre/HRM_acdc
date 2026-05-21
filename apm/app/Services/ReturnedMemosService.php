@@ -445,7 +445,37 @@ class ReturnedMemosService
     {
         $item['status'] = $item['status'] ?? $item['overall_status'] ?? null;
 
+        if (! empty($item['model'])) {
+            $user = $this->getCurrentUser();
+            $item['can_archive'] = function_exists('can_archive_memo') && can_archive_memo($item['model'], $user);
+            $item['archive_url'] = $item['can_archive'] ? $this->resolveArchiveUrl($item['model']) : null;
+            unset($item['model']);
+        } else {
+            $item['can_archive'] = $item['can_archive'] ?? false;
+            $item['archive_url'] = $item['archive_url'] ?? null;
+        }
+
         return $item;
+    }
+
+    /**
+     * POST target for archiving a returned item (same routes as memo show pages).
+     */
+    protected function resolveArchiveUrl(object $memo): ?string
+    {
+        return match (get_class($memo)) {
+            Matrix::class => route('matrices.archive', $memo),
+            SpecialMemo::class => route('special-memo.archive', $memo),
+            NonTravelMemo::class => route('non-travel.archive', $memo),
+            Activity::class => ($memo->is_single_memo ?? false)
+                ? route('activities.single-memos.archive', $memo)
+                : route('matrices.activities.archive', ['matrix' => $memo->matrix_id, 'activity' => $memo]),
+            ServiceRequest::class => route('service-requests.archive', $memo),
+            RequestARF::class => route('request-arf.archive', $memo),
+            ChangeRequest::class => route('change-requests.archive', $memo),
+            OtherMemo::class => route('other-memos.archive', $memo),
+            default => null,
+        };
     }
 
     /**
