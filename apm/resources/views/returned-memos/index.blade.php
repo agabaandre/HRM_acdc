@@ -403,6 +403,18 @@
                                                 </button>
                                             @endif
                                             
+                                            @if(!empty($item['can_archive']) && !empty($item['archive_url']))
+                                                <button type="button" class="btn btn-outline-danger btn-sm btn-archive-returned" title="Archive"
+                                                    data-archive-url="{{ e($item['archive_url']) }}"
+                                                    data-archive-title="{{ e($item['title']) }}">
+                                                    <i class="fas fa-archive me-1"></i> Archive
+                                                </button>
+                                            @else
+                                                <button class="btn btn-secondary btn-sm" disabled title="Archive not available">
+                                                    <i class="fas fa-archive me-1"></i> Archive
+                                                </button>
+                                            @endif
+
                                             @if($item['can_delete'] && $item['delete_url'])
                                                 <button type="button" class="btn btn-danger btn-sm btn-delete-returned" title="Delete"
                                                     data-delete-url="{{ e($item['delete_url']) }}"
@@ -428,6 +440,30 @@
                     <p>You don't have any returned memos at the moment.</p>
                 </div>
             @endif
+        </div>
+    </div>
+</div>
+
+<!-- Archive Confirmation Modal -->
+<div class="modal fade" id="archiveModal" tabindex="-1" aria-labelledby="archiveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="archiveModalLabel">Archive returned memo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Archive this returned item? It will be hidden from active lists until an administrator unarchives it.</p>
+                <p><strong id="archiveItemTitle"></strong></p>
+                <p class="text-muted small mb-0">Your previous returned status is preserved so it can be restored if needed.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="archiveConfirmForm" method="POST" action="" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-archive me-1"></i> Archive</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -459,6 +495,16 @@
 <script>
 $(document).ready(function() {
     let deleteUrl = '';
+
+    $(document).on('click', '.btn-archive-returned', function() {
+        const url = $(this).data('archive-url');
+        const title = $(this).data('archive-title');
+        if (!url) return;
+        $('#archiveItemTitle').text(title || '');
+        $('#archiveConfirmForm').attr('action', url);
+        const modal = new bootstrap.Modal(document.getElementById('archiveModal'));
+        modal.show();
+    });
     
     // Refresh data
     $('#refreshData').click(function() {

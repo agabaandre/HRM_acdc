@@ -460,7 +460,7 @@
                                 <i class="bx bx-arrow-back"></i>
                                 <span>Back to List</span>
                             </a>
-                            @if($isAdmin && ($requestARF->overall_status ?? '') !== 'archived')
+                            @if(function_exists('can_archive_memo') && can_archive_memo($requestARF))
                                 <button type="button" class="btn btn-outline-danger d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#archiveRequestArfModal">
                                     <i class="bx bx-archive"></i>
                                     <span>Archive</span>
@@ -477,7 +477,7 @@
             </div>
 
             <div class="container-fluid py-4">
-                @if(($isAdmin ?? false) && ($requestARF->overall_status ?? '') !== 'archived')
+                @if(function_exists('can_archive_memo') && can_archive_memo($requestARF))
                     <div class="modal fade" id="archiveRequestArfModal" tabindex="-1" aria-labelledby="archiveRequestArfModalLabel" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content">

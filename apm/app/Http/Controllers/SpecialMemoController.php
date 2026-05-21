@@ -2298,20 +2298,16 @@ class SpecialMemoController extends Controller
 
     public function archive(SpecialMemo $specialMemo): RedirectResponse
     {
-        $user = session('user', []);
-        $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        $isAdmin = ((int) $userRole) === 10;
-
-        if (! $isAdmin) {
-            return redirect()->route('special-memo.show', $specialMemo)
-                ->with('error', 'Only system administrators can archive this memo.');
+        if (! function_exists('can_archive_memo') || ! can_archive_memo($specialMemo)) {
+            return redirect()->back()
+                ->with('error', 'You are not allowed to archive this memo.');
         }
 
         $specialMemo->previous_overall_status = $this->determineStatusBeforeArchive($specialMemo);
         $specialMemo->overall_status = 'archived';
         $specialMemo->save();
 
-        return redirect()->route('special-memo.show', $specialMemo)
+        return redirect()->back()
             ->with('success', 'Special memo archived successfully.');
     }
 

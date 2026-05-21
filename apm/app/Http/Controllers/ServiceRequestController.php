@@ -3172,20 +3172,16 @@ class ServiceRequestController extends Controller
 
     public function archive(ServiceRequest $serviceRequest): RedirectResponse
     {
-        $user = session('user', []);
-        $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        $isAdmin = ((int) $userRole) === 10;
-
-        if (! $isAdmin) {
-            return redirect()->route('service-requests.show', $serviceRequest)
-                ->with('error', 'Only system administrators can archive this memo.');
+        if (! function_exists('can_archive_memo') || ! can_archive_memo($serviceRequest)) {
+            return redirect()->back()
+                ->with('error', 'You are not allowed to archive this memo.');
         }
 
         $serviceRequest->previous_overall_status = $this->determineStatusBeforeArchive($serviceRequest);
         $serviceRequest->overall_status = 'archived';
         $serviceRequest->save();
 
-        return redirect()->route('service-requests.show', $serviceRequest)
+        return redirect()->back()
             ->with('success', 'Service request archived successfully.');
     }
 

@@ -673,6 +673,52 @@ if (! function_exists('user_session')) {
         }
     }
 
+    if (! function_exists('can_archive_memo')) {
+        /**
+         * Admins may archive any non-archived memo. Creators / responsible persons may archive when returned.
+         */
+        function can_archive_memo($memo, $user = null): bool
+        {
+            if ($user === null) {
+                $user = (object) session('user', []);
+            }
+
+            $status = (string) ($memo->overall_status ?? '');
+            if ($status === 'archived') {
+                return false;
+            }
+
+            $userRole = $user->role ?? $user->user_role ?? null;
+            if ((int) $userRole === 10) {
+                return true;
+            }
+
+            if ($status !== 'returned') {
+                return false;
+            }
+
+            $staffId = isset($user->staff_id) ? (int) $user->staff_id : 0;
+            if ($staffId <= 0) {
+                return false;
+            }
+
+            $isOwner = isset($memo->staff_id) && (int) $memo->staff_id === $staffId;
+            $isResponsible = isset($memo->responsible_person_id) && (int) $memo->responsible_person_id === $staffId;
+
+            $class = is_object($memo) ? get_class($memo) : '';
+
+            if ($class === \App\Models\Matrix::class || $class === \App\Models\NonTravelMemo::class) {
+                return $isOwner;
+            }
+
+            if ($class === \App\Models\OtherMemo::class) {
+                return $isOwner;
+            }
+
+            return $isOwner || $isResponsible;
+        }
+    }
+
     if (! function_exists('can_delete_memo')) {
         function can_delete_memo($memo, $user = null)
         {

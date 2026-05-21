@@ -2174,20 +2174,16 @@ class NonTravelMemoController extends Controller
 
     public function archive(NonTravelMemo $nonTravel): RedirectResponse
     {
-        $user = session('user', []);
-        $userRole = $user['role'] ?? $user['user_role'] ?? null;
-        $isAdmin = ((int) $userRole) === 10;
-
-        if (! $isAdmin) {
-            return redirect()->route('non-travel.show', $nonTravel)
-                ->with('error', 'Only system administrators can archive this memo.');
+        if (! function_exists('can_archive_memo') || ! can_archive_memo($nonTravel)) {
+            return redirect()->back()
+                ->with('error', 'You are not allowed to archive this memo.');
         }
 
         $nonTravel->previous_overall_status = $this->determineStatusBeforeArchive($nonTravel);
         $nonTravel->overall_status = 'archived';
         $nonTravel->save();
 
-        return redirect()->route('non-travel.show', $nonTravel)
+        return redirect()->back()
             ->with('success', 'Non-travel memo archived successfully.');
     }
 

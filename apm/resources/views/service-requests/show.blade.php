@@ -325,7 +325,7 @@
                                         </a>
                                     </div>
                                @endif
-                               @if($isAdmin && ($serviceRequest->overall_status ?? '') !== 'archived')
+                               @if(function_exists('can_archive_memo') && can_archive_memo($serviceRequest))
                                     <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#archiveServiceRequestModal">
                                         <i class="bx bx-archive me-1"></i> Archive
                                     </button>
@@ -343,7 +343,7 @@
         </div>
     </div>
 
-    @if(($isAdmin ?? false) && ($serviceRequest->overall_status ?? '') !== 'archived')
+    @if(function_exists('can_archive_memo') && can_archive_memo($serviceRequest))
     <div class="modal fade" id="archiveServiceRequestModal" tabindex="-1" aria-labelledby="archiveServiceRequestModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">

@@ -537,7 +537,7 @@
                                 <span>{{ $isAdmin ? 'Admin' : 'Division focal' }}: Update Owners</span>
                             </button>
                         @endif
-                        @if($isAdmin && ($activity->overall_status ?? '') !== 'archived')
+                        @if(function_exists('can_archive_memo') && can_archive_memo($activity))
                             <button type="button" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#archiveSingleMemoModal" style="flex-shrink: 0;">
                                 <i class="bx bx-archive"></i>
                                 <span>Archive</span>
@@ -632,7 +632,7 @@
                         </div>
                     </div>
 
-        @if($isAdmin && ($activity->overall_status ?? '') !== 'archived')
+        @if(function_exists('can_archive_memo') && can_archive_memo($activity))
             <div class="modal fade" id="archiveSingleMemoModal" tabindex="-1" aria-labelledby="archiveSingleMemoModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
