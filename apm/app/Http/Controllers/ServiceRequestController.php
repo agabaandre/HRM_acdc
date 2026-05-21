@@ -164,7 +164,7 @@ class ServiceRequestController extends Controller
             if (! $parentServiceRequest || ! $parentServiceRequest->canCreateChildRequest()) {
                 return redirect()
                     ->back()
-                    ->with('error', 'A child service request cannot be created for this record (feature disabled, budget already fully requested, or a child already exists).');
+                    ->with('error', 'A supplementary service request cannot be created for this record (feature disabled, budget already fully requested, or a supplementary request already exists).');
             }
             $isChildRequestForm = true;
             $childBalanceCap = $parentServiceRequest->remainingMemoBalanceForChild();
@@ -428,7 +428,7 @@ class ServiceRequestController extends Controller
                 return redirect()
                     ->back()
                     ->withInput()
-                    ->with('error', 'Cannot create child service request for this parent.');
+                    ->with('error', 'Cannot create supplementary service request for this parent.');
             }
         }
 
@@ -516,7 +516,7 @@ class ServiceRequestController extends Controller
                 return redirect()
                     ->back()
                     ->withInput()
-                    ->with('error', 'Child service request cannot exceed the remaining memo balance of $' . number_format($cap, 2) . '.');
+                    ->with('error', 'Supplementary service request cannot exceed the remaining memo balance of $' . number_format($cap, 2) . '.');
             }
         } else {
             unset($validated['parent_service_request_id']);
@@ -1211,7 +1211,7 @@ class ServiceRequestController extends Controller
                 return redirect()
                     ->back()
                     ->withInput()
-                    ->with('error', 'Child service request cannot exceed the remaining memo balance of $' . number_format($cap, 2) . '.');
+                    ->with('error', 'Supplementary service request cannot exceed the remaining memo balance of $' . number_format($cap, 2) . '.');
             }
         }
 

@@ -10,7 +10,7 @@ Welcome to the APM (Approvals Management) User Guide. This guide will help you c
 4. [Creating a Non-Travel Memo](#creating-a-non-travel-memo)
 5. [Creating a Change Request](#creating-a-change-request)
 6. [Creating a Service Request](#creating-a-service-request)
-7. [Child service requests](#child-service-requests)
+7. [Supplementary service requests](#supplementary-service-requests)
 8. [Creating an ARF Request](#creating-an-arf-request)
 9. [Reports](#reports)
 10. [Managing Your Documents](#managing-your-documents)
@@ -401,42 +401,42 @@ Service Requests (RQS - Request for Services) are for requesting DSA, Imprest, a
 - Service Requests follow their own approval workflow
 - Service Requests are linked to the source document for tracking purposes
 
-For supplementary requests when the parent SR did not use the full memo budget, see **[Child service requests](#child-service-requests)** and the full guide [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md).
+For supplementary requests when the parent SR did not use the full memo budget, see **[Supplementary service requests](#supplementary-service-requests)** and the full guide [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md).
 
 ---
 
-## Child service requests
+## Supplementary service requests
 
-A **child service request** covers the **remaining memo balance** after a parent service request’s total requested funds are **less than** the original memo budget. It uses the same approved memo as the parent and follows the same approval process, with a strict spending cap.
+A **supplementary service request** covers the **remaining memo balance** after a parent service request’s total requested funds are **less than** the original memo budget. It uses the same approved memo as the parent and follows the same approval process, with a strict spending cap.
 
-### When you can create a child
+### When you can create a supplementary request
 
-On the **parent** service request detail page, **Create child request** appears when:
+On the **parent** service request detail page, **Create supplementary request** appears when:
 
-- Child requests are **enabled** in [App Settings](https://cbp.africacdc.org/staff/apm/system-settings) (`allow_child_service_requests`, default **on**).
+- Supplementary requests are **enabled** in [App Settings](https://cbp.africacdc.org/staff/apm/system-settings) (`allow_child_service_requests`, default **on**).
 - **Original Memo Budget** on the parent is **greater than** **Total Requested Funds** (there is unrequested balance).
-- **No child** service request already exists for that parent.
+- **No supplementary** service request already exists for that parent.
 - You are the **creator** (same rules as editing/submitting a draft parent).
-- A **child** service request may also get a child if it still has remaining balance (nested children).
+- A **supplementary** service request may also get a supplementary request if it still has remaining balance (nested levels).
 
 ### Steps
 
 1. Open the parent service request.
-2. Click **Create child request**.
+2. Click **Create supplementary request**.
 3. Complete the form (pre-filled from the parent memo). The budget summary shows **Maximum allowable (remaining balance)** — your requested total cannot exceed this amount.
 4. Save as draft or submit for approval.
 
 ### What you will see
 
-- A **Child service request** banner with the cap and a link to the **parent document number**.
-- On PDFs: a clear child label and the previous service request document number.
-- On the parent: once a child exists, an info message links to the child’s document number (the create button is no longer shown).
+- A **Supplementary service request** banner with the cap and a link to the **previous service request document number**.
+- On PDFs: a **SUPPLEMENTARY SERVICE REQUEST** label and the previous service request document number.
+- On the parent: once a supplementary request exists, an info message links to its document number (the create button is no longer shown).
 
 ### Rules to remember
 
-- **One direct child per service request** (root or child); further levels are allowed while each SR still has remaining balance.
-- The child’s maximum is fixed when created (`parent original budget − parent requested total` at that time).
-- The child does not replace the parent; both remain on the audit trail for the same memo.
+- **One direct supplementary request per service request** (root or supplementary); further levels are allowed while each SR still has remaining balance.
+- The supplementary request’s maximum is fixed when created (`parent original budget − parent requested total` at that time).
+- It does not replace the parent; both remain on the audit trail for the same memo.
 
 Technical detail: [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md).
 

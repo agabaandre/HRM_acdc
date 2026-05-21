@@ -200,7 +200,7 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
-    .child-service-request-banner {
+    .supplementary-service-request-banner {
         border-left: 5px solid #f59e0b !important;
         background: linear-gradient(90deg, #fffbeb 0%, #ffffff 100%);
     }
@@ -280,7 +280,7 @@
         @php $childSr = $serviceRequest->childServiceRequests->first(); @endphp
         <div class="alert alert-info border-info mb-4">
             <i class="fas fa-link me-2"></i>
-            A <strong>child service request</strong> exists for the remaining memo balance:
+            A <strong>supplementary service request</strong> exists for the remaining memo balance:
             <a wire:navigate href="{{ route('service-requests.show', $childSr) }}" class="fw-bold">{{ $childSr->document_number ?? ('SR #'.$childSr->id) }}</a>
         </div>
     @endif
@@ -298,7 +298,7 @@
                             @if($serviceRequest->document_number)
                                 <p class="text-muted mb-0">
                                     @if($serviceRequest->isChildRequest())
-                                        <span class="badge bg-warning text-dark me-1">Child service request</span>
+                                        <span class="badge bg-warning text-dark me-1">Supplementary service request</span>
                                     @endif
                                     {{ $serviceRequest->document_number }}
                                 </p>
@@ -309,7 +309,7 @@
                                @php $isAdmin = user_session('role') == 10; @endphp
                                @if(!empty($canCreateChildRequest))
                                     <a wire:navigate href="{{ route('service-requests.create', ['parent_service_request_id' => $serviceRequest->id]) }}" class="btn btn-warning">
-                                        <i class="fas fa-layer-group me-1"></i> Create child request
+                                        <i class="fas fa-layer-group me-1"></i> Create supplementary request
                                     </a>
                                @endif
                                @if(($serviceRequest->overall_status ?? '') === 'draft' && is_with_creator_generic($serviceRequest))

@@ -6,7 +6,7 @@
 
 @section('title', $isEdit ? 'Edit Service Request' : 'Create Service Request')
 
-@section('header', $isEdit ? 'Edit Service Request' : (!empty($isChildRequestForm) ? 'Child Service Request' : 'Service Request Form'))
+@section('header', $isEdit ? 'Edit Service Request' : (!empty($isChildRequestForm) ? 'Supplementary Service Request' : 'Service Request Form'))
 
 @section('header-actions')
     @if($isEdit)

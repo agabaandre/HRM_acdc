@@ -1,6 +1,6 @@
-# Child service requests
+# Supplementary service requests
 
-This guide describes **child service requests** in APM: supplementary service requests that cover the **remaining memo balance** after a parent service request has requested less than the full original memo budget.
+This guide describes **supplementary service requests** in APM (UI label; stored as child SRs via `parent_service_request_id`): requests that cover the **remaining memo balance** after a parent service request has requested less than the full original memo budget.
 
 ## Purpose
 
@@ -21,7 +21,7 @@ Only **one direct child** may exist per service request (root or nested). **Nest
 
 **UI:** [App Settings → Service requests](https://cbp.africacdc.org/staff/apm/system-settings) (`/system-settings`).
 
-When the setting is off, the **Create child request** button is hidden and new children cannot be created.
+When the setting is off, the **Create supplementary request** button is hidden and new supplementary SRs cannot be created.
 
 **Seed / deploy:**
 
@@ -29,7 +29,7 @@ When the setting is off, the **Create child request** button is hidden and new c
 php artisan db:seed --class=SystemSettingsSeeder
 ```
 
-## When the “Create child request” button appears
+## When the “Create supplementary request” button appears
 
 On the parent service request **detail** page (`GET /service-requests/{id}`), the button is shown only when **all** of the following are true:
 
@@ -50,14 +50,14 @@ If the parent is not eligible, create redirects back with an error message.
 
 1. Open the **parent** service request (e.g. `/service-requests/333`).
 2. Confirm **Original Memo Budget** &gt; **Total Requested Funds** and that no child is listed.
-3. Click **Create child request**.
+3. Click **Create supplementary request**.
 4. Complete the child form (pre-filled from the parent memo). Budget summary shows **Maximum allowable (remaining balance)** instead of full memo budget.
 5. Ensure **Total Requested Funds** does not exceed that cap (client-side validation and server-side check on save/submit).
 6. Save as draft or submit for approval as usual.
 
 ### Identification in the UI
 
-- **Banner** (warning style): “Child service request”, cap amount, link to **previous service request document number**.
+- **Banner** (warning style): “Supplementary service request”, cap amount, link to **previous service request document number**.
 - **Badge** on the detail header and subject area.
 - **Parent** detail page: info alert when a child already exists, with link to the child’s document number.
 
@@ -137,6 +137,6 @@ php artisan migrate
 ## Related documentation
 
 - [User Guide — Creating a Service Request](./USER_GUIDE.md#creating-a-service-request) (parent flow)
-- [User Guide — Child service requests](./USER_GUIDE.md#child-service-requests)
+- [User Guide — Supplementary service requests](./USER_GUIDE.md#supplementary-service-requests)
 - [Document numbering](./DOCUMENT_NUMBERING_SYSTEM.md) — child SR receives its own SR document number
 - [Approvers Guide](./APPROVERS_GUIDE.md) — service request approval workflow

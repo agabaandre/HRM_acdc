@@ -356,13 +356,13 @@ Details:
 - Cost estimates
 - Urgency justification
 - Linkage to activities
-- **Child service requests:** labelled on the memo/PDF; verify requested total does not exceed the **remaining balance** shown and that the **parent document number** is correct (see [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md))
+- **Supplementary service requests:** labelled on the memo/PDF; verify requested total does not exceed the **remaining balance** shown and that the **previous service request document number** is correct (see [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md))
 
 **Common Issues:**
 - Unclear service requirements
 - Unrealistic cost estimates
 - Missing urgency justification
-- Child request exceeding the capped remaining balance from the parent SR
+- Supplementary request exceeding the capped remaining balance from the previous SR
 
 ![Screenshot: Service Request Approval](APM)
 

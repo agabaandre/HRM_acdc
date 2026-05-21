@@ -538,7 +538,7 @@
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Subject:</strong></td>
     <td style="width: 88%; text-align: left; vertical-align: top;" class="subject-text">
       <?php if (!empty($serviceRequest->parent_service_request_id)): ?>
-        <span style="display:inline-block;background:#fef3c7;color:#92400e;font-weight:700;font-size:11px;padding:2px 8px;border-radius:4px;margin-right:6px;vertical-align:middle;">CHILD SERVICE REQUEST</span>
+        <span style="display:inline-block;background:#fef3c7;color:#92400e;font-weight:700;font-size:11px;padding:2px 8px;border-radius:4px;margin-right:6px;vertical-align:middle;">SUPPLEMENTARY SERVICE REQUEST</span>
       <?php endif; ?>
       Service Request  for <?php echo htmlspecialchars($serviceRequest->service_title ?? 'N/A'); ?>
     </td>
