@@ -631,19 +631,16 @@ if (! function_exists('user_session')) {
                 }
                 $prevArfs = \App\Models\RequestARF::where('source_id', $sourceId)
                     ->where('model_type', $modelType)
-                    ->where('overall_status', 'approved')
                     ->when($currentType === 'arf' && $currentId, fn ($q) => $q->where('id', '!=', $currentId))
                     ->orderByDesc('created_at')
                     ->get(['id', 'document_number', 'arf_number', 'overall_status', 'created_at']);
                 $prevSrs = \App\Models\ServiceRequest::where('source_id', $sourceId)
                     ->where('model_type', $modelType)
-                    ->where('overall_status', 'approved')
                     ->when($currentType === 'service_request' && $currentId, fn ($q) => $q->where('id', '!=', $currentId))
                     ->orderByDesc('created_at')
                     ->get(['id', 'document_number', 'request_number', 'overall_status', 'created_at']);
                 $prevCrs = \App\Models\ChangeRequest::where('parent_memo_id', $sourceId)
                     ->where('parent_memo_model', $modelType)
-                    ->where('overall_status', 'approved')
                     ->where(function ($q) {
                         $q->whereNotNull('request_arf_id')->orWhereNotNull('service_request_id');
                     })

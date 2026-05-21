@@ -221,6 +221,23 @@
   <!-- Service Request Document -->
   <!-- Document Title -->
   <h1 class="document-title">Interoffice Memorandum</h1>
+
+  <?php if (!empty($serviceRequest->parent_service_request_id) && isset($serviceRequest->parentServiceRequest)): ?>
+  <div style="background:#fffbeb;border:2px solid #f59e0b;border-left:6px solid #f59e0b;padding:12px 14px;margin:0 0 16px 0;border-radius:6px;">
+    <div style="font-size:13px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">
+      Child service request
+    </div>
+    <div style="font-size:13px;color:#0f172a;line-height:1.5;">
+      Supplementary funds for the same parent memo. This request must not exceed the remaining balance allocated from the parent service request.
+    </div>
+    <div style="font-size:13px;margin-top:8px;">
+      <span style="color:#64748b;">Previous service request document:</span>
+      <strong style="color:#b45309;font-size:15px;margin-left:6px;">
+        <?php echo htmlspecialchars($serviceRequest->parentServiceRequest->document_number ?? ('SR #'.$serviceRequest->parentServiceRequest->id)); ?>
+      </strong>
+    </div>
+  </div>
+  <?php endif; ?>
   
   <?php
     // Use centralized PrintHelper
@@ -536,30 +553,15 @@
  <table class="mb-15">
   <tr>
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Subject:</strong></td>
-    <td style="width: 88%; text-align: left; vertical-align: top;" class="subject-text">Service Request  for <?php echo htmlspecialchars($serviceRequest->service_title ?? 'N/A'); ?></td>
+    <td style="width: 88%; text-align: left; vertical-align: top;" class="subject-text">
+      <?php if (!empty($serviceRequest->parent_service_request_id)): ?>
+        <span style="display:inline-block;background:#fef3c7;color:#92400e;font-weight:700;font-size:11px;padding:2px 8px;border-radius:4px;margin-right:6px;vertical-align:middle;">CHILD SERVICE REQUEST</span>
+      <?php endif; ?>
+      Service Request  for <?php echo htmlspecialchars($serviceRequest->service_title ?? 'N/A'); ?>
+    </td>
   </tr>
  </table>
 
-  <?php if (!empty($serviceRequest->parent_service_request_id) && isset($serviceRequest->parentServiceRequest)):
-      $parentSr = $serviceRequest->parentServiceRequest;
-      $prevDocNo = trim((string) ($parentSr->document_number ?? ''));
-      if ($prevDocNo === '') {
-          $prevDocNo = trim((string) ($parentSr->request_number ?? ''));
-      }
-      $prevBalanceLeft = $parentSr->remainingMemoBalanceForChild();
-      if ($prevBalanceLeft <= 0 && (float) ($serviceRequest->original_total_budget ?? 0) > 0) {
-          $prevBalanceLeft = (float) $serviceRequest->original_total_budget;
-      }
-  ?>
-  <p style="margin: 0 0 14px 0; font-size: 13px; line-height: 1.65; color: #0f172a;">
-    Supplementary funds for the same parent memo.
-    Balance remaining on the previous service request<?php if ($prevDocNo !== ''): ?>
-      (<strong><?php echo htmlspecialchars($prevDocNo); ?></strong>)<?php else: ?>
-      (SR #<?php echo (int) $parentSr->id; ?>)<?php endif; ?>:
-    <strong>$<?php echo number_format($prevBalanceLeft, 2); ?></strong>.
-    Total requested funds on this child request must not exceed that amount.
-  </p>
-  <?php endif; ?>
 
  <p>
     Reference is made to the attached approval memo, <a href="<?=$sourceData->memo_link?>" class="text-success text-decoration-underline" style="color:#006633 !important;"><b><?=$sourceData->document_number?></b></a>, concerning <?=$sourceData->activity_title?>, 
@@ -1169,7 +1171,7 @@ $dHasContent = $dParent || $dPrevArfs->isNotEmpty() || $dPrevSrs->isNotEmpty() |
 <?php
 $dApprovedChanges = $disclaimer['approved_changes_list'] ?? [];
 ?>
-<?php if ($dHasContent && empty($embedFragment)): ?>
+<?php if ($dHasContent): ?>
 <div style="page-break-before: always; margin-top: 20px; padding: 14px; border: 1px solid #dee2e6; background: #fff; font-size: 11px; line-height: 1.5; color: #212529;">
     <div class="mb-0" style="color:#006633; font-size: 15px;"><strong>Based on parent memo — Service Request</strong></div>
     <p style="margin: 8px 0 10px 0; color: #212529;">
@@ -1214,22 +1216,7 @@ $dApprovedChanges = $disclaimer['approved_changes_list'] ?? [];
 </div>
 <?php endif; ?>
 
-<?php if (empty($embedFragment)): ?>
-<?php
-$previousSrEmbeds = $previousServiceRequestPdfHtmls ?? [];
-$hasTrailingAttachments = count($previousSrEmbeds) > 0 || !empty($changeRequestPdfHtml) || !empty($sourcePdfHtml);
-?>
-<?php if ($hasTrailingAttachments): ?>
 <div class="page-break"></div>
-<?php endif; ?>
-
-<?php foreach ($previousSrEmbeds as $prevEmbed): ?>
-  <?php if (!empty($prevEmbed['html'])): ?>
-  <div class="section-label mb-15"><strong>Previous Service Request — <?php echo htmlspecialchars($prevEmbed['label'] ?? 'Service Request'); ?></strong></div>
-  <?php echo $prevEmbed['html']; ?>
-  <div class="page-break"></div>
-  <?php endif; ?>
-<?php endforeach; ?>
 
 <?php if (!empty($changeRequestPdfHtml)): ?>
   <!-- Change Request Memo (CR content only; Original Approval Memo follows below) -->
@@ -1242,7 +1229,6 @@ $hasTrailingAttachments = count($previousSrEmbeds) > 0 || !empty($changeRequestP
   <!-- Original / Approval Memo (parent memo - shown once after CR when SR is from CR) -->
   <div class="section-label mb-15"><strong>Original Approval Memo</strong></div>
   <?php echo $sourcePdfHtml; ?>
-<?php endif; ?>
 <?php endif; ?>
 
 </body>

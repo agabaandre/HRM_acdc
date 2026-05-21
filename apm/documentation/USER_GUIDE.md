@@ -417,7 +417,7 @@ On the **parent** service request detail page, **Create child request** appears 
 - **Original Memo Budget** on the parent is **greater than** **Total Requested Funds** (there is unrequested balance).
 - **No child** service request already exists for that parent.
 - The parent is not itself a child request.
-- You are the **creator or responsible person** on the parent (including after the parent is **approved**).
+- You are the **creator** (same rules as editing/submitting a draft parent).
 
 ### Steps
 
@@ -434,8 +434,7 @@ On the **parent** service request detail page, **Create child request** appears 
 
 ### Rules to remember
 
-- **One direct child per service request** (each SR in the chain can have at most one child).
-- **Nested children** are allowed (a child SR can spawn another child if its own requested total is still below its cap).
+- **One child per parent** service request.
 - The child’s maximum is fixed when created (`parent original budget − parent requested total` at that time).
 - The child does not replace the parent; both remain on the audit trail for the same memo.
 
