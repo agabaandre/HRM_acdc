@@ -140,12 +140,15 @@ class ServiceRequest extends Model
     }
 
     /**
-     * This SR may spawn a follow-up child when under-funded on this record and no child exists yet.
-     * Child SRs may also have children (nested) while their own remaining balance is not depleted.
+     * Parent may spawn a child SR when under-funded and no child exists yet.
      */
     public function canCreateChildRequest(): bool
     {
         if (! self::childRequestsEnabled()) {
+            return false;
+        }
+
+        if ($this->isChildRequest()) {
             return false;
         }
 
@@ -158,34 +161,6 @@ class ServiceRequest extends Model
         }
 
         return ! $this->childServiceRequests()->exists();
-    }
-
-    /**
-     * Whether the given user may start a child SR from this parent (UI / create action).
-     * Unlike draft edit, an approved parent with remaining memo balance may still get a child.
-     */
-    public function userCanCreateChildRequest(?int $staffId = null): bool
-    {
-        if (! $this->canCreateChildRequest()) {
-            return false;
-        }
-
-        $staffId = $staffId ?? (int) (user_session('staff_id') ?? 0);
-        if ($staffId <= 0) {
-            return false;
-        }
-
-        $allowedStatuses = ['approved', 'draft', 'returned', 'pending', 'in_progress', 'completed'];
-        if (! in_array((string) ($this->overall_status ?? ''), $allowedStatuses, true)) {
-            return false;
-        }
-
-        $ownerIds = array_filter([
-            (int) ($this->staff_id ?? 0),
-            (int) ($this->responsible_person_id ?? 0),
-        ]);
-
-        return in_array($staffId, $ownerIds, true);
     }
 
     public function activity(): BelongsTo

@@ -283,13 +283,6 @@
             A <strong>child service request</strong> exists for the remaining memo balance:
             <a wire:navigate href="{{ route('service-requests.show', $childSr) }}" class="fw-bold">{{ $childSr->document_number ?? ('SR #'.$childSr->id) }}</a>
         </div>
-    @elseif(!empty($childRequestRemainingBalance) && $childRequestRemainingBalance > 0 && empty($canCreateChildRequest))
-        <div class="alert alert-secondary border mb-4">
-            <i class="fas fa-info-circle me-2"></i>
-            This parent has <strong>${{ number_format($childRequestRemainingBalance, 2) }}</strong> remaining memo balance
-            (original memo budget greater than total requested on this request).
-            Only the <strong>creator or responsible person</strong> can start a child service request.
-        </div>
     @endif
     <!-- Header Section -->
     <div class="row mb-4">
@@ -572,38 +565,6 @@
                             </div>
                         </div>
                     </div>
-                    @php
-                        $memoOriginal = (float) ($serviceRequest->original_total_budget ?? 0);
-                        $memoRequested = (float) ($serviceRequest->new_total_budget ?? 0);
-                        $memoRemaining = max(0, $memoOriginal - $memoRequested);
-                    @endphp
-                    @if($memoRemaining > 0.009 && $serviceRequest->childServiceRequests->isEmpty())
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <div class="alert alert-warning border-warning mb-0 py-2 small">
-                                    <i class="fas fa-layer-group me-1"></i>
-                                    <strong>Remaining memo balance (for a child request):</strong>
-                                    ${{ number_format($memoRemaining, 2) }}
-                                    — original memo budget (<strong>${{ number_format($memoOriginal, 2) }}</strong>)
-                                    is greater than total requested on this request (<strong>${{ number_format($memoRequested, 2) }}</strong>).
-                                    @if(!empty($canCreateChildRequest))
-                                        Use <strong>Create child request</strong> above to request these funds.
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    @elseif($memoRequested > $memoOriginal + 0.009)
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <div class="alert alert-danger border-danger mb-0 py-2 small">
-                                    <i class="fas fa-exclamation-triangle me-1"></i>
-                                    Total requested funds exceed the original memo budget on this service request.
-                                    A <strong>child request</strong> is only when this request did <strong>not</strong> use the full memo amount
-                                    (original memo budget must be <strong>greater than</strong> total requested funds).
-                                </div>
-                            </div>
-                        </div>
-                    @endif
                     @endif
 
                     <!-- Service Request Budget Breakdown -->

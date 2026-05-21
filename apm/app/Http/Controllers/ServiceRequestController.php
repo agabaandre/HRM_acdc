@@ -998,10 +998,8 @@ class ServiceRequestController extends Controller
         $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
         $canEmailPdf = can_print_memo($serviceRequest) && count($emailPdfRecipientChoices) > 0;
 
-        $canCreateChildRequest = $serviceRequest->userCanCreateChildRequest();
-        $childRequestRemainingBalance = $serviceRequest->canCreateChildRequest()
-            ? $serviceRequest->remainingMemoBalanceForChild()
-            : null;
+        $canCreateChildRequest = $serviceRequest->canCreateChildRequest()
+            && is_with_creator_generic($serviceRequest);
 
         return view('service-requests.show', compact(
             'serviceRequest',
@@ -1013,7 +1011,6 @@ class ServiceRequestController extends Controller
             'emailPdfRecipientChoices',
             'canEmailPdf',
             'canCreateChildRequest',
-            'childRequestRemainingBalance',
         ));
     }
 
@@ -2198,218 +2195,6 @@ class ServiceRequestController extends Controller
     }
 
     /**
-     * Display label for a service request on print (document number, then request number, then id).
-     */
-    private function serviceRequestPrintDocumentLabel(ServiceRequest $serviceRequest): string
-    {
-        $label = trim((string) ($serviceRequest->document_number ?? ''));
-        if ($label === '') {
-            $label = trim((string) ($serviceRequest->request_number ?? ''));
-        }
-        if ($label === '') {
-            $label = 'SR #' . (int) $serviceRequest->id;
-        }
-
-        return $label;
-    }
-
-    /**
-     * HTML fragment of this service request only (no nested previous SRs, CR, or approval memo).
-     * Used when embedding a prior SR before "Original Approval Memo" on a child or related SR print.
-     */
-    public function getPrintHtmlFragmentForEmbedding(ServiceRequest $serviceRequest): ?string
-    {
-        $serviceRequest->load([
-            'staff',
-            'division',
-            'activity',
-            'forwardWorkflow',
-            'reverseWorkflow',
-            'serviceRequestApprovalTrails.staff',
-            'serviceRequestApprovalTrails.approverRole',
-            'parentServiceRequest',
-        ]);
-
-        $sourceData = null;
-        if ($serviceRequest->source_type && $serviceRequest->source_id) {
-            $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
-            if ($sourceData && $serviceRequest->source_type === 'activity') {
-                $sourceData->load([
-                    'approvalTrails.staff',
-                    'approvalTrails.oicStaff',
-                    'activityApprovalTrails.staff',
-                    'activityApprovalTrails.oicStaff',
-                    'matrix.matrixApprovalTrails.staff',
-                    'matrix.matrixApprovalTrails.oicStaff',
-                ]);
-                if ((bool) ($sourceData->is_single_memo ?? false)) {
-                    $sourceTrails = $sourceData->approvalTrails;
-                    if (! $sourceTrails || $sourceTrails->isEmpty()) {
-                        $sourceTrails = $sourceData->activityApprovalTrails;
-                    }
-                    $sourceData->approval_trails = $sourceTrails;
-                } else {
-                    $sourceData->approval_trails = $sourceData->matrix->matrixApprovalTrails ?? collect();
-                }
-            } elseif ($sourceData && in_array($serviceRequest->source_type, ['special_memo', 'non_travel_memo'], true)) {
-                $sourceData->load(['approvalTrails.staff', 'approvalTrails.oicStaff']);
-                $sourceData->approval_trails = $sourceData->approvalTrails;
-            }
-        }
-
-        $workflowInfo = $this->getComprehensiveWorkflowInfo($serviceRequest);
-        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
-
-        $html = view('service-requests.print', [
-            'serviceRequest' => $serviceRequest,
-            'sourceData' => $sourceData,
-            'sourcePdfHtml' => null,
-            'organized_workflow_steps' => $organizedWorkflowSteps,
-            'disclaimerData' => [
-                'parent' => null,
-                'previous_arfs' => collect(),
-                'previous_service_requests' => collect(),
-                'previous_change_requests' => collect(),
-            ],
-            'changeRequestPdfHtml' => null,
-            'previousServiceRequestPdfHtmls' => [],
-            'embedFragment' => true,
-        ])->render();
-
-        $fragment = \App\Helpers\PrintHelper::htmlFullDocumentToEmbedFragment($html);
-
-        return $fragment !== '' ? \App\Helpers\PrintHelper::sanitizeHtmlForMpdf($fragment) : null;
-    }
-
-    /**
-     * Approved ancestors up the parent_service_request_id chain (oldest root first when sorted).
-     */
-    private function collectApprovedAncestorServiceRequests(ServiceRequest $serviceRequest): \Illuminate\Support\Collection
-    {
-        $ancestors = collect();
-        $node = $serviceRequest;
-        $visited = [];
-
-        while ((int) ($node->parent_service_request_id ?? 0) > 0) {
-            $parentId = (int) $node->parent_service_request_id;
-            if (isset($visited[$parentId])) {
-                break;
-            }
-            $visited[$parentId] = true;
-
-            $parent = $node->relationLoaded('parentServiceRequest') && $node->parentServiceRequest?->id === $parentId
-                ? $node->parentServiceRequest
-                : ServiceRequest::query()->find($parentId);
-
-            if (! $parent) {
-                break;
-            }
-
-            if (($parent->overall_status ?? '') === 'approved') {
-                $ancestors->push($parent);
-            }
-
-            $node = $parent;
-        }
-
-        return $ancestors;
-    }
-
-    /**
-     * All approved descendants in the child chain (children, grandchildren, etc.).
-     */
-    private function collectApprovedDescendantServiceRequests(int $rootId): \Illuminate\Support\Collection
-    {
-        $descendants = collect();
-        $queue = [$rootId];
-        $visited = [$rootId => true];
-
-        while ($queue !== []) {
-            $parentId = array_shift($queue);
-            $children = ServiceRequest::query()
-                ->where('parent_service_request_id', $parentId)
-                ->where('overall_status', 'approved')
-                ->orderBy('created_at')
-                ->get();
-
-            foreach ($children as $child) {
-                $childId = (int) $child->id;
-                if (isset($visited[$childId])) {
-                    continue;
-                }
-                $visited[$childId] = true;
-                $descendants->push($child);
-                $queue[] = $childId;
-            }
-        }
-
-        return $descendants;
-    }
-
-    /**
-     * @return list<array{serviceRequest: ServiceRequest, html: string, label: string}>
-     */
-    private function collectPreviousServiceRequestEmbedsForPrint(ServiceRequest $serviceRequest, array $disclaimerData): array
-    {
-        $currentId = (int) $serviceRequest->id;
-        $seen = [$currentId => true];
-        $ordered = collect();
-
-        foreach ($this->collectApprovedAncestorServiceRequests($serviceRequest) as $ancestor) {
-            $id = (int) $ancestor->id;
-            if (! isset($seen[$id])) {
-                $ordered->push($ancestor);
-                $seen[$id] = true;
-            }
-        }
-
-        foreach ($this->collectApprovedDescendantServiceRequests($currentId) as $descendant) {
-            $id = (int) $descendant->id;
-            if (! isset($seen[$id])) {
-                $ordered->push($descendant);
-                $seen[$id] = true;
-            }
-        }
-
-        $prevFromDisclaimer = $disclaimerData['previous_service_requests'] ?? collect();
-        foreach ($prevFromDisclaimer as $row) {
-            $id = (int) ($row->id ?? 0);
-            if ($id <= 0 || isset($seen[$id])) {
-                continue;
-            }
-
-            $full = $row instanceof ServiceRequest ? $row : ServiceRequest::query()->find($id);
-            if (! $full || ($full->overall_status ?? '') !== 'approved') {
-                continue;
-            }
-
-            if ($serviceRequest->created_at && $full->created_at
-                && $full->created_at->gt($serviceRequest->created_at)) {
-                continue;
-            }
-
-            $ordered->push($full);
-            $seen[$id] = true;
-        }
-
-        $ordered = $ordered->sortBy('created_at')->values();
-
-        $embeds = [];
-        foreach ($ordered as $prevSr) {
-            $fragment = $this->getPrintHtmlFragmentForEmbedding($prevSr);
-            if ($fragment) {
-                $embeds[] = [
-                    'serviceRequest' => $prevSr,
-                    'html' => $fragment,
-                    'label' => $this->serviceRequestPrintDocumentLabel($prevSr),
-                ];
-            }
-        }
-
-        return $embeds;
-    }
-
-    /**
      * @return array{0: object, 1: string}
      */
     private function buildServiceRequestPdfForOutput(ServiceRequest $serviceRequest): array
@@ -2490,11 +2275,9 @@ class ServiceRequestController extends Controller
 
         $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
         $disclaimerData = $emptyDisclaimer;
-        if (function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type) {
+        if (function_exists('parent_based_disclaimer_data') && $serviceRequest->source_id && $serviceRequest->model_type && \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->exists()) {
             $disclaimerData = parent_based_disclaimer_data($serviceRequest->source_id, $serviceRequest->model_type, 'service_request', $serviceRequest->id);
         }
-
-        $previousServiceRequestPdfHtmls = $this->collectPreviousServiceRequestEmbedsForPrint($serviceRequest, $disclaimerData);
 
         $changeRequestPdfHtml = null;
         $originatingCr = \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->first();
@@ -2522,8 +2305,6 @@ class ServiceRequestController extends Controller
                 'organized_workflow_steps' => $organizedWorkflowSteps,
                 'disclaimerData' => $disclaimerData,
                 'changeRequestPdfHtml' => $changeRequestPdfHtml,
-                'previousServiceRequestPdfHtmls' => $previousServiceRequestPdfHtmls,
-                'embedFragment' => false,
             ], ['preview_html' => $print]);
         } catch (\Throwable $e) {
             \Log::warning('Service request print failed; retrying without embedded fragments', [
@@ -2539,8 +2320,6 @@ class ServiceRequestController extends Controller
                 'organized_workflow_steps' => $organizedWorkflowSteps,
                 'disclaimerData' => $disclaimerData,
                 'changeRequestPdfHtml' => null,
-                'previousServiceRequestPdfHtmls' => [],
-                'embedFragment' => false,
             ], ['preview_html' => $print]);
         }
 

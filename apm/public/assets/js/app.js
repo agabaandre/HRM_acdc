@@ -1,8 +1,4 @@
-(function ($) {
-	if (!$) {
-		return;
-	}
-	$(function () {
+$(function () {
 	"use strict";
 	// search bar
 	$(".mobile-search-icon").on("click", function () {
@@ -127,5 +123,12 @@
 		$("html").removeClass("headercolor1 headercolor2 headercolor4 headercolor5 headercolor6 headercolor7 headercolor3");
 	});
 
-	});
-})(typeof jQuery !== 'undefined' ? jQuery : null);
+
+
+
+
+
+
+
+
+});

@@ -83,37 +83,87 @@
 </div>
 <!--end switcher-->
 
-<script src="{{ asset('assets/js/bootstrap.bundle.min.js') }}" data-navigate-once></script>
+<script src="{{ asset('assets/js/bootstrap.bundle.min.js') }}"></script>
 <!-- jQuery UI Library -->
-<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" data-navigate-once></script>
+<!-- Bootstrap 5 with Popper bundled -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-FHgNHNh4rHcmJ8s9jP3J7iYmMOTtMnJ0A2gU2wZSwRPmpZuUMHefPlU+GfNwH3zU" crossorigin="anonymous"></script> -->
+
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 @if (! View::hasSection('suppress_google_translate'))
 <script type="text/javascript"
-    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" data-navigate-once></script>
+    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 @endif
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js" data-navigate-once></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
 
-<script src="{{ asset('assets/plugins/notifications/js/notifications.min.js') }}" data-navigate-once></script>
-<script src="{{ asset('assets/js/pace.min.js') }}" data-navigate-once></script>
-<script src="{{ asset('assets/plugins/notifications/js/notification-custom-script.js') }}" data-navigate-once></script>
-<script src="{{ asset('assets/plugins/simplebar/js/simplebar.min.js') }}" data-navigate-once></script>
-<script src="{{ asset('js/apm-jquery-alias.js') }}"></script>
-<script src="{{ asset('assets/js/app.js') }}" data-navigate-once></script>
-<script src="{{ asset('assets/plugins/datatable/js/jquery.dataTables.min.js') }}" data-navigate-once></script>
-<script src="{{ asset('assets/plugins/datatable/js/dataTables.bootstrap5.min.js') }}" data-navigate-once></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js" data-navigate-once></script>
-<script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.js" data-navigate-once></script>
-<script src="{{ asset('assets/plugins/smart-wizard/js/jquery.smartWizard.min.js') }}" data-navigate-once></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr" data-navigate-once></script>
-<script src="{{ asset('js/apm-layout-plugins.js') }}"></script>
+<script src="{{ asset('assets/plugins/notifications/js/notifications.min.js') }}"></script>
+<script src="{{ asset('assets/js/pace.min.js') }}"></script>
+<script src="{{ asset('assets/plugins/notifications/js/notification-custom-script.js') }}"></script>
+<script src="{{ asset('assets/plugins/simplebar/js/simplebar.min.js') }}"></script>
+<script src="{{ asset('assets/js/app.js') }}"></script>
+<script src="{{ asset('assets/plugins/datatable/js/jquery.dataTables.min.js') }}"></script>
+<script src="{{ asset('assets/plugins/datatable/js/dataTables.bootstrap5.min.js') }}"></script>
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.js"></script>
 
-<script data-navigate-once>
-    function show_notification(message, msgtype) {
-        if (typeof msgtype === 'undefined') {
-            msgtype = 'info';
-        }
-        if (typeof Lobibox === 'undefined') {
-            return;
-        }
+<script src="{{ asset('assets/plugins/smart-wizard/js/jquery.smartWizard.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<!-- FullCalendar & Bootstrap JS Bundle -->
+<script>
+    $(document).ready(function () {
+        $('.datepicker').each(function() {
+            if (this._flatpickr) return; // already initialized (e.g. assign-staff page)
+            flatpickr(this, {
+                theme: "confetti",
+                altInput: true,
+                altFormat: "F j, Y",
+                dateFormat: "Y-m-d",
+                allowInput: true
+            });
+        });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const currentYear = new Date().getFullYear();
+        const minDate = `${currentYear}-01-01`;
+        const maxDate = `${currentYear}-12-31`;
+
+        flatpickr('.current_datepicker', {
+            dateFormat: "Y-m-d",
+            minDate: minDate,
+            maxDate: maxDate,
+            disableMobile: true
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function () {
+      
+        @if(session('msg') && session('type'))
+            show_notification({!! json_encode(session('msg')) !!}, {!! json_encode(session('type')) !!});
+        @endif
+
+        @if(session('success'))
+            show_notification({!! json_encode(session('success')) !!}, 'success');
+        @endif
+
+        @if(session('error'))
+            show_notification({!! json_encode(session('error')) !!}, 'error');
+        @endif
+
+       
+        @if(isset($errors) && $errors->any())
+            @foreach ($errors->all() as $error)
+                show_notification(`{!! $error !!}`, "error");
+            @endforeach
+        @endif
+    });
+
+   
+    function show_notification(message, msgtype = 'info') {
         Lobibox.notify(msgtype, {
             pauseDelayOnHover: true,
             continueDelayOnInactiveTab: false,
@@ -126,25 +176,61 @@
             msg: message
         });
     }
+</script>
 
-    document.addEventListener('DOMContentLoaded', function () {
-        if (typeof jQuery === 'undefined') {
-            return;
-        }
-        @if(session('msg') && session('type'))
-            show_notification({!! json_encode(session('msg')) !!}, {!! json_encode(session('type')) !!});
-        @endif
-        @if(session('success'))
-            show_notification({!! json_encode(session('success')) !!}, 'success');
-        @endif
-        @if(session('error'))
-            show_notification({!! json_encode(session('error')) !!}, 'error');
-        @endif
-        @if(isset($errors) && $errors->any())
-            @foreach ($errors->all() as $error)
-                show_notification({!! json_encode($error) !!}, 'error');
-            @endforeach
-        @endif
+<script>
+    $(document).ready(function() {
+        $('.select2').each(function() {
+            if ($(this).hasClass('select2-hidden-accessible')) return; // already initialized (e.g. assign-staff page)
+            $(this).select2({
+                theme: 'bootstrap4',
+                width: $(this).data('width') || ($(this).hasClass('w-100') ? '100%' : 'style'),
+                placeholder: $(this).data('placeholder'),
+                allowClear: Boolean($(this).data('allow-clear')),
+            });
+        });
+        $('.multiple-select').each(function() {
+            if ($(this).hasClass('select2-hidden-accessible')) return;
+            $(this).select2({
+                theme: 'bootstrap4',
+                multiple: true,
+                width: $(this).data('width') || ($(this).hasClass('w-100') ? '100%' : 'style'),
+                placeholder: $(this).data('placeholder'),
+                allowClear: Boolean($(this).data('allow-clear')),
+            });
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        $(function () {
+            var priorities = ["Low", "Medium", "High"];
+            $("#edit_priority").autocomplete({
+                source: priorities
+            });
+        });
+
+        $('.mydata').each(function() {
+            if (!$.fn.DataTable || $.fn.DataTable.isDataTable(this)) return;
+            $(this).DataTable({
+                dom: 'Bfrtip',
+                "paging": true,
+                "lengthChange": true,
+                "searching": true,
+                "ordering": true,
+                "info": true,
+                "autoWidth": true,
+                lengthMenu: [
+                    [25, 50, 100, 150, -1],
+                    ['25', '50', '100', '150', '200', 'Show all']
+                ],
+                buttons: [
+                    'csvHtml5',
+                    'pdfHtml5',
+                    'pageLength',
+                ]
+            });
+        });
     });
 </script>
 
@@ -284,4 +370,129 @@
 </script>
 @endif
 
-{{-- Summernote / layout plugins: public/js/apm-layout-plugins.js (apmSummernoteOptions + livewire:navigated) --}}
+<script>
+  function uploadImage(file, editor) {
+    var data = new FormData();
+    data.append("file", file);
+
+    // Append CSRF token for Laravel
+    data.append('_token', '{{ csrf_token() }}');
+
+    $.ajax({
+      url: '{{ route("image.upload") }}', // Define this route in your Laravel web.php
+      type: 'POST',
+      data: data,
+      cache: false,
+      contentType: false,
+      processData: false,
+      success: function(response) {
+        // Assuming your server returns a JSON object with the image URL as { url: "..." }
+        var imageUrl = response.url || response;
+        // Insert image at the current cursor position
+        $(editor).summernote('insertImage', imageUrl);
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        console.error("Image upload failed: " + textStatus + " " + errorThrown);
+      }
+    });
+  }
+
+  /**
+   * Shared Summernote options (full toolbar, tables, fonts, line height, undo/redo).
+   * Used by layout init, other-memo dynamic fields, and memo-type catalogue preview.
+   */
+  window.apmSummernoteOptions = function (overrides) {
+    var base = {
+      placeholder: 'Type here…',
+      height: 300,
+      minHeight: 200,
+      maxHeight: null,
+      focus: false,
+      dialogsInBody: true,
+      styleWithSpan: true,
+      disableDragAndDrop: false,
+
+      fontNames: ['Arial', 'Arial Black', 'Calibri', 'Comic Sans MS', 'Courier New', 'Helvetica', 'Impact', 'Tahoma', 'Times New Roman', 'Verdana'],
+      fontNamesIgnoreCheck: ['Arial', 'Arial Black', 'Calibri', 'Comic Sans MS', 'Courier New', 'Helvetica', 'Impact', 'Tahoma', 'Times New Roman', 'Verdana'],
+
+      fontSizes: ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '32', '36', '48', '64'],
+      fontSizeUnits: ['px', 'pt'],
+
+      lineHeights: ['0.9', '1.0', '1.15', '1.3', '1.5', '1.75', '2.0', '2.5', '3.0'],
+
+      tableClassName: 'table table-bordered table-sm',
+
+      toolbar: [
+        ['misc', ['undo', 'redo']],
+        ['style', ['style']],
+        ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
+        ['fontname', ['fontname']],
+        ['fontsize', ['fontsize']],
+        ['color', ['color']],
+        ['para', ['ul', 'ol', 'paragraph']],
+        ['height', ['lineheight']],
+        ['table', ['table']],
+        ['insert', ['link', 'picture', 'video', 'hr']],
+        ['view', ['fullscreen', 'codeview', 'help']]
+      ],
+
+      popover: {
+        table: [
+          ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+          ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+        ],
+        image: [
+          ['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+          ['float', ['floatLeft', 'floatRight', 'floatNone']],
+          ['remove', ['removeMedia']]
+        ]
+      },
+
+      callbacks: {
+        onInit: function () {
+          $(this).next('.note-editor').find('.note-editable').css({
+            'font-family': 'Arial, Calibri, Tahoma, Verdana, "Times New Roman", "Courier New", sans-serif',
+            'font-size': '12pt',
+            'line-height': '1.3'
+          });
+        },
+        onCreateLink: function (link) {
+          return link;
+        },
+        onImageUpload: function (files) {
+          for (var i = 0; i < files.length; i++) {
+            uploadImage(files[i], this);
+          }
+        },
+        onPaste: function (e) {
+          var clipboardData = (e.originalEvent || e).clipboardData;
+          if (clipboardData && clipboardData.getData) {
+            var html = clipboardData.getData('text/html');
+            if (html) {
+              html = html
+                .replace(/border="[^"]*"/gi, '')
+                .replace(/style="[^"]*border[^"]*"/gi, '');
+              document.execCommand('insertHTML', false, html);
+              e.preventDefault();
+            }
+          }
+        }
+      }
+    };
+    return $.extend(true, {}, base, overrides || {});
+  };
+
+  $(document).ready(function () {
+    $('.summernote').each(function () {
+      var $el = $(this);
+      if ($el.next('.note-editor').length) {
+        return;
+      }
+      $el.summernote(window.apmSummernoteOptions());
+    });
+  });
+</script>
+
+</body>
+
+</html>
