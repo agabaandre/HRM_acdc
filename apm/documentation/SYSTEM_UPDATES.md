@@ -4,11 +4,11 @@ This document lists notable features, improvements, and changes to the APM (Appr
 
 ---
 
-## Child service requests (2026-05-20)
+## Supplementary service requests (2026-05-20)
 
 ### Summary
 
-- **Child service requests** let creators request the **remaining memo balance** after a parent SR’s total requested funds are below the original memo budget.
+- **Supplementary service requests** (UI label; `parent_service_request_id` in DB) let creators request the **remaining memo balance** after a parent SR’s total requested funds are below the original memo budget.
 - **One direct child per SR** (nested children allowed while balance remains); linked by `service_requests.parent_service_request_id`.
 - **System setting** `allow_child_service_requests` (group `service_requests`, default on) in App Settings.
 - UI banner, badges, parent document number on detail/PDF; server and client validation against the cap.
@@ -16,7 +16,7 @@ This document lists notable features, improvements, and changes to the APM (Appr
 ### Documentation
 
 - Operator and developer guide: **[CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md)**
-- User steps: **[USER_GUIDE.md](./USER_GUIDE.md#child-service-requests)**
+- User steps: **[USER_GUIDE.md](./USER_GUIDE.md#supplementary-service-requests)**
 
 ### Deploy
 
