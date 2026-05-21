@@ -401,44 +401,45 @@ Service Requests (RQS - Request for Services) are for requesting DSA, Imprest, a
 - Service Requests follow their own approval workflow
 - Service Requests are linked to the source document for tracking purposes
 
-For supplementary requests when the parent SR did not use the full memo budget, see **[Supplementary service requests](#supplementary-service-requests)** and the full guide [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md).
+For supplementary requests when an earlier service request did not use the full memo budget, see **[Supplementary service requests](#supplementary-service-requests)** below and the [technical reference](/documentation/CHILD_SERVICE_REQUESTS.md).
 
 ---
 
 ## Supplementary service requests
 
-A **supplementary service request** covers the **remaining memo balance** after a parent service request’s total requested funds are **less than** the original memo budget. It uses the same approved memo as the parent and follows the same approval process, with a strict spending cap.
+A **supplementary service request** is used when an approved memo still has **unrequested funds** after a service request (or another supplementary request) has been filed. It requests the **remaining balance** for the same approved memo (DSA, imprest, tickets, etc.), uses the same source memo and approval workflow, and is capped so you cannot exceed what was left unrequested on the **previous** service request.
 
 ### When you can create a supplementary request
 
-On the **parent** service request detail page, **Create supplementary request** appears when:
+On a service request detail page, **Create supplementary request** appears when:
 
-- Supplementary requests are **enabled** in [App Settings](https://cbp.africacdc.org/staff/apm/system-settings) (`allow_child_service_requests`, default **on**).
-- **Original Memo Budget** on the parent is **greater than** **Total Requested Funds** (there is unrequested balance).
-- **No supplementary** service request already exists for that parent.
-- You are the **creator** (same rules as editing/submitting a draft parent).
-- A **supplementary** service request may also get a supplementary request if it still has remaining balance (nested levels).
+- **Allow supplementary service requests** is enabled in [App Settings](https://cbp.africacdc.org/staff/apm/system-settings) (Service requests group; setting key `allow_child_service_requests`, default **Yes**).
+- **Original Memo Budget** (or **Maximum allowable (remaining balance)** on a supplementary SR) is **greater than** **Total Requested Funds** — there is still unrequested balance.
+- **No supplementary request** is already linked to that service request (one supplementary request per SR).
+- You are the **creator** (same rules as editing or submitting the draft you are creating from).
+- **Nested supplementary requests** are allowed: if a supplementary SR still has remaining balance, you may create another supplementary request from it (each level has its own cap).
 
 ### Steps
 
-1. Open the parent service request.
+1. Open the service request that still has remaining balance (the “previous” request).
 2. Click **Create supplementary request**.
-3. Complete the form (pre-filled from the parent memo). The budget summary shows **Maximum allowable (remaining balance)** — your requested total cannot exceed this amount.
-4. Save as draft or submit for approval.
+3. Complete the form (pre-filled from the same approved memo). The budget summary shows **Maximum allowable (remaining balance)** — your **Total Requested Funds** must not exceed this amount.
+4. Save as draft or **Submit for approval**.
 
 ### What you will see
 
-- A **Supplementary service request** banner with the cap and a link to the **previous service request document number**.
-- On PDFs: a **SUPPLEMENTARY SERVICE REQUEST** label and the previous service request document number.
-- On the parent: once a supplementary request exists, an info message links to its document number (the create button is no longer shown).
+- A **Supplementary service request** banner with the cap and a link to the **previous service request** document number.
+- On the previous request’s detail page: once a supplementary request exists, an info message links to its document number; **Create supplementary request** is hidden until that linked request is removed or no longer applies.
+- On PDF/print: **SUPPLEMENTARY SERVICE REQUEST** on the subject line, a short note after the subject with the balance and previous document number, and (when approved) embedded copies of previous service requests before the **Original Approval Memo**.
 
 ### Rules to remember
 
-- **One direct supplementary request per service request** (root or supplementary); further levels are allowed while each SR still has remaining balance.
-- The supplementary request’s maximum is fixed when created (`parent original budget − parent requested total` at that time).
-- It does not replace the parent; both remain on the audit trail for the same memo.
+- **One supplementary request per service request** at each level; further levels are allowed while each SR still has remaining balance.
+- The maximum for a new supplementary request is fixed at creation: **previous SR original budget − previous SR total requested** at that time.
+- Supplementary requests do not replace the previous request; all remain on the audit trail for the same memo.
+- Only **approved** previous service requests are attached to the PDF pack before the original approval memo.
 
-Technical detail: [CHILD_SERVICE_REQUESTS.md](./CHILD_SERVICE_REQUESTS.md).
+Technical reference: [Supplementary service requests (developer guide)](/documentation/CHILD_SERVICE_REQUESTS.md).
 
 ---
 

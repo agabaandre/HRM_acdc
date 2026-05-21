@@ -147,6 +147,16 @@
                 wrapper.style.display = show ? '' : 'none';
                 noResults.style.display = show ? 'none' : 'block';
             });
+
+            var legacyHashes = { 'child-service-requests': 'supplementary-service-requests' };
+            var hash = (window.location.hash || '').replace(/^#/, '');
+            if (legacyHashes[hash]) {
+                var target = document.getElementById(legacyHashes[hash]);
+                if (target) {
+                    history.replaceState(null, '', window.location.pathname + '#' + legacyHashes[hash]);
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
         })();
     </script>
 </body>
