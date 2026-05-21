@@ -94,6 +94,7 @@ class HelpController extends Controller
             'SYNC_IMPROVEMENTS.md' => 'documentation/SYNC_IMPROVEMENTS.md',
             'SIGNATURE_VERIFICATION.md' => 'documentation/SIGNATURE_VERIFICATION.md',
             'SYSTEM_UPDATES.md' => 'documentation/SYSTEM_UPDATES.md',
+            'CHILD_SERVICE_REQUESTS.md' => 'documentation/CHILD_SERVICE_REQUESTS.md',
         ];
 
         // Check if file is in the map
@@ -241,6 +242,9 @@ class HelpController extends Controller
             if (preg_match('/^## (.*)$/', $line, $matches)) {
                 $closeLists();
                 $id = $headingId($matches[1]);
+                if ($id === 'supplementary-service-requests') {
+                    $html .= '<span id="child-service-requests" aria-hidden="true" style="display:block;position:relative;top:-4rem;visibility:hidden;pointer-events:none"></span>';
+                }
                 $html .= '<h2 id="' . htmlspecialchars($id) . '">' . htmlspecialchars($matches[1]) . '</h2>';
                 continue;
             }

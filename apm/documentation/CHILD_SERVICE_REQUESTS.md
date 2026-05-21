@@ -63,7 +63,7 @@ If the parent is not eligible, create redirects back with an error message.
 
 ### PDF / print
 
-Child requests show a plain-text note **after the Subject** on the memorandum PDF (no border): supplementary funds, the **balance remaining on the previous service request**, and the parent’s **document number** (falls back to `request_number`, then `SR #id` only if both are missing). The subject line may still show a **CHILD SERVICE REQUEST** label.
+Supplementary requests show a plain-text note **after the Subject** on the memorandum PDF (no border): supplementary funds, the **balance remaining on the previous service request**, and the previous SR **document number** (falls back to `request_number`, then `SR #id` only if both are missing). The subject line shows **SUPPLEMENTARY SERVICE REQUEST**.
 
 ### PDF attachments (print pack order)
 
