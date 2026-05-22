@@ -1531,4 +1531,177 @@ class PrintHelper
         return '<div class="rich-text-content html-content" style="margin:8px 0;text-align:left;">' . $out . '</div>';
     }
 
+    /**
+     * Resolve a stored activity/memo attachment to an absolute filesystem path.
+     *
+     * @param  array<string, mixed>  $attachment
+     */
+    public static function resolveAttachmentDiskPath(array $attachment): ?string
+    {
+        $relative = $attachment['path'] ?? ($attachment['file_path'] ?? '');
+        if (! is_string($relative) || trim($relative) === '') {
+            return null;
+        }
+
+        $relative = ltrim(str_replace('\\', '/', $relative), '/');
+        $fullPath = storage_path('app/public/' . $relative);
+
+        return is_file($fullPath) ? $fullPath : null;
+    }
+
+    /**
+     * Append an attachments appendix (index + embedded PDF/image pages) to an mPDF instance.
+     *
+     * @param  array<int, array<string, mixed>>  $attachments
+     */
+    public static function appendAttachmentsAppendixToMpdf(\Mpdf\Mpdf $mpdf, array $attachments, string $appendixTitle = 'Appendix — Attachments'): void
+    {
+        $rows = [];
+        foreach ($attachments as $attachment) {
+            if (! is_array($attachment)) {
+                continue;
+            }
+            $diskPath = self::resolveAttachmentDiskPath($attachment);
+            if ($diskPath === null) {
+                continue;
+            }
+            $originalName = (string) ($attachment['original_name'] ?? ($attachment['filename'] ?? ($attachment['name'] ?? basename($diskPath))));
+            $rows[] = [
+                'type' => (string) ($attachment['type'] ?? 'Document'),
+                'name' => $originalName,
+                'path' => $diskPath,
+                'ext' => strtolower(pathinfo($originalName, PATHINFO_EXTENSION)),
+            ];
+        }
+
+        if ($rows === []) {
+            return;
+        }
+
+        $indexHtml = '<div style="page-break-before: always;">'
+            . '<p class="section-label" style="color:#006633;font-weight:bold;font-size:14px;margin:0 0 12px;">'
+            . htmlspecialchars($appendixTitle, ENT_QUOTES, 'UTF-8')
+            . '</p>'
+            . '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px;">'
+            . '<thead><tr style="background:#f9fafb;">'
+            . '<th style="padding:8px;text-align:left;width:8%;">#</th>'
+            . '<th style="padding:8px;text-align:left;width:22%;">Type</th>'
+            . '<th style="padding:8px;text-align:left;">File name</th>'
+            . '</tr></thead><tbody>';
+
+        foreach ($rows as $i => $row) {
+            $indexHtml .= '<tr>'
+                . '<td style="padding:8px;vertical-align:top;">' . ($i + 1) . '</td>'
+                . '<td style="padding:8px;vertical-align:top;">' . htmlspecialchars($row['type'], ENT_QUOTES, 'UTF-8') . '</td>'
+                . '<td style="padding:8px;vertical-align:top;">' . htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') . '</td>'
+                . '</tr>';
+        }
+
+        $indexHtml .= '</tbody></table></div>';
+
+        try {
+            $mpdf->WriteHTML($indexHtml, \Mpdf\HTMLParserMode::HTML_BODY);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('mPDF attachments appendix index failed', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        foreach ($rows as $i => $row) {
+            $label = 'Attachment ' . ($i + 1) . ': ' . $row['name'];
+            $escapedLabel = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+
+            if ($row['ext'] === 'pdf') {
+                self::importPdfPagesIntoMpdf($mpdf, $row['path'], $escapedLabel);
+
+                continue;
+            }
+
+            if (in_array($row['ext'], $imageExtensions, true)) {
+                self::embedImagePageIntoMpdf($mpdf, $row['path'], $escapedLabel);
+            }
+        }
+    }
+
+    private static function importPdfPagesIntoMpdf(\Mpdf\Mpdf $mpdf, string $pdfPath, string $escapedLabel): void
+    {
+        try {
+            $pageCount = $mpdf->SetSourceFile($pdfPath);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('mPDF could not import attachment PDF', [
+                'path' => $pdfPath,
+                'message' => $e->getMessage(),
+            ]);
+            self::writeAttachmentImportFailurePage($mpdf, $escapedLabel);
+
+            return;
+        }
+
+        if ($pageCount < 1) {
+            self::writeAttachmentImportFailurePage($mpdf, $escapedLabel);
+
+            return;
+        }
+
+        for ($page = 1; $page <= $pageCount; $page++) {
+            $mpdf->AddPage();
+            if ($page === 1) {
+                $mpdf->WriteHTML(
+                    '<p style="font-size:12px;font-weight:bold;margin:0 0 8px;">' . $escapedLabel . '</p>',
+                    \Mpdf\HTMLParserMode::HTML_BODY
+                );
+            }
+            try {
+                $tplId = $mpdf->ImportPage($page);
+                $mpdf->UseTemplate($tplId);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('mPDF could not import attachment PDF page', [
+                    'path' => $pdfPath,
+                    'page' => $page,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    private static function embedImagePageIntoMpdf(\Mpdf\Mpdf $mpdf, string $imagePath, string $escapedLabel): void
+    {
+        $src = str_replace('\\', '/', $imagePath);
+        $html = '<div style="page-break-before: always;">'
+            . '<p style="font-size:12px;font-weight:bold;margin:0 0 8px;">' . $escapedLabel . '</p>'
+            . '<img src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '" '
+            . 'style="max-width:100%;height:auto;display:block;margin:0 auto;" />'
+            . '</div>';
+
+        try {
+            $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('mPDF could not embed attachment image', [
+                'path' => $imagePath,
+                'message' => $e->getMessage(),
+            ]);
+            self::writeAttachmentImportFailurePage($mpdf, $escapedLabel);
+        }
+    }
+
+    private static function writeAttachmentImportFailurePage(\Mpdf\Mpdf $mpdf, string $escapedLabel): void
+    {
+        $html = '<div style="page-break-before: always;">'
+            . '<p style="font-size:12px;font-weight:bold;margin:0 0 8px;">' . $escapedLabel . '</p>'
+            . '<p style="font-size:10px;color:#64748b;">This attachment could not be embedded in the PDF printout.</p>'
+            . '</div>';
+
+        try {
+            $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('mPDF attachment failure page failed', [
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
 }
