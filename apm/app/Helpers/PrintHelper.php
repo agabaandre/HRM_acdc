@@ -1578,6 +1578,8 @@ class PrintHelper
             return;
         }
 
+        self::beginAttachmentsAppendixLayout($mpdf);
+
         $indexHtml = '<div style="page-break-before: always;">'
             . '<p class="section-label" style="color:#006633;font-weight:bold;font-size:14px;margin:0 0 12px;">'
             . htmlspecialchars($appendixTitle, ENT_QUOTES, 'UTF-8')
@@ -1649,15 +1651,12 @@ class PrintHelper
 
         for ($page = 1; $page <= $pageCount; $page++) {
             $mpdf->AddPage();
-            if ($page === 1) {
-                $mpdf->WriteHTML(
-                    '<p style="font-size:12px;font-weight:bold;margin:0 0 8px;">' . $escapedLabel . '</p>',
-                    \Mpdf\HTMLParserMode::HTML_BODY
-                );
-            }
             try {
                 $tplId = $mpdf->ImportPage($page);
-                $mpdf->UseTemplate($tplId);
+                $size = $mpdf->getTemplateSize($tplId);
+                $width = is_array($size) ? ($size['width'] ?? null) : null;
+                $height = is_array($size) ? ($size['height'] ?? null) : null;
+                $mpdf->UseTemplate($tplId, 0, 0, $width, $height);
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('mPDF could not import attachment PDF page', [
                     'path' => $pdfPath,
@@ -1702,6 +1701,19 @@ class PrintHelper
                 'message' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Strip memo branding header/footer and tighten margins for appendix pages only.
+     */
+    private static function beginAttachmentsAppendixLayout(\Mpdf\Mpdf $mpdf): void
+    {
+        $mpdf->SetHTMLHeader('');
+        $mpdf->SetHTMLFooter('');
+        $mpdf->SetHeader('');
+        $mpdf->SetFooter('');
+        $mpdf->SetMargins(8, 8, 8);
+        $mpdf->SetAutoPageBreak(true, 8);
     }
 
 }
