@@ -1787,6 +1787,7 @@ class SpecialMemoController extends Controller
         $attachments = is_string($specialMemo->attachment)
             ? json_decode($specialMemo->attachment, true)
             : ($specialMemo->attachment ?? []);
+        $attachments = is_array($attachments) ? $attachments : [];
 
         $rawParticipants = is_string($specialMemo->internal_participants)
             ? json_decode($specialMemo->internal_participants, true)
@@ -1850,7 +1851,11 @@ class SpecialMemoController extends Controller
             'matrix_approval_trails' => $approvalTrails, // For compatibility with activities template
             'workflow_info' => $workflowInfo,
             'organized_workflow_steps' => $organizedWorkflowSteps
-        ], ['preview_html' => $print]);
+        ], [
+            'preview_html' => $print,
+            'document_url' => route('special-memo.print', $specialMemo, true),
+            'attachments_appendix' => $attachments,
+        ]);
 
         $filename = 'Special_Memo_' . $specialMemo->id . '_' . now()->format('Y-m-d') . '.pdf';
 

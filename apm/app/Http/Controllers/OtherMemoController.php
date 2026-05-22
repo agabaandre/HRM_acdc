@@ -627,9 +627,15 @@ class OtherMemoController extends Controller
     {
         $other_memo->load(['approvalTrails.staff', 'creator']);
 
+        $attachments = is_array($other_memo->attachment) ? $other_memo->attachment : [];
+
         $pdf = mpdf_print('other-memos.pdf', [
             'memo' => $other_memo,
-        ], ['preview_html' => false]);
+        ], [
+            'preview_html' => false,
+            'document_url' => route('other-memos.print', $other_memo, true),
+            'attachments_appendix' => $attachments,
+        ]);
 
         $safe = preg_replace('/[^a-zA-Z0-9_-]+/', '_', $other_memo->document_number ?? 'memo').'.pdf';
 

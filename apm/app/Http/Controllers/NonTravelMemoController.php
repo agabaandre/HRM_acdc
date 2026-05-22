@@ -1863,7 +1863,11 @@ class NonTravelMemoController extends Controller
             'matrix_approval_trails' => $approvalTrails,
             'workflow_info' => $workflowInfo,
             'organized_workflow_steps' => $organizedWorkflowSteps
-        ], ['preview_html' => $print]);
+        ], [
+            'preview_html' => $print,
+            'document_url' => route('non-travel.print', $nonTravel, true),
+            'attachments_appendix' => $attachments,
+        ]);
 
         $filename = 'Non_Travel_Memo_' . $nonTravel->id . '_' . now()->format('Y-m-d') . '.pdf';
 
