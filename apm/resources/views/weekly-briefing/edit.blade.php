@@ -46,6 +46,7 @@
     @php
         $anyEditsOpen = $formEditable;
         $hubViewOnly = ! $formEditable;
+        $deadlinePassed = \Carbon\Carbon::now()->greaterThan($submissionDeadline);
     @endphp
     @if($hubViewOnly)
         <div class="alert alert-secondary border shadow-sm mb-3">
@@ -61,8 +62,14 @@
             <span class="badge bg-dark">Locked</span>
         @elseif($report->status === \App\Models\WeeklyBriefingReport::STATUS_LOCKED && ($unlockOverrideActive ?? false))
             <span class="badge bg-warning text-dark">Locked — open for edits (admin unlock)</span>
-        @elseif(! $anyEditsOpen)
+        @elseif($deadlinePassed)
             <span class="badge bg-danger">Closed — deadline passed</span>
+        @elseif($hubViewOnly)
+            <span class="badge bg-secondary">View only — not assigned to edit</span>
+        @elseif($report->status === \App\Models\WeeklyBriefingReport::STATUS_SUBMITTED)
+            <span class="badge bg-secondary">Submitted — contributor edits closed</span>
+        @elseif(! $anyEditsOpen)
+            <span class="badge bg-secondary">Not open for edits</span>
         @else
             <span class="badge bg-success">Open for edits</span>
         @endif
