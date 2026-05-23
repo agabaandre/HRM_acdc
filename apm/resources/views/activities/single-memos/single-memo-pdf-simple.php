@@ -210,6 +210,7 @@
         float: none !important;
     }
     .rich-text-content p { margin: 0 0 8px 0; padding: 0; }
+    <?php echo \App\Helpers\PrintHelper::memoPdfLayoutStyles(); ?>
 </style>
 </head>
 <body>
@@ -391,26 +392,13 @@
     <?php endforeach; ?>
   </table>
 
-  <!-- Subject -->
- <table class="mb-15">
-  <tr>
-    <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Subject:</strong></td>
-    <td style="width: 88%; text-align: left; vertical-align: top;" class="subject-text"><?php echo htmlspecialchars($activity->activity_title ?? 'N/A'); ?></td>
-  </tr>
- </table>
+  <?php
+    PrintHelper::renderMemoPdfPlainField('Subject:', $activity->activity_title ?? 'N/A', 'subject-text');
+    PrintHelper::renderMemoPdfRichField('Background:', $activity->background ?? '');
+  ?>
 
-<!-- Background -->
- <table class="mb-15 mt-neg20">
-  <tr>
-    <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Background:</strong></td>
-  </tr>
-  <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($activity->background ?? ''); ?></td>
-  </tr>
- </table>
-  
   <div>
-    <div class="page-break"></div>
+    <div class="memo-major-section">
     <div class="section-label mb-15"><strong>Activity Information</strong></div>
   
     <table class="form-table mb-15" role="table" aria-label="Activity Information">
@@ -487,6 +475,7 @@
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+    </div>
 
     <?php
     // Check if any fund code is intramural (1) or extramural (2)
@@ -510,7 +499,7 @@
 
     if($hasBudgetSection): 
     ?>
-    <div class="page-break"></div>
+    <div class="page-break-force"></div>
               <div class="section-label mb-15"><strong>Budget Details</strong></div>
          
              <?php foreach($fundCodes ?? [] as $fundCode): ?>
@@ -624,7 +613,7 @@
     ?></div>
 
     <?php if($fundCode->fundType->id == 1): ?>
-    <div class="page-break"></div>
+    <div class="page-break-force"></div>
 
     <!-- Right-side memo meta (stacked, borderless) -->
     <div class="topbar">

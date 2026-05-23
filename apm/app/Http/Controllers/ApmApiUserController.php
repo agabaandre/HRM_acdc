@@ -3,13 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\ApmApiUser;
+use App\Services\ApmImpersonationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ApmApiUserController extends Controller
 {
+    public function __construct(
+        private readonly ApmImpersonationService $impersonation
+    ) {}
+
     public function index(Request $request): View
     {
         $q = ApmApiUser::query()->with('staff')->orderBy('user_id');
@@ -29,7 +35,40 @@ class ApmApiUserController extends Controller
         return view('apm-api-users.index', [
             'users' => $users,
             'staffDbLinked' => $this->staffAppDatabaseConfigured(),
+            'canImpersonate' => $this->impersonation->canImpersonate(),
+            'isImpersonating' => $this->impersonation->isImpersonating(),
         ]);
+    }
+
+    public function impersonate(ApmApiUser $apmApiUser): RedirectResponse
+    {
+        try {
+            $this->impersonation->impersonate($apmApiUser);
+        } catch (HttpException $e) {
+            return back()
+                ->with('msg', $e->getMessage())
+                ->with('type', 'danger');
+        }
+
+        return redirect()
+            ->route('home')
+            ->with('msg', 'You are now impersonating ' . ($apmApiUser->name ?? $apmApiUser->email ?? ('user #' . $apmApiUser->user_id)) . '. Use “Revert to Admin” to return.')
+            ->with('type', 'success');
+    }
+
+    public function revertImpersonation(): RedirectResponse
+    {
+        if (! $this->impersonation->revert()) {
+            return redirect()
+                ->route('apm-api-users.index')
+                ->with('msg', 'You are not impersonating any user.')
+                ->with('type', 'warning');
+        }
+
+        return redirect()
+            ->route('apm-api-users.index')
+            ->with('msg', 'You have returned to your admin session.')
+            ->with('type', 'success');
     }
 
     public function updateAllowEmailLogin(Request $request, ApmApiUser $apmApiUser): RedirectResponse
