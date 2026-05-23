@@ -164,7 +164,7 @@ class ServiceRequestController extends Controller
             if (! $parentServiceRequest || ! $parentServiceRequest->userCanCreateChildRequest()) {
                 return redirect()
                     ->back()
-                    ->with('error', 'A supplementary service request cannot be created for this record (feature disabled, budget already fully requested, a supplementary request already exists, or you are not permitted).');
+                    ->with('error', 'A supplementary service request cannot be created for this record (feature disabled, budget already fully requested, a supplementary request already exists, the parent memo is outside its activity dates, or you are not permitted).');
             }
             $isChildRequestForm = true;
             $childBalanceCap = $parentServiceRequest->remainingMemoBalanceForChild();
@@ -428,7 +428,7 @@ class ServiceRequestController extends Controller
                 return redirect()
                     ->back()
                     ->withInput()
-                    ->with('error', 'Cannot create supplementary service request for this parent.');
+                    ->with('error', 'Cannot create supplementary service request for this parent (eligibility, activity dates, or permission).');
             }
         }
 

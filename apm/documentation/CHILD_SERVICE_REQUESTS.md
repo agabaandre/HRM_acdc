@@ -38,6 +38,7 @@ On the parent service request **detail** page (`GET /service-requests/{id}`), th
 | Feature enabled | `ServiceRequest::childRequestsEnabled()` → `allow_child_service_requests` |
 | Parent still has unrequested balance | `remainingMemoBalanceForChild()` &gt; 0 on the SR you are creating from (root or child) |
 | Parent has a linked source memo | `source_type` and `source_id` set |
+| Parent memo within activity period | `parentSourceMemoIsWithinActivityPeriod()` — today is between the source memo’s `date_from` and `date_to` (or payload dates for other memos); **non-travel memos are exempt** |
 | Remaining memo balance &gt; 0 | `remainingMemoBalanceForChild()` &gt; 0 (parent `original_total_budget` &gt; parent `new_total_budget`) |
 | No child already exists | `childServiceRequests()->exists()` is false |
 | User permitted | `userCanCreateChildRequest()` — draft/returned: `is_with_creator_generic`; approved/pending/in progress: parent `staff_id`, `responsible_person_id`, or `focal_person_id` |
@@ -113,7 +114,7 @@ php artisan migrate
 
 | Area | Location |
 |------|----------|
-| Model helpers | `App\Models\ServiceRequest` — `parentServiceRequest()`, `childServiceRequests()`, `isChildRequest()`, `childRequestsEnabled()`, `remainingMemoBalanceForChild()`, `canCreateChildRequest()`, `userCanCreateChildRequest()` |
+| Model helpers | `App\Models\ServiceRequest` — `parentServiceRequest()`, `childServiceRequests()`, `isChildRequest()`, `childRequestsEnabled()`, `remainingMemoBalanceForChild()`, `parentSourceMemoIsWithinActivityPeriod()`, `canCreateChildRequest()`, `userCanCreateChildRequest()` |
 | HTTP | `App\Http\Controllers\ServiceRequestController` — `create`, `store`, `update`, `show`, PDF build |
 | Views | `resources/views/service-requests/show.blade.php`, `create.blade.php`, `partials/child-request-banner.blade.php`, `print.php` |
 | Setting seed | `database/seeders/SystemSettingsSeeder.php` |
@@ -129,8 +130,8 @@ php artisan migrate
 
 | Issue | Check |
 |-------|--------|
-| Button missing | Setting off, balance already fully requested, child already exists, or user is not the creator |
-| Cannot open create link | Parent failed `canCreateChildRequest()` (redirect with flash error) |
+| Button missing | Setting off, balance fully requested, child exists, **today outside parent memo activity dates** (non-travel exempt), or user not permitted |
+| Cannot open create link | Parent failed `userCanCreateChildRequest()` (redirect with flash error) |
 | Save rejected over cap | Reduce line items; cap is shown in banner and budget summary |
 | Setting not in UI | Run `SystemSettingsSeeder` or add key manually under group `service_requests`, type `boolean` |
 
