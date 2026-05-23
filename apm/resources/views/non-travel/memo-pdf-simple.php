@@ -210,6 +210,7 @@
         float: none !important;
     }
     .rich-text-content p { margin: 0 0 8px 0; padding: 0; }
+    <?php echo \App\Helpers\PrintHelper::memoPdfLayoutStyles(); ?>
 </style>
 </head>
 <body>
@@ -374,36 +375,14 @@
     <?php endforeach; ?>
   </table>
 
-  <!-- Subject -->
- <table class="mb-15">
-  <tr>
-    <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Subject:</strong></td>
-    <td style="width: 88%; text-align: left; vertical-align: top;" class="subject-text"><?php echo htmlspecialchars($nonTravel->activity_title ?? 'N/A'); ?></td>
-  </tr>
- </table>
+  <?php
+    PrintHelper::renderMemoPdfPlainField('Subject:', $nonTravel->activity_title ?? 'N/A', 'subject-text');
+    PrintHelper::renderMemoPdfRichField('Background:', $nonTravel->background ?? '');
+    PrintHelper::renderMemoPdfRichField('Justification:', $nonTravel->justification ?? '');
+  ?>
 
-<!-- Background -->
- <table class="mb-15 mt-neg20">
-  <tr>
-    <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Background:</strong></td>
-  </tr>
-  <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($nonTravel->background ?? ''); ?></td>
-  </tr>
- </table>
- <!-- Justification -->
- <table class="mb-15 mt-neg20">
-  <tr>
-    <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Justification:</strong></td>
-  </tr>
-  <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><?php echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($nonTravel->justification ?? ''); ?></td>
-  </tr>
- </table>
-
-  
   <div>
-    <div class="page-break"></div>
+    <div class="memo-major-section">
     <div class="section-label mb-15"><strong>Non-Travel Information</strong></div>
     
     <table class="form-table mb-15" role="table" aria-label="Non-Travel Information">
@@ -442,8 +421,9 @@
       </tr>
       <?php endif; ?>
     </table>
-     
-    <div class="page-break"></div>
+    </div>
+
+    <div class="page-break-force"></div>
               <div class="section-label mb-15"><strong>Budget Details</strong></div>
          
              <?php foreach($fundCodes ?? [] as $fundCode): ?>
@@ -509,7 +489,7 @@
      echo \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($_approvalNt !== '' ? $_approvalNt : 'N/A');
      ?></div>
          
-    <div class="page-break"></div>
+    <div class="page-break-force"></div>
 
     <?php if($fundCode->fundType->id == 1): ?>
 

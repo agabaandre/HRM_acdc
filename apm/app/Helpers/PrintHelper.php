@@ -1287,6 +1287,39 @@ class PrintHelper
     }
 
     /**
+     * CSS fragment for memo PDF templates (tighter margins, field rows, section flow).
+     */
+    public static function memoPdfLayoutStyles(): string
+    {
+        $path = resource_path('views/partials/memo-pdf-layout-styles.php');
+
+        return is_file($path) ? (string) file_get_contents($path) : '';
+    }
+
+    /**
+     * Plain-text memo field (e.g. Subject) — label and value on one row to avoid orphaned labels in mPDF.
+     */
+    public static function renderMemoPdfPlainField(string $label, ?string $value, string $valueClass = ''): void
+    {
+        $valueClassAttr = $valueClass !== '' ? ' class="' . htmlspecialchars($valueClass, ENT_QUOTES, 'UTF-8') . '"' : '';
+        echo '<table class="memo-field-table"><tr class="memo-field-row">';
+        echo '<td class="memo-field-label"><strong class="section-label">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong></td>';
+        echo '<td class="memo-field-body"' . $valueClassAttr . '>' . htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8') . '</td>';
+        echo '</tr></table>';
+    }
+
+    /**
+     * Rich-text memo field (e.g. Background, Justification) — single table row so content flows on the same page as the label when space allows.
+     */
+    public static function renderMemoPdfRichField(string $label, ?string $html): void
+    {
+        echo '<table class="memo-field-table"><tr class="memo-field-row">';
+        echo '<td class="memo-field-label"><strong class="section-label">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong></td>';
+        echo '<td class="memo-field-body justify-text">' . self::sanitizeRichTextForMpdf($html) . '</td>';
+        echo '</tr></table>';
+    }
+
+    /**
      * Normalize Summernote / rich HTML for mPDF and browser views.
      *
      * Strips float/clear/absolute positioning, unsupported properties (e.g. text-wrap-mode),

@@ -212,8 +212,8 @@
                                         <div class="dropdown-divider mb-0"></div>
                                     </li>
                                     <li>
-                                        <a href="{{ session('user.base_url', '') }}/auth/revert" class="dropdown-item">
-                                            <i class="fa fa-undo"></i><span>Revert to Admin</span>
+                                        <a href="{{ route('apm-api-users.revert') }}" class="dropdown-item">
+                                            <i class="bx bx-undo"></i><span>Revert to Admin</span>
                                         </a>
                                     </li>
                                 @endif

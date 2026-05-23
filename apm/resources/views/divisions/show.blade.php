@@ -5,404 +5,353 @@
 @section('header', 'Division Details')
 
 @section('header-actions')
-<div class="d-flex gap-2">
-    <a wire:navigate href="{{ route('divisions.index') }}" class="btn btn-secondary">
+    <a wire:navigate href="{{ route('divisions.index') }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Divisions
     </a>
-</div>
 @endsection
 
 @section('content')
-<div class="card shadow-sm">
-    <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="bx bx-building-house me-2 text-primary"></i>{{ $division->division_name }}</h5>
-    </div>
-    <div class="card-body">
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
 
-        <!-- Basic Information Section -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0"><i class="bx bx-info-circle me-2"></i>Basic Information</h6>
+    @php
+        $isActive = $division->is_active ?? null;
+        $staffRoles = [
+            ['relation' => 'divisionHead', 'label' => 'Division Head', 'icon' => 'bx-user-circle', 'accent' => 'primary'],
+            ['relation' => 'focalPerson', 'label' => 'Focal Person', 'icon' => 'bx-user-voice', 'accent' => 'info'],
+            ['relation' => 'adminAssistant', 'label' => 'Admin Assistant', 'icon' => 'bx-support', 'accent' => 'success'],
+            ['relation' => 'financeOfficer', 'label' => 'Finance Officer', 'icon' => 'bx-dollar-circle', 'accent' => 'warning'],
+        ];
+    @endphp
+
+    {{-- Summary strip --}}
+    <div class="card shadow-sm border-0 division-summary-card mb-4">
+        <div class="card-body p-4">
+            <div class="row align-items-center g-3">
+                <div class="col-lg-8">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+                            ID {{ $division->id }}
+                        </span>
+                        @if ($division->division_short_name)
+                            <span class="badge bg-dark px-3 py-2">{{ $division->division_short_name }}</span>
+                        @endif
+                        @if ($division->category)
+                            <span class="badge bg-secondary px-3 py-2">{{ $division->category }}</span>
+                        @endif
+                        @if ($isActive === true)
+                            <span class="badge bg-success px-3 py-2">Active</span>
+                        @elseif ($isActive === false)
+                            <span class="badge bg-danger px-3 py-2">Inactive</span>
+                        @else
+                            <span class="badge bg-secondary px-3 py-2">Status not set</span>
+                        @endif
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="info-item">
-                                    <label class="fw-bold text-muted">Division ID</label>
-                                    <div class="fs-5 fw-bold text-primary">{{ $division->id }}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-item">
-                                    <label class="fw-bold text-muted">Division Name</label>
-                                    <div class="fs-5 fw-bold">{{ $division->division_name }}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="info-item">
-                                    <label class="fw-bold text-muted">Short Name</label>
-                                    <div>
-                                        @if($division->division_short_name)
-                                            <span class="badge bg-primary fs-6">{{ $division->division_short_name }}</span>
-                                        @else
-                                            <span class="text-muted">Not specified</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
+                    <h4 class="mb-1 fw-semibold">{{ $division->division_name }}</h4>
+                    @if ($division->directorate)
+                        <p class="text-muted mb-0 small">
+                            <i class="bx bx-buildings me-1"></i>
+                            <a wire:navigate href="{{ route('directorates.show', $division->directorate) }}" class="text-decoration-none">
+                                {{ $division->directorate->name }}
+                            </a>
+                        </p>
+                    @endif
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <p class="text-muted small mb-0">
+                        <i class="bx bx-info-circle me-1"></i>Divisions are managed in the main system
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {{-- Basic + additional --}}
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100 division-detail-card">
+                <div class="card-header division-card-header division-card-header--primary">
+                    <h6 class="mb-0"><i class="bx bx-info-circle me-2"></i>Basic Information</h6>
+                </div>
+                <div class="card-body p-4">
+                    <dl class="row g-3 mb-0 division-dl">
+                        <div class="col-sm-4">
+                            <dt>Division ID</dt>
+                            <dd class="text-primary fw-semibold">{{ $division->id }}</dd>
                         </div>
-                        <div class="row mt-3">
-                            <div class="col-md-6">
-                                <div class="info-item">
-                                    <label class="fw-bold text-muted">Category</label>
-                                    <div>
-                                        @if($division->category)
-                                            <span class="badge bg-secondary fs-6">{{ $division->category }}</span>
-                                        @else
-                                            <span class="text-muted">Not specified</span>
-                                        @endif
-                                    </div>
-                                </div>
-                        </div>
-                            <div class="col-md-6">
-                                <div class="info-item">
-                                    <label class="fw-bold text-muted">Status</label>
-                                    <div>
-                                        @if(isset($division->is_active) && $division->is_active)
-                                            <span class="badge bg-success fs-6">Active</span>
+                        <div class="col-sm-8">
+                            <dt>Short name</dt>
+                            <dd>
+                                @if ($division->division_short_name)
+                                    <span class="badge bg-primary">{{ $division->division_short_name }}</span>
                                 @else
-                                            <span class="badge bg-secondary fs-6">Status Unknown</span>
+                                    <span class="text-muted">Not specified</span>
                                 @endif
-                                    </div>
-                                </div>
-                            </div>
-                            </div>
+                            </dd>
                         </div>
-                    </div>
+                        <div class="col-12">
+                            <dt>Division name</dt>
+                            <dd class="fw-semibold mb-0">{{ $division->division_name }}</dd>
+                        </div>
+                        <div class="col-sm-6">
+                            <dt>Category</dt>
+                            <dd>
+                                @if ($division->category)
+                                    <span class="badge bg-secondary">{{ $division->category }}</span>
+                                @else
+                                    <span class="text-muted">Not specified</span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div class="col-sm-6">
+                            <dt>Status</dt>
+                            <dd>
+                                @if ($isActive === true)
+                                    <span class="badge bg-success">Active</span>
+                                @elseif ($isActive === false)
+                                    <span class="badge bg-danger">Inactive</span>
+                                @else
+                                    <span class="text-muted">Not specified</span>
+                                @endif
+                            </dd>
+                        </div>
+                    </dl>
                 </div>
             </div>
-            
-        <!-- Staff Assignments Section -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="mb-0"><i class="bx bx-group me-2"></i>Staff Assignments</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 col-lg-3 mb-3">
-                                <div class="staff-card">
-                                    <div class="staff-header">
-                                        <i class="bx bx-user-circle fs-3 text-primary"></i>
-                                        <h6 class="mb-1">Division Head</h6>
-                                    </div>
-                                    <div class="staff-info">
-                                        @if($division->divisionHead)
-                                            <div class="fw-bold">{{ $division->divisionHead->fname }} {{ $division->divisionHead->lname }}</div>
-                                            <small class="text-muted">{{ $division->divisionHead->position ?? 'Staff' }}</small>
-                                        @else
-                                            <div class="text-muted">Not assigned</div>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 col-lg-3 mb-3">
-                                <div class="staff-card">
-                                    <div class="staff-header">
-                                        <i class="bx bx-user-voice fs-3 text-info"></i>
-                                        <h6 class="mb-1">Focal Person</h6>
-                                    </div>
-                                    <div class="staff-info">
-                                        @if($division->focalPerson)
-                                            <div class="fw-bold">{{ $division->focalPerson->fname }} {{ $division->focalPerson->lname }}</div>
-                                            <small class="text-muted">{{ $division->focalPerson->position ?? 'Staff' }}</small>
-                                        @else
-                                            <div class="text-muted">Not assigned</div>
-                                        @endif
-                        </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 col-lg-3 mb-3">
-                                <div class="staff-card">
-                                    <div class="staff-header">
-                                        <i class="bx bx-support fs-3 text-success"></i>
-                                        <h6 class="mb-1">Admin Assistant</h6>
-                                    </div>
-                                    <div class="staff-info">
-                                        @if($division->adminAssistant)
-                                            <div class="fw-bold">{{ $division->adminAssistant->fname }} {{ $division->adminAssistant->lname }}</div>
-                                            <small class="text-muted">{{ $division->adminAssistant->position ?? 'Staff' }}</small>
-                                        @else
-                                            <div class="text-muted">Not assigned</div>
-                                        @endif
-                        </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6 col-lg-3 mb-3">
-                                <div class="staff-card">
-                                    <div class="staff-header">
-                                        <i class="bx bx-dollar-circle fs-3 text-warning"></i>
-                                        <h6 class="mb-1">Finance Officer</h6>
-                                    </div>
-                                    <div class="staff-info">
-                                        @if($division->financeOfficer)
-                                            <div class="fw-bold">{{ $division->financeOfficer->fname }} {{ $division->financeOfficer->lname }}</div>
-                                            <small class="text-muted">{{ $division->financeOfficer->position ?? 'Staff' }}</small>
-                                        @else
-                                            <div class="text-muted">Not assigned</div>
-                                        @endif
-                        </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
+            <div class="card shadow-sm mt-4 division-detail-card">
+                <div class="card-header division-card-header division-card-header--info">
+                    <h6 class="mb-0"><i class="bx bx-detail me-2"></i>Additional Information</h6>
                 </div>
-            </div>
-        </div>
-
-        <!-- Additional Information Section -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0"><i class="bx bx-detail me-2"></i>Additional Information</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="info-item">
-                                    <label class="fw-bold text-muted">Directorate ID</label>
-                                    <div>
-                                        @if($division->directorate_id)
-                                            <span class="badge bg-info">{{ $division->directorate_id }}</span>
-                                        @else
-                                            <span class="text-muted">Not specified</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-item">
-                                    <label class="fw-bold text-muted">Director ID</label>
-                                    <div>
-                                        @if($division->director_id)
-                                            <span class="badge bg-info">{{ $division->director_id }}</span>
-                                        @else
-                                            <span class="text-muted">Not specified</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
+                <div class="card-body p-4">
+                    <dl class="row g-3 mb-0 division-dl">
+                        <div class="col-sm-6">
+                            <dt>Directorate</dt>
+                            <dd>
+                                @if ($division->directorate)
+                                    <a wire:navigate href="{{ route('directorates.show', $division->directorate) }}" class="fw-semibold text-decoration-none">
+                                        {{ $division->directorate->name }}
+                                    </a>
+                                    <div class="text-muted small">ID {{ $division->directorate_id }}</div>
+                                @elseif ($division->directorate_id)
+                                    <span class="badge bg-info text-dark">ID {{ $division->directorate_id }}</span>
+                                @else
+                                    <span class="text-muted">Not specified</span>
+                                @endif
+                            </dd>
                         </div>
-                        
-                        @if($division->head_oic_id || $division->head_oic_start_date || $division->head_oic_end_date)
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <h6 class="text-muted mb-3">Head OIC Information</h6>
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="info-item">
-                                            <label class="fw-bold text-muted">OIC ID</label>
-                                            <div>
-                                                @if($division->head_oic_id)
-                                                    <span class="badge bg-warning">{{ $division->head_oic_id }}</span>
-                                                @else
-                                                    <span class="text-muted">Not specified</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="info-item">
-                                            <label class="fw-bold text-muted">Start Date</label>
-                                            <div>
-                                                @if($division->head_oic_start_date)
-                                                    <span class="text-dark">{{ \Carbon\Carbon::parse($division->head_oic_start_date)->format('M d, Y') }}</span>
-                                                @else
-                                                    <span class="text-muted">Not specified</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="info-item">
-                                            <label class="fw-bold text-muted">End Date</label>
-                                            <div>
-                                                @if($division->head_oic_end_date)
-                                                    <span class="text-dark">{{ \Carbon\Carbon::parse($division->head_oic_end_date)->format('M d, Y') }}</span>
-                                                @else
-                                                    <span class="text-muted">Not specified</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="col-sm-6">
+                            <dt>Director (staff ID)</dt>
+                            <dd>
+                                @if ($division->director_id)
+                                    <span class="fw-semibold">{{ $division->director_id }}</span>
+                                @else
+                                    <span class="text-muted">Not specified</span>
+                                @endif
+                            </dd>
                         </div>
-                        @endif
+                    </dl>
 
-                        @if($division->director_oic_id || $division->director_oic_start_date || $division->director_oic_end_date)
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <h6 class="text-muted mb-3">Director OIC Information</h6>
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="info-item">
-                                            <label class="fw-bold text-muted">OIC ID</label>
-                                            <div>
-                                                @if($division->director_oic_id)
-                                                    <span class="badge bg-warning">{{ $division->director_oic_id }}</span>
-                                                @else
-                                                    <span class="text-muted">Not specified</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="info-item">
-                                            <label class="fw-bold text-muted">Start Date</label>
-                                            <div>
-                                                @if($division->director_oic_start_date)
-                                                    <span class="text-dark">{{ \Carbon\Carbon::parse($division->director_oic_start_date)->format('M d, Y') }}</span>
-                                                @else
-                                                    <span class="text-muted">Not specified</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="info-item">
-                                            <label class="fw-bold text-muted">End Date</label>
-                                            <div>
-                                                @if($division->director_oic_end_date)
-                                                    <span class="text-dark">{{ \Carbon\Carbon::parse($division->director_oic_end_date)->format('M d, Y') }}</span>
-                                                @else
-                                                    <span class="text-muted">Not specified</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                    @if ($division->head_oic_id || $division->head_oic_start_date || $division->head_oic_end_date)
+                        <hr class="my-4">
+                        <h6 class="text-muted text-uppercase small fw-semibold mb-3">Head OIC</h6>
+                        <dl class="row g-3 mb-0 division-dl">
+                            <div class="col-sm-4">
+                                <dt>OIC staff ID</dt>
+                                <dd>{{ $division->head_oic_id ?: '—' }}</dd>
                             </div>
-                    </div>
-                        @endif
-                    </div>
+                            <div class="col-sm-4">
+                                <dt>Start</dt>
+                                <dd>
+                                    @if ($division->head_oic_start_date)
+                                        {{ \Carbon\Carbon::parse($division->head_oic_start_date)->format('M d, Y') }}
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </dd>
+                            </div>
+                            <div class="col-sm-4">
+                                <dt>End</dt>
+                                <dd>
+                                    @if ($division->head_oic_end_date)
+                                        {{ \Carbon\Carbon::parse($division->head_oic_end_date)->format('M d, Y') }}
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </dd>
+                            </div>
+                        </dl>
+                    @endif
+
+                    @if ($division->director_oic_id || $division->director_oic_start_date || $division->director_oic_end_date)
+                        <hr class="my-4">
+                        <h6 class="text-muted text-uppercase small fw-semibold mb-3">Director OIC</h6>
+                        <dl class="row g-3 mb-0 division-dl">
+                            <div class="col-sm-4">
+                                <dt>OIC staff ID</dt>
+                                <dd>{{ $division->director_oic_id ?: '—' }}</dd>
+                            </div>
+                            <div class="col-sm-4">
+                                <dt>Start</dt>
+                                <dd>
+                                    @if ($division->director_oic_start_date)
+                                        {{ \Carbon\Carbon::parse($division->director_oic_start_date)->format('M d, Y') }}
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </dd>
+                            </div>
+                            <div class="col-sm-4">
+                                <dt>End</dt>
+                                <dd>
+                                    @if ($division->director_oic_end_date)
+                                        {{ \Carbon\Carbon::parse($division->director_oic_end_date)->format('M d, Y') }}
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </dd>
+                            </div>
+                        </dl>
+                    @endif
                 </div>
             </div>
         </div>
 
-        <div class="d-flex justify-content-end gap-2 mt-4">
-            <div class="text-muted">
-                <small><i class="bx bx-info-circle me-1"></i>Divisions are managed in the main system</small>
+        {{-- Staff assignments --}}
+        <div class="col-lg-7">
+            <div class="card shadow-sm h-100 division-detail-card">
+                <div class="card-header division-card-header division-card-header--success">
+                    <h6 class="mb-0"><i class="bx bx-group me-2"></i>Staff Assignments</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        @foreach ($staffRoles as $role)
+                            @php
+                                $staff = $division->{$role['relation']};
+                                $accent = $role['accent'];
+                            @endphp
+                            <div class="col-sm-6">
+                                <div class="staff-role-card staff-role-card--{{ $accent }} h-100">
+                                    <div class="staff-role-card__icon text-{{ $accent }}">
+                                        <i class="bx {{ $role['icon'] }}"></i>
+                                    </div>
+                                    <div class="staff-role-card__body">
+                                        <div class="staff-role-card__label">{{ $role['label'] }}</div>
+                                        @if ($staff)
+                                            <div class="staff-role-card__name">
+                                                {{ trim(($staff->fname ?? '') . ' ' . ($staff->lname ?? '')) }}
+                                            </div>
+                                            <div class="staff-role-card__meta">
+                                                {{ $staff->title ?? $staff->job_name ?? 'Staff' }}
+                                                @if (! empty($staff->staff_id))
+                                                    <span class="text-muted"> · ID {{ $staff->staff_id }}</span>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <div class="staff-role-card__empty text-muted">Not assigned</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 @endsection
 
 @push('styles')
 <style>
-    .info-item {
-        margin-bottom: 1rem;
+    .division-summary-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #fff 55%);
+        border: 1px solid #e2e8f0 !important;
     }
-    
-    .info-item label {
-        display: block;
-        margin-bottom: 0.25rem;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+
+    .division-detail-card {
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
     }
-    
-    .staff-card {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        padding: 1rem;
-        height: 100%;
-        transition: all 0.3s ease;
-    }
-    
-    .staff-card:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        transform: translateY(-2px);
-    }
-    
-    .staff-header {
-        text-align: center;
-        margin-bottom: 0.75rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid #e9ecef;
-    }
-    
-    .staff-header i {
-        display: block;
-        margin-bottom: 0.5rem;
-    }
-    
-    .staff-header h6 {
-        margin: 0;
-        color: #6c757d;
-        font-weight: 600;
-    }
-    
-    .staff-info {
-        text-align: center;
-    }
-    
-    .staff-info .fw-bold {
-        color: #212529;
-        margin-bottom: 0.25rem;
-    }
-    
-    .staff-info small {
-        color: #6c757d;
-    }
-    
-    .card-header {
+
+    .division-card-header {
         border-bottom: none;
         font-weight: 600;
+        padding: 0.85rem 1.25rem;
+        color: #fff;
     }
-    
-    .card-header i {
-        font-size: 1.1rem;
+
+    .division-card-header--primary { background: #0d6efd; }
+    .division-card-header--success { background: #198754; }
+    .division-card-header--info { background: #0dcaf0; color: #052c33; }
+
+    .division-dl dt {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+        margin-bottom: 0.2rem;
     }
-    
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.375rem 0.75rem;
+
+    .division-dl dd {
+        margin-bottom: 0;
+        font-size: 0.95rem;
+        color: #1e293b;
     }
-    
-    .fs-6 {
-        font-size: 0.875rem !important;
+
+    .staff-role-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 1rem 1.1rem;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        border-left: 4px solid #cbd5e1;
+        min-height: 5.5rem;
     }
-    
-    .fs-5 {
-        font-size: 1.25rem !important;
+
+    .staff-role-card--primary { border-left-color: #0d6efd; }
+    .staff-role-card--info { border-left-color: #0dcaf0; }
+    .staff-role-card--success { border-left-color: #198754; }
+    .staff-role-card--warning { border-left-color: #ffc107; }
+
+    .staff-role-card__icon {
+        flex-shrink: 0;
+        font-size: 1.75rem;
+        line-height: 1;
+        margin-top: 0.1rem;
     }
-    
-    .fs-3 {
-        font-size: 1.75rem !important;
+
+    .staff-role-card__label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+        margin-bottom: 0.25rem;
+    }
+
+    .staff-role-card__name {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #0f172a;
+        line-height: 1.3;
+    }
+
+    .staff-role-card__meta {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-top: 0.15rem;
+    }
+
+    .staff-role-card__empty {
+        font-size: 0.9rem;
+        font-style: italic;
     }
 </style>
-@endpush
-
-@push('scripts')
-<script>
-    $(document).ready(function() {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-    });
-</script>
 @endpush

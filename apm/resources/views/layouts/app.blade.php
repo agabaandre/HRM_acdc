@@ -312,6 +312,7 @@
     <div id="google_translate_element" style="display: none;"></div>
     
     @include('layouts.partials.header')
+    @include('partials.impersonation-banner')
 
     <!-- Include the breadcrumbs partial -->
     @include('layouts.partials.breadcrumbs')

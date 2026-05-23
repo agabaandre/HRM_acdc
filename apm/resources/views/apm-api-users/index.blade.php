@@ -12,6 +12,13 @@
     </div>
 @endif
 
+@if(!empty($isImpersonating))
+    <div class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span><i class="bx bx-user-voice me-2"></i>You are impersonating another user. Permissions and division context reflect that account.</span>
+        <a href="{{ route('apm-api-users.revert') }}" class="btn btn-sm btn-outline-dark">Revert to admin</a>
+    </div>
+@endif
+
 @if(!$staffDbLinked)
     <div class="alert alert-warning">
         <i class="fas fa-info-circle me-2"></i>
@@ -39,7 +46,7 @@
                         <th>Name</th>
                         <th>Status</th>
                         <th>Email login</th>
-                        <th class="text-end">Action</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -64,18 +71,29 @@
                                 @endif
                             </td>
                             <td class="text-end">
-                                <form method="post" action="{{ route('apm-api-users.update-allow-email-login', $u) }}" class="d-inline">
-                                    @csrf
-                                    @method('PATCH')
-                                    <input type="hidden" name="allow_email_login" value="{{ $u->allow_email_login ? '0' : '1' }}">
-                                    <button type="submit" class="btn btn-sm {{ $u->allow_email_login ? 'btn-outline-danger' : 'btn-outline-success' }}">
-                                        @if($u->allow_email_login)
-                                            Disable email login
-                                        @else
-                                            Enable email login
-                                        @endif
-                                    </button>
-                                </form>
+                                <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                                    @if(!empty($canImpersonate) && $u->status)
+                                        <form method="post" action="{{ route('apm-api-users.impersonate', $u) }}" class="d-inline"
+                                              onsubmit="return confirm('Impersonate this user? You will browse APM as them until you revert.');">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-warning" title="Impersonate this user">
+                                                <i class="bx bx-user-voice"></i> Impersonate
+                                            </button>
+                                        </form>
+                                    @endif
+                                    <form method="post" action="{{ route('apm-api-users.update-allow-email-login', $u) }}" class="d-inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="allow_email_login" value="{{ $u->allow_email_login ? '0' : '1' }}">
+                                        <button type="submit" class="btn btn-sm {{ $u->allow_email_login ? 'btn-outline-danger' : 'btn-outline-success' }}">
+                                            @if($u->allow_email_login)
+                                                Disable email login
+                                            @else
+                                                Enable email login
+                                            @endif
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty

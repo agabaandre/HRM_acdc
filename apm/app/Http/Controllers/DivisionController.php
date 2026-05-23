@@ -118,7 +118,14 @@ class DivisionController extends Controller
      */
     public function show($id)
     {
-        $division = Division::findOrFail($id);
+        $division = Division::with([
+            'divisionHead',
+            'focalPerson',
+            'adminAssistant',
+            'financeOfficer',
+            'directorate',
+        ])->findOrFail($id);
+
         return view('divisions.show', compact('division'));
     }
 
