@@ -11,6 +11,7 @@ use App\Models\FundType;
 use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Models\SystemSetting;
+use Carbon\Carbon;
 use App\Traits\HasDocumentNumber;
 use App\Traits\HasApprovalWorkflow;
 use App\Traits\TrimsSummernoteHtmlFields;
@@ -153,11 +154,79 @@ class ServiceRequest extends Model
             return false;
         }
 
+        if (! $this->parentSourceMemoIsWithinActivityPeriod()) {
+            return false;
+        }
+
         if ($this->remainingMemoBalanceForChild() <= 0) {
             return false;
         }
 
         return ! $this->childServiceRequests()->exists();
+    }
+
+    /**
+     * Parent source memo must be within its activity start/end dates (today inclusive).
+     * Only non-travel memos are exempt (they use memo_date, not an activity window).
+     */
+    public function parentSourceMemoIsWithinActivityPeriod(?Carbon $on = null): bool
+    {
+        if ($this->source_type === 'non_travel_memo') {
+            return true;
+        }
+
+        $period = $this->parentSourceMemoActivityPeriod();
+        if ($period === null) {
+            return false;
+        }
+
+        $on = ($on ?? now())->copy()->startOfDay();
+
+        return $on->gte($period['start']) && $on->lte($period['end']);
+    }
+
+    /**
+     * @return array{start: Carbon, end: Carbon}|null
+     */
+    public function parentSourceMemoActivityPeriod(): ?array
+    {
+        $memo = $this->resolveSourceMemo();
+        if ($memo === null) {
+            return null;
+        }
+
+        if ($memo instanceof OtherMemo) {
+            $payload = is_array($memo->payload) ? $memo->payload : [];
+            $start = $payload['date_from'] ?? null;
+            $end = $payload['date_to'] ?? null;
+        } else {
+            $start = $memo->date_from ?? null;
+            $end = $memo->date_to ?? null;
+        }
+
+        if (! $start || ! $end) {
+            return null;
+        }
+
+        return [
+            'start' => Carbon::parse($start)->startOfDay(),
+            'end' => Carbon::parse($end)->startOfDay(),
+        ];
+    }
+
+    public function resolveSourceMemo(): Activity|NonTravelMemo|SpecialMemo|OtherMemo|null
+    {
+        if (! $this->source_type || ! $this->source_id) {
+            return null;
+        }
+
+        return match ($this->source_type) {
+            'activity' => Activity::query()->find($this->source_id),
+            'non_travel_memo' => NonTravelMemo::query()->find($this->source_id),
+            'special_memo' => SpecialMemo::query()->find($this->source_id),
+            'other_memo' => OtherMemo::query()->find($this->source_id),
+            default => null,
+        };
     }
 
     /**
