@@ -160,6 +160,47 @@ class ServiceRequest extends Model
         return ! $this->childServiceRequests()->exists();
     }
 
+    /**
+     * Whether the given user may start a supplementary SR from this record.
+     * Draft/returned parents use the normal creator check; approved (or in-flight) parents
+     * allow the SR staff, responsible person, or focal person (same as memo service actions).
+     */
+    public function userCanCreateChildRequest(?int $userId = null): bool
+    {
+        if (! $this->canCreateChildRequest()) {
+            return false;
+        }
+
+        if ($userId === null) {
+            $raw = user_session('staff_id')
+                ?? user_session('auth_staff_id')
+                ?? session('user.staff_id')
+                ?? session('user.auth_staff_id');
+            if ($raw === null || $raw === '') {
+                return false;
+            }
+            $userId = (int) $raw;
+        }
+
+        if (is_with_creator_generic($this)) {
+            return true;
+        }
+
+        $allowed = array_map(
+            'strval',
+            array_filter(
+                [$this->staff_id ?? null, $this->responsible_person_id ?? null, $this->focal_person_id ?? null],
+                static fn ($id) => $id !== null && $id !== ''
+            )
+        );
+
+        if (! in_array((string) $userId, $allowed, true)) {
+            return false;
+        }
+
+        return in_array($this->overall_status ?? '', ['approved', 'pending', 'in_progress'], true);
+    }
+
     public function activity(): BelongsTo
     {
         return $this->belongsTo(Activity::class);

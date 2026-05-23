@@ -40,7 +40,7 @@ On the parent service request **detail** page (`GET /service-requests/{id}`), th
 | Parent has a linked source memo | `source_type` and `source_id` set |
 | Remaining memo balance &gt; 0 | `remainingMemoBalanceForChild()` &gt; 0 (parent `original_total_budget` &gt; parent `new_total_budget`) |
 | No child already exists | `childServiceRequests()->exists()` is false |
-| User can act as creator | `is_with_creator_generic($serviceRequest)` (same as edit/submit on draft) |
+| User permitted | `userCanCreateChildRequest()` — draft/returned: `is_with_creator_generic`; approved/pending/in progress: parent `staff_id`, `responsible_person_id`, or `focal_person_id` |
 
 **Create URL:** `GET /service-requests/create?parent_service_request_id={parentId}`
 
@@ -113,7 +113,7 @@ php artisan migrate
 
 | Area | Location |
 |------|----------|
-| Model helpers | `App\Models\ServiceRequest` — `parentServiceRequest()`, `childServiceRequests()`, `isChildRequest()`, `childRequestsEnabled()`, `remainingMemoBalanceForChild()`, `canCreateChildRequest()` |
+| Model helpers | `App\Models\ServiceRequest` — `parentServiceRequest()`, `childServiceRequests()`, `isChildRequest()`, `childRequestsEnabled()`, `remainingMemoBalanceForChild()`, `canCreateChildRequest()`, `userCanCreateChildRequest()` |
 | HTTP | `App\Http\Controllers\ServiceRequestController` — `create`, `store`, `update`, `show`, PDF build |
 | Views | `resources/views/service-requests/show.blade.php`, `create.blade.php`, `partials/child-request-banner.blade.php`, `print.php` |
 | Setting seed | `database/seeders/SystemSettingsSeeder.php` |
