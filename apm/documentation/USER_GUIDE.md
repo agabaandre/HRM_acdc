@@ -416,6 +416,7 @@ On a service request detail page, **Create supplementary request** appears when:
 - **Allow supplementary service requests** is enabled in [App Settings](https://cbp.africacdc.org/staff/apm/system-settings) (Service requests group; setting key `allow_child_service_requests`, default **Yes**).
 - **Original Memo Budget** (or **Maximum allowable (remaining balance)** on a supplementary SR) is **greater than** **Total Requested Funds** — there is still unrequested balance.
 - **No supplementary request** is already linked to that service request (one supplementary request per SR).
+- You are the **creator** (draft/returned parent) or the parent SR **staff / responsible person** (approved or in approval).
 - You are the **creator** (same rules as editing or submitting the draft you are creating from).
 - **Nested supplementary requests** are allowed: if a supplementary SR still has remaining balance, you may create another supplementary request from it (each level has its own cap).
 

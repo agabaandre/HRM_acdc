@@ -161,10 +161,10 @@ class ServiceRequestController extends Controller
 
         if ($request->filled('parent_service_request_id')) {
             $parentServiceRequest = ServiceRequest::query()->find($request->integer('parent_service_request_id'));
-            if (! $parentServiceRequest || ! $parentServiceRequest->canCreateChildRequest()) {
+            if (! $parentServiceRequest || ! $parentServiceRequest->userCanCreateChildRequest()) {
                 return redirect()
                     ->back()
-                    ->with('error', 'A supplementary service request cannot be created for this record (feature disabled, budget already fully requested, or a supplementary request already exists).');
+                    ->with('error', 'A supplementary service request cannot be created for this record (feature disabled, budget already fully requested, a supplementary request already exists, or you are not permitted).');
             }
             $isChildRequestForm = true;
             $childBalanceCap = $parentServiceRequest->remainingMemoBalanceForChild();
@@ -424,7 +424,7 @@ class ServiceRequestController extends Controller
         $parentForChild = null;
         if ($request->filled('parent_service_request_id')) {
             $parentForChild = ServiceRequest::query()->find($request->integer('parent_service_request_id'));
-            if (! $parentForChild || ! $parentForChild->canCreateChildRequest()) {
+            if (! $parentForChild || ! $parentForChild->userCanCreateChildRequest()) {
                 return redirect()
                     ->back()
                     ->withInput()
@@ -999,8 +999,7 @@ class ServiceRequestController extends Controller
         $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
         $canEmailPdf = can_print_memo($serviceRequest) && count($emailPdfRecipientChoices) > 0;
 
-        $canCreateChildRequest = $serviceRequest->canCreateChildRequest()
-            && is_with_creator_generic($serviceRequest);
+        $canCreateChildRequest = $serviceRequest->userCanCreateChildRequest();
 
         return view('service-requests.show', compact(
             'serviceRequest',
