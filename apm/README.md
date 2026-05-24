@@ -92,6 +92,46 @@ The Approvals Management (APM) system is a Laravel-based application for managin
 
 - **Finance Module Documentation**: [`../finance/documentation/`](../finance/documentation/) - Node.js/React Finance Management System
 
+## System requirements
+
+### PHP
+
+- PHP 8.2+ (see `composer.json`)
+- Standard Laravel extensions (`mbstring`, `openssl`, `pdo`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, etc.)
+
+### PDF attachments in memo printouts
+
+APM embeds uploaded attachments in memo/activity PDF appendices (mPDF). **Scanned or image-only PDFs** require server-side rasterization; native mPDF import often fails on those files.
+
+| Requirement | Notes |
+|-------------|--------|
+| **Ghostscript** (`gs`) | **Recommended.** Republishes PDFs and rasterizes pages for embedding. |
+| **Poppler** (`pdftoppm`) | **Recommended backup** if Ghostscript is unavailable. |
+| **LibreOffice** (`libreoffice`, `soffice`) | **Recommended.** Converts Word (`.doc`, `.docx`) attachments to PDF for the annex. |
+| **PHP Imagick** | Optional; used when the extension is installed and can read PDFs. |
+
+**Install (Debian/Ubuntu):**
+
+```bash
+sudo apt install ghostscript poppler-utils libreoffice-writer
+```
+
+**Install (RHEL family):**
+
+```bash
+sudo dnf install ghostscript poppler-utils libreoffice-writer
+```
+
+**Install (macOS):**
+
+```bash
+brew install ghostscript poppler libreoffice
+```
+
+`gs`, `pdftoppm`, and `libreoffice` / `soffice` must be on the `PATH` for the web server, PHP-FPM, and queue workers (if PDFs are generated from jobs).
+
+More detail: [Deployment guide](./documentation/DEPLOYMENT.md#server-requirements) · [Platform README](../README.md#-system-requirements).
+
 ## Setup
 
 1. Install dependencies: `composer install`
