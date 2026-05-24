@@ -378,6 +378,24 @@
             </div>
         @endif
 
+        @if(
+            count($changeRequestAttachments ?? []) > 0
+            || count($parentMemoAttachments ?? []) > 0
+        )
+            @include('partials.memo-attachments-card', [
+                'attachments' => $changeRequestAttachments ?? [],
+                'cardTitle' => 'Change request attachments',
+                'emptyMessage' => 'No files uploaded on this change request.',
+            ])
+            @if(!empty($attachmentsDifferFromParent) && !empty($parentMemoAttachments))
+                @include('partials.memo-attachments-card', [
+                    'attachments' => $parentMemoAttachments,
+                    'cardTitle' => 'Parent memo attachments',
+                    'emptyMessage' => 'No files on the parent memo.',
+                ])
+            @endif
+        @endif
+
         <!-- Detailed Changes List -->
         @if($changeRequest->hasAnyChanges())
             <div class="mt-4">
@@ -1526,8 +1544,51 @@
 
 @endsection
 
+@push('styles')
+<style>
+    #previewModal .modal-dialog {
+        max-width: 90vw;
+        margin: 1.75rem auto;
+    }
+    #previewModal .modal-body {
+        min-height: 500px;
+        max-height: 80vh;
+        overflow: hidden;
+    }
+    #previewModal iframe,
+    #previewModal img {
+        border-radius: 0.5rem;
+    }
+    .preview-attachment:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+</style>
+@endpush
+
 @push('scripts')
 <script>
+$(document).on('click', '.preview-attachment', function() {
+    var fileUrl = $(this).data('file-url');
+    var ext = $(this).data('file-ext');
+    var isOffice = $(this).data('file-office') == '1';
+    var modalBody = $('#previewModalBody');
+    var content = '';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+        content = '<img src="'+fileUrl+'" class="img-fluid" style="max-height:70vh;max-width:100%;margin:auto;display:block;">';
+    } else if (ext === 'pdf') {
+        content = '<iframe src="'+fileUrl+'#toolbar=1&navpanes=0&scrollbar=1" style="width:100%;height:70vh;border:none;"></iframe>';
+    } else if (isOffice) {
+        var gdocs = 'https://docs.google.com/viewer?url='+encodeURIComponent(fileUrl)+'&embedded=true';
+        content = '<iframe src="'+gdocs+'" style="width:100%;height:70vh;border:none;"></iframe>';
+    } else {
+        content = '<div class="alert alert-info">Preview not available. <a href="'+fileUrl+'" target="_blank">Download/Open file</a></div>';
+    }
+    modalBody.html(content);
+    var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+});
+
 // Delete change request function
 function deleteChangeRequest(changeRequestId) {
     if (!confirm('Are you sure you want to delete this change request? This action cannot be undone.')) {

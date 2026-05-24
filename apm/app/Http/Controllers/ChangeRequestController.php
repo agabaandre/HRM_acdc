@@ -591,34 +591,8 @@ class ChangeRequestController extends Controller
                     }
                 }
                 
-                // Handle file uploads for attachments
-                $attachments = [];
-                if ($request->hasFile('attachments')) {
-                    $uploadedFiles = $request->file('attachments');
-                    $attachmentTypes = $request->input('attachments', []);
-                    
-                    foreach ($uploadedFiles as $index => $file) {
-                        if ($file && $file->isValid()) {
-                            $type = $attachmentTypes[$index]['type'] ?? 'Document';
-                            
-                            // Generate unique filename
-                            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                            
-                            // Store file in public/uploads/change-requests directory
-                            $path = $file->storeAs('uploads/change-requests', $filename, 'public');
-                            
-                            $attachments[] = [
-                                'type' => $type,
-                                'filename' => $filename,
-                                'original_name' => $file->getClientOriginalName(),
-                                'path' => $path,
-                                'size' => $file->getSize(),
-                                'mime_type' => $file->getMimeType(),
-                                'uploaded_at' => now()->toDateTimeString()
-                            ];
-                        }
-                    }
-                }
+                $existingForAttachments = $isUpdate ? $changeRequest->storedAttachments() : [];
+                $attachments = ChangeRequest::collectAttachmentsFromRequest($request, $existingForAttachments);
 
                 // Determine which fields have changed
                 $changes = $this->detectChanges($parentMemo, $request);
@@ -688,6 +662,10 @@ class ChangeRequestController extends Controller
                     'request_type_id' => (int) $request->input('request_type_id', $parentMemo->request_type_id ?? 1),
                     'activity_title' => clean_unicode($request->input('activity_title')),
                     'background' => clean_unicode($request->input('background', $parentMemo->background ?? '')),
+                    'justification' => clean_unicode($request->input(
+                        'justification',
+                        $parentMemo->justification ?? ''
+                    )),
                     'activity_request_remarks' => clean_unicode($request->input('activity_request_remarks', $parentMemo->activity_request_remarks ?? '')),
                     'is_single_memo' => $request->input('is_single_memo', $parentMemo->is_single_memo ?? false),
                     'workplan_activity_code' => $resolvedWorkplanActivityCode,
@@ -938,9 +916,16 @@ class ChangeRequestController extends Controller
 
         $emailPdfChoices = staff_pdf_mail_recipient_choice_list();
 
+        $changeRequestAttachments = $changeRequest->storedAttachments();
+        $parentMemoAttachments = ChangeRequest::attachmentsFromMemo($parentMemo);
+        $attachmentsDifferFromParent = $changeRequest->attachmentsDifferFromParent($parentMemo);
+
         return view('change-requests.show', [
             'changeRequest' => $changeRequest,
             'parentMemo' => $parentMemo,
+            'changeRequestAttachments' => $changeRequestAttachments,
+            'parentMemoAttachments' => $parentMemoAttachments,
+            'attachmentsDifferFromParent' => $attachmentsDifferFromParent,
             'existingArf' => $existingArf,
             'existingServiceRequest' => $existingServiceRequest,
             'canCreateArf' => $canCreateArf,
@@ -2291,13 +2276,22 @@ class ChangeRequestController extends Controller
 
         $changes = $this->getChangesList($changeRequest, $parentMemo);
 
+        $appendixAttachments = $changeRequest->attachmentsForPrintAppendix($parentMemo);
+        $isAddendum = $changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed;
+
         $pdf = mpdf_print('change-requests.print', [
             'changeRequest' => $changeRequest,
             'parentMemo' => $parentMemo,
             'parentPdfHtml' => $parentPdfHtml,
             'changes' => $changes,
             'organized_workflow_steps' => $organizedWorkflowSteps,
-        ], ['preview_html' => false]);
+        ], [
+            'preview_html' => false,
+            'attachments_appendix' => $appendixAttachments,
+            'attachments_appendix_title' => $isAddendum
+                ? 'Appendix — Addendum Attachments'
+                : 'Appendix — Change Request Attachments',
+        ]);
 
         $filename = ($changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed ? 'Addendum' : 'Change_Request')
             .'_'.($changeRequest->document_number ?? $changeRequest->id).'_'.now()->format('Y-m-d').'.pdf';

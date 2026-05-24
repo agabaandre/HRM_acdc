@@ -424,43 +424,7 @@ class NonTravelMemoController extends Controller
             }
         }
 
-        // Handle attachments
-       // Handle file uploads for attachments
-       $attachments = [];
-       if ($request->hasFile('attachments')) {
-           $uploadedFiles = $request->file('attachments');
-           $attachmentTypes = $request->input('attachments', []);
-           
-           foreach ($uploadedFiles as $index => $file) {
-               if ($file && $file->isValid()) {
-                   $type = $attachmentTypes[$index]['type'] ?? 'Document';
-                   
-                   // Validate file type
-                   $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
-                   $extension = strtolower($file->getClientOriginalExtension());
-                   
-                   if (!in_array($extension, $allowedExtensions)) {
-                       throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
-                   }
-                   
-                   // Generate unique filename
-                   $filename = time() . '_' . uniqid() . '.' . $extension;
-                   
-                   // Store file in public/uploads/activities directory
-                   $path = $file->storeAs('uploads/non-travel', $filename, 'public');
-                   
-                   $attachments[] = [
-                       'type' => $type,
-                       'filename' => $filename,
-                       'original_name' => $file->getClientOriginalName(),
-                       'path' => $path,
-                       'size' => $file->getSize(),
-                       'mime_type' => $file->getMimeType(),
-                       'uploaded_at' => now()->toDateTimeString()
-                   ];
-               }
-           }
-       }
+        $attachments = ChangeRequest::collectAttachmentsFromRequest($request, [], 'uploads/non-travel');
 
         // Prepare JSON columns (external source may omit budget fields entirely)
         $locationJson = json_encode($data['location_id']);
@@ -684,7 +648,12 @@ class NonTravelMemoController extends Controller
             if ($crId > 0) {
                 $changeRequestForEdit = ChangeRequest::query()->findOrFail($crId);
             }
+            $parentMemoAttachments = ChangeRequest::attachmentsFromMemo($nonTravel);
+            if ($changeRequestForEdit) {
+                $this->applyChangeRequestSnapshotToNonTravelMemo($nonTravel, $changeRequestForEdit);
+            }
         } else {
+            $parentMemoAttachments = [];
             // Creator should always be allowed to edit their own non-travel memo.
             if (! $isOwner && ! can_edit_memo($nonTravel)) {
                 return redirect()
@@ -733,9 +702,7 @@ class NonTravelMemoController extends Controller
                 array_keys($budgetBreakdown)
             )));
         }
-         $attachments = is_string($nonTravel->attachment)
-            ? json_decode($nonTravel->attachment, true)
-            : ($nonTravel->attachment ?? []);
+        $attachments = ChangeRequest::decodeAttachmentPayload($nonTravel->attachment ?? null);
         // Debug: Log the budget data
         \Illuminate\Support\Facades\Log::info('NonTravelMemo Budget Debug', [
             'memo_id' => $nonTravel->id,
@@ -770,6 +737,7 @@ class NonTravelMemoController extends Controller
         return view('non-travel.edit-new', compact(
             'nonTravel',
             'changeRequestForEdit',
+            'parentMemoAttachments',
             'budgets',
             'selectedBudgetCodes',
             'attachments',
@@ -781,6 +749,51 @@ class NonTravelMemoController extends Controller
             'fundTypes',
             'initialBudgetCodeOptions'
         ));
+    }
+
+    /**
+     * Overlay change request draft data onto the non-travel memo for the edit form (in-memory only).
+     */
+    private function applyChangeRequestSnapshotToNonTravelMemo(NonTravelMemo $memo, ChangeRequest $cr): void
+    {
+        $locationId = $cr->location_id;
+        if (is_string($locationId)) {
+            $decoded = json_decode($locationId, true);
+            $locationId = is_array($decoded) ? $decoded : [];
+        }
+
+        $budgetBreakdown = $cr->budget_breakdown;
+        if (is_string($budgetBreakdown)) {
+            $decoded = json_decode($budgetBreakdown, true);
+            $budgetBreakdown = is_array($decoded) ? $decoded : [];
+        }
+
+        $budgetId = $cr->budget_id;
+        if (is_string($budgetId)) {
+            $decoded = json_decode($budgetId, true);
+            $budgetId = is_array($decoded) ? $decoded : [];
+        }
+
+        $justification = trim((string) ($cr->justification ?? ''));
+        if ($justification === '') {
+            $justification = (string) ($memo->getRawOriginal('justification') ?? $memo->justification ?? '');
+        }
+
+        $memo->fill([
+            'memo_date' => $cr->memo_date,
+            'location_id' => $locationId,
+            'non_travel_memo_category_id' => $cr->non_travel_memo_category_id ?? $memo->non_travel_memo_category_id,
+            'activity_title' => $cr->activity_title,
+            'background' => $cr->background,
+            'justification' => $justification,
+            'activity_request_remarks' => $cr->activity_request_remarks,
+            'fund_type_id' => $cr->fund_type_id,
+            'budget_id' => $budgetId,
+            'budget_breakdown' => $budgetBreakdown,
+            'workplan_activity_code' => $cr->workplan_activity_code,
+        ]);
+
+        $memo->setAttribute('attachment', $cr->attachment);
     }
 
     // /** Update memo */
@@ -862,67 +875,8 @@ class NonTravelMemoController extends Controller
         // We don't include staff_id or responsible_person_id in validation rules to prevent updates
         // The staff_id remains the original creator throughout the memo's lifecycle
 
-       // Handle file uploads for attachments
-       $attachments = [];
-       $existingAttachments = is_string($nonTravel->attachment) 
-           ? json_decode($nonTravel->attachment, true) 
-           : ($nonTravel->attachment ?? []);
-       
-       // Get attachment data from request
-       $attachmentData = $request->input('attachments', []);
-       
-       // Process each attachment slot
-       foreach ($attachmentData as $index => $attachmentInfo) {
-           $type = $attachmentInfo['type'] ?? 'Document';
-           $file = $request->file("attachments.{$index}.file");
-           $shouldReplace = isset($attachmentInfo['replace']) && $attachmentInfo['replace'] == '1';
-           $shouldDelete = isset($attachmentInfo['delete']) && $attachmentInfo['delete'] == '1';
-           
-           // Skip if user wants to delete this attachment
-           if ($shouldDelete) {
-               continue;
-           }
-           
-           if ($file && $file->isValid()) {
-               // New file uploaded - validate and store
-               $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
-               $extension = strtolower($file->getClientOriginalExtension());
-               
-               if (!in_array($extension, $allowedExtensions)) {
-                   throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
-               }
-               
-               // Generate unique filename
-               $filename = time() . '_' . uniqid() . '.' . $extension;
-               
-               // Store file in public/uploads/activities directory
-               $path = $file->storeAs('uploads/non-travel', $filename, 'public');
-               
-               $attachments[] = [
-                   'type' => $type,
-                   'filename' => $filename,
-                   'original_name' => $file->getClientOriginalName(),
-                   'path' => $path,
-                   'size' => $file->getSize(),
-                   'mime_type' => $file->getMimeType(),
-                   'uploaded_at' => now()->toDateTimeString()
-               ];
-           } else {
-               // No new file uploaded - check if user wants to replace
-               if ($shouldReplace && isset($existingAttachments[$index])) {
-                   // User wants to replace but no new file provided - skip this attachment
-                   continue;
-               } elseif (isset($existingAttachments[$index])) {
-                   // Keep existing attachment
-                   $attachments[] = $existingAttachments[$index];
-               }
-           }
-       }
-       
-       // If no attachment data was provided, keep all existing attachments
-       if (empty($attachmentData)) {
-           $attachments = $existingAttachments;
-       }
+       $existingAttachments = ChangeRequest::decodeAttachmentPayload($nonTravel->getRawOriginal('attachment') ?? $nonTravel->attachment);
+       $attachments = ChangeRequest::collectAttachmentsFromRequest($request, $existingAttachments, 'uploads/non-travel');
         // Extract fund_type_id from budget codes if not provided
         if (empty($data['fund_type_id'])) {
             // Get existing budget codes from the memo

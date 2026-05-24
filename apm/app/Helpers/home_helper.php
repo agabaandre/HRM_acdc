@@ -312,6 +312,7 @@ if (! function_exists('generate_pdf')) {
      *                          - 'orientation' (string): L or LANDSCAPE for landscape (mPDF uses e.g. A4-L)
      *                          - 'document_url' (string): URL encoded in the footer QR (left of Source/Generated/By; defaults to current request URL in web context, else APP_URL); plain text if QR fails
      *                          - 'attachments_appendix' (array): Memo attachment rows; appends index + embedded PDF/image pages after main content
+     *                          - 'attachments_appendix_title' (string): Optional appendix heading (default "Appendix — Attachments")
      * @return \Mpdf\Mpdf|string
      */
     function generate_pdf($view, $data = [], $options = [])
@@ -590,7 +591,11 @@ if (! function_exists('generate_pdf')) {
             $appendixAttachments = is_array($decoded) ? $decoded : [];
         }
         if (is_array($appendixAttachments) && $appendixAttachments !== []) {
-            \App\Helpers\PrintHelper::appendAttachmentsAppendixToMpdf($mpdf, $appendixAttachments);
+            $appendixTitle = $options['attachments_appendix_title'] ?? 'Appendix — Attachments';
+            if (! is_string($appendixTitle) || trim($appendixTitle) === '') {
+                $appendixTitle = 'Appendix — Attachments';
+            }
+            \App\Helpers\PrintHelper::appendAttachmentsAppendixToMpdf($mpdf, $appendixAttachments, $appendixTitle);
         }
 
         return $mpdf;
