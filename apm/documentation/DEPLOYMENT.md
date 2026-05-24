@@ -1,5 +1,45 @@
 # Deployment Guide
 
+## Server requirements
+
+### PDF attachment embedding (memo / activity print)
+
+Production servers that generate APM PDFs (activities, single memos, special memos, non-travel memos, change requests, etc.) should have tools to embed **scanned or image-only PDF** attachments in the printout appendix. mPDF alone cannot import many scanned PDFs.
+
+| Package | Binary | Role |
+|---------|--------|------|
+| Ghostscript | `gs` | Primary: republish PDFs; rasterize pages to PNG for embedding |
+| Poppler | `pdftoppm` | Fallback rasterization |
+| LibreOffice | `libreoffice`, `soffice` | Convert Word (`.doc`, `.docx`) attachments to PDF for the annex |
+| PHP Imagick (optional) | — | Optional rasterization via ImageMagick |
+
+**Debian / Ubuntu:**
+
+```bash
+sudo apt update
+sudo apt install ghostscript poppler-utils libreoffice-writer
+```
+
+**RHEL / AlmaLinux / Rocky:**
+
+```bash
+sudo dnf install ghostscript poppler-utils libreoffice-writer
+```
+
+Verify after install (as the same user PHP runs as, e.g. `www-data`):
+
+```bash
+which gs pdftoppm libreoffice
+gs --version
+libreoffice --version
+```
+
+If these commands are missing from PHP’s `PATH`, scanned PDFs may fail to embed, and Word attachments will not render in the annex (they still appear in the attachment index).
+
+Implementation: `App\Helpers\PrintHelper::appendAttachmentsAppendixToMpdf()`.
+
+---
+
 ## Quick Setup Commands
 
 ### 1. Install Dependencies

@@ -3,6 +3,8 @@
 namespace App\Helpers;
 
 use App\Models\Staff;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 
 class PrintHelper
@@ -1582,8 +1584,11 @@ class PrintHelper
         return is_file($fullPath) ? $fullPath : null;
     }
 
+    /** Office document extensions converted to PDF before embedding in the annex. */
+    private const OFFICE_DOCUMENT_EXTENSIONS = ['doc', 'docx', 'odt', 'rtf'];
+
     /**
-     * Append an attachments appendix (index + embedded PDF/image pages) to an mPDF instance.
+     * Append an attachments appendix (index + embedded PDF/image/Word pages) to an mPDF instance.
      *
      * @param  array<int, array<string, mixed>>  $attachments
      */
@@ -1599,11 +1604,15 @@ class PrintHelper
                 continue;
             }
             $originalName = (string) ($attachment['original_name'] ?? ($attachment['filename'] ?? ($attachment['name'] ?? basename($diskPath))));
+            $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+            if ($ext === '') {
+                $ext = strtolower(pathinfo($diskPath, PATHINFO_EXTENSION));
+            }
             $rows[] = [
                 'type' => (string) ($attachment['type'] ?? 'Document'),
                 'name' => $originalName,
                 'path' => $diskPath,
-                'ext' => strtolower(pathinfo($originalName, PATHINFO_EXTENSION)),
+                'ext' => $ext,
             ];
         }
 
@@ -1656,48 +1665,483 @@ class PrintHelper
                 continue;
             }
 
+            if (in_array($row['ext'], self::OFFICE_DOCUMENT_EXTENSIONS, true)) {
+                self::importOfficeDocumentIntoMpdf($mpdf, $row['path'], $escapedLabel);
+
+                continue;
+            }
+
             if (in_array($row['ext'], $imageExtensions, true)) {
                 self::embedImagePageIntoMpdf($mpdf, $row['path'], $escapedLabel);
             }
         }
     }
 
+    /**
+     * Convert Word (and other office) attachments to PDF via LibreOffice, then embed pages.
+     */
+    private static function importOfficeDocumentIntoMpdf(\Mpdf\Mpdf $mpdf, string $documentPath, string $escapedLabel): void
+    {
+        $pdfPath = self::convertOfficeDocumentToPdf($documentPath);
+        if ($pdfPath === null) {
+            self::writeAttachmentImportFailurePage(
+                $mpdf,
+                $escapedLabel,
+                'This Word document could not be converted for the PDF annex. Install LibreOffice (libreoffice or soffice) on the server.'
+            );
+
+            return;
+        }
+
+        try {
+            self::importPdfPagesIntoMpdf($mpdf, $pdfPath, $escapedLabel);
+        } finally {
+            if (is_file($pdfPath) && str_starts_with($pdfPath, sys_get_temp_dir())) {
+                @unlink($pdfPath);
+            }
+        }
+    }
+
+    /**
+     * Convert .doc/.docx (and related) to PDF using headless LibreOffice.
+     */
+    private static function convertOfficeDocumentToPdf(string $sourcePath): ?string
+    {
+        if (! is_readable($sourcePath)) {
+            return null;
+        }
+
+        $libreOffice = self::findExecutable(['libreoffice', 'soffice', 'loffice']);
+        if ($libreOffice === null) {
+            Log::warning('LibreOffice not found; cannot convert Word attachment for PDF annex');
+
+            return null;
+        }
+
+        $outDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'apm_office_out_' . uniqid('', true);
+        $profileDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'apm_lo_profile_' . uniqid('', true);
+
+        if (! @mkdir($outDir, 0700, true) && ! is_dir($outDir)) {
+            return null;
+        }
+        if (! @mkdir($profileDir, 0700, true) && ! is_dir($profileDir)) {
+            self::removeDirectoryRecursive($outDir);
+
+            return null;
+        }
+
+        $profileUri = 'file://' . str_replace(' ', '%20', str_replace('\\', '/', $profileDir));
+
+        try {
+            $result = Process::timeout(180)->run([
+                $libreOffice,
+                '--headless',
+                '--nologo',
+                '--nofirststartwizard',
+                '-env:UserInstallation=' . $profileUri,
+                '--convert-to',
+                'pdf',
+                '--outdir',
+                $outDir,
+                $sourcePath,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('LibreOffice convert process failed', [
+                'path' => $sourcePath,
+                'message' => $e->getMessage(),
+            ]);
+            self::removeDirectoryRecursive($outDir);
+            self::removeDirectoryRecursive($profileDir);
+
+            return null;
+        }
+
+        if (! $result->successful()) {
+            Log::warning('LibreOffice convert failed', [
+                'path' => $sourcePath,
+                'stderr' => $result->errorOutput(),
+            ]);
+            self::removeDirectoryRecursive($outDir);
+            self::removeDirectoryRecursive($profileDir);
+
+            return null;
+        }
+
+        $expectedBase = pathinfo($sourcePath, PATHINFO_FILENAME);
+        $converted = $outDir . DIRECTORY_SEPARATOR . $expectedBase . '.pdf';
+        if (! is_file($converted)) {
+            $matches = glob($outDir . DIRECTORY_SEPARATOR . '*.pdf') ?: [];
+            $converted = $matches[0] ?? '';
+        }
+
+        self::removeDirectoryRecursive($profileDir);
+
+        if ($converted === '' || ! is_file($converted)) {
+            self::removeDirectoryRecursive($outDir);
+
+            return null;
+        }
+
+        $tmpPdf = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'apm_word_' . uniqid('', true) . '.pdf';
+        $copied = @copy($converted, $tmpPdf);
+        self::removeDirectoryRecursive($outDir);
+
+        return $copied && is_file($tmpPdf) ? $tmpPdf : null;
+    }
+
+    private static function removeDirectoryRecursive(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+
+        $items = scandir($dir);
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $path = $dir . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($path)) {
+                self::removeDirectoryRecursive($path);
+            } else {
+                @unlink($path);
+            }
+        }
+
+        @rmdir($dir);
+    }
+
     private static function importPdfPagesIntoMpdf(\Mpdf\Mpdf $mpdf, string $pdfPath, string $escapedLabel): void
+    {
+        if (self::tryImportPdfPagesViaMpdf($mpdf, $pdfPath)) {
+            return;
+        }
+
+        $republished = self::republishPdfViaGhostscript($pdfPath);
+        if ($republished !== null) {
+            try {
+                if (self::tryImportPdfPagesViaMpdf($mpdf, $republished)) {
+                    return;
+                }
+            } finally {
+                @unlink($republished);
+            }
+        }
+
+        if (self::tryImportPdfPagesAsRasterImages($mpdf, $pdfPath, $escapedLabel)) {
+            return;
+        }
+
+        self::writeAttachmentImportFailurePage($mpdf, $escapedLabel);
+    }
+
+    /**
+     * Import attachment PDF pages via mPDF/FPDI (works for most vector PDFs).
+     */
+    private static function tryImportPdfPagesViaMpdf(\Mpdf\Mpdf $mpdf, string $pdfPath): bool
     {
         try {
             $pageCount = $mpdf->SetSourceFile($pdfPath);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('mPDF could not import attachment PDF', [
+            Log::warning('mPDF could not import attachment PDF', [
                 'path' => $pdfPath,
                 'message' => $e->getMessage(),
             ]);
-            self::writeAttachmentImportFailurePage($mpdf, $escapedLabel);
 
-            return;
+            return false;
         }
 
         if ($pageCount < 1) {
-            self::writeAttachmentImportFailurePage($mpdf, $escapedLabel);
-
-            return;
+            return false;
         }
 
+        $imported = 0;
         for ($page = 1; $page <= $pageCount; $page++) {
-            $mpdf->AddPage();
             try {
                 $tplId = $mpdf->ImportPage($page);
                 $size = $mpdf->getTemplateSize($tplId);
                 $width = is_array($size) ? ($size['width'] ?? null) : null;
                 $height = is_array($size) ? ($size['height'] ?? null) : null;
+                $mpdf->AddPage();
                 $mpdf->UseTemplate($tplId, 0, 0, $width, $height);
+                $imported++;
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('mPDF could not import attachment PDF page', [
+                Log::warning('mPDF could not import attachment PDF page', [
                     'path' => $pdfPath,
                     'page' => $page,
                     'message' => $e->getMessage(),
                 ]);
             }
         }
+
+        return $imported > 0;
+    }
+
+    /**
+     * Rasterize scanned/image PDFs and embed each page as a PNG (Imagick, Ghostscript, or pdftoppm).
+     */
+    private static function tryImportPdfPagesAsRasterImages(\Mpdf\Mpdf $mpdf, string $pdfPath, string $escapedLabel): bool
+    {
+        $pngPaths = self::rasterizePdfToPngPaths($pdfPath);
+        if ($pngPaths === []) {
+            return false;
+        }
+
+        try {
+            foreach ($pngPaths as $pngPath) {
+                self::embedImagePageIntoMpdf($mpdf, $pngPath, $escapedLabel);
+            }
+        } finally {
+            foreach ($pngPaths as $pngPath) {
+                if (is_string($pngPath) && is_file($pngPath) && str_starts_with($pngPath, sys_get_temp_dir())) {
+                    @unlink($pngPath);
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function rasterizePdfToPngPaths(string $pdfPath): array
+    {
+        if (! is_readable($pdfPath)) {
+            return [];
+        }
+
+        $paths = self::rasterizePdfWithImagick($pdfPath);
+        if ($paths !== []) {
+            return $paths;
+        }
+
+        $paths = self::rasterizePdfWithGhostscript($pdfPath);
+        if ($paths !== []) {
+            return $paths;
+        }
+
+        return self::rasterizePdfWithPdftoppm($pdfPath);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function rasterizePdfWithImagick(string $pdfPath): array
+    {
+        if (! extension_loaded('imagick') || ! class_exists(\Imagick::class)) {
+            return [];
+        }
+
+        try {
+            $imagick = new \Imagick();
+            $imagick->setResolution(150, 150);
+            $imagick->readImage($pdfPath);
+
+            $paths = [];
+            foreach ($imagick as $page) {
+                $page->setImageFormat('png');
+                $page->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+                $page->setBackgroundColor('white');
+                $tmp = tempnam(sys_get_temp_dir(), 'apm_pdf_img_');
+                if ($tmp === false) {
+                    continue;
+                }
+                $pngPath = $tmp . '.png';
+                @unlink($tmp);
+                $page->writeImage($pngPath);
+                if (is_file($pngPath)) {
+                    $paths[] = $pngPath;
+                }
+            }
+
+            $imagick->clear();
+            $imagick->destroy();
+
+            return $paths;
+        } catch (\Throwable $e) {
+            Log::warning('Imagick could not rasterize attachment PDF', [
+                'path' => $pdfPath,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function rasterizePdfWithGhostscript(string $pdfPath): array
+    {
+        $gs = self::findExecutable(['gs', 'gswin64c', 'gswin32c']);
+        if ($gs === null) {
+            return [];
+        }
+
+        $base = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'apm_attach_' . uniqid('', true);
+        $pattern = $base . '_%d.png';
+
+        try {
+            $result = Process::timeout(180)->run([
+                $gs,
+                '-dSAFER',
+                '-dBATCH',
+                '-dNOPAUSE',
+                '-sDEVICE=png16m',
+                '-r150',
+                '-dTextAlphaBits=4',
+                '-dGraphicsAlphaBits=4',
+                '-sOutputFile=' . $pattern,
+                $pdfPath,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Ghostscript rasterize process failed', [
+                'path' => $pdfPath,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+
+        if (! $result->successful()) {
+            Log::warning('Ghostscript rasterize failed', [
+                'path' => $pdfPath,
+                'stderr' => $result->errorOutput(),
+            ]);
+
+            return [];
+        }
+
+        $paths = glob($base . '_*.png') ?: [];
+        natsort($paths);
+
+        return array_values($paths);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function rasterizePdfWithPdftoppm(string $pdfPath): array
+    {
+        $pdftoppm = self::findExecutable(['pdftoppm', 'pdftoppm.exe']);
+        if ($pdftoppm === null) {
+            return [];
+        }
+
+        $prefix = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'apm_attach_' . uniqid('', true) . '_page';
+
+        try {
+            $result = Process::timeout(180)->run([
+                $pdftoppm,
+                '-png',
+                '-r',
+                '150',
+                $pdfPath,
+                $prefix,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('pdftoppm rasterize process failed', [
+                'path' => $pdfPath,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+
+        if (! $result->successful()) {
+            Log::warning('pdftoppm rasterize failed', [
+                'path' => $pdfPath,
+                'stderr' => $result->errorOutput(),
+            ]);
+
+            return [];
+        }
+
+        $paths = glob($prefix . '-*.png') ?: [];
+        natsort($paths);
+
+        return array_values($paths);
+    }
+
+    /**
+     * Re-publish PDF to PDF 1.4 for FPDI when the original uses unsupported compression.
+     */
+    private static function republishPdfViaGhostscript(string $pdfPath): ?string
+    {
+        $gs = self::findExecutable(['gs', 'gswin64c', 'gswin32c']);
+        if ($gs === null) {
+            return null;
+        }
+
+        $out = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'apm_repub_' . uniqid('', true) . '.pdf';
+
+        try {
+            $result = Process::timeout(180)->run([
+                $gs,
+                '-dSAFER',
+                '-dBATCH',
+                '-dNOPAUSE',
+                '-dCompatibilityLevel=1.4',
+                '-dPDFSETTINGS=/default',
+                '-sDEVICE=pdfwrite',
+                '-sOutputFile=' . $out,
+                $pdfPath,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Ghostscript republish process failed', [
+                'path' => $pdfPath,
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        if (! $result->successful() || ! is_file($out)) {
+            Log::warning('Ghostscript republish failed', [
+                'path' => $pdfPath,
+                'stderr' => $result->errorOutput(),
+            ]);
+            @unlink($out);
+
+            return null;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<string>  $names
+     */
+    private static function findExecutable(array $names): ?string
+    {
+        foreach ($names as $name) {
+            $which = PHP_OS_FAMILY === 'Windows' ? 'where' : 'which';
+            try {
+                $result = Process::timeout(5)->run([$which, $name]);
+                if ($result->successful()) {
+                    $lines = preg_split('/\R/', trim($result->output())) ?: [];
+                    $first = trim((string) ($lines[0] ?? ''));
+                    if ($first !== '' && is_file($first)) {
+                        return $first;
+                    }
+                }
+            } catch (\Throwable) {
+                // try next
+            }
+        }
+
+        foreach ($names as $name) {
+            if (is_file($name)) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 
     private static function embedImagePageIntoMpdf(\Mpdf\Mpdf $mpdf, string $imagePath, string $escapedLabel): void
@@ -1720,11 +2164,14 @@ class PrintHelper
         }
     }
 
-    private static function writeAttachmentImportFailurePage(\Mpdf\Mpdf $mpdf, string $escapedLabel): void
-    {
+    private static function writeAttachmentImportFailurePage(
+        \Mpdf\Mpdf $mpdf,
+        string $escapedLabel,
+        string $message = 'This attachment could not be embedded in the PDF printout.'
+    ): void {
         $html = '<div style="page-break-before: always;">'
             . '<p style="font-size:12px;font-weight:bold;margin:0 0 8px;">' . $escapedLabel . '</p>'
-            . '<p style="font-size:10px;color:#64748b;">This attachment could not be embedded in the PDF printout.</p>'
+            . '<p style="font-size:10px;color:#64748b;">' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</p>'
             . '</div>';
 
         try {
