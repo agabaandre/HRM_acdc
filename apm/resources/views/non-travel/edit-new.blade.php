@@ -10,10 +10,8 @@
 @php
     // Decode JSON fields if they are strings (model casts may already provide arrays).
     // Kept at file scope so @push('scripts') can use the same values.
-    $attachments = is_string($nonTravel->attachment)
-        ? json_decode($nonTravel->attachment, true)
-        : $nonTravel->attachment;
-    $attachments = is_array($attachments) ? $attachments : [];
+    $attachments = \App\Models\ChangeRequest::decodeAttachmentPayload($nonTravel->attachment ?? null);
+    $parentMemoAttachments = $parentMemoAttachments ?? [];
 
     $locationIds = $nonTravel->location_id;
     if (is_string($locationIds)) {
@@ -184,6 +182,9 @@
                                     <label for="justification" class="form-label fw-semibold">
                                     <i class="bx bx-comment-detail me-1 text-success"></i> Justification <span class="text-danger">*</span>
                                 </label>
+                                @if(request('change_request'))
+                                    <small class="text-muted d-block mb-2">Why this non-travel request is needed (from the original memo). Update only if you are changing this text as part of the change request.</small>
+                                @endif
                                 <textarea name="justification" id="justification" 
                                           class="form-control summernote @error('justification') is-invalid @enderror" 
                                           rows="5" required>{{ old('justification', $nonTravel->justification) }}</textarea>
@@ -200,9 +201,10 @@
                                     <label for="supporting_reasons" class="form-label fw-semibold">
                                         <i class="bx bx-revision me-1 text-success"></i> Reasons for Change <span class="text-danger">*</span>
                                     </label>
+                                    <small class="text-muted d-block mb-2">Why you are amending an approved memo (shown on the change request for approvers).</small>
                                     <textarea name="supporting_reasons" id="supporting_reasons"
                                               class="form-control summernote @error('supporting_reasons') is-invalid @enderror"
-                                              rows="5" required>{{ old('supporting_reasons', $nonTravel->justification) }}</textarea>
+                                              rows="5" required>{{ old('supporting_reasons', optional($changeRequestForEdit ?? null)->supporting_reasons ?? '') }}</textarea>
                                     @error('supporting_reasons')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -290,9 +292,20 @@
                         <i class="fas fa-paperclip me-2"></i> Attachments
                     </h5>
                     
-                    @if($attachments && count($attachments) > 0)
+                    @php
+                        $referenceAttachments = request('change_request') && !empty($parentMemoAttachments)
+                            ? $parentMemoAttachments
+                            : $attachments;
+                    @endphp
+                    @if(!empty($referenceAttachments) && count($referenceAttachments) > 0)
                         <div class="mb-4">
-                            <h6 class="text-muted mb-3">Current Attachments:</h6>
+                            <h6 class="text-muted mb-3">
+                                @if(request('change_request'))
+                                    Parent memo attachments (reference only):
+                                @else
+                                    Current Attachments:
+                                @endif
+                            </h6>
                             <div class="table-responsive">
                                 <table class="table table-sm table-bordered">
                                     <thead>
@@ -306,7 +319,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($attachments as $index => $attachment)
+                                        @foreach($referenceAttachments as $index => $attachment)
                                             <tr>
                                                 <td>{{ $index + 1 }}</td>
                                                 <td>{{ $attachment['type'] ?? 'Document' }}</td>

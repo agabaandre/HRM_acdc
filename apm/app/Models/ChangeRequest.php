@@ -566,16 +566,205 @@ class ChangeRequest extends Model
         return [];
     }
 
+    /**
+     * Decode attachment JSON from DB (handles legacy double-encoded non-travel values).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function decodeAttachmentPayload(mixed $value): array
+    {
+        $data = $value;
+        for ($i = 0; $i < 4; $i++) {
+            if (is_array($data)) {
+                return array_values(array_filter($data, 'is_array'));
+            }
+            if (! is_string($data)) {
+                break;
+            }
+            $trimmed = trim($data);
+            if ($trimmed === '' || $trimmed === 'null') {
+                return [];
+            }
+            $decoded = json_decode($data, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                break;
+            }
+            $data = $decoded;
+        }
+
+        return is_array($data) ? array_values(array_filter($data, 'is_array')) : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public static function normalizeAttachments(mixed $value): array
+    {
+        return self::decodeAttachmentPayload($value);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attachment
+     */
+    public static function attachmentFingerprint(array $attachment): string
+    {
+        $path = ltrim(str_replace('\\', '/', (string) ($attachment['path'] ?? $attachment['file_path'] ?? '')), '/');
+        if ($path !== '') {
+            return 'path:' . $path;
+        }
+
+        $name = (string) ($attachment['original_name'] ?? $attachment['filename'] ?? $attachment['name'] ?? '');
+        $type = (string) ($attachment['type'] ?? '');
+        $size = (string) ($attachment['size'] ?? '');
+
+        return 'meta:' . $name . '|' . $type . '|' . $size;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $left
+     * @param  array<int, array<string, mixed>>  $right
+     */
+    public static function attachmentsAreEquivalent(array $left, array $right): bool
+    {
+        $fingerprints = static function (array $items): array {
+            return collect($items)
+                ->map(static fn (array $item) => self::attachmentFingerprint($item))
+                ->sort()
+                ->values()
+                ->all();
+        };
+
+        return $fingerprints($left) === $fingerprints($right);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function storedAttachments(): array
+    {
+        $raw = $this->getRawOriginal('attachment') ?? $this->attributes['attachment'] ?? null;
+
+        return self::normalizeAttachments($raw);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public static function attachmentsFromMemo(?object $memo): array
+    {
+        if ($memo === null) {
+            return [];
+        }
+
+        $fromAccessor = self::decodeAttachmentPayload($memo->attachment ?? null);
+        if ($fromAccessor !== []) {
+            return $fromAccessor;
+        }
+
+        $raw = $memo->getAttributes()['attachment'] ?? null;
+
+        return self::decodeAttachmentPayload($raw);
+    }
+
+    public function attachmentsDifferFromParent(?object $parentMemo): bool
+    {
+        $cr = $this->storedAttachments();
+        $parent = self::attachmentsFromMemo($parentMemo);
+
+        if ($cr === [] && $parent === []) {
+            return false;
+        }
+
+        return ! self::attachmentsAreEquivalent($cr, $parent);
+    }
+
+    /**
+     * Attachments to embed after the CR PDF when they differ from the parent memo.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function attachmentsForPrintAppendix(?object $parentMemo): array
+    {
+        if (! $this->attachmentsDifferFromParent($parentMemo)) {
+            return [];
+        }
+
+        return $this->storedAttachments();
+    }
+
+    /**
+     * Build attachment list from multipart form fields attachments[n][file|type|delete|replace].
+     *
+     * @param  array<int|string, array<string, mixed>>  $existingAttachments
+     * @return array<int, array<string, mixed>>
+     */
+    public static function collectAttachmentsFromRequest(
+        \Illuminate\Http\Request $request,
+        array $existingAttachments = [],
+        string $uploadDirectory = 'uploads/change-requests'
+    ): array {
+        $attachmentData = $request->input('attachments', []);
+        if (! is_array($attachmentData)) {
+            $attachmentData = [];
+        }
+
+        if ($attachmentData === [] && ($request->allFiles()['attachments'] ?? []) === []) {
+            return array_values($existingAttachments);
+        }
+
+        $attachments = [];
+
+        foreach ($attachmentData as $index => $attachmentInfo) {
+            if (! is_array($attachmentInfo)) {
+                continue;
+            }
+
+            $type = $attachmentInfo['type'] ?? 'Document';
+
+            if (isset($attachmentInfo['delete']) && (string) $attachmentInfo['delete'] === '1') {
+                continue;
+            }
+
+            $file = $request->file('attachments.'.$index.'.file');
+
+            if ($file && $file->isValid()) {
+                $extension = strtolower($file->getClientOriginalExtension());
+                $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+                if (! in_array($extension, $allowedExtensions, true)) {
+                    continue;
+                }
+
+                $filename = time().'_'.uniqid().'.'.$extension;
+                $path = $file->storeAs($uploadDirectory, $filename, 'public');
+
+                $attachments[] = [
+                    'type' => $type,
+                    'filename' => $filename,
+                    'original_name' => $file->getClientOriginalName(),
+                    'path' => $path,
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'uploaded_at' => now()->toDateTimeString(),
+                ];
+
+                continue;
+            }
+
+            if (isset($attachmentInfo['replace']) && (string) $attachmentInfo['replace'] === '1') {
+                continue;
+            }
+
+            if (isset($existingAttachments[$index]) && is_array($existingAttachments[$index])) {
+                $attachments[] = $existingAttachments[$index];
+            }
+        }
+
+        return $attachments;
+    }
+
     public function getAttachmentAttribute($value)
     {
-        if (is_array($value)) {
-            return $value;
-        }
-        if (is_string($value)) {
-            $decoded = json_decode($value, true);
-            return is_array($decoded) ? $decoded : [];
-        }
-        return [];
+        return self::normalizeAttachments($value);
     }
 
     public function getInternalParticipantsAttribute($value)
