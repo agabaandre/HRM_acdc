@@ -88,8 +88,12 @@ class Run extends MX_Controller
         }
 
         if ($this->tick_match_clock($s['staff_birthday'] ?? false, $hour, $minute, $dow)) {
-            echo "  → staff_birthday\n";
+            echo "  → staff_birthday (queue)\n";
             Modules::run('jobs/jobs/staff_birthday');
+            // Dispatch the freshly queued birthday rows immediately so they go out on the same tick
+            // (subject filter in send_instant_mails / send_mails picks up "Birthday").
+            echo "  → send_instant_mails (post-birthday)\n";
+            Modules::run('jobs/jobs/send_instant_mails');
         }
 
         // if ($this->tick_match_clock($s['staff_profile_completion_reminder'] ?? false, $hour, $minute, $dow)) {

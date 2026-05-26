@@ -102,6 +102,7 @@ The platform consists of three integrated modules working seamlessly together:
 - Full guide: [docker/README.md](./docker/README.md)
 - Requires Docker Desktop or Docker Engine running (fix “Cannot connect to the Docker daemon” by starting Docker).
 - By default the stack uses **MySQL on the physical host**: set `DB_HOST=host.docker.internal` (and matching DB names/users) in root `.env` and `apm/.env`.
+- The `web` image includes **Ghostscript**, **Poppler**, and **LibreOffice** for APM PDF annex embedding (scanned PDFs and Word attachments). Rebuild after updates: `docker compose up -d --build`.
 
 ```bash
 cp docker/compose.env.example .env
@@ -306,6 +307,51 @@ staff/
 | **Finance** | Node.js/Express | React 18 | MySQL |
 
 </div>
+
+---
+
+## ⚙️ System requirements
+
+### APM (PDF printouts with attachments)
+
+Memo and activity PDFs (mPDF) can append uploaded attachments to the printout. **Scanned or image-only PDF attachments** need system tools beyond PHP; mPDF/FPDI alone cannot import them.
+
+Install on the **application server** (production and any environment where memo PDFs are generated):
+
+| Package | Commands / binaries | Purpose |
+|---------|---------------------|---------|
+| **Ghostscript** (recommended) | `gs` | Re-publish PDFs for import; rasterize scanned PDF pages to images for embedding |
+| **Poppler** (recommended backup) | `pdftoppm` | Rasterize PDF pages when Ghostscript is unavailable |
+| **LibreOffice** (recommended) | `libreoffice`, `soffice` | Convert Word attachments (`.doc`, `.docx`) to PDF for the annex |
+| **PHP Imagick** (optional) | `imagick` extension | Alternative rasterization when ImageMagick is built with PDF support |
+
+**Debian / Ubuntu:**
+
+```bash
+sudo apt update
+sudo apt install ghostscript poppler-utils libreoffice-writer
+# Optional: sudo apt install php-imagick && sudo phpenmod imagick
+```
+
+**RHEL / AlmaLinux / Rocky:**
+
+```bash
+sudo dnf install ghostscript poppler-utils libreoffice-writer
+# Optional: sudo dnf install php-pecl-imagick
+```
+
+**macOS (Homebrew):**
+
+```bash
+brew install ghostscript poppler libreoffice
+# Optional: pecl install imagick
+```
+
+Ensure `gs`, `pdftoppm`, and `libreoffice` / `soffice` are on the **same `PATH`** as the PHP process (web server, PHP-FPM, and queue workers if PDFs are generated from jobs).
+
+Without Ghostscript/Poppler, vector PDFs may still embed; scanned PDF attachments may show an embed failure message in the annex. Without LibreOffice, Word (`.doc`/`.docx`) attachments are listed in the annex index but not rendered as pages.
+
+See also [APM deployment](./apm/documentation/DEPLOYMENT.md) and [APM README](./apm/README.md#system-requirements).
 
 ---
 

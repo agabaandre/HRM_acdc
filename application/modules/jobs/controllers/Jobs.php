@@ -328,6 +328,7 @@ public function cron_register(){
         $today = date('Y-m-d');
         // Pending today: include NULL/empty status (new rows) — not only literal '0'.
         // Subjects: previous filter "PPA%" missed "Reminder: Pending PPA..." and all Endterm/Consent mail.
+        // Birthday greetings are queued daily by jobs/jobs/staff_birthday and must also dispatch via the per-minute tick.
         $messages = $this->db->query("
             SELECT * FROM email_notifications
             WHERE next_dispatch LIKE " . $this->db->escape($today . '%') . "
@@ -338,6 +339,7 @@ public function cron_register(){
                  OR subject LIKE '%Midterm%'
                  OR subject LIKE '%Endterm%'
                  OR subject LIKE '%Consent%'
+                 OR subject LIKE '%Birthday%'
               )
         ")->result();
 

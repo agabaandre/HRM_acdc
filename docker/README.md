@@ -7,6 +7,24 @@ One Compose project at the **repository root** runs **Apache + PHP** only by def
 
 - [Docker Engine](https://docs.docker.com/engine/install/) or **Docker Desktop** must be running.
 
+### APM PDF annex (included in the `web` image)
+
+The image installs tools used when memo/activity PDFs embed attachments (see [platform system requirements](../README.md#-system-requirements)):
+
+| Tool | Command | Purpose |
+|------|---------|---------|
+| Ghostscript | `gs` | Scanned PDF import / rasterization |
+| Poppler | `pdftoppm` | PDF page rasterization fallback |
+| LibreOffice | `libreoffice`, `soffice` | Word (`.doc`/`.docx`) → PDF for the annex |
+
+After `docker compose up --build`, verify inside the container:
+
+```bash
+docker compose exec web bash -lc "which gs pdftoppm libreoffice && gs --version && libreoffice --version"
+```
+
+Rebuild the image after pulling Dockerfile changes: `docker compose up -d --build`.
+
 ### macOS (Docker Desktop)
 
 - Install **Docker Desktop for Mac** (Apple Silicon or Intel). Start it from **Applications** and wait until the menu bar icon shows the engine is running.

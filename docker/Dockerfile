@@ -4,6 +4,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 LABEL org.opencontainers.image.description="Africa CDC staff portal (CI) + APM (Laravel)"
 
+# PDF annex (APM memo print): Ghostscript + Poppler for scanned PDFs; LibreOffice for Word attachments.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
@@ -15,6 +16,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     mariadb-client \
+    ghostscript \
+    poppler-utils \
+    libreoffice-writer \
+    fonts-liberation \
+    fonts-dejavu-core \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
         gd \
