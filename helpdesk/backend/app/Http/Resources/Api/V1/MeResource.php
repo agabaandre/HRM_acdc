@@ -29,6 +29,10 @@ class MeResource extends JsonResource
                 'directorate_id' => $p->directorate_id,
                 'division_id' => $p->division_id,
                 'duty_station' => $p->duty_station ? trim((string) $p->duty_station) : null,
+                'work_mode' => $p->work_mode,
+                'work_mode_updated_at' => $p->work_mode_updated_at?->toIso8601String(),
+                'can_manage_kb' => $p->canManageKnowledgeBase(),
+                'can_reassign_tickets' => $p->canReassignTickets(),
             ] : null,
         ];
     }

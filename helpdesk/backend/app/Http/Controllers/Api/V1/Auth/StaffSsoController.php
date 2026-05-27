@@ -71,6 +71,16 @@ class StaffSsoController extends Controller
 
         $user->forceFill($attrs)->save();
 
+        // If an admin explicitly designated this person as an agent on
+        // Settings → General, that choice wins over division-based fallback.
+        // (NULL = never reviewed → recompute as before; FALSE = explicitly
+        // removed → also recompute, demotion is the admin's intent.)
+        $existingProfile = $user->helpdeskProfile;
+        if ($existingProfile && $existingProfile->is_designated_agent === true
+            && $role !== HelpdeskProfile::ROLE_ADMIN) {
+            $role = HelpdeskProfile::ROLE_AGENT;
+        }
+
         $profileAttrs = [
             'staff_id' => $staffId,
             'role' => $role,

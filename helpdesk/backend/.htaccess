@@ -1,0 +1,35 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews
+    </IfModule>
+
+    RewriteEngine On
+
+    # Preserve Authorization header so Sanctum Bearer tokens reach PHP.
+    # MUST run before any [L] terminator below, otherwise Apache strips
+    # the header and Sanctum reports "Unauthenticated." on every call.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # If the request maps to a real file or directory in helpdesk/backend/
+    # (e.g. server.php itself, or a static asset already at this level),
+    # let Apache serve it directly — same pattern as apm/.htaccess.
+    RewriteCond %{REQUEST_FILENAME} -d [OR]
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Map asset-style requests (extensions like .css/.js/.png/...) to the
+    # Laravel `public/` directory so we don't need `/public/` in URLs.
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    # Everything else (API routes, etc.) goes through server.php which
+    # forwards to public/index.php — mirrors apm/.htaccess so `/public/`
+    # never appears in URLs and `php artisan serve` isn't required.
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ server.php [L]
+</IfModule>
+
+# Hide server signature.
+ServerSignature Off

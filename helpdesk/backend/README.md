@@ -1,3 +1,28 @@
+# Africa CDC Helpdesk — Laravel API
+
+This Laravel 11 app is served by **Apache** at:
+
+- Dev: `http://localhost/staff/helpdesk/backend/api/v1/*`
+- Prod: `https://<host>/staff/helpdesk/backend/api/v1/*`
+
+No `php artisan serve` is required. Apache reaches Laravel through:
+
+| File | Role |
+|------|------|
+| `.htaccess` | Rewrites everything to `server.php` unless it maps to a real file or static asset (mirrors `apm/.htaccess`). |
+| `server.php` | Forwards to `public/index.php` so `/public/` never appears in URLs (copied from `apm/server.php`). |
+| `index.php` | Fallback for environments without mod_rewrite (e.g. PHP built-in server). |
+
+Set `APP_URL` in `.env` to whichever Apache host you serve from, e.g. `APP_URL=http://localhost/staff/helpdesk/backend` locally or `https://<host>/staff/helpdesk/backend` in production. `JWT_SECRET` must match the Staff portal root `.env`.
+
+Smoke-test the route after editing config:
+
+```bash
+curl -i http://localhost/staff/helpdesk/backend/api/v1/health
+```
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">

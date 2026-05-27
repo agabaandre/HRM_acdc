@@ -32,4 +32,9 @@ class HelpdeskCategory extends Model
     {
         return $this->hasMany(HelpdeskSlaRule::class, 'category_id');
     }
+
+    public function kbArticles(): HasMany
+    {
+        return $this->hasMany(HelpdeskKbArticle::class, 'category_id');
+    }
 }

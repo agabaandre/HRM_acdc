@@ -6,7 +6,10 @@ Your ticket **{{ $ticket->ticket_number }}** — *{{ $ticket->subject }}* — ha
 
 **What was done**
 
-{!! nl2br(e($ticket->resolution_summary)) !!}
+<div style="font-size:14px; line-height:1.55; color:#1e293b;">
+{{-- resolution_summary is sanitised server-side via App\Services\HtmlSanitizer --}}
+{!! $ticket->resolution_summary !!}
+</div>
 
 Please confirm that this resolves your issue:
 
@@ -21,7 +24,9 @@ Your ticket **{{ $ticket->ticket_number }}** has been resolved.
 
 **What was done**
 
-{!! nl2br(e($ticket->resolution_summary)) !!}
+<div style="font-size:14px; line-height:1.55; color:#1e293b;">
+{!! $ticket->resolution_summary !!}
+</div>
 @endif
 
 Thanks,<br>
