@@ -48,6 +48,60 @@ class StaffPortalReferenceClient
         return $this->getJson($url);
     }
 
+    /**
+     * Fetch staff currently sitting in any of the given division IDs, alongside
+     * their existing `staff.helpdesk_agent_at` value so the helpdesk SPA can
+     * render a preview before promoting them to agents.
+     *
+     * @param  array<int, int>  $divisionIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchAgentsInDivisions(array $divisionIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $divisionIds), fn (int $n) => $n > 0)));
+        $url = $this->buildUrl('agents_in_divisions');
+        if (! empty($ids)) {
+            $url .= '?division_ids='.implode(',', $ids);
+        }
+
+        $payload = $this->getJsonAssoc($url);
+
+        return is_array($payload['data'] ?? null) ? $payload['data'] : [];
+    }
+
+    /**
+     * Toggle the `staff.helpdesk_agent_at` column for the given staff_ids on the
+     * CodeIgniter side (Settings → General → Mark / unmark agents).
+     *
+     * @param  array<int, int>  $staffIds
+     * @return array<string, mixed>
+     */
+    public function markHelpdeskAgents(array $staffIds, bool $mark): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $staffIds), fn (int $n) => $n > 0)));
+        if (empty($ids)) {
+            throw new RuntimeException('No staff_ids supplied to markHelpdeskAgents.');
+        }
+        $url = $this->buildUrl('mark_agents');
+
+        $response = Http::withBasicAuth($this->username(), $this->password())
+            ->timeout(60)
+            ->acceptJson()
+            ->asJson()
+            ->post($url, ['staff_ids' => $ids, 'mark' => $mark]);
+
+        if (! $response->successful()) {
+            throw new RuntimeException($this->formatHttpError($response));
+        }
+
+        $payload = $response->json();
+        if (! is_array($payload)) {
+            throw new RuntimeException('Staff API returned non-array JSON when marking agents.');
+        }
+
+        return $payload;
+    }
+
     private function buildUrl(string $endpointKey): string
     {
         $base = rtrim((string) config('helpdesk.staff_api.base_url'), '/');
@@ -102,6 +156,33 @@ class StaffPortalReferenceClient
         }, $data));
 
         return $out;
+    }
+
+    /**
+     * Same as getJson() but returns the full JSON envelope (associative array)
+     * — used by endpoints that wrap rows in { success, data, total } instead of
+     * returning a bare list.
+     *
+     * @return array<string, mixed>
+     */
+    private function getJsonAssoc(string $url): array
+    {
+        $response = Http::withBasicAuth($this->username(), $this->password())
+            ->timeout(120)
+            ->retry(2, 1000, null, false)
+            ->acceptJson()
+            ->get($url);
+
+        if (! $response->successful()) {
+            throw new RuntimeException($this->formatHttpError($response));
+        }
+
+        $data = $response->json();
+        if (! is_array($data)) {
+            throw new RuntimeException('Staff API returned non-array JSON.');
+        }
+
+        return $data;
     }
 
     private function formatHttpError(Response $response): string

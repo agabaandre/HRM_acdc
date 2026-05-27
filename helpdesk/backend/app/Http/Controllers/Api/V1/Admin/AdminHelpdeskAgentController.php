@@ -28,6 +28,10 @@ class AdminHelpdeskAgentController extends Controller
             'email' => $u->email,
             'staff_id' => $u->helpdeskProfile?->staff_id,
             'duty_station' => $u->helpdeskProfile?->duty_station,
+            'work_mode' => $u->helpdeskProfile?->work_mode,
+            'work_mode_updated_at' => $u->helpdeskProfile?->work_mode_updated_at?->toIso8601String(),
+            'can_manage_kb' => (bool) ($u->helpdeskProfile?->can_manage_kb),
+            'can_reassign_tickets' => (bool) ($u->helpdeskProfile?->can_reassign_tickets),
             'categories' => $u->helpdeskAgentCategories->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->name,
@@ -44,6 +48,8 @@ class AdminHelpdeskAgentController extends Controller
         $validated = $request->validate([
             'category_ids' => ['present', 'array'],
             'category_ids.*' => ['integer', 'exists:helpdesk_categories,id'],
+            'can_manage_kb' => ['sometimes', 'boolean'],
+            'can_reassign_tickets' => ['sometimes', 'boolean'],
         ]);
 
         $profile = $user->helpdeskProfile;
@@ -53,8 +59,14 @@ class AdminHelpdeskAgentController extends Controller
 
         if ($profile->role !== HelpdeskProfile::ROLE_AGENT) {
             $profile->role = HelpdeskProfile::ROLE_AGENT;
-            $profile->save();
         }
+        if (array_key_exists('can_manage_kb', $validated)) {
+            $profile->can_manage_kb = (bool) $validated['can_manage_kb'];
+        }
+        if (array_key_exists('can_reassign_tickets', $validated)) {
+            $profile->can_reassign_tickets = (bool) $validated['can_reassign_tickets'];
+        }
+        $profile->save();
 
         $user->helpdeskAgentCategories()->sync($validated['category_ids']);
         $user->load(['helpdeskProfile', 'helpdeskAgentCategories:id,name']);
@@ -65,6 +77,8 @@ class AdminHelpdeskAgentController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'staff_id' => $user->helpdeskProfile?->staff_id,
+                'can_manage_kb' => (bool) ($user->helpdeskProfile?->can_manage_kb),
+                'can_reassign_tickets' => (bool) ($user->helpdeskProfile?->can_reassign_tickets),
                 'categories' => $user->helpdeskAgentCategories->map(fn ($c) => [
                     'id' => $c->id,
                     'name' => $c->name,

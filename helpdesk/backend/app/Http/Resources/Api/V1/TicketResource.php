@@ -60,6 +60,9 @@ class TicketResource extends JsonResource
                     'name' => $this->assignee->name,
                     'email' => $this->assignee->email,
                     'avatar_url' => StaffPhotoUrl::forUser($this->assignee),
+                    'work_mode' => $this->assignee->relationLoaded('helpdeskProfile')
+                        ? $this->assignee->helpdeskProfile?->work_mode
+                        : null,
                 ]
             ),
         ];

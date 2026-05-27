@@ -132,6 +132,8 @@ return [
             'staff' => env('HELPDESK_STAFF_API_ENDPOINT_STAFF', '/share/get_current_staff'),
             'divisions' => env('HELPDESK_STAFF_API_ENDPOINT_DIVISIONS', '/share/divisions'),
             'directorates' => env('HELPDESK_STAFF_API_ENDPOINT_DIRECTORATES', '/share/directorates'),
+            'agents_in_divisions' => env('HELPDESK_STAFF_API_ENDPOINT_AGENTS_PREVIEW', '/share/helpdesk_agents_in_divisions'),
+            'mark_agents' => env('HELPDESK_STAFF_API_ENDPOINT_MARK_AGENTS', '/share/mark_helpdesk_agents'),
         ],
         'staff_fetch_limit' => (int) env('HELPDESK_STAFF_API_STAFF_LIMIT', 5000),
     ],

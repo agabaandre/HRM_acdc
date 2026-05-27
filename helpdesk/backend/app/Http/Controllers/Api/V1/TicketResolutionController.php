@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Mail\TicketResolutionMail;
 use App\Models\HelpdeskSetting;
+use App\Models\HelpdeskTicket;
+use App\Services\HtmlSanitizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class TicketResolutionController extends Controller
 {
@@ -16,11 +19,20 @@ class TicketResolutionController extends Controller
     {
         $this->authorize('submitResolution', $ticket);
 
+        // 65000 chars matches the `description` ceiling and gives ample room for
+        // HTML markup (Quill stores formatting + embedded image URLs).
         $validated = $request->validate([
-            'resolution_summary' => ['required', 'string', 'max:8000'],
+            'resolution_summary' => ['required', 'string', 'max:65000'],
         ]);
 
-        $ticket->resolution_summary = $validated['resolution_summary'];
+        $clean = HtmlSanitizer::sanitize($validated['resolution_summary']);
+        if ($clean === null) {
+            throw ValidationException::withMessages([
+                'resolution_summary' => 'Resolution notes are empty after sanitisation.',
+            ]);
+        }
+
+        $ticket->resolution_summary = $clean;
         $ticket->resolution_submitted_by_user_id = $request->user()->id;
 
         $requires = HelpdeskSetting::requireResolutionConfirmation();

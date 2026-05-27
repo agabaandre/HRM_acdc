@@ -17,6 +17,13 @@ class HelpdeskProfile extends Model
 
     public const ROLE_AUDITOR = 'auditor';
 
+    public const WORK_MODE_REMOTE = 'remote';
+
+    public const WORK_MODE_ONSITE = 'onsite';
+
+    /** @var list<string> */
+    public const VALID_WORK_MODES = [self::WORK_MODE_REMOTE, self::WORK_MODE_ONSITE];
+
     protected $table = 'helpdesk_profiles';
 
     protected $fillable = [
@@ -24,9 +31,14 @@ class HelpdeskProfile extends Model
         'staff_id',
         'sap_no',
         'role',
+        'is_designated_agent',
+        'can_manage_kb',
+        'can_reassign_tickets',
         'directorate_id',
         'division_id',
         'duty_station',
+        'work_mode',
+        'work_mode_updated_at',
         'synced_at',
     ];
 
@@ -34,6 +46,10 @@ class HelpdeskProfile extends Model
     {
         return [
             'synced_at' => 'datetime',
+            'work_mode_updated_at' => 'datetime',
+            'can_manage_kb' => 'boolean',
+            'can_reassign_tickets' => 'boolean',
+            'is_designated_agent' => 'boolean',
         ];
     }
 
@@ -50,5 +66,31 @@ class HelpdeskProfile extends Model
             self::ROLE_ADMIN,
             self::ROLE_AUDITOR,
         ], true);
+    }
+
+    /**
+     * True when this profile may CRUD knowledge-base articles — admins always,
+     * other roles only when explicitly granted via Settings → Agents.
+     */
+    public function canManageKnowledgeBase(): bool
+    {
+        if ($this->role === self::ROLE_ADMIN) {
+            return true;
+        }
+
+        return (bool) $this->can_manage_kb;
+    }
+
+    /**
+     * True when this profile may reassign tickets to another agent — admins
+     * always, other roles only when explicitly granted via Settings → Agents.
+     */
+    public function canReassignTickets(): bool
+    {
+        if ($this->role === self::ROLE_ADMIN) {
+            return true;
+        }
+
+        return (bool) $this->can_reassign_tickets;
     }
 }

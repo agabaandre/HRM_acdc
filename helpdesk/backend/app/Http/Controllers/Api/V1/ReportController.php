@@ -32,13 +32,57 @@ class ReportController extends Controller
 
         $base = HelpdeskTicket::query()->where('assigned_user_id', $user->id);
 
+        $pendingStatuses = ['open', 'pending', 'in_progress'];
+        $now = now();
+        $startOfToday = $now->copy()->startOfDay();
+        $endOfToday = $now->copy()->endOfDay();
+        $sevenDaysAgo = $now->copy()->subDays(7)->startOfDay();
+
+        // Cached pending query so we don't repeat the same predicate across counts.
+        $pendingBase = (clone $base)->whereIn('status', $pendingStatuses);
+
         $counts = [
             'total_received' => (clone $base)->count(),
-            'pending' => (clone $base)->whereIn('status', ['open', 'pending', 'in_progress'])->count(),
+            'pending' => (clone $pendingBase)->count(),
             'awaiting_requester_confirmation' => (clone $base)->where('status', 'awaiting_requester_confirmation')->count(),
             'resolved' => (clone $base)->where('status', 'resolved')->count(),
-            'reassigned' => 0,
+            'closed' => (clone $base)->where('status', 'closed')->count(),
+            'overdue' => (clone $pendingBase)
+                ->whereNotNull('sla_resolution_due_at')
+                ->where('sla_resolution_due_at', '<', $now)
+                ->count(),
+            'due_today' => (clone $pendingBase)
+                ->whereBetween('sla_resolution_due_at', [$startOfToday, $endOfToday])
+                ->count(),
+            'high_priority_pending' => (clone $pendingBase)
+                ->whereIn('priority', ['high', 'urgent'])
+                ->count(),
+            'new_today' => (clone $base)
+                ->whereBetween('created_at', [$startOfToday, $endOfToday])
+                ->count(),
+            'resolved_this_week' => (clone $base)
+                ->where('status', 'resolved')
+                ->where('resolved_at', '>=', $sevenDaysAgo)
+                ->count(),
         ];
+
+        $byStatusRows = (clone $base)
+            ->selectRaw('status, COUNT(*) AS c')
+            ->groupBy('status')
+            ->pluck('c', 'status');
+        $byStatus = [];
+        foreach (['open', 'pending', 'in_progress', 'awaiting_requester_confirmation', 'resolved', 'closed'] as $s) {
+            $byStatus[$s] = (int) ($byStatusRows[$s] ?? 0);
+        }
+
+        $byPriorityRows = (clone $base)
+            ->selectRaw('priority, COUNT(*) AS c')
+            ->groupBy('priority')
+            ->pluck('c', 'priority');
+        $byPriority = [];
+        foreach (['low', 'medium', 'high', 'urgent'] as $pr) {
+            $byPriority[$pr] = (int) ($byPriorityRows[$pr] ?? 0);
+        }
 
         $recent = HelpdeskTicket::query()
             ->with(['category', 'assignee'])
@@ -50,7 +94,12 @@ class ReportController extends Controller
         return response()->json([
             'data' => [
                 'counts' => $counts,
+                'breakdown' => [
+                    'by_status' => $byStatus,
+                    'by_priority' => $byPriority,
+                ],
                 'recent' => TicketResource::collection($recent)->resolve(),
+                'generated_at' => $now->toIso8601String(),
             ],
         ]);
     }

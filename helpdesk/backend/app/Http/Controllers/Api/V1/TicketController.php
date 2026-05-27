@@ -10,10 +10,14 @@ use App\Jobs\ScanTicketForAiSignals;
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
+use App\Models\HelpdeskTicketComment;
+use App\Models\User;
 use App\Services\StaffDirectoryLookupService;
 use App\Services\TicketAssignmentService;
+use App\Services\TicketHistoryLogger;
 use App\Services\TicketNumberGenerator;
 use App\Services\TicketSubjectGenerator;
+use App\Support\StaffPhotoUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -27,7 +31,9 @@ class TicketController extends Controller
 
         $user = $request->user();
         $profile = $user->helpdeskProfile;
-        $q = HelpdeskTicket::query()->with(['category', 'assignee', 'attachments'])->orderByDesc('id');
+        $q = HelpdeskTicket::query()
+            ->with(['category', 'assignee.helpdeskProfile', 'attachments'])
+            ->orderByDesc('id');
 
         if ($profile && $profile->role === HelpdeskProfile::ROLE_USER && $profile->staff_id) {
             $uid = $user->id;
@@ -147,7 +153,7 @@ class TicketController extends Controller
 
         ScanTicketForAiSignals::dispatch($ticket->id);
 
-        return (new TicketResource($ticket->load(['category', 'assignee', 'attachments'])))
+        return (new TicketResource($ticket->load(['category', 'assignee.helpdeskProfile', 'attachments'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -156,7 +162,7 @@ class TicketController extends Controller
     {
         $this->authorize('view', $ticket);
 
-        return new TicketResource($ticket->load(['category', 'assignee', 'attachments']));
+        return new TicketResource($ticket->load(['category', 'assignee.helpdeskProfile', 'attachments']));
     }
 
     public function update(UpdateTicketRequest $request, HelpdeskTicket $ticket): TicketResource
@@ -173,7 +179,7 @@ class TicketController extends Controller
         $ticket->fill($data);
         $ticket->save();
 
-        return new TicketResource($ticket->fresh()->load(['category', 'assignee', 'attachments']));
+        return new TicketResource($ticket->fresh()->load(['category', 'assignee.helpdeskProfile', 'attachments']));
     }
 
     public function destroy(Request $request, HelpdeskTicket $ticket): Response
@@ -182,5 +188,140 @@ class TicketController extends Controller
         $ticket->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * Statuses that may be re-assigned to a new agent. Resolved / closed /
+     * awaiting-confirm tickets are excluded to prevent disrupting workflows
+     * the requester has already been notified about.
+     */
+    private const REASSIGNABLE_STATUSES = ['open', 'pending', 'in_progress'];
+
+    /**
+     * List candidate agents the current user may reassign this ticket to.
+     * Returns agents that handle the ticket's category, excluding the
+     * current assignee.
+     */
+    public function eligibleAgents(Request $request, HelpdeskTicket $ticket, TicketAssignmentService $assignment): JsonResponse
+    {
+        $this->authorize('view', $ticket);
+        $this->ensureReassignAllowed($request, $ticket);
+
+        $eligibleIds = $assignment->eligibleAgentUserIds($ticket);
+        $currentAssignee = (int) ($ticket->assigned_user_id ?? 0);
+        $filtered = array_values(array_filter($eligibleIds, fn (int $id) => $id !== $currentAssignee));
+
+        if ($filtered === []) {
+            return response()->json(['data' => []]);
+        }
+
+        $agents = User::query()
+            ->whereIn('id', $filtered)
+            ->with(['helpdeskProfile:id,user_id,duty_station,role'])
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'data' => $agents->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'avatar_url' => StaffPhotoUrl::forUser($u),
+                'duty_station' => $u->helpdeskProfile?->duty_station,
+                'open_workload' => HelpdeskTicket::query()
+                    ->where('assigned_user_id', $u->id)
+                    ->whereIn('status', ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'])
+                    ->count(),
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * Reassign an open ticket to another agent. Reason is required and
+     * recorded in ticket history + as an internal comment.
+     */
+    public function reassign(Request $request, HelpdeskTicket $ticket, TicketHistoryLogger $logger): JsonResponse
+    {
+        $this->authorize('view', $ticket);
+        $this->ensureReassignAllowed($request, $ticket);
+
+        if (! in_array($ticket->status, self::REASSIGNABLE_STATUSES, true)) {
+            abort(422, 'Only open / pending / in-progress tickets can be reassigned.');
+        }
+
+        $validated = $request->validate([
+            'assignee_user_id' => ['required', 'integer', 'exists:users,id'],
+            'reason' => ['required', 'string', 'min:5', 'max:2000'],
+        ]);
+
+        $newAssigneeId = (int) $validated['assignee_user_id'];
+        $oldAssigneeId = (int) ($ticket->assigned_user_id ?? 0);
+        if ($newAssigneeId === $oldAssigneeId) {
+            abort(422, 'That ticket is already assigned to this agent — pick a different one.');
+        }
+
+        $newAssignee = User::query()->with('helpdeskProfile')->findOrFail($newAssigneeId);
+        $newProfile = $newAssignee->helpdeskProfile;
+        if (! $newProfile || ! in_array($newProfile->role, [
+            HelpdeskProfile::ROLE_AGENT,
+            HelpdeskProfile::ROLE_SUPERVISOR,
+            HelpdeskProfile::ROLE_ADMIN,
+        ], true)) {
+            abort(422, 'Selected user is not a Helpdesk agent.');
+        }
+
+        $oldAssignee = $oldAssigneeId > 0
+            ? User::query()->find($oldAssigneeId)
+            : null;
+
+        $reason = trim((string) $validated['reason']);
+
+        $ticket->assigned_user_id = $newAssigneeId;
+        $ticket->save();
+
+        // Structured history entry — surfaces on the ticket activity timeline
+        // with from/to/reason metadata for audit and analytics.
+        $logger->log($ticket, 'ticket.reassigned', $request->user()->id, [
+            'from_user_id' => $oldAssigneeId > 0 ? $oldAssigneeId : null,
+            'from_user_name' => $oldAssignee?->name,
+            'to_user_id' => $newAssigneeId,
+            'to_user_name' => $newAssignee->name,
+            'reason' => $reason,
+        ]);
+
+        // Internal comment so the new assignee + other agents see the reason
+        // inline without digging into the history payload.
+        $fromLabel = $oldAssignee?->name ?? 'Unassigned';
+        HelpdeskTicketComment::query()->create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $request->user()->id,
+            'author_staff_id' => $request->user()->helpdeskProfile?->staff_id,
+            'is_internal' => true,
+            'body' => sprintf(
+                "Reassigned from %s to %s.\n\nReason: %s",
+                $fromLabel,
+                $newAssignee->name,
+                $reason
+            ),
+        ]);
+
+        return response()->json([
+            'data' => (new TicketResource($ticket->fresh()->load(['category', 'assignee.helpdeskProfile', 'attachments'])))->resolve(),
+            'meta' => [
+                'from_user_id' => $oldAssigneeId > 0 ? $oldAssigneeId : null,
+                'to_user_id' => $newAssigneeId,
+                'reason' => $reason,
+            ],
+        ]);
+    }
+
+    private function ensureReassignAllowed(Request $request, HelpdeskTicket $ticket): void
+    {
+        $profile = $request->user()?->helpdeskProfile;
+        abort_unless(
+            $profile && $profile->canReassignTickets(),
+            403,
+            'You need the “Can reassign tickets” permission to do this.'
+        );
     }
 }
