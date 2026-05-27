@@ -246,11 +246,11 @@ class ServiceRequestController extends Controller
                             $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource(
                                 $sourceType,
                                 $budgetBreakdown
-                            ) ?: (float) ($changeRequest->available_budget ?? 0);
+                            );
+                            if ($originalTotalBudget <= 0 && $changeRequest->available_budget > 0) {
+                                $originalTotalBudget = (float) $changeRequest->available_budget;
+                            }
                         }
-                    }
-                    if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
-                        $originalTotalBudget = (float) $changeRequest->available_budget;
                     }
                     if ($changeRequest->budget_id !== null) {
                         $crBudgetIds = is_string($changeRequest->budget_id) ? (json_decode($changeRequest->budget_id, true) ?? []) : $changeRequest->budget_id;
@@ -1037,6 +1037,17 @@ class ServiceRequestController extends Controller
                         : $originatingChangeRequest->budget_breakdown;
                     if (is_array($crBudget) && ! empty($crBudget)) {
                         $displayMemoBudgetBreakdown = $crBudget;
+                        if (! $serviceRequest->isChildRequest()) {
+                            $crMemoTotal = BudgetBreakdownTotal::originalMemoTotalForSource(
+                                (string) $serviceRequest->source_type,
+                                $crBudget
+                            );
+                            if ($crMemoTotal > 0
+                                && abs($crMemoTotal - (float) ($serviceRequest->original_total_budget ?? 0)) > 0.009) {
+                                $serviceRequest->update(['original_total_budget' => $crMemoTotal]);
+                                $serviceRequest->refresh();
+                            }
+                        }
                     }
                 }
             } else {

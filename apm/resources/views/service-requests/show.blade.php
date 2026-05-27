@@ -280,10 +280,10 @@
                 $displayOriginalTotalBudget = $crMemoTotal;
             }
         }
-        if (isset($cr->available_budget) && $cr->available_budget > 0) {
+        // available_budget is finance allocation (shown separately) — do not replace memo line-item total
+        if ($displayOriginalTotalBudget <= 0 && isset($cr->available_budget) && $cr->available_budget > 0) {
             $displayOriginalTotalBudget = (float) $cr->available_budget;
         }
-        // Service request funds requested stay on the SR record, not the CR memo total
         $displayNewTotalBudget = $serviceRequest->new_total_budget ?? 0;
     }
     $childBalanceCap = $serviceRequest->isChildRequest()
@@ -618,15 +618,44 @@
                         $memoFundCodes = ! empty($memoBudgetByFundCode)
                             ? \App\Models\FundCode::whereIn('id', array_keys($memoBudgetByFundCode))->get()->keyBy('id')
                             : collect();
+                        foreach ($memoBudgetByFundCode as $items) {
+                            foreach ($items as $item) {
+                                if (! is_array($item)) {
+                                    continue;
+                                }
+                                $uc = $sanitizeBudgetNum($item['unit_cost'] ?? 0);
+                                $u = $sanitizeBudgetNum($item['units'] ?? 0);
+                                $d = $sanitizeBudgetNum($item['days'] ?? 1, 1.0);
+                                $memoBudgetGrandTotal += $uc * $u * $d;
+                            }
+                        }
                     @endphp
                     @if(!empty($memoBudgetByFundCode))
-                    <div class="mb-4">
-                        <h6 class="fw-bold text-muted mb-3 border-bottom pb-2">
-                            <i class="fas fa-file-invoice-dollar me-2"></i>Memo budget breakdown
-                            @if($cr)
-                                <span class="badge bg-warning text-dark ms-1">As per change request</span>
-                            @endif
-                        </h6>
+                    <div class="accordion mb-4" id="memoBudgetCrAccordion">
+                        <div class="accordion-item border rounded">
+                            <h2 class="accordion-header" id="memoBudgetCrHeading">
+                                <button
+                                    class="accordion-button collapsed fw-semibold text-muted py-3"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#memoBudgetCrCollapse"
+                                    aria-expanded="false"
+                                    aria-controls="memoBudgetCrCollapse"
+                                >
+                                    <i class="fas fa-file-invoice-dollar me-2"></i>Memo budget breakdown
+                                    @if($cr)
+                                        <span class="badge bg-warning text-dark ms-2">As per change request</span>
+                                    @endif
+                                    <span class="ms-2 small text-success fw-bold">${{ number_format($memoBudgetGrandTotal, 2) }} USD</span>
+                                </button>
+                            </h2>
+                            <div
+                                id="memoBudgetCrCollapse"
+                                class="accordion-collapse collapse"
+                                aria-labelledby="memoBudgetCrHeading"
+                                data-bs-parent="#memoBudgetCrAccordion"
+                            >
+                                <div class="accordion-body pt-0">
                         @foreach($memoBudgetByFundCode as $fundCodeId => $items)
                             @php
                                 $fundCode = $memoFundCodes[$fundCodeId] ?? null;
@@ -681,6 +710,9 @@
                             </div>
                         @endforeach
                         <p class="mb-0 fw-bold text-success">Memo total: ${{ number_format($memoBudgetGrandTotal, 2) }} USD</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     @endif
                     @endif
