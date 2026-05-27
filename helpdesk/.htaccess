@@ -1,0 +1,33 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Anything under /staff/helpdesk/backend/* is the Laravel API and is
+    # handled by helpdesk/backend/.htaccess — leave it alone.
+    RewriteRule ^backend(/|$) - [L]
+
+    # If the request maps to a real file already living at helpdesk/
+    # (e.g. README), let Apache serve it. We intentionally do NOT
+    # short-circuit on directories, so visiting /staff/helpdesk/ itself
+    # falls through to the SPA fallback below (otherwise Apache would
+    # return 403 for the bare directory listing).
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Asset-like paths (any file extension) are served from the Vite build
+    # output at helpdesk/frontend/dist/ — same role apm/public/ plays for
+    # APM. Run `npm run build` in helpdesk/frontend before deploying.
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteRule ^(.*)$ frontend/dist/$1 [L]
+
+    # SPA fallback: every remaining route (e.g. /tickets, /desk/agent,
+    # /settings) is owned by Vue Router. Serve the built index.html so
+    # the SPA boots and Vue Router takes over from the URL.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ frontend/dist/index.html [L]
+</IfModule>
+
+ServerSignature Off

@@ -13,6 +13,7 @@ const isAdmin = computed(() => auth.me?.profile?.role === 'admin')
 const staffRole = computed(() => auth.me?.profile?.role ?? '')
 
 const showDesk = computed(() => ['agent', 'supervisor', 'admin', 'auditor'].includes(staffRole.value))
+const canManageKb = computed(() => isAdmin.value || !!auth.me?.profile?.can_manage_kb)
 
 function closeAll() {
   navOpen.value = false
@@ -69,6 +70,7 @@ const settingsAreaActive = computed(() => route.path.startsWith('/settings'))
           <RouterLink to="/tickets" class="cbp-nav-link" @click="closeAll">Tickets</RouterLink>
           <RouterLink to="/tickets/new" class="cbp-nav-link" @click="closeAll">New request</RouterLink>
           <RouterLink v-if="showDesk" to="/desk/agent" class="cbp-nav-link" @click="closeAll">Agent desk</RouterLink>
+          <RouterLink v-if="canManageKb" to="/knowledge-base/manage" class="cbp-nav-link" @click="closeAll">Knowledge base</RouterLink>
           <RouterLink to="/reports" class="cbp-nav-link" @click="closeAll">Reports</RouterLink>
 
           <div v-if="isAdmin" class="cbp-nav-item-dropdown" :class="{ 'is-open': settingsOpen }">

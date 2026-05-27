@@ -515,7 +515,11 @@ $config['csrf_regenerate']       = FALSE;                         // Regenerate 
 $config['csrf_exclude_uris']     = array(
     'settings/sysvariables',
     'settings/ppa_variables',
-    'dashboard/search_staff'
+    'dashboard/search_staff',
+    // Helpdesk integration: Basic-auth API used by the Helpdesk Laravel backend
+    // to toggle the staff.helpdesk_agent_at flag from Settings → General.
+    // Pattern allows the URL token suffix (CSRF library matches as anchored regex).
+    'share/mark_helpdesk_agents(/.*)?'
 );
 
 

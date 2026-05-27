@@ -15,6 +15,8 @@ import TicketDetailView from '../views/TicketDetailView.vue'
 import AgentDashboardView from '../views/AgentDashboardView.vue'
 import ReportsView from '../views/ReportsView.vue'
 import ConfirmResolutionView from '../views/ConfirmResolutionView.vue'
+import KbManageView from '../views/KbManageView.vue'
+import ScreenDashboardView from '../views/ScreenDashboardView.vue'
 import { getStoredToken } from '../lib/api'
 import { staffPortalHomeUrl } from '../lib/sso'
 import { parseSettingsSection } from '../settings/settingsSections'
@@ -93,6 +95,20 @@ const router = createRouter({
     { path: '/tickets/:id', name: 'ticket-detail', component: TicketDetailView, meta: { requiresAuth: true } },
     { path: '/desk/agent', name: 'agent-dashboard', component: AgentDashboardView, meta: { requiresAuth: true, requiresStaff: true } },
     { path: '/reports', name: 'reports', component: ReportsView, meta: { requiresAuth: true } },
+    {
+      path: '/knowledge-base/manage',
+      name: 'kb-manage',
+      component: KbManageView,
+      meta: { requiresAuth: true, requiresKbManager: true },
+    },
+    {
+      // Public TV / lobby dashboard. Aggregate-only data, no auth.
+      // `chrome: false` tells App.vue to skip the header/nav/footer.
+      path: '/screen',
+      name: 'screen',
+      component: ScreenDashboardView,
+      meta: { public: true, chrome: false },
+    },
   ],
 })
 
@@ -128,7 +144,7 @@ router.beforeEach(async (to) => {
     }
   }
 
-  if (to.meta.requiresAdmin || to.meta.requiresStaff) {
+  if (to.meta.requiresAdmin || to.meta.requiresStaff || to.meta.requiresKbManager) {
     const pinia = getActivePinia()
     if (!pinia) {
       return { name: 'home' }
@@ -148,6 +164,12 @@ router.beforeEach(async (to) => {
     }
     if (to.meta.requiresStaff && (!role || !STAFF_ROLES.has(role))) {
       return { name: 'home' }
+    }
+    if (to.meta.requiresKbManager) {
+      const canKb = role === 'admin' || !!auth.me?.profile?.can_manage_kb
+      if (!canKb) {
+        return { name: 'home' }
+      }
     }
   }
 })
