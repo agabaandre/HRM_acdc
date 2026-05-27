@@ -54,7 +54,7 @@
         } elseif (!empty($budgetBreakdownView) && is_array($budgetBreakdownView)) {
             foreach ($budgetBreakdownView as $key => $item) {
                 if ($key === 'grand_total') {
-                    $totalOriginal = floatval($item);
+                    continue;
                 } elseif (is_array($item)) {
                     $budgetByFundCode[$key] = $item;
                 }
@@ -62,6 +62,10 @@
             if (!empty($budgetByFundCode)) {
                 $fundCodeIds = array_keys($budgetByFundCode);
                 $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
+                $totalOriginal = \App\Support\BudgetBreakdownTotal::originalMemoTotalForSource(
+                    (string) ($sourceType ?? 'activity'),
+                    $budgetBreakdownView
+                );
             }
         }
     }
@@ -76,29 +80,19 @@
         if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
             foreach ($budgetBreakdown as $key => $item) {
                 if ($key === 'grand_total') {
-                    $totalOriginal = floatval($item);
+                    continue;
                 } elseif (is_array($item)) {
                     $fundCodeId = $key;
                     $budgetByFundCode[$fundCodeId] = $item;
-                } elseif (is_numeric($item)) {
-                    $totalOriginal += floatval($item);
                 }
             }
             if (!empty($budgetByFundCode)) {
                 $fundCodeIds = array_keys($budgetByFundCode);
                 $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
-            }
-            if ($totalOriginal == 0 && !empty($budgetByFundCode)) {
-                foreach ($budgetByFundCode as $fundCodeId => $items) {
-                    foreach ($items as $item) {
-                        if (isset($item['unit_cost']) && isset($item['units'])) {
-                            $unitCost = floatval($item['unit_cost']);
-                            $units = floatval($item['units']);
-                            $days = floatval($item['days'] ?? 1);
-                            $totalOriginal += ($days > 1) ? ($unitCost * $units * $days) : ($unitCost * $units);
-                        }
-                    }
-                }
+                $totalOriginal = \App\Support\BudgetBreakdownTotal::originalMemoTotalForSource(
+                    (string) ($sourceType ?? 'activity'),
+                    $budgetBreakdown
+                );
             }
         }
     }
@@ -106,28 +100,18 @@
     if (!$isEdit && !empty($changeRequestId ?? null) && !empty($budgetBreakdown) && is_array($budgetBreakdown)) {
         foreach ($budgetBreakdown as $key => $item) {
             if ($key === 'grand_total') {
-                $totalOriginal = floatval($item);
+                continue;
             } elseif (is_array($item)) {
                 $budgetByFundCode[$key] = $item;
-            } elseif (is_numeric($item)) {
-                $totalOriginal += floatval($item);
             }
         }
         if (!empty($budgetByFundCode)) {
             $fundCodeIds = array_keys($budgetByFundCode);
             $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
-        }
-        if ($totalOriginal == 0 && !empty($budgetByFundCode)) {
-            foreach ($budgetByFundCode as $fundCodeId => $items) {
-                foreach ($items as $item) {
-                    if (isset($item['unit_cost']) && isset($item['units'])) {
-                        $unitCost = floatval($item['unit_cost']);
-                        $units = floatval($item['units']);
-                        $days = floatval($item['days'] ?? 1);
-                        $totalOriginal += ($days > 1) ? ($unitCost * $units * $days) : ($unitCost * $units);
-                    }
-                }
-            }
+            $totalOriginal = \App\Support\BudgetBreakdownTotal::originalMemoTotalForSource(
+                (string) ($sourceType ?? 'activity'),
+                $budgetBreakdown
+            );
         }
     }
     if (!$isEdit && !empty($changeRequestId ?? null) && isset($originalTotalBudget) && (float)$originalTotalBudget > 0 && $totalOriginal == 0) {

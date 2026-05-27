@@ -233,6 +233,28 @@ body {
 }
 </style>
 
+<?php
+$helpdeskErrorParam = isset($_GET['helpdesk_error']) ? (string) $_GET['helpdesk_error'] : '';
+if ($helpdeskErrorParam === 'sso') {
+  $reasonParam = isset($_GET['helpdesk_error_reason']) ? (string) $_GET['helpdesk_error_reason'] : '';
+  $reasonParam = preg_replace('/[^a-z0-9_-]/i', '', $reasonParam);
+  $reasonMessages = [
+    'network' => 'The Helpdesk API is not reachable from your browser. In development, start the Laravel backend (`php artisan serve` on port 8000) and the Vite dev server (`npm run dev` in `helpdesk/frontend`). In production, confirm the helpdesk API host is up.',
+    'config' => 'The Helpdesk API is missing `JWT_SECRET` (must match the Staff portal root `.env`).',
+    'forbidden' => 'Your Staff portal profile does not include permission to open the Helpdesk (codes 85, 92, or 93).',
+    'unauthorized' => 'Your Staff session token was rejected. Sign in again and try once more.',
+    'invalid' => 'Your Staff session token is missing `staff_id` or a valid email — sign in again from the Staff portal.',
+  ];
+  $reasonText = $reasonMessages[$reasonParam] ?? 'The Helpdesk could not establish a session. Try again, and if the problem persists contact IT.';
+?>
+<div class="alert alert-warning d-flex align-items-start gap-2" role="alert" style="max-width:1200px;margin:0 auto 1rem;">
+  <i class="fas fa-exclamation-triangle mt-1" aria-hidden="true"></i>
+  <div>
+    <strong>Helpdesk sign-in failed.</strong>
+    <div class="small mt-1"><?= htmlspecialchars($reasonText, ENT_QUOTES, 'UTF-8') ?></div>
+  </div>
+</div>
+<?php } ?>
 <div class="cbp-home">
   <h1 class="cbp-home-title">Welcome to Africa CDC Central Business Platform</h1>
   <div class="cbp-home-search">

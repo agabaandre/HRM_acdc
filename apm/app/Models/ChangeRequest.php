@@ -431,20 +431,7 @@ class ChangeRequest extends Model
      */
     public function getParentMemoUrlAttribute(): ?string
     {
-        if (!$this->parent_memo_model || !$this->parent_memo_id) {
-            return null;
-        }
-
-        $modelName = class_basename($this->parent_memo_model);
-        
-        return match($modelName) {
-            'Activity' => route('activities.single-memos.show', $this->parent_memo_id),
-            'SpecialMemo' => route('special-memo.show', $this->parent_memo_id),
-            'NonTravelMemo' => route('non-travel.show', $this->parent_memo_id),
-            'RequestArf' => route('request-arf.show', $this->parent_memo_id),
-            'ServiceRequest' => route('service-requests.show', $this->parent_memo_id),
-            default => null,
-        };
+        return \App\Support\MemoShowUrl::forMemo($this->parent_memo_model, $this->parent_memo_id);
     }
 
     /**

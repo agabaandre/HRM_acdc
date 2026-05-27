@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterView } from 'vue-router'
+import { RouterView, useRoute } from 'vue-router'
 import CbpTopHeader from './components/layout/CbpTopHeader.vue'
 import CbpPrimaryNav from './components/layout/CbpPrimaryNav.vue'
 import CbpPageFooter from './components/layout/CbpPageFooter.vue'
 import { useAuthStore } from './stores/auth'
 
 const auth = useAuthStore()
+const route = useRoute()
 
 const displayName = computed(() => (auth.isAuthenticated ? auth.me?.name ?? 'Staff' : null))
 
@@ -22,10 +23,14 @@ const roleLine = computed(() => {
   const sid = auth.me.profile.staff_id
   return sid != null ? `${r} · Staff ID ${sid}` : r
 })
+
+// Routes (e.g. /screen) opt out of the standard portal chrome by setting
+// meta.chrome === false. Default is "chrome on".
+const showChrome = computed(() => route.meta.chrome !== false)
 </script>
 
 <template>
-  <div class="cbp-wrapper">
+  <div v-if="showChrome" class="cbp-wrapper">
     <CbpTopHeader
       :user-name="displayName"
       :user-subtitle="roleLine"
@@ -43,6 +48,7 @@ const roleLine = computed(() => {
     </div>
     <CbpPageFooter />
   </div>
+  <RouterView v-else />
 </template>
 
 <style>

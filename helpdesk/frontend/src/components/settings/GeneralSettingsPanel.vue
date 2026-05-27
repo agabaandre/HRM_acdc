@@ -10,12 +10,35 @@ interface DivisionRow {
   directorate_id?: number | null
 }
 
+interface CandidateRow {
+  staff_id: number
+  name: string
+  work_email: string | null
+  duty_station_name: string | null
+  division_id: number
+  division_name: string
+  has_user: boolean
+  current_role: string | null
+  is_designated_agent: boolean
+  last_synced_at?: string | null
+}
+
 const ctx = useInjectedHelpdeskAdminSettings()
 
 const divisions = ref<DivisionRow[]>([])
 const divisionsErr = ref<string | null>(null)
 const divisionsLoading = ref(false)
 const divisionSearch = ref("")
+
+const candidates = ref<CandidateRow[]>([])
+const candidatesLoading = ref(false)
+const candidatesErr = ref<string | null>(null)
+const candidatesMessage = ref<string | null>(null)
+const candidatesLoaded = ref(false)
+const candidateSearch = ref("")
+const onlyMarked = ref(false)
+const busyStaffId = ref<number | null>(null)
+const lastAction = ref<string | null>(null)
 
 function parseDivisionCsv(csv: string): number[] {
   return csv
@@ -147,6 +170,106 @@ async function saveGeneral() {
     "General settings saved.",
   )
 }
+
+const filteredCandidates = computed<CandidateRow[]>(() => {
+  const q = candidateSearch.value.trim().toLowerCase()
+  return candidates.value.filter((c) => {
+    if (onlyMarked.value && !c.is_designated_agent) {
+      return false
+    }
+    if (q === "") {
+      return true
+    }
+    const hay = `${c.name} ${c.work_email ?? ""} ${c.division_name} ${c.staff_id}`.toLowerCase()
+    return hay.includes(q)
+  })
+})
+
+const markedCount = computed(() => candidates.value.filter((c) => c.is_designated_agent).length)
+
+async function loadCandidates() {
+  candidatesLoading.value = true
+  candidatesErr.value = null
+  candidatesMessage.value = null
+  lastAction.value = null
+  try {
+    const { data } = await api.get<{
+      data: { candidates: CandidateRow[]; division_ids: number[] }
+      meta?: { message?: string }
+    }>("/api/v1/admin/agents/division-candidates")
+    candidates.value = Array.isArray(data.data?.candidates) ? data.data.candidates : []
+    candidatesMessage.value = data.meta?.message ?? null
+    candidatesLoaded.value = true
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    candidatesErr.value = msg || (e instanceof Error ? e.message : "Failed to load division staff.")
+    candidates.value = []
+  } finally {
+    candidatesLoading.value = false
+  }
+}
+
+async function designateAgent(c: CandidateRow) {
+  if (!c.work_email) {
+    lastAction.value = `${c.name} has no work email in the directory — cannot designate.`
+    return
+  }
+  busyStaffId.value = c.staff_id
+  try {
+    await api.post("/api/v1/admin/agents/designate", {
+      staff_id: c.staff_id,
+      work_email: c.work_email,
+      name: c.name,
+      division_id: c.division_id || null,
+      duty_station: c.duty_station_name || null,
+    })
+    c.is_designated_agent = true
+    c.has_user = true
+    c.current_role = "agent"
+    lastAction.value = `${c.name} marked as agent.`
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    lastAction.value = msg || (e instanceof Error ? e.message : "Failed to mark as agent.")
+  } finally {
+    busyStaffId.value = null
+  }
+}
+
+async function undesignateAgent(c: CandidateRow) {
+  busyStaffId.value = c.staff_id
+  try {
+    await api.delete(`/api/v1/admin/agents/designate/${c.staff_id}`)
+    c.is_designated_agent = false
+    if (c.current_role === "agent") {
+      c.current_role = "user"
+    }
+    lastAction.value = `${c.name} unmarked.`
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+    lastAction.value = msg || (e instanceof Error ? e.message : "Failed to unmark agent.")
+  } finally {
+    busyStaffId.value = null
+  }
+}
+
+function roleLabel(c: CandidateRow): string {
+  if (!c.has_user) {
+    return "Not signed in yet"
+  }
+  switch (c.current_role) {
+    case "admin":
+      return "Admin"
+    case "agent":
+      return "Agent"
+    case "supervisor":
+      return "Supervisor"
+    case "auditor":
+      return "Auditor"
+    case "user":
+    default:
+      return "User"
+  }
+}
 </script>
 
 <template>
@@ -226,6 +349,122 @@ async function saveGeneral() {
 
           <button type="button" class="ghost" :disabled="divisionsLoading" @click="loadDivisions()">Reload divisions</button>
         </template>
+      </div>
+
+      <!-- Division agents register -->
+      <div class="field-block">
+        <div class="agents-head">
+          <div>
+            <span class="label">Agents from selected divisions</span>
+            <p class="hint-tight">
+              Pull the current staff list for the divisions selected above and explicitly mark who should
+              act as an agent. Marking a person locks the <strong>agent</strong> role across SSO logins, even
+              if they later move to a different division. Staff directory data is read live from the Staff
+              portal — nothing is duplicated locally.
+            </p>
+          </div>
+          <button type="button" class="ghost" :disabled="candidatesLoading" @click="loadCandidates()">
+            {{ candidatesLoading
+              ? "Loading…"
+              : (candidatesLoaded ? "Reload from directory" : "View staff in these divisions") }}
+          </button>
+        </div>
+
+        <p v-if="candidatesErr" class="warn">{{ candidatesErr }}</p>
+        <p v-else-if="candidatesMessage" class="muted">{{ candidatesMessage }}</p>
+        <p v-if="lastAction" class="action-ok" aria-live="polite">{{ lastAction }}</p>
+
+        <template v-if="candidatesLoaded && !candidatesErr && candidates.length">
+          <div class="cand-toolbar">
+            <label class="search-wrap">
+              <span class="sr-only">Search staff</span>
+              <input
+                v-model="candidateSearch"
+                type="search"
+                class="search-input"
+                placeholder="Search by name, email, division, or staff ID…"
+                autocomplete="off"
+              />
+            </label>
+            <label class="filter-toggle">
+              <input v-model="onlyMarked" type="checkbox" />
+              Only marked ({{ markedCount }})
+            </label>
+            <span class="muted cand-meta">{{ filteredCandidates.length }} of {{ candidates.length }} shown</span>
+          </div>
+
+          <div class="cand-table-wrap">
+            <table class="cand-table">
+              <thead>
+                <tr>
+                  <th>Staff</th>
+                  <th>Division</th>
+                  <th>Status</th>
+                  <th>Designation</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="c in filteredCandidates" :key="c.staff_id" :class="{ marked: c.is_designated_agent }">
+                  <td>
+                    <div class="cand-name">{{ c.name }}</div>
+                    <div class="cand-sub">
+                      <span v-if="c.work_email">{{ c.work_email }}</span>
+                      <span v-else class="missing">No work email on directory</span>
+                      <span class="dot-sep">·</span>
+                      <span>SID {{ c.staff_id }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge badge-div">{{ c.division_name }}</span>
+                  </td>
+                  <td>
+                    <span
+                      class="badge"
+                      :class="{
+                        'badge-role-agent': c.current_role === 'agent',
+                        'badge-role-admin': c.current_role === 'admin',
+                        'badge-role-other': c.has_user && c.current_role !== 'agent' && c.current_role !== 'admin',
+                        'badge-role-none': !c.has_user,
+                      }"
+                    >{{ roleLabel(c) }}</span>
+                  </td>
+                  <td>
+                    <span v-if="c.is_designated_agent" class="badge badge-marked">Marked agent</span>
+                    <span v-else class="badge badge-unmarked">—</span>
+                  </td>
+                  <td class="cand-actions">
+                    <button
+                      v-if="!c.is_designated_agent"
+                      type="button"
+                      class="btn-mark"
+                      :disabled="busyStaffId === c.staff_id || !c.work_email"
+                      @click="designateAgent(c)"
+                    >
+                      {{ busyStaffId === c.staff_id ? "Saving…" : "Mark as agent" }}
+                    </button>
+                    <button
+                      v-else
+                      type="button"
+                      class="btn-unmark"
+                      :disabled="busyStaffId === c.staff_id"
+                      @click="undesignateAgent(c)"
+                    >
+                      {{ busyStaffId === c.staff_id ? "Saving…" : "Unmark" }}
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="filteredCandidates.length === 0">
+                  <td colspan="5" class="muted center">No staff match the current filter.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <p v-else-if="candidatesLoaded && !candidatesErr && !candidatesMessage" class="muted">
+          No staff returned from the directory for the selected divisions.
+        </p>
       </div>
 
       <label class="row">
@@ -449,5 +688,181 @@ input {
 }
 code {
   font-size: 0.85em;
+}
+
+/* Division agents register */
+.agents-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+.agents-head .ghost {
+  align-self: flex-start;
+  margin-top: 0;
+}
+.action-ok {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  color: #166534;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+}
+.cand-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.85rem;
+  margin: 0.65rem 0 0.55rem;
+}
+.cand-toolbar .search-wrap {
+  flex: 1 1 16rem;
+}
+.filter-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #475569;
+}
+.cand-meta {
+  margin-left: auto;
+  font-size: 0.78rem;
+}
+.cand-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 22rem;
+  background: #fff;
+}
+.cand-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.cand-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  text-align: left;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.cand-table td {
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.cand-table tr.marked {
+  background: linear-gradient(90deg, rgba(13, 122, 58, 0.04) 0%, transparent 100%);
+}
+.cand-table tr:last-child td {
+  border-bottom: none;
+}
+.cand-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+.cand-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+}
+.cand-sub .missing {
+  color: #92400e;
+}
+.dot-sep {
+  margin: 0 0.4rem;
+  color: #cbd5e1;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.badge-div {
+  background: #eef2ff;
+  color: #3730a3;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.badge-role-agent {
+  background: #dcfce7;
+  color: #166534;
+}
+.badge-role-admin {
+  background: #fef3c7;
+  color: #92400e;
+}
+.badge-role-other {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+.badge-role-none {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.badge-marked {
+  background: #0d7a3a;
+  color: #fff;
+  text-transform: uppercase;
+}
+.badge-unmarked {
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 500;
+}
+.cand-actions {
+  text-align: right;
+}
+.btn-mark,
+.btn-unmark {
+  padding: 0.32rem 0.7rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.btn-mark {
+  background: #0d7a3a;
+  color: #fff;
+  border-color: #0d7a3a;
+}
+.btn-mark:hover {
+  background: #065f2c;
+}
+.btn-unmark {
+  background: #fff;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.btn-unmark:hover {
+  background: #fef2f2;
+}
+.btn-mark:disabled,
+.btn-unmark:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.center {
+  text-align: center;
 }
 </style>

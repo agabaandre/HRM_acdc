@@ -11,6 +11,7 @@
 [![Staff Portal](https://img.shields.io/badge/Staff%20Portal-CodeIgniter-orange)](./application/)
 [![APM](https://img.shields.io/badge/APM-Laravel-red)](./apm/)
 [![Finance](https://img.shields.io/badge/Finance-Node.js%2FReact-green)](./finance/)
+[![Helpdesk](https://img.shields.io/badge/Helpdesk-Laravel%2BVue-teal)](./helpdesk/)
 
 </div>
 
@@ -28,7 +29,7 @@ This system enhances **transparency**, **accountability**, and **timely decision
 
 ## 🏗️ System Architecture
 
-The platform consists of three integrated modules working seamlessly together:
+The platform consists of four integrated modules working seamlessly together:
 
 <div align="center">
 
@@ -36,7 +37,7 @@ The platform consists of three integrated modules working seamlessly together:
 
 <table>
 <tr>
-<td align="center" width="33%">
+<td align="center" width="25%">
 
 ### 👥 Staff Portal
 **CodeIgniter-based Core System**
@@ -52,7 +53,7 @@ The platform consists of three integrated modules working seamlessly together:
 [📖 Documentation](./application/) | [⚙️ Config](./assets/ENVIRONMENT_VARIABLES.md)
 
 </td>
-<td align="center" width="33%">
+<td align="center" width="25%">
 
 ### 📋 APM
 **Approvals Management System**
@@ -69,7 +70,7 @@ The platform consists of three integrated modules working seamlessly together:
 [📖 Documentation](./apm/documentation/) | [📡 API Docs](./apm/documentation/API_DOCUMENTATION.md) | [🚀 Quick Start](./apm/README.md)
 
 </td>
-<td align="center" width="33%">
+<td align="center" width="25%">
 
 ### 💰 Finance Module
 **Modern Finance Management**
@@ -83,6 +84,22 @@ The platform consists of three integrated modules working seamlessly together:
 - ✅ Budget management
 
 [📖 Documentation](./finance/documentation/) | [🚀 Quick Start](./finance/README.md)
+
+</td>
+<td align="center" width="25%">
+
+### 🛎️ Helpdesk
+**IT Service Desk & ITSM**
+
+**Features:**
+- ✅ Ticketing (web, WhatsApp, Teams sources)
+- ✅ SLA targets, agent routing, AI signals
+- ✅ Knowledge base + searchable FAQs
+- ✅ Agent desk, reassignment, reports
+- ✅ Public TV / lobby dashboard (no auth, no PII)
+- ✅ ISO 27001 / 27014 audit logging
+
+[📖 Documentation](./helpdesk/documentation/README.md) | [👤 User Guide](./helpdesk/documentation/USER_GUIDE.md) | [🧑‍💻 Developer Guide](./helpdesk/documentation/DEVELOPER_GUIDE.md) | [🚀 Quick Start](./helpdesk/README.md)
 
 </td>
 </tr>
@@ -151,6 +168,34 @@ npm run dev:all
 
 </details>
 
+<details>
+<summary><b>4. Set up Helpdesk Module (Laravel + Vue)</b></summary>
+
+```bash
+cd helpdesk
+./setup.sh
+# Backend
+cd backend && composer install \
+  && cp .env.example .env \
+  && php artisan key:generate \
+  && php artisan migrate --seed
+# Frontend (built SPA served by Apache at /staff/helpdesk/)
+cd ../frontend && npm install --cache ./.npm-cache --legacy-peer-deps \
+  && npm run build
+```
+
+Smoke-test:
+
+```bash
+curl -i http://localhost/staff/helpdesk/                                # SPA
+curl -i http://localhost/staff/helpdesk/backend/api/v1/health           # API
+curl -i http://localhost/staff/helpdesk/backend/api/v1/public/screen    # Public TV dashboard
+```
+
+📖 See [Helpdesk Documentation](./helpdesk/documentation/README.md) (start with the [User Guide](./helpdesk/documentation/USER_GUIDE.md) or [Developer Guide](./helpdesk/documentation/DEVELOPER_GUIDE.md)).
+
+</details>
+
 ### 🔧 For System Administrators
 
 <details>
@@ -189,6 +234,9 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 | [**📡 APM API Documentation**](./apm/documentation/API_DOCUMENTATION.md) | REST API (JWT), endpoints, approval trails, attachments, Swagger at `/docs` |
 | [**🌱 APM Environment Guide**](./apm/documentation/ENVIRONMENT.md) | `.env` setup and variable reference (`apm/.env.example`) |
 | [**💰 Finance Documentation**](./finance/documentation/README.md) | Node.js/React Finance Module |
+| [**🛎️ Helpdesk Documentation**](./helpdesk/documentation/README.md) | IT Service Desk / ITSM module (Laravel + Vue) — index of all helpdesk docs |
+| [**👤 Helpdesk User Guide**](./helpdesk/documentation/USER_GUIDE.md) | Requesters, agents & admins; includes step-by-step ticket creation |
+| [**🧑‍💻 Helpdesk Developer Guide**](./helpdesk/documentation/DEVELOPER_GUIDE.md) | Architecture, schema, REST API, extension points & runbooks |
 
 </div>
 
@@ -268,6 +316,22 @@ staff/
 │   ├── frontend/                        # React frontend
 │   ├── documentation/                   # Finance documentation
 │   └── README.md                        # Finance main README
+├── 🛎️ helpdesk/                          # Laravel + Vue IT Service Desk / ITSM
+│   ├── backend/                         # Laravel 11 JSON API (/api/v1/*)
+│   │   ├── app/Http/Controllers/Api/V1  # Tickets, KB, reports, public screen, admin
+│   │   ├── app/Models/                  # HelpdeskTicket, HelpdeskCategory, HelpdeskProfile, …
+│   │   └── routes/api.php               # All REST endpoints
+│   ├── frontend/                        # Vue 3.5 + Pinia SPA
+│   │   ├── src/views/                   # Home, Tickets, AgentDashboard, Reports, ScreenDashboard, …
+│   │   └── src/components/              # Layout + settings panels
+│   ├── documentation/                   # Helpdesk documentation
+│   │   ├── README.md                    # Index
+│   │   ├── USER_GUIDE.md                # End-user walkthroughs (incl. ticket creation)
+│   │   ├── DEVELOPER_GUIDE.md           # Architecture, schema, API, extension points
+│   │   ├── ARCHITECTURE.md
+│   │   ├── INTEGRATION.md
+│   │   └── openapi.yaml
+│   └── README.md                        # Helpdesk quick start
 ├── 🎨 assets/                            # Shared assets
 │   └── images/                          # Images and graphics
 └── ⚙️ system/                            # CodeIgniter system files
@@ -291,6 +355,7 @@ staff/
 | 👥 **Staff Management** | Profiles, contracts, and HR services |
 | 📈 **Performance Tracking** | Task monitoring and reporting |
 | 🔔 **Notifications** | Scheduled and event-driven alerts across Staff Portal and APM |
+| 🛎️ **Helpdesk / ITSM** | Tickets with SLA, agent routing, knowledge base, public TV dashboard, ISO 27001/27014 audit logging |
 
 </div>
 
@@ -305,6 +370,7 @@ staff/
 | **Staff Portal** | CodeIgniter 3 | Bootstrap 5 | MySQL |
 | **APM** | Laravel 10+ | Blade Templates | MySQL |
 | **Finance** | Node.js/Express | React 18 | MySQL |
+| **Helpdesk** | Laravel 11 | Vue 3.5 + Pinia (Vite) | MySQL + Redis (Predis) |
 
 </div>
 

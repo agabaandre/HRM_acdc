@@ -19,12 +19,20 @@ class Settings_mdl extends CI_Model
 
     /**
      * Directorates with optional director name (staff join) for settings UI.
+     * Falls back to a plain directorates query when the optional `director_id`
+     * column hasn't been added (migration `add_director_id_to_directorates.sql`)
+     * so older databases keep loading the settings page.
      */
     public function get_directorates_for_settings()
     {
-        $this->db->select('dir.*, s.fname AS director_fname, s.lname AS director_lname');
-        $this->db->from('directorates dir');
-        $this->db->join('staff s', 's.staff_id = dir.director_id', 'left');
+        if ($this->db->field_exists('director_id', 'directorates')) {
+            $this->db->select('dir.*, s.fname AS director_fname, s.lname AS director_lname');
+            $this->db->from('directorates dir');
+            $this->db->join('staff s', 's.staff_id = dir.director_id', 'left');
+        } else {
+            $this->db->select('dir.*');
+            $this->db->from('directorates dir');
+        }
         $this->db->order_by('dir.name', 'asc');
         return $this->db->get();
     }

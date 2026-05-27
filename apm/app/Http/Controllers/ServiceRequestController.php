@@ -18,6 +18,8 @@ use App\Models\WorkflowDefinition;
 use App\Models\Approver;
 use App\Services\ApprovalService;
 use App\Models\ApprovalTrail;
+use App\Support\BudgetBreakdownTotal;
+use App\Support\MemoShowUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -225,7 +227,10 @@ class ServiceRequestController extends Controller
                 if ($sourceData) {
                     $budgetBreakdown = $this->processBudgetDataFromSource($sourceData, $sourceType);
                     if (! $isChildRequestForm) {
-                        $originalTotalBudget = $budgetBreakdown['grand_total'] ?? 0;
+                        $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource(
+                            $sourceType,
+                            $budgetBreakdown
+                        );
                     }
                     $internalParticipants = $this->processInternalParticipantsFromSource($sourceData, $sourceType);
                 }
@@ -238,7 +243,10 @@ class ServiceRequestController extends Controller
                             : $changeRequest->budget_breakdown;
                         if (is_array($crBudget) && !empty($crBudget)) {
                             $budgetBreakdown = $crBudget;
-                            $originalTotalBudget = $budgetBreakdown['grand_total'] ?? $changeRequest->available_budget ?? 0;
+                            $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource(
+                                $sourceType,
+                                $budgetBreakdown
+                            ) ?: (float) ($changeRequest->available_budget ?? 0);
                         }
                     }
                     if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
@@ -499,6 +507,16 @@ class ServiceRequestController extends Controller
         
         // Merge budget data with validated data
         $validated = array_merge($validated, $budgetData);
+
+        if (! $parentForChild) {
+            $resolvedOriginal = $this->resolveOriginalMemoBudgetFromSource(
+                (string) $validated['source_type'],
+                (int) $validated['source_id']
+            );
+            if ($resolvedOriginal !== null) {
+                $validated['original_total_budget'] = $resolvedOriginal;
+            }
+        }
 
         if ($parentForChild) {
             $cap = $parentForChild->remainingMemoBalanceForChild();
@@ -817,6 +835,26 @@ class ServiceRequestController extends Controller
     }
 
     /**
+     * Line-item total from the source memo (activity / memo), matching the activity show page.
+     */
+    private function resolveOriginalMemoBudgetFromSource(string $sourceType, int $sourceId): ?float
+    {
+        $sourceData = $this->getSourceDataForForm($sourceType, $sourceId);
+        if (! $sourceData) {
+            return null;
+        }
+
+        $budget = $this->processBudgetDataFromSource($sourceData, $sourceType);
+        if (! is_array($budget) || $budget === []) {
+            return null;
+        }
+
+        $total = BudgetBreakdownTotal::originalMemoTotalForSource($sourceType, $budget);
+
+        return $total > 0 ? $total : null;
+    }
+
+    /**
      * Extract cost items from budget breakdown.
      * Uses CostItem model cost_type (Individual Cost / Other Cost) when available so categories match the DB.
      */
@@ -974,19 +1012,55 @@ class ServiceRequestController extends Controller
             'childServiceRequests',
         ]);
         
+        $originatingChangeRequest = ChangeRequest::where('service_request_id', $serviceRequest->id)->first();
+
         // Load source data if available
         $sourceData = null;
         $mainActivityUrl = null;
+        $displayMemoBudgetBreakdown = null;
         if ($serviceRequest->source_type && $serviceRequest->source_id) {
             $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
-            $mainActivityUrl = $this->getMainActivityUrl($serviceRequest->source_type, $serviceRequest->source_id, $sourceData);
+
+            if ($originatingChangeRequest) {
+                $mainActivityUrl = MemoShowUrl::forMemo(
+                    $originatingChangeRequest->parent_memo_model,
+                    (int) $originatingChangeRequest->parent_memo_id
+                ) ?? $this->getMainActivityUrl($serviceRequest->source_type, $serviceRequest->source_id, $sourceData);
+
+                if ($sourceData) {
+                    $this->applyChangeRequestOverlayToSource($sourceData, $originatingChangeRequest);
+                }
+
+                if ($originatingChangeRequest->budget_breakdown !== null) {
+                    $crBudget = is_string($originatingChangeRequest->budget_breakdown)
+                        ? json_decode($originatingChangeRequest->budget_breakdown, true)
+                        : $originatingChangeRequest->budget_breakdown;
+                    if (is_array($crBudget) && ! empty($crBudget)) {
+                        $displayMemoBudgetBreakdown = $crBudget;
+                    }
+                }
+            } else {
+                $mainActivityUrl = $this->getMainActivityUrl($serviceRequest->source_type, $serviceRequest->source_id, $sourceData);
+            }
+        }
+
+        if (! $originatingChangeRequest
+            && ! $serviceRequest->isChildRequest()
+            && $serviceRequest->source_type
+            && $serviceRequest->source_id) {
+            $resolvedOriginal = $this->resolveOriginalMemoBudgetFromSource(
+                (string) $serviceRequest->source_type,
+                (int) $serviceRequest->source_id
+            );
+            if ($resolvedOriginal !== null
+                && abs($resolvedOriginal - (float) ($serviceRequest->original_total_budget ?? 0)) > 0.009) {
+                $serviceRequest->update(['original_total_budget' => $resolvedOriginal]);
+                $serviceRequest->refresh();
+            }
         }
         
         // Clean up stored budget data to remove "Unknown Cost" text
         $this->cleanupStoredBudgetData($serviceRequest);
-
-        // When this SR was created from a Change Request, use CR's changed data for display (participants, budget, remarks, etc.)
-        $originatingChangeRequest = \App\Models\ChangeRequest::where('service_request_id', $serviceRequest->id)->first();
         
         // Get approval levels for progress bar
         $approvalLevels = $this->getApprovalLevels($serviceRequest);
@@ -1008,6 +1082,7 @@ class ServiceRequestController extends Controller
             'mainActivityUrl',
             'disclaimerData',
             'originatingChangeRequest',
+            'displayMemoBudgetBreakdown',
             'emailPdfRecipientChoices',
             'canEmailPdf',
             'canCreateChildRequest',
@@ -1033,9 +1108,20 @@ class ServiceRequestController extends Controller
         $sourceId = (int) $serviceRequest->source_id;
         $sourceData = null;
         $mainActivityUrl = null;
+        $originatingChangeRequestForEdit = ChangeRequest::where('service_request_id', $serviceRequest->id)->first();
         if ($sourceType && $sourceId) {
             $sourceData = $this->getSourceDataForForm($sourceType, $sourceId);
-            $mainActivityUrl = $this->getMainActivityUrl($sourceType, $sourceId, $sourceData);
+            if ($originatingChangeRequestForEdit) {
+                $mainActivityUrl = MemoShowUrl::forMemo(
+                    $originatingChangeRequestForEdit->parent_memo_model,
+                    (int) $originatingChangeRequestForEdit->parent_memo_id
+                ) ?? $this->getMainActivityUrl($sourceType, $sourceId, $sourceData);
+                if ($sourceData) {
+                    $this->applyChangeRequestOverlayToSource($sourceData, $originatingChangeRequestForEdit);
+                }
+            } else {
+                $mainActivityUrl = $this->getMainActivityUrl($sourceType, $sourceId, $sourceData);
+            }
         }
 
         // Original Budget Breakdown display: use source memo's budget (same as create form), not service request's
@@ -1058,6 +1144,15 @@ class ServiceRequestController extends Controller
                 : (is_array($serviceRequest->budget_breakdown) ? $serviceRequest->budget_breakdown : []);
         }
         $originalTotalBudget = (float) ($serviceRequest->original_total_budget ?? 0);
+        if (! $serviceRequest->isChildRequest() && is_array($originalBudgetBreakdownFromSource) && ! empty($originalBudgetBreakdownFromSource)) {
+            $computedOriginal = BudgetBreakdownTotal::originalMemoTotalForSource(
+                (string) $sourceType,
+                $originalBudgetBreakdownFromSource
+            );
+            if ($computedOriginal > 0) {
+                $originalTotalBudget = $computedOriginal;
+            }
+        }
         $internalParticipants = [];
         if ($serviceRequest->internal_participants_cost) {
             $decoded = is_string($serviceRequest->internal_participants_cost)
@@ -1201,6 +1296,16 @@ class ServiceRequestController extends Controller
         // Re-apply preserved owners in case processBudgetData overwrote them
         $validated['staff_id'] = $serviceRequest->staff_id;
         $validated['responsible_person_id'] = $serviceRequest->responsible_person_id;
+
+        if (! $serviceRequest->isChildRequest()) {
+            $resolvedOriginal = $this->resolveOriginalMemoBudgetFromSource(
+                (string) $validated['source_type'],
+                (int) $validated['source_id']
+            );
+            if ($resolvedOriginal !== null) {
+                $validated['original_total_budget'] = $resolvedOriginal;
+            }
+        }
 
         if ($serviceRequest->isChildRequest()) {
             $cap = (float) ($serviceRequest->original_total_budget ?? 0);
@@ -1409,7 +1514,7 @@ class ServiceRequestController extends Controller
                             
                             if (is_array($budget)) {
                                 $budgetBreakdown = $budget;
-                                $originalTotalBudget = $budget['grand_total'] ?? 0;
+                                $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource('activity', $budget);
                             }
                         }
                     }
@@ -1441,7 +1546,7 @@ class ServiceRequestController extends Controller
                             
                             if (is_array($budget)) {
                                 $budgetBreakdown = $budget;
-                                $originalTotalBudget = $budget['grand_total'] ?? 0;
+                                $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource('non_travel_memo', $budget);
                             }
                         }
                     }
@@ -1494,7 +1599,7 @@ class ServiceRequestController extends Controller
                             
                             if (is_array($budget)) {
                                 $budgetBreakdown = $budget;
-                                $originalTotalBudget = $budget['grand_total'] ?? 0;
+                                $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource('special_memo', $budget);
                             }
                         }
                     }
@@ -1524,7 +1629,7 @@ class ServiceRequestController extends Controller
                         $budget = $payload['budget_breakdown'] ?? [];
                         if (is_array($budget)) {
                             $budgetBreakdown = $budget;
-                            $originalTotalBudget = (float) ($budget['grand_total'] ?? 0);
+                            $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource('other_memo', $budget);
                         }
                     }
                     break;
@@ -1929,33 +2034,79 @@ class ServiceRequestController extends Controller
      */
     private function getMainActivityUrl(?string $sourceType, $sourceId, $sourceData): ?string
     {
-        if (!$sourceType || !$sourceId) {
+        if (! $sourceType || ! $sourceId) {
             return null;
         }
         try {
-            switch ($sourceType) {
-                case 'activity':
-                    if (!$sourceData) {
-                        $sourceData = Activity::find($sourceId);
-                    }
-                    if ($sourceData && $sourceData->is_single_memo) {
-                        return route('activities.single-memos.show', $sourceData->id);
-                    }
-                    if ($sourceData && $sourceData->matrix_id) {
-                        return route('matrices.activities.show', [$sourceData->matrix_id, $sourceData->id]);
-                    }
-                    return null;
-                case 'non_travel_memo':
-                    return route('non-travel.show', $sourceId);
-                case 'special_memo':
-                    return route('special-memo.show', $sourceId);
-                case 'other_memo':
-                    return route('other-memos.show', $sourceId);
-                default:
-                    return null;
-            }
+            return match ($sourceType) {
+                'activity' => MemoShowUrl::activityShowUrl((int) $sourceId),
+                'non_travel_memo' => route('non-travel.show', $sourceId),
+                'special_memo' => route('special-memo.show', $sourceId),
+                'other_memo' => route('other-memos.show', $sourceId),
+                default => null,
+            };
         } catch (\Exception $e) {
             return null;
+        }
+    }
+
+    /**
+     * Overlay change-request fields onto source memo data for display (matches create-form behaviour).
+     */
+    private function applyChangeRequestOverlayToSource(object $sourceData, ChangeRequest $changeRequest): void
+    {
+        if ($changeRequest->budget_breakdown !== null) {
+            $sourceData->budget_breakdown = $changeRequest->budget_breakdown;
+        }
+        if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
+            $sourceData->available_budget = (float) $changeRequest->available_budget;
+        }
+        if ($changeRequest->budget_id !== null) {
+            $crBudgetIds = is_string($changeRequest->budget_id)
+                ? (json_decode($changeRequest->budget_id, true) ?? [])
+                : $changeRequest->budget_id;
+            if (is_array($crBudgetIds)) {
+                $sourceData->budget_id = $crBudgetIds;
+            }
+        }
+        if ($changeRequest->activity_title) {
+            $sourceData->activity_title = $changeRequest->activity_title;
+            $sourceData->title = $changeRequest->activity_title;
+        }
+        if ($changeRequest->date_from) {
+            $sourceData->date_from = $changeRequest->date_from;
+        }
+        if ($changeRequest->date_to) {
+            $sourceData->date_to = $changeRequest->date_to;
+        }
+        if ($changeRequest->memo_date) {
+            $sourceData->memo_date = $changeRequest->memo_date;
+        }
+        if ($changeRequest->background) {
+            $sourceData->background = $changeRequest->background;
+        }
+        if ($changeRequest->activity_request_remarks) {
+            $sourceData->activity_request_remarks = $changeRequest->activity_request_remarks;
+        }
+        if ($changeRequest->total_participants !== null) {
+            $sourceData->total_participants = $changeRequest->total_participants;
+        }
+        if ($changeRequest->total_external_participants !== null) {
+            $sourceData->total_external_participants = $changeRequest->total_external_participants;
+        }
+        if ($changeRequest->division_id !== null && $changeRequest->division_id !== '') {
+            $sourceData->division_id = (int) $changeRequest->division_id;
+            $crDivision = Division::find($sourceData->division_id);
+            if ($crDivision) {
+                $sourceData->setRelation('division', $crDivision);
+            }
+        }
+        if ($changeRequest->fund_type_id !== null && $changeRequest->fund_type_id !== '') {
+            $sourceData->fund_type_id = (int) $changeRequest->fund_type_id;
+            $crFundType = FundType::find($sourceData->fund_type_id);
+            if ($crFundType) {
+                $sourceData->setRelation('fundType', $crFundType);
+            }
         }
     }
 

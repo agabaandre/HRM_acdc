@@ -1,5 +1,8 @@
 # Integration with Staff Portal & APM
 
+> Related reading from the APM side: [`apm/documentation/HELPDESK_INTEGRATION.md`](../../apm/documentation/HELPDESK_INTEGRATION.md) (Sanctum bridge, `HELPDESK_*` URLs, mail failover / Exchange OAuth alignment).
+> For an end-to-end overview of this module see the [Helpdesk documentation hub](./README.md) — [User Guide](./USER_GUIDE.md) · [Developer Guide](./DEVELOPER_GUIDE.md) · [Architecture](./ARCHITECTURE.md).
+
 ## URLs (development)
 
 | System | URL |

@@ -251,19 +251,40 @@
     $displayBudgetBreakdown = $serviceRequest->budget_breakdown;
     $displayOriginalTotalBudget = $serviceRequest->original_total_budget ?? 0;
     $displayNewTotalBudget = $serviceRequest->new_total_budget ?? 0;
-    if ($cr && (isset($cr->has_budget_breakdown_changed) && $cr->has_budget_breakdown_changed || isset($cr->has_budget_id_changed) && $cr->has_budget_id_changed)) {
-        if ($cr->budget_breakdown !== null && $cr->budget_breakdown !== '') {
-            $displayBudgetBreakdown = is_string($cr->budget_breakdown) ? $cr->budget_breakdown : json_encode($cr->budget_breakdown);
+    // Align Original Memo Budget with parent memo line items (skip when SR is from a change request — CR totals apply below)
+    if (! $cr && ! $serviceRequest->isChildRequest() && $sourceData && isset($sourceData->budget_breakdown)) {
+        $sourceBudgetForTotal = is_string($sourceData->budget_breakdown)
+            ? json_decode(stripslashes($sourceData->budget_breakdown), true)
+            : $sourceData->budget_breakdown;
+        if (is_string($sourceBudgetForTotal ?? null)) {
+            $sourceBudgetForTotal = json_decode($sourceBudgetForTotal, true);
+        }
+        if (is_array($sourceBudgetForTotal) && ! empty($sourceBudgetForTotal)) {
+            $computedMemoTotal = \App\Support\BudgetBreakdownTotal::originalMemoTotalForSource(
+                (string) $serviceRequest->source_type,
+                $sourceBudgetForTotal
+            );
+            if ($computedMemoTotal > 0) {
+                $displayOriginalTotalBudget = $computedMemoTotal;
+            }
+        }
+    }
+    if ($cr) {
+        $crDecoded = is_string($cr->budget_breakdown ?? '') ? json_decode($cr->budget_breakdown, true) : ($cr->budget_breakdown ?? []);
+        if (is_array($crDecoded) && ! empty($crDecoded)) {
+            $crMemoTotal = \App\Support\BudgetBreakdownTotal::originalMemoTotalForSource(
+                (string) $serviceRequest->source_type,
+                $crDecoded
+            );
+            if ($crMemoTotal > 0) {
+                $displayOriginalTotalBudget = $crMemoTotal;
+            }
         }
         if (isset($cr->available_budget) && $cr->available_budget > 0) {
-            $displayOriginalTotalBudget = $cr->available_budget;
+            $displayOriginalTotalBudget = (float) $cr->available_budget;
         }
-        $crDecoded = is_string($cr->budget_breakdown ?? '') ? json_decode($cr->budget_breakdown, true) : ($cr->budget_breakdown ?? []);
-        if (is_array($crDecoded) && isset($crDecoded['grand_total'])) {
-            $displayNewTotalBudget = $crDecoded['grand_total'];
-        } elseif (isset($cr->available_budget)) {
-            $displayNewTotalBudget = $cr->available_budget;
-        }
+        // Service request funds requested stay on the SR record, not the CR memo total
+        $displayNewTotalBudget = $serviceRequest->new_total_budget ?? 0;
     }
     $childBalanceCap = $serviceRequest->isChildRequest()
         ? (float) ($serviceRequest->original_total_budget ?? 0)
@@ -411,6 +432,11 @@
                                         <i class="fas fa-external-link-alt me-1"></i>View main activity
                                     </a>
                                 @endif
+                                @if($cr)
+                                    <a wire:navigate href="{{ route('change-requests.show', $cr) }}" class="btn btn-sm btn-outline-secondary mt-2 ms-1" rel="noopener">
+                                        <i class="fas fa-exchange-alt me-1"></i>View change request
+                                    </a>
+                                @endif
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">Activity Type</label>
@@ -505,9 +531,9 @@
                 </div>
                 <div class="card-body">
                     @php
-                        // Parse the budget breakdown: use CR's changed budget when SR is from CR, otherwise service request's
+                        // Service request cost breakdown (participant / other costs) — always from the SR record
                         $budgetData = null;
-                        $rawBreakdown = $displayBudgetBreakdown ?? $serviceRequest->budget_breakdown;
+                        $rawBreakdown = $serviceRequest->budget_breakdown;
                         if ($rawBreakdown) {
                             $budgetData = is_string($rawBreakdown)
                                 ? json_decode($rawBreakdown, true)
@@ -521,7 +547,13 @@
                         <div class="col-md-3">
                             <div class="meta-card text-center">
                                 <label class="form-label text-muted small fw-semibold">
-                                    {{ $serviceRequest->isChildRequest() ? 'Maximum allowable (remaining balance)' : 'Original Memo Budget' }}
+                                    @if($serviceRequest->isChildRequest())
+                                        Maximum allowable (remaining balance)
+                                    @elseif($cr)
+                                        Memo budget (per change request)
+                                    @else
+                                        Original Memo Budget
+                                    @endif
                                 </label>
                                 <p class="h4 mb-0 text-muted">${{ number_format($displayOriginalTotalBudget ?? $serviceRequest->original_total_budget ?? 0, 2) }}</p>
                             </div>
@@ -567,11 +599,97 @@
                     </div>
                     @endif
 
+                    @if(!empty($displayMemoBudgetBreakdown) && is_array($displayMemoBudgetBreakdown))
+                    @php
+                        $memoBudgetByFundCode = [];
+                        $memoBudgetGrandTotal = 0.0;
+                        $sanitizeBudgetNum = static function ($value): float {
+                            if ($value === null || $value === '') {
+                                return 0.0;
+                            }
+                            return (float) str_replace(',', '', (string) $value);
+                        };
+                        foreach ($displayMemoBudgetBreakdown as $fundKey => $entries) {
+                            if ($fundKey === 'grand_total' || ! is_array($entries)) {
+                                continue;
+                            }
+                            $memoBudgetByFundCode[$fundKey] = $entries;
+                        }
+                        $memoFundCodes = ! empty($memoBudgetByFundCode)
+                            ? \App\Models\FundCode::whereIn('id', array_keys($memoBudgetByFundCode))->get()->keyBy('id')
+                            : collect();
+                    @endphp
+                    @if(!empty($memoBudgetByFundCode))
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-muted mb-3 border-bottom pb-2">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>Memo budget breakdown
+                            @if($cr)
+                                <span class="badge bg-warning text-dark ms-1">As per change request</span>
+                            @endif
+                        </h6>
+                        @foreach($memoBudgetByFundCode as $fundCodeId => $items)
+                            @php
+                                $fundCode = $memoFundCodes[$fundCodeId] ?? null;
+                                $groupTotal = 0.0;
+                            @endphp
+                            <h6 class="text-primary small fw-semibold mt-3">
+                                @if($fundCode)
+                                    {{ $fundCode->activity }} — {{ $fundCode->code }}
+                                @else
+                                    Budget code {{ $fundCodeId }}
+                                @endif
+                            </h6>
+                            <div class="table-responsive mb-3">
+                                <table class="table table-sm table-bordered budget-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Cost item</th>
+                                            <th class="text-end">Unit cost</th>
+                                            <th class="text-end">Units</th>
+                                            <th class="text-end">Days</th>
+                                            <th class="text-end">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($items as $idx => $item)
+                                            @php
+                                                $uc = $sanitizeBudgetNum($item['unit_cost'] ?? 0);
+                                                $u = $sanitizeBudgetNum($item['units'] ?? 0);
+                                                $d = $sanitizeBudgetNum($item['days'] ?? 1, 1.0);
+                                                $line = $uc * $u * $d;
+                                                $groupTotal += $line;
+                                                $memoBudgetGrandTotal += $line;
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $idx + 1 }}</td>
+                                                <td>{{ $item['cost'] ?? 'N/A' }}</td>
+                                                <td class="text-end">{{ number_format($uc, 2) }}</td>
+                                                <td class="text-end">{{ $u }}</td>
+                                                <td class="text-end">{{ $d }}</td>
+                                                <td class="text-end fw-semibold">{{ number_format($line, 2) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="table-light">
+                                            <th colspan="5" class="text-end">Subtotal</th>
+                                            <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        @endforeach
+                        <p class="mb-0 fw-bold text-success">Memo total: ${{ number_format($memoBudgetGrandTotal, 2) }} USD</p>
+                    </div>
+                    @endif
+                    @endif
+
                     <!-- Service Request Budget Breakdown -->
                     @if($budgetData && (isset($budgetData['internal_participants']) || isset($budgetData['external_participants']) || isset($budgetData['other_costs']) || (is_array($budgetData) && !isset($budgetData['internal_participants']) && !isset($budgetData['external_participants']) && !isset($budgetData['other_costs']))))
                     <div class="mb-4">
                         <h6 class="fw-bold text-muted mb-4 border-bottom pb-2">
-                            <i class="fas fa-calculator me-2"></i>Budget Breakdown
+                            <i class="fas fa-calculator me-2"></i>Service request cost breakdown
                         </h6>
                         
                         <!-- Non-Travel Memo Budget Structure (when budgetData is a simple array) -->

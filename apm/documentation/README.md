@@ -30,7 +30,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 
 - **[Deployment Guide](./DEPLOYMENT.md)** - Production deployment (includes **server requirements**: Ghostscript & Poppler for scanned PDF attachments in memo printouts)
 - **[Environment variables (.env)](./ENVIRONMENT.md)** - Sample `.env` template ([`.env.example`](../.env.example)), setup steps, and variable reference
-- **[Helpdesk (ITSM) integration](./HELPDESK_INTEGRATION.md)** - Sanctum bridge, `HELPDESK_*` URLs, mail failover / Exchange OAuth alignment with the Helpdesk API (`helpdesk/backend/`)
+- **[Helpdesk (ITSM) integration](./HELPDESK_INTEGRATION.md)** - Sanctum bridge, `HELPDESK_*` URLs, mail failover / Exchange OAuth alignment with the Helpdesk API (`helpdesk/backend/`). See also the [Helpdesk documentation hub](../../helpdesk/documentation/README.md), [User Guide](../../helpdesk/documentation/USER_GUIDE.md), and [Developer Guide](../../helpdesk/documentation/DEVELOPER_GUIDE.md).
 - **[Queue Setup Guide](./QUEUE_SETUP_GUIDE.md)** - Laravel queue configuration and setup
 - **[Queue Troubleshooting](./QUEUE_TROUBLESHOOTING.md)** - Common queue issues and solutions
 - **[Cron Setup](./CRON_SETUP.md)** - Cron job configuration for scheduled tasks
@@ -258,6 +258,13 @@ apm/
   - [Migrations Guide](../../finance/documentation/MIGRATIONS.md)
   - [Session Implementation](../../finance/documentation/SESSION_IMPLEMENTATION.md)
   - [Installation Guide](../../finance/documentation/INSTALLATION.md)
+
+- **Helpdesk Module Documentation**: [`../../helpdesk/documentation/`](../../helpdesk/documentation/) - Laravel + Vue IT Service Desk / ITSM
+  - [User Guide](../../helpdesk/documentation/USER_GUIDE.md) — requesters, agents & admins; includes step-by-step **ticket creation**
+  - [Developer Guide](../../helpdesk/documentation/DEVELOPER_GUIDE.md) — stack, schema, REST API, extension points, runbooks
+  - [Architecture](../../helpdesk/documentation/ARCHITECTURE.md) — one-page overview
+  - [Integration](../../helpdesk/documentation/INTEGRATION.md) — Staff portal SSO, Staff Share API, WhatsApp & Teams webhooks
+  - [APM ↔ Helpdesk integration notes](./HELPDESK_INTEGRATION.md)
 
 - **Staff Portal Documentation**: 
   - [Environment Variables](../../assets/ENVIRONMENT_VARIABLES.md) - Configuration guide

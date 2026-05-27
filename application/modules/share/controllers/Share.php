@@ -345,9 +345,19 @@ public function visualise()
 public function directorates(){
 	if($this->api_login()){
 		try {
-			$this->db->select('dir.*, s.fname AS director_fname, s.lname AS director_lname, s.title AS director_title');
-			$this->db->from('directorates dir');
-			$this->db->join('staff s', 's.staff_id = dir.director_id', 'left');
+			// Only join staff for director details if the optional `director_id`
+			// column has been added (migration `add_director_id_to_directorates.sql`).
+			// Older databases that haven't run the migration would otherwise return
+			// a 500 here and break helpdesk reference-data sync.
+			$hasDirectorId = $this->db->field_exists('director_id', 'directorates');
+			if ($hasDirectorId) {
+				$this->db->select('dir.*, s.fname AS director_fname, s.lname AS director_lname, s.title AS director_title');
+				$this->db->from('directorates dir');
+				$this->db->join('staff s', 's.staff_id = dir.director_id', 'left');
+			} else {
+				$this->db->select('dir.*');
+				$this->db->from('directorates dir');
+			}
 			$this->db->order_by('dir.name', 'asc');
 			$result = $this->db->get()->result_array();
 
@@ -355,6 +365,8 @@ public function directorates(){
 				if (array_key_exists('director_id', $row)) {
 					$raw = $row['director_id'];
 					$row['director_id'] = ($raw !== null && $raw !== '' && (int) $raw > 0) ? (int) $raw : null;
+				} elseif ($hasDirectorId === false) {
+					$row['director_id'] = null;
 				}
 				$did = $row['director_id'] ?? null;
 				$fname = isset($row['director_fname']) ? trim((string) $row['director_fname']) : '';

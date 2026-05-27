@@ -13,7 +13,12 @@ The **Helpdesk** module is a separate Laravel 11 API plus Vue 3 SPA under `helpd
 | Helpdesk SPA | `HELPDESK_FRONTEND_URL` — e.g. `http://127.0.0.1:5174` |
 
 Canonical Helpdesk env template: `helpdesk/backend/.env.example`.  
-Helpdesk integration overview: `helpdesk/documentation/INTEGRATION.md`.
+Helpdesk integration overview: [`helpdesk/documentation/INTEGRATION.md`](../../helpdesk/documentation/INTEGRATION.md).
+
+> **Looking for the helpdesk itself, not just the APM bridge?** See the [Helpdesk documentation hub](../../helpdesk/documentation/README.md):
+> - [User Guide](../../helpdesk/documentation/USER_GUIDE.md) — requesters, agents & admins; includes a step-by-step ticket-creation walkthrough.
+> - [Developer Guide](../../helpdesk/documentation/DEVELOPER_GUIDE.md) — stack, schema, REST API, extension points & runbooks.
+> - [Architecture](../../helpdesk/documentation/ARCHITECTURE.md) — one-page overview.
 
 ## Authentication flow (primary: Staff portal JWT)
 
@@ -51,4 +56,4 @@ See [Environment variables](./ENVIRONMENT.md) for the full APM variable referenc
 
 - [Environment variables](./ENVIRONMENT.md)
 - [Deployment](./DEPLOYMENT.md)
-- Helpdesk: `helpdesk/README.md`, `helpdesk/documentation/INTEGRATION.md`
+- Helpdesk: [`helpdesk/README.md`](../../helpdesk/README.md) · [docs hub](../../helpdesk/documentation/README.md) · [User Guide](../../helpdesk/documentation/USER_GUIDE.md) · [Developer Guide](../../helpdesk/documentation/DEVELOPER_GUIDE.md) · [Architecture](../../helpdesk/documentation/ARCHITECTURE.md) · [Integration](../../helpdesk/documentation/INTEGRATION.md)
