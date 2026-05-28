@@ -31,6 +31,7 @@ class TicketController extends Controller
 
         $user = $request->user();
         $profile = $user->helpdeskProfile;
+        $qTerm = trim((string) $request->query('q', ''));
         $q = HelpdeskTicket::query()
             ->with(['category', 'assignee.helpdeskProfile', 'attachments'])
             ->orderByDesc('id');
@@ -43,6 +44,8 @@ class TicketController extends Controller
                     ->orWhere('created_by_user_id', $uid);
             });
         }
+
+        $this->applyTicketSearch($q, $qTerm);
 
         $tickets = $q->paginate(min((int) $request->get('per_page', 20), 100));
 
@@ -323,5 +326,28 @@ class TicketController extends Controller
             403,
             'You need the “Can reassign tickets” permission to do this.'
         );
+    }
+
+    private function applyTicketSearch(\Illuminate\Database\Eloquent\Builder $query, string $term): void
+    {
+        if ($term === '') {
+            return;
+        }
+
+        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term).'%';
+        $query->where(function ($w) use ($like) {
+            $w->where('ticket_number', 'like', $like)
+                ->orWhere('subject', 'like', $like)
+                ->orWhere('description', 'like', $like)
+                ->orWhere('requester_name', 'like', $like)
+                ->orWhere('requester_email', 'like', $like)
+                ->orWhere('status', 'like', $like)
+                ->orWhere('priority', 'like', $like)
+                ->orWhereHas('category', fn ($c) => $c->where('name', 'like', $like))
+                ->orWhereHas('assignee', function ($a) use ($like) {
+                    $a->where('name', 'like', $like)
+                        ->orWhere('email', 'like', $like);
+                });
+        });
     }
 }

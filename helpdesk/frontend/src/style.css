@@ -1,4 +1,5 @@
-:root {
+:root,
+html.helpdesk-theme-light {
   --cdc-green: #119a48;
   --cdc-green-deep: #0d7a3a;
   --cdc-green-soft: #e8f5ee;
@@ -12,6 +13,15 @@
   --cdc-shadow: 0 18px 48px rgba(6, 95, 44, 0.12);
   --font-sans: 'DM Sans', system-ui, sans-serif;
   --font-display: 'Instrument Sans', 'DM Sans', system-ui, sans-serif;
+}
+
+html.helpdesk-theme-dark {
+  --cdc-ink: #e2e8f0;
+  --cdc-ink-muted: #cbd5e1;
+  --cdc-paper: #0f172a;
+  --cdc-white: #111827;
+  --cdc-line: rgba(148, 163, 184, 0.25);
+  --cdc-shadow: 0 18px 48px rgba(2, 6, 23, 0.5);
 }
 
 *,
@@ -46,10 +56,19 @@ a {
   color: var(--cdc-green-deep);
 }
 
+html.helpdesk-theme-dark a {
+  color: #4ade80;
+}
+
 code {
   font-size: 0.88em;
   padding: 0.12em 0.35em;
   border-radius: 4px;
   background: var(--cdc-green-soft);
   color: var(--cdc-green-deep);
+}
+
+html.helpdesk-theme-dark code {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
 }

@@ -14,6 +14,17 @@ type SsoFailure = {
   status?: number
 }
 
+function syncFaviconWithApm(): void {
+  const link = document.getElementById('app-favicon') as HTMLLinkElement | null
+  if (!link) return
+
+  const protocol = window.location.protocol
+  const hostNoPort = window.location.hostname
+  // Match APM's favicon source: /staff/apm/assets/images/au_emblem.png
+  link.href = `${protocol}//${hostNoPort}/staff/apm/assets/images/au_emblem.png`
+  link.type = 'image/png'
+}
+
 function classifyExchangeError(err: unknown): SsoFailure {
   if (axios.isAxiosError(err)) {
     const status = err.response?.status
@@ -109,6 +120,8 @@ function redirectToStaffPortalWithError(failure: SsoFailure): void {
 }
 
 async function bootstrap() {
+  syncFaviconWithApm()
+
   const app = createApp(App)
   const pinia = createPinia()
   app.use(pinia)
