@@ -8,10 +8,18 @@ defineProps<{
   userName: string | null
   userSubtitle?: string | null
   avatarUrl?: string | null
+  theme?: 'dark' | 'light'
 }>()
 
 const base = computed(() => staffPortalBaseUrl())
 const portalHome = computed(() => staffPortalHomeUrl())
+
+function onLogoError(e: Event) {
+  const img = e.target as HTMLImageElement | null
+  if (img) {
+    img.style.display = 'none'
+  }
+}
 </script>
 
 <template>
@@ -22,7 +30,7 @@ const portalHome = computed(() => staffPortalHomeUrl())
           :src="`${base}/assets/images/AU_CDC_Logo-800.png`"
           width="200"
           alt="Africa CDC"
-          @error="($event.target as HTMLImageElement).style.display = 'none'"
+          @error="onLogoError"
         />
       </RouterLink>
       <div class="cbp-topbar-spacer" />

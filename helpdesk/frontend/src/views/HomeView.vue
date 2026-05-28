@@ -25,7 +25,6 @@ interface KbArticle {
 
 const auth = useAuthStore()
 const portalHref = computed(() => staffPortalHomeUrl())
-const profileSap = computed(() => String(auth.me?.profile?.sap_no ?? '').trim())
 
 const canManageKb = computed(() => {
   const role = auth.me?.profile?.role ?? ''
@@ -130,11 +129,6 @@ onMounted(() => {
     </div>
 
     <div v-else class="cbp-card welcome">
-      <p class="welcome-line">
-        Signed in as <strong>{{ auth.me?.name ?? 'Staff' }}</strong>
-        <span v-if="profileSap" class="pill">SAP {{ profileSap }}</span>
-        <span v-else-if="auth.me?.profile?.staff_id" class="pill">Staff ID {{ auth.me.profile.staff_id }}</span>
-      </p>
       <div class="actions">
         <RouterLink class="cbp-btn cbp-btn-primary" to="/tickets">My tickets</RouterLink>
         <RouterLink class="cbp-btn cbp-btn-ghost" to="/tickets/new">New request</RouterLink>
@@ -222,23 +216,6 @@ onMounted(() => {
   color: #5c6c7c;
   line-height: 1.55;
   font-size: 0.95rem;
-}
-.welcome {
-  border-left: 4px solid #119a48;
-}
-.welcome-line {
-  margin: 0 0 1rem;
-  color: #5c6c7c;
-}
-.pill {
-  display: inline-block;
-  margin-left: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.15rem 0.45rem;
-  border-radius: 6px;
-  background: #e8f5ee;
-  color: #0d7a3a;
 }
 .actions {
   display: flex;

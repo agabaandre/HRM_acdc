@@ -1,7 +1,8 @@
 /**
  * CBP / Finance SPA alignment — colours and chrome from `finance/frontend/src/components/Layout/*.css`.
  */
-:root {
+:root,
+html.helpdesk-theme-light {
   --cbp-topbar: #119a48;
   --cbp-topbar-border: rgba(17, 154, 72, 0.2);
   --cbp-nav-bg: #2c3e50;
@@ -12,14 +13,45 @@
   --cbp-footer-bg: #f8f9fa;
   --cbp-footer-border: #e9ecef;
   --cbp-footer-text: #6c757d;
+  --cbp-page-bg: #f4f6f8;
+  --cbp-card-bg: #ffffff;
+  --cbp-card-text: #1f2937;
+  --cbp-card-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  --cbp-dd-bg: #ffffff;
+  --cbp-dd-border: #e9ecef;
+  --cbp-dd-text: #2c3e50;
+  --cbp-dd-hover-bg: #e8f5ee;
+  --cbp-dd-hover-text: #0d7a3a;
   --cbp-page-max: 1100px;
+}
+
+html.helpdesk-theme-dark {
+  --cbp-topbar: #119a48;
+  --cbp-topbar-border: rgba(34, 197, 94, 0.35);
+  --cbp-nav-bg: #0b1220;
+  --cbp-nav-border: rgba(148, 163, 184, 0.2);
+  --cbp-nav-hover: rgba(34, 197, 94, 0.2);
+  --cbp-nav-text: rgba(226, 232, 240, 0.84);
+  --cbp-nav-text-active: #ffffff;
+  --cbp-footer-bg: #0b1220;
+  --cbp-footer-border: rgba(148, 163, 184, 0.2);
+  --cbp-footer-text: #94a3b8;
+  --cbp-page-bg: #0f172a;
+  --cbp-card-bg: #111827;
+  --cbp-card-text: #e2e8f0;
+  --cbp-card-shadow: 0 8px 30px rgba(2, 6, 23, 0.45);
+  --cbp-dd-bg: #111827;
+  --cbp-dd-border: rgba(148, 163, 184, 0.22);
+  --cbp-dd-text: #e2e8f0;
+  --cbp-dd-hover-bg: rgba(34, 197, 94, 0.2);
+  --cbp-dd-hover-text: #86efac;
 }
 
 .cbp-wrapper {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f4f6f8;
+  background: var(--cbp-page-bg);
 }
 
 .cbp-topbar {
@@ -287,12 +319,12 @@
   top: 100%;
   left: 0;
   min-width: 220px;
-  background: #fff;
+  background: var(--cbp-dd-bg);
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   padding: 0.35rem 0;
   z-index: 1100;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--cbp-dd-border);
 }
 
 .cbp-nav-item-dropdown.is-open .cbp-nav-dd-menu {
@@ -319,15 +351,15 @@
   display: block;
   padding: 0.5rem 1rem;
   font-size: 0.85rem;
-  color: #2c3e50 !important;
+  color: var(--cbp-dd-text) !important;
   text-decoration: none !important;
   font-weight: 500;
 }
 
 .cbp-nav-dd-item:hover,
 .cbp-nav-dd-item.router-link-active {
-  background: #e8f5ee;
-  color: #0d7a3a !important;
+  background: var(--cbp-dd-hover-bg);
+  color: var(--cbp-dd-hover-text) !important;
 }
 
 .cbp-page-wrapper {
@@ -350,9 +382,10 @@
 }
 
 .cbp-card {
-  background: #fff;
+  background: var(--cbp-card-bg);
+  color: var(--cbp-card-text);
   border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--cbp-card-shadow);
   padding: 1.5rem 1.35rem;
   margin-bottom: 1.25rem;
 }

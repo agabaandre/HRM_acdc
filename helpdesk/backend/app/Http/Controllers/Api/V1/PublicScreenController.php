@@ -7,6 +7,7 @@ use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
+use App\Support\StaffPhotoUrl;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -255,13 +256,14 @@ class PublicScreenController extends Controller
                 HelpdeskProfile::ROLE_ADMIN,
             ]))
             ->with('helpdeskProfile:id,user_id,work_mode')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'photo']);
 
         $out = [];
         foreach ($users as $u) {
             $out[] = [
                 'id' => $u->id,
                 'name' => $u->name,
+                'avatar_url' => StaffPhotoUrl::forUser($u),
                 'open' => (int) ($loads[$u->id] ?? 0),
                 'work_mode' => $u->helpdeskProfile?->work_mode,
             ];

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '../lib/api'
+import CbpAvatar from '../components/common/CbpAvatar.vue'
 
 interface Volumes {
   open: number
@@ -36,6 +37,7 @@ interface CategoryRow {
 interface WorkloadRow {
   id: number
   name: string
+  avatar_url?: string | null
   open: number
 }
 interface TrendDay {
@@ -60,12 +62,14 @@ const lastFetchedAt = ref<number | null>(null)
 const consecutiveErrors = ref(0)
 const isStale = ref(false)
 const clock = ref(new Date())
+const theme = ref<'dark' | 'light'>('dark')
 let pollTimer: number | undefined
 let clockTimer: number | undefined
 let staleTimer: number | undefined
 
 const REFRESH_INTERVAL_MS = 15000
 const STALE_THRESHOLD_MS = 60000
+const THEME_STORAGE_KEY = 'helpdesk.screen.theme'
 
 async function fetchScreen(): Promise<void> {
   try {
@@ -82,13 +86,6 @@ async function fetchScreen(): Promise<void> {
 function checkStaleness(): void {
   if (!lastFetchedAt.value) return
   isStale.value = Date.now() - lastFetchedAt.value > STALE_THRESHOLD_MS
-}
-
-const initials = (full: string): string => {
-  const parts = full.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 const fmtMinutes = (m: number | null): string => {
@@ -137,20 +134,6 @@ const maxCategory = computed(() => {
   return c.reduce((acc, r) => Math.max(acc, r.open), 0) || 1
 })
 
-function slaStrokeOffset(pct: number | null, radius = 52): number {
-  if (pct === null) return 2 * Math.PI * radius
-  const circumference = 2 * Math.PI * radius
-  return circumference * (1 - Math.max(0, Math.min(100, pct)) / 100)
-}
-
-function slaColor(pct: number | null): string {
-  if (pct === null) return '#475569'
-  if (pct >= 90) return '#16a34a'
-  if (pct >= 70) return '#3b82f6'
-  if (pct >= 50) return '#f59e0b'
-  return '#ef4444'
-}
-
 const lastUpdatedLabel = computed(() => {
   if (!lastFetchedAt.value) return 'syncing…'
   const ageSec = Math.round((Date.now() - lastFetchedAt.value) / 1000)
@@ -158,7 +141,29 @@ const lastUpdatedLabel = computed(() => {
   return `${ageSec}s ago`
 })
 
+function initTheme(): void {
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+  if (stored === 'light' || stored === 'dark') {
+    theme.value = stored
+    return
+  }
+  // Dark is the default mode for TV/lobby display.
+  theme.value = 'dark'
+}
+
+function applyTheme(): void {
+  // Theme is applied via root element class binding in this component.
+}
+
+function setTheme(next: 'dark' | 'light'): void {
+  theme.value = next
+  window.localStorage.setItem(THEME_STORAGE_KEY, next)
+  applyTheme()
+}
+
 onMounted(() => {
+  initTheme()
+  applyTheme()
   void fetchScreen()
   pollTimer = window.setInterval(fetchScreen, REFRESH_INTERVAL_MS)
   clockTimer = window.setInterval(() => {
@@ -180,7 +185,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="screen">
+  <div class="screen" :class="`theme-${theme}`">
     <!-- Top bar -->
     <header class="screen-bar">
       <div class="screen-brand">
@@ -195,6 +200,10 @@ onUnmounted(() => {
         <p class="clock-date">{{ clockDate }}</p>
       </div>
       <div class="screen-status">
+        <div class="theme-switch" role="group" aria-label="Dashboard theme">
+          <button type="button" class="theme-btn" :class="{ active: theme === 'dark' }" @click="setTheme('dark')">Dark</button>
+          <button type="button" class="theme-btn" :class="{ active: theme === 'light' }" @click="setTheme('light')">Light</button>
+        </div>
         <span class="status-dot" :class="{ live: !isStale && consecutiveErrors === 0, stale: isStale || consecutiveErrors > 1 }" />
         <span class="status-label">{{ isStale ? 'Reconnecting' : 'Live' }} · {{ lastUpdatedLabel }}</span>
       </div>
@@ -225,10 +234,10 @@ onUnmounted(() => {
           <p class="kpi-sub">Resolution sent</p>
         </article>
 
-        <article class="kpi kpi-breached" :class="{ alert: data.sla.breached_pending > 0 }">
-          <p class="kpi-label">SLA breached</p>
-          <p class="kpi-value">{{ data.sla.breached_pending }}</p>
-          <p class="kpi-sub">Past resolution target</p>
+        <article class="kpi kpi-response">
+          <p class="kpi-label">Avg response time</p>
+          <p class="kpi-value">{{ fmtMinutes(data.wait.avg_first_response_minutes) }}</p>
+          <p class="kpi-sub">{{ data.wait.window_label }}</p>
         </article>
 
         <article class="kpi kpi-new">
@@ -242,56 +251,6 @@ onUnmounted(() => {
           <p class="kpi-value">{{ data.volumes.resolved_today }}</p>
           <p class="kpi-sub">{{ data.volumes.closed_today }} closed</p>
         </article>
-      </section>
-
-      <!-- SLA gauges -->
-      <section class="card sla-card">
-        <header class="card-head">
-          <h2>SLA compliance</h2>
-          <span class="card-sub">Rolling {{ data.sla.sample_window_days }} days</span>
-        </header>
-        <div class="sla-gauges">
-          <div class="gauge">
-            <svg viewBox="0 0 120 120" class="gauge-svg" aria-hidden="true">
-              <circle cx="60" cy="60" r="52" stroke="#1e293b" stroke-width="10" fill="none" />
-              <circle
-                cx="60" cy="60" r="52"
-                :stroke="slaColor(data.sla.response_within_sla_pct)"
-                stroke-width="10" fill="none" stroke-linecap="round"
-                :stroke-dasharray="2 * Math.PI * 52"
-                :stroke-dashoffset="slaStrokeOffset(data.sla.response_within_sla_pct)"
-                transform="rotate(-90 60 60)"
-              />
-            </svg>
-            <div class="gauge-center">
-              <p class="gauge-pct">
-                {{ data.sla.response_within_sla_pct !== null ? data.sla.response_within_sla_pct + '%' : '—' }}
-              </p>
-              <p class="gauge-label">First response</p>
-              <p class="gauge-meta">{{ data.sla.response_sample_size }} tickets</p>
-            </div>
-          </div>
-          <div class="gauge">
-            <svg viewBox="0 0 120 120" class="gauge-svg" aria-hidden="true">
-              <circle cx="60" cy="60" r="52" stroke="#1e293b" stroke-width="10" fill="none" />
-              <circle
-                cx="60" cy="60" r="52"
-                :stroke="slaColor(data.sla.resolution_within_sla_pct)"
-                stroke-width="10" fill="none" stroke-linecap="round"
-                :stroke-dasharray="2 * Math.PI * 52"
-                :stroke-dashoffset="slaStrokeOffset(data.sla.resolution_within_sla_pct)"
-                transform="rotate(-90 60 60)"
-              />
-            </svg>
-            <div class="gauge-center">
-              <p class="gauge-pct">
-                {{ data.sla.resolution_within_sla_pct !== null ? data.sla.resolution_within_sla_pct + '%' : '—' }}
-              </p>
-              <p class="gauge-label">Resolution</p>
-              <p class="gauge-meta">{{ data.sla.resolution_sample_size }} tickets</p>
-            </div>
-          </div>
-        </div>
       </section>
 
       <!-- Wait times -->
@@ -343,7 +302,7 @@ onUnmounted(() => {
         </header>
         <ul v-if="data.workload.length" class="workload-list">
           <li v-for="a in data.workload" :key="a.id" class="workload-row">
-            <span class="avatar-chip" aria-hidden="true">{{ initials(a.name) }}</span>
+            <CbpAvatar :name="a.name" :image-url="a.avatar_url ?? null" size="sm" />
             <span class="workload-name">{{ a.name }}</span>
             <span class="workload-bar">
               <span class="workload-fill" :style="{ width: ((a.open / maxWorkload) * 100) + '%' }" />
@@ -443,6 +402,42 @@ body.screen-mode #app {
   gap: 1.1rem;
   overflow: hidden;
 }
+.screen.theme-light {
+  --tile-bg: #ffffff;
+  --tile-border: rgba(15, 23, 42, 0.12);
+  --ink: #0f172a;
+  --ink-muted: #475569;
+  --ink-faint: #64748b;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(22, 163, 74, 0.08), transparent 60%),
+    radial-gradient(1000px 500px at -10% 110%, rgba(59, 130, 246, 0.07), transparent 60%),
+    #f1f5f9;
+}
+.screen.theme-light .kpi-value,
+.screen.theme-light .priority-count,
+.screen.theme-light .workload-count,
+.screen.theme-light .cat-count,
+.screen.theme-light .wait-value {
+  color: #0f172a;
+}
+.screen.theme-light .clock-time {
+  color: #0f172a;
+}
+.screen.theme-light .kpi,
+.screen.theme-light .card,
+.screen.theme-light .wait-block,
+.screen.theme-light .priority-cell {
+  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.06);
+}
+.screen.theme-light .wait-block,
+.screen.theme-light .priority-cell {
+  background: #f8fafc;
+}
+.screen.theme-light .workload-bar,
+.screen.theme-light .cat-bar,
+.screen.theme-light .priority-track {
+  background: rgba(15, 23, 42, 0.12);
+}
 
 /* Top bar */
 .screen-bar {
@@ -507,6 +502,31 @@ body.screen-mode #app {
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
+.theme-switch {
+  display: inline-flex;
+  border: 1px solid var(--tile-border);
+  border-radius: 999px;
+  padding: 2px;
+  margin-right: 0.4rem;
+  background: rgba(15, 23, 42, 0.26);
+}
+.theme-btn {
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.theme-btn.active {
+  background: #16a34a;
+  color: #fff;
+}
+.theme-btn:not(.active):hover {
+  color: var(--ink);
+}
 .status-dot {
   width: 8px;
   height: 8px;
@@ -529,13 +549,12 @@ body.screen-mode #app {
   grid-auto-rows: minmax(120px, auto);
   grid-template-areas:
     'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
-    'sla sla sla wait wait wait priority priority priority priority priority priority'
-    'workload workload workload workload workload category category category trend trend trend trend';
+    'wait wait wait wait category category category priority priority priority priority priority'
+    'workload workload workload workload workload workload trend trend trend trend trend trend';
   gap: 0.9rem;
   min-height: 0;
 }
 .kpis { grid-area: kpis; }
-.sla-card { grid-area: sla; }
 .wait-card { grid-area: wait; }
 .priority-card { grid-area: priority; }
 .workload-card { grid-area: workload; }
@@ -569,8 +588,7 @@ body.screen-mode #app {
 .kpi-open { --kpi-accent: #3b82f6; }
 .kpi-unassigned { --kpi-accent: #f59e0b; }
 .kpi-awaiting { --kpi-accent: #a855f7; }
-.kpi-breached { --kpi-accent: #64748b; }
-.kpi-breached.alert { --kpi-accent: #ef4444; background: linear-gradient(135deg, #111a2c 0%, #2a0e10 100%); }
+.kpi-response { --kpi-accent: #0ea5e9; }
 .kpi-unassigned.alert { background: linear-gradient(135deg, #111a2c 0%, #2a1a04 100%); }
 .kpi-new { --kpi-accent: #06b6d4; }
 .kpi-resolved { --kpi-accent: #16a34a; }
@@ -641,54 +659,6 @@ body.screen-mode #app {
   border-radius: 2px;
   margin-right: 2px;
   margin-left: 6px;
-}
-
-/* SLA gauges */
-.sla-gauges {
-  display: flex;
-  gap: 0.6rem;
-  flex: 1;
-  align-items: center;
-  justify-content: space-around;
-}
-.gauge {
-  position: relative;
-  width: 140px;
-  height: 140px;
-}
-.gauge-svg {
-  width: 100%;
-  height: 100%;
-  transition: stroke 0.4s ease;
-}
-.gauge-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-.gauge-pct {
-  margin: 0;
-  font-size: 1.55rem;
-  font-weight: 800;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.gauge-label {
-  margin: 0.15rem 0 0;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-muted);
-}
-.gauge-meta {
-  margin: 0.15rem 0 0;
-  font-size: 0.7rem;
-  color: var(--ink-faint);
 }
 
 /* Wait times */
@@ -794,19 +764,6 @@ body.screen-mode #app {
   grid-template-columns: 36px 1fr 1fr auto;
   align-items: center;
   gap: 0.6rem;
-}
-.avatar-chip {
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #0d7a3a, #16a34a);
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  letter-spacing: 0.04em;
 }
 .workload-name {
   font-size: 0.88rem;
@@ -941,13 +898,9 @@ body.screen-mode #app {
   .clock-time { font-size: 2.5rem; }
   .kpi-value { font-size: 3.4rem; }
   .priority-count { font-size: 1.7rem; }
-  .gauge { width: 168px; height: 168px; }
-  .gauge-pct { font-size: 1.85rem; }
 }
 @media (min-width: 1920px) {
   .kpi-value { font-size: 4rem; }
-  .gauge { width: 200px; height: 200px; }
-  .gauge-pct { font-size: 2.2rem; }
 }
 
 /* Stack a bit on smaller monitors / portrait setups */
@@ -955,10 +908,9 @@ body.screen-mode #app {
   .screen-grid {
     grid-template-areas:
       'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
-      'sla sla sla sla sla sla wait wait wait wait wait wait'
+      'wait wait wait wait wait wait category category category category category category'
       'priority priority priority priority priority priority priority priority priority priority priority priority'
-      'workload workload workload workload workload workload category category category category category category'
-      'trend trend trend trend trend trend trend trend trend trend trend trend';
+      'workload workload workload workload workload workload trend trend trend trend trend trend';
   }
   .kpis { grid-template-columns: repeat(3, 1fr); }
 }

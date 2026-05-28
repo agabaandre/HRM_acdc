@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\TicketResource;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -110,9 +111,12 @@ class ReportController extends Controller
         abort_unless($p && $p->staff_id, 422, 'Missing staff_id on profile.');
 
         $sid = (int) $p->staff_id;
+        $qTerm = trim((string) $request->query('q', ''));
         $q = HelpdeskTicket::query()
             ->with(['category', 'assignee', 'resolvedBy'])
             ->where('requester_staff_id', $sid);
+
+        $this->applyTicketSearch($q, $qTerm);
 
         $stats = [
             'total_received' => (clone $q)->count(),
@@ -140,6 +144,8 @@ class ReportController extends Controller
     {
         $p = $request->user()->helpdeskProfile;
         abort_unless($p && $p->role === HelpdeskProfile::ROLE_ADMIN, 403);
+        $qTerm = trim((string) $request->query('q', ''));
+        $perPage = min((int) $request->query('per_page', 20), 100);
 
         $counts = [
             'total' => HelpdeskTicket::query()->count(),
@@ -149,16 +155,22 @@ class ReportController extends Controller
             'closed' => HelpdeskTicket::query()->where('status', 'closed')->count(),
         ];
 
-        $recent = HelpdeskTicket::query()
+        $recentQuery = HelpdeskTicket::query()
             ->with(['category', 'assignee'])
-            ->orderByDesc('id')
-            ->limit(30)
-            ->get();
+            ->orderByDesc('id');
+        $this->applyTicketSearch($recentQuery, $qTerm);
+        $recent = $recentQuery->paginate($perPage);
 
         return response()->json([
             'data' => [
                 'counts' => $counts,
-                'recent' => TicketResource::collection($recent)->resolve(),
+                'recent' => [
+                    'current_page' => $recent->currentPage(),
+                    'data' => TicketResource::collection($recent->items())->resolve(),
+                    'last_page' => $recent->lastPage(),
+                    'per_page' => $recent->perPage(),
+                    'total' => $recent->total(),
+                ],
             ],
         ]);
     }
@@ -184,5 +196,28 @@ class ReportController extends Controller
         $filename = 'helpdesk-tickets-'.now()->format('Y-m-d-His').'.xlsx';
 
         return Excel::download(new TicketsExport($rows), $filename);
+    }
+
+    private function applyTicketSearch(Builder $query, string $term): void
+    {
+        if ($term === '') {
+            return;
+        }
+
+        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term).'%';
+        $query->where(function (Builder $w) use ($like) {
+            $w->where('ticket_number', 'like', $like)
+                ->orWhere('subject', 'like', $like)
+                ->orWhere('description', 'like', $like)
+                ->orWhere('requester_name', 'like', $like)
+                ->orWhere('requester_email', 'like', $like)
+                ->orWhere('status', 'like', $like)
+                ->orWhere('priority', 'like', $like)
+                ->orWhereHas('category', fn (Builder $c) => $c->where('name', 'like', $like))
+                ->orWhereHas('assignee', function (Builder $a) use ($like) {
+                    $a->where('name', 'like', $like)
+                        ->orWhere('email', 'like', $like);
+                });
+        });
     }
 }
