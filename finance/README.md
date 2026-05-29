@@ -1,194 +1,140 @@
-# Finance Management Module
+# Africa CDC Finance Management
 
-A Node.js/Express backend with React frontend for the Africa CDC Finance Management System.
+Laravel 12 + **Inertia.js (React)** for the CBP Finance module. Navigation and styling follow **APM** (`/staff/apm/`): top bar, primary menu, and CBP Modules dropdown.
 
-> 📚 **Complete Documentation**: See [documentation/README.md](./documentation/README.md) for all guides, setup instructions, and troubleshooting.
+| Area | Path |
+|------|------|
+| Application | [`app/`](./app/), [`routes/`](./routes/), [`config/`](./config/) |
+| Inertia UI | [`resources/js/`](./resources/js/) |
+| Apache entry | [`public/`](./public/), [`.htaccess`](./.htaccess), [`server.php`](./server.php) |
+| Documentation | [`documentation/`](./documentation/) |
 
-## Project Structure
+**Staff portal:** `http://localhost/staff/` · **Permission:** `92` (Finance)
 
-```
-finance/
-├── server/                # Node.js Express server
-│   ├── index.js          # Main server entry point
-│   ├── config/           # Configuration files
-│   │   └── index.js      # App configuration
-│   ├── middleware/       # Express middleware
-│   │   └── index.js      # Middleware setup
-│   └── routes/           # API route handlers
-│       ├── index.js      # Route aggregator
-│       ├── auth.js       # Authentication routes
-│       ├── session.js    # Session management routes
-│       └── finance.js    # Finance-specific routes
-├── frontend/             # React application
-│   ├── src/
-│   │   ├── components/   # React components
-│   │   ├── App.js        # Main app component
-│   │   └── index.js      # Entry point
-│   └── package.json      # Frontend dependencies
-├── package.json          # Server dependencies
-└── README.md
-```
+---
 
-## Features
-
-- Session transfer from CodeIgniter app
-- React frontend with Bootstrap 5 styling
-- Express.js backend with session management
-- Automatic redirect to CI login for unauthenticated users
-- Protected routes
-
-## Setup Instructions
-
-### 1. Install Server Dependencies
+## Quick start
 
 ```bash
 cd finance
-npm install
+./setup.sh
 ```
 
-### 2. Install Frontend Dependencies
+Or manually:
 
 ```bash
-cd frontend
-npm install
+cd finance
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+npm install --legacy-peer-deps --cache ./.npm-cache
+npm run build
 ```
 
-### 3. Configure Environment
+### Environment (`.env`)
 
-The setup script will create separate environment files for backend and frontend. You can also create them manually:
+Copy from Staff root / APM:
 
-**Backend `.env` file** (in `finance/` directory):
-```env
-# Backend Server Configuration
-PORT=3003
-NODE_ENV=development
-SESSION_SECRET=your-secret-key-here
-CLIENT_URL=http://localhost:3002
-CI_BASE_URL=http://localhost/staff
-ASSETS_BASE_PATH=/opt/homebrew/var/www/staff
+| Variable | Purpose |
+|----------|---------|
+| `APP_URL` | e.g. `http://localhost/staff/finance` |
+| `JWT_SECRET` | Must match Staff root `.env` |
+| `BASE_URL` | e.g. `http://localhost/staff/` |
+| `FINANCE_ASSETS_BASE_URL` | e.g. `http://localhost/staff/apm` (theme CSS) |
+| `STAFF_API_*` | CBP Modules Share API |
 
-# Database Configuration
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USERNAME=root
-DB_PASSWORD=your-password
-DB_DATABASE=approvals_management
-DB_CHARSET=utf8mb4
-```
-
-**Frontend `frontend/.env` file** (in `finance/frontend/` directory):
-```env
-# Frontend React App Configuration
-PORT=3002
-REACT_APP_API_URL=http://localhost:3003/api
-REACT_APP_CI_BASE_URL=http://localhost/staff
-```
-
-> **Note:** The `setup.sh` script will automatically create both `.env` files with default values. You can then edit them as needed.
-
-### 4. Run the Application
-
-#### Development Mode (Run both server and client)
-
-You can run from either location:
-
-**From root `finance/` directory:**
-```bash
-npm run dev:all
-```
-
-**From `finance/frontend/` directory:**
-```bash
-npm run dev:all
-```
-
-This will start:
-- Node.js server on `http://localhost:3003` (with blue prefix)
-- React app on `http://localhost:3002` (with green prefix)
-
-#### Or run separately:
-
-**From root directory:**
-
-**Terminal 1 - Server:**
-```bash
-npm run dev
-```
-
-**Terminal 2 - Frontend:**
-```bash
-npm run client
-```
-
-**From frontend directory:**
-
-**Terminal 1 - Frontend:**
-```bash
-npm run dev
-```
-
-**Terminal 2 - Backend:**
-```bash
-npm run server
-```
-
-### 5. Production Build
+Optional theme symlink:
 
 ```bash
-# Build React app
-npm run client:build
-
-# Start server (serves built React app)
-NODE_ENV=production npm start
+ln -sf ../../apm/public/assets public/assets
 ```
 
-## Session Transfer from CodeIgniter
+### URLs (local)
 
-The app receives session data from the CodeIgniter home page via a token parameter:
+| What | URL |
+|------|-----|
+| SSO entry (Staff home tile) | `http://localhost/staff/finance/?token=…` |
+| Dashboard | `http://localhost/staff/finance/dashboard` |
 
-1. User clicks "Finance Management" card on the CI home page
-2. CI app generates a token with session data
-3. User is redirected to React app with token: `http://localhost:3002?token=...`
-4. React app decodes token and transfers session to Node.js server
-5. User is authenticated and can access the finance dashboard
+Apache rewrites `/staff/finance/*` through [`server.php`](./server.php) → [`public/index.php`](./public/index.php) (same pattern as APM).
 
-## API Endpoints
+### Development
 
-### Session Management
-- `POST /api/session/transfer` - Transfer session from CI app
-- `GET /api/session` - Get current session
-- `POST /api/auth/logout` - Logout (redirects to CI login)
-- `GET /api/ci-login-url` - Get CI login URL for redirects
+There is **no separate React app on port 3002** (that was the old Node/CRA stack). Finance is a single Laravel + Inertia app under `/staff/finance/`.
 
-### Finance Data
-- `GET /api/finance/data` - Get protected finance data (requires authentication)
+**Daily dev (Apache + built assets)** — recommended when testing Staff SSO:
 
-## Styling
+```bash
+cd finance
+npm run build    # after JS/CSS changes
+```
 
-The app uses Bootstrap 5 and custom CSS matching the Laravel/CodeIgniter UI:
-- Primary color: `#119a48` (green)
-- Secondary color: `#9f2240` (red)
-- Font: Inter, Roboto, system fonts
+Then open `http://localhost/staff/finance/dashboard` (hard-refresh if the page was blank after an old build).
 
-## Development Notes
+**Hot reload (optional)** — Vite on port **5173**, not 3002:
 
-- The React app proxies API requests to `http://localhost:3003` in development
-- Sessions are stored using `express-session`
-- CORS is enabled for development (configure for production)
-- The app matches the design patterns from `home.php` in the CI app
+```bash
+cd finance
+npm run dev      # writes public/hot; @vite loads from :5173
+```
 
-## 📚 Documentation
+Keep using Apache at `APP_URL` for SSO; only use `composer run dev` if you run Laravel’s built-in server instead of Apache.
 
-> **Complete Documentation**: See [documentation/README.md](./documentation/README.md) for all guides, setup instructions, and troubleshooting.
+If `npm run build` fails with `EACCES` on `public/build/`, fix ownership: `sudo chown -R $(whoami):staff public/build`.
 
-### Quick Links
+---
 
-- **[Frontend Architecture](./documentation/FRONTEND_ARCHITECTURE.md)** - React app architecture and structure
-- **[Server Architecture](./documentation/SERVER_ARCHITECTURE.md)** - Node.js server architecture and patterns
-- **[Migrations Guide](./documentation/MIGRATIONS.md)** - Database migrations with Sequelize
-- **[Session Implementation](./documentation/SESSION_IMPLEMENTATION.md)** - Session transfer from CI app
+## Authentication
 
-### Related Documentation
+1. User signs in on Staff (`/staff/auth`).
+2. Home opens Finance with `?token=` (JWT or legacy base64, same as APM).
+3. `GET /` stores session and redirects to `/dashboard`.
+4. Permission **92** required (`FINANCE_SSO_PERMISSION_ID`).
 
-- **APM (Approvals Management) Documentation**: [`../apm/documentation/`](../apm/documentation/) - Laravel-based Approvals Management System documentation
+---
 
+## Project layout
+
+```
+finance/
+├── app/                  # HTTP, services (CBP nav, SSO)
+├── resources/js/         # Inertia + React (APM-style layout)
+├── routes/web.php
+├── public/               # Web root + Vite build
+├── .htaccess             # Rewrites to public/ and server.php
+├── server.php
+├── documentation/
+└── setup.sh
+```
+
+---
+
+## Pages
+
+| Route | Status |
+|-------|--------|
+| `/dashboard` | Starter UI |
+| `/my-advances`, `/my-missions`, `/budgets` | Placeholders |
+
+Add screens: route in `routes/web.php` + `resources/js/Pages/*.jsx` using `AppLayout`.
+
+---
+
+## Documentation
+
+- [Quick start](./documentation/QUICKSTART.md)
+- [Apache](./documentation/APACHE.md)
+- [Authentication](./documentation/AUTHENTICATION.md)
+- [Laravel + Inertia](./documentation/LARAVEL_INERTIA.md)
+
+Related: [APM documentation](../apm/documentation/)
+
+---
+
+## Production
+
+1. `APP_URL=https://<host>/staff/finance`
+2. `composer install --no-dev`, `npm run build`, `php artisan migrate --force`
+3. Align `cbp_modules` production URL for `finance_management`
+4. Match `JWT_SECRET` and `STAFF_API_*` with Staff/APM

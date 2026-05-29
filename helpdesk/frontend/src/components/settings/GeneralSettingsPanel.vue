@@ -467,11 +467,6 @@ function roleLabel(c: CandidateRow): string {
         </p>
       </div>
 
-      <label class="row">
-        <input v-model="ctx.form.require_resolution_confirmation" type="checkbox" />
-        Require requester email confirmation before a ticket is fully resolved
-      </label>
-
       <div class="actions">
         <button type="button" class="primary" :disabled="ctx.busy" @click="saveGeneral()">
           {{ ctx.busy ? "Saving…" : "Save general" }}

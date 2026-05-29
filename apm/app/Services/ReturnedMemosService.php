@@ -250,15 +250,14 @@ class ReturnedMemosService
     }
 
     /**
-     * Get returned single memos (includes draft status since returned single memos become draft for immediate editing)
+     * Get returned single memos (overall_status = returned only; same rule as other memo types).
      */
     protected function getReturnedSingleMemos(): Collection
     {
         $query = Activity::with(['division', 'staff', 'forwardWorkflow'])
             ->where('is_single_memo', true);
 
-        // Show returned single memos (status = 'returned' or 'draft' for single memos) and staff_id OR responsible_person_id matches OR division staff
-        $query->whereIn('overall_status', ['returned', 'draft'])
+        $query->where('overall_status', 'returned')
               ->where(function($q) {
                   // First check if user is the owner (staff_id) - regardless of division
                   $q->where('staff_id', $this->currentStaffId)

@@ -1,3 +1,5 @@
+/setup.env
+/frontend/.env.production.local
 /.npm-cache
 /node_modules
 /backend/.composer-cache

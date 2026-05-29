@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'failover'),
+    'default' => env('MAIL_MAILER', env('USE_EXCHANGE_EMAIL', false) ? 'exchange' : 'log'),
 
     /*
     |--------------------------------------------------------------------------
@@ -77,6 +77,10 @@ return [
 
         'array' => [
             'transport' => 'array',
+        ],
+
+        'exchange' => [
+            'transport' => 'exchange',
         ],
 
         'failover' => [

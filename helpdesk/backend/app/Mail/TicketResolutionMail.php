@@ -15,14 +15,13 @@ class TicketResolutionMail extends Mailable
 
     public function __construct(
         public HelpdeskTicket $ticket,
-        public string $confirmUrl,
-        public bool $requiresConfirmation,
+        public string $ticketUrl,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'IT Service Desk — '.$this->ticket->ticket_number.' update',
+            subject: 'IT Service Desk — '.$this->ticket->ticket_number.' closed',
         );
     }
 

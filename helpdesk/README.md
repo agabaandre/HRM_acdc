@@ -25,18 +25,11 @@ Both the **Laravel API** and the built **Vue SPA** are served by **Apache** — 
 
 ```bash
 cd helpdesk
+cp setup.env.example setup.env   # first time: set DB_* and JWT_SECRET
 ./setup.sh
-# Backend (one-off): install deps + configure env + run migrations
-cd backend \
-  && composer install \
-  && cp .env.example .env \
-  && php artisan key:generate \
-  && php artisan migrate --seed
-# Frontend: install + build the SPA Apache serves at /staff/helpdesk/
-cd ../frontend \
-  && npm install --cache ./.npm-cache --legacy-peer-deps \
-  && npm run build
 ```
+
+`setup.sh` writes `backend/.env` from `setup.env` (MySQL, URLs, JWT), runs migrations, builds the SPA, and on **Linux** installs **systemd** units (queue + scheduler) when `INSTALL_SYSTEMD=auto`.
 
 Smoke-test:
 
@@ -75,6 +68,10 @@ For end-user traffic, however, the Apache-served `/staff/helpdesk/` is the canon
 | API base URL | `helpdesk/frontend/.env.production` `VITE_HELPDESK_API_BASE_URL` | `/staff/helpdesk/backend` so axios calls resolve to the Apache-served API on the same host. |
 | Laravel APP_URL | `helpdesk/backend/.env` `APP_URL` | `http://localhost/staff/helpdesk/backend` locally; `https://<host>/staff/helpdesk/backend` in prod. |
 | Portal hand-off | `application/modules/home/controllers/Home.php` | Builds `<host>/staff/helpdesk?token=…` (override the subpath via `HELPDESK_SPA_PATH` env). |
+
+## Production: systemd (boot + auto-restart)
+
+`./setup.sh` installs systemd on Linux automatically (`INSTALL_SYSTEMD=auto` in `setup.env`). Manual install: [`documentation/SYSTEMD.md`](./documentation/SYSTEMD.md) or `sudo ./deploy/systemd/install.sh`.
 
 ## Composer cache (sandboxed environments)
 

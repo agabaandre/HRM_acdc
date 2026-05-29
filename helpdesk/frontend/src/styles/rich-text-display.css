@@ -1,0 +1,104 @@
+/**
+ * Quill output shown via v-html (KB, tickets) is outside `.ql-editor`.
+ * Mirror Snow theme alignment, indent, font, and size classes here.
+ */
+.rich-text-content {
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.rich-text-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.rich-text-content .ql-align-center {
+  text-align: center;
+}
+
+.rich-text-content .ql-align-right {
+  text-align: right;
+}
+
+.rich-text-content .ql-align-justify {
+  text-align: justify;
+}
+
+.rich-text-content .ql-indent-1 {
+  padding-left: 3em;
+}
+.rich-text-content .ql-indent-2 {
+  padding-left: 6em;
+}
+.rich-text-content .ql-indent-3 {
+  padding-left: 9em;
+}
+.rich-text-content .ql-indent-4 {
+  padding-left: 12em;
+}
+.rich-text-content .ql-indent-5 {
+  padding-left: 15em;
+}
+.rich-text-content .ql-indent-6 {
+  padding-left: 18em;
+}
+.rich-text-content .ql-indent-7 {
+  padding-left: 21em;
+}
+.rich-text-content .ql-indent-8 {
+  padding-left: 24em;
+}
+.rich-text-content .ql-indent-9 {
+  padding-left: 27em;
+}
+
+.rich-text-content .ql-direction-rtl {
+  direction: rtl;
+  text-align: inherit;
+}
+
+.rich-text-content .ql-font-serif {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.rich-text-content .ql-font-monospace {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.rich-text-content .ql-size-small {
+  font-size: 0.75em;
+}
+
+.rich-text-content .ql-size-large {
+  font-size: 1.25em;
+}
+
+.rich-text-content .ql-size-huge {
+  font-size: 1.5em;
+}
+
+.rich-text-content blockquote {
+  border-left: 4px solid #94a3b8;
+  margin: 0.5rem 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  color: #475569;
+}
+
+.rich-text-content pre.ql-syntax,
+.rich-text-content pre {
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+}
+
+.rich-text-content iframe.ql-video {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 8px;
+}

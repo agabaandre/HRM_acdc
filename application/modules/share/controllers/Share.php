@@ -464,6 +464,68 @@ public function get_current_staff(){
 }
 
 /**
+ * CBP modules nav (permission-gated links from cbp_modules table).
+ * GET /share/cbp_modules/{token}?staff_id=1&exclude_module_key=helpdesk_itsm&active_module_key=helpdesk_itsm
+ */
+public function cbp_modules()
+{
+	if (!$this->api_login()) {
+		header('Content-Type: application/json');
+		http_response_code(401);
+		echo json_encode(array('success' => false, 'error' => 'Authentication Failed! Invalid Request'));
+
+		return;
+	}
+	$staffId = (int) $this->input->get('staff_id');
+	if ($staffId < 1) {
+		header('Content-Type: application/json');
+		http_response_code(400);
+		echo json_encode(array('success' => false, 'error' => 'staff_id parameter is required'));
+
+		return;
+	}
+	try {
+		$this->db->select('user.user_id, user.name, user.role, user.auth_staff_id, staff.staff_id, staff.fname, staff.lname, staff.work_email, staff.SAPNO AS sap_no');
+		$this->db->from('user');
+		$this->db->join('staff', 'staff.staff_id = user.auth_staff_id', 'inner');
+		$this->db->where('staff.staff_id', $staffId);
+		$this->db->limit(1);
+		$userRow = $this->db->get()->row();
+		if (!$userRow) {
+			header('Content-Type: application/json');
+			http_response_code(404);
+			echo json_encode(array('success' => false, 'error' => 'Staff member not found or has no portal user account'));
+
+			return;
+		}
+		$this->load->model('staff/staff_mdl');
+		$this->load->model('auth/auth_mdl', 'auth_mdl');
+		$this->load->model('cbp_modules_mdl');
+		$contract = $this->staff_mdl->get_latest_contracts($staffId);
+		$session = array_merge((array) $userRow, (array) $contract);
+		unset($session['password']);
+		$permCsv = trim((string) $this->input->get('permission_ids'));
+		if ($permCsv !== '') {
+			$session['permissions'] = array_values(array_filter(array_map('trim', explode(',', $permCsv))));
+		} else {
+			$session['permissions'] = $this->auth_mdl->user_permissions($session['role'], $session['user_id']);
+		}
+		$session['base_url'] = base_url();
+		$userObj = (object) $session;
+		$exclude = trim((string) $this->input->get('exclude_module_key'));
+		$active = trim((string) $this->input->get('active_module_key'));
+		$payload = $this->cbp_modules_mdl->get_api_nav_payload($userObj, $session, $exclude, $active);
+		header('Content-Type: application/json');
+		http_response_code(200);
+		echo json_encode(array('success' => true, 'data' => $payload));
+	} catch (Exception $e) {
+		header('Content-Type: application/json');
+		http_response_code(500);
+		echo json_encode(array('success' => false, 'error' => 'Database error: ' . $e->getMessage()));
+	}
+}
+
+/**
  * Get users (for API consumers e.g. APM sync).
  * Returns user records with email from staff.work_email. Optional limit/start for pagination.
  * GET /share/users?limit=100&start=0

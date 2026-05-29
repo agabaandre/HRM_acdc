@@ -1,0 +1,23 @@
+[Unit]
+Description=Africa CDC Helpdesk — Laravel queue worker
+Documentation=file:///var/www/staff/helpdesk/documentation/SYSTEMD.md
+PartOf=helpdesk.target
+After=network-online.target
+# After=apache2.service
+# After=httpd.service
+
+[Service]
+Type=simple
+User=@HELPDESK_USER@
+Group=@HELPDESK_GROUP@
+ExecStart=@HELPDESK_DEPLOY_BIN@/helpdesk-queue.sh
+
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+UMask=0002
+
+[Install]
+WantedBy=helpdesk.target multi-user.target

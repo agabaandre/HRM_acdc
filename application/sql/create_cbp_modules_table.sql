@@ -72,7 +72,7 @@ INSERT IGNORE INTO `cbp_modules` (
   'Finance Management',
   'Manage financial reports, invoices, budgets, transactions, and vendor information.',
   '',
-  'http://localhost:3002',
+  'http://localhost/staff/finance',
   NULL,
   'fa-wallet',
   '92',

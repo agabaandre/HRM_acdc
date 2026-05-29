@@ -81,8 +81,13 @@ class StaffSsoController extends Controller
             $role = HelpdeskProfile::ROLE_AGENT;
         }
 
+        $portalRole = isset($payload['role']) ? (int) $payload['role'] : null;
+        $portalPermissions = $this->normalizePermissionList($payload['permissions'] ?? null);
+
         $profileAttrs = [
             'staff_id' => $staffId,
+            'staff_portal_role' => $portalRole > 0 ? $portalRole : null,
+            'staff_portal_permissions' => $portalPermissions !== [] ? $portalPermissions : null,
             'role' => $role,
             'directorate_id' => isset($payload['directorate_id']) ? (int) $payload['directorate_id'] : null,
             'division_id' => isset($payload['division_id']) ? (int) $payload['division_id'] : null,

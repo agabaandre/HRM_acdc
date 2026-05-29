@@ -4,8 +4,10 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
+use App\Services\HtmlSanitizer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreTicketRequest extends FormRequest
 {
@@ -23,7 +25,7 @@ class StoreTicketRequest extends FormRequest
 
         return [
             'category_id' => ['required', 'integer', 'exists:helpdesk_categories,id'],
-            'description' => ['nullable', 'string', 'max:65000'],
+            'description' => ['required', 'string', 'max:65000'],
             'priority' => [
                 Rule::prohibitedIf(fn () => $this->user()?->helpdeskProfile?->role === HelpdeskProfile::ROLE_USER),
                 'nullable',
@@ -38,5 +40,20 @@ class StoreTicketRequest extends FormRequest
                 'min:1',
             ],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            if ($v->errors()->has('description')) {
+                return;
+            }
+            if (HtmlSanitizer::sanitize($this->input('description')) === null) {
+                $v->errors()->add(
+                    'description',
+                    'A description is required. Add text or images in the editor.',
+                );
+            }
+        });
     }
 }

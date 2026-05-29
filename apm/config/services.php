@@ -46,6 +46,7 @@ return [
             'divisions' => '/share/divisions',
             'directorates' => '/share/directorates',
             'users' => '/share/users',
+            'cbp_modules' => '/share/cbp_modules',
         ],
     ],
 

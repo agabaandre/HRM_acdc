@@ -4,6 +4,12 @@ import { RouterLink } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
+import {
+  formatTableCountLabel,
+  priorityMeta,
+  rowIndex,
+  statusMeta,
+} from '../lib/ticketTableMeta'
 
 interface AssigneeBrief {
   id: number
@@ -33,12 +39,13 @@ const lastPage = ref(1)
 
 const hasPrev = computed(() => page.value > 1)
 const hasNext = computed(() => page.value < lastPage.value)
-const rangeLabel = computed(() => {
-  if (total.value === 0) return '0 results'
-  const start = (page.value - 1) * perPage.value + 1
-  const end = Math.min(total.value, page.value * perPage.value)
-  return `${start}-${end} of ${total.value}`
-})
+const tableCountLabel = computed(() =>
+  formatTableCountLabel(rows.value.length, total.value, page.value, perPage.value),
+)
+
+function counterFor(idx: number): number {
+  return rowIndex(page.value, perPage.value, idx)
+}
 
 async function load() {
   err.value = null
@@ -105,60 +112,80 @@ onMounted(load)
             <option :value="100">100</option>
           </select>
         </label>
-        <span class="muted">{{ rangeLabel }}</span>
       </div>
     </div>
     <p v-if="err" class="err">{{ err }}</p>
-    <div v-else class="cbp-card tbl-wrap">
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Subject</th>
-            <th>Requester</th>
-            <th>Assigned to</th>
-            <th>Status</th>
-            <th>Priority</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading">
-            <td colspan="6" class="muted">Loading…</td>
-          </tr>
-          <tr v-for="t in rows" :key="t.id">
-            <td>
-              <RouterLink :to="'/tickets/' + t.id">{{ t.ticket_number }}</RouterLink>
-            </td>
-            <td>
-              <RouterLink :to="'/tickets/' + t.id" class="subj-link">{{ t.subject }}</RouterLink>
-            </td>
-            <td>
-              <div class="cell-person">
-                <CbpAvatar
-                  size="sm"
-                  :name="t.requester_name || 'Requester'"
-                  :image-url="null"
-                />
-                <span class="person-name">{{ t.requester_name || '—' }}</span>
-              </div>
-            </td>
-            <td>
-              <div v-if="t.assignee" class="cell-person">
-                <CbpAvatar size="sm" :name="t.assignee.name" :image-url="t.assignee.avatar_url ?? null" />
-                <span class="person-name">{{ t.assignee.name }}</span>
-              </div>
-              <span v-else class="muted">—</span>
-            </td>
-            <td>{{ t.status }}</td>
-            <td>{{ t.priority }}</td>
-          </tr>
-          <tr v-if="!loading && rows.length === 0">
-            <td colspan="6" class="muted">
-              No tickets yet — create one from <RouterLink to="/tickets/new">New ticket</RouterLink>.
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-else class="cbp-card table-section">
+      <p class="table-count" role="status">
+        Showing <strong>{{ tableCountLabel }}</strong>
+      </p>
+      <div class="table-scroll">
+        <table class="ticket-table">
+          <thead>
+            <tr>
+              <th class="col-idx" scope="col">#</th>
+              <th class="col-id" scope="col">Ticket</th>
+              <th class="col-subj" scope="col">Subject</th>
+              <th class="col-req" scope="col">Requester</th>
+              <th class="col-assignee" scope="col">Assigned to</th>
+              <th class="col-status" scope="col">Status</th>
+              <th class="col-priority" scope="col">Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="loading">
+              <td colspan="7" class="cell-loading">Loading…</td>
+            </tr>
+            <template v-else>
+            <tr v-for="(t, idx) in rows" :key="t.id">
+              <td class="col-idx">
+                <span class="row-counter">{{ counterFor(idx) }}</span>
+              </td>
+              <td class="col-id">
+                <RouterLink :to="`/tickets/${t.id}`" class="ticket-link">{{ t.ticket_number }}</RouterLink>
+              </td>
+              <td class="col-subj">
+                <RouterLink :to="`/tickets/${t.id}`" class="row-subj-line">{{ t.subject }}</RouterLink>
+              </td>
+              <td class="col-req">
+                <div class="row-person">
+                  <CbpAvatar size="sm" :name="t.requester_name || 'Requester'" :image-url="null" />
+                  <span class="row-person-name">{{ t.requester_name || '—' }}</span>
+                </div>
+              </td>
+              <td class="col-assignee">
+                <div v-if="t.assignee" class="row-person">
+                  <CbpAvatar size="sm" :name="t.assignee.name" :image-url="t.assignee.avatar_url ?? null" />
+                  <span class="row-person-name">{{ t.assignee.name }}</span>
+                </div>
+                <span v-else class="cell-empty">—</span>
+              </td>
+              <td class="col-status">
+                <span
+                  class="pill"
+                  :style="{ background: statusMeta(t.status).bg, color: statusMeta(t.status).color }"
+                >
+                  {{ statusMeta(t.status).label }}
+                </span>
+              </td>
+              <td class="col-priority">
+                <span
+                  class="pill"
+                  :style="{ background: priorityMeta(t.priority).bg, color: priorityMeta(t.priority).color }"
+                >
+                  {{ priorityMeta(t.priority).label }}
+                </span>
+              </td>
+            </tr>
+            <tr v-if="rows.length === 0">
+              <td colspan="7" class="cell-empty-msg">
+                No tickets yet — create one from <RouterLink to="/tickets/new">New ticket</RouterLink>.
+              </td>
+            </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
       <div class="pager">
         <button type="button" :disabled="!hasPrev || loading" @click="page -= 1; load()">Previous</button>
         <span>Page {{ page }} of {{ lastPage }}</span>
@@ -204,11 +231,6 @@ onMounted(load)
   background: #fff;
   color: #334155;
 }
-.meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
 .meta label {
   display: flex;
   align-items: center;
@@ -221,48 +243,8 @@ onMounted(load)
   border-radius: 8px;
   padding: 0.25rem 0.5rem;
 }
-.tbl-wrap {
-  overflow-x: auto;
-}
-.tbl {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-}
-th,
-td {
-  border: 1px solid #e2e8f0;
-  padding: 0.5rem 0.65rem;
-  text-align: left;
-  vertical-align: middle;
-}
-th {
-  background: #f1f5f9;
-}
-.cell-person {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-.person-name {
-  font-size: 0.88rem;
-  color: #334155;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 12rem;
-}
-.subj-link {
-  color: #0d7a3a;
-  font-weight: 600;
-  text-decoration: none;
-}
-.subj-link:hover {
-  text-decoration: underline;
-}
-.muted {
-  color: #64748b;
+.table-section {
+  padding: 1rem 1.1rem;
 }
 .err {
   color: #b91c1c;

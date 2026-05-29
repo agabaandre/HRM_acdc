@@ -190,7 +190,7 @@ onMounted(() => {
                 <span class="kb-caret" aria-hidden="true">{{ isExpanded(a.id) ? '−' : '+' }}</span>
               </button>
               <div v-if="isExpanded(a.id)" class="kb-answer">
-                <div v-if="isHtml(a.answer)" class="kb-answer-body" v-html="a.answer"></div>
+                <div v-if="isHtml(a.answer)" class="kb-answer-body rich-text-content" v-html="a.answer"></div>
                 <p v-else class="kb-answer-body kb-answer-plain">{{ a.answer }}</p>
               </div>
             </li>

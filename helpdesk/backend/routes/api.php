@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Admin\HelpdeskSettingsController;
 use App\Http\Controllers\Api\V1\Auth\ExchangeTokenController;
 use App\Http\Controllers\Api\V1\Auth\StaffSsoController;
 use App\Http\Controllers\Api\V1\AvatarController;
+use App\Http\Controllers\Api\V1\CbpModulesController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\KbArticleController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\V1\PublicScreenController;
 use App\Http\Controllers\Api\V1\PublicTicketResolutionController;
 use App\Http\Controllers\Api\V1\ReferenceDataController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\RichTextImageController;
 use App\Http\Controllers\Api\V1\TicketAttachmentController;
 use App\Http\Controllers\Api\V1\TicketCommentController;
 use App\Http\Controllers\Api\V1\TicketController;
@@ -46,8 +48,10 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', MeController::class);
         Route::put('/me/work-mode', [MeWorkModeController::class, 'update']);
+        Route::get('/cbp-modules', CbpModulesController::class);
         Route::get('/reference-data', [ReferenceDataController::class, 'index']);
         Route::get('/reference-data/staff', [ReferenceDataController::class, 'staff']);
+        Route::post('/rich-text-images', [RichTextImageController::class, 'store']);
 
         // Knowledge base — readable by any signed-in helpdesk user.
         Route::get('/kb/articles', [KbArticleController::class, 'index']);
@@ -69,6 +73,7 @@ Route::prefix('v1')->group(function () {
         Route::post('tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store']);
         Route::post('tickets/{ticket}/inline-images', [TicketInlineImageController::class, 'store']);
         Route::post('tickets/{ticket}/submit-resolution', [TicketResolutionController::class, 'submit']);
+        Route::post('tickets/{ticket}/reopen', [TicketController::class, 'reopen']);
 
         Route::get('/reports/agent-dashboard', [ReportController::class, 'agentDashboard']);
         Route::get('/reports/my-requester', [ReportController::class, 'myRequesterReport']);

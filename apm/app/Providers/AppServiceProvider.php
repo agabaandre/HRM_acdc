@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\WeeklyBriefingReport;
+use App\Services\CbpModulesNavService;
 use App\Services\CbpPlatformMenuService;
 use App\Services\DivisionWeeklyBriefGate;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,11 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.partials.nav', function ($view) {
             $view->with('cbpPlatformNavItems', CbpPlatformMenuService::primaryNavItems());
             $view->with('showDivisionWeeklyBriefNav', DivisionWeeklyBriefGate::canAccessModule());
+        });
+
+        View::composer('layouts.partials.header', function ($view) {
+            $view->with('cbpModulesNav', CbpModulesNavService::headerNav());
+            $view->with('staffWebBaseUrl', CbpModulesNavService::staffWebBaseUrl());
         });
     }
 }

@@ -117,7 +117,7 @@ Artisan::command('jobs:test-returned-memos', function () {
         $matrixStaffIds = \App\Models\Matrix::where('overall_status', 'returned')->pluck('staff_id')->unique();
         $specialMemoStaffIds = \App\Models\SpecialMemo::where('overall_status', 'returned')->pluck('responsible_person_id')->unique();
         $nonTravelStaffIds = \App\Models\NonTravelMemo::where('overall_status', 'returned')->pluck('staff_id')->unique();
-        $singleMemoStaffIds = \App\Models\Activity::where('is_single_memo', true)->whereIn('overall_status', ['returned', 'draft'])->pluck('staff_id')->merge(\App\Models\Activity::where('is_single_memo', true)->whereIn('overall_status', ['returned', 'draft'])->pluck('responsible_person_id'))->unique();
+        $singleMemoStaffIds = \App\Models\Activity::where('is_single_memo', true)->where('overall_status', 'returned')->pluck('staff_id')->merge(\App\Models\Activity::where('is_single_memo', true)->where('overall_status', 'returned')->pluck('responsible_person_id'))->unique();
         $serviceRequestStaffIds = \App\Models\ServiceRequest::where('overall_status', 'returned')->pluck('staff_id')->unique();
         $arfStaffIds = \App\Models\RequestARF::where('overall_status', 'returned')->pluck('staff_id')->unique();
         $changeRequestStaffIds = \App\Models\ChangeRequest::where('overall_status', 'returned')->pluck('responsible_person_id')->unique();

@@ -1,0 +1,13 @@
+[Unit]
+Description=Africa CDC Helpdesk — Laravel scheduler (one shot)
+Documentation=file:///var/www/staff/helpdesk/documentation/SYSTEMD.md
+PartOf=helpdesk.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=@HELPDESK_USER@
+Group=@HELPDESK_GROUP@
+ExecStart=@HELPDESK_DEPLOY_BIN@/helpdesk-scheduler.sh
+
+UMask=0002

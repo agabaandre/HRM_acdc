@@ -121,7 +121,7 @@ class CbpPlatformMenuService
             if ($isLocal) {
                 $devBase = trim((string) ($row->base_url_development ?? ''), '/');
                 if ($devBase === '') {
-                    $devBase = 'http://localhost:3002';
+                    $devBase = 'http://localhost/staff/finance';
                 }
                 if (! preg_match('#^https?://#i', $devBase)) {
                     $devBase = 'http://'.$devBase;

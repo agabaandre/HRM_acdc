@@ -1,67 +1,37 @@
-# Authentication Flow
+# Authentication
 
-The finance app does not have its own login page. All authentication is handled by the CodeIgniter (CI) application.
+Finance has no standalone login page. Users authenticate on the **Staff** portal (CodeIgniter), then open Finance via SSO.
 
-## Authentication Flow
+## Flow
 
-1. **User Access Without Session:**
-   - User tries to access the finance app directly (e.g., `http://localhost:3002`)
-   - App checks for existing session
-   - If no session found, user is automatically redirected to CI login: `{CI_BASE_URL}/auth`
+1. User signs in at `{BASE_URL}/auth` (Staff).
+2. Home dashboard shows Finance for users with permission **92**.
+3. Staff builds a URL with `?token=` (JWT HS256 or legacy base64 JSON — same as APM).
+4. Finance `GET /` decodes the token, stores `user` and `permissions` in the Laravel session, redirects to `/dashboard`.
+5. `EnsureFinanceSession` middleware blocks routes without a valid session or permission 92.
+6. Logout: `GET /logout` clears the session and redirects to Staff logout.
 
-2. **User Access With Token:**
-   - User clicks "Finance Management" card on CI home page
-   - CI app generates a token with session data
-   - User is redirected to finance app with token: `http://localhost:3002?token=...`
-   - Finance app decodes token and transfers session to Node.js server
-   - User is authenticated and can access the dashboard
-
-3. **Session Transfer:**
-   - Token contains base64-encoded JSON with user session data
-   - Finance app decodes token and sends to `/api/session/transfer`
-   - Node.js server stores session in Express session
-   - User is authenticated
-
-4. **Logout:**
-   - User clicks logout in finance app
-   - Session is destroyed on Node.js server
-   - User is redirected to CI login page
-
-## Configuration
-
-Set the CI base URL in your `.env` file:
+## Configuration (`.env` in `finance/`)
 
 ```env
-CI_BASE_URL=http://localhost/staff
+JWT_SECRET=<exact copy from Staff root .env>
+BASE_URL=http://localhost/staff/
+FINANCE_SSO_PERMISSION_ID=92
 ```
 
-Or in React app:
+## Token format
 
-```env
-REACT_APP_CI_BASE_URL=http://localhost/staff
-```
+- **JWT:** three segments, signed with `JWT_SECRET`, optional `exp` claim.
+- **Legacy:** base64-encoded JSON payload (backward compatible with older Staff hand-offs).
 
-## Redirect Behavior
+## Redirects
 
-The app will redirect to CI login in the following scenarios:
+| Condition | Result |
+|-----------|--------|
+| No token, no session | Redirect to `{BASE_URL}/auth/login` |
+| Invalid or expired token | Redirect to Staff login |
+| Valid session, missing permission 92 | HTTP 403 |
 
-- No session found when accessing the app
-- Session transfer fails
-- Session check fails
-- User explicitly logs out
-- Session expires
+## CBP Modules
 
-## API Responses
-
-All session-related API endpoints now include a `redirectUrl` field in error responses:
-
-```json
-{
-  "authenticated": false,
-  "message": "No active session",
-  "redirectUrl": "http://localhost/staff/auth"
-}
-```
-
-This allows the frontend to redirect users to the CI login page when authentication fails.
-
+After login, the top bar loads permitted modules from Staff Share API (`STAFF_API_USERNAME` / `PASSWORD`), with Finance marked active via `finance_management`.

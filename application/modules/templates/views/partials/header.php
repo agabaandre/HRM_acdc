@@ -53,123 +53,35 @@
 			<div class="top-menu ms-auto">
 				<ul class="navbar-nav align-items-center">
 					<?php
-					// Prepare session data for token generation
 					$sessionobj = $this->session->userdata('user');
-					$permissions = $sessionobj->permissions;
-					$session = (array) $sessionobj;
-					$session['base_url'] = base_url();
-					$jwtSecret = trim((string) ($_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET') ?? $this->config->item('encryption_key')));
-					$base64url = function ($value) {
-						return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
-					};
-					$buildSsoToken = function (array $payload) use ($jwtSecret, $base64url) {
-						if ($jwtSecret === '') {
-							return base64_encode(json_encode($payload));
-						}
-						$now = time();
-						$payload['iat'] = $now;
-						$payload['exp'] = $now + 7200;
-						$header = ['alg' => 'HS256', 'typ' => 'JWT'];
-						$h = $base64url(json_encode($header));
-						$p = $base64url(json_encode($payload));
-						$s = hash_hmac('sha256', $h . '.' . $p, $jwtSecret, true);
-						return $h . '.' . $p . '.' . $base64url($s);
-					};
-					
-					// APM URL
-					$apmToken = '';
-					$apmUrl = '';
-					if (in_array('85', $permissions)) {
-						$apmToken = rawurlencode($buildSsoToken($session));
-						$apmUrl = $session['base_url'] . 'apm?token=' . $apmToken;
-					}
-					
-					// Finance URL: Use domain/finance in production (reverse proxy), localhost:3002 in development
-					// Only show Finance link if user has permission 92
-					$financeUrl = '';
-					if (in_array('92', $permissions)) {
-						$host = $_SERVER['HTTP_HOST'] ?? '';
-						$financeToken = rawurlencode($buildSsoToken($session));
-						if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
-							$financeUrl = 'http://localhost:3002?token=' . $financeToken;
-						} else {
-							// In production, use the domain directly with /finance/ (reverse proxy)
-							$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-							$financeUrl = $scheme . '://' . $host . '/finance?token=' . $financeToken;
+					$cbp_current_uri = trim((string) $this->uri->uri_string(), '/');
+					$cbp_nav_home = [
+						'id' => 'cbp_home',
+						'label' => 'CBP Home',
+						'description' => '',
+						'href' => site_url('home/index'),
+						'is_active' => ($cbp_current_uri === 'home/index' || $cbp_current_uri === 'home'),
+					];
+					$cbp_nav_modules = [];
+					if ($sessionobj) {
+						$session = (array) $sessionobj;
+						$session['base_url'] = base_url();
+						$this->load->model('cbp_modules_mdl');
+						if ($this->cbp_modules_mdl->table_exists()) {
+							$this->cbp_modules_mdl->seed_defaults_if_empty();
+							$cbp_payload = $this->cbp_modules_mdl->get_api_nav_payload(
+								$sessionobj,
+								$session,
+								'',
+								'',
+								$cbp_current_uri
+							);
+							$cbp_nav_home = $cbp_payload['home'];
+							$cbp_nav_modules = $cbp_payload['modules'];
 						}
 					}
+					include __DIR__ . '/cbp_modules_dropdown.php';
 					?>
-					
-					<!-- APM Link -->
-					<?php if (in_array('85', $permissions)) : ?>
-					<li class="nav-item">
-						<a 
-							class="nav-link" 
-							href="<?= $apmUrl ?>"
-							target="_blank"
-							rel="noopener noreferrer"
-							style="font-size: 0.875rem;"
-						>
-							<i class='fa fa-sitemap' style="color:#FFF; font-size: 1.1rem;"></i>
-							<span class="ms-2 d-none d-md-inline" style="color:#FFF; font-size: 0.875rem;">APM</span>
-						</a>
-					</li>
-					<?php endif; ?>
-					
-					<!-- Finance Management Link -->
-					<?php if (in_array('92', $permissions) && !empty($financeUrl)) : ?>
-					<li class="nav-item">
-						<a 
-							class="nav-link" 
-							href="<?= $financeUrl ?>"
-							target="_blank"
-							rel="noopener noreferrer"
-							style="font-size: 0.875rem;"
-						>
-							<i class='bx bx-wallet' style="color:#FFF; font-size: 1.1rem;"></i>
-							<span class="ms-2 d-none d-md-inline" style="color:#FFF; font-size: 0.875rem;">Finance</span>
-						</a>
-					</li>
-					<?php endif; ?>
-					
-					<li class="nav-item  dropdown-large">
-						<a class="nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"> <i class='bx bx-category' style="color:#FFF;"></i>
-						</a>
-						<div class="dropdown-menu dropdown-menu-end">
-							<div class="row row-cols-3 g-3 p-3">
-								<div class="col text-center">
-									<div class="app-box mx-auto bg-gradient-cosmic text-white"><i class='bx bx-group'></i>
-									</div>
-									<div class="app-title">Divisions</div>
-								</div>
-								<div class="col text-center">
-									<div class="app-box mx-auto bg-gradient-burning text-white"><i class='bx bx-atom'></i>
-									</div>
-									<div class="app-title">Projects</div>
-								</div>
-								<div class="col text-center">
-									<div class="app-box mx-auto bg-gradient-lush text-white"><i class='bx bx-shield'></i>
-									</div>
-									<div class="app-title">RCCS</div>
-								</div>
-								<div class="col text-center">
-									<div class="app-box mx-auto bg-gradient-kyoto text-dark"><i class='bx bx-notification'></i>
-									</div>
-									<div class="app-title">Leave</div>
-								</div>
-								<div class="col text-center">
-									<div class="app-box mx-auto bg-gradient-blues text-dark"><i class='bx bx-file'></i>
-									</div>
-									<div class="app-title">Appraisal</div>
-								</div>
-								<div class="col text-center">
-									<div class="app-box mx-auto bg-gradient-moonlit text-white"><i class='bx bx-filter-alt'></i>
-									</div>
-									<div class="app-title">Travel</div>
-								</div>
-							</div>
-						</div>
-					</li>
 
 					<!-- Notification Icon with Counter -->
 					<li class="nav-item dropdown" style="border:none !important;">
