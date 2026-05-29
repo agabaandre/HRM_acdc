@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import {
+  formatTableCountLabel,
+  priorityMeta,
+  rowIndex,
+  statusMeta,
+} from '../lib/ticketTableMeta'
 
 interface Counts {
   total_received: number
@@ -49,6 +55,7 @@ interface EligibleAgent {
 }
 
 const auth = useAuthStore()
+const router = useRouter()
 const err = ref<string | null>(null)
 const loading = ref(false)
 const counts = ref<Counts | null>(null)
@@ -281,38 +288,21 @@ const filteredRecent = computed<RecentRow[]>(() => {
   }
 })
 
-function statusMeta(status: string): { label: string; color: string; bg: string } {
-  switch (status) {
-    case 'open':
-      return { label: 'Open', color: '#1d4ed8', bg: '#dbeafe' }
-    case 'pending':
-      return { label: 'Pending', color: '#4338ca', bg: '#e0e7ff' }
-    case 'in_progress':
-      return { label: 'In progress', color: '#6d28d9', bg: '#ede9fe' }
-    case 'awaiting_requester_confirmation':
-      return { label: 'Awaiting confirm', color: '#b45309', bg: '#fef3c7' }
-    case 'resolved':
-      return { label: 'Resolved', color: '#15803d', bg: '#dcfce7' }
-    case 'closed':
-      return { label: 'Closed', color: '#334155', bg: '#e2e8f0' }
-    default:
-      return { label: status, color: '#334155', bg: '#e2e8f0' }
+const tableCountLabel = computed(() => {
+  const total = recent.value.length
+  const shown = filteredRecent.value.length
+  if (shown === total) {
+    return formatTableCountLabel(shown, total, 1, total || 1)
   }
-}
+  return `${shown} of ${total} ticket${total === 1 ? '' : 's'}`
+})
 
-function priorityMeta(priority: string): { label: string; color: string; bg: string } {
-  switch (priority) {
-    case 'urgent':
-      return { label: 'Urgent', color: '#991b1b', bg: '#fee2e2' }
-    case 'high':
-      return { label: 'High', color: '#9a3412', bg: '#ffedd5' }
-    case 'medium':
-      return { label: 'Medium', color: '#1e3a8a', bg: '#dbeafe' }
-    case 'low':
-      return { label: 'Low', color: '#334155', bg: '#e2e8f0' }
-    default:
-      return { label: priority, color: '#334155', bg: '#e2e8f0' }
-  }
+const activeFilterLabel = computed(() => {
+  return filterChips.value.find((c) => c.key === activeFilter.value)?.label ?? ''
+})
+
+function filteredRowCounter(idx: number): number {
+  return rowIndex(1, filteredRecent.value.length || 1, idx)
 }
 
 function relativeTime(iso?: string | null): string {
@@ -329,6 +319,10 @@ function relativeTime(iso?: string | null): string {
   const day = Math.round(hr / 24)
   if (day < 30) return diffSec >= 0 ? `${day}d ago` : `in ${day}d`
   return new Date(iso).toLocaleDateString()
+}
+
+function openTicket(id: number): void {
+  void router.push(`/tickets/${id}`)
 }
 
 function dueLabel(iso?: string | null): string {
@@ -542,61 +536,94 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <div v-if="filteredRecent.length" class="rows">
-          <RouterLink
-            v-for="r in filteredRecent"
-            :key="r.id"
-            :to="`/tickets/${r.id}`"
-            class="row"
-            :class="{ 'is-overdue': isOverdue(r) }"
-          >
-            <span class="row-num">
-              <span class="status-dot" :style="{ background: statusMeta(r.status).color }" aria-hidden="true" />
-              {{ r.ticket_number }}
-            </span>
-
-            <span class="row-subj">
-              <span class="row-subj-line">{{ r.subject }}</span>
-              <span v-if="r.category" class="row-cat">{{ r.category.name }}</span>
-            </span>
-
-            <span class="row-person">
-              <CbpAvatar size="sm" :name="r.requester_name || 'Requester'" :image-url="null" />
-              <span class="row-person-name">{{ r.requester_name ?? '—' }}</span>
-            </span>
-
-            <span class="pill" :style="{ background: statusMeta(r.status).bg, color: statusMeta(r.status).color }">
-              {{ statusMeta(r.status).label }}
-            </span>
-
-            <span class="pill" :style="{ background: priorityMeta(r.priority).bg, color: priorityMeta(r.priority).color }">
-              {{ priorityMeta(r.priority).label }}
-            </span>
-
-            <span class="row-time">
-              <span class="row-time-rel">{{ relativeTime(r.created_at) }}</span>
-              <span
-                v-if="r.sla_resolution_due_at"
-                class="row-time-sla"
-                :class="{ 'is-overdue': isOverdue(r) }"
-              >
-                {{ dueLabel(r.sla_resolution_due_at) }}
-              </span>
-            </span>
-
-            <span class="row-action">
-              <button
-                v-if="canReassignRow(r)"
-                type="button"
-                class="reassign-btn"
-                title="Reassign this ticket to another agent"
-                @click.stop.prevent="openReassign(r)"
-              >
-                Reassign
-              </button>
-              <span v-else class="row-arrow" aria-hidden="true">›</span>
-            </span>
-          </RouterLink>
+        <div v-if="filteredRecent.length" class="table-wrap">
+          <p class="table-count" role="status">
+            Showing <strong>{{ tableCountLabel }}</strong>
+            <span v-if="activeFilter !== 'all'" class="table-count-filter"> · filter: {{ activeFilterLabel }}</span>
+          </p>
+          <div class="table-scroll">
+            <table class="ticket-table">
+              <thead>
+                <tr>
+                  <th class="col-idx" scope="col">#</th>
+                  <th class="col-id" scope="col">Ticket</th>
+                  <th class="col-subj" scope="col">Subject</th>
+                  <th class="col-req" scope="col">Requester</th>
+                  <th class="col-status" scope="col">Status</th>
+                  <th class="col-priority" scope="col">Priority</th>
+                  <th class="col-time" scope="col">Activity</th>
+                  <th class="col-action" scope="col"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(r, idx) in filteredRecent"
+                  :key="r.id"
+                  class="ticket-row"
+                  :class="{ 'is-overdue': isOverdue(r) }"
+                  tabindex="0"
+                  role="link"
+                  :aria-label="`Open ticket ${r.ticket_number}`"
+                  @click="openTicket(r.id)"
+                  @keydown.enter="openTicket(r.id)"
+                >
+                  <td class="col-idx">
+                    <span class="row-counter">{{ filteredRowCounter(idx) }}</span>
+                  </td>
+                  <td class="col-id">
+                    <span class="row-num">
+                      <span class="status-dot" :style="{ background: statusMeta(r.status).color }" aria-hidden="true" />
+                      {{ r.ticket_number }}
+                    </span>
+                  </td>
+                  <td class="col-subj">
+                    <span class="row-subj-line">{{ r.subject }}</span>
+                    <span v-if="r.category" class="row-cat">{{ r.category.name }}</span>
+                  </td>
+                  <td class="col-req">
+                    <span class="row-person">
+                      <CbpAvatar size="sm" :name="r.requester_name || 'Requester'" :image-url="null" />
+                      <span class="row-person-name">{{ r.requester_name ?? '—' }}</span>
+                    </span>
+                  </td>
+                  <td class="col-status">
+                    <span class="pill" :style="{ background: statusMeta(r.status).bg, color: statusMeta(r.status).color }">
+                      {{ statusMeta(r.status).label }}
+                    </span>
+                  </td>
+                  <td class="col-priority">
+                    <span class="pill" :style="{ background: priorityMeta(r.priority).bg, color: priorityMeta(r.priority).color }">
+                      {{ priorityMeta(r.priority).label }}
+                    </span>
+                  </td>
+                  <td class="col-time">
+                    <span class="row-time">
+                      <span class="row-time-rel">{{ relativeTime(r.created_at) }}</span>
+                      <span
+                        v-if="r.sla_resolution_due_at"
+                        class="row-time-sla"
+                        :class="{ 'is-overdue': isOverdue(r) }"
+                      >
+                        {{ dueLabel(r.sla_resolution_due_at) }}
+                      </span>
+                    </span>
+                  </td>
+                  <td class="col-action">
+                    <button
+                      v-if="canReassignRow(r)"
+                      type="button"
+                      class="reassign-btn"
+                      title="Reassign this ticket to another agent"
+                      @click.stop="openReassign(r)"
+                    >
+                      Reassign
+                    </button>
+                    <span v-else class="row-arrow" aria-hidden="true">›</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <p v-else class="muted">
           {{ recent.length === 0 ? 'No tickets assigned to you yet.' : 'No tickets match this filter.' }}
@@ -1103,42 +1130,149 @@ onUnmounted(() => {
   border-color: #ea580c;
 }
 
-.rows {
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.table-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
-.row {
-  display: grid;
-  grid-template-columns: 110px minmax(0, 1.4fr) minmax(0, 1fr) auto auto minmax(120px, auto) minmax(40px, auto);
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.85rem;
+.table-count {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+.table-count strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+.table-count-filter {
+  color: #475569;
+}
+.table-scroll {
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  overflow: hidden;
 }
-.row:hover {
-  border-color: #cbd5e1;
-  transform: translateX(2px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+.ticket-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
 }
-.row.is-overdue {
-  border-left: 3px solid #dc2626;
+.ticket-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid rgba(226, 232, 240, 0.9);
+  white-space: nowrap;
+}
+.ticket-table thead th:last-child {
+  border-right: none;
+}
+.ticket-table tbody td {
+  padding: 0.5rem 0.55rem;
+  vertical-align: top;
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid rgba(226, 232, 240, 0.65);
+  background: #fff;
+}
+.ticket-table tbody td:last-child {
+  border-right: none;
+}
+.ticket-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.ticket-row {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.ticket-row:hover td {
+  background: #f8fafc;
+}
+.ticket-row:focus-visible td {
+  background: #f0fdf4;
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(13, 122, 58, 0.35);
+}
+.ticket-row.is-overdue td:first-child {
+  box-shadow: inset 3px 0 0 #dc2626;
+}
+.ticket-row.is-overdue td {
   background: #fffbfb;
+}
+.ticket-row.is-overdue:hover td {
+  background: #fef2f2;
+}
+.col-idx {
+  width: 3%;
+  text-align: center;
+}
+.row-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+.col-id {
+  width: 10%;
+  white-space: nowrap;
+}
+.col-subj {
+  width: 26%;
+}
+.col-req {
+  width: 15%;
+}
+.col-status {
+  width: 11%;
+  white-space: nowrap;
+}
+.col-priority {
+  width: 10%;
+  white-space: nowrap;
+}
+.col-time {
+  width: 13%;
+  font-size: 0.74rem;
+}
+.col-action {
+  width: 6%;
+  text-align: right;
+  white-space: nowrap;
 }
 .row-num {
   display: flex;
-  align-items: center;
-  gap: 0.45rem;
+  align-items: flex-start;
+  gap: 0.35rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: #1f2937;
-  white-space: nowrap;
+  line-height: 1.3;
+  word-break: break-all;
 }
 .status-dot {
   width: 8px;
@@ -1146,61 +1280,65 @@ onUnmounted(() => {
   border-radius: 999px;
   flex-shrink: 0;
 }
-.row-subj {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+.col-subj .row-subj-line {
+  display: block;
 }
 .row-subj-line {
+  font-size: 0.8rem;
   font-weight: 600;
   color: #0f172a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .row-cat {
-  font-size: 0.75rem;
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
   color: #64748b;
   background: #f1f5f9;
   border-radius: 999px;
-  padding: 0.05rem 0.5rem;
-  width: max-content;
+  padding: 0.05rem 0.45rem;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
 }
 .row-person {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  align-items: flex-start;
+  gap: 0.35rem;
   min-width: 0;
 }
 .row-person-name {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: #334155;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
 }
 .pill {
   display: inline-flex;
   align-items: center;
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.2rem 0.55rem;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.4rem;
   border-radius: 999px;
   white-space: nowrap;
+  max-width: 100%;
 }
 .row-time {
   display: flex;
   flex-direction: column;
-  font-size: 0.78rem;
+  gap: 0.1rem;
+  font-size: 0.74rem;
   color: #64748b;
-  white-space: nowrap;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
 }
 .row-time-sla.is-overdue {
   color: #b91c1c;
@@ -1217,12 +1355,12 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 .reassign-btn {
-  padding: 0.32rem 0.7rem;
-  border-radius: 8px;
+  padding: 0.25rem 0.45rem;
+  border-radius: 6px;
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #1e293b;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -1461,20 +1599,6 @@ onUnmounted(() => {
   color: #991b1b;
   border-radius: 8px;
   font-size: 0.86rem;
-}
-
-@media (max-width: 880px) {
-  .row {
-    grid-template-columns: auto 1fr;
-    grid-auto-flow: row;
-    row-gap: 0.45rem;
-  }
-  .row-subj {
-    grid-column: 1 / -1;
-  }
-  .row-arrow {
-    display: none;
-  }
 }
 
 .muted {

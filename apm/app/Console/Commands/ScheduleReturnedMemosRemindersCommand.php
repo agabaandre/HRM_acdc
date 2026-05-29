@@ -127,11 +127,11 @@ class ScheduleReturnedMemosRemindersCommand extends Command
 
         // 4. Single Memo - staff_id OR responsible_person_id
         $singleMemoStaffIds = \App\Models\Activity::where('is_single_memo', true)
-            ->whereIn('overall_status', ['returned', 'draft'])
+            ->where('overall_status', 'returned')
             ->get()
             ->pluck('staff_id')
             ->merge(\App\Models\Activity::where('is_single_memo', true)
-                ->whereIn('overall_status', ['returned', 'draft'])
+                ->where('overall_status', 'returned')
                 ->pluck('responsible_person_id'))
             ->unique();
 

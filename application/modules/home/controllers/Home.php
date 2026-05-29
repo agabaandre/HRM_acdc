@@ -171,7 +171,7 @@ class Home extends MX_Controller
 			$token = rawurlencode($this->build_sso_jwt($session));
 			$host = $_SERVER['HTTP_HOST'] ?? '';
 			if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
-				$financeUrl = 'http://localhost:3002?token=' . $token;
+				$financeUrl = rtrim(base_url(), '/') . '/finance?token=' . $token;
 			} else {
 				$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 				$financeUrl = $scheme . '://' . $host . '/finance?token=' . $token;

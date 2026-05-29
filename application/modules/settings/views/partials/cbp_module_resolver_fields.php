@@ -49,7 +49,7 @@ $v = function (string $key, $default = '') use ($vals) {
     <div class="col-md-6">
       <label class="form-label mb-0 cbp-lbl-dev-finance">Finance — development base URL</label>
       <label class="form-label mb-0 cbp-lbl-dev-ext d-none">External system — development URL</label>
-      <input type="text" name="base_url_development" class="form-control" maxlength="512" value="<?= $v('base_url_development') ?>" placeholder="http://localhost:3002 or https://dev-api.example.org">
+      <input type="text" name="base_url_development" class="form-control" maxlength="512" value="<?= $v('base_url_development') ?>" placeholder="http://localhost/staff/finance or https://dev-api.example.org">
     </div>
     <div class="col-md-6">
       <label class="form-label mb-0 cbp-lbl-prod-finance">Finance — production path or URL</label>

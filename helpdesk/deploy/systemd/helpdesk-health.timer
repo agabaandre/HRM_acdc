@@ -1,0 +1,13 @@
+[Unit]
+Description=Periodic Helpdesk API health check
+Documentation=file:///var/www/staff/helpdesk/documentation/SYSTEMD.md
+PartOf=helpdesk.target
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=helpdesk.target timers.target

@@ -195,8 +195,7 @@
                     <ul class="dropdown-menu">
                         @foreach ($cbpPlatformNavItems as $item)
                             <li>
-                                <a class="dropdown-item" href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer"
-                                    title="{{ $item['description'] }}">
+                                <a class="dropdown-item" href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer">
                                     <i class="{{ $item['icon'] }} me-1"></i>{{ $item['title'] }}
                                 </a>
                             </li>

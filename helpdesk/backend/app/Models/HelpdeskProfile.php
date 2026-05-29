@@ -29,6 +29,8 @@ class HelpdeskProfile extends Model
     protected $fillable = [
         'user_id',
         'staff_id',
+        'staff_portal_role',
+        'staff_portal_permissions',
         'sap_no',
         'role',
         'is_designated_agent',
@@ -50,6 +52,7 @@ class HelpdeskProfile extends Model
             'can_manage_kb' => 'boolean',
             'can_reassign_tickets' => 'boolean',
             'is_designated_agent' => 'boolean',
+            'staff_portal_permissions' => 'array',
         ];
     }
 

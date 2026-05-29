@@ -1,25 +1,11 @@
 <script setup lang="ts">
-import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
+import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
+import { hasRichTextContent } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
-
-interface DivisionRow {
-  id: number
-  name: string
-  short_name: string | null
-  directorate_id: number | null
-}
-
-interface DirectorateRow {
-  id: number
-  name: string
-  director_id?: number | null
-  director?: { id: number; name: string; fname?: string; lname?: string; title?: string | null } | null
-}
 
 interface StaffRow {
   id: number
@@ -38,57 +24,19 @@ const form = reactive({
   description: '',
   priority: 'medium' as string,
 })
-const MAX_ATTACHMENTS = 3
-const MAX_FILE_BYTES = 10 * 1024 * 1024 // matches API max:10240 (KB)
-
-/** Accept string + validation aligned with API `mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx`. */
-const FILE_ACCEPT =
-  '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,image/jpeg,image/png,image/gif,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-
-const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx'])
-const ALLOWED_MIME = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-])
-
-const pendingFiles = ref<File[]>([])
-const fileHint = ref<string | null>(null)
-const isDragOver = ref(false)
-const fileInputRef = ref<HTMLInputElement | null>(null)
-const cameraInputRef = ref<HTMLInputElement | null>(null)
 const err = ref<string | null>(null)
+const catsErr = ref<string | null>(null)
+const catsLoading = ref(true)
 const refErr = ref<string | null>(null)
 const busy = ref(false)
 
-const directorates = ref<DirectorateRow[]>([])
-const divisions = ref<DivisionRow[]>([])
 const staffRows = ref<StaffRow[]>([])
-const selectedDirectorateId = ref('')
-const selectedDivisionId = ref('')
 const selectedStaffId = ref('')
 const staffSearch = ref('')
 let staffSearchTimer: ReturnType<typeof setTimeout> | null = null
 
 /** End user: open ticket for another staff member (loads directory picker). */
 const forSomeoneElse = ref(false)
-
-const quillOptions = {
-  modules: {
-    toolbar: [
-      ['bold', 'italic', 'underline'],
-      [{ list: 'ordered' }, { list: 'bullet' }],
-      ['link', 'image'],
-      ['clean'],
-    ],
-  },
-  placeholder: 'Describe the issue (formatting & images supported)…',
-}
 
 const canSetPriority = computed(
   () => auth.me?.profile?.role && auth.me.profile.role !== 'user',
@@ -99,14 +47,6 @@ const isStaff = computed(() => auth.me?.profile?.role && auth.me.profile.role !=
 const isEndUser = computed(() => auth.me?.profile?.role === 'user')
 
 const needsDirectoryPicker = computed(() => isStaff.value || (isEndUser.value && forSomeoneElse.value))
-
-const filteredDivisions = computed(() => {
-  const dir = selectedDirectorateId.value === '' ? null : Number(selectedDirectorateId.value)
-  if (!dir) {
-    return divisions.value
-  }
-  return divisions.value.filter((d) => (d.directorate_id ?? null) === dir)
-})
 
 const selfRequesterLine = computed(() => {
   const m = auth.me
@@ -129,6 +69,22 @@ const selectedStaffRow = computed(() => {
   return staffRows.value.find((s) => s.id === id) ?? null
 })
 
+const filteredStaffRows = computed(() => {
+  const q = staffSearch.value.trim().toLowerCase()
+  if (!q) {
+    return staffRows.value.slice(0, 20)
+  }
+  return staffRows.value
+    .filter((s) => {
+      const duty = (s.duty_station_name ?? '').toLowerCase()
+      return s.name.toLowerCase().includes(q)
+        || (s.work_email ?? '').toLowerCase().includes(q)
+        || duty.includes(q)
+        || String(s.id).includes(q)
+    })
+    .slice(0, 25)
+})
+
 const selectedRequesterPreview = computed(() => {
   const row = selectedStaffRow.value
   if (!row) {
@@ -147,20 +103,41 @@ const staffRequesterReady = computed(() => {
   return Boolean(selectedStaffId.value) && !refErr.value
 })
 
+const descriptionReady = computed(() => hasRichTextContent(form.description))
+
+const canSubmit = computed(
+  () =>
+    staffRequesterReady.value
+    && descriptionReady.value
+    && !catsLoading.value
+    && cats.value.length > 0,
+)
+
 async function loadCats() {
-  const { data } = await api.get('/api/v1/categories')
-  cats.value = data.data as { id: number; name: string }[]
-  if (cats.value.length && !form.category_id) {
-    form.category_id = cats.value[0].id
+  catsErr.value = null
+  catsLoading.value = true
+  try {
+    const { data } = await api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories')
+    cats.value = Array.isArray(data.data) ? data.data : []
+    if (cats.value.length && !form.category_id) {
+      form.category_id = cats.value[0].id
+    }
+    if (cats.value.length === 0) {
+      catsErr.value =
+        'No issue categories are configured yet. An administrator can add them under Settings → Issue categories, or run the database seeder on the API server.'
+    }
+  } catch {
+    cats.value = []
+    catsErr.value = 'Could not load issue categories. Check that the Helpdesk API is running, then refresh.'
+  } finally {
+    catsLoading.value = false
   }
 }
 
 async function loadReferenceData() {
   refErr.value = null
   try {
-    const { data } = await api.get('/api/v1/reference-data')
-    directorates.value = (data.data.directorates as DirectorateRow[]).filter((d) => d.id > 0 && d.name)
-    divisions.value = (data.data.divisions as DivisionRow[]).filter((d) => d.id > 0 && d.name)
+    await api.get('/api/v1/reference-data')
   } catch {
     refErr.value =
       'Could not load the Staff directory. Check API credentials, run directory sync under Settings → Jobs, then retry.'
@@ -174,17 +151,14 @@ async function fetchStaffList() {
   refErr.value = null
   try {
     const params: Record<string, string | number> = {}
-    if (selectedDirectorateId.value !== '') {
-      params.directorate_id = Number(selectedDirectorateId.value)
-    }
-    if (selectedDivisionId.value !== '') {
-      params.division_id = Number(selectedDivisionId.value)
-    }
     if (staffSearch.value.trim()) {
       params.q = staffSearch.value.trim()
     }
     const { data } = await api.get('/api/v1/reference-data/staff', { params })
     staffRows.value = data.data.staff as StaffRow[]
+    if (selectedStaffId.value && !staffRows.value.some((s) => String(s.id) === selectedStaffId.value)) {
+      selectedStaffId.value = ''
+    }
   } catch {
     refErr.value = 'Could not load staff from the directory. Retry or ask an admin to sync reference data.'
     staffRows.value = []
@@ -192,31 +166,15 @@ async function fetchStaffList() {
   }
 }
 
-watch([selectedDirectorateId, selectedDivisionId], () => {
-  if (!needsDirectoryPicker.value) {
-    return
-  }
-  selectedStaffId.value = ''
-  const dir = selectedDirectorateId.value === '' ? null : Number(selectedDirectorateId.value)
-  if (dir && selectedDivisionId.value !== '') {
-    const div = divisions.value.find((d) => d.id === Number(selectedDivisionId.value))
-    if (div && (div.directorate_id ?? null) !== dir) {
-      selectedDivisionId.value = ''
-    }
-  }
-  void fetchStaffList()
-})
-
 watch(staffSearch, () => {
   if (!needsDirectoryPicker.value) {
     return
   }
-  if (staffSearchTimer) {
-    clearTimeout(staffSearchTimer)
-  }
+  selectedStaffId.value = ''
+  if (staffSearchTimer) clearTimeout(staffSearchTimer)
   staffSearchTimer = setTimeout(() => {
     void fetchStaffList()
-  }, 350)
+  }, 250)
 })
 
 watch(needsDirectoryPicker, async (need) => {
@@ -228,8 +186,6 @@ watch(needsDirectoryPicker, async (need) => {
     selectedStaffId.value = ''
     staffRows.value = []
     staffSearch.value = ''
-    selectedDirectorateId.value = ''
-    selectedDivisionId.value = ''
   }
 })
 
@@ -250,118 +206,22 @@ onMounted(async () => {
   if (needsDirectoryPicker.value) {
     await loadReferenceData()
     await fetchStaffList()
+    if (isStaff.value && auth.me?.profile?.staff_id) {
+      const myId = auth.me.profile.staff_id
+      selectedStaffId.value = String(myId)
+      if (!staffRows.value.some((s) => s.id === myId)) {
+        staffRows.value.unshift({
+          id: myId,
+          name: auth.me.name,
+          work_email: auth.me.email ?? null,
+          division_id: auth.me.profile.division_id ?? null,
+          directorate_id: auth.me.profile.directorate_id ?? null,
+          duty_station_name: auth.me.profile.duty_station ?? null,
+        })
+      }
+    }
   }
 })
-
-function fileExtension(f: File): string {
-  const n = f.name.toLowerCase()
-  const dot = n.lastIndexOf('.')
-  return dot >= 0 ? n.slice(dot + 1) : ''
-}
-
-function isAllowedFile(f: File): boolean {
-  const ext = fileExtension(f)
-  if (!ALLOWED_EXT.has(ext)) {
-    return false
-  }
-  const t = (f.type || '').toLowerCase().trim()
-  if (t === '' || t === 'application/octet-stream') {
-    return true
-  }
-  return ALLOWED_MIME.has(t)
-}
-
-function resetFileInput(el: HTMLInputElement | null) {
-  if (el) {
-    el.value = ''
-  }
-}
-
-function mergePendingFiles(newFiles: File[]) {
-  const next = [...pendingFiles.value]
-  const warnings: string[] = []
-  let overflowNote = false
-
-  for (const f of newFiles) {
-    if (f.size > MAX_FILE_BYTES) {
-      warnings.push(`“${f.name}” is over 10 MB.`)
-      continue
-    }
-    if (!isAllowedFile(f)) {
-      warnings.push(
-        `“${f.name}” is not allowed (use JPEG, PNG, GIF, WebP, PDF, or Word .doc/.docx).`,
-      )
-      continue
-    }
-    if (next.length >= MAX_ATTACHMENTS) {
-      overflowNote = true
-      continue
-    }
-    next.push(f)
-  }
-
-  if (overflowNote) {
-    warnings.push(`You can attach at most ${MAX_ATTACHMENTS} files. Remove one to add more.`)
-  }
-
-  pendingFiles.value = next
-  fileHint.value = warnings.length ? [...new Set(warnings)].join(' ') : null
-}
-
-function onFileInputChange(ev: Event) {
-  const input = ev.target as HTMLInputElement
-  const list = input.files ? Array.from(input.files) : []
-  mergePendingFiles(list)
-  resetFileInput(input)
-}
-
-function onCameraChange(ev: Event) {
-  const input = ev.target as HTMLInputElement
-  const list = input.files ? Array.from(input.files) : []
-  mergePendingFiles(list)
-  resetFileInput(input)
-}
-
-function openFilePicker() {
-  fileInputRef.value?.click()
-}
-
-function openCamera() {
-  cameraInputRef.value?.click()
-}
-
-function removePendingFile(idx: number) {
-  pendingFiles.value = pendingFiles.value.filter((_, i) => i !== idx)
-  if (!pendingFiles.value.length) {
-    fileHint.value = null
-  }
-}
-
-function onDropzoneDragOver(ev: DragEvent) {
-  ev.preventDefault()
-  if (ev.dataTransfer) {
-    ev.dataTransfer.dropEffect = 'copy'
-  }
-  isDragOver.value = true
-}
-
-function onDropzoneDragLeave(ev: DragEvent) {
-  const related = ev.relatedTarget as Node | null
-  if (related && (ev.currentTarget as HTMLElement).contains(related)) {
-    return
-  }
-  isDragOver.value = false
-}
-
-function onDropzoneDrop(ev: DragEvent) {
-  ev.preventDefault()
-  isDragOver.value = false
-  const dt = ev.dataTransfer
-  if (!dt?.files?.length) {
-    return
-  }
-  mergePendingFiles(Array.from(dt.files))
-}
 
 function staffOptionLabel(s: StaffRow): string {
   const email = (s.work_email ?? '').trim() || '—'
@@ -370,9 +230,18 @@ function staffOptionLabel(s: StaffRow): string {
   return `${s.name} · ${email}${dutyPart}`
 }
 
+function pickRequester(s: StaffRow) {
+  selectedStaffId.value = String(s.id)
+  staffSearch.value = s.name
+}
+
 async function submit() {
   if (needsDirectoryPicker.value && !selectedStaffId.value) {
     err.value = 'Choose who this request is for using the staff search below.'
+    return
+  }
+  if (!hasRichTextContent(form.description)) {
+    err.value = 'Please enter a description of the issue. You can add text, lists, links, and images in the editor.'
     return
   }
   busy.value = true
@@ -388,15 +257,7 @@ async function submit() {
     if (needsDirectoryPicker.value) {
       body.requester_staff_id = Number(selectedStaffId.value)
     }
-    const { data } = await api.post('/api/v1/tickets', body)
-    const id = (data.data as { id: number }).id
-    for (const file of pendingFiles.value) {
-      const fd = new FormData()
-      fd.append('file', file)
-      await api.post(`/api/v1/tickets/${id}/attachments`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-    }
+    await api.post('/api/v1/tickets', body)
     await router.push('/tickets')
   } catch {
     err.value = 'Could not create ticket'
@@ -420,11 +281,18 @@ async function submit() {
     </CbpPageHeading>
     <div class="cbp-card">
       <form class="grid" @submit.prevent="submit">
-        <label>Category
-          <select v-model.number="form.category_id" required>
+        <label class="full">Category
+          <select
+            v-model.number="form.category_id"
+            required
+            :disabled="catsLoading || cats.length === 0"
+          >
+            <option v-if="catsLoading" :value="0" disabled>Loading categories…</option>
+            <option v-else-if="cats.length === 0" :value="0" disabled>No categories available</option>
             <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
         </label>
+        <p v-if="catsErr" class="warn full" role="alert">{{ catsErr }}</p>
 
         <template v-if="isEndUser">
           <label class="row-check full">
@@ -452,87 +320,35 @@ async function submit() {
               class="combo-search"
               placeholder="Type name, email, or duty station…"
               autocomplete="off"
-              :disabled="!!refErr && !directorates.length"
+              :disabled="!!refErr"
             />
-            <details v-if="directorates.length" class="filters">
-              <summary>Filter by directorate / division</summary>
-              <div class="filter-grid">
-                <label>Directorate
-                  <select v-model="selectedDirectorateId">
-                    <option value="">All</option>
-                    <option v-for="d in directorates" :key="d.id" :value="String(d.id)">{{ d.name }}</option>
-                  </select>
-                </label>
-                <label>Division
-                  <select v-model="selectedDivisionId">
-                    <option value="">All</option>
-                    <option v-for="d in filteredDivisions" :key="d.id" :value="String(d.id)">{{ d.name }}</option>
-                  </select>
-                </label>
-              </div>
-            </details>
-            <select v-model="selectedStaffId" class="combo-select" required :disabled="!staffRows.length && !refErr">
-              <option value="" disabled>Select from results…</option>
-              <option v-for="s in staffRows" :key="s.id" :value="String(s.id)">
-                {{ staffOptionLabel(s) }}
-              </option>
-            </select>
+            <ul v-if="filteredStaffRows.length" class="combo-results" role="listbox" aria-label="Requester results">
+              <li
+                v-for="s in filteredStaffRows"
+                :key="s.id"
+                class="combo-result"
+                :class="{ selected: selectedStaffId === String(s.id) }"
+                @click="pickRequester(s)"
+              >
+                <span class="combo-result-name">{{ s.name }}</span>
+                <span class="combo-result-meta">{{ staffOptionLabel(s) }}</span>
+              </li>
+            </ul>
+            <p v-else class="combo-empty">No staff found. Try another name/email.</p>
             <p v-if="selectedRequesterPreview" class="preview" role="status">
               <strong>Selected:</strong> {{ selectedRequesterPreview }}
             </p>
           </div>
         </template>
 
-        <label class="full">Description
-          <QuillEditor v-model:content="form.description" content-type="html" theme="snow" :options="quillOptions" class="quill" />
+        <label class="full desc-label">
+          <span>Description <span class="req" aria-hidden="true">*</span></span>
+          <CbpRichTextEditor
+            v-model="form.description"
+            placeholder="Describe the issue (required). Add text, screenshots, and other details in the editor…"
+          />
+          <span v-if="!descriptionReady" class="desc-hint muted">A description is required before you can submit.</span>
         </label>
-
-        <div class="full attach-block">
-          <span class="attach-label">Attachments (optional)</span>
-          <p class="attach-help">
-            Up to {{ MAX_ATTACHMENTS }} files · JPEG, PNG, GIF, WebP, PDF, Word · max 10 MB each
-          </p>
-          <input
-            ref="fileInputRef"
-            type="file"
-            class="sr-only"
-            multiple
-            :accept="FILE_ACCEPT"
-            @change="onFileInputChange"
-          />
-          <input
-            ref="cameraInputRef"
-            type="file"
-            class="sr-only"
-            accept="image/*"
-            capture="environment"
-            @change="onCameraChange"
-          />
-          <div
-            class="dropzone"
-            :class="{ 'dropzone--drag': isDragOver }"
-            @dragover="onDropzoneDragOver"
-            @dragleave="onDropzoneDragLeave"
-            @drop="onDropzoneDrop"
-            @click.self="openFilePicker"
-          >
-            <p class="dropzone-text">
-              <strong>Drag and drop</strong> files here, or use the buttons below.
-            </p>
-            <div class="dropzone-actions" @click.stop>
-              <button type="button" class="ghost" @click="openFilePicker">Choose files</button>
-              <button type="button" class="ghost" @click="openCamera">Take photo</button>
-            </div>
-          </div>
-          <ul v-if="pendingFiles.length" class="file-list">
-            <li v-for="(f, idx) in pendingFiles" :key="`${f.name}-${idx}-${f.size}`" class="file-row">
-              <span class="file-name" :title="f.name">{{ f.name }}</span>
-              <span class="file-meta">{{ (f.size / 1024).toFixed(0) }} KB</span>
-              <button type="button" class="file-remove" @click="removePendingFile(idx)">Remove</button>
-            </li>
-          </ul>
-          <p v-if="fileHint" class="file-hint" role="status">{{ fileHint }}</p>
-        </div>
 
         <label v-if="canSetPriority">Priority
           <select v-model="form.priority">
@@ -543,7 +359,13 @@ async function submit() {
           </select>
         </label>
         <p v-else class="muted full">Priority defaults to <strong>medium</strong> for requesters.</p>
-        <button class="primary" type="submit" :disabled="busy || !staffRequesterReady">{{ busy ? 'Submitting…' : 'Submit' }}</button>
+        <button
+          class="primary"
+          type="submit"
+          :disabled="busy || !canSubmit"
+        >
+          {{ busy ? 'Submitting…' : 'Submit' }}
+        </button>
       </form>
     </div>
     <p v-if="err" class="err">{{ err }}</p>
@@ -625,29 +447,44 @@ label {
   border-radius: 8px;
   font-size: 0.9rem;
 }
-.combo-select {
-  width: 100%;
-  padding: 0.45rem 0.5rem;
-  border-radius: 8px;
+.combo-results {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
   border: 1px solid #e2e8f0;
-  font-size: 0.88rem;
+  border-radius: 8px;
+  max-height: 240px;
+  overflow: auto;
+  background: #fff;
 }
-.filters summary {
+.combo-result {
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.combo-result:hover {
+  background: #f8fafc;
+}
+.combo-result.selected {
+  background: #e8f5ee;
+}
+.combo-result-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.combo-result-meta {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+.combo-empty {
+  margin: 0;
   font-size: 0.82rem;
-  color: #0d7a3a;
-  font-weight: 600;
-}
-.filter-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-@media (max-width: 640px) {
-  .filter-grid {
-    grid-template-columns: 1fr;
-  }
+  color: #64748b;
+  padding: 0.2rem 0.1rem;
 }
 .preview {
   margin: 0;
@@ -692,15 +529,6 @@ textarea {
   border: 1px solid #cbd5e1;
   border-radius: 6px;
 }
-.quill {
-  min-height: 220px;
-  background: #fff;
-  border-radius: 8px;
-}
-.quill :deep(.ql-container) {
-  min-height: 180px;
-  font-size: 0.95rem;
-}
 .primary {
   justify-self: start;
   padding: 0.65rem 1.25rem;
@@ -719,109 +547,12 @@ textarea {
   color: #b91c1c;
   margin-top: 0.75rem;
 }
-.attach-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-.attach-label {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: #334155;
-}
-.attach-help {
-  margin: 0;
-  font-size: 0.8rem;
-  color: #64748b;
-  line-height: 1.4;
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-.dropzone {
-  border: 2px dashed #cbd5e1;
-  border-radius: 10px;
-  padding: 1rem 0.85rem;
-  background: #f8fafc;
-  cursor: pointer;
-  transition:
-    border-color 0.15s,
-    background 0.15s;
-}
-.dropzone:hover,
-.dropzone--drag {
-  border-color: #119a48;
-  background: #f0fdf4;
-}
-.dropzone-text {
-  margin: 0 0 0.65rem;
-  font-size: 0.88rem;
-  color: #475569;
-  text-align: center;
-}
-.dropzone-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: center;
-}
-.file-list {
-  list-style: none;
-  margin: 0.35rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.file-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  padding: 0.4rem 0.5rem;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.82rem;
-}
-.file-name {
-  flex: 1 1 8rem;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #0f172a;
-}
-.file-meta {
-  color: #64748b;
-  font-variant-numeric: tabular-nums;
-}
-.file-remove {
-  margin-left: auto;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 600;
+.desc-label .req {
   color: #b91c1c;
-  background: transparent;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  cursor: pointer;
 }
-.file-remove:hover {
-  background: #fef2f2;
-}
-.file-hint {
-  margin: 0.25rem 0 0;
+.desc-hint {
+  font-weight: 500;
   font-size: 0.8rem;
-  color: #92400e;
-  line-height: 1.35;
+  margin-top: 0.15rem;
 }
 </style>

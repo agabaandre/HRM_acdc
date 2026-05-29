@@ -43,3 +43,12 @@ export function staffPortalBaseUrl(): string {
   const stripped = home.replace(/\/home\/index\/?$/i, '').replace(/\/$/, '')
   return stripped !== '' ? stripped : home.replace(/\/$/, '')
 }
+
+/** Staff portal (CodeIgniter) user profile — same path as Finance header. */
+export function staffPortalProfileUrl(): string {
+  const fromEnv = import.meta.env.VITE_STAFF_PROFILE_URL as string | undefined
+  if (fromEnv?.trim()) {
+    return fromEnv.trim()
+  }
+  return `${staffPortalBaseUrl()}/auth/profile`
+}

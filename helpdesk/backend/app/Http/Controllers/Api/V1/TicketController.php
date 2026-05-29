@@ -12,6 +12,7 @@ use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskTicketComment;
 use App\Models\User;
+use App\Services\HtmlSanitizer;
 use App\Services\StaffDirectoryLookupService;
 use App\Services\TicketAssignmentService;
 use App\Services\TicketHistoryLogger;
@@ -66,7 +67,10 @@ class TicketController extends Controller
         }
 
         $category = HelpdeskCategory::query()->findOrFail((int) $request->validated('category_id'));
-        $description = $request->validated('description');
+        $description = HtmlSanitizer::sanitize($request->validated('description'));
+        if ($description === null) {
+            abort(422, 'A description is required. Add text or images in the editor.');
+        }
 
         $isEndUser = $profile->role === HelpdeskProfile::ROLE_USER;
         if ($isEndUser) {
@@ -315,6 +319,33 @@ class TicketController extends Controller
                 'to_user_id' => $newAssigneeId,
                 'reason' => $reason,
             ],
+        ]);
+    }
+
+    /**
+     * Requester reopens a closed ticket when the resolution did not fix the issue.
+     */
+    public function reopen(Request $request, HelpdeskTicket $ticket, TicketHistoryLogger $logger): JsonResponse
+    {
+        $this->authorize('reopen', $ticket);
+
+        $previousStatus = $ticket->status;
+
+        $ticket->forceFill([
+            'status' => 'open',
+            'closed_at' => null,
+            'resolved_at' => null,
+            'resolution_confirmed_at' => null,
+            'resolution_confirm_token' => null,
+        ])->save();
+
+        $logger->log($ticket, 'ticket.reopened', $request->user()->id, [
+            'previous_status' => $previousStatus,
+        ]);
+
+        return response()->json([
+            'message' => 'Ticket reopened. Add a comment below with any extra details for the support team.',
+            'data' => (new TicketResource($ticket->fresh()->load(['category', 'assignee.helpdeskProfile', 'attachments'])))->resolve(),
         ]);
     }
 

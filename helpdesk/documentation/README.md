@@ -10,7 +10,7 @@ The Africa CDC IT Service Desk (Laravel 11 JSON API + Vue 3.5 SPA) is part of th
 | **An agent or supervisor** working the queue | [USER_GUIDE.md → Agent desk](./USER_GUIDE.md#agent-desk-agents--supervisors) |
 | **An administrator** configuring the service | [USER_GUIDE.md → Admin settings](./USER_GUIDE.md#admin-settings-administrators) |
 | **A developer** extending or debugging the module | [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) |
-| **A system administrator** deploying the module | [DEVELOPER_GUIDE.md → Operations / runbooks](./DEVELOPER_GUIDE.md#operations--runbooks) + [INTEGRATION.md](./INTEGRATION.md) |
+| **A system administrator** deploying the module | [SYSTEMD.md](./SYSTEMD.md) · [DEVELOPER_GUIDE.md → Operations](./DEVELOPER_GUIDE.md#operations--runbooks) · [INTEGRATION.md](./INTEGRATION.md) |
 
 ## All documents in this folder
 
@@ -20,6 +20,7 @@ The Africa CDC IT Service Desk (Laravel 11 JSON API + Vue 3.5 SPA) is part of th
 | [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) | Engineers, SRE | Stack & layout, local dev, Apache routing, SSO, authorization, schema reference, REST API reference, ticket lifecycle internals, services & jobs, frontend architecture, public TV dashboard, audit logging, extension points, runbooks. |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Engineers, architects | One-page overview of the API-first layout, schema groupings, and integrations. |
 | [INTEGRATION.md](./INTEGRATION.md) | Engineers, integrators | Staff portal SSO (`?token=`), HMAC server bridge, Staff Share API client, home-dashboard card, WhatsApp / Teams webhooks, audit & ISO logging. |
+| [SYSTEMD.md](./SYSTEMD.md) | SRE / Linux admins | systemd units: start on boot, restart queue worker on failure, scheduler + health timers. |
 | [openapi.yaml](./openapi.yaml) | API consumers | OpenAPI 3 outline — expand as endpoints stabilise. |
 
 ## Related reading

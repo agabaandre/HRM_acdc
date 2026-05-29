@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskKbArticle;
+use App\Services\HelpdeskAuditLogger;
+use App\Services\HtmlSanitizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AdminKbArticleController extends Controller
 {
@@ -37,10 +41,17 @@ class AdminKbArticleController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
+        $answer = HtmlSanitizer::sanitize($validated['answer']);
+        if ($answer === null) {
+            throw ValidationException::withMessages([
+                'answer' => 'Answer is empty after sanitisation.',
+            ]);
+        }
+
         $row = HelpdeskKbArticle::query()->create([
             'category_id' => $validated['category_id'],
             'question' => trim($validated['question']),
-            'answer' => $validated['answer'],
+            'answer' => $answer,
             'sort_order' => $validated['sort_order'] ?? 0,
             'is_active' => $validated['is_active'] ?? true,
             'created_by_user_id' => $request->user()?->id,
@@ -49,10 +60,18 @@ class AdminKbArticleController extends Controller
 
         $row->load(['category:id,name,slug', 'createdBy:id,name', 'updatedBy:id,name']);
 
+        $auditLogger->log(
+            'kb_article.created',
+            HelpdeskKbArticle::class,
+            $row->id,
+            null,
+            $this->auditSnapshot($row),
+        );
+
         return response()->json(['data' => $this->format($row)], 201);
     }
 
-    public function update(Request $request, HelpdeskKbArticle $article): JsonResponse
+    public function update(Request $request, HelpdeskKbArticle $article, HelpdeskAuditLogger $auditLogger): JsonResponse
     {
         $this->ensureKbManager($request);
 
@@ -67,22 +86,65 @@ class AdminKbArticleController extends Controller
         if (isset($validated['question'])) {
             $validated['question'] = trim($validated['question']);
         }
+        if (array_key_exists('answer', $validated)) {
+            $answer = HtmlSanitizer::sanitize($validated['answer']);
+            if ($answer === null) {
+                throw ValidationException::withMessages([
+                    'answer' => 'Answer is empty after sanitisation.',
+                ]);
+            }
+            $validated['answer'] = $answer;
+        }
         $validated['updated_by_user_id'] = $request->user()?->id;
 
+        $before = $this->auditSnapshot($article);
         $article->fill($validated);
         $article->save();
         $article->load(['category:id,name,slug', 'createdBy:id,name', 'updatedBy:id,name']);
 
+        $auditLogger->log(
+            'kb_article.updated',
+            HelpdeskKbArticle::class,
+            $article->id,
+            $before,
+            $this->auditSnapshot($article),
+        );
+
         return response()->json(['data' => $this->format($article)]);
     }
 
-    public function destroy(Request $request, HelpdeskKbArticle $article): JsonResponse
+    public function destroy(Request $request, HelpdeskKbArticle $article, HelpdeskAuditLogger $auditLogger): JsonResponse
     {
         $this->ensureKbManager($request);
 
+        $snapshot = $this->auditSnapshot($article);
+        $articleId = $article->id;
         $article->delete();
 
+        $auditLogger->log(
+            'kb_article.deleted',
+            HelpdeskKbArticle::class,
+            $articleId,
+            $snapshot,
+            null,
+        );
+
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function auditSnapshot(HelpdeskKbArticle $article): array
+    {
+        return [
+            'id' => $article->id,
+            'category_id' => $article->category_id,
+            'question' => $article->question,
+            'answer' => Str::limit(strip_tags((string) $article->answer), 2000),
+            'sort_order' => $article->sort_order,
+            'is_active' => $article->is_active,
+        ];
     }
 
     /**

@@ -35,7 +35,7 @@ class HelpdeskSetting extends Model
     /** Comma-separated Staff division_id values; users in these divisions become Helpdesk agents on SSO unless admin. */
     public const KEY_DEFAULT_AGENT_DIVISION_IDS = 'default_agent_division_ids';
 
-    /** When "1", requester must confirm via link before status becomes resolved. */
+    /** Deprecated: resolution now closes the ticket and emails a review link. Kept for API compatibility. */
     public const KEY_REQUIRE_RESOLUTION_CONFIRMATION = 'require_resolution_confirmation';
 
     /** WhatsApp Cloud API — see https://developers.facebook.com/docs/whatsapp/cloud-api */
@@ -67,14 +67,10 @@ class HelpdeskSetting extends Model
         return $row?->value ?? $default;
     }
 
+    /** @deprecated Confirmation step removed; tickets close on agent resolution. */
     public static function requireResolutionConfirmation(): bool
     {
-        $v = static::getValue(self::KEY_REQUIRE_RESOLUTION_CONFIRMATION);
-        if ($v === null || $v === '') {
-            return true;
-        }
-
-        return in_array(strtolower(trim($v)), ['1', 'true', 'yes'], true);
+        return false;
     }
 
     public static function aiAgentAssignmentEnabled(): bool

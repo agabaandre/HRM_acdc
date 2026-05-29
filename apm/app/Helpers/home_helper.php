@@ -1010,14 +1010,14 @@ if (! function_exists('get_my_returned_other_memo_count')) {
 
 if (! function_exists('get_my_returned_single_memo_count')) {
     /**
-     * Get count of returned single memos for the current staff member (including division staff)
-     * Note: For single memos, includes both 'returned' and 'draft' status since returned single memos become draft for immediate editing
+     * Get count of returned single memos for the current staff member (including division staff).
+     * Only overall_status = returned (draft single memos are not returned items).
      */
     function get_my_returned_single_memo_count(int $staffId): int
     {
         try {
             return \App\Models\Activity::where('is_single_memo', true)
-                ->whereIn('overall_status', ['returned', 'draft'])
+                ->where('overall_status', 'returned')
                 ->where(function ($q) use ($staffId) {
                     $q->where('staff_id', $staffId)
                         ->orWhere('responsible_person_id', $staffId)

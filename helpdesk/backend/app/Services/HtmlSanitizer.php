@@ -31,7 +31,7 @@ class HtmlSanitizer
      * @var array<string, list<string>>
      */
     private const ALLOWED = [
-        '*' => ['class', 'style'],
+        '*' => ['class', 'style', 'dir'],
         'p' => [],
         'br' => [],
         'hr' => [],
@@ -81,7 +81,7 @@ class HtmlSanitizer
      */
     private const SAFE_CSS_PROPS = [
         'color', 'background-color', 'background', 'text-align',
-        'font-weight', 'font-style', 'text-decoration',
+        'font-weight', 'font-style', 'text-decoration', 'font-size', 'line-height',
         'padding-left', 'padding-right', 'margin-left', 'margin-right',
     ];
 

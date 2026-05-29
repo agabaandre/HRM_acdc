@@ -153,7 +153,7 @@ class Cbp_modules_mdl extends CI_Model
 				'system_name' => 'Finance Management',
 				'description' => 'Manage financial reports, invoices, budgets, transactions, and vendor information.',
 				'base_url' => '',
-				'base_url_development' => 'http://localhost:3002',
+				'base_url_development' => 'http://localhost/staff/finance',
 				'base_url_production' => null,
 				'icon_class' => 'fa-wallet',
 				'permission_code' => '92',
@@ -506,6 +506,123 @@ class Cbp_modules_mdl extends CI_Model
 	}
 
 	/**
+	 * Header nav: permission-gated modules with absolute URLs for external apps.
+	 *
+	 * @param object $user Session user
+	 * @param array $sessionArray user as array + base_url for SSO token
+	 * @param string $currentUri URI string without leading slash (e.g. dashboard/index)
+	 * @return list<array{href:string,label:string,icon:string,absolute:bool,desc:string,module_key:string,is_active:bool}>
+	 */
+	public function get_header_nav_modules(object $user, array $sessionArray, string $currentUri = ''): array
+	{
+		$currentUri = trim($currentUri, '/');
+		$modules = $this->get_home_cards_for_user($user, $sessionArray);
+		$ci = get_instance();
+		foreach ($modules as &$mod) {
+			$href = (string) ($mod['href'] ?? '');
+			if ($href === '') {
+				continue;
+			}
+			if (empty($mod['absolute'])) {
+				$mod['href'] = $ci->config->site_url($href);
+				$mod['absolute'] = false;
+			}
+			$mod['is_active'] = $this->nav_href_matches_current($href, $currentUri, !empty($mod['absolute']));
+		}
+		unset($mod);
+
+		return $modules;
+	}
+
+	/**
+	 * JSON payload for Share API consumers (Helpdesk, Finance, APM nav).
+	 *
+	 * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
+	 */
+	public function get_api_nav_payload(object $user, array $sessionArray, string $excludeModuleKey = '', string $activeModuleKey = '', string $currentUri = ''): array
+	{
+		$homeDefaults = [
+			'id' => 'cbp_home',
+			'label' => 'CBP Home',
+			'description' => '',
+			'href' => site_url('home/index'),
+			'is_active' => false,
+		];
+		if (!$this->table_exists()) {
+			return [
+				'home' => $homeDefaults,
+				'modules' => [],
+			];
+		}
+		$this->seed_defaults_if_empty();
+		$excludeModuleKey = trim($excludeModuleKey);
+		$activeModuleKey = trim($activeModuleKey);
+		$currentUri = trim($currentUri, '/');
+		$modules = $this->get_header_nav_modules($user, $sessionArray, $currentUri);
+		if ($excludeModuleKey !== '') {
+			$modules = array_values(array_filter($modules, function ($m) use ($excludeModuleKey) {
+				return ($m['module_key'] ?? '') !== $excludeModuleKey;
+			}));
+		}
+		if ($activeModuleKey !== '') {
+			foreach ($modules as &$mod) {
+				$mod['is_active'] = (($mod['module_key'] ?? '') === $activeModuleKey);
+			}
+			unset($mod);
+			$homeActive = false;
+		} else {
+			$homeActive = ($currentUri === 'home/index' || $currentUri === 'home');
+		}
+		$formatted = [];
+		foreach ($modules as $mod) {
+			$icon = trim((string) ($mod['icon'] ?? 'fa-th'));
+			if ($icon !== '' && strpos($icon, 'fa ') !== 0 && strpos($icon, 'fa-') === 0) {
+				$icon = 'fa ' . $icon;
+			}
+			$formatted[] = [
+				'id' => (string) ($mod['module_key'] ?? ''),
+				'label' => (string) ($mod['label'] ?? ''),
+				'description' => '',
+				'href' => (string) ($mod['href'] ?? ''),
+				'icon' => $icon,
+				'opens_in_new_tab' => !empty($mod['absolute']),
+				'is_active' => !empty($mod['is_active']),
+			];
+		}
+
+		return [
+			'home' => array_merge($homeDefaults, ['is_active' => $homeActive]),
+			'modules' => $formatted,
+		];
+	}
+
+	/**
+	 * Best-effort active state for header highlight.
+	 */
+	private function nav_href_matches_current(string $href, string $currentUri, bool $absolute): bool
+	{
+		if ($currentUri === '') {
+			return false;
+		}
+		if (!$absolute) {
+			$path = trim((string) parse_url($href, PHP_URL_PATH), '/');
+			if ($path === $currentUri) {
+				return true;
+			}
+			return strpos($currentUri, $path) === 0 && $path !== '';
+		}
+		$host = $_SERVER['HTTP_HOST'] ?? '';
+		if ($host !== '' && strpos($href, $host) !== false) {
+			$path = trim((string) parse_url($href, PHP_URL_PATH), '/');
+			if ($path !== '' && ($path === $currentUri || strpos($currentUri, $path) === 0)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * @param object $row cbp_modules row
 	 * @param array $sessionArray session user as array + base_url
 	 */
@@ -541,12 +658,16 @@ class Cbp_modules_mdl extends CI_Model
 			if ($isLocal) {
 				$devBase = trim((string) ($row->base_url_development ?? ''), '/');
 				if ($devBase === '') {
-					$devBase = 'http://localhost:3002';
+					$devBase = 'http://localhost/staff/finance';
 				}
 				if (strpos($devBase, 'http') !== 0) {
 					$devBase = 'http://' . $devBase;
 				}
 				$url = rtrim($devBase, '/');
+				// Rows that still have http://localhost (legacy Node :3002 era) need the mount path.
+				if (preg_match('#^https?://[^/]+/?$#', $url)) {
+					$url = rtrim($url, '/') . '/staff/finance';
+				}
 			} else {
 				$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 				$prod = trim((string) ($row->base_url_production ?? ''), '/');
@@ -557,7 +678,7 @@ class Cbp_modules_mdl extends CI_Model
 						$url = $scheme . '://' . $host . '/' . $prod;
 					}
 				} else {
-					$url = $scheme . '://' . $host . '/finance';
+					$url = $scheme . '://' . $host . '/staff/finance';
 				}
 			}
 			if (!empty($row->uses_staff_portal_token)) {

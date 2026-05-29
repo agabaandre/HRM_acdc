@@ -4,6 +4,11 @@ import { RouterLink } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
+import {
+  formatTableCountLabel,
+  rowIndex,
+  statusMeta,
+} from '../lib/ticketTableMeta'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
@@ -50,18 +55,20 @@ const myHasPrev = computed(() => myPage.value > 1)
 const myHasNext = computed(() => myPage.value < myLastPage.value)
 const adminHasPrev = computed(() => adminPage.value > 1)
 const adminHasNext = computed(() => adminPage.value < adminLastPage.value)
-const myRange = computed(() => {
-  if (myTotal.value === 0) return '0 results'
-  const start = (myPage.value - 1) * myPerPage.value + 1
-  const end = Math.min(myTotal.value, myPage.value * myPerPage.value)
-  return `${start}-${end} of ${myTotal.value}`
-})
-const adminRange = computed(() => {
-  if (adminTotal.value === 0) return '0 results'
-  const start = (adminPage.value - 1) * adminPerPage.value + 1
-  const end = Math.min(adminTotal.value, adminPage.value * adminPerPage.value)
-  return `${start}-${end} of ${adminTotal.value}`
-})
+const myTableCountLabel = computed(() =>
+  formatTableCountLabel(myTickets.value.length, myTotal.value, myPage.value, myPerPage.value),
+)
+const adminTableCountLabel = computed(() =>
+  formatTableCountLabel(adminRecent.value.length, adminTotal.value, adminPage.value, adminPerPage.value),
+)
+
+function myCounter(idx: number): number {
+  return rowIndex(myPage.value, myPerPage.value, idx)
+}
+
+function adminCounter(idx: number): number {
+  return rowIndex(adminPage.value, adminPerPage.value, idx)
+}
 
 async function loadMine() {
   myLoading.value = true
@@ -189,9 +196,30 @@ onMounted(async () => {
 
       <template v-else-if="tab === 'mine' && myStats">
       <div class="tiles">
-        <div class="tile"><span class="n">{{ myStats.total_received }}</span><span class="l">Total received</span></div>
-        <div class="tile"><span class="n">{{ myStats.pending }}</span><span class="l">Pending resolution</span></div>
-        <div class="tile"><span class="n">{{ myStats.resolved }}</span><span class="l">Resolved</span></div>
+        <article class="tile tile-total">
+          <header>
+            <span class="tile-icon" aria-hidden="true">📥</span>
+            <span class="l">Total received</span>
+          </header>
+          <span class="n">{{ myStats.total_received }}</span>
+          <small class="tile-sub">All tickets logged for you</small>
+        </article>
+        <article class="tile tile-pending">
+          <header>
+            <span class="tile-icon" aria-hidden="true">⏳</span>
+            <span class="l">Pending resolution</span>
+          </header>
+          <span class="n">{{ myStats.pending }}</span>
+          <small class="tile-sub">Still being worked on</small>
+        </article>
+        <article class="tile tile-resolved">
+          <header>
+            <span class="tile-icon" aria-hidden="true">✅</span>
+            <span class="l">Resolved</span>
+          </header>
+          <span class="n">{{ myStats.resolved }}</span>
+          <small class="tile-sub">Completed tickets</small>
+        </article>
       </div>
       <div class="toolbar">
         <form class="searchbar" @submit.prevent="mySearch">
@@ -214,28 +242,74 @@ onMounted(async () => {
               <option :value="100">100</option>
             </select>
           </label>
-          <span class="muted">{{ myRange }}</span>
         </div>
       </div>
       <p class="tools">
         <button type="button" class="btn" @click="downloadExcel('mine')">Export my issues (Excel)</button>
       </p>
       <h2>My tickets &amp; assignees</h2>
-      <ul class="list">
-        <li v-if="myLoading" class="row muted">Loading…</li>
-        <li v-for="(t, i) in myTickets" :key="i" class="row">
-          <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="link">
-            {{ t.ticket_number }}
-          </RouterLink>
-          <span class="grow">{{ t.subject }}</span>
-          <div v-if="t.assignee" class="assignee">
-            <CbpAvatar size="xs" :name="t.assignee.name" :image-url="t.assignee.avatar_url ?? null" />
-            <span class="assignee-name">{{ t.assignee.name }}</span>
-          </div>
-          <span class="muted">{{ t.status }}</span>
-        </li>
-        <li v-if="!myLoading && myTickets.length === 0" class="row muted">No matching tickets.</li>
-      </ul>
+      <div class="table-wrap">
+        <p class="table-count" role="status">
+          Showing <strong>{{ myTableCountLabel }}</strong>
+        </p>
+        <div class="table-scroll">
+          <table class="ticket-table cols-report">
+            <thead>
+              <tr>
+                <th class="col-idx" scope="col">#</th>
+                <th class="col-id" scope="col">Ticket</th>
+                <th class="col-subj" scope="col">Subject</th>
+                <th class="col-assignee" scope="col">Assigned to</th>
+                <th class="col-status" scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="myLoading">
+                <td colspan="5" class="cell-loading">Loading…</td>
+              </tr>
+              <template v-else>
+                <tr v-for="(t, idx) in myTickets" :key="t.id ?? idx">
+                  <td class="col-idx">
+                    <span class="row-counter">{{ myCounter(idx) }}</span>
+                  </td>
+                  <td class="col-id">
+                    <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="ticket-link">
+                      {{ t.ticket_number }}
+                    </RouterLink>
+                    <span v-else class="ticket-link">{{ t.ticket_number }}</span>
+                  </td>
+                  <td class="col-subj">
+                    <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="row-subj-line">
+                      {{ t.subject }}
+                    </RouterLink>
+                    <span v-else class="row-subj-line">{{ t.subject }}</span>
+                  </td>
+                  <td class="col-assignee">
+                    <div v-if="t.assignee" class="row-person">
+                      <CbpAvatar size="sm" :name="t.assignee.name" :image-url="t.assignee.avatar_url ?? null" />
+                      <span class="row-person-name">{{ t.assignee.name }}</span>
+                    </div>
+                    <span v-else class="cell-empty">—</span>
+                  </td>
+                  <td class="col-status">
+                    <span
+                      v-if="t.status"
+                      class="pill"
+                      :style="{ background: statusMeta(t.status).bg, color: statusMeta(t.status).color }"
+                    >
+                      {{ statusMeta(t.status).label }}
+                    </span>
+                    <span v-else class="cell-empty">—</span>
+                  </td>
+                </tr>
+                <tr v-if="myTickets.length === 0">
+                  <td colspan="5" class="cell-empty-msg">No matching tickets.</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
       <div class="pager">
         <button type="button" :disabled="!myHasPrev || myLoading" @click="myPage -= 1; loadMine()">Previous</button>
         <span>Page {{ myPage }} of {{ myLastPage }}</span>
@@ -245,10 +319,46 @@ onMounted(async () => {
 
     <template v-else-if="tab === 'admin' && adminCounts">
       <div class="tiles">
-        <div class="tile" v-for="(v, k) in adminCounts" :key="k">
-          <span class="n">{{ v }}</span>
-          <span class="l">{{ k.replace(/_/g, ' ') }}</span>
-        </div>
+        <article class="tile tile-total">
+          <header>
+            <span class="tile-icon" aria-hidden="true">🎫</span>
+            <span class="l">Total</span>
+          </header>
+          <span class="n">{{ adminCounts.total ?? 0 }}</span>
+          <small class="tile-sub">All helpdesk tickets</small>
+        </article>
+        <article class="tile tile-open">
+          <header>
+            <span class="tile-icon" aria-hidden="true">🗂</span>
+            <span class="l">Open</span>
+          </header>
+          <span class="n">{{ adminCounts.open ?? 0 }}</span>
+          <small class="tile-sub">Open + pending + in progress</small>
+        </article>
+        <article class="tile tile-awaiting">
+          <header>
+            <span class="tile-icon" aria-hidden="true">⌛</span>
+            <span class="l">Awaiting requester</span>
+          </header>
+          <span class="n">{{ adminCounts.awaiting_requester_confirmation ?? 0 }}</span>
+          <small class="tile-sub">Resolution shared, waiting confirmation</small>
+        </article>
+        <article class="tile tile-resolved">
+          <header>
+            <span class="tile-icon" aria-hidden="true">✅</span>
+            <span class="l">Resolved</span>
+          </header>
+          <span class="n">{{ adminCounts.resolved ?? 0 }}</span>
+          <small class="tile-sub">Marked resolved</small>
+        </article>
+        <article class="tile tile-closed">
+          <header>
+            <span class="tile-icon" aria-hidden="true">🔒</span>
+            <span class="l">Closed</span>
+          </header>
+          <span class="n">{{ adminCounts.closed ?? 0 }}</span>
+          <small class="tile-sub">Finalized after confirmation</small>
+        </article>
       </div>
       <p class="tools">
         <button type="button" class="btn" @click="downloadExcel('all')">Export all tickets (Excel)</button>
@@ -275,24 +385,71 @@ onMounted(async () => {
               <option :value="100">100</option>
             </select>
           </label>
-          <span class="muted">{{ adminRange }}</span>
         </div>
       </div>
       <h2>Recent activity</h2>
-      <ul class="list">
-        <li v-if="adminLoading" class="row muted">Loading…</li>
-        <li v-for="(t, i) in adminRecent" :key="i" class="row">
-          <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="link">
-            {{ t.ticket_number }}
-          </RouterLink>
-          <span class="grow">{{ t.subject }}</span>
-          <div v-if="t.assignee" class="assignee">
-            <CbpAvatar size="xs" :name="t.assignee.name" :image-url="t.assignee.avatar_url ?? null" />
-            <span class="assignee-name">{{ t.assignee.name }}</span>
-          </div>
-        </li>
-        <li v-if="!adminLoading && adminRecent.length === 0" class="row muted">No matching tickets.</li>
-      </ul>
+      <div class="table-wrap">
+        <p class="table-count" role="status">
+          Showing <strong>{{ adminTableCountLabel }}</strong>
+        </p>
+        <div class="table-scroll">
+          <table class="ticket-table cols-report">
+            <thead>
+              <tr>
+                <th class="col-idx" scope="col">#</th>
+                <th class="col-id" scope="col">Ticket</th>
+                <th class="col-subj" scope="col">Subject</th>
+                <th class="col-assignee" scope="col">Assigned to</th>
+                <th class="col-status" scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="adminLoading">
+                <td colspan="5" class="cell-loading">Loading…</td>
+              </tr>
+              <template v-else>
+                <tr v-for="(t, idx) in adminRecent" :key="t.id ?? idx">
+                  <td class="col-idx">
+                    <span class="row-counter">{{ adminCounter(idx) }}</span>
+                  </td>
+                  <td class="col-id">
+                    <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="ticket-link">
+                      {{ t.ticket_number }}
+                    </RouterLink>
+                    <span v-else class="ticket-link">{{ t.ticket_number }}</span>
+                  </td>
+                  <td class="col-subj">
+                    <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="row-subj-line">
+                      {{ t.subject }}
+                    </RouterLink>
+                    <span v-else class="row-subj-line">{{ t.subject }}</span>
+                  </td>
+                  <td class="col-assignee">
+                    <div v-if="t.assignee" class="row-person">
+                      <CbpAvatar size="sm" :name="t.assignee.name" :image-url="t.assignee.avatar_url ?? null" />
+                      <span class="row-person-name">{{ t.assignee.name }}</span>
+                    </div>
+                    <span v-else class="cell-empty">—</span>
+                  </td>
+                  <td class="col-status">
+                    <span
+                      v-if="t.status"
+                      class="pill"
+                      :style="{ background: statusMeta(t.status).bg, color: statusMeta(t.status).color }"
+                    >
+                      {{ statusMeta(t.status).label }}
+                    </span>
+                    <span v-else class="cell-empty">—</span>
+                  </td>
+                </tr>
+                <tr v-if="adminRecent.length === 0">
+                  <td colspan="5" class="cell-empty-msg">No matching tickets.</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
       <div class="pager">
         <button type="button" :disabled="!adminHasPrev || adminLoading" @click="adminPage -= 1; loadAdmin()">Previous</button>
         <span>Page {{ adminPage }} of {{ adminLastPage }}</span>
@@ -330,24 +487,84 @@ h2 {
 }
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 0.65rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.1rem;
 }
 .tile {
-  background: #f8fafc;
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0.65rem;
+  border-radius: 12px;
+  padding: 0.85rem 0.9rem 0.8rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+.tile::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--tile-accent, #334155);
+}
+.tile header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.tile-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  background: var(--tile-soft, #e2e8f0);
 }
 .n {
-  font-size: 1.35rem;
+  font-size: 2rem;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+  line-height: 1;
+  display: block;
 }
 .l {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: #64748b;
   text-transform: capitalize;
+  font-weight: 700;
+}
+.tile-sub {
+  margin-top: 0.35rem;
+  display: block;
+  font-size: 0.73rem;
+  color: #64748b;
+}
+.tile-total {
+  --tile-accent: #334155;
+  --tile-soft: #e2e8f0;
+}
+.tile-open,
+.tile-pending {
+  --tile-accent: #3b82f6;
+  --tile-soft: #dbeafe;
+}
+.tile-awaiting {
+  --tile-accent: #a855f7;
+  --tile-soft: #f3e8ff;
+}
+.tile-resolved {
+  --tile-accent: #16a34a;
+  --tile-soft: #dcfce7;
+}
+.tile-closed {
+  --tile-accent: #64748b;
+  --tile-soft: #e2e8f0;
 }
 .tools {
   margin: 1rem 0;
@@ -403,42 +620,8 @@ h2 {
 .btn.secondary {
   background: #334155;
 }
-.list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  padding: 0.45rem 0;
-  border-bottom: 1px solid #e2e8f0;
-}
-.grow {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.9rem;
-  color: #334155;
-}
-.assignee {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.assignee-name {
-  font-size: 0.82rem;
-  color: #475569;
-  max-width: 10rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.link {
-  color: #0d7a3a;
-  font-weight: 700;
-  text-decoration: none;
-  min-width: 7rem;
+.table-wrap {
+  margin-bottom: 0.5rem;
 }
 .muted {
   color: #64748b;

@@ -53,7 +53,7 @@ class HelpdeskTicketPolicy
         }
         if ($p->role === HelpdeskProfile::ROLE_USER && $p->staff_id
             && (int) $ticket->requester_staff_id === (int) $p->staff_id
-            && in_array($ticket->status, ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'], true)) {
+            && in_array($ticket->status, ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation', 'closed', 'resolved'], true)) {
             return true;
         }
 
@@ -92,7 +92,25 @@ class HelpdeskTicketPolicy
         return $p->role === HelpdeskProfile::ROLE_USER && $p->staff_id
             && ((int) $ticket->requester_staff_id === (int) $p->staff_id
                 || (int) $ticket->created_by_user_id === (int) $user->id)
-            && in_array($ticket->status, ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'], true);
+            && in_array($ticket->status, ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation', 'closed', 'resolved'], true);
+    }
+
+    /**
+     * Requester reopens a closed or resolved ticket when the issue persists.
+     */
+    public function reopen(User $user, HelpdeskTicket $ticket): bool
+    {
+        $p = $user->helpdeskProfile;
+        if (! $p || $p->role !== HelpdeskProfile::ROLE_USER || ! $p->staff_id) {
+            return false;
+        }
+
+        if (! in_array($ticket->status, ['closed', 'resolved', 'awaiting_requester_confirmation'], true)) {
+            return false;
+        }
+
+        return (int) $ticket->requester_staff_id === (int) $p->staff_id
+            || (int) $ticket->created_by_user_id === (int) $user->id;
     }
 
     public function commentInternal(User $user, HelpdeskTicket $ticket): bool
@@ -118,6 +136,10 @@ class HelpdeskTicketPolicy
 
     public function submitResolution(User $user, HelpdeskTicket $ticket): bool
     {
+        if (in_array($ticket->status, ['closed', 'resolved', 'awaiting_requester_confirmation'], true)) {
+            return false;
+        }
+
         $p = $user->helpdeskProfile;
         if (! $p) {
             return false;

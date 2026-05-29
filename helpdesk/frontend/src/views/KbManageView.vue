@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import KbArticleEditModal, { type KbArticleEditForm } from '../components/kb/KbArticleEditModal.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
+import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { hasRichTextContent } from '../lib/richText'
+import { stripHtml } from '../lib/stripHtml'
 
 interface Cat {
   id: number
@@ -29,6 +33,22 @@ const err = ref<string | null>(null)
 const ok = ref<string | null>(null)
 const filterCat = ref<number | 0>(0)
 const search = ref('')
+
+const showCreateForm = ref(false)
+const editOpen = ref(false)
+const editTarget = ref<KbArticleEditForm | null>(null)
+const editErr = ref<string | null>(null)
+
+function toggleCreateForm(): void {
+  showCreateForm.value = !showCreateForm.value
+}
+
+function closeCreateForm(): void {
+  if (busy.value === -1) {
+    return
+  }
+  showCreateForm.value = false
+}
 
 const create = reactive({
   category_id: 0,
@@ -74,7 +94,7 @@ const filtered = computed<KbArticleRow[]>(() => {
       return false
     }
     if (q !== '') {
-      const hay = `${r.question} ${r.answer}`.toLowerCase()
+      const hay = `${r.question} ${stripHtml(r.answer, 0)} ${r.category?.name ?? ''}`.toLowerCase()
       if (!hay.includes(q)) {
         return false
       }
@@ -83,8 +103,17 @@ const filtered = computed<KbArticleRow[]>(() => {
   })
 })
 
+function formatUpdated(row: KbArticleRow): string {
+  if (!row.updated_at) {
+    return '—'
+  }
+  const who = row.updated_by?.name ?? row.created_by?.name
+  const when = new Date(row.updated_at).toLocaleString()
+  return who ? `${when} · ${who}` : when
+}
+
 async function createArticle(): Promise<void> {
-  if (!create.question.trim() || !create.answer.trim() || !create.category_id) {
+  if (!create.question.trim() || !hasRichTextContent(create.answer) || !create.category_id) {
     err.value = 'Category, question, and answer are required.'
     return
   }
@@ -99,11 +128,12 @@ async function createArticle(): Promise<void> {
       sort_order: create.sort_order,
       is_active: create.is_active,
     })
-    ok.value = 'Article created.'
+    ok.value = 'FAQ published.'
     create.question = ''
     create.answer = ''
     create.sort_order = 0
     create.is_active = true
+    showCreateForm.value = false
     await loadRows()
   } catch (e: unknown) {
     err.value = apiErrorMessage(e, 'Create failed.')
@@ -112,22 +142,48 @@ async function createArticle(): Promise<void> {
   }
 }
 
-async function saveRow(row: KbArticleRow): Promise<void> {
-  busy.value = row.id
+function openEdit(row: KbArticleRow): void {
+  editErr.value = null
+  editTarget.value = {
+    id: row.id,
+    category_id: row.category_id,
+    question: row.question,
+    answer: row.answer,
+    sort_order: row.sort_order,
+    is_active: row.is_active,
+  }
+  editOpen.value = true
+}
+
+function closeEdit(): void {
+  if (busy.value === editTarget.value?.id) {
+    return
+  }
+  editOpen.value = false
+  editTarget.value = null
+  editErr.value = null
+}
+
+async function saveEdit(payload: KbArticleEditForm): Promise<void> {
+  busy.value = payload.id
   ok.value = null
   err.value = null
+  editErr.value = null
   try {
-    await api.put(`/api/v1/admin/kb/articles/${row.id}`, {
-      category_id: row.category_id,
-      question: row.question,
-      answer: row.answer,
-      sort_order: row.sort_order,
-      is_active: row.is_active,
+    await api.put(`/api/v1/admin/kb/articles/${payload.id}`, {
+      category_id: payload.category_id,
+      question: payload.question,
+      answer: payload.answer,
+      sort_order: payload.sort_order,
+      is_active: payload.is_active,
     })
-    ok.value = `Saved “${row.question}”.`
+    ok.value = `Saved “${payload.question}”.`
+    editOpen.value = false
+    editTarget.value = null
+    editErr.value = null
     await loadRows()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Save failed.')
+    editErr.value = apiErrorMessage(e, 'Save failed.')
   } finally {
     busy.value = null
   }
@@ -142,7 +198,10 @@ async function removeRow(row: KbArticleRow): Promise<void> {
   err.value = null
   try {
     await api.delete(`/api/v1/admin/kb/articles/${row.id}`)
-    ok.value = 'Article deleted.'
+    ok.value = 'Article deleted (logged in audit trail).'
+    if (editTarget.value?.id === row.id) {
+      closeEdit()
+    }
     await loadRows()
   } catch (e: unknown) {
     err.value = apiErrorMessage(e, 'Delete failed.')
@@ -162,47 +221,28 @@ onMounted(() => {
       <template #lede>
         Publish frequently asked questions for staff to self-serve. Articles are grouped by the
         same categories as <RouterLink to="/settings/categories">issue categories</RouterLink>.
+        Creates, edits, and deletes are recorded in the
+        <RouterLink to="/settings/logging">audit log</RouterLink>.
       </template>
     </CbpPageHeading>
 
     <p v-if="err" class="err">{{ err }}</p>
     <p v-if="ok" class="ok">{{ ok }}</p>
 
-    <section class="cbp-card create-card" aria-labelledby="create-heading">
-      <h2 id="create-heading">Add an article</h2>
-      <div class="grid">
-        <label>
-          Category
-          <select v-model.number="create.category_id">
-            <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </select>
-        </label>
-        <label>
-          Sort order
-          <input v-model.number="create.sort_order" type="number" min="0" />
-        </label>
-        <label class="row-check">
-          <input v-model="create.is_active" type="checkbox" />
-          Active (visible on the home knowledge base)
-        </label>
-      </div>
-      <label class="full">
-        Question
-        <input v-model="create.question" type="text" maxlength="255" placeholder="e.g. How do I reset my password?" />
-      </label>
-      <label class="full">
-        Answer
-        <textarea v-model="create.answer" rows="5" placeholder="Plain text or HTML — paste step-by-step instructions, links, etc."></textarea>
-      </label>
-      <button type="button" class="primary" :disabled="busy === -1" @click="createArticle">
-        {{ busy === -1 ? 'Saving…' : 'Add article' }}
-      </button>
-    </section>
-
     <section class="cbp-card list-card" aria-labelledby="list-heading">
       <header class="list-head">
-        <h2 id="list-heading">All articles</h2>
-        <div class="filters">
+        <h2 id="list-heading">Articles</h2>
+        <div class="list-head-actions">
+          <button
+            type="button"
+            class="btn-add-faq"
+            :aria-expanded="showCreateForm"
+            aria-controls="create-faq-panel"
+            @click="toggleCreateForm"
+          >
+            <i class="bx bx-plus" aria-hidden="true" />
+            {{ showCreateForm ? 'Hide form' : 'Add FAQ' }}
+          </button>
           <label>
             <span class="sr-only">Filter by category</span>
             <select v-model.number="filterCat">
@@ -210,58 +250,131 @@ onMounted(() => {
               <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </label>
-          <label>
+          <label class="search-wrap">
             <span class="sr-only">Search</span>
-            <input v-model="search" type="search" placeholder="Search questions and answers…" />
+            <input v-model="search" type="search" placeholder="Search question, answer, category…" />
           </label>
         </div>
       </header>
 
-      <p v-if="filtered.length === 0" class="muted">
-        {{ rows.length === 0 ? 'No articles yet — use the form above to publish the first FAQ.' : 'No articles match the current filter.' }}
-      </p>
-      <ul v-else class="rows">
-        <li v-for="r in filtered" :key="r.id" class="row" :class="{ inactive: !r.is_active }">
-          <div class="row-grid">
-            <label>
-              Category
-              <select v-model.number="r.category_id">
-                <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-            </label>
-            <label>
-              Sort
-              <input v-model.number="r.sort_order" type="number" min="0" class="narrow" />
-            </label>
-            <label class="row-check">
-              <input v-model="r.is_active" type="checkbox" />
-              Active
-            </label>
-          </div>
-          <label class="full">
-            Question
-            <input v-model="r.question" type="text" maxlength="255" />
+      <section
+        v-show="showCreateForm"
+        id="create-faq-panel"
+        class="create-panel"
+        aria-labelledby="create-heading"
+      >
+        <h3 id="create-heading" class="create-panel-title">New FAQ</h3>
+        <div class="grid">
+          <label>
+            Category
+            <select v-model.number="create.category_id">
+              <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
           </label>
-          <label class="full">
-            Answer
-            <textarea v-model="r.answer" rows="4"></textarea>
+          <label>
+            Sort order
+            <input v-model.number="create.sort_order" type="number" min="0" />
           </label>
-          <div class="row-meta">
-            <span v-if="r.updated_by">Updated by {{ r.updated_by.name }}</span>
-            <span v-else-if="r.created_by">Created by {{ r.created_by.name }}</span>
-            <span v-if="r.updated_at"> · {{ new Date(r.updated_at).toLocaleString() }}</span>
-          </div>
-          <div class="row-actions">
-            <button type="button" class="btn" :disabled="busy === r.id" @click="saveRow(r)">
-              {{ busy === r.id ? 'Saving…' : 'Save' }}
-            </button>
-            <button type="button" class="btn danger" :disabled="busy === r.id" @click="removeRow(r)">
-              Delete
-            </button>
-          </div>
-        </li>
-      </ul>
+          <label class="row-check">
+            <input v-model="create.is_active" type="checkbox" />
+            Active (visible on the home knowledge base)
+          </label>
+        </div>
+        <label class="full">
+          Question
+          <input v-model="create.question" type="text" maxlength="255" placeholder="e.g. How do I reset my password?" />
+        </label>
+        <label class="full">
+          Answer
+          <CbpRichTextEditor
+            v-model="create.answer"
+            placeholder="Step-by-step instructions, links, screenshots…"
+          />
+        </label>
+        <div class="create-panel-actions">
+          <button type="button" class="btn-ghost" :disabled="busy === -1" @click="closeCreateForm">
+            Cancel
+          </button>
+          <button type="button" class="primary" :disabled="busy === -1" @click="createArticle">
+            {{ busy === -1 ? 'Publishing…' : 'Publish FAQ' }}
+          </button>
+        </div>
+      </section>
+
+      <div class="table-wrap">
+        <p class="table-count">
+          Showing <strong>{{ filtered.length }}</strong> of <strong>{{ rows.length }}</strong> articles
+        </p>
+        <div v-if="filtered.length === 0" class="table-empty muted">
+          {{
+            rows.length === 0
+              ? 'No FAQs yet — click Add FAQ to publish the first one.'
+              : 'No articles match the current filter.'
+          }}
+        </div>
+        <div v-else class="table-scroll">
+          <table class="ticket-table kb-table">
+            <thead>
+              <tr>
+                <th class="col-idx">#</th>
+                <th class="col-cat">Category</th>
+                <th class="col-q">Question</th>
+                <th class="col-preview">Answer preview</th>
+                <th class="col-sort">Sort</th>
+                <th class="col-status">Status</th>
+                <th class="col-updated">Last updated</th>
+                <th class="col-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(r, idx) in filtered"
+                :key="r.id"
+                :class="{ 'row-inactive': !r.is_active }"
+              >
+                <td class="col-idx">{{ idx + 1 }}</td>
+                <td class="col-cat">{{ r.category?.name ?? '—' }}</td>
+                <td class="col-q">
+                  <span class="q-text" :title="r.question">{{ r.question }}</span>
+                </td>
+                <td class="col-preview">
+                  <span class="preview-text" :title="stripHtml(r.answer, 0)">{{ stripHtml(r.answer) }}</span>
+                </td>
+                <td class="col-sort">{{ r.sort_order }}</td>
+                <td class="col-status">
+                  <span class="status-pill" :class="r.is_active ? 'on' : 'off'">
+                    {{ r.is_active ? 'Active' : 'Hidden' }}
+                  </span>
+                </td>
+                <td class="col-updated">
+                  <span class="updated-text">{{ formatUpdated(r) }}</span>
+                </td>
+                <td class="col-actions">
+                  <div class="action-btns">
+                    <button type="button" class="btn-sm" :disabled="busy === r.id" @click="openEdit(r)">
+                      Edit
+                    </button>
+                    <button type="button" class="btn-sm danger" :disabled="busy === r.id" @click="removeRow(r)">
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
+
+    <KbArticleEditModal
+      :open="editOpen"
+      :article="editTarget"
+      :categories="cats"
+      :busy="busy !== null && busy === editTarget?.id"
+      :error="editErr"
+      @close="closeEdit"
+      @save="saveEdit"
+    />
   </div>
 </template>
 
@@ -282,15 +395,65 @@ onMounted(() => {
   color: #166534;
   border-radius: 8px;
 }
-.create-card,
 .list-card {
   padding: 1.1rem;
   margin-top: 1rem;
 }
-.create-card h2,
 .list-card h2 {
   font-size: 1.05rem;
-  margin: 0 0 0.85rem;
+  margin: 0;
+}
+.create-panel {
+  margin: 0.85rem 0 1rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.create-panel-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+.create-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+.btn-add-faq {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #119a48 0%, #0d7a3a 100%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-add-faq i {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.btn-ghost {
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.btn-ghost:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 .grid {
   display: grid;
@@ -307,25 +470,13 @@ label {
   gap: 0.3rem;
 }
 input,
-select,
-textarea {
+select {
   padding: 0.5rem 0.65rem;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 0.9rem;
   background: #fff;
   font-family: inherit;
-}
-textarea {
-  resize: vertical;
-  min-height: 96px;
-}
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: #119a48;
-  box-shadow: 0 0 0 3px rgba(17, 154, 72, 0.18);
 }
 .row-check {
   flex-direction: row;
@@ -358,10 +509,14 @@ textarea:focus {
   align-items: center;
   margin-bottom: 0.85rem;
 }
-.filters {
+.list-head-actions {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
+}
+.search-wrap input {
+  min-width: min(280px, 100%);
 }
 .sr-only {
   position: absolute;
@@ -374,57 +529,99 @@ textarea:focus {
   white-space: nowrap;
   border: 0;
 }
-.rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
+.table-empty {
+  padding: 1.25rem;
+  text-align: center;
 }
-.row {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0.85rem;
-  background: #fff;
+.kb-table .col-idx {
+  width: 3%;
+  text-align: center;
 }
-.row.inactive {
+.kb-table .col-cat {
+  width: 14%;
+}
+.kb-table .col-q {
+  width: 22%;
+}
+.kb-table .col-preview {
+  width: 24%;
+}
+.kb-table .col-sort {
+  width: 6%;
+  text-align: center;
+}
+.kb-table .col-status {
+  width: 9%;
+}
+.kb-table .col-updated {
+  width: 16%;
+}
+.kb-table .col-actions {
+  width: 12%;
+}
+.q-text,
+.preview-text,
+.updated-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: #1a1a1a;
+}
+.preview-text {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+.updated-text {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: normal;
+  line-height: 1.35;
+}
+tbody tr.row-inactive td {
   background: #f8fafc;
-  border-style: dashed;
+  opacity: 0.85;
 }
-.row-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.65rem;
-  align-items: end;
-}
-.narrow {
-  max-width: 96px;
-}
-.row-meta {
-  margin-top: 0.5rem;
-  font-size: 0.78rem;
-  color: #6b7280;
-}
-.row-actions {
-  margin-top: 0.65rem;
-  display: flex;
-  gap: 0.5rem;
-}
-.btn {
-  padding: 0.45rem 0.85rem;
-  border-radius: 8px;
-  border: 0;
-  background: #119a48;
-  color: #fff;
+.status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.status-pill.on {
+  background: #dcfce7;
+  color: #166534;
+}
+.status-pill.off {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.action-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.btn-sm {
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0d7a3a;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
 }
-.btn.danger {
-  background: #b91c1c;
+.btn-sm.danger {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fff;
 }
-.btn:disabled {
-  opacity: 0.7;
+.btn-sm:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 .muted {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\MeResource;
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskWorkModeTrail;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -45,7 +46,42 @@ class MeWorkModeController extends Controller
         $profile->work_mode = $mode;
         $profile->work_mode_updated_at = now();
         $profile->save();
+        $this->recordWorkModeTrail($profile, $mode);
 
         return new MeResource($user->fresh()->load('helpdeskProfile'));
+    }
+
+    private function recordWorkModeTrail(HelpdeskProfile $profile, ?string $mode): void
+    {
+        // Audit trail tracks days explicitly marked as remote/onsite.
+        if (! in_array($mode, HelpdeskProfile::VALID_WORK_MODES, true)) {
+            return;
+        }
+
+        $now = now();
+        $row = HelpdeskWorkModeTrail::query()->firstOrNew([
+            'helpdesk_profile_id' => $profile->id,
+            'work_date' => $now->toDateString(),
+        ]);
+
+        if (! $row->exists) {
+            $row->user_id = $profile->user_id;
+            $row->staff_id = $profile->staff_id;
+            $row->first_work_mode = $mode;
+            $row->last_work_mode = $mode;
+            $row->switch_count = 1;
+            $row->first_set_at = $now;
+            $row->last_set_at = $now;
+            $row->save();
+
+            return;
+        }
+
+        if ($row->last_work_mode !== $mode) {
+            $row->switch_count = ((int) $row->switch_count) + 1;
+        }
+        $row->last_work_mode = $mode;
+        $row->last_set_at = $now;
+        $row->save();
     }
 }

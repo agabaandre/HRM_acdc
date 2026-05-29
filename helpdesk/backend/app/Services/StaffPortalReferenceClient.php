@@ -102,6 +102,52 @@ class StaffPortalReferenceClient
         return $payload;
     }
 
+    /**
+     * CBP module links for top nav (same data as Staff portal cbp_modules table).
+     *
+     * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
+     */
+    /**
+     * @param  list<string>  $permissionIds  Staff portal permission codes from SSO session (optional)
+     */
+    public function fetchCbpModules(
+        int $staffId,
+        string $excludeModuleKey = 'helpdesk_itsm',
+        string $activeModuleKey = 'helpdesk_itsm',
+        array $permissionIds = [],
+    ): array {
+        if ($staffId < 1) {
+            throw new RuntimeException('staff_id is required for CBP modules.');
+        }
+        $url = $this->buildUrl('cbp_modules').'?staff_id='.$staffId;
+        if ($excludeModuleKey !== '') {
+            $url .= '&exclude_module_key='.rawurlencode($excludeModuleKey);
+        }
+        if ($activeModuleKey !== '') {
+            $url .= '&active_module_key='.rawurlencode($activeModuleKey);
+        }
+        $permissionIds = array_values(array_unique(array_filter(array_map(
+            static fn ($id) => trim((string) $id),
+            $permissionIds
+        ), static fn (string $id) => $id !== '')));
+        if ($permissionIds !== []) {
+            $url .= '&permission_ids='.rawurlencode(implode(',', $permissionIds));
+        }
+
+        $payload = $this->getJsonAssoc($url);
+        if (empty($payload['success'])) {
+            $err = is_string($payload['error'] ?? null) ? $payload['error'] : 'Staff API returned success=false for cbp_modules.';
+            throw new RuntimeException($err);
+        }
+        $data = $payload['data'] ?? null;
+        if (! is_array($data) || ! is_array($data['home'] ?? null)) {
+            throw new RuntimeException('Staff API cbp_modules response is missing data.home.');
+        }
+
+        /** @var array{home: array<string, mixed>, modules: list<array<string, mixed>>} $data */
+        return $data;
+    }
+
     private function buildUrl(string $endpointKey): string
     {
         $base = rtrim((string) config('helpdesk.staff_api.base_url'), '/');

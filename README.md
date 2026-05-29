@@ -10,7 +10,7 @@
 [![Documentation](https://img.shields.io/badge/Documentation-Complete-blue)](./documentation/README.md)
 [![Staff Portal](https://img.shields.io/badge/Staff%20Portal-CodeIgniter-orange)](./application/)
 [![APM](https://img.shields.io/badge/APM-Laravel-red)](./apm/)
-[![Finance](https://img.shields.io/badge/Finance-Node.js%2FReact-green)](./finance/)
+[![Finance](https://img.shields.io/badge/Finance-Laravel%2BInertia-green)](./finance/)
 [![Helpdesk](https://img.shields.io/badge/Helpdesk-Laravel%2BVue-teal)](./helpdesk/)
 
 </div>
@@ -156,12 +156,11 @@ php artisan db:seed
 </details>
 
 <details>
-<summary><b>3. Set up Finance Module (Node.js/React)</b></summary>
+<summary><b>3. Set up Finance Module (Laravel + Inertia)</b></summary>
 
 ```bash
 cd finance
-npm run install:all
-npm run dev:all
+./setup.sh
 ```
 
 📖 See [Finance Documentation](./finance/documentation/README.md) for details.
@@ -233,7 +232,7 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 | [**📋 APM Documentation**](./apm/documentation/README.md) | Laravel Approvals Management System |
 | [**📡 APM API Documentation**](./apm/documentation/API_DOCUMENTATION.md) | REST API (JWT), endpoints, approval trails, attachments, Swagger at `/docs` |
 | [**🌱 APM Environment Guide**](./apm/documentation/ENVIRONMENT.md) | `.env` setup and variable reference (`apm/.env.example`) |
-| [**💰 Finance Documentation**](./finance/documentation/README.md) | Node.js/React Finance Module |
+| [**💰 Finance Documentation**](./finance/documentation/README.md) | Laravel + Inertia Finance Module |
 | [**🛎️ Helpdesk Documentation**](./helpdesk/documentation/README.md) | IT Service Desk / ITSM module (Laravel + Vue) — index of all helpdesk docs |
 | [**👤 Helpdesk User Guide**](./helpdesk/documentation/USER_GUIDE.md) | Requesters, agents & admins; includes step-by-step ticket creation |
 | [**🧑‍💻 Helpdesk Developer Guide**](./helpdesk/documentation/DEVELOPER_GUIDE.md) | Architecture, schema, REST API, extension points & runbooks |
@@ -260,8 +259,8 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 - `php index.php jobs/run/performance_approval_reminder` - queue + send daily performance approval reminder
 
 **Architecture & Development:**
-- [Finance Frontend Architecture](./finance/documentation/FRONTEND_ARCHITECTURE.md) - React app structure
-- [Finance Server Architecture](./finance/documentation/SERVER_ARCHITECTURE.md) - Node.js server structure
+- [Finance Quick Start](./finance/documentation/QUICKSTART.md) - Install and SSO
+- [Finance Laravel + Inertia](./finance/documentation/LARAVEL_INERTIA.md) - UI and adding pages
 - [Auth Module Improvements](./application/modules/auth/README_IMPROVEMENTS.md) - Authentication features
 
 ---
@@ -311,11 +310,11 @@ staff/
 │   │   └── ...                          # Approval trails, queues, etc.
 │   ├── public/                          # Web root (storage link for uploads)
 │   └── README.md                        # APM quick start
-├── 💰 finance/                          # Node.js/React Finance module
-│   ├── server/                          # Express.js backend
-│   ├── frontend/                        # React frontend
+├── 💰 finance/                          # Laravel + Inertia Finance (like apm/)
+│   ├── app/, routes/, resources/js/     # Application code
+│   ├── public/, server.php, .htaccess   # Apache entry
 │   ├── documentation/                   # Finance documentation
-│   └── README.md                        # Finance main README
+│   └── setup.sh                         # Install + build
 ├── 🛎️ helpdesk/                          # Laravel + Vue IT Service Desk / ITSM
 │   ├── backend/                         # Laravel 11 JSON API (/api/v1/*)
 │   │   ├── app/Http/Controllers/Api/V1  # Tickets, KB, reports, public screen, admin
@@ -369,7 +368,7 @@ staff/
 |--------|---------|----------|----------|
 | **Staff Portal** | CodeIgniter 3 | Bootstrap 5 | MySQL |
 | **APM** | Laravel 10+ | Blade Templates | MySQL |
-| **Finance** | Node.js/Express | React 18 | MySQL |
+| **Finance** | Laravel 12 | React (Inertia) | MySQL |
 | **Helpdesk** | Laravel 11 | Vue 3.5 + Pinia (Vite) | MySQL + Redis (Predis) |
 
 </div>

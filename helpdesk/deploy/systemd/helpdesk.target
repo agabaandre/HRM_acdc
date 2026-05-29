@@ -1,0 +1,15 @@
+[Unit]
+Description=Africa CDC Helpdesk (Apache SPA/API + Laravel workers)
+Documentation=file:///var/www/staff/helpdesk/documentation/SYSTEMD.md
+# HTTP is served by Apache; these units keep background workers alive.
+After=network-online.target
+Wants=network-online.target
+Wants=helpdesk-queue.service
+Wants=helpdesk-scheduler.timer
+Wants=helpdesk-health.timer
+# Uncomment ONE line for your distro (Apache must be running for the app to load):
+# Wants=apache2.service
+# Wants=httpd.service
+
+[Install]
+WantedBy=multi-user.target

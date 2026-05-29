@@ -3,9 +3,12 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'
 import './styles/cbp-finance-layout.css'
+import './styles/rich-text-display.css'
+import './styles/ticket-table.css'
 import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
+import { persistStaffSsoToken } from './lib/cbpSystems'
 import { getStaffSsoTokenFromUrl, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
 
 type SsoFailure = {
@@ -128,6 +131,7 @@ async function bootstrap() {
 
   const urlToken = getStaffSsoTokenFromUrl()
   if (urlToken) {
+    persistStaffSsoToken(urlToken)
     const auth = useAuthStore(pinia)
     try {
       await auth.exchangeStaffSso(urlToken)

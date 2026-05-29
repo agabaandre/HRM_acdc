@@ -13,7 +13,7 @@ html.helpdesk-theme-light {
   --cbp-footer-bg: #f8f9fa;
   --cbp-footer-border: #e9ecef;
   --cbp-footer-text: #6c757d;
-  --cbp-page-bg: #f4f6f8;
+  --cbp-page-bg: #f8f9fa;
   --cbp-card-bg: #ffffff;
   --cbp-card-text: #1f2937;
   --cbp-card-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -22,7 +22,7 @@ html.helpdesk-theme-light {
   --cbp-dd-text: #2c3e50;
   --cbp-dd-hover-bg: #e8f5ee;
   --cbp-dd-hover-text: #0d7a3a;
-  --cbp-page-max: 1100px;
+  --cbp-page-max: 1360px;
 }
 
 html.helpdesk-theme-dark {
@@ -112,7 +112,7 @@ html.helpdesk-theme-dark {
   justify-content: flex-end;
 }
 
-.cbp-topbar-menu a {
+.cbp-topbar-menu > a {
   color: #fff;
   text-decoration: none;
   font-size: 0.875rem;
@@ -125,51 +125,297 @@ html.helpdesk-theme-dark {
   white-space: nowrap;
 }
 
+.cbp-topbar-menu > a:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .cbp-topbar-menu button {
   font-family: inherit;
 }
 
-.cbp-topbar-menu a:hover {
+/* Staff portal + CBP systems dropdown */
+.cbp-topbar-portal-dd {
+  position: relative;
+}
+
+.cbp-topbar-dd-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.cbp-topbar-dd-toggle:hover,
+.cbp-topbar-portal-dd.is-open .cbp-topbar-dd-toggle,
+.cbp-topbar-dd-toggle.is-active {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.cbp-topbar-user {
+.cbp-topbar-dd-toggle.is-active {
+  box-shadow: none;
+}
+
+.cbp-topbar-dd-toggle-label,
+.cbp-topbar-dd-icon {
+  color: #fff;
+}
+
+.cbp-topbar-dd-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.cbp-topbar-dd-toggle-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.cbp-topbar-dd-caret {
+  font-size: 0.55rem;
+  opacity: 0.85;
+  transition: transform 0.15s ease;
+}
+
+.cbp-topbar-portal-dd.is-open .cbp-topbar-dd-caret {
+  transform: rotate(180deg);
+}
+
+.cbp-topbar-dd-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  padding: 0.35rem 0;
+  border-radius: 10px;
+  background: var(--cbp-dd-bg);
+  border: 1px solid var(--cbp-dd-border);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  z-index: 1100;
+}
+
+.cbp-topbar-portal-dd.is-open .cbp-topbar-dd-panel,
+.cbp-topbar-user-dd.is-open .cbp-topbar-dd-panel {
+  display: block;
+}
+
+.cbp-topbar-dd-primary {
+  display: block;
+  padding: 0.65rem 0.85rem;
+  margin: 0.2rem 0.35rem 0.45rem;
+  border-radius: 8px;
+  text-decoration: none;
+  background: linear-gradient(135deg, rgba(17, 154, 72, 0.14), rgba(17, 154, 72, 0.06));
+  border: 1px solid rgba(17, 154, 72, 0.22);
+}
+
+.cbp-topbar-dd-primary:hover,
+.cbp-topbar-dd-primary.is-active {
+  background: linear-gradient(135deg, rgba(17, 154, 72, 0.22), rgba(17, 154, 72, 0.1));
+}
+
+.cbp-topbar-dd-primary-title {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--cbp-dd-text);
+}
+
+.cbp-topbar-dd-primary-sub {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--cbp-footer-text);
+  line-height: 1.35;
+}
+
+.cbp-topbar-dd-section {
+  margin: 0.25rem 0.85rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cbp-footer-text);
+}
+
+.cbp-topbar-dd-panel a.cbp-topbar-dd-item,
+.cbp-topbar-dd-panel a.cbp-topbar-dd-primary {
+  color: var(--cbp-dd-text);
+}
+
+.cbp-topbar-dd-item {
+  display: block;
+  padding: 0.5rem 0.85rem;
+  text-decoration: none;
+  color: var(--cbp-dd-text);
+}
+
+.cbp-topbar-dd-panel a.cbp-topbar-dd-item:hover,
+.cbp-topbar-dd-panel a.cbp-topbar-dd-item.is-active,
+.cbp-topbar-dd-item:hover,
+.cbp-topbar-dd-item.is-active {
+  background: var(--cbp-dd-hover-bg);
+  color: var(--cbp-dd-hover-text);
+}
+
+.cbp-topbar-dd-item--with-icon {
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0 0.5rem 0 0.75rem;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.cbp-topbar-dd-module-icon {
+  flex-shrink: 0;
+  width: 1.35rem;
+  text-align: center;
+  font-size: 1rem;
+  margin-top: 0.1rem;
+  color: #119a48;
+}
+
+.cbp-topbar-dd-item-text {
+  min-width: 0;
+}
+
+.cbp-topbar-dd-empty {
+  margin: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+  color: var(--cbp-footer-text);
+  line-height: 1.4;
+}
+
+@media (max-width: 767.98px) {
+  .cbp-topbar-dd-toggle-label {
+    display: none;
+  }
+
+  .cbp-topbar-dd-toggle {
+    padding: 0.45rem 0.55rem;
+  }
+}
+
+.cbp-topbar-dd-item-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: inherit;
+}
+
+.cbp-topbar-dd-item-sub {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.72rem;
+  opacity: 0.82;
+}
+
+/* Compact theme toggle (screen dashboard style) */
+.cbp-theme-switch {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.cbp-theme-btn {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.cbp-theme-btn.active {
+  background: #fff;
+  color: #0d7a3a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.cbp-theme-btn:not(.active):hover {
+  color: #fff;
+}
+
+.cbp-topbar-user-dd {
+  position: relative;
   margin-left: 0.25rem;
+  padding-left: 0.75rem;
   border-left: 1px solid rgba(255, 255, 255, 0.35);
-  min-width: 0;
 }
-.cbp-topbar-user-text {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
+
+.cbp-topbar-user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.2rem 0.35rem 0.2rem 0.2rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-family: inherit;
+  cursor: pointer;
+  max-width: min(220px, 38vw);
 }
+
+.cbp-topbar-user-trigger:hover,
+.cbp-topbar-user-dd.is-open .cbp-topbar-user-trigger {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .cbp-topbar-avatar {
   border-color: rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
 }
 
 .cbp-topbar-user-name {
   font-weight: 600;
   font-size: 0.82rem;
   color: #fff;
-  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
-.cbp-topbar-user-role {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.82);
-  text-transform: capitalize;
+.cbp-topbar-user-panel {
+  right: 0;
+  min-width: 200px;
+}
+
+.cbp-topbar-dd-logout {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--cbp-dd-text);
+}
+
+.cbp-topbar-dd-logout:hover {
+  background: var(--cbp-dd-hover-bg);
+  color: var(--cbp-dd-hover-text);
 }
 
 .cbp-primary-nav {
+  --bs-body-font-size: 0.9rem;
+  --bs-body-font-weight: 400;
   position: fixed;
   top: 60px;
   left: 0;
@@ -182,6 +428,8 @@ html.helpdesk-theme-dark {
   display: flex;
   align-items: center;
   padding: 0 12px;
+  font-size: var(--bs-body-font-size);
+  font-weight: var(--bs-body-font-weight);
 }
 
 @media (min-width: 768px) {
@@ -207,6 +455,11 @@ html.helpdesk-theme-dark {
   cursor: pointer;
   margin-right: 0.25rem;
   border-radius: 4px;
+  line-height: 1;
+}
+
+.cbp-nav-toggle i {
+  font-size: 1.35rem;
 }
 
 .cbp-nav-toggle:hover {
@@ -261,8 +514,8 @@ html.helpdesk-theme-dark {
 
 .cbp-nav-link {
   color: var(--cbp-nav-text) !important;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--bs-body-font-size, 1rem);
+  font-weight: var(--bs-body-font-weight, 400);
   text-decoration: none !important;
   padding: 0.5rem 0.85rem;
   border-radius: 4px;
@@ -271,6 +524,18 @@ html.helpdesk-theme-dark {
   gap: 0.45rem;
   transition: background 0.15s ease, color 0.15s ease;
   white-space: nowrap;
+}
+
+.cbp-nav-link-icon {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+  opacity: 0.92;
+}
+
+.cbp-nav-link:hover .cbp-nav-link-icon,
+.cbp-nav-link.router-link-active .cbp-nav-link-icon {
+  opacity: 1;
 }
 
 @media (max-width: 1199px) {
@@ -348,12 +613,27 @@ html.helpdesk-theme-dark {
 }
 
 .cbp-nav-dd-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.5rem 1rem;
-  font-size: 0.85rem;
+  font-size: var(--bs-body-font-size, 1rem);
   color: var(--cbp-dd-text) !important;
   text-decoration: none !important;
-  font-weight: 500;
+  font-weight: var(--bs-body-font-weight, 400);
+}
+
+.cbp-nav-dd-item-icon {
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: #119a48;
+  opacity: 0.9;
+}
+
+.cbp-nav-dd-item:hover .cbp-nav-dd-item-icon,
+.cbp-nav-dd-item.router-link-active .cbp-nav-dd-item-icon {
+  opacity: 1;
 }
 
 .cbp-nav-dd-item:hover,
@@ -366,18 +646,18 @@ html.helpdesk-theme-dark {
   flex: 1;
   margin-top: 120px;
   margin-bottom: 24px;
-  padding: 0 10px 24px;
+  padding: 0 4px 24px;
 }
 
 .cbp-page-content {
   max-width: var(--cbp-page-max);
   margin: 0 auto;
-  padding: 1.25rem 0.5rem;
+  padding: 1.25rem 0.25rem;
 }
 
 @media (min-width: 900px) {
   .cbp-page-content {
-    padding: 1.5rem 0.75rem;
+    padding: 1.5rem 0.35rem;
   }
 }
 

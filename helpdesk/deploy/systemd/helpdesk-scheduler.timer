@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Africa CDC Helpdesk Laravel scheduler every minute
+Documentation=file:///var/www/staff/helpdesk/documentation/SYSTEMD.md
+PartOf=helpdesk.target
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=30s
+Persistent=true
+
+[Install]
+WantedBy=helpdesk.target timers.target
