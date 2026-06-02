@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -67,7 +68,7 @@ class WeeklyBriefingSettingsController extends Controller
             'filing_iso_week_offset' => 'required|integer|in:0,1',
             'hod_reminder_time' => 'required|string|max:8',
             'hod_reminder_days_before_deadline' => ['required', 'string', 'max:80', 'regex:/^\d+(\s*,\s*\d+)*$/'],
-            'hod_reminder_clock' => ['required', 'string', 'in:submission_close_time,hod_reminder_time'],
+            'hod_reminder_clock' => ['nullable', 'string', 'in:submission_close_time,hod_reminder_time'],
             'director_review_reminder_days_before_deadline' => ['required', 'string', 'max:80', 'regex:/^\d+(\s*,\s*\d+)*$/'],
             'director_review_reminder_clock' => ['nullable', 'string', 'in:submission_close_time,hod_reminder_time'],
             'submission_close_time' => 'required|string|max:8',
@@ -198,14 +199,15 @@ class WeeklyBriefingSettingsController extends Controller
             static fn (int $offset): bool => $offset > 0
         ));
 
-        $settings->fill([
+        $hodReminderClock = $data['hod_reminder_clock'] ?? 'hod_reminder_time';
+        $directorReminderClock = $data['director_review_reminder_clock'] ?? 'hod_reminder_time';
+
+        $fill = [
             'submission_weekday' => $data['submission_weekday'],
             'filing_iso_week_offset' => (int) ($data['filing_iso_week_offset'] ?? 0),
             'hod_reminder_time' => $this->normalizeTime($data['hod_reminder_time']),
             'hod_reminder_days_before_deadline' => $hodReminderDays,
-            'hod_reminder_clock' => 'hod_reminder_time',
             'director_review_reminder_days_before_deadline' => $directorReminderDays,
-            'director_review_reminder_clock' => 'hod_reminder_time',
             'submission_close_time' => $this->normalizeTime($data['submission_close_time']),
             'summary_send_time' => $this->normalizeTime($data['summary_send_time']),
             'compiled_recipient_emails' => $data['compiled_recipient_emails'] ?? null,
@@ -218,7 +220,22 @@ class WeeklyBriefingSettingsController extends Controller
             'report_unlock_override_scope' => $overrideScope,
             'report_unlock_override_division_id' => $overrideDivisionId,
             'report_viewer_staff_ids' => $viewerIds,
-        ]);
+        ];
+
+        if (Schema::hasColumn($settings->getTable(), 'hod_reminder_clock')) {
+            $fill['hod_reminder_clock'] = $hodReminderClock;
+        }
+        if (Schema::hasColumn($settings->getTable(), 'director_review_reminder_clock')) {
+            $fill['director_review_reminder_clock'] = $directorReminderClock;
+        }
+        if (! Schema::hasColumn($settings->getTable(), 'compiled_exclude_unreviewed_director_divisions')) {
+            unset($fill['compiled_exclude_unreviewed_director_divisions']);
+        }
+        if (! Schema::hasColumn($settings->getTable(), 'hod_reminder_days_before_deadline')) {
+            unset($fill['hod_reminder_days_before_deadline'], $fill['director_review_reminder_days_before_deadline']);
+        }
+
+        $settings->fill($fill);
         $settings->save();
 
         WeeklyBriefingContributionKeyResolver::migrateLegacyDirectorateReportsForNormalizedRows($normalized);
