@@ -408,13 +408,26 @@ class WeeklyBriefingReport extends Model
     }
 
     /**
-     * User-facing reporting window: Monday–Sunday for the ISO week, with optional ISO suffix.
+     * @return array{iso_year: int, iso_week: int}
      */
-    public static function humanIsoWeekRange(int $isoYear, int $isoWeek, bool $includeIsoSuffix = true): string
+    public static function previousIsoWeekPair(int $isoYear, int $isoWeek): array
+    {
+        $monday = self::periodMonday($isoYear, $isoWeek)->subWeek();
+
+        return [
+            'iso_year' => (int) $monday->isoWeekYear(),
+            'iso_week' => (int) $monday->isoWeek(),
+        ];
+    }
+
+    /**
+     * Compact Mon–Sun range for hub labels (short weekday names).
+     */
+    public static function humanIsoWeekRangeInline(int $isoYear, int $isoWeek, bool $includeIsoSuffix = true): string
     {
         $mon = self::periodMonday($isoYear, $isoWeek);
         $sun = $mon->copy()->addDays(6);
-        $main = 'Week start: '.$mon->format('l, M j, Y').' · Week end: '.$sun->format('l, M j, Y');
+        $main = $mon->format('D, M j').' – '.$sun->format('D, M j, Y');
         if ($includeIsoSuffix) {
             $main .= ' (ISO W'.$isoWeek.'/'.$isoYear.')';
         }
@@ -422,9 +435,53 @@ class WeeklyBriefingReport extends Model
         return $main;
     }
 
-    public function isoWeekDateRangeLabel(bool $includeIsoSuffix = true): string
+    /**
+     * Label for ISO week &lt;select&gt; options on the All reports tab.
+     */
+    public static function isoWeekFilterOptionLabel(int $isoYear, int $isoWeek): string
     {
-        return self::humanIsoWeekRange((int) $this->report_iso_week_year, (int) $this->report_iso_week, $includeIsoSuffix);
+        $mon = self::periodMonday($isoYear, $isoWeek);
+        $sun = $mon->copy()->addDays(6);
+
+        return 'W'.$isoWeek.' · '.$mon->format('D, M j').' – '.$sun->format('D, M j, Y');
+    }
+
+    /**
+     * User-facing reporting window: Monday–Sunday for the ISO week, with optional ISO suffix.
+     */
+    public static function humanIsoWeekRange(int $isoYear, int $isoWeek, bool $includeIsoSuffix = true, bool $shortDays = false): string
+    {
+        $mon = self::periodMonday($isoYear, $isoWeek);
+        $sun = $mon->copy()->addDays(6);
+        $dayFormat = $shortDays ? 'D, M j, Y' : 'l, M j, Y';
+        $main = 'Week start: '.$mon->format($dayFormat).' · Week end: '.$sun->format($dayFormat);
+        if ($includeIsoSuffix) {
+            $main .= ' (ISO W'.$isoWeek.'/'.$isoYear.')';
+        }
+
+        return $main;
+    }
+
+    public function isoWeekDateRangeLabel(bool $includeIsoSuffix = true, bool $shortDays = false): string
+    {
+        return self::humanIsoWeekRange(
+            (int) $this->report_iso_week_year,
+            (int) $this->report_iso_week,
+            $includeIsoSuffix,
+            $shortDays
+        );
+    }
+
+    public function isoWeekStartEndLabel(bool $shortDays = true): string
+    {
+        if (! $this->period_start) {
+            return '—';
+        }
+        $mon = Carbon::parse($this->period_start)->startOfDay();
+        $sun = $mon->copy()->addDays(6);
+        $fmt = $shortDays ? 'D, M j, Y' : 'M j, Y';
+
+        return $mon->format($fmt).' → '.$sun->format($fmt);
     }
 
     /**
