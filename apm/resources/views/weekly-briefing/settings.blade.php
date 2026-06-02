@@ -11,6 +11,16 @@
     @if (session('error'))
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <strong>Could not save settings:</strong>
+            <ul class="mb-0 mt-1">
+                @foreach ($errors->all() as $message)
+                    <li>{{ $message }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
     <form method="post" action="{{ route('weekly-briefing.settings.update') }}" id="wb-settings-form">
         @csrf
@@ -102,66 +112,6 @@
                         <option value="1" @selected((int) old('filing_iso_week_offset', $settings->filing_iso_week_offset ?? 0) === 1)>Next ISO week (the week after the one containing today)</option>
                     </select>
                 </div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm mb-3 border-info">
-            <div class="card-header fw-bold">Administrative week remap (bulk)</div>
-            <div class="card-body">
-                <p class="small text-muted mb-3">
-                    Shift all saved weekly briefing reports by ISO week offset (negative = move back, positive = move forward).
-                    This updates <code>report_iso_week_year</code>, <code>report_iso_week</code>, and <code>period_start</code>.
-                </p>
-                @php
-                    $wbHasDedicatedRemapRoute = Route::has('weekly-briefing.settings.remap-weeks');
-                    $wbRemapActionUrl = $wbHasDedicatedRemapRoute
-                        ? route('weekly-briefing.settings.remap-weeks')
-                        : route('weekly-briefing.settings.update');
-                @endphp
-                @if ($wbHasDedicatedRemapRoute)
-                    <div class="d-flex flex-wrap gap-2 align-items-end">
-                        <div style="max-width: 220px;">
-                            <label class="form-label mb-1" for="wbWeekShiftInput">Week shift</label>
-                            <input type="number" min="-104" max="104" step="1" class="form-control" id="wbWeekShiftInput" value="-1">
-                            <small class="text-muted">Example: <code>-1</code> for previous week, <code>+1</code> for next week.</small>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-secondary" id="wbShiftMinusOneBtn">Quick -1</button>
-                            <button type="button" class="btn btn-outline-secondary" id="wbShiftPlusOneBtn">Quick +1</button>
-                            <button type="button" class="btn btn-info" id="wbRemapSubmitBtn">
-                                <i class="fas fa-random me-1"></i> Remap reports
-                            </button>
-                        </div>
-                    </div>
-                    <form method="post" action="{{ $wbRemapActionUrl }}" id="wb-remap-form" class="d-none">
-                        @csrf
-                        <input type="hidden" name="week_shift" id="wbRemapWeekShift" value="-1">
-                    </form>
-                @else
-                    <div class="d-flex flex-wrap gap-2 align-items-end">
-                        <div style="max-width: 220px;">
-                            <label class="form-label mb-1" for="wbWeekShiftInput">Week shift</label>
-                            <input type="number" min="-104" max="104" step="1" class="form-control" id="wbWeekShiftInput" value="-1">
-                            <small class="text-muted">Example: <code>-1</code> for previous week, <code>+1</code> for next week.</small>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-secondary" id="wbShiftMinusOneBtn">Quick -1</button>
-                            <button type="button" class="btn btn-outline-secondary" id="wbShiftPlusOneBtn">Quick +1</button>
-                            <button type="button" class="btn btn-info" id="wbRemapSubmitBtn">
-                                <i class="fas fa-random me-1"></i> Remap reports
-                            </button>
-                        </div>
-                    </div>
-                    <div class="alert alert-warning mt-3 mb-0">
-                        Dedicated remap route is missing in this deployment, so remap will run via the existing Settings update endpoint.
-                    </div>
-                    <form method="post" action="{{ $wbRemapActionUrl }}" id="wb-remap-form" class="d-none">
-                        @csrf
-                        @method('PUT')
-                        <input type="hidden" name="__remap_weeks" value="1">
-                        <input type="hidden" name="week_shift" id="wbRemapWeekShift" value="-1">
-                    </form>
-                @endif
             </div>
         </div>
 
@@ -403,6 +353,49 @@
         <a href="{{ route('weekly-briefing.index') }}" class="btn btn-outline-secondary">Back to Weekly brief</a>
     </form>
 
+    @php
+        $wbHasDedicatedRemapRoute = Route::has('weekly-briefing.settings.remap-weeks');
+        $wbRemapActionUrl = $wbHasDedicatedRemapRoute
+            ? route('weekly-briefing.settings.remap-weeks')
+            : route('weekly-briefing.settings.update');
+    @endphp
+    <div class="card shadow-sm mb-3 border-info">
+        <div class="card-header fw-bold">Administrative week remap (bulk)</div>
+        <div class="card-body">
+            <p class="small text-muted mb-3">
+                Shift all saved weekly briefing reports by ISO week offset (negative = move back, positive = move forward).
+                This updates <code>report_iso_week_year</code>, <code>report_iso_week</code>, and <code>period_start</code>.
+            </p>
+            <div class="d-flex flex-wrap gap-2 align-items-end">
+                <div style="max-width: 220px;">
+                    <label class="form-label mb-1" for="wbWeekShiftInput">Week shift</label>
+                    <input type="number" min="-104" max="104" step="1" class="form-control" id="wbWeekShiftInput" value="-1">
+                    <small class="text-muted">Example: <code>-1</code> for previous week, <code>+1</code> for next week.</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" id="wbShiftMinusOneBtn">Quick -1</button>
+                    <button type="button" class="btn btn-outline-secondary" id="wbShiftPlusOneBtn">Quick +1</button>
+                    <button type="button" class="btn btn-info" id="wbRemapSubmitBtn">
+                        <i class="fas fa-random me-1"></i> Remap reports
+                    </button>
+                </div>
+            </div>
+            @unless ($wbHasDedicatedRemapRoute)
+                <div class="alert alert-warning mt-3 mb-0">
+                    Dedicated remap route is missing in this deployment, so remap will run via the existing Settings update endpoint.
+                </div>
+            @endunless
+            <form method="post" action="{{ $wbRemapActionUrl }}" id="wb-remap-form" class="d-none">
+                @csrf
+                @unless ($wbHasDedicatedRemapRoute)
+                    @method('PUT')
+                    <input type="hidden" name="__remap_weeks" value="1">
+                @endunless
+                <input type="hidden" name="week_shift" id="wbRemapWeekShift" value="-1">
+            </form>
+        </div>
+    </div>
+
     <template id="wb-contributor-template">
         @include('weekly-briefing.partials.contributor-row', [
             'idx' => '__INDEX__',
@@ -442,9 +435,9 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
     var vBody = document.getElementById('wb-viewers-body');
     var vTpl = document.getElementById('wb-viewer-template');
     var vBtn = document.getElementById('wb-add-viewer');
-    if (!body || !tpl || !btn) return;
 
     function wbRenumberContributorRows() {
+        if (!body) return;
         var n = 1;
         body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
             var c = tr.querySelector('.wb-contrib-row-num');
@@ -462,6 +455,7 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
     }
 
     function wbNextIndex() {
+        if (!body) return 0;
         var max = -1;
         body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
             var i = parseInt(tr.getAttribute('data-wb-row'), 10);
@@ -610,7 +604,7 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
     }
 
     var wbForm = document.getElementById('wb-settings-form');
-    if (wbForm) {
+    if (wbForm && body) {
         wbForm.addEventListener('submit', function () {
             body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
                 wbSyncDivisionHidden(tr);
@@ -623,19 +617,25 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
         });
     }
 
-    btn.addEventListener('click', function () {
-        var ix = wbNextIndex();
-        var html = tpl.innerHTML.replace(/__INDEX__/g, String(ix));
-        var wrap = document.createElement('tbody');
-        wrap.innerHTML = html.trim();
-        var tr = wrap.querySelector('tr');
-        if (tr) {
-            body.appendChild(tr);
+    if (body && tpl && btn) {
+        btn.addEventListener('click', function () {
+            var ix = wbNextIndex();
+            var html = tpl.innerHTML.replace(/__INDEX__/g, String(ix));
+            var wrap = document.createElement('tbody');
+            wrap.innerHTML = html.trim();
+            var tr = wrap.querySelector('tr');
+            if (tr) {
+                body.appendChild(tr);
+                wbWireRow(tr);
+                wbInitStaffSelect2(tr);
+                wbRenumberContributorRows();
+            }
+        });
+
+        body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
             wbWireRow(tr);
-            wbInitStaffSelect2(tr);
-            wbRenumberContributorRows();
-        }
-    });
+        });
+    }
 
     function wbInitStaffSelect2(tr) {
         if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
@@ -658,10 +658,6 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
             $s.select2({ theme: 'bootstrap4', width: '100%' });
         });
     }
-
-    body.querySelectorAll('tr[data-wb-row]').forEach(function (tr) {
-        wbWireRow(tr);
-    });
 
     if (vBody && vTpl && vBtn) {
         vBtn.addEventListener('click', function () {
