@@ -112,7 +112,13 @@
                     Shift all saved weekly briefing reports by ISO week offset (negative = move back, positive = move forward).
                     This updates <code>report_iso_week_year</code>, <code>report_iso_week</code>, and <code>period_start</code>.
                 </p>
-                @if (Route::has('weekly-briefing.settings.remap-weeks'))
+                @php
+                    $wbHasDedicatedRemapRoute = Route::has('weekly-briefing.settings.remap-weeks');
+                    $wbRemapActionUrl = $wbHasDedicatedRemapRoute
+                        ? route('weekly-briefing.settings.remap-weeks')
+                        : route('weekly-briefing.settings.update');
+                @endphp
+                @if ($wbHasDedicatedRemapRoute)
                     <div class="d-flex flex-wrap gap-2 align-items-end">
                         <div style="max-width: 220px;">
                             <label class="form-label mb-1" for="wbWeekShiftInput">Week shift</label>
@@ -127,14 +133,34 @@
                             </button>
                         </div>
                     </div>
-                    <form method="post" action="{{ route('weekly-briefing.settings.remap-weeks') }}" id="wb-remap-form" class="d-none">
+                    <form method="post" action="{{ $wbRemapActionUrl }}" id="wb-remap-form" class="d-none">
                         @csrf
                         <input type="hidden" name="week_shift" id="wbRemapWeekShift" value="-1">
                     </form>
                 @else
-                    <div class="alert alert-warning mb-0">
-                        Week remap route is not available in this deployment yet. Deploy latest routes and clear route cache.
+                    <div class="d-flex flex-wrap gap-2 align-items-end">
+                        <div style="max-width: 220px;">
+                            <label class="form-label mb-1" for="wbWeekShiftInput">Week shift</label>
+                            <input type="number" min="-104" max="104" step="1" class="form-control" id="wbWeekShiftInput" value="-1">
+                            <small class="text-muted">Example: <code>-1</code> for previous week, <code>+1</code> for next week.</small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" id="wbShiftMinusOneBtn">Quick -1</button>
+                            <button type="button" class="btn btn-outline-secondary" id="wbShiftPlusOneBtn">Quick +1</button>
+                            <button type="button" class="btn btn-info" id="wbRemapSubmitBtn">
+                                <i class="fas fa-random me-1"></i> Remap reports
+                            </button>
+                        </div>
                     </div>
+                    <div class="alert alert-warning mt-3 mb-0">
+                        Dedicated remap route is missing in this deployment, so remap will run via the existing Settings update endpoint.
+                    </div>
+                    <form method="post" action="{{ $wbRemapActionUrl }}" id="wb-remap-form" class="d-none">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="__remap_weeks" value="1">
+                        <input type="hidden" name="week_shift" id="wbRemapWeekShift" value="-1">
+                    </form>
                 @endif
             </div>
         </div>
