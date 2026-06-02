@@ -6,6 +6,7 @@ use App\Models\Directorate;
 use App\Models\Division;
 use App\Models\Staff;
 use App\Models\WeeklyBriefingContributor;
+use App\Models\WeeklyBriefingReport;
 use App\Models\WeeklyBriefingSetting;
 use App\Services\DirectorateDivisionLink;
 use App\Services\DivisionWeeklyBriefGate;
@@ -14,6 +15,7 @@ use App\Services\WeeklyBriefingScheduleGate;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -221,6 +223,69 @@ class WeeklyBriefingSettingsController extends Controller
         }
 
         return redirect()->route('weekly-briefing.settings.edit')->with('status', 'Weekly briefing settings saved.');
+    }
+
+    public function remapWeeks(Request $request): RedirectResponse
+    {
+        abort_unless(DivisionWeeklyBriefGate::isSystemAdmin(), 403);
+
+        $data = $request->validate([
+            'week_shift' => 'required|integer|min:-104|max:104|not_in:0',
+        ]);
+
+        $shift = (int) $data['week_shift'];
+
+        $reports = WeeklyBriefingReport::query()
+            ->select(['id', 'report_iso_week_year', 'report_iso_week'])
+            ->get();
+
+        if ($reports->isEmpty()) {
+            return redirect()->route('weekly-briefing.settings.edit')
+                ->with('status', 'No weekly briefing reports found to remap.');
+        }
+
+        $targetById = [];
+        foreach ($reports as $report) {
+            $targetMonday = WeeklyBriefingReport::periodMonday(
+                (int) $report->report_iso_week_year,
+                (int) $report->report_iso_week
+            )->addWeeks($shift);
+
+            $targetById[(int) $report->id] = [
+                'iso_year' => (int) $targetMonday->isoWeekYear(),
+                'iso_week' => (int) $targetMonday->isoWeek(),
+                'period_start' => $targetMonday->toDateString(),
+            ];
+        }
+
+        DB::transaction(function () use ($reports, $targetById): void {
+            // Phase 1: move out of the unique index range to avoid interim collisions.
+            foreach ($reports as $report) {
+                WeeklyBriefingReport::query()
+                    ->whereKey((int) $report->id)
+                    ->update([
+                        'report_iso_week_year' => (int) $report->report_iso_week_year + 1000,
+                    ]);
+            }
+
+            // Phase 2: write final week/year + aligned period_start.
+            foreach ($targetById as $id => $target) {
+                WeeklyBriefingReport::query()
+                    ->whereKey($id)
+                    ->update([
+                        'report_iso_week_year' => $target['iso_year'],
+                        'report_iso_week' => $target['iso_week'],
+                        'period_start' => $target['period_start'],
+                    ]);
+            }
+        });
+
+        $direction = $shift > 0 ? '+' : '';
+
+        return redirect()->route('weekly-briefing.settings.edit')->with(
+            'status',
+            'Remapped '.$reports->count().' weekly briefing report(s) by '.$direction.$shift.' week(s).'
+        );
     }
 
     private function normalizeTime(string $t): string
