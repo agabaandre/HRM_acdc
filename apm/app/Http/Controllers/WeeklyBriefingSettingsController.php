@@ -56,6 +56,12 @@ class WeeklyBriefingSettingsController extends Controller
     {
         abort_unless(DivisionWeeklyBriefGate::isSystemAdmin(), 403);
 
+        // Backward-compatible fallback: allow week remap through the existing settings update route
+        // on deployments where the dedicated remap route is not yet registered.
+        if ($request->boolean('__remap_weeks')) {
+            return $this->performWeekRemap($request);
+        }
+
         $data = $request->validate([
             'submission_weekday' => 'required|integer|min:0|max:6',
             'filing_iso_week_offset' => 'required|integer|in:0,1',
@@ -226,6 +232,13 @@ class WeeklyBriefingSettingsController extends Controller
     }
 
     public function remapWeeks(Request $request): RedirectResponse
+    {
+        abort_unless(DivisionWeeklyBriefGate::isSystemAdmin(), 403);
+
+        return $this->performWeekRemap($request);
+    }
+
+    private function performWeekRemap(Request $request): RedirectResponse
     {
         abort_unless(DivisionWeeklyBriefGate::isSystemAdmin(), 403);
 
