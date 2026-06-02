@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Services\BackupService;
 use App\Services\DiskSpaceMonitorService;
 use App\Models\BackupDatabase;
+use App\Models\BackupSetting;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
@@ -40,8 +41,9 @@ class BackupController extends Controller
         
         // Get configured databases
         $databases = BackupDatabase::orderedByPriority()->get();
-        
-        return view('backups.index', compact('stats', 'config', 'backups', 'diskSpace', 'databases'));
+        $backupSettings = BackupSetting::instance();
+
+        return view('backups.index', compact('stats', 'config', 'backups', 'diskSpace', 'databases', 'backupSettings'));
     }
 
     /**
@@ -242,6 +244,50 @@ class BackupController extends Controller
     }
 
     /**
+     * Get backup notification / archive settings.
+     */
+    public function getSettings()
+    {
+        return response()->json([
+            'success' => true,
+            'settings' => BackupSetting::instance(),
+        ]);
+    }
+
+    /**
+     * Update backup settings (monthly archive email recipients).
+     */
+    public function updateSettings(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'monthly_archive_emails' => 'nullable|string|max:2000',
+            'monthly_archive_enabled' => 'boolean',
+            'monthly_attachment_max_mb' => 'integer|min:1|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $settings = BackupSetting::instance();
+        $settings->update([
+            'monthly_archive_emails' => $request->input('monthly_archive_emails'),
+            'monthly_archive_enabled' => filter_var($request->input('monthly_archive_enabled', true), FILTER_VALIDATE_BOOLEAN),
+            'monthly_attachment_max_mb' => (int) $request->input('monthly_attachment_max_mb', 20),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Backup settings saved',
+            'settings' => $settings->fresh(),
+        ]);
+    }
+
+    /**
      * Get all configured databases
      */
     public function getDatabases()
@@ -290,6 +336,7 @@ class BackupController extends Controller
             'is_default' => 'boolean',
             'priority' => 'integer|min:0',
             'description' => 'nullable|string',
+            'exclude_tables' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -302,6 +349,7 @@ class BackupController extends Controller
 
         try {
             $data = $request->all();
+            $data['exclude_tables'] = $this->parseExcludeTablesInput($request->input('exclude_tables'));
             
             // Convert boolean values properly
             $data['is_active'] = filter_var($data['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN);
@@ -345,6 +393,7 @@ class BackupController extends Controller
             'is_default' => 'boolean',
             'priority' => 'integer|min:0',
             'description' => 'nullable|string',
+            'exclude_tables' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -362,6 +411,7 @@ class BackupController extends Controller
             }
 
             $data = $request->all();
+            $data['exclude_tables'] = $this->parseExcludeTablesInput($request->input('exclude_tables'));
             // Only update password if provided
             if (empty($data['password'])) {
                 unset($data['password']);
@@ -456,6 +506,24 @@ class BackupController extends Controller
                 'message' => 'Error: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function parseExcludeTablesInput(mixed $input): array
+    {
+        if (is_array($input)) {
+            return array_values(array_filter(array_map('trim', $input)));
+        }
+        if (! is_string($input) || trim($input) === '') {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn (string $t) => preg_replace('/[^a-zA-Z0-9_]/', '', trim($t)),
+            preg_split('/[\s,]+/', $input) ?: []
+        )));
     }
 
     /**

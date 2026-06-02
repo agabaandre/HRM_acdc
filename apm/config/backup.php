@@ -59,11 +59,14 @@ return [
         'format' => env('BACKUP_COMPRESSION_FORMAT', 'gzip'), // gzip, zip
     ],
 
-    // Notification
+    // Notification (completion/failure after each scheduled backup)
     'notification' => [
         'enabled' => env('BACKUP_NOTIFICATION_ENABLED', true),
         'email' => env('BACKUP_NOTIFICATION_EMAIL', ''),
     ],
+
+    // Month-end archive email recipients are stored in backup_settings (APM → Backups UI).
+    // Optional fallback if DB row is empty: BACKUP_NOTIFICATION_EMAIL above.
 
     // Disk Space Monitoring
     'disk_monitor' => [

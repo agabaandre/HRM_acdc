@@ -245,6 +245,66 @@
     </div>
     @endif
 
+    <!-- Scheduler & monthly archive settings -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-success h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2 text-success"></i>Automatic schedule</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-2">Backups are queued via Laravel scheduler (not run in the browser). Production needs:</p>
+                    <ul class="small mb-0">
+                        <li>Cron: <code>* * * * * php artisan schedule:run</code></li>
+                        <li>Queue worker: <code>php artisan queue:work</code> (database/redis queue)</li>
+                    </ul>
+                    <hr>
+                    <ul class="small mb-0">
+                        <li><strong>Daily</strong> at {{ $config['schedule']['daily_time'] }} + cleanup 03:00</li>
+                        <li><strong>Monthly</strong> on day {{ $config['schedule']['monthly_day'] }} at {{ $config['schedule']['daily_time'] }}</li>
+                        <li><strong>Annual</strong> 1 Jan at {{ $config['schedule']['daily_time'] }}</li>
+                        <li><strong>Month-end email</strong> 03:30 on last calendar day (latest backup that day per DB)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-envelope me-2 text-primary"></i>Month-end backup email</h5>
+                </div>
+                <div class="card-body">
+                    <form id="backupSettingsForm">
+                        <div class="mb-3">
+                            <label class="form-label" for="monthlyArchiveEmails">Recipient email(s)</label>
+                            <input type="text" class="form-control" id="monthlyArchiveEmails" name="monthly_archive_emails"
+                                value="{{ $backupSettings->monthly_archive_emails }}"
+                                placeholder="admin@example.org, backup@example.org">
+                            <small class="text-muted">Comma-separated. Receives the last backup of each database from the final day of the month.</small>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="monthlyAttachmentMaxMb">Max attachment size (MB)</label>
+                                <input type="number" class="form-control" id="monthlyAttachmentMaxMb" name="monthly_attachment_max_mb"
+                                    min="1" max="100" value="{{ $backupSettings->monthly_attachment_max_mb }}">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="monthlyArchiveEnabled" name="monthly_archive_enabled"
+                                        {{ $backupSettings->monthly_archive_enabled ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="monthlyArchiveEnabled">Enabled</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-save me-1"></i>Save email settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Action Buttons -->
     <div class="row mb-4">
         <div class="col-12">
@@ -485,7 +545,12 @@
                                                 <span class="badge bg-primary ms-1">Default</span>
                                             @endif
                                         </td>
-                                        <td><code>{{ $db->name }}</code></td>
+                                        <td>
+                                            <code>{{ $db->name }}</code>
+                                            @if(!empty($db->exclude_tables))
+                                                <br><small class="text-muted">Skip: {{ implode(', ', $db->exclude_tables) }}</small>
+                                            @endif
+                                        </td>
                                         <td>{{ $db->host }}:{{ $db->port }}</td>
                                         <td>{{ $db->priority }}</td>
                                         <td>
@@ -557,6 +622,12 @@
                             <div class="col-md-12">
                                 <label class="form-label">Description</label>
                                 <textarea class="form-control" id="dbDescription" name="description" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Exclude tables <span class="text-muted">(optional)</span></label>
+                                <input type="text" class="form-control" id="dbExcludeTables" name="exclude_tables"
+                                    placeholder="user_logs, access_sessions">
+                                <small class="text-muted">Comma-separated. For database <code>staff</code>, <code>user_logs</code> and <code>access_sessions</code> are always skipped.</small>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check">
@@ -1006,6 +1077,8 @@
                 document.getElementById('passwordHint').style.display = 'block';
                 document.getElementById('dbPriority').value = db.priority;
                 document.getElementById('dbDescription').value = db.description || '';
+                const excl = Array.isArray(db.exclude_tables) ? db.exclude_tables.join(', ') : (db.exclude_tables || '');
+                document.getElementById('dbExcludeTables').value = excl;
                 document.getElementById('dbIsActive').checked = db.is_active;
                 document.getElementById('dbIsDefault').checked = db.is_default;
                 document.getElementById('databaseForm').style.display = 'block';
@@ -1142,6 +1215,37 @@
         .catch(error => {
             hideLoading();
             showAlert('danger', 'Error: ' + error.message);
+        });
+    });
+
+    document.getElementById('backupSettingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        showLoading();
+        fetch('{{ route("backups.settings.update") }}', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                monthly_archive_emails: document.getElementById('monthlyArchiveEmails').value,
+                monthly_archive_enabled: document.getElementById('monthlyArchiveEnabled').checked,
+                monthly_attachment_max_mb: document.getElementById('monthlyAttachmentMaxMb').value
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                showAlert('success', data.message);
+            } else {
+                showAlert('danger', data.message || 'Failed to save settings');
+            }
+        })
+        .catch(err => {
+            hideLoading();
+            showAlert('danger', err.message);
         });
     });
 </script>

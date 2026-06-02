@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 use App\Models\BackupDatabase;
+use App\Models\BackupSetting;
 use Carbon\Carbon;
 use Exception;
 
@@ -97,15 +98,16 @@ class BackupService
                     $password = $db['password'] ?? '';
                 }
                 
-                // Build mysqldump command
-                $command = sprintf(
-                    'mysqldump -h %s -P %d -u %s -p%s %s > %s 2>&1',
-                    escapeshellarg($host),
+                $excludeTables = $this->resolveExcludeTables($db, $dbName);
+
+                $command = $this->buildMysqlDumpCommand(
+                    $host,
                     $port,
-                    escapeshellarg($username),
-                    escapeshellarg($password),
-                    escapeshellarg($dbName),
-                    escapeshellarg($filePath)
+                    $username,
+                    $password,
+                    $dbName,
+                    $filePath,
+                    $excludeTables
                 );
                 
                 // Execute backup
@@ -196,6 +198,206 @@ class BackupService
                 $this->sendNotification('', 0, false, $e->getMessage());
             }
             
+            return false;
+        }
+    }
+
+    /**
+     * Tables to skip for mysqldump (per-database config + staff defaults).
+     *
+     * @return list<string>
+     */
+    public function resolveExcludeTables(mixed $db, string $dbName): array
+    {
+        $tables = [];
+        if ($db instanceof BackupDatabase) {
+            $tables = is_array($db->exclude_tables) ? $db->exclude_tables : [];
+        } elseif (is_object($db) && isset($db->exclude_tables) && is_array($db->exclude_tables)) {
+            $tables = $db->exclude_tables;
+        }
+
+        $tables = array_values(array_unique(array_filter(array_map(
+            static fn ($t) => preg_replace('/[^a-zA-Z0-9_]/', '', (string) $t),
+            $tables
+        ))));
+
+        if (strtolower($dbName) === 'staff') {
+            foreach (['user_logs', 'access_sessions'] as $default) {
+                if (! in_array($default, $tables, true)) {
+                    $tables[] = $default;
+                }
+            }
+        }
+
+        return $tables;
+    }
+
+    protected function buildMysqlDumpCommand(
+        string $host,
+        int $port,
+        string $username,
+        string $password,
+        string $dbName,
+        string $filePath,
+        array $excludeTables = []
+    ): string {
+        $ignore = '';
+        foreach ($excludeTables as $table) {
+            $ignore .= ' --ignore-table='.escapeshellarg($dbName.'.'.$table);
+        }
+
+        return sprintf(
+            'mysqldump -h %s -P %d -u %s -p%s%s %s > %s 2>&1',
+            escapeshellarg($host),
+            $port,
+            escapeshellarg($username),
+            escapeshellarg($password),
+            $ignore,
+            escapeshellarg($dbName),
+            escapeshellarg($filePath)
+        );
+    }
+
+    /**
+     * Email the latest backup file per database from today (end-of-month archive).
+     */
+    public function sendMonthlyArchiveEmails(bool $force = false): array
+    {
+        $settings = BackupSetting::instance();
+        if (! $settings->monthly_archive_enabled) {
+            return ['skipped' => true, 'reason' => 'disabled'];
+        }
+
+        $recipients = $settings->monthlyArchiveRecipientList();
+        if ($recipients === []) {
+            $fallback = config('backup.notification.email');
+            if (is_string($fallback) && $fallback !== '') {
+                $recipients = [trim($fallback)];
+            }
+        }
+        if ($recipients === []) {
+            return ['skipped' => true, 'reason' => 'no_recipients'];
+        }
+
+        if (! $force && ! now()->isLastOfMonth()) {
+            return ['skipped' => true, 'reason' => 'not_last_day_of_month'];
+        }
+
+        $today = now()->format('Y-m-d');
+        $files = $this->findLatestBackupFilesForDate($today);
+        if ($files === []) {
+            Log::warning('Monthly backup archive email: no backup files found for '.$today);
+
+            return ['skipped' => true, 'reason' => 'no_files', 'date' => $today];
+        }
+
+        $maxBytes = ($settings->monthly_attachment_max_mb ?: 20) * 1024 * 1024;
+        $attachments = [];
+        $tooLarge = [];
+        $lines = [];
+
+        foreach ($files as $dbLabel => $info) {
+            $path = $info['path'];
+            $size = File::size($path);
+            $lines[] = sprintf(
+                '- %s: %s (%s)',
+                $dbLabel,
+                $info['filename'],
+                $this->formatBytes($size)
+            );
+            if ($size <= $maxBytes) {
+                $content = File::get($path);
+                $attachments[] = [
+                    'name' => $info['filename'],
+                    'content' => $content,
+                    'content_type' => str_ends_with($info['filename'], '.gz')
+                        ? 'application/gzip'
+                        : 'application/sql',
+                ];
+            } else {
+                $tooLarge[] = $info['filename'].' ('.$this->formatBytes($size).')';
+            }
+        }
+
+        $subject = 'APM monthly database backups — '.now()->format('F Y');
+        $body = '<p>End-of-month database backups from <strong>'.$today.'</strong> (last run of the day per database).</p>';
+        $body .= '<ul><li>'.implode('</li><li>', array_map('htmlspecialchars', $lines)).'</li></ul>';
+        if ($tooLarge !== []) {
+            $body .= '<p><strong>Not attached (exceed '.($settings->monthly_attachment_max_mb).' MB):</strong> '
+                .htmlspecialchars(implode(', ', $tooLarge))
+                .'. Download from the APM Backups page.</p>';
+        }
+
+        $sent = $this->sendEmailToRecipients($recipients, $subject, $body, $attachments);
+
+        return [
+            'sent' => $sent,
+            'recipients' => count($recipients),
+            'files' => count($files),
+            'attachments' => count($attachments),
+            'date' => $today,
+        ];
+    }
+
+    /**
+     * Latest backup file per database for a given date (YYYY-MM-DD).
+     *
+     * @return array<string, array{filename: string, path: string, database: string}>
+     */
+    public function findLatestBackupFilesForDate(string $date): array
+    {
+        if (! File::isDirectory($this->storagePath)) {
+            return [];
+        }
+
+        $byDb = [];
+        foreach (File::files($this->storagePath) as $file) {
+            $filename = $file->getFilename();
+            if (! preg_match('/backup_(?:daily|monthly|annual)_([^_]+)_'.preg_quote($date, '/').'/', $filename, $m)) {
+                continue;
+            }
+            $dbName = $m[1];
+            if (! isset($byDb[$dbName]) || strcmp($filename, $byDb[$dbName]['filename']) > 0) {
+                $byDb[$dbName] = [
+                    'filename' => $filename,
+                    'path' => $file->getPathname(),
+                    'database' => $dbName,
+                ];
+            }
+        }
+
+        return $byDb;
+    }
+
+    /**
+     * @param  list<string>  $recipients
+     * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
+     */
+    protected function sendEmailToRecipients(array $recipients, string $subject, string $body, array $attachments = []): bool
+    {
+        try {
+            require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
+            $config = config('exchange-email');
+            $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
+                $config['tenant_id'],
+                $config['client_id'],
+                $config['client_secret'],
+                $config['redirect_uri'],
+                $config['scope'],
+                $config['auth_method']
+            );
+
+            $sent = false;
+            foreach ($recipients as $email) {
+                if ($oauth->sendEmail($email, $subject, $body, true, null, null, [], [], $attachments)) {
+                    $sent = true;
+                }
+            }
+
+            return $sent;
+        } catch (Exception $e) {
+            Log::error('Backup archive email failed', ['error' => $e->getMessage()]);
+
             return false;
         }
     }

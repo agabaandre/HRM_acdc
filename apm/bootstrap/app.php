@@ -87,4 +87,40 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('weekly-briefing:director-review-reminders')->everyMinute()->withoutOverlapping(120);
         $schedule->command('weekly-briefing:lock-drafts')->everyMinute()->withoutOverlapping(120);
         $schedule->command('weekly-briefing:compiled-summary')->everyMinute()->withoutOverlapping(300);
+
+        // Database backups (queue) — requires: cron `php artisan schedule:run` + queue worker
+        $backupTime = config('backup.schedule.daily_time', '02:00');
+        $monthlyDay = (int) config('backup.schedule.monthly_day', 1);
+
+        $schedule->job(new \App\Jobs\RunDatabaseBackupJob('daily', true))
+            ->dailyAt($backupTime)
+            ->withoutOverlapping(120)
+            ->onOneServer();
+
+        $schedule->job(new \App\Jobs\RunDatabaseBackupJob('monthly', true))
+            ->monthlyOn($monthlyDay, $backupTime)
+            ->withoutOverlapping(120)
+            ->onOneServer();
+
+        $schedule->job(new \App\Jobs\RunDatabaseBackupJob('annual', true))
+            ->yearlyOn(1, 1, $backupTime)
+            ->withoutOverlapping(120)
+            ->onOneServer();
+
+        $schedule->job(new \App\Jobs\RunBackupCleanupJob())
+            ->dailyAt('03:00')
+            ->withoutOverlapping(60)
+            ->onOneServer();
+
+        $schedule->command('backup:check-disk-space')
+            ->everySixHours()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Last day of month: email that day's latest backup per database (after daily run)
+        $schedule->job(new \App\Jobs\EmailMonthlyBackupArchivesJob())
+            ->dailyAt('03:30')
+            ->when(fn () => now()->isLastOfMonth())
+            ->withoutOverlapping(120)
+            ->onOneServer();
     })->create();
