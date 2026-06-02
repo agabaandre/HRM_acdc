@@ -429,7 +429,7 @@ class WeeklyBriefingReport extends Model
         $sun = $mon->copy()->addDays(6);
         $main = $mon->format('D, M j').' – '.$sun->format('D, M j, Y');
         if ($includeIsoSuffix) {
-            $main .= ' (ISO W'.$isoWeek.'/'.$isoYear.')';
+            $main .= ' (W'.$isoWeek.'/'.$isoYear.')';
         }
 
         return $main;
@@ -456,7 +456,7 @@ class WeeklyBriefingReport extends Model
         $dayFormat = $shortDays ? 'D, M j, Y' : 'l, M j, Y';
         $main = 'Week start: '.$mon->format($dayFormat).' · Week end: '.$sun->format($dayFormat);
         if ($includeIsoSuffix) {
-            $main .= ' (ISO W'.$isoWeek.'/'.$isoYear.')';
+            $main .= ' (W'.$isoWeek.'/'.$isoYear.')';
         }
 
         return $main;

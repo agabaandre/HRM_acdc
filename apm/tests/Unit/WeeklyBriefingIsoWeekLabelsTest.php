@@ -29,8 +29,8 @@ class WeeklyBriefingIsoWeekLabelsTest extends TestCase
 
         $this->assertStringContainsString('Mon,', $label);
         $this->assertStringContainsString('Sun,', $label);
-        $this->assertStringContainsString('(ISO W21/2026)', $label);
-        $this->assertStringNotContainsString('Monday', $label);
+        $this->assertStringContainsString('(W21/2026)', $label);
+        $this->assertStringNotContainsString('ISO', $label);
     }
 
     public function test_filter_option_label_includes_week_and_dates(): void
