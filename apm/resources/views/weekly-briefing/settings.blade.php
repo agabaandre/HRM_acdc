@@ -105,6 +105,34 @@
             </div>
         </div>
 
+        <div class="card shadow-sm mb-3 border-info">
+            <div class="card-header fw-bold">Administrative week remap (bulk)</div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">
+                    Shift all saved weekly briefing reports by ISO week offset (negative = move back, positive = move forward).
+                    This updates <code>report_iso_week_year</code>, <code>report_iso_week</code>, and <code>period_start</code>.
+                </p>
+                <div class="d-flex flex-wrap gap-2 align-items-end">
+                    <div style="max-width: 220px;">
+                        <label class="form-label mb-1" for="wbWeekShiftInput">Week shift</label>
+                        <input type="number" min="-104" max="104" step="1" class="form-control" id="wbWeekShiftInput" value="-1">
+                        <small class="text-muted">Example: <code>-1</code> for previous week, <code>+1</code> for next week.</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary" id="wbShiftMinusOneBtn">Quick -1</button>
+                        <button type="button" class="btn btn-outline-secondary" id="wbShiftPlusOneBtn">Quick +1</button>
+                        <button type="button" class="btn btn-info" id="wbRemapSubmitBtn">
+                            <i class="fas fa-random me-1"></i> Remap reports
+                        </button>
+                    </div>
+                </div>
+                <form method="post" action="{{ route('weekly-briefing.settings.remap-weeks') }}" id="wb-remap-form" class="d-none">
+                    @csrf
+                    <input type="hidden" name="week_shift" id="wbRemapWeekShift" value="-1">
+                </form>
+            </div>
+        </div>
+
         <div class="card shadow-sm mb-3">
             <div class="card-header fw-bold">HoD / contributor reminders (before deadline)</div>
             <div class="card-body">
@@ -630,6 +658,45 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
     if (unlockScopeAll) unlockScopeAll.addEventListener('change', wbSyncUnlockDivisionVis);
     if (unlockScopeDiv) unlockScopeDiv.addEventListener('change', wbSyncUnlockDivisionVis);
     wbSyncUnlockDivisionVis();
+
+    var remapForm = document.getElementById('wb-remap-form');
+    var remapHidden = document.getElementById('wbRemapWeekShift');
+    var remapInput = document.getElementById('wbWeekShiftInput');
+    var remapSubmit = document.getElementById('wbRemapSubmitBtn');
+    var remapMinusOne = document.getElementById('wbShiftMinusOneBtn');
+    var remapPlusOne = document.getElementById('wbShiftPlusOneBtn');
+
+    function submitRemap(shift) {
+        if (!remapForm || !remapHidden) return;
+        shift = parseInt(shift, 10);
+        if (!Number.isFinite(shift) || shift === 0) {
+            alert('Please enter a non-zero week shift.');
+            return;
+        }
+        if (!confirm('Remap ALL weekly briefing reports by ' + (shift > 0 ? '+' : '') + shift + ' week(s)?')) {
+            return;
+        }
+        remapHidden.value = String(shift);
+        remapForm.submit();
+    }
+
+    if (remapSubmit && remapInput) {
+        remapSubmit.addEventListener('click', function () {
+            submitRemap(remapInput.value);
+        });
+    }
+    if (remapMinusOne) {
+        remapMinusOne.addEventListener('click', function () {
+            if (remapInput) remapInput.value = '-1';
+            submitRemap(-1);
+        });
+    }
+    if (remapPlusOne) {
+        remapPlusOne.addEventListener('click', function () {
+            if (remapInput) remapInput.value = '1';
+            submitRemap(1);
+        });
+    }
 })();
 </script>
 @endpush

@@ -228,6 +228,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
 
     Route::get('weekly-briefing/settings', [App\Http\Controllers\WeeklyBriefingSettingsController::class, 'edit'])->name('weekly-briefing.settings.edit');
     Route::put('weekly-briefing/settings', [App\Http\Controllers\WeeklyBriefingSettingsController::class, 'update'])->name('weekly-briefing.settings.update');
+    Route::post('weekly-briefing/settings/remap-weeks', [App\Http\Controllers\WeeklyBriefingSettingsController::class, 'remapWeeks'])->name('weekly-briefing.settings.remap-weeks');
     Route::get('weekly-briefing', [App\Http\Controllers\WeeklyBriefingController::class, 'index'])->name('weekly-briefing.index');
     Route::get('weekly-briefing/create', [App\Http\Controllers\WeeklyBriefingController::class, 'create'])->name('weekly-briefing.create');
     Route::get('weekly-briefing/compiled/{year}/{week}/completion-pdf', [App\Http\Controllers\WeeklyBriefingController::class, 'completionSummaryPdf'])->name('weekly-briefing.completion-summary-pdf')->whereNumber('year')->whereNumber('week');
