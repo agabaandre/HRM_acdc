@@ -265,7 +265,9 @@ class WeeklyBriefingSettingsController extends Controller
 
         $shift = (int) $data['week_shift'];
 
-        $reports = WeeklyBriefingReport::query()
+        $reportModel = \App\Models\WeeklyBriefingReport::class;
+
+        $reports = $reportModel::query()
             ->select(['id', 'report_iso_week_year', 'report_iso_week'])
             ->get();
 
@@ -276,7 +278,7 @@ class WeeklyBriefingSettingsController extends Controller
 
         $targetById = [];
         foreach ($reports as $report) {
-            $targetMonday = WeeklyBriefingReport::periodMonday(
+            $targetMonday = $reportModel::periodMonday(
                 (int) $report->report_iso_week_year,
                 (int) $report->report_iso_week
             )->addWeeks($shift);
@@ -288,10 +290,10 @@ class WeeklyBriefingSettingsController extends Controller
             ];
         }
 
-        DB::transaction(function () use ($reports, $targetById): void {
+        DB::transaction(function () use ($reports, $targetById, $reportModel): void {
             // Phase 1: move out of the unique index range to avoid interim collisions.
             foreach ($reports as $report) {
-                WeeklyBriefingReport::query()
+                $reportModel::query()
                     ->whereKey((int) $report->id)
                     ->update([
                         'report_iso_week_year' => (int) $report->report_iso_week_year + 1000,
@@ -300,7 +302,7 @@ class WeeklyBriefingSettingsController extends Controller
 
             // Phase 2: write final week/year + aligned period_start.
             foreach ($targetById as $id => $target) {
-                WeeklyBriefingReport::query()
+                $reportModel::query()
                     ->whereKey($id)
                     ->update([
                         'report_iso_week_year' => $target['iso_year'],
