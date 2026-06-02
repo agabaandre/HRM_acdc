@@ -10,7 +10,9 @@
     $tab = $tab ?? 'this_week';
     $filingIsoYear = $filingIsoYear ?? \Carbon\Carbon::now()->isoWeekYear();
     $filingIsoWeek = $filingIsoWeek ?? \Carbon\Carbon::now()->isoWeek();
-    $filingWeekHumanRange = $filingWeekHumanRange ?? \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) $filingIsoYear, (int) $filingIsoWeek);
+    $filingWeekHumanRange = $filingWeekHumanRange ?? \App\Models\WeeklyBriefingReport::humanIsoWeekRangeInline((int) $filingIsoYear, (int) $filingIsoWeek);
+    $allReportsDefaultYear = $allReportsDefaultYear ?? (int) $filingIsoYear;
+    $allReportsDefaultWeek = $allReportsDefaultWeek ?? (int) $filingIsoWeek;
     $filingSubmissionDeadline = $filingSubmissionDeadline ?? \App\Models\WeeklyBriefingReport::syntheticDeadlineForIsoWeek(
         \App\Models\WeeklyBriefingSetting::current(),
         (int) $filingIsoYear,
@@ -30,7 +32,7 @@
             <h4 class="mb-0 text-success fw-bold"><i class="fas fa-newspaper me-2"></i>Weekly brief</h4>
             <small class="text-muted d-block">@if(! empty($hubShowsDirectorateOversight))You are viewing submission status for divisions in your directorate; open <strong>Director review</strong> on submitted briefs to review and mark complete.@elseif(\App\Services\DivisionWeeklyBriefGate::mayActAsDivisionAdminAssistant())You may file weekly briefs for divisions where you are the <strong>admin assistant</strong> (on behalf of the division head).@else Contributors edit assigned units.@endif</small>
             <small class="text-muted d-block"><strong>Active reporting week:</strong> {{ $filingWeekHumanRange }}</small>
-            <small class="text-muted"><strong><i class="fas fa-calendar-check me-1"></i>Submission deadline</strong> {{ $filingSubmissionDeadline->format('l, F j, Y') }} at {{ $filingSubmissionDeadline->format('g:i A') }}</small>
+            <small class="text-muted"><strong><i class="fas fa-calendar-check me-1"></i>Submission deadline</strong> {{ $filingSubmissionDeadline->format('D, M j, Y') }} at {{ $filingSubmissionDeadline->format('g:i A') }}</small>
         </div>
         <div class="d-flex flex-wrap gap-2">
             @if($filingWeekReports->count() === 1)
@@ -82,8 +84,8 @@
         ], fn ($v) => $v !== null && $v !== '');
         $allTabQuery = array_filter([
             'tab' => 'all',
-            'year' => $filterYear ?? $filingIsoYear,
-            'week' => isset($filterWeek) && $filterWeek !== null ? $filterWeek : null,
+            'year' => $filterYear ?? $allReportsDefaultYear,
+            'week' => isset($filterWeek) && $filterWeek !== null ? $filterWeek : $allReportsDefaultWeek,
             'status' => $filterStatus ?? '',
             'search' => $filterSearch ?? '',
         ], fn ($v) => $v !== null && $v !== '');
@@ -100,7 +102,7 @@
     <div class="card shadow-sm border-top-0 rounded-top-0">
         @if($tab === 'this_week')
             <div class="card-body border-bottom bg-light py-3">
-                <p class="small text-muted mb-2">{{ $filingWeekHumanRange }}</p>
+                <p class="small text-muted mb-2"><strong>Active reporting week:</strong> {{ $filingWeekHumanRange }}</p>
                 <form method="get" action="{{ route('weekly-briefing.index') }}" class="row g-2 align-items-end">
                     <input type="hidden" name="tab" value="this_week">
                     <div class="col-md-3">
@@ -223,15 +225,21 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-4">
                         <label class="form-label small mb-0 text-muted">Week (ISO)</label>
                         <select name="week" class="form-select form-select-sm">
                             <option value="">Any week</option>
                             @for($w = 1; $w <= 53; $w++)
-                                @php $wl = \App\Models\WeeklyBriefingReport::humanIsoWeekRange((int) ($filterYear ?? $filingIsoYear), $w, true); @endphp
-                                <option value="{{ $w }}" title="{{ $wl }}" @selected(isset($filterWeek) && (int) $filterWeek === $w)>W{{ $w }}</option>
+                                @php
+                                    $weekOptionYear = (int) ($filterYear ?? $allReportsDefaultYear);
+                                    $weekOptionLabel = \App\Models\WeeklyBriefingReport::isoWeekFilterOptionLabel($weekOptionYear, $w);
+                                @endphp
+                                <option value="{{ $w }}" @selected(isset($filterWeek) && (int) $filterWeek === $w)>{{ $weekOptionLabel }}</option>
                             @endfor
                         </select>
+                        @if(! empty($filterWeekRangeLabel))
+                            <small class="text-muted d-block mt-1">Showing: {{ $filterWeekRangeLabel }}</small>
+                        @endif
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small mb-0 text-muted">Status</label>
@@ -248,7 +256,7 @@
                     </div>
                     <div class="col-md-auto d-flex gap-2">
                         <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Apply</button>
-                        <a href="{{ route('weekly-briefing.index', ['tab' => 'all']) }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                        <a href="{{ route('weekly-briefing.index', ['tab' => 'all', 'year' => $allReportsDefaultYear, 'week' => $allReportsDefaultWeek]) }}" class="btn btn-sm btn-outline-secondary">Reset</a>
                     </div>
                 </form>
             </div>
@@ -279,10 +287,10 @@
                                 @endphp
                                 <tr>
                                     <td class="text-center text-muted">{{ $reports->firstItem() + $loop->index }}</td>
-                                    <td><span class="small text-muted">W{{ $r->report_iso_week }}/{{ $r->report_iso_week_year }}</span><br>{{ $r->isoWeekDateRangeLabel(false) }}</td>
+                                    <td><span class="small text-muted">W{{ $r->report_iso_week }}/{{ $r->report_iso_week_year }}</span><br>{{ $r->isoWeekDateRangeLabel(false, true) }}</td>
                                     <td>{{ $r->contributionEntityLabel() }}</td>
                                     <td class="align-top small">@include('weekly-briefing.partials.directorate-cell', ['dd' => $r->hubDirectorateDisplayRow()])</td>
-                                    <td class="small">{{ $r->period_start?->format('M j, Y') }} → {{ $r->period_start ? \Carbon\Carbon::parse($r->period_start)->addDays(6)->format('M j, Y') : '—' }}</td>
+                                    <td class="small">{{ $r->isoWeekStartEndLabel(true) }}</td>
                                     <td>
                                         <span class="badge bg-{{ $r->status === 'submitted' ? 'success' : ($r->status === 'locked' ? 'secondary' : 'warning') }}">{{ $r->status }}</span>
                                         @if($r->requiresDirectorReview())

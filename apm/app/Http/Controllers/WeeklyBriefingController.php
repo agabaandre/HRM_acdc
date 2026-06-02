@@ -43,8 +43,11 @@ class WeeklyBriefingController extends Controller
         $filingIsoWeek = $filing['iso_week'];
 
         WeeklyBriefingContributionKeyResolver::migrateLegacyReportsByDivisionId();
-        $filingWeekHumanRange = WeeklyBriefingReport::humanIsoWeekRange($filingIsoYear, $filingIsoWeek);
+        $filingWeekHumanRange = WeeklyBriefingReport::humanIsoWeekRangeInline($filingIsoYear, $filingIsoWeek);
         $filingSubmissionDeadline = $settings->filingSubmissionDeadline();
+        $previousOfFiling = WeeklyBriefingReport::previousIsoWeekPair($filingIsoYear, $filingIsoWeek);
+        $allReportsDefaultYear = $previousOfFiling['iso_year'];
+        $allReportsDefaultWeek = $previousOfFiling['iso_week'];
 
         $tab = (string) $request->query('tab', 'this_week');
         if ($tab !== 'all') {
@@ -180,16 +183,17 @@ class WeeklyBriefingController extends Controller
         );
         $thisWeekPaginator->withQueryString();
 
-        $previousIso = now()->subWeek();
-        $previousIsoYear = (int) $previousIso->isoWeekYear();
-        $previousIsoWeek = (int) $previousIso->isoWeek();
-
-        $filterYear = (int) $request->query('year', $filingIsoYear);
-        $filterWeekRaw = $request->query('week');
-        $filterWeek = ($filterWeekRaw === null || $filterWeekRaw === '') ? null : (int) $filterWeekRaw;
-        if ($tab === 'all' && $filterWeek === null) {
-            // Default extraction week for "All reports": previous ISO week.
-            $filterWeek = $previousIsoWeek;
+        $filterYear = $tab === 'all' && ! $request->has('year')
+            ? $allReportsDefaultYear
+            : (int) $request->query('year', $filingIsoYear);
+        if ($tab === 'all' && $request->has('week')) {
+            $filterWeekRaw = $request->query('week');
+            $filterWeek = ($filterWeekRaw === null || $filterWeekRaw === '') ? null : (int) $filterWeekRaw;
+        } elseif ($tab === 'all') {
+            // Default: ISO week immediately before the active reporting week.
+            $filterWeek = $allReportsDefaultWeek;
+        } else {
+            $filterWeek = null;
         }
         if ($filterWeek !== null && ($filterWeek < 1 || $filterWeek > 53)) {
             $filterWeek = null;
@@ -284,7 +288,10 @@ class WeeklyBriefingController extends Controller
         $divisionId = $this->userPrimaryDivisionId();
 
         $wbNowY = $tab === 'all' ? $filterYear : $filingIsoYear;
-        $wbNowW = $tab === 'all' ? ($filterWeek ?? $previousIsoWeek) : $filingIsoWeek;
+        $wbNowW = $tab === 'all' ? ($filterWeek ?? $allReportsDefaultWeek) : $filingIsoWeek;
+        $filterWeekRangeLabel = ($tab === 'all' && $filterWeek !== null)
+            ? WeeklyBriefingReport::humanIsoWeekRangeInline($filterYear, $filterWeek)
+            : null;
         $wbDirectorCombinedOptions = WeeklyBriefingDirectorateCombined::directorCombinedDownloadOptionsForStaff(
             (int) user_session('staff_id'),
             $wbNowY,
@@ -318,6 +325,9 @@ class WeeklyBriefingController extends Controller
             'filingIsoWeek',
             'filingWeekHumanRange',
             'filingSubmissionDeadline',
+            'allReportsDefaultYear',
+            'allReportsDefaultWeek',
+            'filterWeekRangeLabel',
             'wbNowY',
             'wbNowW',
             'wbDirectorCombinedOptions',
