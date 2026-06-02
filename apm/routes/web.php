@@ -294,6 +294,8 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::put('/backups/databases/{id}', [App\Http\Controllers\BackupController::class, 'updateDatabase'])->name('backups.databases.update');
     Route::delete('/backups/databases/{id}', [App\Http\Controllers\BackupController::class, 'deleteDatabase'])->name('backups.databases.delete');
     Route::post('/backups/databases/test-connection', [App\Http\Controllers\BackupController::class, 'testDatabaseConnection'])->name('backups.databases.test-connection');
+    Route::get('/backups/settings', [App\Http\Controllers\BackupController::class, 'getSettings'])->name('backups.settings.show');
+    Route::put('/backups/settings', [App\Http\Controllers\BackupController::class, 'updateSettings'])->name('backups.settings.update');
     Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
     

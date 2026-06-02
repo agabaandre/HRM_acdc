@@ -21,6 +21,7 @@ class BackupDatabase extends Model
         'is_default',
         'priority',
         'description',
+        'exclude_tables',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class BackupDatabase extends Model
         'is_default' => 'boolean',
         'port' => 'integer',
         'priority' => 'integer',
+        'exclude_tables' => 'array',
     ];
 
     protected $hidden = [

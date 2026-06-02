@@ -84,32 +84,16 @@ BACKUP_DISK_CHECK_INTERVAL=24
 0 */6 * * * cd /path/to/project && php artisan backup:check-disk-space >> /dev/null 2>&1
 ```
 
-Or use Laravel's task scheduler (add to `app/Console/Kernel.php`):
+**Laravel scheduler (configured in `bootstrap/app.php`)** — backups run as **queue jobs**:
 
-```php
-protected function schedule(Schedule $schedule)
-{
-    // Daily backup
-    $schedule->command('backup:database --type=daily --cleanup')
-             ->dailyAt('02:00');
-    
-    // Monthly backup
-    $schedule->command('backup:database --type=monthly --cleanup')
-             ->monthlyOn(1, '02:00');
-    
-    // Annual backup (on January 1st)
-    $schedule->command('backup:database --type=annual --cleanup')
-             ->yearlyOn(1, 1, '02:00');
-    
-    // Cleanup
-    $schedule->command('backup:cleanup')
-             ->dailyAt('03:00');
-    
-    // Disk space monitoring
-    $schedule->command('backup:check-disk-space')
-             ->everySixHours();
-}
-```
+1. Cron: `* * * * * cd /path/to/apm && php artisan schedule:run`
+2. Queue worker: `php artisan queue:work` (must be running; backups use `RunDatabaseBackupJob`)
+
+Scheduled: daily/monthly/annual backups, cleanup at 03:00, disk checks every 6 hours, month-end archive email at 03:30 on the last day of the month.
+
+Configure month-end recipients on **APM → Backups** (not only `.env`).
+
+**Staff database (`staff`)**: `user_logs` and `access_sessions` are excluded from dumps by default (configurable per database under Manage Databases).
 
 ## Manual Commands
 
