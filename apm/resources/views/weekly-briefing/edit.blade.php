@@ -78,7 +78,7 @@
     <div class="card shadow-sm mb-3">
         <div class="card-body d-flex flex-wrap justify-content-between gap-2">
             <div>
-                <h5 class="mb-1">{{ $report->isoWeekDateRangeLabel(true) }}</h5>
+                <h5 class="mb-1">{{ \App\Models\WeeklyBriefingReport::humanIsoWeekRangeInline((int) $report->report_iso_week_year, (int) $report->report_iso_week) }}</h5>
                 @if($report->directorate)
                     <div><span class="badge bg-info text-dark">{{ $report->directorate->name }}</span></div>
                 @endif

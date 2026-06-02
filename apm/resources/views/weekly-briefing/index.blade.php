@@ -214,11 +214,16 @@
                 @endif
             </div>
         @else
+            @if(! empty($filterWeekRangeLabel))
+                <div class="card-body border-bottom py-2 bg-white">
+                    <p class="mb-0"><strong>Showing:</strong> {{ $filterWeekRangeLabel }}</p>
+                </div>
+            @endif
             <div class="card-body border-bottom bg-light py-3">
                 <form method="get" action="{{ route('weekly-briefing.index') }}" class="row g-2 align-items-end">
                     <input type="hidden" name="tab" value="all">
                     <div class="col-md-2">
-                        <label class="form-label small mb-0 text-muted">ISO year</label>
+                        <label class="form-label small mb-0 text-muted">Year</label>
                         <select name="year" class="form-select form-select-sm">
                             @foreach($yearOptions as $yOpt)
                                 <option value="{{ $yOpt }}" @selected((int)($filterYear ?? $filingIsoYear) === (int) $yOpt)>{{ $yOpt }}</option>
@@ -226,7 +231,7 @@
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small mb-0 text-muted">Week (ISO)</label>
+                        <label class="form-label small mb-0 text-muted">Week</label>
                         <select name="week" class="form-select form-select-sm">
                             <option value="">Any week</option>
                             @for($w = 1; $w <= 53; $w++)
@@ -237,9 +242,6 @@
                                 <option value="{{ $w }}" @selected(isset($filterWeek) && (int) $filterWeek === $w)>{{ $weekOptionLabel }}</option>
                             @endfor
                         </select>
-                        @if(! empty($filterWeekRangeLabel))
-                            <small class="text-muted d-block mt-1">Showing: {{ $filterWeekRangeLabel }}</small>
-                        @endif
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small mb-0 text-muted">Status</label>
@@ -287,7 +289,7 @@
                                 @endphp
                                 <tr>
                                     <td class="text-center text-muted">{{ $reports->firstItem() + $loop->index }}</td>
-                                    <td><span class="small text-muted">W{{ $r->report_iso_week }}/{{ $r->report_iso_week_year }}</span><br>{{ $r->isoWeekDateRangeLabel(false, true) }}</td>
+                                    <td>{{ \App\Models\WeeklyBriefingReport::humanIsoWeekRangeInline((int) $r->report_iso_week_year, (int) $r->report_iso_week) }}</td>
                                     <td>{{ $r->contributionEntityLabel() }}</td>
                                     <td class="align-top small">@include('weekly-briefing.partials.directorate-cell', ['dd' => $r->hubDirectorateDisplayRow()])</td>
                                     <td class="small">{{ $r->isoWeekStartEndLabel(true) }}</td>
