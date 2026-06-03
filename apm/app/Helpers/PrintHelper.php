@@ -1540,12 +1540,14 @@ class PrintHelper
             return;
         }
 
+        $justifyStyle = ' style="text-align:justify;"';
+
         if ($fieldType === 'text_summernote') {
             $html = self::sanitizeRichTextForMpdf(is_string($value) ? $value : '');
             if ($html === '') {
                 return;
             }
-            echo '<div class="memo-body-block rich-text-content html-content">'.$html.'</div>';
+            echo '<div class="memo-body-block rich-text-content html-content"' . $justifyStyle . '>' . $html . '</div>';
 
             return;
         }
@@ -1555,7 +1557,7 @@ class PrintHelper
             if (trim($text) === '') {
                 return;
             }
-            echo '<div class="memo-body-block rich-text-content">';
+            echo '<div class="memo-body-block rich-text-content"' . $justifyStyle . '>';
             echo nl2br(htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
             echo '</div>';
 
@@ -1566,7 +1568,7 @@ class PrintHelper
         if (trim($text) === '') {
             return;
         }
-        echo '<p class="memo-body-block">'.htmlspecialchars($text, ENT_QUOTES, 'UTF-8').'</p>';
+        echo '<p class="memo-body-block"' . $justifyStyle . '>' . htmlspecialchars($text, ENT_QUOTES, 'UTF-8') . '</p>';
     }
 
     /**
