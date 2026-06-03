@@ -49,9 +49,15 @@
         }
         .memo-body-section {
             margin-top: 15px;
+            text-align: justify;
+        }
+        .memo-body-section .memo-body-block,
+        .memo-body-section .rich-text-content,
+        .memo-body-section .rich-text-content p,
+        .memo-body-section .html-content p {
+            text-align: justify !important;
         }
         .memo-body-block {
-            text-align: left;
             font-style: normal;
             margin: 0 0 10px 0;
         }
@@ -102,7 +108,7 @@
             line-height: 1.6;
             font-style: normal;
         }
-        .rich-text-content { margin: 8px 0; text-align: left; font-style: normal; }
+        .rich-text-content { margin: 8px 0; font-style: normal; }
         .rich-text-content img, .html-content img {
             max-width: 100% !important;
             height: auto !important;
