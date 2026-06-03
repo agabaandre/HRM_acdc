@@ -1942,7 +1942,7 @@ class ActivityController extends Controller
         // Handle AJAX requests for tab content only (not initial page load).
         // With Livewire wire:navigate, the first visit can send X-Requested-With and trigger ajax();
         // we must return full HTML with populated selects unless we are explicitly loading a tab.
-        if ($request->ajax() && $request->filled('tab')) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
             $countMyDivision = $myMemos->total();
@@ -1967,7 +1967,7 @@ class ActivityController extends Controller
                     break;
             }
 
-            return response()->json([
+            return \App\Support\ApmListFragment::json([
                 'html' => $html,
                 'count_my_division' => $countMyDivision,
                 'count_all_memos' => $countAllMemos,
@@ -2458,7 +2458,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ->orderBy('fname')->orderBy('lname')->get();
 
         // Handle AJAX requests for tab content only (not initial Livewire navigation)
-        if ($request->ajax() && $request->filled('tab')) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
             $countAll = $allActivities->total();
@@ -2504,7 +2504,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                     break;
             }
 
-            return response()->json([
+            return \App\Support\ApmListFragment::json([
                 'html' => $html,
                 'count_all_activities' => $countAll,
                 'count_my_division' => $countMyDivision,
@@ -3125,7 +3125,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         };
 
         // Handle AJAX requests for tab content
-        if ($request->ajax()) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
             
@@ -3177,7 +3177,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                     break;
             }
 
-            return response()->json(['html' => $html]);
+            return \App\Support\ApmListFragment::json(['html' => $html]);
         }
 
         return view('activities.single-memos.pending-approvals', compact(
