@@ -187,7 +187,7 @@
                     {{ $resource_type }} Returned for Revision
                 @elseif($type == 'created')
                     {{ $resource->division ? ($resource->division->name ?? $resource->division->division_name ?? 'Matrix') : 'Matrix' }} Notification
-                @elseif($type == 'approved')
+                @elseif($type == 'approved' || $type == 'other_memo_approval')
                     {{ $resource_label ?? $resource_type }} — awaiting your approval
                 @else
                     {{ $resource_type }} Notification
@@ -217,7 +217,7 @@
                         <span class="detail-value" style="color: #333333; flex: 1;">{{ $message }}</span>
                     </div>
                 </div>
-            @elseif($type == 'approved')
+            @elseif($type == 'approved' || $type == 'other_memo_approval')
                 @php
                     $fwdTitle = $memo_title ?? ($resource->title ?? ($resource->activity_title ?? null));
                     $fwdDoc = $document_number_display ?? ($resource->document_number ?? null);

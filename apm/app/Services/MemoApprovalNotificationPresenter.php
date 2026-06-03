@@ -39,6 +39,76 @@ class MemoApprovalNotificationPresenter
         ];
     }
 
+    /**
+     * First approver after submit/resubmit, or next approver after an approval step.
+     *
+     * @return array{message: string, view: array<string, mixed>}
+     */
+    public static function forOtherMemoAwaitingApproval(OtherMemo $memo): array
+    {
+        $hasApprovedTrail = OtherMemoApprovalTrail::query()
+            ->where('other_memo_id', $memo->id)
+            ->where('action', 'approved')
+            ->exists();
+
+        if ($hasApprovedTrail) {
+            return self::forForwardToNextApprover($memo);
+        }
+
+        $resourceLabel = self::resourceLabel($memo);
+        $memoTitle = self::memoTitle($memo);
+        $documentNumber = self::documentNumber($memo);
+        $divisionName = self::divisionName($memo);
+        $submittedBy = self::otherMemoSubmitterDisplayName($memo);
+
+        $message = $documentNumber !== null
+            ? sprintf(
+                '%s "%s" (%s) requires your approval. Submitted by %s.',
+                $resourceLabel,
+                $memoTitle,
+                $documentNumber,
+                $submittedBy
+            )
+            : sprintf(
+                '%s "%s" requires your approval. Submitted by %s.',
+                $resourceLabel,
+                $memoTitle,
+                $submittedBy
+            );
+
+        return [
+            'message' => $message,
+            'view' => [
+                'memo_title' => $memoTitle,
+                'document_number_display' => $documentNumber,
+                'division_name' => $divisionName,
+                'approved_by_name' => $submittedBy,
+                'resource_label' => $resourceLabel,
+            ],
+        ];
+    }
+
+    public static function otherMemoSubmitterDisplayName(OtherMemo $memo): string
+    {
+        $trail = OtherMemoApprovalTrail::query()
+            ->where('other_memo_id', $memo->id)
+            ->whereIn('action', ['submitted', 'resubmitted'])
+            ->orderByDesc('id')
+            ->with('staff')
+            ->first();
+
+        if ($trail?->staff) {
+            return self::formatStaffName($trail->staff);
+        }
+
+        $creator = $memo->relationLoaded('creator') ? $memo->creator : $memo->creator()->first();
+        if ($creator) {
+            return self::formatStaffName($creator);
+        }
+
+        return 'Submitter';
+    }
+
     public static function resourceLabel(Model $model): string
     {
         return match (class_basename($model)) {

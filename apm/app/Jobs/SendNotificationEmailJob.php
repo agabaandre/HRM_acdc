@@ -174,7 +174,7 @@ class SendNotificationEmailJob implements ShouldQueue
             ]);
         }
 
-        if ($this->type === 'approved' && $this->emailViewContext !== []) {
+        if (in_array($this->type, ['approved', 'other_memo_approval'], true) && $this->emailViewContext !== []) {
             $viewData = array_merge($viewData, $this->emailViewContext);
         }
 
