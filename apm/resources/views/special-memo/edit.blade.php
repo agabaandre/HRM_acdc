@@ -106,23 +106,10 @@
                 @endif
 
                 @if(request('change_request'))
-                    <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-header bg-warning text-dark">
-                            <h6 class="mb-0">
-                                <i class="fas fa-edit me-2"></i> Change Request Details
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label for="supporting_reasons" class="form-label fw-semibold">
-                                    <i class="fas fa-comment-alt me-1 text-warning"></i> Supporting Reasons <span class="text-danger">*</span>
-                                </label>
-                                <textarea name="supporting_reasons" id="supporting_reasons" class="form-control" rows="4"
-                                    placeholder="Please explain why you are requesting changes to this special memo..." required>{{ old('supporting_reasons', optional($changeRequestForEdit)->supporting_reasons ?? '') }}</textarea>
-                                <small class="text-muted">Provide detailed justification for the requested changes.</small>
-                            </div>
-                        </div>
-                    </div>
+                    @include('change-requests.partials.travel-cash-and-details', [
+                        'changeRequestForEdit' => $changeRequestForEdit ?? null,
+                        'supportingReasonsPlaceholder' => 'Please explain why you are requesting changes to this special memo...',
+                    ])
                 @endif
 
                 @includeIf('special-memo.form')

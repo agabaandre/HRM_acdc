@@ -197,18 +197,14 @@
          
         @if(request('change_request'))
                             <div class="col-md-12">
-                                <div class="form-group">
-                                    <label for="supporting_reasons" class="form-label fw-semibold">
-                                        <i class="bx bx-revision me-1 text-success"></i> Reasons for Change <span class="text-danger">*</span>
-                                    </label>
-                                    <small class="text-muted d-block mb-2">Why you are amending an approved memo (shown on the change request for approvers).</small>
-                                    <textarea name="supporting_reasons" id="supporting_reasons"
-                                              class="form-control summernote @error('supporting_reasons') is-invalid @enderror"
-                                              rows="5" required>{{ old('supporting_reasons', optional($changeRequestForEdit ?? null)->supporting_reasons ?? '') }}</textarea>
-                                    @error('supporting_reasons')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                @include('change-requests.partials.travel-cash-and-details', [
+                                    'changeRequestForEdit' => $changeRequestForEdit ?? null,
+                                    'supportingReasonsLabel' => 'Reasons for Change',
+                                    'supportingReasonsHint' => 'Why you are amending an approved memo (shown on the change request for approvers).',
+                                    'supportingReasonsPlaceholder' => 'Please explain why you are requesting changes to this memo...',
+                                    'useSummernoteForSupportingReasons' => true,
+                                    'supportingReasonsRows' => 5,
+                                ])
                             </div>
                         @endif
             

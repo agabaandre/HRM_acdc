@@ -56,6 +56,9 @@ class ChangeRequest extends Model
         'staff_id',
         'responsible_person_id',
         'supporting_reasons',
+        'request_travel_with_cash',
+        'cash_carrier_staff_id',
+        'cash_bank_transfer_unavailable_reason',
         'date_from',
         'date_to',
         'memo_date',
@@ -141,6 +144,8 @@ class ChangeRequest extends Model
         'has_status_changed' => 'boolean',
         'has_fund_type_id_changed' => 'boolean',
         'is_single_memo' => 'boolean',
+        'request_travel_with_cash' => 'boolean',
+        'cash_carrier_staff_id' => 'integer',
     ];
 
     /**
@@ -213,27 +218,56 @@ class ChangeRequest extends Model
     public function inferWorkflowIdFromChangeFlags(): int
     {
         $hasBudgetChanges = $this->has_budget_id_changed || $this->has_budget_breakdown_changed;
-        if ($hasBudgetChanges) {
-            return 1;
-        }
-
+        $hasCashRequest = (bool) $this->request_travel_with_cash;
         $hasParticipantChanges = $this->has_internal_participants_changed
             || $this->has_number_of_participants_changed
             || $this->has_participant_days_changed
             || $this->has_total_external_participants_changed;
 
         $hasDateChanges = $this->has_memo_date_changed;
-        $dateStayedInQuarter = $this->has_date_stayed_quarter;
+        $dateStayedInQuarter = (bool) $this->has_date_stayed_quarter;
+        $hasOtherMemoFieldChanges = $this->hasMemoFieldChangesForWorkflowRouting();
 
-        if ($hasDateChanges && $dateStayedInQuarter && !$hasParticipantChanges) {
+        if ($hasCashRequest) {
+            $cashUsesWorkflow7 = $hasBudgetChanges
+                || $hasParticipantChanges
+                || ($hasDateChanges && ! $dateStayedInQuarter)
+                || $hasOtherMemoFieldChanges;
+
+            return $cashUsesWorkflow7 ? 7 : 6;
+        }
+
+        if ($hasBudgetChanges) {
+            return 1;
+        }
+
+        if ($hasDateChanges && $dateStayedInQuarter && ! $hasParticipantChanges) {
             return 6;
         }
 
-        if (($hasDateChanges && !$dateStayedInQuarter) || $hasParticipantChanges) {
+        if (($hasDateChanges && ! $dateStayedInQuarter) || $hasParticipantChanges) {
             return 7;
         }
 
         return 6;
+    }
+
+    /**
+     * Memo field changes that route cash requests to workflow 7 (excludes budget and memo date flags).
+     */
+    public function hasMemoFieldChangesForWorkflowRouting(): bool
+    {
+        return $this->has_internal_participants_changed
+            || $this->has_number_of_participants_changed
+            || $this->has_participant_days_changed
+            || $this->has_request_type_id_changed
+            || $this->has_total_external_participants_changed
+            || $this->has_location_changed
+            || $this->has_activity_title_changed
+            || $this->has_activity_request_remarks_changed
+            || $this->has_is_single_memo_changed
+            || $this->has_status_changed
+            || $this->has_fund_type_id_changed;
     }
 
     protected function memoIndexResolvedWorkflowId(): ?int
@@ -365,7 +399,8 @@ class ChangeRequest extends Model
      */
     public function hasAnyChanges(): bool
     {
-        return $this->has_budget_id_changed ||
+        return (bool) $this->request_travel_with_cash
+            || $this->has_budget_id_changed ||
                $this->has_internal_participants_changed ||
                $this->has_number_of_participants_changed ||
                $this->has_participant_days_changed ||
@@ -403,8 +438,16 @@ class ChangeRequest extends Model
         if ($this->has_budget_breakdown_changed) $changes[] = 'Budget Breakdown';
         if ($this->has_status_changed) $changes[] = 'Status';
         if ($this->has_fund_type_id_changed) $changes[] = 'Fund Type';
-        
+        if ($this->request_travel_with_cash) {
+            $changes[] = 'Travel with cash';
+        }
+
         return $changes;
+    }
+
+    public function cashCarrier(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'cash_carrier_staff_id', 'staff_id');
     }
 
     public function forwardWorkflow(): BelongsTo

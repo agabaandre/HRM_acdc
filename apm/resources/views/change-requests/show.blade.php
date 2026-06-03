@@ -311,6 +311,27 @@
             </div>
         @endif --}}
 
+        @if($changeRequest->request_travel_with_cash)
+            <div class="mt-4">
+                <h6 class="text-warning"><i class="fas fa-money-bill-wave me-1"></i> Approval to collect travel cash</h6>
+                <div class="p-3 rounded border border-warning bg-warning bg-opacity-10">
+                    <p class="mb-2"><strong>Travel with cash:</strong> Requested on this change request.</p>
+                    <p class="mb-2"><strong>Person carrying the cash:</strong>
+                        @if($changeRequest->cashCarrier)
+                            {{ trim(($changeRequest->cashCarrier->title ? $changeRequest->cashCarrier->title.' ' : '').$changeRequest->cashCarrier->fname.' '.$changeRequest->cashCarrier->lname) }}
+                        @else
+                            <span class="text-muted">Not specified</span>
+                        @endif
+                    </p>
+                    @if($changeRequest->cash_bank_transfer_unavailable_reason)
+                        <p class="mb-0"><strong>Why bank transfer is not possible:</strong><br>
+                            {!! nl2br(e($changeRequest->cash_bank_transfer_unavailable_reason)) !!}
+                        </p>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         @if($changeRequest->supporting_reasons)
             <div class="mt-4">
                 <h6 class="text-success">Change Request Approval Details</h6>
@@ -328,15 +349,22 @@
                     </h6>
                     @php
                         $hasBudgetChanges = $changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed;
+                        $hasCashRequest = (bool) $changeRequest->request_travel_with_cash;
                         $hasParticipantChanges = $changeRequest->has_internal_participants_changed || 
                                                 $changeRequest->has_number_of_participants_changed || 
                                                 $changeRequest->has_participant_days_changed || 
                                                 $changeRequest->has_total_external_participants_changed;
                         $hasDateChanges = $changeRequest->has_memo_date_changed;
                         $dateStayedInQuarter = $changeRequest->has_date_stayed_quarter;
+                        $cashOnlyWorkflow6 = $hasCashRequest && ! $hasBudgetChanges && ! $hasParticipantChanges
+                            && ! ($hasDateChanges && ! $dateStayedInQuarter)
+                            && ! $changeRequest->hasMemoFieldChangesForWorkflowRouting();
+                        $cashWithOtherWorkflow7 = $hasCashRequest && ($hasBudgetChanges || $hasParticipantChanges
+                            || ($hasDateChanges && ! $dateStayedInQuarter)
+                            || $changeRequest->hasMemoFieldChangesForWorkflowRouting());
                     @endphp
                     
-                    @if($hasBudgetChanges)
+                    @if($hasBudgetChanges && ! $hasCashRequest)
                         <div class="mb-2">
                             <strong class="text-primary"><i class="fas fa-exclamation-triangle me-1"></i>Budget Changes Detected - Addendum Required:</strong>
                             <p class="mb-0 mt-2">
@@ -353,6 +381,24 @@
                                 @else
                                     This change request includes participant modifications.
                                 @endif
+                                <br>
+                                <strong>Approval Workflow:</strong> <strong>Head of Division (HOD) → Executive Office</strong>
+                            </p>
+                        </div>
+                    @elseif($cashOnlyWorkflow6)
+                        <div class="mb-2">
+                            <strong class="text-primary"><i class="fas fa-money-bill-wave me-1"></i>Travel with cash (standalone):</strong>
+                            <p class="mb-0 mt-2">
+                                This change request requests approval to travel with cash only (no budget or participant changes, or date change outside same quarter).
+                                <br>
+                                <strong>Approval Workflow:</strong> <strong>Head of Division (HOD) → Director of Administration</strong> (same as date change within quarter).
+                            </p>
+                        </div>
+                    @elseif($cashWithOtherWorkflow7)
+                        <div class="mb-2">
+                            <strong class="text-primary"><i class="fas fa-money-bill-wave me-1"></i>Travel with cash combined with other changes:</strong>
+                            <p class="mb-0 mt-2">
+                                Cash collection is requested together with budget, participant, date (different quarter), or other memo changes.
                                 <br>
                                 <strong>Approval Workflow:</strong> <strong>Head of Division (HOD) → Executive Office</strong>
                             </p>
