@@ -6,7 +6,6 @@
                 <th class="text-center">Document #</th>
                 <th class="text-center">Title</th>
                 <th class="text-center">Parent Memo</th>
-                <th class="text-center">Division</th>
                 <th class="text-center">Date Range</th>
                 <th class="text-center">Changes</th>
                 <th class="text-center">Status</th>
@@ -18,11 +17,7 @@
                 <tr>
                     <td class="text-center fw-bold">{{ $myChangeRequests->firstItem() + $index }}</td>
                     <td class="text-center">
-                        @if($changeRequest->document_number)
-                            <span class="badge bg-primary">{{ $changeRequest->document_number }}</span>
-                        @else
-                            <span class="text-muted">Pending</span>
-                        @endif
+                        @include('change-requests.partials.list-document-cell', ['changeRequest' => $changeRequest])
                     </td>
                     <td class="table-title-cell">
                         <div class="fw-semibold text-dark">{{ $changeRequest->activity_title }}</div>
@@ -56,9 +51,6 @@
                         @else
                             <span class="text-muted">N/A</span>
                         @endif
-                    </td>
-                    <td class="text-center">
-                        <span class="fw-semibold">{{ $changeRequest->division->division_name ?? 'N/A' }}</span>
                     </td>
                     <td class="text-center">
                         @php
@@ -206,7 +198,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" class="text-center py-4">
+                    <td colspan="8" class="text-center py-4">
                         <div class="text-muted">
                             <i class="bx bx-info-circle fs-1 d-block mb-2"></i>
                             <h5>No Change Requests Found</h5>

@@ -56,17 +56,16 @@
 .table {
     table-layout: fixed;
 }
-/* 9-column layout for change requests */
+/* 8-column layout for change requests (division under document #) */
 .table th:nth-child(1) { width: 3%; }   /* # */
-.table th:nth-child(2) { width: 16%; }  /* Document # */
-.table th:nth-child(3) { width: 20%; }  /* Title */
-.table th:nth-child(4) { width: 12%; }  /* Parent Memo */
-.table th:nth-child(5) { width: 15%; }  /* Division */
-.table th:nth-child(6) { width: 7%; }   /* Date Range */
-.table th:nth-child(7) { width: 10%; }  /* Changes */
-.table th:nth-child(8) { width: 8%; }   /* Status */
-.table th:nth-child(9) { width: 11%; }  /* Actions */
-.table td:nth-child(4), .table td:nth-child(5) { 
+.table th:nth-child(2) { width: 18%; }  /* Document # + division */
+.table th:nth-child(3) { width: 22%; }  /* Title */
+.table th:nth-child(4) { width: 14%; }  /* Parent Memo */
+.table th:nth-child(5) { width: 8%; }   /* Date Range */
+.table th:nth-child(6) { width: 12%; }  /* Changes */
+.table th:nth-child(7) { width: 9%; }   /* Status */
+.table th:nth-child(8) { width: 12%; }  /* Actions */
+.table td:nth-child(2), .table td:nth-child(4) { 
     word-wrap: break-word;
     word-break: break-word;
     white-space: normal;
