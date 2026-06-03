@@ -75,7 +75,9 @@ class MemoTypeDefinition extends Model
 
     public function getSignatureStyleLabelAttribute(): string
     {
-        return self::SIGNATURE_STYLES[$this->signature_style] ?? $this->signature_style;
+        $style = (string) ($this->signature_style ?? '');
+
+        return self::SIGNATURE_STYLES[$style] ?? $style;
     }
 
     /**
@@ -104,7 +106,7 @@ class MemoTypeDefinition extends Model
             'cc_all_staff_heading' => $this->cc_all_staff_heading,
             'cc_all_staff_label' => $this->cc_all_staff_label ?? 'All Africa CDC Staff',
             'signature_style' => $this->signature_style,
-            'signature_style_label' => $this->signature_style_label,
+            'signature_style_label' => $this->signature_style_label ?? '',
             'fields_schema' => self::normalizeFieldsSchemaRows($this->fields_schema ?? []),
             'is_system' => (bool) $this->is_system,
             'sort_order' => (int) $this->sort_order,

@@ -18,7 +18,6 @@
     $ccHeading = old('cc_all_staff_heading', $ccConfig['all_staff_heading'] ?? '');
     $ccLabel = old('cc_all_staff_label', $ccConfig['all_staff_label'] ?? 'All Africa CDC Staff');
 @endphp
-<div class="alert alert-info d-none small mb-3" id="memo-cc-type-hint" role="status"></div>
 <div class="card border mb-4 d-none" id="memo-cc-card">
     <div class="card-header bg-light border-bottom py-2">
         <span class="fw-semibold text-success"><i class="bx bx-copy-alt me-1"></i> CC (carbon copy)</span>

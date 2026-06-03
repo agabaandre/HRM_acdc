@@ -4,6 +4,17 @@ use App\Models\MemoTypeDefinition;
 use App\Support\OtherMemoCc;
 use Illuminate\Http\Request;
 
+test('memo type api array exposes cc_on_approval_enabled as boolean', function () {
+    $def = new MemoTypeDefinition([
+        'slug' => 'test-type',
+        'name' => 'Test',
+        'signature_style' => 'top_right',
+        'cc_on_approval_enabled' => true,
+    ]);
+
+    expect($def->toApiArray()['cc_on_approval_enabled'])->toBeTrue();
+});
+
 test('other memo cc omitted when creator does not include cc', function () {
     $def = new MemoTypeDefinition(['cc_on_approval_enabled' => true]);
 

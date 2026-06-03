@@ -28,7 +28,8 @@
 {{-- Page markers + scripts below live inside #apm-content-area so wire:navigate executes them (Livewire docs). --}}
 <div class="other-memo-form-page" data-apm-livewire-page="other-memos-create"
     data-memo-types-api="{{ route('memo-type-definitions.api.index') }}?active_only=1"
-    data-cc-enabled-types='@json($ccEnabledMemoTypes ?? [])'>
+    data-cc-enabled-slugs='@json($ccEnabledTypeSlugs ?? [])'
+    data-memo-type-cc-by-slug='@json($memoTypeCcBySlug ?? [])'>
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul class="mb-0">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
@@ -113,4 +114,7 @@
     </div>
 </div>
 {{-- Memo type loader + dynamic fields: public/js/apm-other-memo-create.js (DOMContentLoaded + livewire:navigated). --}}
+@push('scripts')
+<script src="{{ asset('js/apm-other-memo-cc.js') }}?v=1"></script>
+@endpush
 @endsection

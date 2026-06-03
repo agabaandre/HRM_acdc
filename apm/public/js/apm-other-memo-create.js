@@ -6,34 +6,88 @@
     'use strict';
 
     var types = {};
-    var ccEnabledSlugs = {};
+    var ccEnabledSlugsFromServer = [];
+    /** @type {Record<string, boolean>} */
+    var ccEnabledBySlug = {};
 
-    function loadCcEnabledSlugsFromDom() {
-        ccEnabledSlugs = {};
+    function ingestCcSlugMap(map) {
+        if (!map || typeof map !== 'object') return;
+        Object.keys(map).forEach(function (key) {
+            var k = String(key).toLowerCase().trim();
+            if (!k) return;
+            var on = map[key] === true || map[key] === 1 || map[key] === '1';
+            ccEnabledBySlug[k] = on;
+            if (on && ccEnabledSlugsFromServer.indexOf(k) === -1) {
+                ccEnabledSlugsFromServer.push(k);
+            }
+        });
+    }
+
+    function loadCcFlagsFromDom() {
+        ccEnabledSlugsFromServer = [];
+        ccEnabledBySlug = {};
         var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
         if (!root) return;
-        var raw = root.getAttribute('data-cc-enabled-types') || '[]';
         try {
-            var list = JSON.parse(raw);
-            if (Array.isArray(list)) {
-                list.forEach(function (item) {
-                    if (item && item.slug) ccEnabledSlugs[String(item.slug)] = item.name || item.slug;
+            ingestCcSlugMap(JSON.parse(root.getAttribute('data-memo-type-cc-by-slug') || '{}'));
+        } catch (e) {}
+        try {
+            var parsed = JSON.parse(root.getAttribute('data-cc-enabled-slugs') || '[]');
+            if (Array.isArray(parsed)) {
+                parsed.forEach(function (s) {
+                    var k = String(s || '').toLowerCase().trim();
+                    if (!k) return;
+                    ccEnabledBySlug[k] = true;
+                    if (ccEnabledSlugsFromServer.indexOf(k) === -1) {
+                        ccEnabledSlugsFromServer.push(k);
+                    }
                 });
             }
-        } catch (e) {}
+        } catch (e2) {}
+    }
+
+    function syncCcEnabledSlugsFromApi(rows) {
+        if (!Array.isArray(rows)) return;
+        var map = {};
+        rows.forEach(function (t) {
+            if (!t || !t.slug) return;
+            map[t.slug] = isMemoTypeCcEnabled(t);
+        });
+        ingestCcSlugMap(map);
     }
 
     function isMemoTypeCcEnabled(typeDef) {
-        if (!typeDef || !typeDef.slug) return false;
-        var flag = typeDef.cc_on_approval_enabled;
-        if (flag === true || flag === 1 || flag === '1') return true;
-        return Object.prototype.hasOwnProperty.call(ccEnabledSlugs, String(typeDef.slug));
+        if (!typeDef) return false;
+        var v = typeDef.cc_on_approval_enabled;
+        if (v === true || v === 1) return true;
+        if (typeof v === 'string') {
+            var s = v.trim().toLowerCase();
+            if (s === '1' || s === 'true' || s === 'yes' || s === 'on') return true;
+        }
+        return false;
     }
 
-    function ccEnabledTypeNamesList() {
-        return Object.keys(ccEnabledSlugs).map(function (slug) {
-            return ccEnabledSlugs[slug];
-        });
+    /** Slug from the native select option value, not Select2 numeric id. */
+    function slugFromMemoTypeSelect() {
+        var sel = document.getElementById('memo_type_slug');
+        if (!sel || sel.selectedIndex < 0) return '';
+        var opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return '';
+        return String(opt.value).trim();
+    }
+
+    function isSlugCcEnabled(slug) {
+        slug = String(slug || '').toLowerCase().trim();
+        if (!slug) return false;
+        if (ccEnabledBySlug[slug] === true) return true;
+        if (ccEnabledSlugsFromServer.indexOf(slug) !== -1) return true;
+        var t = resolveType(slug);
+        return t ? isMemoTypeCcEnabled(t) : false;
+    }
+
+    function memoTypeCcEnabled(typeDef, slug) {
+        if (typeDef && typeDef.slug && isSlugCcEnabled(typeDef.slug)) return true;
+        return isSlugCcEnabled(slug || slugFromMemoTypeSelect());
     }
 
     function otherMemoFormPagePresent() {
@@ -53,6 +107,8 @@
     }
 
     function getSelectedMemoTypeSlug() {
+        var native = slugFromMemoTypeSelect();
+        if (native) return native;
         var sel = document.getElementById('memo_type_slug');
         if (!sel) return '';
         if (typeof jQuery !== 'undefined') {
@@ -67,13 +123,21 @@
 
     function resolveType(slug) {
         if (!slug) return null;
-        if (types[slug]) return types[slug];
-        var lower = slug.toLowerCase();
+        var s = String(slug);
+        if (types[s]) return types[s];
+        var lower = s.toLowerCase();
+        if (types[lower]) return types[lower];
         var keys = Object.keys(types);
         for (var i = 0; i < keys.length; i++) {
             if (keys[i].toLowerCase() === lower) return types[keys[i]];
         }
         return null;
+    }
+
+    function storeMemoType(t) {
+        if (!t || !t.slug) return;
+        types[t.slug] = t;
+        types[String(t.slug).toLowerCase()] = t;
     }
 
     function renderFields(schema) {
@@ -167,9 +231,9 @@
         }
     }
 
-    function onMemoTypeChange() {
-        var slug = getSelectedMemoTypeSlug();
-        var t = resolveType(slug);
+    function applyMemoTypeSelection(slug, typeDef) {
+        slug = String(slug || (typeDef && typeDef.slug) || getSelectedMemoTypeSlug() || '');
+        var t = typeDef || resolveType(slug);
         var fieldsCard = document.getElementById('memo-fields-card');
         var approversCard = document.getElementById('memo-approvers-card');
         var attCard = document.getElementById('memo-attachments-card');
@@ -187,38 +251,59 @@
         }
         if (t) renderFields(t.fields_schema || []);
         applyUploadTypeAttachmentRules(slug);
-        toggleOtherMemoCcCard(t);
+        toggleOtherMemoCcCard(t, slug);
     }
 
-    function toggleOtherMemoCcCard(typeDef) {
-        var card = document.getElementById('memo-cc-card');
-        var hint = document.getElementById('memo-cc-type-hint');
-        if (!card) return;
-        var hasType = !!typeDef;
-        var enabled = isMemoTypeCcEnabled(typeDef);
-        card.classList.toggle('d-none', !enabled);
-        if (hint) {
-            if (!hasType) {
-                hint.classList.add('d-none');
-                hint.textContent = '';
-            } else if (enabled) {
-                hint.classList.add('d-none');
-                hint.textContent = '';
-            } else {
-                var names = ccEnabledTypeNamesList();
-                hint.classList.remove('d-none');
-                if (names.length) {
-                    hint.innerHTML = '<strong>CC is not enabled for this memo type.</strong> To add CC, either enable &ldquo;Show CC option on memo create&rdquo; in Settings &rarr; Other memo types for <em>' +
-                        (typeDef.name || typeDef.slug) + '</em>, or choose a type that already supports CC: <strong>' +
-                        names.join('</strong>, <strong>') + '</strong>.';
-                } else {
-                    hint.innerHTML = '<strong>CC is not enabled for this memo type.</strong> An administrator can turn on &ldquo;Show CC option on memo create&rdquo; in Settings &rarr; Other memo types for <em>' +
-                        (typeDef.name || typeDef.slug) + '</em>.';
+    function onMemoTypeChange() {
+        applyMemoTypeSelection(getSelectedMemoTypeSlug(), null);
+    }
+
+    function onMemoTypeSelect2Pick(e) {
+        var slug = slugFromMemoTypeSelect();
+        if (!slug && e && e.params && e.params.data && e.params.data.element) {
+            var node = e.params.data.element;
+            var el = node.jquery ? node[0] : node;
+            if (el && el.value) slug = String(el.value).trim();
+        }
+        if (!slug) slug = getSelectedMemoTypeSlug();
+        applyMemoTypeSelection(slug, resolveType(slug));
+    }
+
+    function resetOtherMemoCcFields() {
+        var includeCb = document.getElementById('cc_include');
+        if (includeCb) includeCb.checked = false;
+        var opts = document.getElementById('memo-cc-options-wrap');
+        if (opts) opts.classList.add('d-none');
+        if (typeof jQuery !== 'undefined') {
+            var $sel = jQuery('#cc_staff_ids');
+            if ($sel.length) {
+                $sel.val(null);
+                if ($sel.hasClass('select2-hidden-accessible')) {
+                    try { $sel.trigger('change'); } catch (e) {}
                 }
             }
         }
+    }
+
+    function toggleOtherMemoCcCard(typeDef, slug) {
+        var card = document.getElementById('memo-cc-card');
+        if (!card) return;
+
+        slug = String(slug || getSelectedMemoTypeSlug() || (typeDef ? typeDef.slug : '') || '');
+        var enabled = memoTypeCcEnabled(typeDef, slug);
+
+        card.classList.toggle('d-none', !enabled);
+
         if (enabled) {
             initOtherMemoCcUi();
+        } else {
+            resetOtherMemoCcFields();
+            if (typeof jQuery !== 'undefined') {
+                var $sel = jQuery('#cc_staff_ids');
+                if ($sel.length && $sel.hasClass('select2-hidden-accessible')) {
+                    try { $sel.select2('destroy'); } catch (e) {}
+                }
+            }
         }
     }
 
@@ -278,6 +363,17 @@
     function initOtherMemoCcUi() {
         syncOtherMemoCcInclude();
         runWhenSelect2Ready(initOtherMemoCcStaffSelect);
+    }
+
+    function bindMemoTypeChangeForCcOnce() {
+        if (window._apmMemoTypeChangeForCc) return;
+        window._apmMemoTypeChangeForCc = true;
+        document.addEventListener('change', function (e) {
+            if (!otherMemoCreatePagePresent()) return;
+            if (!e.target || e.target.id !== 'memo_type_slug') return;
+            var slug = slugFromMemoTypeSelect();
+            applyMemoTypeSelection(slug, resolveType(slug));
+        }, true);
     }
 
     function bindOtherMemoCcDelegatesOnce() {
@@ -359,7 +455,7 @@
         });
         $mt.off('change.otherMemoType select2:select.otherMemoType')
             .on('change.otherMemoType', onMemoTypeChange)
-            .on('select2:select.otherMemoType', onMemoTypeChange);
+            .on('select2:select.otherMemoType', onMemoTypeSelect2Pick);
         onMemoTypeChange();
     }
 
@@ -475,6 +571,8 @@
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {
                 setTimeout(function () {
+                    loadCcFlagsFromDom();
+                    bindMemoTypeChangeForCcOnce();
                     bindOtherMemoCcDelegatesOnce();
                     bootOtherMemoCreateIfPresent();
                     bootOtherMemoCcOnEdit();
@@ -485,7 +583,7 @@
 
     function bootOtherMemoCreateIfPresent() {
         if (!otherMemoCreatePagePresent()) return;
-        loadCcEnabledSlugsFromDom();
+        loadCcFlagsFromDom();
         if (typeof jQuery === 'undefined') return;
 
         var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
@@ -524,29 +622,33 @@
                 }
                 if (!document.body.contains(sel)) return;
 
+                var previousSlug = getSelectedMemoTypeSlug();
                 types = {};
                 var $s = jQuery(sel);
                 if ($s.hasClass('select2-hidden-accessible')) {
                     try { $s.select2('destroy'); } catch (e) {}
                 }
                 sel.innerHTML = '<option value=""></option>';
+                syncCcEnabledSlugsFromApi(json.data);
                 json.data.forEach(function (t) {
                     if (!t || !t.slug) return;
-                    types[t.slug] = t;
-                    if (isMemoTypeCcEnabled(t)) {
-                        ccEnabledSlugs[String(t.slug)] = t.name || t.slug;
-                    }
+                    storeMemoType(t);
                     var o = document.createElement('option');
                     o.value = t.slug;
-                    var label = t.name || t.slug;
+                    o.textContent = t.name || t.slug;
                     if (isMemoTypeCcEnabled(t)) {
-                        label += ' (CC available)';
+                        o.setAttribute('data-cc-enabled', '1');
                     }
-                    o.textContent = label;
                     sel.appendChild(o);
                 });
+                if (previousSlug && types[previousSlug]) {
+                    sel.value = previousSlug;
+                }
                 scheduleMemoTypeSelect2Init();
-                onMemoTypeChange();
+                applyMemoTypeSelection(getSelectedMemoTypeSlug(), resolveType(getSelectedMemoTypeSlug()));
+                if (typeof window.apmToggleOtherMemoCcCard === 'function') {
+                    setTimeout(window.apmToggleOtherMemoCcCard, 0);
+                }
                 bindSummernoteSubmitOnce();
                 bindAttachmentDelegatesOnce();
             })
@@ -561,6 +663,11 @@
                 delete root.dataset.apmCreateFetchPending;
             });
     }
+
+    window.apmToggleOtherMemoCcCard = function () {
+        loadCcFlagsFromDom();
+        toggleOtherMemoCcCard(null, slugFromMemoTypeSelect());
+    };
 
     document.addEventListener('DOMContentLoaded', scheduleBootOtherMemoCreate);
     document.addEventListener('livewire:navigated', scheduleBootOtherMemoCreate);
