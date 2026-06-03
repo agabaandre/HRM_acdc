@@ -48,6 +48,9 @@ class SpecialMemo extends Model
         'activity_request_remarks',
         'justification',
         'supporting_reasons',
+        'request_travel_with_cash',
+        'cash_carrier_staff_id',
+        'cash_bank_transfer_unavailable_reason',
         'is_special_memo',
         'is_draft',
         'budget_breakdown',
@@ -81,6 +84,8 @@ class SpecialMemo extends Model
         // Don't cast attachment to array - let the accessor handle double-encoded JSON
         'is_special_memo' => 'boolean',
         'is_draft' => 'boolean',
+        'request_travel_with_cash' => 'boolean',
+        'cash_carrier_staff_id' => 'integer',
     ];
 
     protected $appends = [
@@ -93,6 +98,11 @@ class SpecialMemo extends Model
     public function staff()
     {
         return $this->belongsTo(Staff::class, 'staff_id');
+    }
+
+    public function cashCarrier(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'cash_carrier_staff_id', 'staff_id');
     }
     
     public function division()

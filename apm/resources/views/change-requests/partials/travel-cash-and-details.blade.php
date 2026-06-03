@@ -44,9 +44,11 @@
                     Person carrying the cash <span class="text-danger wb-cash-required">*</span>
                 </label>
                 <select name="cash_carrier_staff_id" id="cash_carrier_staff_id"
-                    class="form-select @error('cash_carrier_staff_id') is-invalid @enderror"
-                    data-wb-cash-required="1">
-                    <option value="">— Select staff —</option>
+                    class="form-select w-100 cr-cash-carrier-select @error('cash_carrier_staff_id') is-invalid @enderror"
+                    data-wb-cash-required="1"
+                    data-placeholder="— Select staff —"
+                    data-allow-clear="true">
+                    <option value=""></option>
                     @foreach($crStaffList as $member)
                         <option value="{{ $member->staff_id }}" @selected($cashCarrierId === (int) $member->staff_id)>
                             {{ trim(($member->title ? $member->title.' ' : '').$member->fname.' '.$member->lname) }}
@@ -102,16 +104,44 @@
         var cashPanel = document.getElementById('travel-cash-fields');
         if (!cashCb || !cashPanel) return;
 
+        function initCashCarrierSelect2() {
+            if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+            var $sel = jQuery('#cash_carrier_staff_id');
+            if (!$sel.length) return;
+            if ($sel.hasClass('select2-hidden-accessible')) {
+                try { $sel.select2('destroy'); } catch (e) {}
+            }
+            $sel.select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: $sel.data('placeholder') || '— Select staff —',
+                allowClear: true
+            });
+        }
+
         function syncCashFields() {
             var on = cashCb.checked;
             cashPanel.classList.toggle('d-none', !on);
             cashPanel.querySelectorAll('[data-wb-cash-required]').forEach(function (el) {
                 el.required = on;
             });
+            if (on) {
+                window.requestAnimationFrame(function () {
+                    initCashCarrierSelect2();
+                });
+            }
         }
 
         cashCb.addEventListener('change', syncCashFields);
         syncCashFields();
+
+        if (typeof jQuery !== 'undefined') {
+            jQuery(document).ready(function () {
+                if (cashCb.checked) {
+                    initCashCarrierSelect2();
+                }
+            });
+        }
     })();
     </script>
     @endpush

@@ -1261,6 +1261,31 @@
                 </div>
 
             <div class="container-fluid py-4"> <!-- Reopen container-fluid -->
+                @if($specialMemo->request_travel_with_cash)
+                    <div class="card content-section border-warning mb-4">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
+                                <i class="bx bx-money"></i>
+                                Approval to collect travel cash
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Person carrying the cash:</strong>
+                                @if($specialMemo->cashCarrier)
+                                    {{ trim(($specialMemo->cashCarrier->title ? $specialMemo->cashCarrier->title.' ' : '').$specialMemo->cashCarrier->fname.' '.$specialMemo->cashCarrier->lname) }}
+                                @else
+                                    <span class="text-muted">Not specified</span>
+                                @endif
+                            </p>
+                            @if($specialMemo->cash_bank_transfer_unavailable_reason)
+                                <p class="mb-0"><strong>Why bank transfer is not possible:</strong><br>
+                                    {!! nl2br(e($specialMemo->cash_bank_transfer_unavailable_reason)) !!}
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 <!-- Request for Approval Card -->
                 @if($specialMemo->activity_request_remarks)
                     <div class="card content-section bg-purple border-0 mb-4">

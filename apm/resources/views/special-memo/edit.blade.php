@@ -160,6 +160,14 @@
                 <div id="externalParticipantsWrapper"></div>
 
                 <div id="budgetGroupContainer" class="mt-4"></div>
+
+                @if(!request('change_request'))
+                    @include('partials.travel-cash-request-fields', [
+                        'memo' => $specialMemo ?? null,
+                        'staff' => $staff ?? null,
+                    ])
+                @endif
+
                 <div class="col-md-12">
                     <label for="activity_request_remarks" class="form-label fw-semibold">
                         <i class="fas fa-comment-dots me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>

@@ -480,7 +480,17 @@ class SpecialMemoController extends Controller
             'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
             'attachments.*.replace' => 'nullable|boolean',
             'attachments.*.delete' => 'nullable|boolean',
+            'request_travel_with_cash' => 'sometimes|boolean',
+            'cash_carrier_staff_id' => 'nullable|integer|exists:staff,staff_id',
+            'cash_bank_transfer_unavailable_reason' => 'nullable|string|max:5000',
         ]);
+
+        if ($request->boolean('request_travel_with_cash')) {
+            $request->validate([
+                'cash_carrier_staff_id' => 'required|integer|exists:staff,staff_id',
+                'cash_bank_transfer_unavailable_reason' => 'required|string|min:15|max:5000',
+            ]);
+        }
 
         // Custom validation: World Bank Activity Code is required when World Bank budget code (funder_id=1) is selected
         $budgetCodes = $request->input('budget_codes', []);
@@ -661,6 +671,13 @@ class SpecialMemoController extends Controller
                 'attachment' => json_encode($attachments),
     
                 'supporting_reasons' => clean_unicode($request->input('supporting_reasons', null)),
+                'request_travel_with_cash' => $request->boolean('request_travel_with_cash'),
+                'cash_carrier_staff_id' => $request->boolean('request_travel_with_cash')
+                    ? (int) $request->input('cash_carrier_staff_id')
+                    : null,
+                'cash_bank_transfer_unavailable_reason' => $request->boolean('request_travel_with_cash')
+                    ? clean_unicode($request->input('cash_bank_transfer_unavailable_reason'))
+                    : null,
             ]);
 
             // Process fund code balance reductions and create transaction records
@@ -775,7 +792,7 @@ class SpecialMemoController extends Controller
      */
     public function show(SpecialMemo $specialMemo): View
     {
-        $specialMemo->load(['staff', 'division', 'staff.division', 'responsiblePerson', 'approvalTrails.staff', 'approvalTrails.oicStaff']);
+        $specialMemo->load(['staff', 'cashCarrier', 'division', 'staff.division', 'responsiblePerson', 'approvalTrails.staff', 'approvalTrails.oicStaff']);
 
         $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
         $canEmailPdf = can_print_memo($specialMemo) && count($emailPdfRecipientChoices) > 0;
@@ -1051,7 +1068,17 @@ class SpecialMemoController extends Controller
             'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
             'attachments.*.replace' => 'nullable|boolean',
             'attachments.*.delete' => 'nullable|boolean',
+            'request_travel_with_cash' => 'sometimes|boolean',
+            'cash_carrier_staff_id' => 'nullable|integer|exists:staff,staff_id',
+            'cash_bank_transfer_unavailable_reason' => 'nullable|string|max:5000',
         ]);
+
+        if ($request->boolean('request_travel_with_cash')) {
+            $request->validate([
+                'cash_carrier_staff_id' => 'required|integer|exists:staff,staff_id',
+                'cash_bank_transfer_unavailable_reason' => 'required|string|min:15|max:5000',
+            ]);
+        }
 
         // Custom validation: World Bank Activity Code is required when World Bank budget code (funder_id=1) is selected
         $budgetCodes = $request->input('budget_codes', []);
@@ -1235,6 +1262,13 @@ class SpecialMemoController extends Controller
                 'attachment' => json_encode($attachments),
     
                 'supporting_reasons' => clean_unicode($request->input('supporting_reasons', null)),
+                'request_travel_with_cash' => $request->boolean('request_travel_with_cash'),
+                'cash_carrier_staff_id' => $request->boolean('request_travel_with_cash')
+                    ? (int) $request->input('cash_carrier_staff_id')
+                    : null,
+                'cash_bank_transfer_unavailable_reason' => $request->boolean('request_travel_with_cash')
+                    ? clean_unicode($request->input('cash_bank_transfer_unavailable_reason'))
+                    : null,
             ];
 
            // dd($updateData);
@@ -1758,6 +1792,7 @@ class SpecialMemoController extends Controller
         // Eager load relations
         $specialMemo->load([
             'staff',
+            'cashCarrier',
             'division',
             'requestType',
             'fundType',
