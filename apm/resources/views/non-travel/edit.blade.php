@@ -53,23 +53,10 @@
                 @endif
                 <div class="row g-4 mb-4">
                     <div class="col-md-12">
-                        <div class="card border-warning">
-                            <div class="card-header bg-warning text-dark">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-edit me-2"></i> Change Request Details
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="form-group">
-                                    <label for="supporting_reasons" class="form-label fw-semibold">
-                                        <i class="fas fa-comment-alt me-1 text-warning"></i> Supporting Reasons <span class="text-danger">*</span>
-                                    </label>
-                                    <textarea name="supporting_reasons" id="supporting_reasons" class="form-control" rows="4" 
-                                        placeholder="Please explain why you are requesting changes to this memo..." required>{{ old('supporting_reasons') }}</textarea>
-                                    <small class="text-muted">Provide detailed justification for the requested changes.</small>
-                                </div>
-                            </div>
-                        </div>
+                        @include('change-requests.partials.travel-cash-and-details', [
+                            'changeRequestForEdit' => $changeRequestForEdit ?? null,
+                            'supportingReasonsPlaceholder' => 'Please explain why you are requesting changes to this memo...',
+                        ])
                     </div>
                 </div>
             @endif

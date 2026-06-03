@@ -538,6 +538,8 @@ class ChangeRequestController extends Controller
             throw new \Exception('Parent memo not found');
         }
 
+                $this->validateTravelCashFields($request);
+
                 $isNonTravelParent = $parentMemo instanceof NonTravelMemo;
 
                 // Calculate total budget from budget items
@@ -648,6 +650,13 @@ class ChangeRequestController extends Controller
                     
                     // Content fields
                     'supporting_reasons' => clean_unicode($request->input('supporting_reasons')),
+                    'request_travel_with_cash' => $request->boolean('request_travel_with_cash'),
+                    'cash_carrier_staff_id' => $request->boolean('request_travel_with_cash')
+                        ? (int) $request->input('cash_carrier_staff_id')
+                        : null,
+                    'cash_bank_transfer_unavailable_reason' => $request->boolean('request_travel_with_cash')
+                        ? clean_unicode($request->input('cash_bank_transfer_unavailable_reason'))
+                        : null,
                     'date_from' => $request->input('date_from', $parentMemo->date_from ?? now()->toDateString()),
                     'date_to' => $request->input('date_to', $parentMemo->date_to ?? now()->toDateString()),
                     'memo_date' => $request->input('memo_date', $parentMemo->memo_date ?? now()->toDateString()),
@@ -754,6 +763,7 @@ class ChangeRequestController extends Controller
     {
         $changeRequest->load([
             'staff',
+            'cashCarrier',
             'responsiblePerson',
             'division',
             'requestType',
@@ -2250,6 +2260,7 @@ class ChangeRequestController extends Controller
     {
         $changeRequest->load([
             'staff',
+            'cashCarrier',
             'responsiblePerson',
             'division',
             'requestType',
@@ -2617,6 +2628,42 @@ class ChangeRequestController extends Controller
             ];
         }
 
+        if ($changeRequest->request_travel_with_cash) {
+            $carrierName = 'N/A';
+            if ($changeRequest->relationLoaded('cashCarrier') && $changeRequest->cashCarrier) {
+                $carrierName = $changeRequest->cashCarrier->full_name ?? trim(
+                    ($changeRequest->cashCarrier->fname ?? '').' '.($changeRequest->cashCarrier->lname ?? '')
+                );
+            } elseif ($changeRequest->cash_carrier_staff_id) {
+                $carrier = Staff::query()->find($changeRequest->cash_carrier_staff_id);
+                if ($carrier) {
+                    $carrierName = trim(($carrier->fname ?? '').' '.($carrier->lname ?? ''));
+                }
+            }
+            $bankReason = strip_tags((string) ($changeRequest->cash_bank_transfer_unavailable_reason ?? ''));
+            $changes[] = [
+                'type' => 'Approval to collect travel cash',
+                'original' => 'Not requested',
+                'changed' => 'Requested — carrier: '.$carrierName
+                    .($bankReason !== '' ? '; bank transfer not possible: '.$bankReason : ''),
+            ];
+        }
+
         return $changes;
+    }
+
+    private function validateTravelCashFields(Request $request): void
+    {
+        $rules = [
+            'supporting_reasons' => 'required|string',
+            'request_travel_with_cash' => 'sometimes|boolean',
+        ];
+
+        if ($request->boolean('request_travel_with_cash')) {
+            $rules['cash_carrier_staff_id'] = 'required|integer|exists:staff,staff_id';
+            $rules['cash_bank_transfer_unavailable_reason'] = 'required|string|min:15|max:5000';
+        }
+
+        $request->validate($rules);
     }
 }
