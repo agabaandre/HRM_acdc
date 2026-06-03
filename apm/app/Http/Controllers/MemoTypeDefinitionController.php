@@ -52,6 +52,7 @@ class MemoTypeDefinitionController extends Controller
         $validated['fields_schema'] = MemoTypeDefinition::normalizeFieldsSchemaRows($validated['fields_schema']);
         $validated['is_division_specific'] = filter_var($validated['is_division_specific'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $validated['attachments_enabled'] = filter_var($validated['attachments_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $validated['cc_on_approval_enabled'] = filter_var($validated['cc_on_approval_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $slugSource = trim((string) ($validated['slug'] ?? ''));
         $baseSlug = $slugSource !== '' ? $slugSource : Str::slug($validated['name']);
         if ($baseSlug === '') {
@@ -79,6 +80,9 @@ class MemoTypeDefinitionController extends Controller
         }
         if (array_key_exists('attachments_enabled', $validated)) {
             $validated['attachments_enabled'] = filter_var($validated['attachments_enabled'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (array_key_exists('cc_on_approval_enabled', $validated)) {
+            $validated['cc_on_approval_enabled'] = filter_var($validated['cc_on_approval_enabled'], FILTER_VALIDATE_BOOLEAN);
         }
         if ($memoTypeDefinition->is_system) {
             unset($validated['slug']);
@@ -161,6 +165,9 @@ class MemoTypeDefinitionController extends Controller
             'ref_prefix' => 'nullable|string|max:32',
             'is_division_specific' => 'sometimes|boolean',
             'attachments_enabled' => 'sometimes|boolean',
+            'cc_on_approval_enabled' => 'sometimes|boolean',
+            'cc_all_staff_heading' => 'nullable|string|max:500',
+            'cc_all_staff_label' => 'nullable|string|max:255',
             'signature_style' => 'required|string|in:'.$sigStyles,
             'fields_schema' => 'required|array|min:1',
             'fields_schema.*.field' => 'required|string|max:64|regex:/^[a-z][a-z0-9_]*$/',

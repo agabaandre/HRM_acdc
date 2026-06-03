@@ -25,6 +25,8 @@ class OtherMemo extends Model
         'signature_style_snapshot',
         'fields_schema_snapshot',
         'attachments_enabled_snapshot',
+        'cc_on_approval_enabled_snapshot',
+        'cc_config',
         'attachment',
         'payload',
         'approvers_config',
@@ -54,6 +56,8 @@ class OtherMemo extends Model
             'approved_at' => 'datetime',
             'is_division_specific_snapshot' => 'boolean',
             'attachments_enabled_snapshot' => 'boolean',
+            'cc_on_approval_enabled_snapshot' => 'boolean',
+            'cc_config' => 'array',
         ];
     }
 

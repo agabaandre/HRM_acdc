@@ -25,7 +25,8 @@
 @endpush
 
 @section('content')
-<div class="other-memo-form-page" data-apm-livewire-page="other-memos-edit">
+<div class="other-memo-form-page" data-apm-livewire-page="other-memos-edit"
+    data-cc-on-approval="{{ ($memo->cc_on_approval_enabled_snapshot ?? false) ? '1' : '0' }}">
     @if (session('msg'))
         <div class="alert alert-{{ session('type', 'info') }}">{{ session('msg') }}</div>
     @endif
@@ -86,6 +87,11 @@
                         ])
                     </div>
                 </div>
+
+                @include('other-memos.partials.cc-fields', [
+                    'staffOptions' => $staffOptions,
+                    'ccConfig' => ($memo->cc_on_approval_enabled_snapshot ?? false) ? ($memo->cc_config ?? []) : [],
+                ])
 
                 <div class="card border mb-4">
                     <div class="card-body">

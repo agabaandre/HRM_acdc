@@ -223,7 +223,9 @@
         container.appendChild(clone);
         renumberApprovers();
         if (sel && typeof window.initOtherMemoStaffSelect2 === 'function') {
-            window.initOtherMemoStaffSelect2(jQuery(sel));
+            runWhenSelect2Ready(function () {
+                window.initOtherMemoStaffSelect2(jQuery(sel));
+            });
         }
         if (sel) sel.dataset.prevStaffIdForRole = '';
         bindRow(clone);
@@ -260,9 +262,11 @@
         if (!approversSectionVisible()) return;
 
         if (typeof jQuery !== 'undefined' && typeof window.initOtherMemoStaffSelect2 === 'function') {
-            jQuery(container).find('select.approver-staff-id').each(function () {
-                stripStaffSelectToNative(this);
-                window.initOtherMemoStaffSelect2(jQuery(this));
+            runWhenSelect2Ready(function () {
+                jQuery(container).find('select.approver-staff-id').each(function () {
+                    stripStaffSelectToNative(this);
+                    window.initOtherMemoStaffSelect2(jQuery(this));
+                });
             });
         }
     }
@@ -279,6 +283,8 @@
             }
         })();
     }
+
+    window.runOtherMemoApproversWhenSelect2Ready = runWhenSelect2Ready;
 
     function bootOtherMemoApprovers() {
         if (!otherMemoFormPagePresent()) return;

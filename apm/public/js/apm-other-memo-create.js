@@ -7,6 +7,12 @@
 
     var types = {};
 
+    function otherMemoFormPagePresent() {
+        return !!document.querySelector(
+            '[data-apm-livewire-page="other-memos-create"], [data-apm-livewire-page="other-memos-edit"]'
+        );
+    }
+
     function otherMemoCreatePagePresent() {
         return !!document.querySelector('[data-apm-livewire-page="other-memos-create"]');
     }
@@ -144,10 +150,95 @@
         if (attCard) attCard.classList.toggle('d-none', !t || !t.attachments_enabled);
 
         if (t && typeof window.initOtherMemoApprovers === 'function') {
-            window.initOtherMemoApprovers();
+            if (typeof window.runOtherMemoApproversWhenSelect2Ready === 'function') {
+                window.runOtherMemoApproversWhenSelect2Ready(window.initOtherMemoApprovers);
+            } else {
+                window.initOtherMemoApprovers();
+            }
         }
         if (t) renderFields(t.fields_schema || []);
         applyUploadTypeAttachmentRules(slug);
+        toggleOtherMemoCcCard(t);
+    }
+
+    function toggleOtherMemoCcCard(typeDef) {
+        var card = document.getElementById('memo-cc-card');
+        if (!card) return;
+        var enabled = typeDef && !!typeDef.cc_on_approval_enabled;
+        card.classList.toggle('d-none', !enabled);
+        if (enabled) {
+            initOtherMemoCcUi(typeDef);
+        }
+    }
+
+    function initOtherMemoCcStaffSelect() {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+        var $sel = jQuery('#cc_staff_ids');
+        if (!$sel.length || !document.body.contains($sel[0])) return;
+        if ($sel.hasClass('select2-hidden-accessible')) {
+            try { $sel.select2('destroy'); } catch (e) {}
+        }
+        $sel.select2({
+            theme: 'bootstrap4',
+            width: '100%',
+            placeholder: $sel.data('placeholder') || 'Select staff to CC',
+            allowClear: true
+        });
+    }
+
+    function syncOtherMemoCcAllStaffToggle() {
+        var allCb = document.getElementById('cc_all_staff');
+        var wrap = document.getElementById('memo-cc-specific-wrap');
+        var preview = document.getElementById('memo-cc-all-staff-preview');
+        if (!allCb) return;
+        var allOn = allCb.checked;
+        if (wrap) wrap.classList.toggle('d-none', allOn);
+        if (preview) preview.classList.toggle('d-none', !allOn);
+        if (typeof jQuery !== 'undefined') {
+            var $sel = jQuery('#cc_staff_ids');
+            if ($sel.length) {
+                $sel.prop('disabled', allOn);
+                if (allOn) {
+                    $sel.val(null).trigger('change');
+                }
+            }
+        }
+    }
+
+    function updateOtherMemoCcAllStaffPreview(typeDef) {
+        var el = document.getElementById('memo-cc-all-staff-preview-text');
+        if (!el) return;
+        var heading = (typeDef && typeDef.cc_all_staff_heading) ? String(typeDef.cc_all_staff_heading).trim() : '';
+        var label = (typeDef && typeDef.cc_all_staff_label) ? String(typeDef.cc_all_staff_label).trim() : 'All Africa CDC Staff';
+        var parts = [];
+        if (heading) parts.push(heading);
+        if (label) parts.push(label);
+        el.textContent = parts.length ? ('Printed as: ' + parts.join(' · ')) : '';
+    }
+
+    function initOtherMemoCcUi(typeDef) {
+        syncOtherMemoCcAllStaffToggle();
+        updateOtherMemoCcAllStaffPreview(typeDef || null);
+        runWhenSelect2Ready(initOtherMemoCcStaffSelect);
+    }
+
+    function bindOtherMemoCcDelegatesOnce() {
+        if (window._apmOtherMemoCcDelegates) return;
+        window._apmOtherMemoCcDelegates = true;
+        document.addEventListener('change', function (e) {
+            if (!otherMemoFormPagePresent()) return;
+            if (e.target && e.target.id === 'cc_all_staff') {
+                syncOtherMemoCcAllStaffToggle();
+            }
+        });
+    }
+
+    function bootOtherMemoCcOnEdit() {
+        var root = document.querySelector('[data-apm-livewire-page="other-memos-edit"]');
+        if (!root || root.dataset.ccOnApproval !== '1') return;
+        var card = document.getElementById('memo-cc-card');
+        if (card) card.classList.remove('d-none');
+        initOtherMemoCcUi(null);
     }
 
     function isUploadType(slug) {
@@ -179,10 +270,21 @@
         }
     }
 
+    function runWhenSelect2Ready(fn) {
+        var tries = 0;
+        (function poll() {
+            if (typeof jQuery !== 'undefined' && jQuery.fn && jQuery.fn.select2) {
+                fn();
+            } else if (tries++ < 240) {
+                setTimeout(poll, 25);
+            }
+        })();
+    }
+
     function initMemoTypeSelect2() {
         if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
         var $mt = jQuery('#memo_type_slug');
-        if (!$mt.length) return;
+        if (!$mt.length || !document.body.contains($mt[0])) return;
         if ($mt.hasClass('select2-hidden-accessible')) {
             try { $mt.select2('destroy'); } catch (e) {}
         }
@@ -196,6 +298,10 @@
             .on('change.otherMemoType', onMemoTypeChange)
             .on('select2:select.otherMemoType', onMemoTypeChange);
         onMemoTypeChange();
+    }
+
+    function scheduleMemoTypeSelect2Init() {
+        runWhenSelect2Ready(initMemoTypeSelect2);
     }
 
     function bindSummernoteSubmitOnce() {
@@ -305,13 +411,17 @@
     function scheduleBootOtherMemoCreate() {
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {
-                setTimeout(bootOtherMemoCreateIfPresent, 0);
+                setTimeout(function () {
+                    bootOtherMemoCreateIfPresent();
+                    bootOtherMemoCcOnEdit();
+                }, 0);
             });
         });
     }
 
     function bootOtherMemoCreateIfPresent() {
         if (!otherMemoCreatePagePresent()) return;
+        bindOtherMemoCcDelegatesOnce();
         if (typeof jQuery === 'undefined') return;
 
         var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
@@ -327,7 +437,10 @@
         var ctrl = new AbortController();
         root._apmOtherMemoCreateAbort = ctrl;
 
-        if (root.dataset.apmCreateFetchPending === '1') return;
+        if (root.dataset.apmCreateFetchPending === '1') {
+            scheduleMemoTypeSelect2Init();
+            return;
+        }
         root.dataset.apmCreateFetchPending = '1';
 
         jQuery('#other-memo-attachment-container').empty();
@@ -361,7 +474,7 @@
                     o.textContent = t.name || t.slug;
                     sel.appendChild(o);
                 });
-                initMemoTypeSelect2();
+                scheduleMemoTypeSelect2Init();
                 bindSummernoteSubmitOnce();
                 bindAttachmentDelegatesOnce();
             })
