@@ -214,5 +214,7 @@
 @endforeach
 </div>
 
+@php PrintHelper::renderOtherMemoPdfCc(is_array($memo->cc_config) ? $memo->cc_config : null); @endphp
+
 </body>
 </html>

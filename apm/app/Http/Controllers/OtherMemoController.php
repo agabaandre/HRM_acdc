@@ -10,6 +10,7 @@ use App\Models\OtherMemoApprovalTrail;
 use App\Models\Staff;
 use App\Models\WorkflowDefinition;
 use App\Services\OtherMemoApproverNotifier;
+use App\Support\OtherMemoCc;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -231,7 +232,7 @@ class OtherMemoController extends Controller
         $this->assertAttachmentsPresentWhenRequired($definition, $attachmentRows);
         $this->assertUploadMemoStoredAttachmentsAreSinglePdf($attachmentRows, (string) $definition->slug);
 
-        $memo = OtherMemo::create([
+        $memo = OtherMemo::create(array_merge([
             'memo_type_slug' => $definition->slug,
             'memo_type_name_snapshot' => $definition->name,
             'ref_prefix_snapshot' => $definition->ref_prefix,
@@ -244,7 +245,7 @@ class OtherMemoController extends Controller
             'staff_id' => $this->staffId(),
             'division_id' => user_session('division_id'),
             'overall_status' => OtherMemo::STATUS_DRAFT,
-        ]);
+        ], $this->ccAttributesFromRequest($request, $definition)));
 
         return redirect()->route('other-memos.show', $memo)
             ->with('msg', 'Draft saved.')
@@ -346,12 +347,12 @@ class OtherMemoController extends Controller
         }
         $this->assertUploadMemoStoredAttachmentsAreSinglePdf($attachmentForDb, (string) $other_memo->memo_type_slug);
 
-        $other_memo->update([
+        $other_memo->update(array_merge([
             'payload' => $payload,
             'approvers_config' => $approvers,
             'attachments_enabled_snapshot' => $attachEnabledLive,
             'attachment' => $attachmentForDb,
-        ]);
+        ], $this->ccAttributesFromRequest($request, $def ?? $this->definitionForNumbering($other_memo))));
 
         return redirect()->route('other-memos.show', $other_memo)
             ->with('msg', 'Memo updated.')
@@ -392,6 +393,11 @@ class OtherMemoController extends Controller
             $this->assertUploadMemoStoredAttachmentsAreSinglePdf((array) ($other_memo->attachment ?? []), (string) $other_memo->memo_type_slug);
             $defSnap = MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
             $other_memo->attachments_enabled_snapshot = (bool) ($defSnap->attachments_enabled ?? false);
+            if ($defSnap) {
+                foreach ($this->ccAttributesFromRequest($request, $defSnap) as $key => $value) {
+                    $other_memo->{$key} = $value;
+                }
+            }
         }
 
         if (count($approvers) < 1) {
@@ -710,6 +716,17 @@ class OtherMemoController extends Controller
         }
 
         return $out;
+    }
+
+    /**
+     * @return array{cc_on_approval_enabled_snapshot: bool, cc_config: array<string, mixed>|null}
+     */
+    private function ccAttributesFromRequest(Request $request, MemoTypeDefinition $definition): array
+    {
+        return [
+            'cc_on_approval_enabled_snapshot' => (bool) $definition->cc_on_approval_enabled,
+            'cc_config' => OtherMemoCc::buildConfigFromRequest($request, $definition),
+        ];
     }
 
     private function normalizeApprovers(Request $request): array

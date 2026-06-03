@@ -1534,6 +1534,52 @@ class PrintHelper
     }
 
     /**
+     * CC block after memo body on other-memo PDFs.
+     *
+     * @param  array<string, mixed>|null  $ccConfig
+     */
+    public static function renderOtherMemoPdfCc(?array $ccConfig): void
+    {
+        if (! \App\Support\OtherMemoCc::hasCcForPdf($ccConfig)) {
+            return;
+        }
+
+        $mode = (string) ($ccConfig['mode'] ?? '');
+        echo '<div class="memo-cc-block" style="margin-top: 18px;">';
+        echo '<div class="section-label" style="margin-bottom: 6px;">Cc:</div>';
+
+        if ($mode === 'all') {
+            $heading = trim((string) ($ccConfig['all_staff_heading'] ?? ''));
+            $label = \App\Support\OtherMemoCc::labelOrDefault($ccConfig['all_staff_label'] ?? null);
+            if ($heading !== '') {
+                echo '<div class="memo-cc-line" style="font-size: 14px; color: #100f0f; font-weight: bold; margin-bottom: 4px;">';
+                echo htmlspecialchars($heading, ENT_QUOTES, 'UTF-8');
+                echo '</div>';
+            }
+            echo '<div class="memo-cc-line" style="font-size: 14px; color: #100f0f; font-weight: bold;">';
+            echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+            echo '</div>';
+        } elseif ($mode === 'specific' && is_array($ccConfig['staff'] ?? null)) {
+            foreach ($ccConfig['staff'] as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $name = trim((string) ($row['name'] ?? ''));
+                $role = trim((string) ($row['role_label'] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $line = $role !== '' ? $name.' ('.$role.')' : $name;
+                echo '<div class="memo-cc-line" style="font-size: 14px; color: #100f0f; margin-bottom: 3px;">';
+                echo htmlspecialchars($line, ENT_QUOTES, 'UTF-8');
+                echo '</div>';
+            }
+        }
+
+        echo '</div>';
+    }
+
+    /**
      * Approver name + role for other-memo PDF header rows.
      */
     public static function renderOtherMemoApproverInfo(array $approver, OtherMemo $memo, string $section): void

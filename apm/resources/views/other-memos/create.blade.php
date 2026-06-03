@@ -96,6 +96,11 @@
                     </div>
                 </div>
 
+                @include('other-memos.partials.cc-fields', [
+                    'staffOptions' => $staffOptions,
+                    'ccConfig' => [],
+                ])
+
                 <div class="d-flex flex-wrap gap-2 pt-2 border-top">
                     <button type="submit" class="btn btn-success" id="other-memo-create-submit">
                         <i class="bx bx-save"></i> Save draft
