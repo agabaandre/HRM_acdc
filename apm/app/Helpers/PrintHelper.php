@@ -1674,6 +1674,24 @@ class PrintHelper
     }
 
     /**
+     * Subject row for other-memo PDFs — bold + underlined (mPDF ignores class underline on table cells).
+     */
+    public static function renderOtherMemoPdfSubject(?string $subjectText): void
+    {
+        $text = trim((string) ($subjectText ?? ''));
+        if ($text === '') {
+            return;
+        }
+        $escaped = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+        echo '<table class="memo-field-table"><tr class="memo-field-row">';
+        echo '<td class="memo-field-label"><strong class="section-label">Subject:</strong></td>';
+        echo '<td class="memo-field-body subject-text">';
+        echo '<strong style="font-weight:bold;font-style:normal;color:#100f0f;">';
+        echo '<u style="text-decoration:underline;">' . $escaped . '</u>';
+        echo '</strong></td></tr></table>';
+    }
+
+    /**
      * Rich-text memo field (e.g. Background, Justification) — single table row so content flows on the same page as the label when space allows.
      */
     public static function renderMemoPdfRichField(string $label, ?string $html): void

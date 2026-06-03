@@ -187,7 +187,7 @@
     @endforeach
 </table>
 
-@php PrintHelper::renderMemoPdfPlainField('Subject:', $subjectText, 'subject-text'); @endphp
+@php PrintHelper::renderOtherMemoPdfSubject($subjectText); @endphp
 
 <div class="memo-body-section">
 @foreach ($schema as $field)
