@@ -1096,9 +1096,23 @@ class OtherMemoController extends Controller
             }
         }
 
+        $ccEnabledMemoTypes = MemoTypeDefinition::query()
+            ->where('is_active', true)
+            ->where('cc_on_approval_enabled', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['slug', 'name'])
+            ->map(fn (MemoTypeDefinition $m) => [
+                'slug' => $m->slug,
+                'name' => $m->name,
+            ])
+            ->values()
+            ->all();
+
         return [
             'staffOptions' => $staffOptions,
             'roleExamples' => $this->workflowOneRoleExamples(),
+            'ccEnabledMemoTypes' => $ccEnabledMemoTypes,
         ];
     }
 

@@ -6,6 +6,35 @@
     'use strict';
 
     var types = {};
+    var ccEnabledSlugs = {};
+
+    function loadCcEnabledSlugsFromDom() {
+        ccEnabledSlugs = {};
+        var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
+        if (!root) return;
+        var raw = root.getAttribute('data-cc-enabled-types') || '[]';
+        try {
+            var list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+                list.forEach(function (item) {
+                    if (item && item.slug) ccEnabledSlugs[String(item.slug)] = item.name || item.slug;
+                });
+            }
+        } catch (e) {}
+    }
+
+    function isMemoTypeCcEnabled(typeDef) {
+        if (!typeDef || !typeDef.slug) return false;
+        var flag = typeDef.cc_on_approval_enabled;
+        if (flag === true || flag === 1 || flag === '1') return true;
+        return Object.prototype.hasOwnProperty.call(ccEnabledSlugs, String(typeDef.slug));
+    }
+
+    function ccEnabledTypeNamesList() {
+        return Object.keys(ccEnabledSlugs).map(function (slug) {
+            return ccEnabledSlugs[slug];
+        });
+    }
 
     function otherMemoFormPagePresent() {
         return !!document.querySelector(
@@ -163,11 +192,33 @@
 
     function toggleOtherMemoCcCard(typeDef) {
         var card = document.getElementById('memo-cc-card');
+        var hint = document.getElementById('memo-cc-type-hint');
         if (!card) return;
-        var enabled = typeDef && !!typeDef.cc_on_approval_enabled;
+        var hasType = !!typeDef;
+        var enabled = isMemoTypeCcEnabled(typeDef);
         card.classList.toggle('d-none', !enabled);
+        if (hint) {
+            if (!hasType) {
+                hint.classList.add('d-none');
+                hint.textContent = '';
+            } else if (enabled) {
+                hint.classList.add('d-none');
+                hint.textContent = '';
+            } else {
+                var names = ccEnabledTypeNamesList();
+                hint.classList.remove('d-none');
+                if (names.length) {
+                    hint.innerHTML = '<strong>CC is not enabled for this memo type.</strong> To add CC, either enable &ldquo;Show CC option on memo create&rdquo; in Settings &rarr; Other memo types for <em>' +
+                        (typeDef.name || typeDef.slug) + '</em>, or choose a type that already supports CC: <strong>' +
+                        names.join('</strong>, <strong>') + '</strong>.';
+                } else {
+                    hint.innerHTML = '<strong>CC is not enabled for this memo type.</strong> An administrator can turn on &ldquo;Show CC option on memo create&rdquo; in Settings &rarr; Other memo types for <em>' +
+                        (typeDef.name || typeDef.slug) + '</em>.';
+                }
+            }
+        }
         if (enabled) {
-            initOtherMemoCcUi(typeDef);
+            initOtherMemoCcUi();
         }
     }
 
@@ -434,6 +485,7 @@
 
     function bootOtherMemoCreateIfPresent() {
         if (!otherMemoCreatePagePresent()) return;
+        loadCcEnabledSlugsFromDom();
         if (typeof jQuery === 'undefined') return;
 
         var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
@@ -481,12 +533,20 @@
                 json.data.forEach(function (t) {
                     if (!t || !t.slug) return;
                     types[t.slug] = t;
+                    if (isMemoTypeCcEnabled(t)) {
+                        ccEnabledSlugs[String(t.slug)] = t.name || t.slug;
+                    }
                     var o = document.createElement('option');
                     o.value = t.slug;
-                    o.textContent = t.name || t.slug;
+                    var label = t.name || t.slug;
+                    if (isMemoTypeCcEnabled(t)) {
+                        label += ' (CC available)';
+                    }
+                    o.textContent = label;
                     sel.appendChild(o);
                 });
                 scheduleMemoTypeSelect2Init();
+                onMemoTypeChange();
                 bindSummernoteSubmitOnce();
                 bindAttachmentDelegatesOnce();
             })
