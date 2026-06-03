@@ -27,7 +27,8 @@
 @section('content')
 {{-- Page markers + scripts below live inside #apm-content-area so wire:navigate executes them (Livewire docs). --}}
 <div class="other-memo-form-page" data-apm-livewire-page="other-memos-create"
-    data-memo-types-api="{{ route('memo-type-definitions.api.index') }}?active_only=1">
+    data-memo-types-api="{{ route('memo-type-definitions.api.index') }}?active_only=1"
+    data-cc-enabled-types='@json($ccEnabledMemoTypes ?? [])'>
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul class="mb-0">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>

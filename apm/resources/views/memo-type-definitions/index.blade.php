@@ -50,6 +50,7 @@
                         <th class="memo-type-table-col-name">Name</th>
                         <th>On create</th>
                         <th>Attachments</th>
+                        <th>CC on create</th>
                         <th>Slug</th>
                         <th>Ref prefix</th>
                         <th>Scope</th>
@@ -60,7 +61,7 @@
                 </thead>
                 <tbody id="memo-type-tbody">
                     <tr id="memo-type-loading-row">
-                        <td colspan="11" class="text-center py-4 text-muted">
+                        <td colspan="12" class="text-center py-4 text-muted">
                             <span class="spinner-border spinner-border-sm me-2"></span> Loading…
                         </td>
                     </tr>
@@ -365,17 +366,17 @@
         var q = (document.getElementById('memo-type-search').value || '').trim();
         var url = listUrl + (q ? ('?q=' + encodeURIComponent(q)) : '');
         var tbody = document.getElementById('memo-type-tbody');
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Loading…</td></tr>';
         fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function(r) { return r.json(); })
             .then(function(json) {
                 if (!json.success || !Array.isArray(json.data)) {
-                    tbody.innerHTML = '<tr><td colspan="11" class="text-center text-danger py-3">Failed to load</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="12" class="text-center text-danger py-3">Failed to load</td></tr>';
                     memoTypeNotify('Could not load memo types.', 'error');
                     return;
                 }
                 if (json.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4">No memo types found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">No memo types found.</td></tr>';
                     return;
                 }
                 var rows = json.data.map(function(m, idx) {
@@ -384,6 +385,7 @@
                     var scopeBadge = m.is_division_specific ? '<span class="badge bg-warning text-dark">Division</span>' : '<span class="badge bg-light text-dark">Org-wide</span>';
                     var createBadge = m.is_active ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">Disabled</span>';
                     var attBadge = m.attachments_enabled ? '<span class="badge bg-primary">On</span>' : '<span class="badge bg-light text-dark">Off</span>';
+                    var ccBadge = m.cc_on_approval_enabled ? '<span class="badge bg-success">On</span>' : '<span class="badge bg-light text-dark">Off</span>';
                     var actions = '<button type="button" class="btn btn-sm btn-outline-info me-1 memo-type-btn-view" data-id="' + m.id + '">View</button>';
                     actions += '<button type="button" class="btn btn-sm btn-outline-primary me-1 memo-type-btn-edit" data-id="' + m.id + '">Edit</button>';
                     if (!m.is_system) {
@@ -396,6 +398,7 @@
                         '<td class="memo-type-table-col-name">' + escHtml(m.name) + ' ' + sysBadge + '</td>' +
                         '<td>' + createBadge + '</td>' +
                         '<td>' + attBadge + '</td>' +
+                        '<td>' + ccBadge + '</td>' +
                         '<td><code>' + escHtml(m.slug) + '</code></td>' +
                         '<td>' + escHtml(m.ref_prefix || '—') + '</td>' +
                         '<td>' + scopeBadge + '</td>' +
@@ -412,7 +415,7 @@
                 }
             })
             .catch(function() {
-                tbody.innerHTML = '<tr><td colspan="11" class="text-center text-danger py-3">Network error</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center text-danger py-3">Network error</td></tr>';
                 memoTypeNotify('Network error while loading memo types.', 'error');
             });
     }
