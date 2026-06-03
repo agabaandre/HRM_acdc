@@ -723,10 +723,7 @@ class OtherMemoController extends Controller
      */
     private function ccAttributesFromRequest(Request $request, MemoTypeDefinition $definition): array
     {
-        return [
-            'cc_on_approval_enabled_snapshot' => (bool) $definition->cc_on_approval_enabled,
-            'cc_config' => OtherMemoCc::buildConfigFromRequest($request, $definition),
-        ];
+        return OtherMemoCc::attributesFromRequest($request, $definition);
     }
 
     private function normalizeApprovers(Request $request): array

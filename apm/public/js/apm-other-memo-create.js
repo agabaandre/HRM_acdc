@@ -171,10 +171,48 @@
         }
     }
 
+    function getOtherMemoCcMode() {
+        var specific = document.getElementById('cc_mode_specific');
+        if (specific && specific.checked) return 'specific';
+        return 'all';
+    }
+
+    function syncOtherMemoCcInclude() {
+        var includeCb = document.getElementById('cc_include');
+        var opts = document.getElementById('memo-cc-options-wrap');
+        if (!includeCb || !opts) return;
+        opts.classList.toggle('d-none', !includeCb.checked);
+        if (includeCb.checked) {
+            syncOtherMemoCcMode();
+            runWhenSelect2Ready(initOtherMemoCcStaffSelect);
+        }
+    }
+
+    function syncOtherMemoCcMode() {
+        var mode = getOtherMemoCcMode();
+        var allFields = document.getElementById('memo-cc-all-fields');
+        var specificWrap = document.getElementById('memo-cc-specific-wrap');
+        if (allFields) allFields.classList.toggle('d-none', mode !== 'all');
+        if (specificWrap) specificWrap.classList.toggle('d-none', mode !== 'specific');
+        if (typeof jQuery !== 'undefined') {
+            var $sel = jQuery('#cc_staff_ids');
+            if ($sel.length) {
+                var specificOn = mode === 'specific';
+                $sel.prop('disabled', !specificOn);
+                if (specificOn) {
+                    runWhenSelect2Ready(initOtherMemoCcStaffSelect);
+                }
+            }
+        }
+    }
+
     function initOtherMemoCcStaffSelect() {
         if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+        if (getOtherMemoCcMode() !== 'specific') return;
+        var includeCb = document.getElementById('cc_include');
+        if (includeCb && !includeCb.checked) return;
         var $sel = jQuery('#cc_staff_ids');
-        if (!$sel.length || !document.body.contains($sel[0])) return;
+        if (!$sel.length || !document.body.contains($sel[0]) || $sel.prop('disabled')) return;
         if ($sel.hasClass('select2-hidden-accessible')) {
             try { $sel.select2('destroy'); } catch (e) {}
         }
@@ -186,39 +224,8 @@
         });
     }
 
-    function syncOtherMemoCcAllStaffToggle() {
-        var allCb = document.getElementById('cc_all_staff');
-        var wrap = document.getElementById('memo-cc-specific-wrap');
-        var preview = document.getElementById('memo-cc-all-staff-preview');
-        if (!allCb) return;
-        var allOn = allCb.checked;
-        if (wrap) wrap.classList.toggle('d-none', allOn);
-        if (preview) preview.classList.toggle('d-none', !allOn);
-        if (typeof jQuery !== 'undefined') {
-            var $sel = jQuery('#cc_staff_ids');
-            if ($sel.length) {
-                $sel.prop('disabled', allOn);
-                if (allOn) {
-                    $sel.val(null).trigger('change');
-                }
-            }
-        }
-    }
-
-    function updateOtherMemoCcAllStaffPreview(typeDef) {
-        var el = document.getElementById('memo-cc-all-staff-preview-text');
-        if (!el) return;
-        var heading = (typeDef && typeDef.cc_all_staff_heading) ? String(typeDef.cc_all_staff_heading).trim() : '';
-        var label = (typeDef && typeDef.cc_all_staff_label) ? String(typeDef.cc_all_staff_label).trim() : 'All Africa CDC Staff';
-        var parts = [];
-        if (heading) parts.push(heading);
-        if (label) parts.push(label);
-        el.textContent = parts.length ? ('Printed as: ' + parts.join(' · ')) : '';
-    }
-
-    function initOtherMemoCcUi(typeDef) {
-        syncOtherMemoCcAllStaffToggle();
-        updateOtherMemoCcAllStaffPreview(typeDef || null);
+    function initOtherMemoCcUi() {
+        syncOtherMemoCcInclude();
         runWhenSelect2Ready(initOtherMemoCcStaffSelect);
     }
 
@@ -227,8 +234,13 @@
         window._apmOtherMemoCcDelegates = true;
         document.addEventListener('change', function (e) {
             if (!otherMemoFormPagePresent()) return;
-            if (e.target && e.target.id === 'cc_all_staff') {
-                syncOtherMemoCcAllStaffToggle();
+            if (!e.target) return;
+            if (e.target.id === 'cc_include') {
+                syncOtherMemoCcInclude();
+                return;
+            }
+            if (e.target.id === 'cc_mode_all' || e.target.id === 'cc_mode_specific') {
+                syncOtherMemoCcMode();
             }
         });
     }
@@ -238,7 +250,7 @@
         if (!root || root.dataset.ccOnApproval !== '1') return;
         var card = document.getElementById('memo-cc-card');
         if (card) card.classList.remove('d-none');
-        initOtherMemoCcUi(null);
+        initOtherMemoCcUi();
     }
 
     function isUploadType(slug) {
@@ -412,6 +424,7 @@
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {
                 setTimeout(function () {
+                    bindOtherMemoCcDelegatesOnce();
                     bootOtherMemoCreateIfPresent();
                     bootOtherMemoCcOnEdit();
                 }, 0);
@@ -421,7 +434,6 @@
 
     function bootOtherMemoCreateIfPresent() {
         if (!otherMemoCreatePagePresent()) return;
-        bindOtherMemoCcDelegatesOnce();
         if (typeof jQuery === 'undefined') return;
 
         var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');

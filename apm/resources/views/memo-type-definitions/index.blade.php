@@ -91,7 +91,7 @@
                     <dd class="col-sm-9" id="memo-type-view-active"></dd>
                     <dt class="col-sm-3">Approval attachments</dt>
                     <dd class="col-sm-9" id="memo-type-view-attachments"></dd>
-                    <dt class="col-sm-3">CC on approval</dt>
+                    <dt class="col-sm-3">CC on create</dt>
                     <dd class="col-sm-9" id="memo-type-view-cc"></dd>
                     <dt class="col-sm-3">Signature style</dt>
                     <dd class="col-sm-9" id="memo-type-view-sig"></dd>
@@ -173,15 +173,9 @@
                             <p class="small text-muted mb-0">When on, creators can attach supporting documents on other memo create/edit (same file rules as matrix activities).</p>
                             <div class="form-check mt-3">
                                 <input class="form-check-input" type="checkbox" id="memo-type-form-cc-enabled">
-                                <label class="form-check-label" for="memo-type-form-cc-enabled">CC to staff on approval</label>
+                                <label class="form-check-label" for="memo-type-form-cc-enabled">Show CC option on memo create</label>
                             </div>
-                            <p class="small text-muted mb-2">When on, memo create/edit shows CC options after the approval sequence (all staff or specific people). CC appears on the printed PDF after the body.</p>
-                            <div id="memo-type-form-cc-options" class="border rounded p-3 bg-light" style="display:none">
-                                <label class="form-label small">All-staff line (optional, above the audience label)</label>
-                                <input type="text" class="form-control form-control-sm mb-2" id="memo-type-form-cc-heading" maxlength="500" placeholder="e.g. Principal Advisor to the DG on Management and Operations">
-                                <label class="form-label small">All-staff audience label</label>
-                                <input type="text" class="form-control form-control-sm" id="memo-type-form-cc-label" maxlength="255" value="All Africa CDC Staff" placeholder="All Africa CDC Staff">
-                            </div>
+                            <p class="small text-muted mb-0">When on, creators can add CC on the other-memo create form (all staff or specific people). Recipients are chosen per memo, not here.</p>
                         </div>
                     </div>
                     <h6 class="mt-4 border-bottom pb-2">Fields <span class="text-danger">*</span></h6>
@@ -532,14 +526,9 @@
         document.getElementById('memo-type-view-attachments').textContent = m.attachments_enabled ? 'Yes — file uploads on memo forms' : 'No';
         var ccView = document.getElementById('memo-type-view-cc');
         if (ccView) {
-            if (m.cc_on_approval_enabled) {
-                var parts = ['Enabled'];
-                if (m.cc_all_staff_heading) parts.push('Heading: ' + m.cc_all_staff_heading);
-                parts.push('Label: ' + (m.cc_all_staff_label || 'All Africa CDC Staff'));
-                ccView.textContent = parts.join(' · ');
-            } else {
-                ccView.textContent = 'No';
-            }
+            ccView.textContent = m.cc_on_approval_enabled
+                ? 'Yes — creators can add CC on create'
+                : 'No';
         }
         document.getElementById('memo-type-view-sig').textContent = m.signature_style_label || m.signature_style;
         document.getElementById('memo-type-view-slug').textContent = m.slug;
@@ -552,13 +541,6 @@
         buildPreview(m.fields_schema || []);
         var modal = new bootstrap.Modal(document.getElementById('memo-type-view-modal'));
         modal.show();
-    }
-
-    function toggleMemoTypeCcOptions() {
-        var on = document.getElementById('memo-type-form-cc-enabled');
-        var box = document.getElementById('memo-type-form-cc-options');
-        if (!on || !box) return;
-        box.style.display = on.checked ? 'block' : 'none';
     }
 
     function memoTypeCatalogPagePresent() {
@@ -574,9 +556,6 @@
         document.getElementById('memo-type-form-division-specific').checked = false;
         document.getElementById('memo-type-form-attachments').checked = false;
         document.getElementById('memo-type-form-cc-enabled').checked = false;
-        document.getElementById('memo-type-form-cc-heading').value = '';
-        document.getElementById('memo-type-form-cc-label').value = 'All Africa CDC Staff';
-        toggleMemoTypeCcOptions();
         addFieldEditorRow('title', 'Title', 'text', true, true);
         addFieldEditorRow('body', 'Body', 'text_summernote', true, true);
         new bootstrap.Modal(document.getElementById('memo-type-form-modal')).show();
@@ -600,8 +579,6 @@
             is_division_specific: document.getElementById('memo-type-form-division-specific').checked,
             attachments_enabled: document.getElementById('memo-type-form-attachments').checked,
             cc_on_approval_enabled: document.getElementById('memo-type-form-cc-enabled').checked,
-            cc_all_staff_heading: document.getElementById('memo-type-form-cc-heading').value.trim() || null,
-            cc_all_staff_label: document.getElementById('memo-type-form-cc-label').value.trim() || null,
             fields_schema: fields
         };
         var url = id ? apiItemUrl(id) : listUrl;
@@ -719,9 +696,6 @@
                         document.getElementById('memo-type-form-division-specific').checked = !!m.is_division_specific;
                         document.getElementById('memo-type-form-attachments').checked = !!m.attachments_enabled;
                         document.getElementById('memo-type-form-cc-enabled').checked = !!m.cc_on_approval_enabled;
-                        document.getElementById('memo-type-form-cc-heading').value = m.cc_all_staff_heading || '';
-                        document.getElementById('memo-type-form-cc-label').value = m.cc_all_staff_label || 'All Africa CDC Staff';
-                        toggleMemoTypeCcOptions();
                         fillSignatureSelect(jQuery('#memo-type-form-signature'), m.signature_style);
                         var $tb = jQuery('#memo-type-fields-editor tbody');
                         $tb.empty();
@@ -759,10 +733,6 @@
 
         document.addEventListener('change', function(e) {
             if (!memoTypeCatalogPagePresent()) return;
-            if (e.target && e.target.id === 'memo-type-form-cc-enabled') {
-                toggleMemoTypeCcOptions();
-                return;
-            }
             if (e.target && e.target.id === 'memo-type-select-all') {
                 var on = e.target.checked;
                 document.querySelectorAll('.memo-type-row-check').forEach(function(cb) {
@@ -798,7 +768,6 @@
                 if (attEn) attEn.checked = false;
                 var ccEn = document.getElementById('memo-type-form-cc-enabled');
                 if (ccEn) ccEn.checked = false;
-                toggleMemoTypeCcOptions();
                 setFormSystemSlugMode(false);
                 jQuery('#memo-type-fields-editor tbody').empty();
             }

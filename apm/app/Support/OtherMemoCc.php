@@ -10,32 +10,49 @@ use Illuminate\Validation\ValidationException;
 class OtherMemoCc
 {
     /**
-     * @return array<string, mixed>|null
+     * @return array{cc_on_approval_enabled_snapshot: bool, cc_config: array<string, mixed>|null}
      */
-    public static function buildConfigFromRequest(Request $request, MemoTypeDefinition $definition): ?array
+    public static function attributesFromRequest(Request $request, MemoTypeDefinition $definition): array
     {
-        if (! (bool) $definition->cc_on_approval_enabled) {
-            return null;
+        $typeAllows = (bool) $definition->cc_on_approval_enabled;
+        $config = null;
+        if ($typeAllows && $request->boolean('cc_include')) {
+            $config = self::buildConfigFromRequest($request);
         }
 
-        $allStaff = $request->boolean('cc_all_staff');
+        return [
+            'cc_on_approval_enabled_snapshot' => $typeAllows,
+            'cc_config' => $config,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function buildConfigFromRequest(Request $request): array
+    {
+        $mode = strtolower(trim((string) $request->input('cc_mode', 'all')));
+        if (! in_array($mode, ['all', 'specific'], true)) {
+            $mode = 'all';
+        }
+
+        if ($mode === 'all') {
+            return [
+                'mode' => 'all',
+                'all_staff_heading' => self::nullableString($request->input('cc_all_staff_heading')),
+                'all_staff_label' => self::labelOrDefault($request->input('cc_all_staff_label')),
+            ];
+        }
+
         $rawIds = $request->input('cc_staff_ids', []);
         if (! is_array($rawIds)) {
             $rawIds = [];
         }
         $staffIds = array_values(array_unique(array_filter(array_map('intval', $rawIds), fn (int $id) => $id > 0)));
 
-        if ($allStaff) {
-            return [
-                'mode' => 'all',
-                'all_staff_heading' => self::nullableString($definition->cc_all_staff_heading),
-                'all_staff_label' => self::labelOrDefault($definition->cc_all_staff_label),
-            ];
-        }
-
         if ($staffIds === []) {
             throw ValidationException::withMessages([
-                'cc_staff_ids' => 'Select at least one CC recipient, or choose copy to all staff.',
+                'cc_staff_ids' => 'Select at least one staff member to CC, or choose All staff.',
             ]);
         }
 
