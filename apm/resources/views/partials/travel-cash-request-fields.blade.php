@@ -1,7 +1,9 @@
 @php
-    $memo = $memo ?? null;
+    use App\Support\TravelCashCarriers;
+
+    $memo = $memo ?? $changeRequestForEdit ?? null;
     $requestCash = filter_var(old('request_travel_with_cash', $memo->request_travel_with_cash ?? false), FILTER_VALIDATE_BOOLEAN);
-    $cashCarrierId = (int) old('cash_carrier_staff_id', $memo->cash_carrier_staff_id ?? 0);
+    $cashCarrierIds = TravelCashCarriers::normalizeIds(old('cash_carrier_staff_ids', TravelCashCarriers::resolveIds($memo)));
     $cashReason = old('cash_bank_transfer_unavailable_reason', $memo->cash_bank_transfer_unavailable_reason ?? '');
     $cashStaffList = $cashStaffList ?? $staff ?? \App\Models\Staff::query()
         ->whereNotIn('status', ['Expired', 'Separated'])
@@ -10,7 +12,7 @@
         ->get(['staff_id', 'title', 'fname', 'lname', 'oname', 'job_name']);
     $cashCheckboxId = $cashCheckboxId ?? 'request_travel_with_cash';
     $cashPanelId = $cashPanelId ?? 'travel-cash-fields';
-    $cashSelectId = $cashSelectId ?? 'cash_carrier_staff_id';
+    $cashSelectId = $cashSelectId ?? 'cash_carrier_staff_ids';
 @endphp
 
 <div class="card border-0 shadow-sm mb-3 border-secondary">
@@ -31,7 +33,7 @@
             </small>
         @else
             <small class="text-muted d-block mt-1">
-                Check only if the traveller needs to carry cash. This will appear on the printed memo as approval to collect cash.
+                Check only if the traveller needs to carry cash. Select one or more staff who will carry the cash. This appears on the printed approval.
             </small>
         @endif
     </div>
@@ -44,27 +46,41 @@
         </div>
         <div class="card-body">
             <div class="alert alert-info py-2 small mb-3">
-                <strong>Cash collection:</strong> Identify who will carry the cash and explain why bank transfer is not possible.
+                <strong>Cash collection:</strong> Select all staff who will carry cash and explain why bank transfer is not possible.
+                @if(!empty($showChangeRequestWorkflowHint))
+                    <span class="d-block mt-1 mb-0">
+                        <i class="fas fa-file-signature me-1"></i>
+                        Everyone you select below will be listed by name on the <strong>change request approval memo</strong> and on the <strong>printed PDF</strong> under “Approval to collect travel cash”.
+                    </span>
+                @endif
             </div>
             <div class="mb-3">
                 <label for="{{ $cashSelectId }}" class="form-label fw-semibold">
-                    Person carrying the cash <span class="text-danger sm-cash-required">*</span>
+                    Staff carrying the cash <span class="text-danger sm-cash-required">*</span>
                 </label>
-                <select name="cash_carrier_staff_id" id="{{ $cashSelectId }}"
-                    class="form-select w-100 sm-cash-carrier-select @error('cash_carrier_staff_id') is-invalid @enderror"
+                <select name="cash_carrier_staff_ids[]" id="{{ $cashSelectId }}" multiple
+                    class="form-select w-100 sm-cash-carrier-select @error('cash_carrier_staff_ids') is-invalid @enderror @error('cash_carrier_staff_ids.*') is-invalid @enderror"
                     data-sm-cash-required="1"
-                    data-placeholder="— Select staff —">
-                    <option value=""></option>
+                    data-placeholder="Select staff (one or more)">
                     @foreach($cashStaffList as $member)
-                        <option value="{{ $member->staff_id }}" @selected($cashCarrierId === (int) $member->staff_id)>
+                        <option value="{{ $member->staff_id }}" @selected(in_array((int) $member->staff_id, $cashCarrierIds, true))>
                             {{ trim(($member->title ? $member->title.' ' : '').$member->fname.' '.$member->lname) }}
                             @if($member->job_name) ({{ $member->job_name }}) @endif
                         </option>
                     @endforeach
                 </select>
-                @error('cash_carrier_staff_id')
-                    <div class="invalid-feedback">{{ $message }}</div>
+                @error('cash_carrier_staff_ids')
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
+                @error('cash_carrier_staff_ids.*')
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                @enderror
+                <small class="text-muted d-block">Hold Ctrl/Cmd to select multiple, or use search in the dropdown.</small>
+                @if(!empty($showChangeRequestWorkflowHint))
+                    <small class="text-muted d-block mt-1">
+                        Selected staff are included in the approval memo for approvers and on the change request printout.
+                    </small>
+                @endif
             </div>
             <div class="mb-0">
                 <label for="cash_bank_transfer_unavailable_reason" class="form-label fw-semibold">
@@ -101,16 +117,23 @@
                 $sel.select2({
                     theme: 'bootstrap4',
                     width: '100%',
-                    placeholder: $sel.data('placeholder') || '— Select staff —',
-                    allowClear: true
+                    placeholder: $sel.data('placeholder') || 'Select staff (one or more)',
+                    allowClear: true,
+                    closeOnSelect: false
                 });
             }
 
             function syncCashFields() {
                 var on = cashCb.checked;
                 cashPanel.classList.toggle('d-none', !on);
+                var sel = cashPanel.querySelector('#' + selectId);
+                if (sel) {
+                    sel.required = on;
+                }
                 cashPanel.querySelectorAll('[data-sm-cash-required]').forEach(function (el) {
-                    el.required = on;
+                    if (el.id !== selectId) {
+                        el.required = on;
+                    }
                 });
                 if (on) {
                     window.requestAnimationFrame(initCashCarrierSelect2);
@@ -129,7 +152,7 @@
             }
         }
 
-        bindTravelCashUi('request_travel_with_cash', 'travel-cash-fields', 'cash_carrier_staff_id');
+        bindTravelCashUi('request_travel_with_cash', 'travel-cash-fields', 'cash_carrier_staff_ids');
     })();
     </script>
     @endpush

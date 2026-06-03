@@ -49,7 +49,7 @@ class SpecialMemo extends Model
         'justification',
         'supporting_reasons',
         'request_travel_with_cash',
-        'cash_carrier_staff_id',
+        'cash_carrier_staff_ids',
         'cash_bank_transfer_unavailable_reason',
         'is_special_memo',
         'is_draft',
@@ -85,7 +85,7 @@ class SpecialMemo extends Model
         'is_special_memo' => 'boolean',
         'is_draft' => 'boolean',
         'request_travel_with_cash' => 'boolean',
-        'cash_carrier_staff_id' => 'integer',
+        'cash_carrier_staff_ids' => 'array',
     ];
 
     protected $appends = [
@@ -100,11 +100,6 @@ class SpecialMemo extends Model
         return $this->belongsTo(Staff::class, 'staff_id');
     }
 
-    public function cashCarrier(): BelongsTo
-    {
-        return $this->belongsTo(Staff::class, 'cash_carrier_staff_id', 'staff_id');
-    }
-    
     public function division()
     {
         return $this->belongsTo(Division::class, 'division_id');

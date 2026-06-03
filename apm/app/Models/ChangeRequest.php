@@ -57,7 +57,7 @@ class ChangeRequest extends Model
         'responsible_person_id',
         'supporting_reasons',
         'request_travel_with_cash',
-        'cash_carrier_staff_id',
+        'cash_carrier_staff_ids',
         'cash_bank_transfer_unavailable_reason',
         'date_from',
         'date_to',
@@ -145,7 +145,7 @@ class ChangeRequest extends Model
         'has_fund_type_id_changed' => 'boolean',
         'is_single_memo' => 'boolean',
         'request_travel_with_cash' => 'boolean',
-        'cash_carrier_staff_id' => 'integer',
+        'cash_carrier_staff_ids' => 'array',
     ];
 
     /**
@@ -443,11 +443,6 @@ class ChangeRequest extends Model
         }
 
         return $changes;
-    }
-
-    public function cashCarrier(): BelongsTo
-    {
-        return $this->belongsTo(Staff::class, 'cash_carrier_staff_id', 'staff_id');
     }
 
     public function forwardWorkflow(): BelongsTo

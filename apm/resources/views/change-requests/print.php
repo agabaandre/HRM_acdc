@@ -622,20 +622,15 @@
 
   <?php if (!empty($changeRequest->request_travel_with_cash)): ?>
     <?php
-      $cashCarrier = $changeRequest->cashCarrier ?? null;
-      if (! $cashCarrier && ! empty($changeRequest->cash_carrier_staff_id)) {
-          $cashCarrier = \App\Models\Staff::query()->find($changeRequest->cash_carrier_staff_id);
-      }
-      $cashCarrierLabel = 'N/A';
-      if ($cashCarrier) {
-          $cashCarrierLabel = trim(($cashCarrier->title ? $cashCarrier->title.' ' : '').($cashCarrier->fname ?? '').' '.($cashCarrier->lname ?? ''));
-      }
+      $cashCarrierLabel = \App\Support\TravelCashCarriers::displayNames(
+          \App\Support\TravelCashCarriers::resolveIds($changeRequest)
+      );
     ?>
     <div style="margin-top: 16px;">
       <div class="section-label mb-15"><strong>Approval to collect travel cash</strong></div>
       <div style="margin-bottom: 20px; padding: 15px; background: #fff8e6; border: 2px solid #d97706;">
         <p style="margin: 0 0 8px 0;"><strong>Travel with cash:</strong> Approved request to carry cash for this change request.</p>
-        <p style="margin: 0 0 8px 0;"><strong>Person carrying the cash:</strong> <?php echo htmlspecialchars($cashCarrierLabel); ?></p>
+        <p style="margin: 0 0 8px 0;"><strong>Staff carrying the cash:</strong> <?php echo htmlspecialchars($cashCarrierLabel); ?></p>
         <?php if (!empty($changeRequest->cash_bank_transfer_unavailable_reason)): ?>
           <p style="margin: 0;"><strong>Why bank transfer is not possible:</strong>
             <?php echo htmlspecialchars(strip_tags((string) $changeRequest->cash_bank_transfer_unavailable_reason)); ?>

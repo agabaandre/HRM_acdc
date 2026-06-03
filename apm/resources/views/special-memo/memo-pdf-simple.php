@@ -788,20 +788,15 @@
                 </div>
     <?php if (!empty($specialMemo->request_travel_with_cash)): ?>
         <?php
-            $cashCarrier = $specialMemo->cashCarrier ?? null;
-            if (! $cashCarrier && ! empty($specialMemo->cash_carrier_staff_id)) {
-                $cashCarrier = \App\Models\Staff::query()->find($specialMemo->cash_carrier_staff_id);
-            }
-            $cashCarrierLabel = 'N/A';
-            if ($cashCarrier) {
-                $cashCarrierLabel = trim(($cashCarrier->title ? $cashCarrier->title.' ' : '').($cashCarrier->fname ?? '').' '.($cashCarrier->lname ?? ''));
-            }
+            $cashCarrierLabel = \App\Support\TravelCashCarriers::displayNames(
+                \App\Support\TravelCashCarriers::resolveIds($specialMemo)
+            );
         ?>
         <div style="margin-top: 14px; margin-bottom: 10px;">
             <div style="margin-bottom: 4px; color: #b45309; font-style: italic;"><strong>Approval to collect travel cash</strong></div>
             <div style="padding: 10px; background: #fff8e6; border: 2px solid #d97706;">
                 <p style="margin: 0 0 6px 0;"><strong>Travel with cash:</strong> Requested on this memo.</p>
-                <p style="margin: 0 0 6px 0;"><strong>Person carrying the cash:</strong> <?php echo htmlspecialchars($cashCarrierLabel); ?></p>
+                <p style="margin: 0 0 6px 0;"><strong>Staff carrying the cash:</strong> <?php echo htmlspecialchars($cashCarrierLabel); ?></p>
                 <?php if (!empty($specialMemo->cash_bank_transfer_unavailable_reason)): ?>
                     <p style="margin: 0;"><strong>Why bank transfer is not possible:</strong>
                         <?php echo htmlspecialchars(strip_tags((string) $specialMemo->cash_bank_transfer_unavailable_reason)); ?>
