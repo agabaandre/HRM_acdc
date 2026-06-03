@@ -651,8 +651,8 @@ class ChangeRequestController extends Controller
                     // Content fields
                     'supporting_reasons' => clean_unicode($request->input('supporting_reasons')),
                     'request_travel_with_cash' => $request->boolean('request_travel_with_cash'),
-                    'cash_carrier_staff_id' => $request->boolean('request_travel_with_cash')
-                        ? (int) $request->input('cash_carrier_staff_id')
+                    'cash_carrier_staff_ids' => $request->boolean('request_travel_with_cash')
+                        ? \App\Support\TravelCashCarriers::fromRequest($request->input('cash_carrier_staff_ids', []))
                         : null,
                     'cash_bank_transfer_unavailable_reason' => $request->boolean('request_travel_with_cash')
                         ? clean_unicode($request->input('cash_bank_transfer_unavailable_reason'))
@@ -763,7 +763,6 @@ class ChangeRequestController extends Controller
     {
         $changeRequest->load([
             'staff',
-            'cashCarrier',
             'responsiblePerson',
             'division',
             'requestType',
@@ -2260,7 +2259,6 @@ class ChangeRequestController extends Controller
     {
         $changeRequest->load([
             'staff',
-            'cashCarrier',
             'responsiblePerson',
             'division',
             'requestType',
@@ -2629,22 +2627,14 @@ class ChangeRequestController extends Controller
         }
 
         if ($changeRequest->request_travel_with_cash) {
-            $carrierName = 'N/A';
-            if ($changeRequest->relationLoaded('cashCarrier') && $changeRequest->cashCarrier) {
-                $carrierName = $changeRequest->cashCarrier->full_name ?? trim(
-                    ($changeRequest->cashCarrier->fname ?? '').' '.($changeRequest->cashCarrier->lname ?? '')
-                );
-            } elseif ($changeRequest->cash_carrier_staff_id) {
-                $carrier = Staff::query()->find($changeRequest->cash_carrier_staff_id);
-                if ($carrier) {
-                    $carrierName = trim(($carrier->fname ?? '').' '.($carrier->lname ?? ''));
-                }
-            }
+            $carrierNames = \App\Support\TravelCashCarriers::displayNames(
+                \App\Support\TravelCashCarriers::resolveIds($changeRequest)
+            );
             $bankReason = strip_tags((string) ($changeRequest->cash_bank_transfer_unavailable_reason ?? ''));
             $changes[] = [
                 'type' => 'Approval to collect travel cash',
                 'original' => 'Not requested',
-                'changed' => 'Requested — carrier: '.$carrierName
+                'changed' => 'Requested — carrier(s): '.$carrierNames
                     .($bankReason !== '' ? '; bank transfer not possible: '.$bankReason : ''),
             ];
         }
@@ -2660,8 +2650,7 @@ class ChangeRequestController extends Controller
         ];
 
         if ($request->boolean('request_travel_with_cash')) {
-            $rules['cash_carrier_staff_id'] = 'required|integer|exists:staff,staff_id';
-            $rules['cash_bank_transfer_unavailable_reason'] = 'required|string|min:15|max:5000';
+            $rules = array_merge($rules, \App\Support\TravelCashCarriers::cashCarrierValidationRules());
         }
 
         $request->validate($rules);

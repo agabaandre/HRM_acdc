@@ -9,6 +9,8 @@
     // Determine if this is an Addendum based on budget changes
     $hasBudgetChanges = $changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed;
     $titlePrefix = $hasBudgetChanges ? 'Addendum' : 'Change Request';
+    $crHideBudgetForViewer = change_request_hide_budget_details_for_viewer($changeRequest);
+    $crShowFinanceBudgetField = change_request_show_finance_available_budget_field($changeRequest);
 @endphp
 
 <div class="min-h-screen bg-gray-50">
@@ -242,7 +244,7 @@
                 <h6 class="text-success">Changes Made</h6>
                 @if($changeRequest->hasAnyChanges())
                     <div class="d-flex flex-wrap gap-2">
-                        @if($changeRequest->has_budget_id_changed)
+                        @if(!$crHideBudgetForViewer && $changeRequest->has_budget_id_changed)
                             <span class="badge bg-warning text-dark">Budget Code</span>
                         @endif
                         @if($changeRequest->has_activity_title_changed)
@@ -257,7 +259,7 @@
                         @if($changeRequest->has_request_type_id_changed)
                             <span class="badge bg-warning text-dark">Request Type</span>
                         @endif
-                        @if($changeRequest->has_fund_type_id_changed)
+                        @if(!$crHideBudgetForViewer && $changeRequest->has_fund_type_id_changed)
                             <span class="badge bg-warning text-dark">Fund Type</span>
                         @endif
                         @if($changeRequest->has_total_external_participants_changed)
@@ -278,7 +280,7 @@
                         @if($changeRequest->has_activity_request_remarks_changed)
                             <span class="badge bg-warning text-dark">Remarks</span>
                         @endif
-                        @if($changeRequest->has_budget_breakdown_changed)
+                        @if(!$crHideBudgetForViewer && $changeRequest->has_budget_breakdown_changed)
                             <span class="badge bg-warning text-dark">Budget Breakdown</span>
                         @endif
                         @if($changeRequest->has_status_changed)
@@ -316,12 +318,8 @@
                 <h6 class="text-warning"><i class="fas fa-money-bill-wave me-1"></i> Approval to collect travel cash</h6>
                 <div class="p-3 rounded border border-warning bg-warning bg-opacity-10">
                     <p class="mb-2"><strong>Travel with cash:</strong> Requested on this change request.</p>
-                    <p class="mb-2"><strong>Person carrying the cash:</strong>
-                        @if($changeRequest->cashCarrier)
-                            {{ trim(($changeRequest->cashCarrier->title ? $changeRequest->cashCarrier->title.' ' : '').$changeRequest->cashCarrier->fname.' '.$changeRequest->cashCarrier->lname) }}
-                        @else
-                            <span class="text-muted">Not specified</span>
-                        @endif
+                    <p class="mb-2"><strong>Staff carrying the cash:</strong>
+                        {{ \App\Support\TravelCashCarriers::displayNames(\App\Support\TravelCashCarriers::resolveIds($changeRequest)) }}
                     </p>
                     @if($changeRequest->cash_bank_transfer_unavailable_reason)
                         <p class="mb-0"><strong>Why bank transfer is not possible:</strong><br>
@@ -902,7 +900,7 @@
                                 </div>
                             @endif
 
-                            @if($changeRequest->has_budget_id_changed)
+                            @if(!$crHideBudgetForViewer && $changeRequest->has_budget_id_changed)
                                 <div class="col-md-6 mb-3">
                                     <div class="border rounded p-3">
                                         <h6 class="text-muted mb-2 bg-light p-2 rounded"><i class="bx bx-money me-1"></i>Budget Code</h6>
@@ -966,7 +964,7 @@
                                 </div>
                             @endif
 
-                            @if($changeRequest->has_fund_type_id_changed)
+                            @if(!$crHideBudgetForViewer && $changeRequest->has_fund_type_id_changed)
                                 <div class="col-md-6 mb-3">
                                     <div class="border rounded p-3">
                                         <h6 class="text-muted mb-2 bg-light p-2 rounded"><i class="bx bx-credit-card me-1"></i>Fund Type</h6>
@@ -1005,7 +1003,7 @@
                             @endif
 
 
-                            @if($changeRequest->has_budget_breakdown_changed)
+                            @if(!$crHideBudgetForViewer && $changeRequest->has_budget_breakdown_changed)
                                 <div class="col-md-12 mb-3">
                                     <div class="border rounded p-3">
                                         <h6 class="text-muted mb-3 bg-light p-2 rounded"><i class="bx bx-calculator me-1"></i>Budget Breakdown</h6>
@@ -1328,7 +1326,7 @@
                                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                                             @enderror
                                         </div>
-                                        @if($changeRequest->approval_level=='5')
+                                        @if($crShowFinanceBudgetField)
                                         <div class="mb-3">
                                             <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
                                             <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>

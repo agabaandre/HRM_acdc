@@ -1270,12 +1270,8 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="mb-2"><strong>Person carrying the cash:</strong>
-                                @if($specialMemo->cashCarrier)
-                                    {{ trim(($specialMemo->cashCarrier->title ? $specialMemo->cashCarrier->title.' ' : '').$specialMemo->cashCarrier->fname.' '.$specialMemo->cashCarrier->lname) }}
-                                @else
-                                    <span class="text-muted">Not specified</span>
-                                @endif
+                            <p class="mb-2"><strong>Staff carrying the cash:</strong>
+                                {{ \App\Support\TravelCashCarriers::displayNames(\App\Support\TravelCashCarriers::resolveIds($specialMemo)) }}
                             </p>
                             @if($specialMemo->cash_bank_transfer_unavailable_reason)
                                 <p class="mb-0"><strong>Why bank transfer is not possible:</strong><br>

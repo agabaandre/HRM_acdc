@@ -85,7 +85,14 @@ class GenericApprovalController extends Controller
         // Prepare additional data for approval
         $additionalData = [];
         if ($request->has('available_budget') && $request->available_budget !== null) {
-            $additionalData['available_budget'] = $request->available_budget;
+            $maySetAvailableBudget = true;
+            if ($modelInstance instanceof \App\Models\ChangeRequest
+                && function_exists('change_request_show_finance_available_budget_field')) {
+                $maySetAvailableBudget = change_request_show_finance_available_budget_field($modelInstance);
+            }
+            if ($maySetAvailableBudget) {
+                $additionalData['available_budget'] = $request->available_budget;
+            }
         }
 
         // // Process the approval using the model's own approval workflow

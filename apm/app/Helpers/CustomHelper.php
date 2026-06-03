@@ -379,6 +379,109 @@ if (! function_exists('user_session')) {
         }
     }
 
+    if (! function_exists('change_request_workflow_id')) {
+        /**
+         * Resolved workflow for a change request (stored forward_workflow_id or inferred from flags).
+         */
+        function change_request_workflow_id(object $changeRequest): int
+        {
+            if (! empty($changeRequest->forward_workflow_id)) {
+                return (int) $changeRequest->forward_workflow_id;
+            }
+            if ($changeRequest instanceof \App\Models\ChangeRequest) {
+                return $changeRequest->inferWorkflowIdFromChangeFlags();
+            }
+
+            return 1;
+        }
+    }
+
+    if (! function_exists('change_request_current_step_is_finance_officer_stage')) {
+        /**
+         * True when the active workflow_definition step uses divisions.finance_officer as approver column.
+         */
+        function change_request_current_step_is_finance_officer_stage(object $changeRequest): bool
+        {
+            $definition = $changeRequest->workflow_definition ?? null;
+            if (! $definition) {
+                return false;
+            }
+
+            return strtolower((string) ($definition->division_reference_column ?? '')) === 'finance_officer';
+        }
+    }
+
+    if (! function_exists('change_request_viewer_is_finance_officer_for_division')) {
+        /**
+         * Whether the given staff id is the effective finance officer on the change request division (incl. OIC).
+         */
+        function change_request_viewer_is_finance_officer_for_division(object $changeRequest, ?int $userId = null): bool
+        {
+            $userId = (int) ($userId ?? user_session('staff_id'));
+            $division = $changeRequest->division ?? null;
+            if ($userId <= 0 || ! $division) {
+                return false;
+            }
+
+            $today = \Carbon\Carbon::today();
+            if (! empty($division->finance_officer_oic_id)) {
+                $oicActive = true;
+                if (! empty($division->finance_officer_oic_start_date)) {
+                    $oicActive = $oicActive && $division->finance_officer_oic_start_date <= $today;
+                }
+                if (! empty($division->finance_officer_oic_end_date)) {
+                    $oicActive = $oicActive && $division->finance_officer_oic_end_date >= $today;
+                }
+                if ($oicActive && (int) $division->finance_officer_oic_id === $userId) {
+                    return true;
+                }
+            }
+
+            return (int) ($division->finance_officer ?? 0) === $userId;
+        }
+    }
+
+    if (! function_exists('change_request_viewer_may_see_budget')) {
+        /**
+         * Budget UI is only for approvers at a workflow step tied to divisions.finance_officer.
+         */
+        function change_request_viewer_may_see_budget(object $changeRequest): bool
+        {
+            if (! change_request_current_step_is_finance_officer_stage($changeRequest)) {
+                return false;
+            }
+
+            return change_request_viewer_is_finance_officer_for_division($changeRequest);
+        }
+    }
+
+    if (! function_exists('change_request_show_finance_available_budget_field')) {
+        /**
+         * Finance "Available Budget" input: addendum workflow (1) with budget changes, finance-officer step only.
+         */
+        function change_request_show_finance_available_budget_field(object $changeRequest): bool
+        {
+            if (! change_request_viewer_may_see_budget($changeRequest)) {
+                return false;
+            }
+            if (change_request_workflow_id($changeRequest) !== 1) {
+                return false;
+            }
+
+            return $changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed;
+        }
+    }
+
+    if (! function_exists('change_request_hide_budget_details_for_viewer')) {
+        /**
+         * Hide budget comparison panels from approvers who are not on the finance_officer workflow step.
+         */
+        function change_request_hide_budget_details_for_viewer(object $changeRequest): bool
+        {
+            return ! change_request_viewer_may_see_budget($changeRequest);
+        }
+    }
+
     if (! function_exists('can_print_memo')) {
         function can_print_memo($memo)
         {
