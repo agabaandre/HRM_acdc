@@ -231,6 +231,17 @@
         </table>
     </div>
 
+    @include('partials.print-travel-cash-approval', ['memo' => $specialMemo])
+
+    @if(!empty($specialMemo->activity_request_remarks))
+    <div class="section">
+        <h3 class="mb-8">Request for Approval</h3>
+        <div style="padding: 10px; background: #f9fafb; border: 1px solid #e5e7eb;">
+            {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($specialMemo->activity_request_remarks ?? '') !!}
+        </div>
+    </div>
+    @endif
+
     <div class="section">
         <h3 class="mb-8">Attachments</h3>
         <table>
