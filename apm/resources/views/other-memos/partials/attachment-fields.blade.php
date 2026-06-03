@@ -33,10 +33,10 @@
                                     <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
                                     <td>
                                         @if (! empty($attachment['path']))
-                                            <a href="{{ route('other-memos.attachments.preview', [$memo, $index]) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <a href="{{ route('documents.attachments.stream', ['type' => 'other_memo', 'id' => $memo->id, 'index' => $index]) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                                 <i class="bx bx-show"></i> View
                                             </a>
-                                            <a href="{{ route('other-memos.attachments.download', [$memo, $index]) }}" class="btn btn-sm btn-outline-success">
+                                            <a href="{{ route('documents.attachments.stream', ['type' => 'other_memo', 'id' => $memo->id, 'index' => $index, 'download' => 1]) }}" class="btn btn-sm btn-outline-success">
                                                 <i class="bx bx-download"></i> Download
                                             </a>
                                         @endif

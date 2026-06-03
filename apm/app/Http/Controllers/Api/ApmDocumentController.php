@@ -107,6 +107,7 @@ class ApmDocumentController extends Controller
 
         $filename = $item['original_name'] ?? $item['filename'] ?? basename($path);
         $mimeType = $item['mime_type'] ?? 'application/octet-stream';
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
 
         return response()->streamDownload(function () use ($fullPath) {
             $stream = fopen($fullPath, 'rb');
@@ -116,7 +117,7 @@ class ApmDocumentController extends Controller
             }
         }, $filename, [
             'Content-Type' => $mimeType,
-        ], 'inline');
+        ], $disposition);
     }
 
     /**
@@ -1051,13 +1052,21 @@ class ApmDocumentController extends Controller
      */
     private function getAttachmentList(object $model, string $type): array
     {
+        if ($type === 'other_memo' && $model instanceof OtherMemo) {
+            return \App\Support\OtherMemoAttachments::normalizeStored($model->attachment);
+        }
+
         $key = $type === 'service_request' ? 'attachments' : 'attachment';
         $raw = $model->{$key} ?? null;
         if (is_string($raw)) {
             $decoded = json_decode($raw, true);
-            return is_array($decoded) ? $decoded : [];
+            $raw = is_array($decoded) ? $decoded : [];
         }
-        return is_array($raw) ? $raw : [];
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        return array_values($raw);
     }
 
     /**

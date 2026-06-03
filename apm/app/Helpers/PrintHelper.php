@@ -2,6 +2,7 @@
 
 namespace App\Helpers;
 
+use App\Models\OtherMemo;
 use App\Models\Staff;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
@@ -1286,6 +1287,286 @@ class PrintHelper
         }
 
         return Str::trim($html);
+    }
+
+    /**
+     * Payload field key used as the PDF document title (subject), if present.
+     */
+    public static function otherMemoSubjectFieldKey(OtherMemo $memo): ?string
+    {
+        $payload = is_array($memo->payload) ? $memo->payload : [];
+        $schema = is_array($memo->fields_schema_snapshot) ? $memo->fields_schema_snapshot : [];
+
+        foreach ($schema as $field) {
+            if (! is_array($field)) {
+                continue;
+            }
+            $key = $field['field'] ?? '';
+            if (! is_string($key) || $key === '') {
+                continue;
+            }
+            $enabled = ! array_key_exists('enabled', $field) || filter_var($field['enabled'], FILTER_VALIDATE_BOOLEAN);
+            if (! $enabled) {
+                continue;
+            }
+            $display = strtolower((string) ($field['display'] ?? ''));
+            $keyLower = strtolower($key);
+            if ($keyLower === 'subject' || str_contains($display, 'subject')) {
+                $val = trim((string) ($payload[$key] ?? ''));
+
+                return $val !== '' ? $key : null;
+            }
+        }
+
+        foreach (['subject', 'memo_subject', 'title'] as $fallbackKey) {
+            if (trim((string) ($payload[$fallbackKey] ?? '')) !== '') {
+                return $fallbackKey;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Centered heading for other-memo PDFs.
+     */
+    public static function otherMemoPdfHeading(): string
+    {
+        return 'INTEROFFICE MEMORANDUM';
+    }
+
+    /**
+     * Subject line text for other-memo PDFs (from payload schema).
+     */
+    public static function otherMemoSubjectText(OtherMemo $memo): string
+    {
+        $key = self::otherMemoSubjectFieldKey($memo);
+        if ($key !== null) {
+            $val = trim((string) (($memo->payload ?? [])[$key] ?? ''));
+            if ($val !== '') {
+                return $val;
+            }
+        }
+
+        $fallback = trim((string) ($memo->memo_type_name_snapshot ?? ''));
+
+        return $fallback !== '' ? $fallback : 'N/A';
+    }
+
+    /**
+     * @deprecated Use otherMemoPdfHeading() and otherMemoSubjectText() instead.
+     */
+    public static function otherMemoDocumentTitle(OtherMemo $memo): string
+    {
+        return self::otherMemoSubjectText($memo);
+    }
+
+    /**
+     * When no approver is placed in To or From, assign by approval order:
+     * first → from, last → to, middle → through.
+     *
+     * @param array<int, array<string, mixed>> $approvers
+     * @return array<int, array<string, mixed>>
+     */
+    public static function applyOtherMemoDefaultSections(array $approvers): array
+    {
+        if ($approvers === []) {
+            return [];
+        }
+
+        $hasTo = false;
+        $hasFrom = false;
+        foreach ($approvers as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $section = strtolower(trim((string) ($row['memo_section'] ?? 'through')));
+            if ($section === 'to') {
+                $hasTo = true;
+            }
+            if ($section === 'from') {
+                $hasFrom = true;
+            }
+        }
+
+        if ($hasTo || $hasFrom) {
+            return $approvers;
+        }
+
+        $sorted = $approvers;
+        usort(
+            $sorted,
+            fn (array $a, array $b): int => ((int) ($a['sequence'] ?? 0)) <=> ((int) ($b['sequence'] ?? 0))
+        );
+
+        $count = count($sorted);
+        foreach ($sorted as $i => &$row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            if ($count === 1) {
+                $row['memo_section'] = 'to';
+            } elseif ($i === 0) {
+                $row['memo_section'] = 'from';
+            } elseif ($i === $count - 1) {
+                $row['memo_section'] = 'to';
+            } else {
+                $row['memo_section'] = 'through';
+            }
+        }
+        unset($row);
+
+        return $sorted;
+    }
+
+    /**
+     * Group other-memo approvers by To / Through / From (creator picks section per step).
+     *
+     * @return array{to: array<int, array<string, mixed>>, through: array<int, array<string, mixed>>, from: array<int, array<string, mixed>>}
+     */
+    public static function organizeOtherMemoApproversBySection(OtherMemo $memo): array
+    {
+        $sections = ['to' => [], 'through' => [], 'from' => []];
+        $config = $memo->approvers_config;
+        if (! is_array($config) || $config === []) {
+            return $sections;
+        }
+
+        $config = self::applyOtherMemoDefaultSections($config);
+
+        $staffIds = collect($config)
+            ->pluck('staff_id')
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn ($v) => $v > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $staffById = $staffIds === []
+            ? collect()
+            : Staff::query()->whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
+
+        foreach ($config as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $sid = (int) ($row['staff_id'] ?? 0);
+            if ($sid <= 0) {
+                continue;
+            }
+            $staff = $staffById->get($sid);
+            if (! $staff) {
+                continue;
+            }
+            $section = strtolower(trim((string) ($row['memo_section'] ?? 'through')));
+            if (! isset($sections[$section])) {
+                $section = 'through';
+            }
+            $name = trim(
+                ($staff->title ? $staff->title.' ' : '')
+                .$staff->fname.' '
+                .$staff->lname
+                .($staff->oname ? ' '.$staff->oname : '')
+            );
+            $sections[$section][] = [
+                'sequence' => (int) ($row['sequence'] ?? 0),
+                'staff_id' => $sid,
+                'role' => trim((string) ($row['role_label'] ?? '')) !== '' ? (string) $row['role_label'] : 'Approver',
+                'staff' => [
+                    'staff_id' => $sid,
+                    'name' => $name,
+                    'title' => $staff->title,
+                    'fname' => $staff->fname,
+                    'lname' => $staff->lname,
+                    'oname' => $staff->oname,
+                    'work_email' => $staff->work_email,
+                    'signature' => $staff->signature,
+                ],
+            ];
+        }
+
+        foreach (array_keys($sections) as $key) {
+            usort(
+                $sections[$key],
+                fn (array $a, array $b): int => ($a['sequence'] ?? 0) <=> ($b['sequence'] ?? 0)
+            );
+        }
+
+        return $sections;
+    }
+
+    /**
+     * Body field content for other-memo PDF (no field label — text only, below subject).
+     */
+    public static function renderOtherMemoPdfBodyField(string $fieldType, mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if ($fieldType === 'text_summernote') {
+            $html = self::sanitizeRichTextForMpdf(is_string($value) ? $value : '');
+            if ($html === '') {
+                return;
+            }
+            echo '<div class="memo-body-block rich-text-content html-content">'.$html.'</div>';
+
+            return;
+        }
+
+        if ($fieldType === 'textarea') {
+            $text = is_scalar($value) ? (string) $value : '';
+            if (trim($text) === '') {
+                return;
+            }
+            echo '<div class="memo-body-block rich-text-content">';
+            echo nl2br(htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
+            echo '</div>';
+
+            return;
+        }
+
+        $text = is_scalar($value) ? (string) $value : json_encode($value);
+        if (trim($text) === '') {
+            return;
+        }
+        echo '<p class="memo-body-block">'.htmlspecialchars($text, ENT_QUOTES, 'UTF-8').'</p>';
+    }
+
+    /**
+     * Approver name + role for other-memo PDF header rows.
+     */
+    public static function renderOtherMemoApproverInfo(array $approver, OtherMemo $memo, string $section): void
+    {
+        $staff = $approver['staff'] ?? [];
+        $name = trim((string) ($staff['name'] ?? ''));
+        if ($name === '' && is_array($staff)) {
+            $name = trim(
+                (($staff['title'] ?? '') ? $staff['title'].' ' : '')
+                .($staff['fname'] ?? '').' '
+                .($staff['lname'] ?? '')
+                .(isset($staff['oname']) ? ' '.$staff['oname'] : '')
+            );
+        }
+        echo '<div class="approver-name">'.htmlspecialchars($name !== '' ? $name : 'N/A', ENT_QUOTES, 'UTF-8').'</div>';
+        echo '<div class="approver-title">'.htmlspecialchars((string) ($approver['role'] ?? ''), ENT_QUOTES, 'UTF-8').'</div>';
+
+        if ($section === 'from' && $memo->relationLoaded('division') && $memo->division) {
+            $divName = trim((string) ($memo->division->division_name ?? ''));
+            if ($divName !== '') {
+                echo '<div class="approver-title">'.htmlspecialchars($divName, ENT_QUOTES, 'UTF-8').'</div>';
+            }
+        }
+    }
+
+    /**
+     * Signed-by, timestamp, and verify hash for an other-memo approver step.
+     *
+     * @param \Illuminate\Support\Collection<int, \App\Models\OtherMemoApprovalTrail>|array<int, \App\Models\OtherMemoApprovalTrail> $approvalTrails
+     */
+    public static function renderOtherMemoSignature(array $approver, $approvalTrails, OtherMemo $memo): void
+    {
+        self::renderSignature($approver, (int) ($approver['sequence'] ?? 0), $approvalTrails, $memo);
     }
 
     /**
