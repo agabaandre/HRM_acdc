@@ -442,9 +442,10 @@ function initChangeRequestsPage() {
 
         fetch(currentUrl.toString(), {
             method: 'GET',
-            headers: {
+            headers: (window.APMListFragment && window.APMListFragment.headers) ? window.APMListFragment.headers() : {
                 'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-APM-List-Fragment': '1'
             }
         })
         .then(response => response.json())

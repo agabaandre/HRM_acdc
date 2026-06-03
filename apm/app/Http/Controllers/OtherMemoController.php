@@ -36,7 +36,7 @@ class OtherMemoController extends Controller
 
         $year = $this->resolveOtherMemoYearString($request);
 
-        if ($request->ajax() && $request->filled('tab')) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $yearApplied = $this->resolveOtherMemoYearString($request);
 
@@ -53,7 +53,7 @@ class OtherMemoController extends Controller
                 default => '',
             };
 
-            return response()->json([
+            return \App\Support\ApmListFragment::json([
                 'html' => $html,
                 'year_applied' => $yearApplied,
                 'count_my_submitted' => $countMySubmitted,

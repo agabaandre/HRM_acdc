@@ -42,7 +42,7 @@ class MatrixController extends Controller
             $selectedYear = $currentYear;
         }
 
-        if ($request->ajax()) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
 
@@ -59,11 +59,11 @@ class MatrixController extends Controller
                     break;
                 case 'allMatrices':
                     if (! in_array(87, user_session('permissions', []))) {
-                        return response()->json(['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>']);
+                        return \App\Support\ApmListFragment::json(['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>']);
                     }
                     $allBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
                     if ($allBuilder === null) {
-                        return response()->json(['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>']);
+                        return \App\Support\ApmListFragment::json(['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>']);
                     }
                     $allMatrices = $allBuilder->paginate(24, ['*'], 'all_matrices_page');
                     $html = view('matrices.partials.all-matrices-tab', compact(
@@ -75,7 +75,7 @@ class MatrixController extends Controller
                     break;
             }
 
-            return response()->json(['html' => $html]);
+            return \App\Support\ApmListFragment::json(['html' => $html]);
         }
 
         $myDivisionMatricesCount = (int) $this->newMyDivisionMatricesCountQuery($request, $selectedYear, $selectedQuarter, $selectedStatus)->count();

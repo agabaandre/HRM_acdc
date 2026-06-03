@@ -166,7 +166,7 @@ class RequestARFController extends Controller
         $staff = Staff::active()->get();
 
         // Handle AJAX requests for tab content only (not initial Livewire navigation)
-        if ($request->ajax() && $request->filled('tab')) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
             $countMy = $mySubmittedArfs->total();
@@ -185,7 +185,7 @@ class RequestARFController extends Controller
                     break;
             }
 
-            return response()->json([
+            return \App\Support\ApmListFragment::json([
                 'html' => $html,
                 'count_my_submitted' => $countMy,
                 'count_my_division' => $countMyDivision,
@@ -1781,7 +1781,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         $divisions = Division::orderBy('division_name')->get();
 
         // Handle AJAX requests for tab content
-        if ($request->ajax()) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
             
@@ -1794,7 +1794,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     break;
             }
             
-            return response()->json(['html' => $html]);
+            return \App\Support\ApmListFragment::json(['html' => $html]);
         }
 
         return view('request-arf.pending-approvals', [

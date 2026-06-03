@@ -320,9 +320,10 @@ function initNonTravelPage() {
         
         fetch(currentUrl.toString(), {
             method: 'GET',
-            headers: {
+            headers: (window.APMListFragment && window.APMListFragment.headers) ? window.APMListFragment.headers() : {
                 'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-APM-List-Fragment': '1'
             }
         })
         .then(function(response) {
@@ -402,10 +403,7 @@ function initNonTravelPage() {
         });
     });
     
-    var activeTabButton = document.querySelector('#memoTabs .nav-link.active');
-    if (activeTabButton && !urlTab) {
-        loadTabData(activeTabButton.getAttribute('aria-controls'));
-    }
+    // Keep server-rendered tab content on first load; AJAX only when user switches tab or applies filters.
 }
 document.addEventListener('DOMContentLoaded', initNonTravelPage);
 document.addEventListener('livewire:navigated', function() {

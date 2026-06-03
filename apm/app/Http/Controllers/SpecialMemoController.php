@@ -208,7 +208,7 @@ class SpecialMemoController extends Controller
         $sharedMemos = $sharedMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
         // Handle AJAX requests for tab content only (not initial Livewire navigation)
-        if ($request->ajax() && $request->filled('tab')) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
 
@@ -367,7 +367,7 @@ class SpecialMemoController extends Controller
                     break;
             }
 
-            return response()->json([
+            return \App\Support\ApmListFragment::json([
                 'html' => $html,
                 'count_my_submitted' => $countMySubmitted,
                 'count_my_division' => $countMyDivision,

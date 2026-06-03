@@ -122,7 +122,7 @@ class ServiceRequestController extends Controller
         $divisions = Division::all();
 
         // Handle AJAX requests for tab content only (not initial Livewire navigation)
-        if ($request->ajax() && $request->filled('tab')) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
             $countMy = $mySubmittedRequests->total();
@@ -141,7 +141,7 @@ class ServiceRequestController extends Controller
                     break;
             }
             
-            return response()->json([
+            return \App\Support\ApmListFragment::json([
                 'html' => $html,
                 'count_my_submitted' => $countMy,
                 'count_my_division' => $countMyDivision,
@@ -1799,7 +1799,7 @@ class ServiceRequestController extends Controller
         };
 
         // Handle AJAX requests for tab content
-        if ($request->ajax()) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
             
@@ -1818,7 +1818,7 @@ class ServiceRequestController extends Controller
                     break;
             }
             
-            return response()->json(['html' => $html]);
+            return \App\Support\ApmListFragment::json(['html' => $html]);
         }
         
         return view('service-requests.pending-approvals', compact(

@@ -161,7 +161,7 @@ class ChangeRequestController extends Controller
         ];
 
         // Handle AJAX requests for tab content only (not initial Livewire navigation)
-        if ($request->ajax() && $request->filled('tab')) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
             $yearFromQuery = $request->query('year');
@@ -243,7 +243,7 @@ class ChangeRequestController extends Controller
                     $html = view('change-requests.partials.all-change-requests-tab', compact('allChangeRequests'))->render();
                     break;
             }
-            return response()->json([
+            return \App\Support\ApmListFragment::json([
                 'html' => $html,
                 'count_my_change_requests' => $countMy,
                 'count_my_division' => $countDivision,
@@ -354,7 +354,7 @@ class ChangeRequestController extends Controller
         $divisions = Division::orderBy('division_name')->get();
 
         // Handle AJAX requests for tab content
-        if ($request->ajax()) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
             
@@ -367,7 +367,7 @@ class ChangeRequestController extends Controller
                     break;
             }
             
-            return response()->json(['html' => $html]);
+            return \App\Support\ApmListFragment::json(['html' => $html]);
         }
 
         return view('change-requests.pending-approvals', [

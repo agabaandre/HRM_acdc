@@ -175,7 +175,7 @@ class NonTravelMemoController extends Controller
         }
 
         // Handle AJAX requests for tab content only (not initial Livewire navigation)
-        if ($request->ajax() && $request->filled('tab')) {
+        if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
             $html = '';
 
@@ -323,7 +323,7 @@ class NonTravelMemoController extends Controller
                     break;
             }
 
-            return response()->json([
+            return \App\Support\ApmListFragment::json([
                 'html' => $html,
                 'year_applied' => $yearApplied,
                 'count_my_submitted' => $countMySubmitted,
