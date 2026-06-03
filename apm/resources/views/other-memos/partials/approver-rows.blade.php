@@ -5,6 +5,11 @@
     }
     $staffOptions = $staffOptions ?? collect();
     $roleExamples = $roleExamples ?? [];
+    $sectionOptions = [
+        'to' => 'To',
+        'through' => 'Through',
+        'from' => 'From',
+    ];
     $otherMemoStaffJobMap = $staffOptions->mapWithKeys(function ($s) {
         $raw = trim((string) ($s->job_name ?? ''));
         $decoded = html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -22,10 +27,24 @@
 @endif
 <div id="approver-rows-container" class="mb-2" data-staff-job-map='@json($otherMemoStaffJobMap)'>
     @forelse ($rows as $idx => $row)
+        @php
+            $section = strtolower((string) old('approvers.' . $idx . '.memo_section', $row['memo_section'] ?? 'through'));
+            if (! array_key_exists($section, $sectionOptions)) {
+                $section = 'through';
+            }
+        @endphp
         <div class="row g-2 mb-2 approver-row align-items-end">
-            <div class="col-md-2">
+            <div class="col-md-1">
                 <label class="form-label small text-muted mb-0">Step</label>
                 <div class="form-control-plaintext fw-bold approver-step-num">{{ $row['sequence'] ?? $idx + 1 }}</div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Section <span class="text-danger">*</span></label>
+                <select name="approvers[{{ $idx }}][memo_section]" class="form-select form-select-sm approver-memo-section">
+                    @foreach ($sectionOptions as $value => $label)
+                        <option value="{{ $value }}" @selected($section === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
             </div>
             <div class="col-md-4">
                 <label class="form-label small">Staff <span class="text-danger">*</span></label>
@@ -41,29 +60,9 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label class="form-label small">Approver role label</label>
                 <input type="text" name="approvers[{{ $idx }}][role_label]" class="form-control approver-role-label" value="{{ old('approvers.' . $idx . '.role_label', $row['role_label'] ?? '') }}" placeholder="Filled from job title when you pick staff" autocomplete="off">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label small">Signature area (page/x/y/w/h)</label>
-                <div class="row g-1">
-                    <div class="col-2">
-                        <input type="number" min="1" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][page]" value="{{ old('approvers.' . $idx . '.signature_box.page', $row['signature_box']['page'] ?? 1) }}" placeholder="P">
-                    </div>
-                    <div class="col-2">
-                        <input type="number" min="0" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][x]" value="{{ old('approvers.' . $idx . '.signature_box.x', $row['signature_box']['x'] ?? '') }}" placeholder="X">
-                    </div>
-                    <div class="col-2">
-                        <input type="number" min="0" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][y]" value="{{ old('approvers.' . $idx . '.signature_box.y', $row['signature_box']['y'] ?? '') }}" placeholder="Y">
-                    </div>
-                    <div class="col-3">
-                        <input type="number" min="1" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][width]" value="{{ old('approvers.' . $idx . '.signature_box.width', $row['signature_box']['width'] ?? 180) }}" placeholder="W">
-                    </div>
-                    <div class="col-3">
-                        <input type="number" min="1" class="form-control form-control-sm" name="approvers[{{ $idx }}][signature_box][height]" value="{{ old('approvers.' . $idx . '.signature_box.height', $row['signature_box']['height'] ?? 70) }}" placeholder="H">
-                    </div>
-                </div>
             </div>
             <div class="col-md-1">
                 <label class="form-label small d-block mb-0 opacity-0">.</label>
@@ -77,13 +76,21 @@
     @endforelse
 </div>
 <button type="button" class="btn btn-sm btn-outline-success" id="approver-add-row"><i class="bx bx-plus"></i> Add approver step</button>
-<p class="small text-muted mt-2 mb-0">Approvals run top-to-bottom in the order listed. Picking a staff member fills the role label with their job title; you can edit it afterward (for example to match one of the workflow role examples above).</p>
+<p class="small text-muted mt-2 mb-0">Approvals run top-to-bottom in the order listed. Optionally assign each person to <strong>To</strong>, <strong>Through</strong>, or <strong>From</strong> for the printed header. If you leave everyone on Through, the system uses the first person as <strong>From</strong>, the last as <strong>To</strong>, and anyone in between as <strong>Through</strong>.</p>
 
 <template id="approver-row-template">
     <div class="row g-2 mb-2 approver-row align-items-end">
-        <div class="col-md-2">
+        <div class="col-md-1">
             <label class="form-label small text-muted mb-0">Step</label>
             <div class="form-control-plaintext fw-bold approver-step-num">1</div>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Section <span class="text-danger">*</span></label>
+            <select name="approvers[0][memo_section]" class="form-select form-select-sm approver-memo-section">
+                @foreach ($sectionOptions as $value => $label)
+                    <option value="{{ $value }}">{{ $label }}</option>
+                @endforeach
+            </select>
         </div>
         <div class="col-md-4">
             <label class="form-label small">Staff <span class="text-danger">*</span></label>
@@ -99,29 +106,9 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
             <label class="form-label small">Approver role label</label>
             <input type="text" name="approvers[0][role_label]" class="form-control approver-role-label" value="" placeholder="Filled from job title when you pick staff" autocomplete="off">
-        </div>
-        <div class="col-md-4">
-            <label class="form-label small">Signature area (page/x/y/w/h)</label>
-            <div class="row g-1">
-                <div class="col-2">
-                    <input type="number" min="1" class="form-control form-control-sm" name="approvers[0][signature_box][page]" value="1" placeholder="P">
-                </div>
-                <div class="col-2">
-                    <input type="number" min="0" class="form-control form-control-sm" name="approvers[0][signature_box][x]" placeholder="X">
-                </div>
-                <div class="col-2">
-                    <input type="number" min="0" class="form-control form-control-sm" name="approvers[0][signature_box][y]" placeholder="Y">
-                </div>
-                <div class="col-3">
-                    <input type="number" min="1" class="form-control form-control-sm" name="approvers[0][signature_box][width]" value="180" placeholder="W">
-                </div>
-                <div class="col-3">
-                    <input type="number" min="1" class="form-control form-control-sm" name="approvers[0][signature_box][height]" value="70" placeholder="H">
-                </div>
-            </div>
         </div>
         <div class="col-md-1">
             <label class="form-label small d-block mb-0 opacity-0">.</label>

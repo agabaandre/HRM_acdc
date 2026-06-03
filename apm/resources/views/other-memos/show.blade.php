@@ -104,11 +104,14 @@
         overflow: hidden;
     }
     #otherMemoPreviewModal .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: linear-gradient(135deg, #119A48 0%, #0d7a3a 100%);
+        color: #fff;
         border: none;
     }
-    #otherMemoPreviewModal .btn-close { filter: invert(1); }
+    #otherMemoPreviewModal .modal-header .modal-title {
+        color: #fff;
+        font-weight: 600;
+    }
     .other-memo-show-page .preview-other-memo-attachment { transition: all 0.2s ease; }
     .other-memo-show-page .preview-other-memo-attachment:hover {
         transform: translateY(-1px);
@@ -170,7 +173,11 @@
     @endif
 
     @php
-        $memoAttachmentsShow = is_array($memo->attachment) ? $memo->attachment : [];
+        $memoAttachmentsShow = $memoAttachments ?? $memo->attachmentsList();
+        $otherMemoAttachmentUrl = function (int $index, bool $download = false) use ($memo): string {
+            $url = route('documents.attachments.stream', ['type' => 'other_memo', 'id' => $memo->id, 'index' => $index]);
+            return $download ? $url.(str_contains($url, '?') ? '&' : '?').'download=1' : $url;
+        };
     @endphp
 
     <div class="container-fluid py-2">
@@ -228,16 +235,14 @@
                                 </td>
                             </tr>
                         @endif
-                        <tr>
-                            <td class="field-label"><i class="bx bx-paperclip me-2 text-info"></i>Attachments</td>
-                            <td class="field-value" colspan="3">
-                                @if (count($memoAttachmentsShow) > 0)
+                        @if (count($memoAttachmentsShow) > 0)
+                            <tr>
+                                <td class="field-label"><i class="bx bx-paperclip me-2 text-info"></i>Attachments</td>
+                                <td class="field-value" colspan="3">
                                     <span class="badge bg-info">{{ count($memoAttachmentsShow) }} file(s) attached</span>
-                                @else
-                                    <span class="text-muted">No attachments</span>
-                                @endif
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
+                        @endif
                         <tr>
                             <td class="field-label"><i class="bx bx-plus-circle me-2 text-primary"></i>Created</td>
                             <td class="field-value">
@@ -287,13 +292,13 @@
                                     $uploadAttachmentIndex = collect($memoAttachmentsShow)->search(function ($row) use ($uploadPdfAttachment) {
                                         return ($row['path'] ?? null) === ($uploadPdfAttachment['path'] ?? null);
                                     });
-                                    $uploadPdfUrl = route('other-memos.attachments.preview', [$memo, (int) $uploadAttachmentIndex]);
+                                    $uploadPdfUrl = $otherMemoAttachmentUrl((int) $uploadAttachmentIndex);
                                 @endphp
                                 <div class="ratio ratio-16x9 border rounded overflow-hidden">
                                     <iframe src="{{ $uploadPdfUrl }}" title="Uploaded PDF" style="width:100%;height:100%;border:0;"></iframe>
                                 </div>
                                 <p class="small text-muted mt-2 mb-0">
-                                    Signature areas are configured per approver in this memo's approval sequence.
+                                    Approver signatures and verify hashes are recorded on the printed memorandum header when each step is approved.
                                 </p>
                             @else
                                 <div class="alert alert-warning mb-0">No uploaded PDF found for this upload memo.</div>
@@ -335,8 +340,8 @@
                                                 $originalName = $attachment['original_name'] ?? ($attachment['filename'] ?? ($attachment['name'] ?? 'Unknown'));
                                                 $filePath = $attachment['path'] ?? ($attachment['file_path'] ?? '');
                                                 $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
-                                                $previewUrl = $filePath ? route('other-memos.attachments.preview', [$memo, $index]) : '#';
-                                                $downloadUrl = $filePath ? route('other-memos.attachments.download', [$memo, $index]) : '#';
+                                                $previewUrl = $filePath ? $otherMemoAttachmentUrl((int) $index) : '#';
+                                                $downloadUrl = $filePath ? $otherMemoAttachmentUrl((int) $index, true) : '#';
                                                 $isOffice = in_array($ext, ['ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'], true);
                                             @endphp
                                             <tr>
@@ -382,9 +387,17 @@
                         <p class="mb-2"><strong>Status:</strong> {!! display_memo_status_auto($memo) !!}</p>
                         <p class="mb-0"><strong>Approver chain:</strong></p>
                         <ol class="mb-0 ps-3 mt-1">
-                            @foreach ($memo->approvers_config ?? [] as $row)
+                            @foreach (\App\Helpers\PrintHelper::applyOtherMemoDefaultSections($memo->approvers_config ?? []) as $row)
+                                @php
+                                    $section = strtolower((string) ($row['memo_section'] ?? 'through'));
+                                    $sectionLabel = match ($section) {
+                                        'to' => 'To',
+                                        'from' => 'From',
+                                        default => 'Through',
+                                    };
+                                @endphp
                                 <li>
-                                    Step {{ $row['sequence'] ?? '?' }}:
+                                    Step {{ $row['sequence'] ?? '?' }} ({{ $sectionLabel }}):
                                     @php $st = \App\Models\Staff::where('staff_id', $row['staff_id'] ?? 0)->first(); @endphp
                                     {{ $st ? trim(($st->fname ?? '') . ' ' . ($st->lname ?? '')) : 'Staff #' . ($row['staff_id'] ?? '') }}
                                     <span class="text-muted">({{ $row['role_label'] ?? 'Approver' }})</span>
@@ -445,8 +458,10 @@
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="otherMemoPreviewModalLabel">Attachment preview</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title text-white" id="otherMemoPreviewModalLabel">
+                        <i class="bx bx-show me-2"></i> Attachment preview
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="otherMemoPreviewModalBody" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
                     <div class="text-center w-100">Loading preview…</div>

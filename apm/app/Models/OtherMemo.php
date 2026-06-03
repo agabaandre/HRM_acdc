@@ -109,4 +109,12 @@ class OtherMemo extends Model
 
         return null;
     }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function attachmentsList(): array
+    {
+        return \App\Support\OtherMemoAttachments::normalizeStored($this->attachment);
+    }
 }

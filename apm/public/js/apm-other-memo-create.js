@@ -213,6 +213,17 @@
         });
     }
 
+    function nextOtherMemoAttachmentIndex() {
+        var max = -1;
+        var container = document.getElementById('other-memo-attachment-container');
+        if (!container) return 0;
+        container.querySelectorAll('input[type="file"][name^="attachments["]').forEach(function (inp) {
+            var m = inp.name.match(/^attachments\[(\d+)\]\[file\]$/);
+            if (m) max = Math.max(max, parseInt(m[1], 10));
+        });
+        return max + 1;
+    }
+
     function bindAttachmentDelegatesOnce() {
         if (window._apmOtherMemoCreateAttachDelegates || typeof jQuery === 'undefined') return;
         window._apmOtherMemoCreateAttachDelegates = true;
@@ -225,15 +236,14 @@
                 }
                 return;
             }
-            var idx = window.__apmOtherMemoAttachIdx || 1;
+            var idx = nextOtherMemoAttachmentIndex();
             var newField = '<div class="col-md-4 attachment-block">' +
                 '<label class="form-label">Document type</label>' +
                 '<input type="text" name="attachments[' + idx + '][type]" class="form-control" required>' +
-                '<input type="file" name="attachments[]" class="form-control mt-1 other-memo-attachment-input" ' +
+                '<input type="file" name="attachments[' + idx + '][file]" class="form-control mt-1 other-memo-attachment-input" ' +
                 'accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" required>' +
                 '<small class="text-muted">Max size: 10MB</small></div>';
             jQuery('#other-memo-attachment-container').append(newField);
-            window.__apmOtherMemoAttachIdx = idx + 1;
         });
 
         jQuery(document).on('click.otherMemoCreateAttach', '#other-memo-remove-attachment', function () {
@@ -241,10 +251,8 @@
             var $blocks = jQuery('#other-memo-attachment-container .attachment-block');
             if ($blocks.length > 1) {
                 $blocks.last().remove();
-                window.__apmOtherMemoAttachIdx = Math.max(1, (window.__apmOtherMemoAttachIdx || 2) - 1);
             } else if ($blocks.length === 1) {
                 $blocks.last().remove();
-                window.__apmOtherMemoAttachIdx = 1;
             }
         });
 
@@ -322,7 +330,6 @@
         if (root.dataset.apmCreateFetchPending === '1') return;
         root.dataset.apmCreateFetchPending = '1';
 
-        window.__apmOtherMemoAttachIdx = 1;
         jQuery('#other-memo-attachment-container').empty();
 
         fetch(apiList, {

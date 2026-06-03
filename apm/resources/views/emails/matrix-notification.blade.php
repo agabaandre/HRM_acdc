@@ -188,7 +188,7 @@
                 @elseif($type == 'created')
                     {{ $resource->division ? ($resource->division->name ?? $resource->division->division_name ?? 'Matrix') : 'Matrix' }} Notification
                 @elseif($type == 'approved')
-                    {{ $resource_type }} Approved
+                    {{ $resource_label ?? $resource_type }} — awaiting your approval
                 @else
                     {{ $resource_type }} Notification
                 @endif
@@ -218,17 +218,33 @@
                     </div>
                 </div>
             @elseif($type == 'approved')
-                <!-- Special format for approved notifications -->
+                @php
+                    $fwdTitle = $memo_title ?? ($resource->title ?? ($resource->activity_title ?? null));
+                    $fwdDoc = $document_number_display ?? ($resource->document_number ?? null);
+                    $fwdDivision = $division_name ?? ($resource->division ? ($resource->division->division_name ?? $resource->division->name ?? 'N/A') : 'N/A');
+                    $fwdApprovedBy = $approved_by_name ?? 'Previous approver';
+                @endphp
+                <!-- Forwarded to next approver after a step was approved -->
                 <div class="details" style="background-color: #d4edda; border-radius: 6px; padding: 20px; margin-bottom: 30px; border-left: 4px solid #28a745;">
                     <h2 style="color: #155724; margin-top: 0; margin-bottom: 15px;">
                         ✓ Approval Confirmed
                     </h2>
                     <p style="color: #155724; font-size: 16px; margin-bottom: 15px;">{{ $message }}</p>
                     <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #c3e6cb;">
-                        <span class="detail-label" style="font-weight: 600; color: #155724; min-width: 140px;">Document:</span>
-                        <span class="detail-value" style="color: #155724; flex: 1;">{{ $resource->title ?? $resource_type . ' #' . $resource->id }}</span>
+                        <span class="detail-label" style="font-weight: 600; color: #155724; min-width: 140px;">Title:</span>
+                        <span class="detail-value" style="color: #155724; flex: 1;">{{ $fwdTitle ?: ($resource_label ?? $resource_type) }}</span>
                     </div>
-                    @if($resource->description)
+                    @if(!empty($fwdDoc))
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #c3e6cb;">
+                        <span class="detail-label" style="font-weight: 600; color: #155724; min-width: 140px;">Document number:</span>
+                        <span class="detail-value" style="color: #155724; flex: 1;">{{ $fwdDoc }}</span>
+                    </div>
+                    @endif
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #c3e6cb;">
+                        <span class="detail-label" style="font-weight: 600; color: #155724; min-width: 140px;">Division:</span>
+                        <span class="detail-value" style="color: #155724; flex: 1;">{{ $fwdDivision }}</span>
+                    </div>
+                    @if($resource->description ?? false)
                     <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #c3e6cb;">
                         <span class="detail-label" style="font-weight: 600; color: #155724; min-width: 140px;">Description:</span>
                         <span class="detail-value" style="color: #155724; flex: 1;">{{ $resource->description }}</span>
@@ -237,7 +253,7 @@
                     <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: none;">
                         <span class="detail-label" style="font-weight: 600; color: #155724; min-width: 140px;">Status:</span>
                         <span class="detail-value" style="color: #155724; flex: 1;">
-                            <span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500;">Approved</span>
+                            <span style="background-color: #28a745; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500;">Approved by {{ $fwdApprovedBy }}</span>
                         </span>
                     </div>
                 </div>

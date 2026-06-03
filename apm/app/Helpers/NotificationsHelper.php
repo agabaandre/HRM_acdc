@@ -183,10 +183,26 @@ if (!function_exists('send_generic_email_notification')) {
                 return false;
             }
 
+            $model->loadMissing(['staff', 'division']);
+
             // Generate message based on type
             $message = '';
+            $emailViewContext = [];
             $resource = ucfirst(class_basename($model));
-            switch($type) {
+            switch ($type) {
+                case 'approved':
+                    if (($model->overall_status ?? '') === 'pending') {
+                        $forward = \App\Services\MemoApprovalNotificationPresenter::forForwardToNextApprover($model);
+                        $message = $forward['message'];
+                        $emailViewContext = $forward['view'];
+                    } else {
+                        $message = sprintf(
+                            '%s #%d has been fully approved.',
+                            $resource,
+                            $model->id
+                        );
+                    }
+                    break;
                 case 'approval':
                     $message = sprintf(
                         '%s #%d requires your approval. Created by %s %s.',
@@ -253,7 +269,7 @@ if (!function_exists('send_generic_email_notification')) {
             }
 
             // Queue the email notification instead of sending directly
-            \App\Jobs\SendNotificationEmailJob::dispatch($model, $recipient, $type, $message, $template);
+            \App\Jobs\SendNotificationEmailJob::dispatch($model, $recipient, $type, $message, $template, $emailViewContext);
             
             // Also create a database notification
             \App\Models\Notification::create([

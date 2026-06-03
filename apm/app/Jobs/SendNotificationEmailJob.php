@@ -174,6 +174,10 @@ class SendNotificationEmailJob implements ShouldQueue
             ]);
         }
 
+        if ($this->type === 'approved' && $this->emailViewContext !== []) {
+            $viewData = array_merge($viewData, $this->emailViewContext);
+        }
+
         return $viewData;
     }
 
