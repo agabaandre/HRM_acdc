@@ -6,9 +6,9 @@
     $staffOptions = $staffOptions ?? collect();
     $roleExamples = $roleExamples ?? [];
     $sectionOptions = [
-        'to' => 'To',
-        'through' => 'Through',
         'from' => 'From',
+        'through' => 'Through',
+        'to' => 'To',
     ];
     $otherMemoStaffJobMap = $staffOptions->mapWithKeys(function ($s) {
         $raw = trim((string) ($s->job_name ?? ''));
@@ -76,7 +76,20 @@
     @endforelse
 </div>
 <button type="button" class="btn btn-sm btn-outline-success" id="approver-add-row"><i class="bx bx-plus"></i> Add approver step</button>
-<p class="small text-muted mt-2 mb-0">Approvals run top-to-bottom in the order listed. Optionally assign each person to <strong>To</strong>, <strong>Through</strong>, or <strong>From</strong> for the printed header. If you leave everyone on Through, the system uses the first person as <strong>From</strong>, the last as <strong>To</strong>, and anyone in between as <strong>Through</strong>.</p>
+<p class="small text-muted mt-2 mb-1">
+    <strong>Approval order</strong> follows the step list (Step 1 is notified first on submit; each approval moves to the next step).
+    <strong>Printed header</strong> on the PDF is always <strong>To</strong> (top), then <strong>Through</strong>, then <strong>From</strong> (bottom).
+    Assign <strong>To</strong> to the final approver (highest step), <strong>From</strong> to the first step, and <strong>Through</strong> to anyone in between.
+    If every row is left on Through, Step 1 becomes From, the last step becomes To, and middle steps become Through.
+</p>
+<div class="card border bg-light mt-3 mb-0" id="other-memo-approver-preview-card">
+    <div class="card-header py-2 bg-white">
+        <span class="fw-semibold small text-success"><i class="bx bx-map me-1"></i> Approval map preview</span>
+    </div>
+    <div class="card-body py-3" id="other-memo-approver-preview">
+        <p class="small text-muted mb-0">Add approver steps above to see how they will appear on the printed memo and in approval order.</p>
+    </div>
+</div>
 
 <template id="approver-row-template">
     <div class="row g-2 mb-2 approver-row align-items-end">

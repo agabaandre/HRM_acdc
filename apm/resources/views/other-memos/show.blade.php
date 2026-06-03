@@ -375,6 +375,8 @@
                     </div>
                 @endif
 
+                @include('other-memos.partials.approver-compliance-map', ['memo' => $memo])
+
                 <div class="mb-3">
                     @include('matrices.partials.approval-trail', ['trails' => $memo->approvalTrails])
                 </div>
@@ -385,25 +387,15 @@
                     <div class="card-header">Quick status</div>
                     <div class="card-body small">
                         <p class="mb-2"><strong>Status:</strong> {!! display_memo_status_auto($memo) !!}</p>
-                        <p class="mb-0"><strong>Approver chain:</strong></p>
-                        <ol class="mb-0 ps-3 mt-1">
-                            @foreach (\App\Helpers\PrintHelper::applyOtherMemoDefaultSections($memo->approvers_config ?? []) as $row)
-                                @php
-                                    $section = strtolower((string) ($row['memo_section'] ?? 'through'));
-                                    $sectionLabel = match ($section) {
-                                        'to' => 'To',
-                                        'from' => 'From',
-                                        default => 'Through',
-                                    };
-                                @endphp
-                                <li>
-                                    Step {{ $row['sequence'] ?? '?' }} ({{ $sectionLabel }}):
-                                    @php $st = \App\Models\Staff::where('staff_id', $row['staff_id'] ?? 0)->first(); @endphp
-                                    {{ $st ? trim(($st->fname ?? '') . ' ' . ($st->lname ?? '')) : 'Staff #' . ($row['staff_id'] ?? '') }}
-                                    <span class="text-muted">({{ $row['role_label'] ?? 'Approver' }})</span>
-                                </li>
-                            @endforeach
-                        </ol>
+                        @php $activeStep = (int) ($memo->active_sequence ?? 0); @endphp
+                        <p class="mb-1"><strong>Current step:</strong>
+                            @if ($memo->overall_status === 'pending' && $activeStep > 0)
+                                Step {{ $activeStep }}
+                            @else
+                                —
+                            @endif
+                        </p>
+                        <p class="mb-0 text-muted">See <strong>Approval map</strong> above for print order and pending approvers.</p>
                     </div>
                 </div>
 

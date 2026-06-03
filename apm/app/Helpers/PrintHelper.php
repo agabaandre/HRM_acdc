@@ -1488,11 +1488,47 @@ class PrintHelper
         foreach (array_keys($sections) as $key) {
             usort(
                 $sections[$key],
-                fn (array $a, array $b): int => ($a['sequence'] ?? 0) <=> ($b['sequence'] ?? 0)
+                function (array $a, array $b) use ($key): int {
+                    $cmp = ((int) ($a['sequence'] ?? 0)) <=> ((int) ($b['sequence'] ?? 0));
+
+                    // Printed header: To block lists highest step first (final approver on top).
+                    return $key === 'to' ? -$cmp : $cmp;
+                }
             );
         }
 
         return $sections;
+    }
+
+    /**
+     * Approval step status for compliance maps (draft = all pending).
+     */
+    public static function otherMemoApproverStepStatus(OtherMemo $memo, int $sequence): string
+    {
+        if ($memo->overall_status === OtherMemo::STATUS_APPROVED) {
+            return 'approved';
+        }
+        if (in_array($memo->overall_status, [OtherMemo::STATUS_DRAFT, OtherMemo::STATUS_CANCELLED], true)) {
+            return 'pending';
+        }
+        if ($memo->overall_status === OtherMemo::STATUS_RETURNED) {
+            $returnedAt = (int) ($memo->returned_at_sequence ?? 0);
+            if ($returnedAt > 0 && $sequence >= $returnedAt) {
+                return 'pending';
+            }
+        }
+        $active = (int) ($memo->active_sequence ?? 0);
+        if ($active <= 0) {
+            return 'pending';
+        }
+        if ($sequence < $active) {
+            return 'approved';
+        }
+        if ($sequence === $active) {
+            return 'current';
+        }
+
+        return 'waiting';
     }
 
     /**
