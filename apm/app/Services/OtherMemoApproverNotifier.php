@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Jobs\SendNotificationEmailJob;
 use App\Models\ApmApiUser;
+use App\Models\Notification;
 use App\Models\OtherMemo;
 use App\Models\Staff;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Notifies the current other-memo approver (FCM + email) when a memo is submitted or advances in sequence.
+ * Notifies the current other-memo approver (FCM + email + in-app) when a memo is submitted or advances in sequence.
+ * Runs during the submit/approve HTTP request — not via a scheduled job.
  */
 class OtherMemoApproverNotifier
 {
@@ -24,9 +26,8 @@ class OtherMemoApproverNotifier
             return;
         }
 
-        $doc = $memo->document_number ? $memo->document_number . ' — ' : '';
-        $typeName = $memo->memo_type_name_snapshot ?? 'Other memo';
-        $message = $doc . $typeName . ' is waiting for your approval.';
+        $presented = MemoApprovalNotificationPresenter::forOtherMemoAwaitingApproval($memo);
+        $message = $presented['message'];
         $openUrl = url(route('other-memos.show', $memo, false));
 
         $fcm = app(FirebaseMessagingService::class);
@@ -52,15 +53,24 @@ class OtherMemoApproverNotifier
             }
         }
 
+        Notification::create([
+            'staff_id' => (int) $approverStaffId,
+            'model_id' => $memo->id,
+            'model_type' => OtherMemo::class,
+            'message' => $message,
+            'type' => 'other_memo_approval',
+            'is_read' => false,
+        ]);
+
         if (! empty($staff->work_email)) {
-            $emailBody = $message . ' Open: ' . $openUrl;
             SendNotificationEmailJob::dispatch(
                 $memo,
                 $staff,
-                'other_memo_approval',
-                $emailBody,
-                'emails.generic-notification'
-            );
+                'approved',
+                $message,
+                'emails.matrix-notification',
+                array_merge($presented['view'], ['skip_admin_cc' => true])
+            )->afterResponse();
         }
     }
 }
