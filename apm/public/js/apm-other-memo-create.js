@@ -277,6 +277,31 @@
         });
     }
 
+    function cleanupOtherMemoCreateBeforeNavigate() {
+        var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
+        if (root) {
+            if (root._apmOtherMemoCreateAbort) {
+                root._apmOtherMemoCreateAbort.abort();
+                root._apmOtherMemoCreateAbort = null;
+            }
+            delete root.dataset.apmCreateFetchPending;
+        }
+        if (typeof jQuery !== 'undefined') {
+            var $mt = jQuery('#memo_type_slug');
+            if ($mt.length && $mt.hasClass('select2-hidden-accessible')) {
+                try { $mt.select2('destroy'); } catch (e) {}
+            }
+        }
+    }
+
+    function scheduleBootOtherMemoCreate() {
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                setTimeout(bootOtherMemoCreateIfPresent, 0);
+            });
+        });
+    }
+
     function bootOtherMemoCreateIfPresent() {
         if (!otherMemoCreatePagePresent()) return;
         if (typeof jQuery === 'undefined') return;
@@ -288,12 +313,20 @@
         var apiList = getApiListUrl();
         if (!apiList) return;
 
+        if (root._apmOtherMemoCreateAbort) {
+            root._apmOtherMemoCreateAbort.abort();
+        }
+        var ctrl = new AbortController();
+        root._apmOtherMemoCreateAbort = ctrl;
+
         if (root.dataset.apmCreateFetchPending === '1') return;
         root.dataset.apmCreateFetchPending = '1';
 
         window.__apmOtherMemoAttachIdx = 1;
+        jQuery('#other-memo-attachment-container').empty();
 
         fetch(apiList, {
+            signal: ctrl.signal,
             credentials: 'same-origin',
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         })
@@ -326,17 +359,18 @@
                 bindAttachmentDelegatesOnce();
             })
             .catch(function (err) {
+                if (err && err.name === 'AbortError') return;
                 console.error('[APM] Other memo types load failed:', err);
             })
             .finally(function () {
+                if (root && root._apmOtherMemoCreateAbort === ctrl) {
+                    root._apmOtherMemoCreateAbort = null;
+                }
                 delete root.dataset.apmCreateFetchPending;
             });
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(bootOtherMemoCreateIfPresent, 0);
-    });
-    document.addEventListener('livewire:navigated', function () {
-        setTimeout(bootOtherMemoCreateIfPresent, 0);
-    });
+    document.addEventListener('DOMContentLoaded', scheduleBootOtherMemoCreate);
+    document.addEventListener('livewire:navigated', scheduleBootOtherMemoCreate);
+    document.addEventListener('livewire:navigating', cleanupOtherMemoCreateBeforeNavigate);
 })();
