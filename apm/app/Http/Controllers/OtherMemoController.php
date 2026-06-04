@@ -1228,18 +1228,57 @@ class OtherMemoController extends Controller
 
     private function authorizeView(OtherMemo $memo): void
     {
+        if (! $this->canViewOtherMemo($memo)) {
+            abort(403);
+        }
+    }
+
+    /**
+     * View access: creator, approvers, system admin, all-memos permission (87), or same division.
+     * Does not grant approve/edit rights — those use canApproveOrReturn / canEdit.
+     */
+    private function canViewOtherMemo(OtherMemo $memo): bool
+    {
         $sid = $this->staffId();
-        if ($memo->staff_id === $sid) {
-            return;
+        if ($sid <= 0) {
+            return false;
         }
-        if ($memo->overall_status === OtherMemo::STATUS_PENDING && (int) $memo->current_approver_staff_id === $sid) {
-            return;
+
+        if ((int) $memo->staff_id === $sid) {
+            return true;
         }
-        $ids = collect($memo->approvers_config ?? [])->pluck('staff_id')->map(fn ($v) => (int) $v)->all();
-        if (in_array($sid, $ids, true)) {
-            return;
+
+        if ($memo->overall_status === OtherMemo::STATUS_PENDING
+            && (int) $memo->current_approver_staff_id === $sid) {
+            return true;
         }
-        abort(403);
+
+        $approverIds = collect($memo->approvers_config ?? [])
+            ->pluck('staff_id')
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn ($v) => $v > 0)
+            ->all();
+        if (in_array($sid, $approverIds, true)) {
+            return true;
+        }
+
+        if ($this->isOtherMemoSystemAdmin()) {
+            return true;
+        }
+
+        if (in_array(87, user_session('permissions', []), true)) {
+            return true;
+        }
+
+        $userDivisionId = (int) (user_session('division_id') ?? 0);
+        $memoDivisionId = (int) ($memo->division_id ?? 0);
+
+        return $userDivisionId > 0 && $memoDivisionId > 0 && $userDivisionId === $memoDivisionId;
+    }
+
+    private function isOtherMemoSystemAdmin(): bool
+    {
+        return (int) (user_session('role') ?? 0) === 10;
     }
 
     private function canEdit(OtherMemo $memo): bool
@@ -1268,7 +1307,7 @@ class OtherMemoController extends Controller
     private function canPrint(OtherMemo $memo): bool
     {
         return $memo->overall_status === OtherMemo::STATUS_APPROVED
-            && $memo->staff_id === $this->staffId();
+            && $this->canViewOtherMemo($memo);
     }
 
     private function memoAttachmentAtIndex(OtherMemo $memo, int $index): array
