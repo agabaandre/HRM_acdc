@@ -1,0 +1,11 @@
+{
+    "name": "Workflows",
+    "alias": "workflows",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Workflows\\Providers\\WorkflowsServiceProvider"
+    ],
+    "files": []
+}

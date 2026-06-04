@@ -1187,6 +1187,35 @@ class NonTravelMemoController extends Controller
     }
 
     /**
+     * Copy a draft non-travel memo (creator only).
+     */
+    public function copy(NonTravelMemo $nonTravel): RedirectResponse
+    {
+        if (! can_copy_memo($nonTravel)) {
+            return redirect()->back()->with('error', 'You can only copy draft non-travel memos you created.');
+        }
+
+        try {
+            $copy = $nonTravel->replicate();
+            $copy->activity_title = ($nonTravel->activity_title ?? '') . ' (Copy)';
+            $copy->document_number = null;
+            $copy->overall_status = 'draft';
+            $copy->is_draft = true;
+            $copy->approval_level = 0;
+            $copy->next_approval_level = 1;
+            $copy->created_at = now();
+            $copy->updated_at = now();
+            $copy->save();
+
+            return redirect()
+                ->route('non-travel.edit', $copy)
+                ->with('success', 'Non-travel memo copied successfully. You can now edit the copy.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to copy non-travel memo: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Submit non-travel memo for approval.
      */
     public function submitForApproval(NonTravelMemo $nonTravel): RedirectResponse

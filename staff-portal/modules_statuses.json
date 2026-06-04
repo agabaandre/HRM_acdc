@@ -1,0 +1,21 @@
+{
+    "Core": true,
+    "Auth": true,
+    "Audit": true,
+    "Lookup": true,
+    "Staff": true,
+    "Permissions": true,
+    "Share": true,
+    "Dashboard": true,
+    "Contracts": true,
+    "Leave": true,
+    "Performance": true,
+    "Attendance": true,
+    "Tasks": true,
+    "Workplan": true,
+    "Workflows": true,
+    "Reports": true,
+    "Settings": true,
+    "Jobs": true,
+    "AdManager": true
+}

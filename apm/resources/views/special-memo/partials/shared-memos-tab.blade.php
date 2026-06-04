@@ -113,6 +113,10 @@
                                class="btn btn-sm btn-outline-info" title="Open">
                                 <i class="bx bx-show me-1"></i>Open
                             </a>
+                            @include('partials.copy-draft-memo-link', [
+                                'memo' => $memo,
+                                'copyRoute' => route('special-memo.copy', $memo),
+                            ])
                             @if($memo->overall_status === 'approved')
                                 <a href="{{ route('special-memo.print', $memo) }}" 
                                    class="btn btn-sm btn-outline-success" title="Print" target="_blank">

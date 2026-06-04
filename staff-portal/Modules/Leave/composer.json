@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/leave",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Leave\\": "app/",
+            "Modules\\Leave\\Database\\Factories\\": "database/factories/",
+            "Modules\\Leave\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Leave\\Tests\\": "tests/"
+        }
+    }
+}

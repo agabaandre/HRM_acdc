@@ -1,0 +1,11 @@
+{
+    "name": "Workplan",
+    "alias": "workplan",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Workplan\\Providers\\WorkplanServiceProvider"
+    ],
+    "files": []
+}
