@@ -53,9 +53,6 @@
                         @endif
                     </td>
                     <td class="text-center">
-                        <span class="fw-semibold">{{ $changeRequest->division->division_name ?? 'N/A' }}</span>
-                    </td>
-                    <td class="text-center">
                         @php
                             $isNonTravel = $changeRequest->parent_memo_model === 'App\Models\NonTravelMemo';
                         @endphp
