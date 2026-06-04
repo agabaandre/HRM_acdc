@@ -10,6 +10,7 @@ use App\Models\OtherMemoApprovalTrail;
 use App\Models\Staff;
 use App\Models\WorkflowDefinition;
 use App\Services\OtherMemoApproverNotifier;
+use App\Support\ApprovedMemoReferenceResolver;
 use App\Support\OtherMemoCc;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -263,7 +264,7 @@ class OtherMemoController extends Controller
             'staff_id' => $this->staffId(),
             'division_id' => user_session('division_id'),
             'overall_status' => OtherMemo::STATUS_DRAFT,
-        ], $this->ccAttributesFromRequest($request, $definition)));
+        ], $this->ccAttributesFromRequest($request, $definition), $this->referencedMemosAttributesFromRequest($request, $definition)));
 
         return redirect()->route('other-memos.show', $memo)
             ->with('msg', 'Draft saved.')
@@ -365,12 +366,21 @@ class OtherMemoController extends Controller
         }
         $this->assertUploadMemoStoredAttachmentsAreSinglePdf($attachmentForDb, (string) $other_memo->memo_type_slug);
 
+        $definitionForRefs = $def ?? MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
+        if (! $definitionForRefs) {
+            $definitionForRefs = new MemoTypeDefinition([
+                'slug' => $other_memo->memo_type_slug,
+                'referenced_memos_max' => (int) ($other_memo->referenced_memos_max_snapshot ?? 0),
+            ]);
+        }
+
         $other_memo->update(array_merge([
             'payload' => $payload,
             'approvers_config' => $approvers,
             'attachments_enabled_snapshot' => $attachEnabledLive,
             'attachment' => $attachmentForDb,
-        ], $this->ccAttributesFromRequest($request, $def ?? $this->definitionForNumbering($other_memo))));
+        ], $this->ccAttributesFromRequest($request, $def ?? $this->definitionForNumbering($other_memo)),
+            $this->referencedMemosAttributesFromRequest($request, $definitionForRefs, $other_memo)));
 
         return redirect()->route('other-memos.show', $other_memo)
             ->with('msg', 'Memo updated.')
@@ -424,6 +434,15 @@ class OtherMemoController extends Controller
 
         $other_memo->payload = $payload;
         $other_memo->approvers_config = $approvers;
+
+        if (! $request->boolean('use_stored_memo_content')) {
+            $defForRefs = MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
+            if ($defForRefs) {
+                foreach ($this->referencedMemosAttributesFromRequest($request, $defForRefs, $other_memo) as $key => $value) {
+                    $other_memo->{$key} = $value;
+                }
+            }
+        }
 
         $isResubmit = $other_memo->overall_status === OtherMemo::STATUS_RETURNED
             && $other_memo->returned_at_sequence !== null;
@@ -1130,6 +1149,29 @@ class OtherMemoController extends Controller
             'memoTypeCcBySlug' => $activeMemoTypes->mapWithKeys(
                 fn (MemoTypeDefinition $m) => [$m->slug => (bool) $m->cc_on_approval_enabled]
             )->all(),
+        ];
+    }
+
+    /**
+     * @return array{referenced_memos_max_snapshot: int, referenced_memos: ?array}
+     */
+    private function referencedMemosAttributesFromRequest(Request $request, MemoTypeDefinition $definition, ?OtherMemo $excludeMemo = null): array
+    {
+        $max = max(0, min(10, (int) ($definition->referenced_memos_max ?? 0)));
+        $links = $request->input('referenced_memo_links', []);
+        if (! is_array($links)) {
+            $links = [];
+        }
+
+        $resolved = app(ApprovedMemoReferenceResolver::class)->resolveMany(
+            $links,
+            $max,
+            $excludeMemo?->id
+        );
+
+        return [
+            'referenced_memos_max_snapshot' => $max,
+            'referenced_memos' => $resolved === [] ? null : $resolved,
         ];
     }
 
