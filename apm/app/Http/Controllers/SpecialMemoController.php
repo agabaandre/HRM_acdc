@@ -1375,6 +1375,36 @@ class SpecialMemoController extends Controller
                 ->with('error', 'An error occurred while deleting the special memo.');
         }
     }
+
+    /**
+     * Copy a draft special memo (creator or responsible person).
+     */
+    public function copy(SpecialMemo $specialMemo): RedirectResponse
+    {
+        if (! can_copy_memo($specialMemo)) {
+            return redirect()->back()->with('error', 'You can only copy draft memos you created or are responsible for.');
+        }
+
+        try {
+            $copy = $specialMemo->replicate();
+            $copy->activity_title = ($specialMemo->activity_title ?? '') . ' (Copy)';
+            $copy->document_number = null;
+            $copy->overall_status = SpecialMemo::STATUS_DRAFT;
+            $copy->status = SpecialMemo::STATUS_DRAFT;
+            $copy->is_draft = true;
+            $copy->approval_level = 0;
+            $copy->next_approval_level = 1;
+            $copy->created_at = now();
+            $copy->updated_at = now();
+            $copy->save();
+
+            return redirect()
+                ->route('special-memo.edit', $copy)
+                ->with('success', 'Special memo copied successfully. You can now edit the copy.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to copy special memo: ' . $e->getMessage());
+        }
+    }
     
     /**
      * Remove a specific attachment from a special memo.

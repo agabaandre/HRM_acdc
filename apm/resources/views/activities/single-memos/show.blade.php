@@ -518,6 +518,15 @@
                             </a>
                     @endif
 
+                        @if (function_exists('can_copy_memo') && can_copy_memo($activity))
+                            <a href="{{ route('activities.single-memos.copy', $activity) }}"
+                               class="btn btn-info btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;"
+                               onclick="return confirm('Create a draft copy of this memo? The copy will open for editing.');">
+                                <i class="bx bx-copy"></i>
+                                <span>Copy</span>
+                            </a>
+                        @endif
+
                         @if (can_convert_returned_memo_to_non_travel($activity))
                             <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;"
                                 data-bs-toggle="modal" data-bs-target="#convertSingleMemoToNonTravelModal" title="Use when this should have been a non-travel memo">

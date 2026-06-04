@@ -977,6 +977,50 @@ if (! function_exists('user_session')) {
         }
     }
 
+    if (! function_exists('can_copy_memo')) {
+        /**
+         * Draft memos may be copied by the creator or responsible person (creator only for non-travel).
+         */
+        function can_copy_memo($memo, $user = null): bool
+        {
+            if ($user === null) {
+                $userSession = session('user', []);
+                if (empty($userSession) || ! isset($userSession['staff_id'])) {
+                    return false;
+                }
+                $user = (object) $userSession;
+            }
+
+            if (! isset($user->staff_id) || $user->staff_id === '' || $user->staff_id === null) {
+                return false;
+            }
+
+            $status = strtolower((string) ($memo->overall_status ?? ''));
+            if ($status !== 'draft') {
+                return false;
+            }
+
+            $sid = (int) $user->staff_id;
+            $isCreator = isset($memo->staff_id) && (int) $memo->staff_id === $sid;
+            $isResponsible = isset($memo->responsible_person_id)
+                && $memo->responsible_person_id !== null
+                && $memo->responsible_person_id !== ''
+                && (int) $memo->responsible_person_id === $sid;
+
+            if ($memo instanceof \App\Models\NonTravelMemo) {
+                return $isCreator;
+            }
+
+            if ($memo instanceof \App\Models\Activity) {
+                if (! (int) ($memo->is_single_memo ?? 0)) {
+                    return false;
+                }
+            }
+
+            return $isCreator || $isResponsible;
+        }
+    }
+
     if (! function_exists('can_convert_returned_memo_to_non_travel')) {
         /**
          * Whether the current user may convert a returned single memo or special memo to a non-travel memo.

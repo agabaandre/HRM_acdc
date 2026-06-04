@@ -439,6 +439,9 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     Route::post('/single-memos/{activity}/resubmit', [ActivityController::class, 'resubmitSingleMemo'])->name('activities.single-memos.resubmit');
     Route::post('/single-memos/{activity}/convert-to-non-travel', [App\Http\Controllers\NonTravelMemoController::class, 'convertReturnedSingleMemoToNonTravel'])
         ->name('activities.single-memos.convert-to-non-travel');
+    Route::get('/single-memos/{activity}/copy', [ActivityController::class, 'copySingleMemo'])
+        ->name('activities.single-memos.copy')
+        ->whereNumber('activity');
     Route::delete('/single-memos/{activity}', [ActivityController::class, 'destroySingleMemo'])->name('activities.single-memos.destroy');
     
     // Staff activities route
@@ -466,6 +469,9 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     // Non-Travel Memo Export Routes
     Route::get('non-travel/export/my-submitted', [App\Http\Controllers\NonTravelMemoController::class, 'exportMySubmittedCsv'])->name('non-travel.export.my-submitted');
     Route::get('non-travel/export/all', [App\Http\Controllers\NonTravelMemoController::class, 'exportAllCsv'])->name('non-travel.export.all');
+    Route::get('non-travel/{nonTravel}/copy', [App\Http\Controllers\NonTravelMemoController::class, 'copy'])
+        ->name('non-travel.copy')
+        ->whereNumber('nonTravel');
     
     Route::resource('non-travel', App\Http\Controllers\NonTravelMemoController::class);
     
@@ -479,6 +485,9 @@ Route::get('special-memo/export/all', [App\Http\Controllers\SpecialMemoControlle
 Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoController::class, 'exportSharedCsv'])->name('special-memo.export.shared');
 Route::post('special-memo/{specialMemo}/archive', [App\Http\Controllers\SpecialMemoController::class, 'archive'])->name('special-memo.archive');
 Route::post('special-memo/{specialMemo}/unarchive', [App\Http\Controllers\SpecialMemoController::class, 'unarchive'])->name('special-memo.unarchive');
+    Route::get('special-memo/{specialMemo}/copy', [App\Http\Controllers\SpecialMemoController::class, 'copy'])
+        ->name('special-memo.copy')
+        ->whereNumber('specialMemo');
     
     Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
     

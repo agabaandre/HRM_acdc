@@ -1,0 +1,11 @@
+{
+    "name": "Lookup",
+    "alias": "lookup",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Lookup\\Providers\\LookupServiceProvider"
+    ],
+    "files": []
+}

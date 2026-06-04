@@ -103,6 +103,10 @@
                                class="btn btn-sm btn-outline-info" title="Open">
                                 <i class="bx bx-show me-1"></i>Open
                             </a>
+                            @include('partials.copy-draft-memo-link', [
+                                'memo' => $memo,
+                                'copyRoute' => route('special-memo.copy', $memo),
+                            ])
                             @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
                                 <a href="{{ route('special-memo.edit', $memo) }}" 
                                    class="btn btn-sm btn-outline-warning" title="Edit">

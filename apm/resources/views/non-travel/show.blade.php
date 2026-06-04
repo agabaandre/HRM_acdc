@@ -237,6 +237,14 @@
                             <span>Edit Memo</span>
                         </a>
                     @endif
+                    @if (function_exists('can_copy_memo') && can_copy_memo($nonTravel))
+                        <a href="{{ route('non-travel.copy', $nonTravel) }}"
+                           class="btn btn-info btn-sm d-flex align-items-center gap-1"
+                           onclick="return confirm('Create a draft copy of this memo? The copy will open for editing.');">
+                            <i class="bx bx-copy"></i>
+                            <span>Copy</span>
+                        </a>
+                    @endif
                     @if($canUpdateNonTravelOwner)
                         <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#nonTravelOwnerUpdateModal">
                             <i class="bx bx-user-pin"></i>

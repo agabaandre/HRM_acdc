@@ -3360,6 +3360,52 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
     }
 
     /**
+     * Copy a draft single memo (creator or responsible person).
+     */
+    public function copySingleMemo(Activity $activity): RedirectResponse
+    {
+        if (! (int) ($activity->is_single_memo ?? 0)) {
+            return redirect()->back()->with('error', 'This item is not a single memo.');
+        }
+
+        if (! can_copy_memo($activity)) {
+            return redirect()->back()->with('error', 'You can only copy draft memos you created or are responsible for.');
+        }
+
+        $activity->load(['activity_budget', 'matrix']);
+
+        try {
+            $newActivity = $activity->replicate();
+            $newActivity->activity_title = ($activity->activity_title ?? '') . ' (Copy)';
+            $newActivity->document_number = null;
+            $newActivity->overall_status = Activity::STATUS_DRAFT;
+            $newActivity->status = Activity::STATUS_DRAFT;
+            $newActivity->approval_level = 0;
+            $newActivity->next_approval_level = 1;
+            $newActivity->is_single_memo = 1;
+            $newActivity->created_at = now();
+            $newActivity->updated_at = now();
+            $newActivity->save();
+
+            foreach ($activity->activity_budget as $budget) {
+                $newBudget = $budget->replicate();
+                $newBudget->activity_id = $newActivity->id;
+                $newBudget->created_at = now();
+                $newBudget->updated_at = now();
+                $newBudget->save();
+            }
+
+            $matrix = $newActivity->matrix ?? $activity->matrix;
+
+            return redirect()
+                ->route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $newActivity])
+                ->with('success', 'Single memo copied successfully. You can now edit the copy.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to copy single memo: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Admin-only method to update creator (staff_id) and responsible person
      * Only accessible to users with role == 10 (system admin)
      */
