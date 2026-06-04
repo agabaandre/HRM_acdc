@@ -28,8 +28,15 @@ test('resolve many returns empty when max is zero', function () {
     expect(app(ApprovedMemoReferenceResolver::class)->resolveMany([], 0))->toBe([]);
 });
 
-test('resolve many rejects invalid memo url', function () {
-    expect(fn () => app(ApprovedMemoReferenceResolver::class)->resolveMany([
-        'https://example.com/not-a-memo',
-    ], 3))->toThrow(ValidationException::class);
+test('resolve many rejects invalid memo url with specific message', function () {
+    try {
+        app(ApprovedMemoReferenceResolver::class)->resolveMany([
+            'https://example.com/not-a-memo',
+        ], 3);
+        expect(false)->toBeTrue();
+    } catch (ValidationException $e) {
+        $msg = $e->errors()['referenced_memo_links'][0] ?? '';
+        expect($msg)->toContain('Link 1:')
+            ->and($msg)->toContain('Unrecognized');
+    }
 });

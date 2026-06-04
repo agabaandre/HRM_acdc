@@ -236,39 +236,37 @@ class OtherMemoController extends Controller
         return view('other-memos.create', $this->approverFormSharedData(null));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
-        $definition = $this->resolveDefinition($request);
-        $this->assertUploadMemoPdfRulesOnStore($request, $definition);
-        $this->assertNoAttachmentsWhenDisabled($request, (bool) $definition->attachments_enabled);
-        if ($definition->attachments_enabled) {
-            $this->validateOtherMemoAttachmentMultipartRules($request);
-        }
-        $payload = $this->validatePayloadForSchema($request, $definition->fields_schema ?? []);
-        $approvers = $this->normalizeApprovers($request);
+        return $this->respondOtherMemoForm($request, function () use ($request) {
+            $definition = $this->resolveDefinition($request);
+            $this->assertUploadMemoPdfRulesOnStore($request, $definition);
+            $this->assertNoAttachmentsWhenDisabled($request, (bool) $definition->attachments_enabled);
+            if ($definition->attachments_enabled) {
+                $this->validateOtherMemoAttachmentMultipartRules($request);
+            }
+            $payload = $this->validatePayloadForSchema($request, $definition->fields_schema ?? []);
+            $approvers = $this->normalizeApprovers($request);
 
-        $attachmentRows = $this->collectUploadedOtherMemoAttachmentsOnCreate($request, $definition);
-        $this->assertAttachmentsPresentWhenRequired($definition, $attachmentRows);
-        $this->assertUploadMemoStoredAttachmentsAreSinglePdf($attachmentRows, (string) $definition->slug);
+            $attachmentRows = $this->collectUploadedOtherMemoAttachmentsOnCreate($request, $definition);
+            $this->assertAttachmentsPresentWhenRequired($definition, $attachmentRows);
+            $this->assertUploadMemoStoredAttachmentsAreSinglePdf($attachmentRows, (string) $definition->slug);
 
-        $memo = OtherMemo::create(array_merge([
-            'memo_type_slug' => $definition->slug,
-            'memo_type_name_snapshot' => $definition->name,
-            'ref_prefix_snapshot' => $definition->ref_prefix,
-            'signature_style_snapshot' => $definition->signature_style,
-            'fields_schema_snapshot' => MemoTypeDefinition::normalizeFieldsSchemaRows($definition->fields_schema ?? []),
-            'attachments_enabled_snapshot' => (bool) $definition->attachments_enabled,
-            'attachment' => $attachmentRows,
-            'payload' => $payload,
-            'approvers_config' => $approvers,
-            'staff_id' => $this->staffId(),
-            'division_id' => user_session('division_id'),
-            'overall_status' => OtherMemo::STATUS_DRAFT,
-        ], $this->ccAttributesFromRequest($request, $definition), $this->referencedMemosAttributesFromRequest($request, $definition)));
-
-        return redirect()->route('other-memos.show', $memo)
-            ->with('msg', 'Draft saved.')
-            ->with('type', 'success');
+            return OtherMemo::create(array_merge([
+                'memo_type_slug' => $definition->slug,
+                'memo_type_name_snapshot' => $definition->name,
+                'ref_prefix_snapshot' => $definition->ref_prefix,
+                'signature_style_snapshot' => $definition->signature_style,
+                'fields_schema_snapshot' => MemoTypeDefinition::normalizeFieldsSchemaRows($definition->fields_schema ?? []),
+                'attachments_enabled_snapshot' => (bool) $definition->attachments_enabled,
+                'attachment' => $attachmentRows,
+                'payload' => $payload,
+                'approvers_config' => $approvers,
+                'staff_id' => $this->staffId(),
+                'division_id' => user_session('division_id'),
+                'overall_status' => OtherMemo::STATUS_DRAFT,
+            ], $this->ccAttributesFromRequest($request, $definition), $this->referencedMemosAttributesFromRequest($request, $definition)));
+        }, 'Draft saved.', 'other-memos.show');
     }
 
     public function show(OtherMemo $other_memo): View
@@ -346,45 +344,45 @@ class OtherMemoController extends Controller
         ));
     }
 
-    public function update(Request $request, OtherMemo $other_memo): RedirectResponse
+    public function update(Request $request, OtherMemo $other_memo): RedirectResponse|JsonResponse
     {
         if (! $this->canEdit($other_memo)) {
             abort(403);
         }
 
-        $schema = $other_memo->fields_schema_snapshot ?? [];
-        $payload = $this->validatePayloadForSchema($request, $schema);
-        $approvers = $this->normalizeApprovers($request);
+        return $this->respondOtherMemoForm($request, function () use ($request, $other_memo) {
+            $schema = $other_memo->fields_schema_snapshot ?? [];
+            $payload = $this->validatePayloadForSchema($request, $schema);
+            $approvers = $this->normalizeApprovers($request);
 
-        $def = MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
-        $attachEnabledLive = (bool) ($def->attachments_enabled ?? false);
+            $def = MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
+            $attachEnabledLive = (bool) ($def->attachments_enabled ?? false);
 
-        $attachmentForDb = $other_memo->attachment ?? [];
-        if ($this->otherMemoAttachmentsFormRelevant($other_memo)) {
-            $this->validateOtherMemoAttachmentMultipartRules($request);
-            $attachmentForDb = $this->mergeOtherMemoAttachmentsFromRequest($request, $other_memo);
-        }
-        $this->assertUploadMemoStoredAttachmentsAreSinglePdf($attachmentForDb, (string) $other_memo->memo_type_slug);
+            $attachmentForDb = $other_memo->attachment ?? [];
+            if ($this->otherMemoAttachmentsFormRelevant($other_memo)) {
+                $this->validateOtherMemoAttachmentMultipartRules($request);
+                $attachmentForDb = $this->mergeOtherMemoAttachmentsFromRequest($request, $other_memo);
+            }
+            $this->assertUploadMemoStoredAttachmentsAreSinglePdf($attachmentForDb, (string) $other_memo->memo_type_slug);
 
-        $definitionForRefs = $def ?? MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
-        if (! $definitionForRefs) {
-            $definitionForRefs = new MemoTypeDefinition([
-                'slug' => $other_memo->memo_type_slug,
-                'referenced_memos_max' => (int) ($other_memo->referenced_memos_max_snapshot ?? 0),
-            ]);
-        }
+            $definitionForRefs = $def ?? MemoTypeDefinition::query()->where('slug', $other_memo->memo_type_slug)->first();
+            if (! $definitionForRefs) {
+                $definitionForRefs = new MemoTypeDefinition([
+                    'slug' => $other_memo->memo_type_slug,
+                    'referenced_memos_max' => (int) ($other_memo->referenced_memos_max_snapshot ?? 0),
+                ]);
+            }
 
-        $other_memo->update(array_merge([
-            'payload' => $payload,
-            'approvers_config' => $approvers,
-            'attachments_enabled_snapshot' => $attachEnabledLive,
-            'attachment' => $attachmentForDb,
-        ], $this->ccAttributesFromRequest($request, $def ?? $this->definitionForNumbering($other_memo)),
-            $this->referencedMemosAttributesFromRequest($request, $definitionForRefs, $other_memo)));
+            $other_memo->update(array_merge([
+                'payload' => $payload,
+                'approvers_config' => $approvers,
+                'attachments_enabled_snapshot' => $attachEnabledLive,
+                'attachment' => $attachmentForDb,
+            ], $this->ccAttributesFromRequest($request, $def ?? $this->definitionForNumbering($other_memo)),
+                $this->referencedMemosAttributesFromRequest($request, $definitionForRefs, $other_memo)));
 
-        return redirect()->route('other-memos.show', $other_memo)
-            ->with('msg', 'Memo updated.')
-            ->with('type', 'success');
+            return $other_memo;
+        }, 'Memo updated.', 'other-memos.show');
     }
 
     public function destroy(OtherMemo $other_memo): RedirectResponse
@@ -1137,7 +1135,7 @@ class OtherMemoController extends Controller
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['slug', 'name', 'cc_on_approval_enabled']);
+            ->get(['slug', 'name', 'cc_on_approval_enabled', 'referenced_memos_max']);
 
         $ccEnabledTypes = $activeMemoTypes->where('cc_on_approval_enabled', true);
 
@@ -1149,7 +1147,60 @@ class OtherMemoController extends Controller
             'memoTypeCcBySlug' => $activeMemoTypes->mapWithKeys(
                 fn (MemoTypeDefinition $m) => [$m->slug => (bool) $m->cc_on_approval_enabled]
             )->all(),
+            'memoTypeReferencedMaxBySlug' => $activeMemoTypes->mapWithKeys(
+                fn (MemoTypeDefinition $m) => [$m->slug => max(0, min(10, (int) ($m->referenced_memos_max ?? 0)))]
+            )->all(),
         ];
+    }
+
+    /**
+     * @param  callable(): OtherMemo  $action
+     */
+    private function respondOtherMemoForm(Request $request, callable $action, string $successMessage, string $showRouteName): RedirectResponse|JsonResponse
+    {
+        try {
+            $memo = $action();
+        } catch (ValidationException $e) {
+            if ($this->otherMemoFormWantsJson($request)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $this->firstValidationMessage($e),
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            throw $e;
+        }
+
+        if ($this->otherMemoFormWantsJson($request)) {
+            return response()->json([
+                'success' => true,
+                'message' => $successMessage,
+                'redirect_url' => route($showRouteName, $memo),
+            ]);
+        }
+
+        return redirect()->route($showRouteName, $memo)
+            ->with('msg', $successMessage)
+            ->with('type', 'success');
+    }
+
+    private function otherMemoFormWantsJson(Request $request): bool
+    {
+        return $request->expectsJson()
+            || $request->ajax()
+            || $request->header('X-APM-Ajax-Form') === '1';
+    }
+
+    private function firstValidationMessage(ValidationException $e): string
+    {
+        foreach ($e->errors() as $messages) {
+            if (is_array($messages) && isset($messages[0]) && is_string($messages[0]) && $messages[0] !== '') {
+                return $messages[0];
+            }
+        }
+
+        return 'Please correct the errors below.';
     }
 
     /**
