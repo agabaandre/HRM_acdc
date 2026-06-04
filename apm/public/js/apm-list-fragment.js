@@ -13,6 +13,11 @@
                 'Accept': 'application/json',
                 'X-APM-List-Fragment': '1'
             };
+        },
+        applyToUrl: function (url) {
+            var u = new URL(url, window.location.origin);
+            u.searchParams.set('fragment', '1');
+            return u.toString();
         }
     };
 
@@ -27,6 +32,7 @@
         }
         var url = new URL(window.location.href);
         url.searchParams.delete('tab');
+        url.searchParams.delete('fragment');
         window.location.replace(url.pathname + url.search + url.hash);
     }
 

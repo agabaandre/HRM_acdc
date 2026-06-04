@@ -43,6 +43,13 @@
 }
 </style>
 
+@php
+    $activeTab = request('tab', 'mySubmitted');
+    if (! in_array($activeTab, ['mySubmitted', 'myDivision', 'allMemos'], true)) {
+        $activeTab = 'mySubmitted';
+    }
+@endphp
+
 <div data-apm-livewire-page="other-memos-index">
 
 @if (session('msg'))
@@ -57,7 +64,7 @@
 
         <div class="row g-3 align-items-end" id="otherMemoFilters" autocomplete="off">
             <form action="{{ route('other-memos.index') }}" method="GET" class="row g-3 align-items-end w-100" id="otherMemoFiltersForm">
-                <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'mySubmitted') }}">
+                <input type="hidden" name="tab" id="filter_tab" value="{{ $activeTab }}">
                 <div class="col-md-2">
                     <label for="year" class="form-label fw-semibold mb-1">
                         <i class="bx bx-calendar me-1 text-success"></i> Year
@@ -141,20 +148,20 @@
     <div class="card-body p-0">
         <ul class="nav nav-tabs nav-fill" id="otherMemoTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="otherMySubmitted-tab" data-bs-toggle="tab" data-bs-target="#otherMySubmitted" type="button" role="tab" aria-controls="otherMySubmitted" aria-selected="true">
+                <button class="nav-link @if($activeTab === 'mySubmitted') active @endif" id="otherMySubmitted-tab" data-bs-toggle="tab" data-bs-target="#otherMySubmitted" type="button" role="tab" aria-controls="otherMySubmitted" aria-selected="{{ $activeTab === 'mySubmitted' ? 'true' : 'false' }}">
                     <i class="bx bx-file-alt me-2"></i> My Submitted Memos
                     <span class="badge bg-success text-white ms-2" id="badge-other-mySubmitted">{{ $mySubmittedMemos->total() }}</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="otherMyDivision-tab" data-bs-toggle="tab" data-bs-target="#otherMyDivision" type="button" role="tab" aria-controls="otherMyDivision" aria-selected="false">
+                <button class="nav-link @if($activeTab === 'myDivision') active @endif" id="otherMyDivision-tab" data-bs-toggle="tab" data-bs-target="#otherMyDivision" type="button" role="tab" aria-controls="otherMyDivision" aria-selected="{{ $activeTab === 'myDivision' ? 'true' : 'false' }}">
                     <i class="bx bx-building me-2"></i> My Division Memos
                     <span class="badge bg-info text-white ms-2" id="badge-other-myDivision">{{ $myDivisionMemos->total() }}</span>
                 </button>
             </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="otherAllMemos-tab" data-bs-toggle="tab" data-bs-target="#otherAllMemos" type="button" role="tab" aria-controls="otherAllMemos" aria-selected="false">
+                    <button class="nav-link @if($activeTab === 'allMemos') active @endif" id="otherAllMemos-tab" data-bs-toggle="tab" data-bs-target="#otherAllMemos" type="button" role="tab" aria-controls="otherAllMemos" aria-selected="{{ $activeTab === 'allMemos' ? 'true' : 'false' }}">
                         <i class="bx bx-grid me-2"></i> All Other Memos
                         <span class="badge bg-primary text-white ms-2" id="badge-other-allMemos">{{ $allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allMemos->total() : $allMemos->count() }}</span>
                     </button>
@@ -163,7 +170,7 @@
         </ul>
 
         <div class="tab-content" id="otherMemoTabsContent">
-            <div class="tab-pane fade show active" id="otherMySubmitted" role="tabpanel" aria-labelledby="otherMySubmitted-tab">
+            <div class="tab-pane fade @if($activeTab === 'mySubmitted') show active @endif" id="otherMySubmitted" role="tabpanel" aria-labelledby="otherMySubmitted-tab">
                 <div class="p-3">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div>
@@ -176,7 +183,7 @@
                     @include('other-memos.partials.my-submitted-tab')
                 </div>
             </div>
-            <div class="tab-pane fade" id="otherMyDivision" role="tabpanel" aria-labelledby="otherMyDivision-tab">
+            <div class="tab-pane fade @if($activeTab === 'myDivision') show active @endif" id="otherMyDivision" role="tabpanel" aria-labelledby="otherMyDivision-tab">
                 <div class="p-3">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div>
@@ -190,7 +197,7 @@
                 </div>
             </div>
             @if(in_array(87, user_session('permissions', [])))
-                <div class="tab-pane fade" id="otherAllMemos" role="tabpanel" aria-labelledby="otherAllMemos-tab">
+                <div class="tab-pane fade @if($activeTab === 'allMemos') show active @endif" id="otherAllMemos" role="tabpanel" aria-labelledby="otherAllMemos-tab">
                     <div class="p-3">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div>

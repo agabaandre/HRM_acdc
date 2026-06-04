@@ -1,2 +1,1 @@
-@php($allMemos = $myDivisionMemos)
-@include('other-memos.partials/all-memos-tab')
+@include('other-memos.partials.all-memos-tab', ['allMemos' => $myDivisionMemos])

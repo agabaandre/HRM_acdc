@@ -16,12 +16,25 @@
         if (!tabs || !filtersEl) return;
 
         var root = document.querySelector('[data-apm-livewire-page="other-memos-index"]');
-        if (root && root._apmOtherMemosIndexAbort) {
-            root._apmOtherMemosIndexAbort.abort();
+        if (root) {
+            if (root._apmOtherMemosIndexAbort) {
+                root._apmOtherMemosIndexAbort.abort();
+            }
+            if (root._apmOtherMemosFilterTimer) {
+                clearTimeout(root._apmOtherMemosFilterTimer);
+                root._apmOtherMemosFilterTimer = null;
+            }
         }
         var ctrl = new AbortController();
-        if (root) root._apmOtherMemosIndexAbort = ctrl;
+        if (root) {
+            root._apmOtherMemosIndexAbort = ctrl;
+        }
         var sig = { signal: ctrl.signal };
+
+        var filterTabInput = document.getElementById('filter_tab');
+
+        // Select2 init fires synthetic change events — block auto filter AJAX until boot settles.
+        var allowFilterAjax = false;
 
         if (window.APMFilters) {
             APMFilters.clearInited('#otherMemoFilters');
@@ -41,9 +54,14 @@
         }
 
         function applyFilters() {
+            if (!allowFilterAjax) {
+                return;
+            }
             setTimeout(function () {
                 var activeTab = document.querySelector('#otherMemoTabsContent .tab-pane.active');
-                if (activeTab) loadOtherMemoTabData(activeTab.id);
+                if (activeTab) {
+                    loadOtherMemoTabData(activeTab.id);
+                }
             }, 0);
         }
 
@@ -51,19 +69,29 @@
             var currentYear = String(new Date().getFullYear());
             if (typeof window.$ !== 'undefined' && $('#year').length) {
                 var jqVal = $('#year').val();
-                if (jqVal != null && jqVal !== '') return String(jqVal).trim();
+                if (jqVal != null && jqVal !== '') {
+                    return String(jqVal).trim();
+                }
             }
             var sel = document.getElementById('year');
-            if (!sel) return currentYear;
+            if (!sel) {
+                return currentYear;
+            }
             var idx = sel.selectedIndex;
-            if (idx < 0 || !sel.options[idx]) return currentYear;
+            if (idx < 0 || !sel.options[idx]) {
+                return currentYear;
+            }
             var v = (sel.options[idx].value || '').trim();
             return v || currentYear;
         }
 
         function mapPaneIdToTabParam(paneId) {
-            if (paneId === 'otherAllMemos') return 'allMemos';
-            if (paneId === 'otherMyDivision') return 'myDivision';
+            if (paneId === 'otherAllMemos') {
+                return 'allMemos';
+            }
+            if (paneId === 'otherMyDivision') {
+                return 'myDivision';
+            }
             return 'mySubmitted';
         }
 
@@ -77,44 +105,122 @@
             return '<div class="d-flex align-items-center justify-content-between mb-3"><div><h6 class="mb-0 text-success fw-bold"><i class="bx bx-file-alt me-2"></i> My Submitted Memos</h6><small class="text-muted">Other memos you have created</small></div></div>' + innerHtml;
         }
 
+        function fragmentHeaders() {
+            return (window.APMListFragment && window.APMListFragment.headers)
+                ? window.APMListFragment.headers()
+                : {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'X-APM-List-Fragment': '1'
+                };
+        }
+
+        function fragmentFetchUrl(url) {
+            if (window.APMListFragment && window.APMListFragment.applyToUrl) {
+                return window.APMListFragment.applyToUrl(url);
+            }
+            var u = new URL(url, window.location.origin);
+            u.searchParams.set('fragment', '1');
+            return u.toString();
+        }
+
+        function activateOtherMemoTab(paneId) {
+            var tabButtonId = (paneId === 'otherAllMemos')
+                ? 'otherAllMemos-tab'
+                : ((paneId === 'otherMyDivision') ? 'otherMyDivision-tab' : 'otherMySubmitted-tab');
+            var tabEl = document.getElementById(tabButtonId);
+            document.querySelectorAll('#otherMemoTabs .nav-link').forEach(function (btn) {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('#otherMemoTabsContent .tab-pane').forEach(function (pane) {
+                pane.classList.remove('active', 'show');
+            });
+            if (tabEl) {
+                tabEl.classList.add('active');
+            }
+            var tabPane = document.getElementById(paneId);
+            if (tabPane) {
+                tabPane.classList.add('active', 'show');
+            }
+            if (filterTabInput) {
+                filterTabInput.value = mapPaneIdToTabParam(paneId);
+            }
+        }
+
         function loadOtherMemoTabData(paneId, page) {
             page = page || 1;
             var tabParam = mapPaneIdToTabParam(paneId);
             var currentUrl = new URL(window.location.href);
             currentUrl.searchParams.set('page', page);
             currentUrl.searchParams.set('tab', tabParam);
+            currentUrl.searchParams.set('fragment', '1');
             var year = getYearValue();
-            var documentNumber = (document.getElementById('document_number') && document.getElementById('document_number').value) ? document.getElementById('document_number').value.trim() : '';
+            var documentNumber = (document.getElementById('document_number') && document.getElementById('document_number').value)
+                ? document.getElementById('document_number').value.trim()
+                : '';
             var staffId = document.getElementById('staff_id') ? (document.getElementById('staff_id').value || '') : '';
             var divisionId = document.getElementById('division_id') ? (document.getElementById('division_id').value || '') : '';
             var status = document.getElementById('memo_status') ? (document.getElementById('memo_status').value || '') : '';
             var search = document.getElementById('search') ? (document.getElementById('search').value || '').trim() : '';
             currentUrl.searchParams.set('year', year);
-            if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
-            else currentUrl.searchParams.delete('document_number');
-            if (staffId) currentUrl.searchParams.set('staff_id', staffId);
-            else currentUrl.searchParams.delete('staff_id');
-            if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
-            else currentUrl.searchParams.delete('division_id');
-            if (status) currentUrl.searchParams.set('status', status);
-            else currentUrl.searchParams.delete('status');
-            if (search) currentUrl.searchParams.set('search', search);
-            else currentUrl.searchParams.delete('search');
+            if (documentNumber) {
+                currentUrl.searchParams.set('document_number', documentNumber);
+            } else {
+                currentUrl.searchParams.delete('document_number');
+            }
+            if (staffId) {
+                currentUrl.searchParams.set('staff_id', staffId);
+            } else {
+                currentUrl.searchParams.delete('staff_id');
+            }
+            if (divisionId) {
+                currentUrl.searchParams.set('division_id', divisionId);
+            } else {
+                currentUrl.searchParams.delete('division_id');
+            }
+            if (status) {
+                currentUrl.searchParams.set('status', status);
+            } else {
+                currentUrl.searchParams.delete('status');
+            }
+            if (search) {
+                currentUrl.searchParams.set('search', search);
+            } else {
+                currentUrl.searchParams.delete('search');
+            }
             window.history.replaceState({}, '', currentUrl.toString());
+
             var tabContent = document.getElementById(paneId);
             if (tabContent) {
                 tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
             }
-            fetch(currentUrl.toString(), {
+
+            var fetchUrl = fragmentFetchUrl(currentUrl.toString());
+
+            fetch(fetchUrl, {
                 method: 'GET',
-                headers: (window.APMListFragment && window.APMListFragment.headers) ? window.APMListFragment.headers() : {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'X-APM-List-Fragment': '1'
-            }
+                credentials: 'same-origin',
+                headers: fragmentHeaders(),
+                signal: ctrl.signal
             })
-                .then(function (response) { return response.json(); })
-                .then(function (data) {
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Request failed (' + response.status + ')');
+                    }
+                    return response.text();
+                })
+                .then(function (text) {
+                    var data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (parseErr) {
+                        console.error('Other memos fragment: non-JSON response', text.slice(0, 200));
+                        throw new Error('Invalid JSON response');
+                    }
+                    if (data.error && tabContent) {
+                        tabContent.innerHTML = '<div class="text-center py-4 text-danger">' + data.error + '</div>';
+                        return;
+                    }
                     if (data.html && tabContent) {
                         tabContent.innerHTML = '<div class="p-3">' + rebuildOtherMemoTabShell(paneId, data.html) + '</div>';
                         attachOtherMemoPaginationHandlers(paneId);
@@ -123,18 +229,27 @@
                     }
                     if (data.count_my_submitted !== undefined) {
                         var badgeMy = document.getElementById('badge-other-mySubmitted');
-                        if (badgeMy) badgeMy.textContent = data.count_my_submitted;
+                        if (badgeMy) {
+                            badgeMy.textContent = data.count_my_submitted;
+                        }
                     }
                     if (data.count_my_division !== undefined) {
                         var badgeDivision = document.getElementById('badge-other-myDivision');
-                        if (badgeDivision) badgeDivision.textContent = data.count_my_division;
+                        if (badgeDivision) {
+                            badgeDivision.textContent = data.count_my_division;
+                        }
                     }
                     if (data.count_all_memos !== undefined) {
                         var badgeAll = document.getElementById('badge-other-allMemos');
-                        if (badgeAll) badgeAll.textContent = data.count_all_memos;
+                        if (badgeAll) {
+                            badgeAll.textContent = data.count_all_memos;
+                        }
                     }
                 })
                 .catch(function (error) {
+                    if (error && error.name === 'AbortError') {
+                        return;
+                    }
                     console.error('Error loading other memo tab data:', error);
                     if (tabContent) {
                         tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
@@ -144,7 +259,9 @@
 
         function attachOtherMemoPaginationHandlers(paneId) {
             var tabContent = document.getElementById(paneId);
-            if (!tabContent) return;
+            if (!tabContent) {
+                return;
+            }
             tabContent.querySelectorAll('.pagination a').forEach(function (link) {
                 link.addEventListener('click', function (e) {
                     e.preventDefault();
@@ -159,6 +276,7 @@
         if (applyBtn) {
             applyBtn.addEventListener('click', function (e) {
                 e.preventDefault();
+                allowFilterAjax = true;
                 applyFilters();
             }, sig);
         }
@@ -166,66 +284,68 @@
         if (form) {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
+                allowFilterAjax = true;
                 applyFilters();
             }, sig);
         }
-        ['staff_id', 'division_id', 'memo_status', 'year'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.addEventListener('change', applyFilters, sig);
-        });
-        var docNum = document.getElementById('document_number');
-        if (docNum) {
-            var documentNumberTimeout;
-            docNum.addEventListener('input', function () {
-                clearTimeout(documentNumberTimeout);
-                documentNumberTimeout = setTimeout(applyFilters, 1000);
-            }, sig);
-            docNum.addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') {
-                    clearTimeout(documentNumberTimeout);
-                    applyFilters();
+        var filterInitTimer = setTimeout(function () {
+            allowFilterAjax = true;
+            ['staff_id', 'division_id', 'memo_status', 'year'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', applyFilters, sig);
                 }
-            }, sig);
+            });
+            var docNum = document.getElementById('document_number');
+            if (docNum) {
+                var documentNumberTimeout;
+                docNum.addEventListener('input', function () {
+                    clearTimeout(documentNumberTimeout);
+                    documentNumberTimeout = setTimeout(applyFilters, 1000);
+                }, sig);
+                docNum.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        clearTimeout(documentNumberTimeout);
+                        applyFilters();
+                    }
+                }, sig);
+            }
+        }, 600);
+        if (root) {
+            root._apmOtherMemosFilterTimer = filterInitTimer;
         }
 
-        var filterTabInput = document.getElementById('filter_tab');
         document.querySelectorAll('#otherMemoTabs [data-bs-toggle="tab"]').forEach(function (button) {
             button.addEventListener('click', function (e) {
                 e.preventDefault();
-                document.querySelectorAll('#otherMemoTabs .nav-link').forEach(function (btn) { btn.classList.remove('active'); });
-                document.querySelectorAll('#otherMemoTabsContent .tab-pane').forEach(function (pane) { pane.classList.remove('active', 'show'); });
+                document.querySelectorAll('#otherMemoTabs .nav-link').forEach(function (btn) {
+                    btn.classList.remove('active');
+                });
+                document.querySelectorAll('#otherMemoTabsContent .tab-pane').forEach(function (pane) {
+                    pane.classList.remove('active', 'show');
+                });
                 this.classList.add('active');
                 var tabId = this.getAttribute('aria-controls');
-                if (filterTabInput) filterTabInput.value = mapPaneIdToTabParam(tabId);
+                if (filterTabInput) {
+                    filterTabInput.value = mapPaneIdToTabParam(tabId);
+                }
                 var tabPane = document.getElementById(tabId);
-                if (tabPane) tabPane.classList.add('active', 'show');
+                if (tabPane) {
+                    tabPane.classList.add('active', 'show');
+                }
                 loadOtherMemoTabData(tabId);
             }, sig);
         });
 
         var urlTab = new URLSearchParams(window.location.search).get('tab');
         if (urlTab) {
-            setTimeout(function () {
-                var tabEl = (urlTab === 'allMemos')
-                    ? document.getElementById('otherAllMemos-tab')
-                    : ((urlTab === 'myDivision') ? document.getElementById('otherMyDivision-tab') : document.getElementById('otherMySubmitted-tab'));
-                if (tabEl && typeof bootstrap !== 'undefined') {
-                    document.querySelectorAll('#otherMemoTabs .nav-link').forEach(function (btn) { btn.classList.remove('active'); });
-                    document.querySelectorAll('#otherMemoTabsContent .tab-pane').forEach(function (pane) { pane.classList.remove('active', 'show'); });
-                    tabEl.classList.add('active');
-                    var pane = document.getElementById(tabEl.getAttribute('aria-controls'));
-                    if (pane) {
-                        pane.classList.add('active', 'show');
-                        loadOtherMemoTabData(pane.id);
-                    }
-                }
-            }, 50);
-        } else {
-            var activeTabButton = document.querySelector('#otherMemoTabs .nav-link.active');
-            if (activeTabButton) {
-                loadOtherMemoTabData(activeTabButton.getAttribute('aria-controls'));
-            }
+            var urlPaneId = (urlTab === 'allMemos')
+                ? 'otherAllMemos'
+                : ((urlTab === 'myDivision') ? 'otherMyDivision' : 'otherMySubmitted');
+            activateOtherMemoTab(urlPaneId);
         }
+
+        // Server-rendered HTML stays visible on refresh; AJAX runs only after Filter or tab switch.
     }
 
     document.addEventListener('DOMContentLoaded', bootOtherMemosIndex);

@@ -460,9 +460,9 @@
         });
     })();
     </script>
-    <script src="{{ asset('js/apm-list-fragment.js') }}"></script>
+    <script src="{{ asset('js/apm-list-fragment.js') }}?v=2"></script>
     <script src="{{ asset('js/apm-filter-state.js') }}"></script>
-    <script src="{{ asset('js/apm-other-memo-index-livewire.js') }}"></script>
+    <script src="{{ asset('js/apm-other-memo-index-livewire.js') }}?v=2"></script>
     <script src="{{ asset('js/apm-other-memo-approvers.js') }}"></script>
     <script src="{{ asset('js/apm-other-memo-create.js') }}"></script>
     @stack('scripts')
