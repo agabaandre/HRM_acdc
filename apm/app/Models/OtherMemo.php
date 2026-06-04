@@ -27,6 +27,8 @@ class OtherMemo extends Model
         'attachments_enabled_snapshot',
         'cc_on_approval_enabled_snapshot',
         'cc_config',
+        'referenced_memos_max_snapshot',
+        'referenced_memos',
         'attachment',
         'payload',
         'approvers_config',
@@ -58,6 +60,8 @@ class OtherMemo extends Model
             'attachments_enabled_snapshot' => 'boolean',
             'cc_on_approval_enabled_snapshot' => 'boolean',
             'cc_config' => 'array',
+            'referenced_memos_max_snapshot' => 'integer',
+            'referenced_memos' => 'array',
         ];
     }
 

@@ -220,6 +220,8 @@
                                 {{ $memo->division->division_name ?? '—' }}
                             </td>
                         </tr>
+                        @include('other-memos.partials.referenced-memos-show', ['memo' => $memo])
+
                         @if ($memo->overall_status === 'pending' && $memo->currentApprover)
                             <tr>
                                 <td class="field-label"><i class="bx bx-user-check me-2 text-warning"></i>Current approver</td>

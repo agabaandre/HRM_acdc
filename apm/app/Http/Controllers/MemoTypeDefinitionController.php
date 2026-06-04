@@ -166,6 +166,7 @@ class MemoTypeDefinitionController extends Controller
             'is_division_specific' => 'sometimes|boolean',
             'attachments_enabled' => 'sometimes|boolean',
             'cc_on_approval_enabled' => 'sometimes|boolean',
+            'referenced_memos_max' => 'sometimes|integer|min:0|max:10',
             'signature_style' => 'required|string|in:'.$sigStyles,
             'fields_schema' => 'required|array|min:1',
             'fields_schema.*.field' => 'required|string|max:64|regex:/^[a-z][a-z0-9_]*$/',

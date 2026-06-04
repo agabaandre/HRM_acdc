@@ -85,6 +85,11 @@
                     </div>
                 </div>
 
+                @include('other-memos.partials.referenced-memos-fields', [
+                    'maxReferenced' => 0,
+                    'referencedMemos' => [],
+                ])
+
                 <div class="card border mb-4 d-none" id="memo-approvers-card">
                     <div class="card-header bg-light border-bottom py-2">
                         <span class="fw-semibold text-success"><i class="bx bx-git-merge me-1"></i> Approval sequence</span>

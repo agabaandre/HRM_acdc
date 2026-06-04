@@ -30,6 +30,7 @@ class MemoTypeDefinition extends Model
         'is_division_specific',
         'attachments_enabled',
         'cc_on_approval_enabled',
+        'referenced_memos_max',
         'cc_all_staff_heading',
         'cc_all_staff_label',
         'signature_style',
@@ -48,6 +49,7 @@ class MemoTypeDefinition extends Model
             'is_division_specific' => 'boolean',
             'attachments_enabled' => 'boolean',
             'cc_on_approval_enabled' => 'boolean',
+            'referenced_memos_max' => 'integer',
             'sort_order' => 'integer',
         ];
     }
@@ -103,6 +105,7 @@ class MemoTypeDefinition extends Model
             'is_division_specific' => (bool) $this->is_division_specific,
             'attachments_enabled' => (bool) $this->attachments_enabled,
             'cc_on_approval_enabled' => (bool) $this->cc_on_approval_enabled,
+            'referenced_memos_max' => (int) ($this->referenced_memos_max ?? 0),
             'cc_all_staff_heading' => $this->cc_all_staff_heading,
             'cc_all_staff_label' => $this->cc_all_staff_label ?? 'All Africa CDC Staff',
             'signature_style' => $this->signature_style,

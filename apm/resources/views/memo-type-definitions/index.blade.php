@@ -93,6 +93,8 @@
                     <dd class="col-sm-9" id="memo-type-view-attachments"></dd>
                     <dt class="col-sm-3">CC on create</dt>
                     <dd class="col-sm-9" id="memo-type-view-cc"></dd>
+                    <dt class="col-sm-3">Referenced memos</dt>
+                    <dd class="col-sm-9" id="memo-type-view-referenced"></dd>
                     <dt class="col-sm-3">Signature style</dt>
                     <dd class="col-sm-9" id="memo-type-view-sig"></dd>
                     <dt class="col-sm-3">Slug</dt>
@@ -176,6 +178,11 @@
                                 <label class="form-check-label" for="memo-type-form-cc-enabled">Show CC option on memo create</label>
                             </div>
                             <p class="small text-muted mb-0">When on, creators can add CC on the other-memo create form (all staff or specific people). Recipients are chosen per memo, not here.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="memo-type-form-referenced-max">Max referenced approved memos</label>
+                            <input type="number" class="form-control" id="memo-type-form-referenced-max" min="0" max="10" value="0">
+                            <div class="form-text">0 = disabled. Lets creators paste links to approved memos (max 10).</div>
                         </div>
                     </div>
                     <h6 class="mt-4 border-bottom pb-2">Fields <span class="text-danger">*</span></h6>
@@ -530,6 +537,13 @@
                 ? 'Yes — creators can add CC on create'
                 : 'No';
         }
+        var refView = document.getElementById('memo-type-view-referenced');
+        if (refView) {
+            var refMax = parseInt(m.referenced_memos_max, 10) || 0;
+            refView.textContent = refMax > 0
+                ? ('Up to ' + refMax + ' approved memo link(s) on create/edit')
+                : 'Disabled';
+        }
         document.getElementById('memo-type-view-sig').textContent = m.signature_style_label || m.signature_style;
         document.getElementById('memo-type-view-slug').textContent = m.slug;
         var $ftbody = jQuery('#memo-type-view-fields-table tbody');
@@ -579,6 +593,7 @@
             is_division_specific: document.getElementById('memo-type-form-division-specific').checked,
             attachments_enabled: document.getElementById('memo-type-form-attachments').checked,
             cc_on_approval_enabled: document.getElementById('memo-type-form-cc-enabled').checked,
+            referenced_memos_max: parseInt(document.getElementById('memo-type-form-referenced-max').value, 10) || 0,
             fields_schema: fields
         };
         var url = id ? apiItemUrl(id) : listUrl;
@@ -696,6 +711,7 @@
                         document.getElementById('memo-type-form-division-specific').checked = !!m.is_division_specific;
                         document.getElementById('memo-type-form-attachments').checked = !!m.attachments_enabled;
                         document.getElementById('memo-type-form-cc-enabled').checked = !!m.cc_on_approval_enabled;
+                        document.getElementById('memo-type-form-referenced-max').value = parseInt(m.referenced_memos_max, 10) || 0;
                         fillSignatureSelect(jQuery('#memo-type-form-signature'), m.signature_style);
                         var $tb = jQuery('#memo-type-fields-editor tbody');
                         $tb.empty();
