@@ -30,11 +30,7 @@
     @if (session('msg'))
         <div class="alert alert-{{ session('type', 'info') }}">{{ session('msg') }}</div>
     @endif
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-    @endif
+    <div id="other-memo-edit-form-errors" class="alert alert-danger d-none" role="alert"></div>
 
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -217,4 +213,7 @@
     @endif
 })();
 </script>
+@push('scripts')
+<script src="{{ asset('js/apm-other-memo-form-ajax.js') }}?v=1"></script>
+@endpush
 @endsection

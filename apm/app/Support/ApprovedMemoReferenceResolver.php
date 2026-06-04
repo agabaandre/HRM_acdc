@@ -21,33 +21,59 @@ final class ApprovedMemoReferenceResolver
      */
     public function resolveFromUrl(string $url): ?array
     {
+        $diagnosis = $this->diagnoseUrl($url);
+
+        return $diagnosis['ok'] ? $diagnosis['row'] : null;
+    }
+
+    /**
+     * @return array{ok: bool, row?: array{model: string, id: int, url: string, document_number: ?string, title: string, memo_kind: string}, error?: string}
+     */
+    public function diagnoseUrl(string $url): array
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return ['ok' => false, 'error' => 'Link is empty.'];
+        }
+
         $parsed = $this->parsePath($url);
         if ($parsed === null) {
-            return null;
+            return [
+                'ok' => false,
+                'error' => 'Unrecognized link. Paste the full address from your browser when viewing the memo (must include /apm/ and the memo id).',
+            ];
         }
 
         [$modelClass, $id] = $parsed;
         $record = $modelClass::query()->find($id);
         if (! $record instanceof Model) {
-            return null;
+            return ['ok' => false, 'error' => 'No memo found for that link (id '.$id.').'];
         }
 
         if (! $this->isApprovedMemo($record)) {
-            return null;
+            $status = strtolower(trim((string) ($record->overall_status ?? 'unknown')));
+
+            return [
+                'ok' => false,
+                'error' => 'That memo is not approved yet (current status: '.$status.'). Only approved memos can be referenced.',
+            ];
         }
 
-        $showUrl = MemoShowUrl::forMemo($modelClass, $id);
+        $showUrl = $this->showUrlFor($modelClass, $id, $record);
         if ($showUrl === null) {
-            return null;
+            return ['ok' => false, 'error' => 'This memo type cannot be opened from a reference link.'];
         }
 
         return [
-            'model' => $modelClass,
-            'id' => $id,
-            'url' => $showUrl,
-            'document_number' => $this->documentNumberFor($record),
-            'title' => $this->titleFor($record),
-            'memo_kind' => $this->memoKindLabel($modelClass, $record),
+            'ok' => true,
+            'row' => [
+                'model' => $modelClass,
+                'id' => $id,
+                'url' => $showUrl,
+                'document_number' => $this->documentNumberFor($record),
+                'title' => $this->titleFor($record),
+                'memo_kind' => $this->memoKindLabel($modelClass, $record),
+            ],
         ];
     }
 
@@ -83,14 +109,16 @@ final class ApprovedMemoReferenceResolver
         $seen = [];
 
         foreach ($trimmed as $index => $url) {
-            $row = $this->resolveFromUrl($url);
-            if ($row === null) {
+            $diagnosis = $this->diagnoseUrl($url);
+            if (! $diagnosis['ok']) {
                 throw ValidationException::withMessages([
                     'referenced_memo_links' => [
-                        'Link '.($index + 1).': paste a valid URL to an approved memo in this system (other, single, matrix activity, special, non-travel, or change request).',
+                        'Link '.($index + 1).': '.($diagnosis['error'] ?? 'Invalid memo link.'),
                     ],
                 ]);
             }
+
+            $row = $diagnosis['row'];
 
             if ($excludeOtherMemoId !== null
                 && $row['model'] === OtherMemo::class
@@ -118,39 +146,78 @@ final class ApprovedMemoReferenceResolver
      */
     private function parsePath(string $url): ?array
     {
-        $path = $url;
-        if (preg_match('#^https?://#i', $url)) {
-            $parts = parse_url($url);
-            $path = (string) ($parts['path'] ?? '');
-        } elseif (str_contains($url, '/')) {
-            $path = parse_url($url, PHP_URL_PATH) ?: $url;
+        $path = $this->extractPath($url);
+        if ($path === '') {
+            return null;
         }
 
-        $path = '/'.trim(str_replace('\\', '/', $path), '/');
-        if (preg_match('#/(?:staff/)?apm/(.+)$#i', $path, $m)) {
-            $path = '/'.$m[1];
-        }
-
-        if (preg_match('#^/other-memos/(\d+)(?:/|$)#i', $path, $m)) {
+        if (preg_match('#^other-memos/(\d+)#i', $path, $m)) {
             return [OtherMemo::class, (int) $m[1]];
         }
-        if (preg_match('#^/single-memos/(\d+)(?:/|$)#i', $path, $m)) {
+        if (preg_match('#^single-memos/(\d+)#i', $path, $m)) {
             return [Activity::class, (int) $m[1]];
         }
-        if (preg_match('#^/special-memo/(\d+)(?:/|$)#i', $path, $m)) {
+        if (preg_match('#^special-memo/(\d+)#i', $path, $m)) {
             return [SpecialMemo::class, (int) $m[1]];
         }
-        if (preg_match('#^/non-travel/(\d+)(?:/|$)#i', $path, $m)) {
+        if (preg_match('#^non-travel/(\d+)#i', $path, $m)) {
             return [NonTravelMemo::class, (int) $m[1]];
         }
-        if (preg_match('#^/change-requests/(\d+)(?:/|$)#i', $path, $m)) {
+        if (preg_match('#^change-requests/(\d+)#i', $path, $m)) {
             return [ChangeRequest::class, (int) $m[1]];
         }
-        if (preg_match('#^/matrices/(\d+)/activities/(\d+)(?:/|$)#i', $path, $m)) {
+        if (preg_match('#^matrices/(\d+)/activities/(\d+)#i', $path, $m)) {
             return [Activity::class, (int) $m[2]];
         }
 
         return null;
+    }
+
+    private function extractPath(string $url): string
+    {
+        $url = trim(html_entity_decode($url, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($url === '') {
+            return '';
+        }
+
+        if (preg_match('#^https?://#i', $url)) {
+            $parts = parse_url($url);
+            $path = (string) ($parts['path'] ?? '');
+        } elseif (str_starts_with($url, '/')) {
+            $path = parse_url($url, PHP_URL_PATH) ?: $url;
+        } else {
+            $path = $url;
+        }
+
+        $path = str_replace('\\', '/', $path);
+        $path = preg_replace('/\?.*$/', '', $path) ?? $path;
+        $path = preg_replace('/#.*$/', '', $path) ?? $path;
+        $path = trim($path, '/');
+
+        if (preg_match('#(?:^|/)(?:staff/)?apm/(.+)$#i', $path, $m)) {
+            $path = trim($m[1], '/');
+        }
+
+        return strtolower($path) === 'apm' ? '' : trim($path, '/');
+    }
+
+    private function showUrlFor(string $modelClass, int $id, Model $record): ?string
+    {
+        $via = MemoShowUrl::forMemo($modelClass, $id);
+        if ($via !== null) {
+            return $via;
+        }
+
+        return match (class_basename($modelClass)) {
+            'OtherMemo' => route('other-memos.show', $id),
+            'SpecialMemo' => route('special-memo.show', $id),
+            'NonTravelMemo' => route('non-travel.show', $id),
+            'ChangeRequest' => route('change-requests.show', $id),
+            'Activity' => $record instanceof Activity && $record->matrix_id
+                ? route('matrices.activities.show', [$record->matrix_id, $id])
+                : route('activities.single-memos.show', $id),
+            default => null,
+        };
     }
 
     private function isApprovedMemo(Model $record): bool
@@ -158,10 +225,6 @@ final class ApprovedMemoReferenceResolver
         $status = strtolower(trim((string) ($record->overall_status ?? '')));
 
         if ($record instanceof Activity) {
-            if ($record->is_single_memo) {
-                return $status === Activity::STATUS_APPROVED;
-            }
-
             return $status === Activity::STATUS_APPROVED;
         }
 

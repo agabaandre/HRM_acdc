@@ -25,11 +25,12 @@
             @foreach ($linkValues as $i => $linkVal)
                 <div class="mb-2 referenced-memo-link-row">
                     <label class="form-label small text-muted mb-1">Reference {{ $i + 1 }}</label>
-                    <input type="url"
+                    <input type="text"
                         name="referenced_memo_links[]"
                         class="form-control referenced-memo-link-input"
                         value="{{ $linkVal }}"
-                        placeholder="https://…/staff/apm/other-memos/123 or paste from your browser address bar">
+                        autocomplete="off"
+                        placeholder="Paste the memo page URL from your browser (approved memos only)">
                 </div>
             @endforeach
         </div>

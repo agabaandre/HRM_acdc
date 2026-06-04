@@ -56,6 +56,28 @@
         ingestCcSlugMap(map);
     }
 
+    function syncReferencedMaxFromApi(rows) {
+        if (!Array.isArray(rows)) return;
+        var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
+        if (!root) return;
+        var map = {};
+        try {
+            map = JSON.parse(root.getAttribute('data-memo-type-referenced-max-by-slug') || '{}');
+        } catch (e) {}
+        rows.forEach(function (t) {
+            if (!t || !t.slug) return;
+            var n = parseInt(t.referenced_memos_max, 10);
+            if (isNaN(n)) n = 0;
+            n = Math.max(0, Math.min(10, n));
+            map[t.slug] = n;
+            map[String(t.slug).toLowerCase().trim()] = n;
+        });
+        root.setAttribute('data-memo-type-referenced-max-by-slug', JSON.stringify(map));
+        if (typeof window.apmToggleOtherMemoReferencedCard === 'function') {
+            setTimeout(window.apmToggleOtherMemoReferencedCard, 0);
+        }
+    }
+
     function isMemoTypeCcEnabled(typeDef) {
         if (!typeDef) return false;
         var v = typeDef.cc_on_approval_enabled;
@@ -252,106 +274,36 @@
         if (t) renderFields(t.fields_schema || []);
         applyUploadTypeAttachmentRules(slug);
         toggleOtherMemoCcCard(t, slug);
-        applyReferencedMemosFromType(t);
+        if (typeof window.apmToggleOtherMemoReferencedCard === 'function') {
+            window.apmToggleOtherMemoReferencedCard();
+        } else {
+            applyReferencedMemosFromType(t);
+        }
     }
 
     function applyReferencedMemosFromType(typeDef) {
+        if (typeof window.apmToggleOtherMemoReferencedCard === 'function') {
+            window.apmToggleOtherMemoReferencedCard();
+            return;
+        }
         var card = document.getElementById('memo-referenced-memos-card');
         if (!card) return;
         var max = typeDef ? (parseInt(typeDef.referenced_memos_max, 10) || 0) : 0;
         max = Math.max(0, Math.min(10, max));
         card.setAttribute('data-max-referenced', String(max));
         card.classList.toggle('d-none', max < 1);
-        if (max >= 1) {
-            var container = document.getElementById('referenced-memo-links-container');
-            if (container && !container.querySelector('.referenced-memo-link-row')) {
-                container.innerHTML = '';
-                appendReferencedMemoLinkRow('');
-            }
-            initReferencedMemosUi(max);
+        if (max >= 1 && typeof window.apmInitReferencedMemosUi === 'function') {
+            window.apmInitReferencedMemosUi(max);
         }
-    }
-
-    function appendReferencedMemoLinkRow(value) {
-        var container = document.getElementById('referenced-memo-links-container');
-        if (!container) return;
-        var n = container.querySelectorAll('.referenced-memo-link-row').length + 1;
-        var wrap = document.createElement('div');
-        wrap.className = 'mb-2 referenced-memo-link-row';
-        var lab = document.createElement('label');
-        lab.className = 'form-label small text-muted mb-1';
-        lab.textContent = 'Reference ' + n;
-        var inp = document.createElement('input');
-        inp.type = 'url';
-        inp.name = 'referenced_memo_links[]';
-        inp.className = 'form-control referenced-memo-link-input';
-        inp.placeholder = 'Paste memo URL from your browser (approved memos only)';
-        inp.value = value || '';
-        wrap.appendChild(lab);
-        wrap.appendChild(inp);
-        container.appendChild(wrap);
-    }
-
-    function renumberReferencedMemoLabels() {
-        var rows = document.querySelectorAll('#referenced-memo-links-container .referenced-memo-link-row');
-        rows.forEach(function (row, idx) {
-            var lab = row.querySelector('label');
-            if (lab) lab.textContent = 'Reference ' + (idx + 1);
-        });
-    }
-
-    function syncReferencedMemoRowButtons(max) {
-        var rows = document.querySelectorAll('.referenced-memo-link-row');
-        var addBtn = document.getElementById('referenced-memo-add-link');
-        var remBtn = document.getElementById('referenced-memo-remove-link');
-        if (addBtn) addBtn.disabled = rows.length >= max;
-        if (remBtn) remBtn.disabled = rows.length <= 1;
-    }
-
-    function initReferencedMemosUi(max) {
-        max = Math.max(0, Math.min(10, parseInt(max, 10) || 0));
-        var label = document.getElementById('referenced-memos-max-label');
-        if (label) label.textContent = String(max);
-        var container = document.getElementById('referenced-memo-links-container');
-        if (container && container.querySelectorAll('.referenced-memo-link-row').length === 0 && max > 0) {
-            appendReferencedMemoLinkRow('');
-        }
-        renumberReferencedMemoLabels();
-        syncReferencedMemoRowButtons(max);
-    }
-
-    function bindReferencedMemoDelegatesOnce() {
-        if (window.__apmReferencedMemoDelegatesBound) return;
-        window.__apmReferencedMemoDelegatesBound = true;
-        document.addEventListener('click', function (e) {
-            if (!otherMemoFormPagePresent()) return;
-            var card = document.getElementById('memo-referenced-memos-card');
-            if (!card || card.classList.contains('d-none')) return;
-            var max = parseInt(card.getAttribute('data-max-referenced') || '0', 10);
-            if (e.target.closest('#referenced-memo-add-link')) {
-                e.preventDefault();
-                var rows = document.querySelectorAll('.referenced-memo-link-row');
-                if (rows.length >= max) return;
-                appendReferencedMemoLinkRow('');
-                renumberReferencedMemoLabels();
-                syncReferencedMemoRowButtons(max);
-            }
-            if (e.target.closest('#referenced-memo-remove-link')) {
-                e.preventDefault();
-                var all = document.querySelectorAll('.referenced-memo-link-row');
-                if (all.length <= 1) return;
-                all[all.length - 1].remove();
-                renumberReferencedMemoLabels();
-                syncReferencedMemoRowButtons(max);
-            }
-        });
     }
 
     function bootOtherMemoReferencedOnEdit() {
         if (!document.querySelector('[data-apm-livewire-page="other-memos-edit"]')) return;
         var card = document.getElementById('memo-referenced-memos-card');
         if (!card || card.classList.contains('d-none')) return;
-        initReferencedMemosUi(parseInt(card.getAttribute('data-max-referenced') || '0', 10));
+        if (typeof window.apmInitReferencedMemosUi === 'function') {
+            window.apmInitReferencedMemosUi(parseInt(card.getAttribute('data-max-referenced') || '0', 10));
+        }
     }
 
     function onMemoTypeChange() {
@@ -676,7 +628,6 @@
                     bindOtherMemoCcDelegatesOnce();
                     bootOtherMemoCreateIfPresent();
                     bootOtherMemoCcOnEdit();
-                    bindReferencedMemoDelegatesOnce();
                     bootOtherMemoReferencedOnEdit();
                 }, 0);
             });
@@ -732,6 +683,7 @@
                 }
                 sel.innerHTML = '<option value=""></option>';
                 syncCcEnabledSlugsFromApi(json.data);
+                syncReferencedMaxFromApi(json.data);
                 json.data.forEach(function (t) {
                     if (!t || !t.slug) return;
                     storeMemoType(t);
@@ -740,6 +692,10 @@
                     o.textContent = t.name || t.slug;
                     if (isMemoTypeCcEnabled(t)) {
                         o.setAttribute('data-cc-enabled', '1');
+                    }
+                    var refMax = parseInt(t.referenced_memos_max, 10);
+                    if (!isNaN(refMax) && refMax > 0) {
+                        o.setAttribute('data-referenced-max', String(Math.min(10, refMax)));
                     }
                     sel.appendChild(o);
                 });
@@ -750,6 +706,9 @@
                 applyMemoTypeSelection(getSelectedMemoTypeSlug(), resolveType(getSelectedMemoTypeSlug()));
                 if (typeof window.apmToggleOtherMemoCcCard === 'function') {
                     setTimeout(window.apmToggleOtherMemoCcCard, 0);
+                }
+                if (typeof window.apmToggleOtherMemoReferencedCard === 'function') {
+                    setTimeout(window.apmToggleOtherMemoReferencedCard, 0);
                 }
                 bindSummernoteSubmitOnce();
                 bindAttachmentDelegatesOnce();

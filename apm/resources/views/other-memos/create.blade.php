@@ -29,12 +29,9 @@
 <div class="other-memo-form-page" data-apm-livewire-page="other-memos-create"
     data-memo-types-api="{{ route('memo-type-definitions.api.index') }}?active_only=1"
     data-cc-enabled-slugs='@json($ccEnabledTypeSlugs ?? [])'
-    data-memo-type-cc-by-slug='@json($memoTypeCcBySlug ?? [])'>
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-    @endif
+    data-memo-type-cc-by-slug='@json($memoTypeCcBySlug ?? [])'
+    data-memo-type-referenced-max-by-slug='@json($memoTypeReferencedMaxBySlug ?? [])'>
+    <div id="other-memo-create-form-errors" class="alert alert-danger d-none" role="alert"></div>
 
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white border-bottom">
@@ -121,5 +118,7 @@
 {{-- Memo type loader + dynamic fields: public/js/apm-other-memo-create.js (DOMContentLoaded + livewire:navigated). --}}
 @push('scripts')
 <script src="{{ asset('js/apm-other-memo-cc.js') }}?v=1"></script>
+<script src="{{ asset('js/apm-other-memo-referenced.js') }}?v=2"></script>
+<script src="{{ asset('js/apm-other-memo-form-ajax.js') }}?v=1"></script>
 @endpush
 @endsection
