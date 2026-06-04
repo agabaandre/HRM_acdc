@@ -328,18 +328,18 @@
                                 <table class="table table-sm table-bordered">
                                     <thead>
                                         <tr>
-                                            <th>#</th>
-                                            <th>Type</th>
-                                            <th>File name</th>
-                                            <th>Size</th>
-                                            <th>Uploaded</th>
-                                            <th>Actions</th>
+                                            <th style="width: 3rem;">#</th>
+                                            <th>File</th>
+                                            <th style="width: 6rem;">Size</th>
+                                            <th style="width: 9rem;">Uploaded</th>
+                                            <th style="width: 11rem;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach ($memoAttachmentsShow as $index => $attachment)
                                             @php
                                                 $originalName = $attachment['original_name'] ?? ($attachment['filename'] ?? ($attachment['name'] ?? 'Unknown'));
+                                                $attachmentType = trim((string) ($attachment['type'] ?? 'Document'));
                                                 $filePath = $attachment['path'] ?? ($attachment['file_path'] ?? '');
                                                 $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
                                                 $previewUrl = $filePath ? $otherMemoAttachmentUrl((int) $index) : '#';
@@ -348,8 +348,12 @@
                                             @endphp
                                             <tr>
                                                 <td>{{ $index + 1 }}</td>
-                                                <td>{{ $attachment['type'] ?? 'Document' }}</td>
-                                                <td>{{ $originalName }}</td>
+                                                <td>
+                                                    <div class="text-break fw-semibold">{{ $originalName }}</div>
+                                                    @if ($attachmentType !== '')
+                                                        <small class="text-muted">{{ $attachmentType }}</small>
+                                                    @endif
+                                                </td>
                                                 <td>{{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'N/A' }}</td>
                                                 <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
                                                 <td>
