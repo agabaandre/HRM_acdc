@@ -37,29 +37,47 @@ class OtherMemoController extends Controller
         $year = $this->resolveOtherMemoYearString($request);
 
         if (\App\Support\ApmListFragment::wants($request)) {
-            $tab = $request->get('tab', '');
-            $yearApplied = $this->resolveOtherMemoYearString($request);
+            try {
+                $tab = $request->get('tab', '');
+                $yearApplied = $this->resolveOtherMemoYearString($request);
 
-            [$mySubmittedMemos, $myDivisionMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
+                [$mySubmittedMemos, $myDivisionMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
 
-            $countMySubmitted = $mySubmittedMemos->total();
-            $countMyDivision = $myDivisionMemos->total();
-            $countAllMemos = $allMemos instanceof LengthAwarePaginator ? $allMemos->total() : $allMemos->count();
+                $countMySubmitted = $mySubmittedMemos->total();
+                $countMyDivision = $myDivisionMemos->total();
+                $countAllMemos = $allMemos instanceof LengthAwarePaginator ? $allMemos->total() : $allMemos->count();
 
-            $html = match ($tab) {
-                'mySubmitted' => view('other-memos.partials.my-submitted-tab', compact('mySubmittedMemos'))->render(),
-                'myDivision' => view('other-memos.partials.my-division-tab', compact('myDivisionMemos'))->render(),
-                'allMemos' => view('other-memos.partials.all-memos-tab', compact('allMemos'))->render(),
-                default => '',
-            };
+                $html = match ($tab) {
+                    'mySubmitted' => view('other-memos.partials.my-submitted-tab', compact('mySubmittedMemos'))->render(),
+                    'myDivision' => view('other-memos.partials.my-division-tab', compact('myDivisionMemos'))->render(),
+                    'allMemos' => view('other-memos.partials.all-memos-tab', compact('allMemos'))->render(),
+                    default => '',
+                };
 
-            return \App\Support\ApmListFragment::json([
-                'html' => $html,
-                'year_applied' => $yearApplied,
-                'count_my_submitted' => $countMySubmitted,
-                'count_my_division' => $countMyDivision,
-                'count_all_memos' => $countAllMemos,
-            ]);
+                return \App\Support\ApmListFragment::json([
+                    'html' => $html,
+                    'year_applied' => $yearApplied,
+                    'count_my_submitted' => $countMySubmitted,
+                    'count_my_division' => $countMyDivision,
+                    'count_all_memos' => $countAllMemos,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Other memos index fragment failed', [
+                    'tab' => $request->get('tab'),
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                return \App\Support\ApmListFragment::json([
+                    'error' => config('app.debug')
+                        ? $e->getMessage()
+                        : 'Error loading data. Please try again.',
+                    'html' => '',
+                    'count_my_submitted' => 0,
+                    'count_my_division' => 0,
+                    'count_all_memos' => 0,
+                ]);
+            }
         }
 
         [$mySubmittedMemos, $myDivisionMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
