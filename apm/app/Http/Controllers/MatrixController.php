@@ -1681,7 +1681,27 @@ class MatrixController extends Controller
                 ->with('error', 'Only draft, returned, or on-hold matrices can be deleted.');
         }
 
-        $matrix->delete();
+        $activityCount = $matrix->activities()->count();
+        if ($activityCount > 0) {
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('error', 'This matrix still has '.$activityCount.' activity(ies). Delete each activity from the matrix page first.');
+        }
+
+        try {
+            ApprovalTrail::query()
+                ->where('model_type', Matrix::class)
+                ->where('model_id', $matrix->id)
+                ->delete();
+
+            $matrix->delete();
+        } catch (\Throwable $e) {
+            Log::error('Error deleting matrix', ['matrix_id' => $matrix->id, 'exception' => $e]);
+
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('error', 'Could not delete the matrix. Remove linked activities and try again.');
+        }
 
         return redirect()
             ->route('matrices.index')

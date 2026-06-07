@@ -263,7 +263,7 @@
     </div>
 @endif
 
-<div class="matrix-show-page" id="matrix-show-root" data-matrix-id="{{ $matrix->id }}" data-activities-url="{{ route('matrices.activities-for-approver', $matrix) }}" data-single-memos-url="{{ route('matrices.single-memos-for-approver', $matrix) }}" data-budgets-url="{{ route('matrices.budgets', $matrix) }}">
+<div class="matrix-show-page" id="matrix-show-root" data-matrix-id="{{ $matrix->id }}" data-activities-url="{{ route('matrices.activities-for-approver', $matrix) }}" data-single-memos-url="{{ route('matrices.single-memos-for-approver', $matrix) }}" data-budgets-url="{{ route('matrices.budgets', $matrix) }}" data-activity-destroy-base="{{ url('matrices/'.$matrix->id.'/activities') }}">
 @include('matrices.partials.matrix-metadata')
    
 <div class="col-md-12">
@@ -928,10 +928,10 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bx bx-x me-1"></i> Cancel
                 </button>
-                <form id="deleteActivityForm" method="POST" style="display: inline;">
+                <form id="deleteActivityForm" method="POST" action="#" style="display: inline;" data-requires-activity-id="1">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="btn btn-danger" id="deleteActivitySubmitBtn" disabled>
                         <i class="bx bx-trash me-1"></i> Yes, Delete Activity
                     </button>
                 </form>
@@ -2515,43 +2515,58 @@ function populateActivitiesTable(tableId, activities) {
     tbody.innerHTML = html;
 }
 
-// Delete Activity Modal Function
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteActivityModal = document.getElementById('deleteActivityModal');
-    if (deleteActivityModal) {
-        deleteActivityModal.addEventListener('show.bs.modal', function (event) {
+// Delete activity / single-memo modals — delegated so Livewire navigate cannot leave a blank form action
+// (blank action would DELETE the matrix URL and hit MatrixController@destroy).
+if (!window._apmMatrixDeleteModalsBound) {
+    window._apmMatrixDeleteModalsBound = true;
+
+    document.addEventListener('show.bs.modal', function (event) {
+        if (event.target.id === 'deleteActivityModal') {
             const button = event.relatedTarget;
-            const activityId = button.getAttribute('data-activity-id');
-            const activityTitle = button.getAttribute('data-activity-title');
-            
-            // Update modal content
-            document.getElementById('deleteActivityTitle').textContent = activityTitle;
-            
-            // Update form action
+            const activityId = button ? String(button.getAttribute('data-activity-id') || '').trim() : '';
+            const activityTitle = button ? (button.getAttribute('data-activity-title') || '-') : '-';
+            const titleEl = document.getElementById('deleteActivityTitle');
             const form = document.getElementById('deleteActivityForm');
-            form.action = `{{ url('matrices/' . $matrix->id . '/activities') }}/${activityId}`;
-        });
-    }
+            const submitBtn = document.getElementById('deleteActivitySubmitBtn');
+            const root = document.getElementById('matrix-show-root');
+            const base = root ? String(root.getAttribute('data-activity-destroy-base') || '').replace(/\/$/, '') : '';
 
-    // Delete Single Memo Modal Function
-    const deleteSingleMemoModal = document.getElementById('deleteSingleMemoModal');
-    if (deleteSingleMemoModal) {
-        deleteSingleMemoModal.addEventListener('show.bs.modal', function (event) {
+            if (titleEl) titleEl.textContent = activityTitle;
+            if (form && base && activityId && /^\d+$/.test(activityId)) {
+                form.action = base + '/' + activityId;
+                if (submitBtn) submitBtn.disabled = false;
+            } else if (form) {
+                form.action = '#';
+                if (submitBtn) submitBtn.disabled = true;
+            }
+            return;
+        }
+
+        if (event.target.id === 'deleteSingleMemoModal') {
             const button = event.relatedTarget;
-            const memoId = button.getAttribute('data-memo-id');
-            const memoTitle = button.getAttribute('data-memo-title');
-            
-            // Update modal content
-            document.getElementById('deleteSingleMemoTitle').textContent = memoTitle;
-            
-            // Update form action
+            const memoId = button ? String(button.getAttribute('data-memo-id') || '').trim() : '';
+            const memoTitle = button ? (button.getAttribute('data-memo-title') || '-') : '-';
+            const titleEl = document.getElementById('deleteSingleMemoTitle');
             const form = document.getElementById('deleteSingleMemoForm');
-            form.action = `{{ url('single-memos') }}/${memoId}`;
-        });
-    }
+            if (titleEl) titleEl.textContent = memoTitle;
+            if (form && memoId && /^\d+$/.test(memoId)) {
+                form.action = @json(url('single-memos')) + '/' + memoId;
+            }
+        }
+    });
 
-    // Submit matrix / resubmit handlers are delegated below (outside DOMContentLoaded) so they work after Livewire navigation
-});
+    document.addEventListener('submit', function (event) {
+        const form = event.target;
+        if (!form || form.id !== 'deleteActivityForm') return;
+        const action = String(form.action || '');
+        if (action === '#' || action.endsWith('/activities') || !/\/activities\/\d+/.test(action)) {
+            event.preventDefault();
+            if (typeof show_notification === 'function') {
+                show_notification('Could not determine which activity to delete. Close the dialog and try again.', 'error');
+            }
+        }
+    }, true);
+}
 </script>
 
 <style>
