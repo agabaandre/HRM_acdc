@@ -1205,8 +1205,8 @@ class ActivityController extends Controller
         $currentUserId = user_session('staff_id');
         $canDelete = false;
 
-        // Allow deletion if matrix is in draft or returned status
-        if (in_array($matrix->overall_status, ['draft', 'returned'])) {
+        // Allow deletion if matrix is in draft, returned, or on-hold status
+        if (in_array($matrix->overall_status, ['draft', 'returned', 'onhold'], true)) {
             // Allow if user is the responsible person or the creator
             if ($activity->responsible_person_id == $currentUserId || $activity->staff_id == $currentUserId) {
                 $canDelete = true;
