@@ -2,7 +2,7 @@ FROM php:8.3-apache-bookworm
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-LABEL org.opencontainers.image.description="Africa CDC staff portal (CI) + APM (Laravel)"
+LABEL org.opencontainers.image.description="Africa CDC CBP — Staff CI + APM + Finance + Helpdesk + staff-portal"
 
 # PDF annex (APM memo print): Ghostscript + Poppler for scanned PDFs; LibreOffice for Word attachments.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -56,7 +56,11 @@ RUN a2dissite 000-default.conf 2>/dev/null || true \
 WORKDIR /var/www/html
 
 COPY docker/entrypoint.sh /usr/local/bin/staff-entrypoint.sh
-RUN chmod +x /usr/local/bin/staff-entrypoint.sh
+COPY docker/sync-module-env.sh /usr/local/bin/sync-module-env.sh
+COPY docker/migrate-all.sh /usr/local/bin/migrate-all.sh
+RUN chmod +x /usr/local/bin/staff-entrypoint.sh \
+    /usr/local/bin/sync-module-env.sh \
+    /usr/local/bin/migrate-all.sh
 
 EXPOSE 80
 
