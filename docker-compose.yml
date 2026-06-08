@@ -1,16 +1,9 @@
-# Staff portal (CodeIgniter) + APM (Laravel) — single web entrypoint.
-#
-# By default the app container talks to MySQL on the PHYSICAL HOST (or any host
-# you set in .env as DB_HOST). No database container is started unless you use
-# the optional bundled-mysql profile.
+# Africa CDC CBP — unified Docker. All modules share the `staff` MySQL database.
 #
 #   cp docker/compose.env.example .env
-#   docker compose up -d --build
+#   ./docker/bootstrap.sh
 #
-# Optional: run a MySQL 8 container as well (set DB_HOST=mysql in .env for the web app):
-#   docker compose --profile bundled-mysql up -d --build
-#
-# Open: http://localhost:8080/ (staff) and http://localhost:8080/apm/
+# Optional bundled MySQL:  ./docker/bootstrap.sh --bundled-mysql
 
 services:
   web:
@@ -21,16 +14,26 @@ services:
       - "${APP_PORT:-8080}:80"
     volumes:
       - .:/var/www/html
-    # Lets PHP resolve "host.docker.internal" on Linux (Docker 20.10+).
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
     environment:
+      APP_ENV: ${APP_ENV:-local}
       DB_HOST: ${DB_HOST:-host.docker.internal}
       DB_PORT: ${DB_PORT:-3306}
-      DB_NAME: ${DB_NAME:-staff_ci}
-      DB_USER: ${DB_USER:-staff}
-      DB_PASS: ${DB_PASS:-staff}
-      APM_DB_NAME: ${APM_DB_NAME:-apm_local}
+      DB_NAME: ${DB_NAME:-staff}
+      DB_USER: ${DB_USER:-root}
+      DB_PASS: ${DB_PASS:-}
+      APM_DB_NAME: ${APM_DB_NAME:-staff}
+      DOCKER_BASE_URL: ${DOCKER_BASE_URL:-http://localhost:${APP_PORT:-8080}}
+      JWT_SECRET: ${JWT_SECRET:-}
+      AUTO_SYNC_MODULE_ENV: ${AUTO_SYNC_MODULE_ENV:-1}
+      STAFF_LEGACY_SCHEMA_SKIP: ${STAFF_LEGACY_SCHEMA_SKIP:-true}
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
 
   mysql:
     profiles:
@@ -44,9 +47,10 @@ services:
       - "${MYSQL_PUBLISH_PORT:-33060}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-staff_ci}
-      MYSQL_USER: ${MYSQL_USER:-staff}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-staff}
+      MYSQL_DATABASE: ${DB_NAME:-staff}
+      MYSQL_USER: ${DB_USER:-staff}
+      MYSQL_PASSWORD: ${DB_PASS:-staff}
+      STAFF_DB_NAME: ${DB_NAME:-staff}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
@@ -54,8 +58,15 @@ services:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 15
-      start_period: 35s
+      retries: 20
+      start_period: 40s
+
+  redis:
+    profiles:
+      - redis
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PUBLISH_PORT:-6379}:6379"
 
 volumes:
   mysql_data:
