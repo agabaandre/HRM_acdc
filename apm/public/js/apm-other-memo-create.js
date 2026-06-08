@@ -162,6 +162,79 @@
         types[String(t.slug).toLowerCase()] = t;
     }
 
+    function readEmbeddedMemoTypes() {
+        var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
+        if (!root) return null;
+        var raw = root.getAttribute('data-memo-types-embedded');
+        if (!raw) return null;
+        try {
+            var parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function populateMemoTypeSelect(rows, sel) {
+        if (!sel || !Array.isArray(rows)) return false;
+
+        var previousSlug = getSelectedMemoTypeSlug();
+        types = {};
+
+        if (typeof jQuery !== 'undefined') {
+            var $s = jQuery(sel);
+            if ($s.hasClass('select2-hidden-accessible')) {
+                try { $s.select2('destroy'); } catch (e) {}
+            }
+        }
+
+        sel.innerHTML = '<option value=""></option>';
+        syncCcEnabledSlugsFromApi(rows);
+        syncReferencedMaxFromApi(rows);
+        rows.forEach(function (t) {
+            if (!t || !t.slug) return;
+            storeMemoType(t);
+            var o = document.createElement('option');
+            o.value = t.slug;
+            o.textContent = t.name || t.slug;
+            if (isMemoTypeCcEnabled(t)) {
+                o.setAttribute('data-cc-enabled', '1');
+            }
+            var refMax = parseInt(t.referenced_memos_max, 10);
+            if (!isNaN(refMax) && refMax > 0) {
+                o.setAttribute('data-referenced-max', String(Math.min(10, refMax)));
+            }
+            sel.appendChild(o);
+        });
+
+        if (previousSlug && types[previousSlug]) {
+            sel.value = previousSlug;
+        }
+
+        return rows.length > 0;
+    }
+
+    function finishMemoTypeBoot() {
+        scheduleMemoTypeSelect2Init();
+        applyMemoTypeSelection(getSelectedMemoTypeSlug(), resolveType(getSelectedMemoTypeSlug()));
+        if (typeof window.apmToggleOtherMemoCcCard === 'function') {
+            setTimeout(window.apmToggleOtherMemoCcCard, 0);
+        }
+        if (typeof window.apmToggleOtherMemoReferencedCard === 'function') {
+            setTimeout(window.apmToggleOtherMemoReferencedCard, 0);
+        }
+        bindSummernoteSubmitOnce();
+        bindAttachmentDelegatesOnce();
+    }
+
+    function hydrateMemoTypesFromEmbedded() {
+        var rows = readEmbeddedMemoTypes();
+        if (!rows || !rows.length) return false;
+        var sel = document.getElementById('memo_type_slug');
+        if (!sel || !document.body.contains(sel)) return false;
+        return populateMemoTypeSelect(rows, sel);
+    }
+
     function renderFields(schema) {
         var host = document.getElementById('memo-dynamic-fields');
         if (!host) return;
@@ -634,17 +707,9 @@
         });
     }
 
-    function bootOtherMemoCreateIfPresent() {
-        if (!otherMemoCreatePagePresent()) return;
-        loadCcFlagsFromDom();
-        if (typeof jQuery === 'undefined') return;
-
-        var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
-        var sel = document.getElementById('memo_type_slug');
-        if (!root || !sel) return;
-
+    function fetchMemoTypesFromApi(root, sel) {
         var apiList = getApiListUrl();
-        if (!apiList) return;
+        if (!apiList || !root || !sel) return;
 
         if (root._apmOtherMemoCreateAbort) {
             root._apmOtherMemoCreateAbort.abort();
@@ -653,12 +718,9 @@
         root._apmOtherMemoCreateAbort = ctrl;
 
         if (root.dataset.apmCreateFetchPending === '1') {
-            scheduleMemoTypeSelect2Init();
             return;
         }
         root.dataset.apmCreateFetchPending = '1';
-
-        jQuery('#other-memo-attachment-container').empty();
 
         fetch(apiList, {
             signal: ctrl.signal,
@@ -674,44 +736,8 @@
                     throw new Error('Invalid memo types response');
                 }
                 if (!document.body.contains(sel)) return;
-
-                var previousSlug = getSelectedMemoTypeSlug();
-                types = {};
-                var $s = jQuery(sel);
-                if ($s.hasClass('select2-hidden-accessible')) {
-                    try { $s.select2('destroy'); } catch (e) {}
-                }
-                sel.innerHTML = '<option value=""></option>';
-                syncCcEnabledSlugsFromApi(json.data);
-                syncReferencedMaxFromApi(json.data);
-                json.data.forEach(function (t) {
-                    if (!t || !t.slug) return;
-                    storeMemoType(t);
-                    var o = document.createElement('option');
-                    o.value = t.slug;
-                    o.textContent = t.name || t.slug;
-                    if (isMemoTypeCcEnabled(t)) {
-                        o.setAttribute('data-cc-enabled', '1');
-                    }
-                    var refMax = parseInt(t.referenced_memos_max, 10);
-                    if (!isNaN(refMax) && refMax > 0) {
-                        o.setAttribute('data-referenced-max', String(Math.min(10, refMax)));
-                    }
-                    sel.appendChild(o);
-                });
-                if (previousSlug && types[previousSlug]) {
-                    sel.value = previousSlug;
-                }
-                scheduleMemoTypeSelect2Init();
-                applyMemoTypeSelection(getSelectedMemoTypeSlug(), resolveType(getSelectedMemoTypeSlug()));
-                if (typeof window.apmToggleOtherMemoCcCard === 'function') {
-                    setTimeout(window.apmToggleOtherMemoCcCard, 0);
-                }
-                if (typeof window.apmToggleOtherMemoReferencedCard === 'function') {
-                    setTimeout(window.apmToggleOtherMemoReferencedCard, 0);
-                }
-                bindSummernoteSubmitOnce();
-                bindAttachmentDelegatesOnce();
+                populateMemoTypeSelect(json.data, sel);
+                finishMemoTypeBoot();
             })
             .catch(function (err) {
                 if (err && err.name === 'AbortError') return;
@@ -725,10 +751,53 @@
             });
     }
 
+    function bootOtherMemoCreateIfPresent() {
+        if (!otherMemoCreatePagePresent()) return;
+        loadCcFlagsFromDom();
+        if (typeof jQuery === 'undefined') return;
+
+        var root = document.querySelector('[data-apm-livewire-page="other-memos-create"]');
+        var sel = document.getElementById('memo_type_slug');
+        if (!root || !sel) return;
+
+        delete root.dataset.apmCreateFetchPending;
+        jQuery('#other-memo-attachment-container').empty();
+
+        if (hydrateMemoTypesFromEmbedded()) {
+            finishMemoTypeBoot();
+            return;
+        }
+
+        if (sel.options.length > 1) {
+            var rows = [];
+            for (var i = 0; i < sel.options.length; i++) {
+                var opt = sel.options[i];
+                if (!opt.value) continue;
+                rows.push({
+                    slug: opt.value,
+                    name: opt.textContent || opt.value,
+                    cc_on_approval_enabled: opt.getAttribute('data-cc-enabled') === '1',
+                    referenced_memos_max: parseInt(opt.getAttribute('data-referenced-max') || '0', 10) || 0,
+                    fields_schema: [],
+                    attachments_enabled: false
+                });
+            }
+            if (populateMemoTypeSelect(rows, sel)) {
+                finishMemoTypeBoot();
+                fetchMemoTypesFromApi(root, sel);
+                return;
+            }
+        }
+
+        fetchMemoTypesFromApi(root, sel);
+    }
+
     window.apmToggleOtherMemoCcCard = function () {
         loadCcFlagsFromDom();
         toggleOtherMemoCcCard(null, slugFromMemoTypeSelect());
     };
+
+    window.apmBootOtherMemoCreatePage = scheduleBootOtherMemoCreate;
 
     document.addEventListener('DOMContentLoaded', scheduleBootOtherMemoCreate);
     document.addEventListener('livewire:navigated', scheduleBootOtherMemoCreate);

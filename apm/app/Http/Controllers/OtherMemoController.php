@@ -1135,7 +1135,7 @@ class OtherMemoController extends Controller
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['slug', 'name', 'cc_on_approval_enabled', 'referenced_memos_max']);
+            ->get();
 
         $ccEnabledTypes = $activeMemoTypes->where('cc_on_approval_enabled', true);
 
@@ -1150,6 +1150,10 @@ class OtherMemoController extends Controller
             'memoTypeReferencedMaxBySlug' => $activeMemoTypes->mapWithKeys(
                 fn (MemoTypeDefinition $m) => [$m->slug => max(0, min(10, (int) ($m->referenced_memos_max ?? 0)))]
             )->all(),
+            'memoTypesForCreate' => $activeMemoTypes
+                ->map(fn (MemoTypeDefinition $m) => $m->toApiArray())
+                ->values()
+                ->all(),
         ];
     }
 

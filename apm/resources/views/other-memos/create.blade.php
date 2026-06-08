@@ -26,8 +26,13 @@
 
 @section('content')
 {{-- Page markers + scripts below live inside #apm-content-area so wire:navigate executes them (Livewire docs). --}}
+@php
+    $memoTypesForCreate = $memoTypesForCreate ?? [];
+    $selectedMemoTypeSlug = old('memo_type_slug', '');
+@endphp
 <div class="other-memo-form-page" data-apm-livewire-page="other-memos-create"
     data-memo-types-api="{{ route('memo-type-definitions.api.index') }}?active_only=1"
+    data-memo-types-embedded='@json($memoTypesForCreate)'
     data-cc-enabled-slugs='@json($ccEnabledTypeSlugs ?? [])'
     data-memo-type-cc-by-slug='@json($memoTypeCcBySlug ?? [])'
     data-memo-type-referenced-max-by-slug='@json($memoTypeReferencedMaxBySlug ?? [])'>
@@ -54,7 +59,14 @@
                             </label>
                 <select name="memo_type_slug" id="memo_type_slug" class="form-select other-memo-type-select w-100 border-success" required
                     data-placeholder="Select memo type" style="width: 100%;">
-                                <option value="">— Load types —</option>
+                                <option value=""></option>
+                                @foreach ($memoTypesForCreate as $type)
+                                    <option value="{{ $type['slug'] }}"
+                                        @selected($selectedMemoTypeSlug === $type['slug'])
+                                        @if (! empty($type['cc_on_approval_enabled'])) data-cc-enabled="1" @endif
+                                        @if (($type['referenced_memos_max'] ?? 0) > 0) data-referenced-max="{{ min(10, (int) $type['referenced_memos_max']) }}" @endif
+                                    >{{ $type['name'] }}</option>
+                                @endforeach
                             </select>
                             <p class="small text-muted mt-2 mb-0">Choose a catalogue entry from Settings → Other memo types. Fields and approvers appear after selection.</p>
                         </div>
@@ -115,7 +127,16 @@
         </div>
     </div>
 </div>
-{{-- Memo type loader + dynamic fields: public/js/apm-other-memo-create.js (DOMContentLoaded + livewire:navigated). --}}
+<script>
+(function () {
+    function boot() {
+        if (typeof window.apmBootOtherMemoCreatePage === 'function') {
+            window.apmBootOtherMemoCreatePage();
+        }
+    }
+    boot();
+})();
+</script>
 @push('scripts')
 <script src="{{ asset('js/apm-other-memo-cc.js') }}?v=1"></script>
 <script src="{{ asset('js/apm-other-memo-referenced.js') }}?v=2"></script>
