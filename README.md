@@ -114,19 +114,19 @@ The platform consists of four integrated modules working seamlessly together:
 ### 👨‍💻 For Developers
 
 <details>
-<summary><b>Docker (full CBP stack)</b></summary>
+<summary><b>Docker (Staff + APM)</b></summary>
 
 - Full guide: [docker/README.md](./docker/README.md)
-- One container serves **Staff CI**, **APM**, **Finance**, **Helpdesk**, and **staff-portal** on port **8080**.
-- **Default:** connects to **MySQL on your host** (`DB_HOST=host.docker.internal`). Optional bundled MySQL: `./docker/bootstrap.sh --bundled-mysql`
-- First-time setup (env sync, composer, migrations): `./docker/bootstrap.sh`
+- Requires Docker Desktop or Docker Engine running (fix “Cannot connect to the Docker daemon” by starting Docker).
+- By default the stack uses **MySQL on the physical host**: set `DB_HOST=host.docker.internal` (and matching DB names/users) in root `.env` and `apm/.env`.
+- The `web` image includes **Ghostscript**, **Poppler**, and **LibreOffice** for APM PDF annex embedding (scanned PDFs and Word attachments). Rebuild after updates: `docker compose up -d --build`.
 
 ```bash
 cp docker/compose.env.example .env
-./docker/bootstrap.sh
+docker compose up -d --build
 ```
 
-- Staff: `http://localhost:8080/` · APM: `http://localhost:8080/apm/` · Finance: `http://localhost:8080/finance/` · Helpdesk: `http://localhost:8080/helpdesk/`
+- Staff portal: `http://localhost:8080/` · APM: `http://localhost:8080/apm`
 
 </details>
 

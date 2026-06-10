@@ -76,6 +76,19 @@ class Matrix extends Model
     }
 
     /**
+     * HOD return to focal (approval level 0) should be draft, not returned.
+     * Corrects legacy rows saved before MatrixController aligned with ApprovalService.
+     */
+    public function normalizeFocalReturnStatus(): bool
+    {
+        if ($this->overall_status !== 'returned' || (int) $this->approval_level !== 0) {
+            return false;
+        }
+
+        return $this->forceFill(['overall_status' => 'draft'])->save();
+    }
+
+    /**
      * Get existing matrices for a division to show what's already created.
      *
      * @param int $divisionId

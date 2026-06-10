@@ -424,6 +424,8 @@ class MatrixController extends Controller
 
     public function show(Matrix $matrix, Request $request): View
     {
+        $matrix->normalizeFocalReturnStatus();
+
         // Load primary relationships
         //(can_take_action($matrix));
 
@@ -1738,23 +1740,62 @@ class MatrixController extends Controller
                 ->with('success', 'Your action was already recorded. No duplicate was created.');
         }
 
-        $approvalService->processApproval(
-            $matrix,
-            (string) $request->action,
-            $request->comment,
-            (int) $userStaffId
-        );
+        $next_approval_point = $approvalService->getNextApprover($matrix);
 
-        mark_matrix_notifications_read((int) $userStaffId, $matrix->id);
+        $this->saveMatrixTrail($matrix, $request->comment, $request->action);
+       // dd($request->action);
+        $notification_type =null;
 
-        $matrix->refresh();
+        if ($request->action !== 'approved') {
+            $returnedToFocal = (int) $matrix->approval_level === 1;
+            $matrix->forward_workflow_id = $returnedToFocal ? null : 1;
+            $matrix->approval_level = $returnedToFocal ? 0 : 1;
+            $matrix->overall_status = $returnedToFocal ? 'draft' : 'returned';
 
+            // Archive approval trails to restart approval process
+            archive_approval_trails($matrix);
+            
+            //notify and save notification
+            $notification_type = 'returned';
+        }else{
+   
+          //dd('here2');
+            //move to next
+            $approvalservice = new ApprovalService();
+            $next_approval_point = $approvalservice->getNextApprover($matrix);
+            //$next_approval_point;
+         
+           
+           if($next_approval_point){
+
+            $matrix->forward_workflow_id = $next_approval_point->workflow_id;
+            $matrix->approval_level = $next_approval_point->approval_order;
+            $matrix->next_approval_level = $next_approval_point->approval_order;
+            $matrix->overall_status = 'pending';
+            
+            // Update all activities' overall_status to 'pending' when matrix moves to next approval level
+            $matrix->activities()->where('is_single_memo', 0)->update(['overall_status' => 'pending']);
+
+            //notify and save notification
+            $notification_type = 'approval';
+           }
+           else{
+            //no more approval levels
+            $matrix->overall_status = 'approved';
+            $notification_type = 'approved';
+            
+            // Update all activities' overall_status to 'approved' when matrix is approved
+            $matrix->activities()->where('is_single_memo', 0)->update(['overall_status' => 'approved']);
+           }
+        }
+        
+        $matrix->update();
+        
+        // Update approval order map
+        $approvalService = new \App\Services\ApprovalService();
         $approvalService->updateApprovalOrderMap($matrix);
 
-        $notification_type = $request->action === 'approved'
-            ? ($matrix->overall_status === 'approved' ? 'approved' : 'approval')
-            : 'returned';
-
+        //notify and save notification
         send_generic_email_notification($matrix, $notification_type);
         $message = "Matrix Updated successfully";
 
