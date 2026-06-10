@@ -21,6 +21,7 @@ use App\Support\StaffApproverPhotoUrl;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class PendingApprovalsService
@@ -442,6 +443,10 @@ class PendingApprovalsService
      */
     protected function getPendingOtherMemos(bool $isAdminAssistant = false, array $adminAssistantApproverIds = []): Collection
     {
+        if (! Schema::hasTable('other_memos')) {
+            return collect();
+        }
+
         $query = OtherMemo::query()
             ->with(['creator', 'staff', 'division', 'approvalTrails.staff', 'approvalTrails.otherMemo', 'currentApprover'])
             ->where('overall_status', OtherMemo::STATUS_PENDING)
