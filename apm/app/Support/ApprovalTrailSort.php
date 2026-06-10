@@ -6,8 +6,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Order approval trail rows:
- * - {@see latestFirst} — API / feeds: newest first.
- * - {@see timelineAsc} — HTML timelines: chronological by action date (oldest first).
+ * - {@see latestFirst} — UI timelines and API: newest action first (desc).
+ * - {@see timelineAsc} — oldest action first (asc), when needed.
  */
 class ApprovalTrailSort
 {
