@@ -7,7 +7,7 @@ use Illuminate\Support\Collection;
 /**
  * Order approval trail rows:
  * - {@see latestFirst} — API / feeds: newest first.
- * - {@see timelineAsc} — HTML timelines: workflow step, then chronological.
+ * - {@see timelineAsc} — HTML timelines: chronological by action date (oldest first).
  */
 class ApprovalTrailSort
 {
@@ -46,7 +46,7 @@ class ApprovalTrailSort
     }
 
     /**
-     * Timeline order for Blade partials: approval_order (nulls last), then created_at, then id.
+     * Timeline order for Blade partials: action date (created_at) ascending, then id.
      *
      * @return Collection<int, mixed>
      */
@@ -57,14 +57,6 @@ class ApprovalTrailSort
         }
 
         return $trails->sort(function ($a, $b) {
-            $oa = $a->approval_order ?? null;
-            $ob = $b->approval_order ?? null;
-            $orderA = ($oa === null || $oa === '') ? PHP_INT_MAX : (int) $oa;
-            $orderB = ($ob === null || $ob === '') ? PHP_INT_MAX : (int) $ob;
-            if ($orderA !== $orderB) {
-                return $orderA <=> $orderB;
-            }
-
             $ta = self::timestamp($a);
             $tb = self::timestamp($b);
             if ($ta !== $tb) {
