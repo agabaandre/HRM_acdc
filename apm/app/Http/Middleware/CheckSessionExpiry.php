@@ -19,14 +19,17 @@ class CheckSessionExpiry
      * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
      * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
      */
-    /** Routes that do not require authentication (public docs and FAQ). Include both bare and apm-prefixed paths for when app is under /demo_staff/apm/. */
+    /** Routes that do not require authentication (public docs, FAQ, QR document verify). Include both bare and apm-prefixed paths for when app is under /staff/apm/. */
     private const PUBLIC_PATHS = [
         'docs', 'docs/*',
         'faq', 'help', 'help/user-guide', 'help/approvers-guide',
         'documentation', 'documentation/*',
+        'signature-verify/*/*',
         'apm/docs', 'apm/docs/*',
         'apm/faq', 'apm/help', 'apm/help/user-guide', 'apm/help/approvers-guide',
         'apm/documentation', 'apm/documentation/*',
+        'apm/signature-verify/*/*',
+        'staff/apm/signature-verify/*/*',
     ];
 
     public function handle(Request $request, Closure $next)
@@ -36,8 +39,8 @@ class CheckSessionExpiry
             return $next($request);
         }
 
-        // Skip session check for public docs and FAQ (no login required)
-        if ($request->is(self::PUBLIC_PATHS)) {
+        // Skip session check for public docs, FAQ, and QR document verification (no login required)
+        if ($request->routeIs('signature-verify.document') || $request->is(self::PUBLIC_PATHS)) {
             return $next($request);
         }
 
