@@ -280,8 +280,8 @@ class Matrix extends Model
     public function matrixApprovalTrails(){
         return $this->hasMany(ApprovalTrail::class, 'model_id')
             ->where('model_type', 'App\Models\Matrix')
-            ->orderBy('created_at', 'asc')
-            ->orderBy('id', 'asc');
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc');
     }
 
     public function participant_schedules(){

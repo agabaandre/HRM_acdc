@@ -114,7 +114,7 @@
     <div class="card-body">
         <ul class="timeline">
             @php
-                $trailsSorted = $trails ? \App\Support\ApprovalTrailSort::timelineAsc($trails) : collect();
+                $trailsSorted = $trails ? \App\Support\ApprovalTrailSort::latestFirst($trails) : collect();
             @endphp
             @forelse($trailsSorted as $trail)
                 @php

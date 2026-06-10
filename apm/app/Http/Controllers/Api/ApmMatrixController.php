@@ -177,7 +177,8 @@ class ApmMatrixController extends Controller
             'matrixApprovalTrails' => function ($q) {
                 $q->with(['staff', 'oicStaff', 'workflowDefinition'])
                     ->where('is_archived', 0)
-                    ->orderBy('created_at', 'asc');
+                    ->orderBy('created_at', 'desc')
+                    ->orderBy('id', 'desc');
             },
             'activities' => function ($q) {
                 $q->where('is_single_memo', 0)

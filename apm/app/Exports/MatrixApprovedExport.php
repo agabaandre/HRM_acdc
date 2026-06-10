@@ -73,7 +73,7 @@ class MatrixApprovalTrailSheet implements FromCollection, WithHeadings, WithTitl
     {
         $rows = collect();
         $trails = $this->matrix->matrixApprovalTrails ?? collect();
-        $trails = ApprovalTrailSort::timelineAsc($trails);
+        $trails = ApprovalTrailSort::latestFirst($trails);
         foreach ($trails as $idx => $trail) {
             $approver = $trail->oicStaff ?? $trail->staff;
             $approverName = $approver ? trim(($approver->title ?? '') . ' ' . ($approver->fname ?? '') . ' ' . ($approver->lname ?? '') . ' ' . ($approver->oname ?? '')) : 'N/A';

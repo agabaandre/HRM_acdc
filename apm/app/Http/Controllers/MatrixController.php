@@ -3124,7 +3124,7 @@ class MatrixController extends Controller
             $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
         }
 
-        $trails = \App\Support\ApprovalTrailSort::timelineAsc($matrix->matrixApprovalTrails);
+        $trails = \App\Support\ApprovalTrailSort::latestFirst($matrix->matrixApprovalTrails);
         $baseUrl = rtrim(user_session('base_url') ?? config('app.url'), '/');
         $matrixShowUrl = url()->route('matrices.show', [$matrix]);
 
