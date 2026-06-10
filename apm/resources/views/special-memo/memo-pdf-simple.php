@@ -242,9 +242,7 @@
     }
     
     function generateVerificationHash($specialMemoId, $staffId, $approvalDateTime = null) {
-      if (!$specialMemoId || !$staffId) return 'N/A';
-      $dateTimeToUse = $approvalDateTime ? $approvalDateTime : date('Y-m-d H:i:s');
-      return strtoupper(substr(md5(sha1($specialMemoId . $staffId . $dateTimeToUse)), 0, 16));
+      return \App\Helpers\PrintHelper::generateVerificationHash($specialMemoId, $staffId, $approvalDateTime);
     }
 
     /**
@@ -360,7 +358,10 @@
             }
         }
 
-        $approvalDate = getApprovalDate($staffId, $approval_trails, $order);
+        $approvalTrail = \App\Helpers\PrintHelper::getApprovalTrailForSignature($staffId, $approval_trails, $order);
+        $approvalDate = ($approvalTrail && isset($approvalTrail->created_at))
+            ? (is_object($approvalTrail->created_at) ? $approvalTrail->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalTrail->created_at)))
+            : getApprovalDate($staffId, $approval_trails, $order);
 
         echo '<div style="line-height: 1.2;">';
         
@@ -393,7 +394,8 @@
         }
         
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($specialMemo->id, $staffId, $approvalDate)) . '</div>';
+        $hashDateTime = ($approvalTrail && isset($approvalTrail->created_at)) ? $approvalTrail->created_at : null;
+        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(\App\Helpers\PrintHelper::generateVerificationHash($specialMemo->id, $staffId, $hashDateTime)) . '</div>';
         echo '</div>';
         }
     }
@@ -444,7 +446,7 @@
         $approvalDate = is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at));
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
         
-        $hash = generateVerificationHash($specialMemo->id, $isOic ? $approval->oic_staff_id : $approval->staff_id, $approval->created_at);
+        $hash = \App\Helpers\PrintHelper::generateVerificationHash($specialMemo->id, $isOic ? $approval->oic_staff_id : $approval->staff_id, $approval->created_at);
         echo '<div class="signature-hash">Hash: ' . htmlspecialchars($hash) . '</div>';
          
         // Add OIC watermark if applicable

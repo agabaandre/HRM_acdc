@@ -56,7 +56,7 @@ class SignatureVerificationController extends Controller
         $matchedSignatory = null;
         if ($hash !== null && $hash !== '') {
             foreach ($signatories as $s) {
-                if (isset($s['hash']) && $s['hash'] === $hash) {
+                if ($this->signatoryHashMatches($s, $hash)) {
                     $matchedSignatory = $s;
                     break;
                 }
@@ -164,7 +164,7 @@ class SignatureVerificationController extends Controller
         foreach ($documents as $document) {
             $signatories = $this->buildSignatoriesWithHashes($document);
             foreach ($signatories as $s) {
-                if (isset($s['hash']) && $s['hash'] === $hash) {
+                if ($this->signatoryHashMatches($s, $hash)) {
                     $metadata = $this->getDocumentMetadata($document);
                     $payload = $this->buildUnifiedPayload('verify', $document, $metadata, $signatories, $s, null, null, $year);
                     if ($request->wantsJson() || $request->ajax()) {
@@ -308,12 +308,12 @@ class SignatureVerificationController extends Controller
                 if (! $this->isSigningAction($trail->action ?? '')) {
                     continue;
                 }
-                $hash = PrintHelper::generateVerificationHash(
+                $signatories[] = $this->signatoryRow(
+                    $trail,
                     $itemId,
                     $trail->staff_id,
-                    $this->normalizeDateTime($trail->created_at)
+                    false
                 );
-                $signatories[] = $this->signatoryRow($trail, $hash, false);
             }
 
             return $signatories;
@@ -329,12 +329,13 @@ class SignatureVerificationController extends Controller
                         continue;
                     }
                     $staffId = !empty($trail->oic_staff_id) ? $trail->oic_staff_id : $trail->staff_id;
-                    $hash = PrintHelper::generateVerificationHash($itemId, $staffId, $this->normalizeDateTime($trail->created_at));
-                    if (isset($seenHashes[$hash])) {
+                    $row = $this->signatoryRow($trail, $itemId, $staffId, $isActivityTrail);
+                    $dedupeKey = implode('|', $row['hash_aliases'] ?? [$row['hash']]);
+                    if (isset($seenHashes[$dedupeKey])) {
                         continue;
                     }
-                    $seenHashes[$hash] = true;
-                    $signatories[] = $this->signatoryRow($trail, $hash, $isActivityTrail);
+                    $seenHashes[$dedupeKey] = true;
+                    $signatories[] = $row;
                 }
             };
 
@@ -355,8 +356,7 @@ class SignatureVerificationController extends Controller
         foreach ($trails as $trail) {
             if ($this->isSigningAction($trail->action ?? '')) {
                 $staffId = !empty($trail->oic_staff_id) ? $trail->oic_staff_id : $trail->staff_id;
-                $hash = PrintHelper::generateVerificationHash($itemId, $staffId, $this->normalizeDateTime($trail->created_at));
-                $signatories[] = $this->signatoryRow($trail, $hash, false);
+                $signatories[] = $this->signatoryRow($trail, $itemId, $staffId, false);
             }
         }
 
@@ -371,15 +371,22 @@ class SignatureVerificationController extends Controller
         return !in_array(strtolower($action), self::NON_SIGNING_ACTIONS, true);
     }
 
-    private function normalizeDateTime($value): string
+    private function signatoryHashMatches(array $signatory, string $hash): bool
     {
-        if ($value instanceof \DateTimeInterface) {
-            return $value->format('Y-m-d H:i:s');
+        $hash = strtoupper(trim($hash));
+        if ($hash === '') {
+            return false;
         }
-        return (string) $value;
+
+        $aliases = $signatory['hash_aliases'] ?? [];
+        if (empty($aliases) && isset($signatory['hash'])) {
+            $aliases = [(string) $signatory['hash']];
+        }
+
+        return in_array($hash, $aliases, true);
     }
 
-    private function signatoryRow($trail, string $hash, bool $isActivityTrail): array
+    private function signatoryRow($trail, int $itemId, $staffId, bool $isActivityTrail): array
     {
         $staff = null;
         if ($isActivityTrail) {
@@ -395,12 +402,15 @@ class SignatureVerificationController extends Controller
             ? $trail->created_at->format('j F Y H:i')
             : date('j F Y H:i', strtotime($trail->created_at));
 
+        $hashAliases = PrintHelper::verificationHashAliases($itemId, $staffId, $trail->created_at);
+
         return [
-            'role'   => $trail->approver_role_name ?? 'N/A',
-            'name'   => $name,
-            'date'   => $date,
-            'action' => $trail->action ?? 'N/A',
-            'hash'   => $hash,
+            'role'         => $trail->approver_role_name ?? 'N/A',
+            'name'         => $name,
+            'date'         => $date,
+            'action'       => $trail->action ?? 'N/A',
+            'hash'         => $hashAliases[0] ?? 'N/A',
+            'hash_aliases' => $hashAliases,
         ];
     }
 
@@ -617,9 +627,9 @@ class SignatureVerificationController extends Controller
                 ];
 
                 foreach ($this->buildSignatoriesWithHashes($doc) as $s) {
-                    $h = $s['hash'] ?? null;
-                    if ($h && !isset($seenHashes[$h])) {
-                        $seenHashes[$h] = true;
+                    $dedupeKey = implode('|', $s['hash_aliases'] ?? [$s['hash'] ?? '']);
+                    if ($dedupeKey !== '' && !isset($seenHashes[$dedupeKey])) {
+                        $seenHashes[$dedupeKey] = true;
                         $s['document_number'] = $docNumber;
                         $s['doc_type']        = $docType;
                         $allSignatories[] = $s;
@@ -637,7 +647,7 @@ class SignatureVerificationController extends Controller
                 $hashUpper = strtoupper(trim($hash));
                 $matched = null;
                 foreach ($results['signatories'] as $s) {
-                    if (isset($s['hash']) && $s['hash'] === $hashUpper) {
+                    if ($this->signatoryHashMatches($s, $hashUpper)) {
                         $matched = $s;
                         break;
                     }
@@ -714,7 +724,7 @@ class SignatureVerificationController extends Controller
 
         if ($hash !== null) {
             foreach ($signatories as $s) {
-                if (isset($s['hash']) && $s['hash'] === $hash) {
+                if ($this->signatoryHashMatches($s, $hash)) {
                     $matchedSignatory = $s;
                     $hashMatched = true;
                     break;
