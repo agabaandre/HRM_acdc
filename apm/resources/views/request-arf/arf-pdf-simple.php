@@ -350,9 +350,7 @@
     }
     
     function generateVerificationHash($activityId, $staffId, $approvalDateTime = null) {
-      if (!$activityId || !$staffId) return 'N/A';
-      $dateTimeToUse = $approvalDateTime ? $approvalDateTime : date('Y-m-d H:i:s');
-      return strtoupper(substr(md5(sha1($activityId . $staffId . $dateTimeToUse)), 0, 16));
+      return \App\Helpers\PrintHelper::generateVerificationHash($activityId, $staffId, $approvalDateTime);
     }
 
     /**
@@ -438,7 +436,10 @@
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         $staffId = $staff['id'] ?? null;
 
-        $approvalDate = getApprovalDate($staffId, $matrix_approval_trails, $order);
+        $approvalTrail = \App\Helpers\PrintHelper::getApprovalTrailForSignature($staffId, $matrix_approval_trails, $order);
+        $approvalDate = ($approvalTrail && isset($approvalTrail->created_at))
+            ? (is_object($approvalTrail->created_at) ? $approvalTrail->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalTrail->created_at)))
+            : getApprovalDate($staffId, $matrix_approval_trails, $order);
 
         echo '<div style="line-height: 1.2;">';
         
@@ -455,7 +456,8 @@
         }
         
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
+        $hashDateTime = ($approvalTrail && isset($approvalTrail->created_at)) ? $approvalTrail->created_at : null;
+        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(\App\Helpers\PrintHelper::generateVerificationHash($sourceModel->id, $staffId, $hashDateTime)) . '</div>';
         echo '</div>';
         }
     }

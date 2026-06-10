@@ -273,30 +273,112 @@ class PrintHelper
     }
     
     /**
-     * Generate verification hash for signatures
+     * Canonical date/time string used for verification hashes (matches SIGNATURE_VERIFICATION.md).
+     */
+    public static function canonicalVerificationDateTime($approvalDateTime = null): string
+    {
+        if ($approvalDateTime instanceof \DateTimeInterface) {
+            return $approvalDateTime->format('Y-m-d H:i:s');
+        }
+
+        if (is_string($approvalDateTime) && $approvalDateTime !== '') {
+            $timestamp = strtotime($approvalDateTime);
+            if ($timestamp !== false) {
+                return date('Y-m-d H:i:s', $timestamp);
+            }
+
+            return $approvalDateTime;
+        }
+
+        return date('Y-m-d H:i:s');
+    }
+
+    /**
+     * Legacy display date string previously used in some PDF signature hashes.
+     */
+    public static function legacyVerificationDateTime($approvalDateTime = null): ?string
+    {
+        if ($approvalDateTime instanceof \DateTimeInterface) {
+            return $approvalDateTime->format('j F Y H:i');
+        }
+
+        if (is_string($approvalDateTime) && $approvalDateTime !== '') {
+            $timestamp = strtotime($approvalDateTime);
+            if ($timestamp !== false) {
+                return date('j F Y H:i', $timestamp);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Generate verification hash for signatures.
      */
     public static function generateVerificationHash($itemId, $staffId, $approvalDateTime = null)
     {
-        if (!$itemId || !$staffId) return 'N/A';
-        $dateTimeToUse = $approvalDateTime ? $approvalDateTime : date('Y-m-d H:i:s');
+        if (!$itemId || !$staffId) {
+            return 'N/A';
+        }
+
+        $dateTimeToUse = self::canonicalVerificationDateTime($approvalDateTime);
+
         return strtoupper(substr(md5(sha1($itemId . $staffId . $dateTimeToUse)), 0, 16));
     }
 
     /**
-     * Get the approval date for a given staff ID and/or approval order from approval trails
+     * All hash variants for a signatory (canonical + legacy PDF formats).
+     *
+     * @return array<int, string>
      */
-    public static function getApprovalDate($staffId, $approvalTrails, $order)
+    public static function verificationHashAliases($itemId, $staffId, $approvalDateTime = null): array
     {
-        if (!$approvalTrails || (method_exists($approvalTrails, 'isEmpty') && $approvalTrails->isEmpty())) {
-            return 'Not Signed';
+        if (!$itemId || !$staffId) {
+            return [];
         }
 
-        // Normalize to collection and ignore non-signing actions
+        $aliases = [self::generateVerificationHash($itemId, $staffId, $approvalDateTime)];
+
+        $legacyDateTime = self::legacyVerificationDateTime($approvalDateTime);
+        if ($legacyDateTime !== null) {
+            $legacyHash = strtoupper(substr(md5(sha1($itemId . $staffId . $legacyDateTime)), 0, 16));
+            if (!in_array($legacyHash, $aliases, true)) {
+                $aliases[] = $legacyHash;
+            }
+        }
+
+        return $aliases;
+    }
+
+    public static function hashMatchesVerification($itemId, $staffId, $approvalDateTime, string $providedHash): bool
+    {
+        $providedHash = strtoupper(trim($providedHash));
+        if ($providedHash === '') {
+            return false;
+        }
+
+        foreach (self::verificationHashAliases($itemId, $staffId, $approvalDateTime) as $alias) {
+            if ($alias === $providedHash) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolve the approval trail used for a PDF signature date/hash.
+     */
+    public static function getApprovalTrailForSignature($staffId, $approvalTrails, $order)
+    {
+        if (!$approvalTrails || (method_exists($approvalTrails, 'isEmpty') && $approvalTrails->isEmpty())) {
+            return null;
+        }
+
         if (is_array($approvalTrails)) {
             $approvalTrails = collect($approvalTrails);
         }
-        // Signing date must follow actual approvals only (e.g. a later "returned" at the same
-        // order must not override the latest approved signature when HOD changes mid-workflow).
+
         $approvalTrails = $approvalTrails->filter(function ($trail) {
             if (isset($trail->is_archived) && (int) $trail->is_archived === 1) {
                 return false;
@@ -307,51 +389,56 @@ class PrintHelper
 
         $approval = null;
 
-        // If we have a staff ID, try to find approval by staff_id and approval_order first
         if ($staffId) {
             $approval = $approvalTrails
-                ->where('approval_order', (int)$order)
-                ->where('staff_id', (int)$staffId)
+                ->where('approval_order', (int) $order)
+                ->where('staff_id', (int) $staffId)
                 ->sortByDesc('created_at')
                 ->first();
         }
 
-        // If not found, try to find by oic_staff_id and approval_order
         if (!$approval && $staffId) {
             $approval = $approvalTrails
-                ->where('approval_order', (int)$order)
-                ->where('oic_staff_id', (int)$staffId)
+                ->where('approval_order', (int) $order)
+                ->where('oic_staff_id', (int) $staffId)
                 ->sortByDesc('created_at')
                 ->first();
         }
 
-        // If still not found, try to find by staff_id only (any order)
         if (!$approval && $staffId) {
             $approval = $approvalTrails
-                ->where('staff_id', (int)$staffId)
+                ->where('staff_id', (int) $staffId)
                 ->sortByDesc('created_at')
                 ->first();
         }
 
-        // If still not found, try to find by oic_staff_id only (any order)
         if (!$approval && $staffId) {
             $approval = $approvalTrails
-                ->where('oic_staff_id', (int)$staffId)
+                ->where('oic_staff_id', (int) $staffId)
                 ->sortByDesc('created_at')
                 ->first();
         }
 
-        // If still not found, try to find by order only (any staff) — but prefer the most recent for that order
         if (!$approval) {
             $approval = $approvalTrails
-                ->where('approval_order', (int)$order)
+                ->where('approval_order', (int) $order)
                 ->sortByDesc('created_at')
                 ->first();
         }
 
+        return $approval;
+    }
+
+    /**
+     * Get the approval date for a given staff ID and/or approval order from approval trails
+     */
+    public static function getApprovalDate($staffId, $approvalTrails, $order)
+    {
+        $approval = self::getApprovalTrailForSignature($staffId, $approvalTrails, $order);
+
         if ($approval && isset($approval->created_at)) {
-            return is_object($approval->created_at) 
-                ? $approval->created_at->format('j F Y H:i') 
+            return is_object($approval->created_at)
+                ? $approval->created_at->format('j F Y H:i')
                 : date('j F Y H:i', strtotime($approval->created_at));
         }
 
@@ -397,10 +484,10 @@ class PrintHelper
         $staffId = self::getStaffId($approver);
 
         // Derive signing date strictly from approval trails
-        $approvalDate = self::getApprovalDate($staffId, $approvalTrails, $order);
+        $approvalTrail = self::getApprovalTrailForSignature($staffId, $approvalTrails, $order);
 
         // Additional dynamic fallback: if not found, search any 'to' orders
-        if ($approvalDate === 'Not Signed' && $item && $approvalTrails) {
+        if (!$approvalTrail && $item && $approvalTrails) {
             // Default SR 'to' orders are 31 and 32
             $toOrders = [31, 32];
             if (isset($item->forward_workflow_id)) {
@@ -424,25 +511,23 @@ class PrintHelper
                         return ((int)($t->staff_id ?? 0) === (int)$staffId) || ((int)($t->oic_staff_id ?? 0) === (int)$staffId);
                     });
                     if ($match) {
-                        $approvalDate = is_object($match->created_at) ? $match->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($match->created_at));
+                        $approvalTrail = $match;
                     }
                 }
-                if ($approvalDate === 'Not Signed' && $subset->first()) {
-                    $latest = $subset->first();
-                    $approvalDate = is_object($latest->created_at) ? $latest->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($latest->created_at));
+                if (!$approvalTrail && $subset->first()) {
+                    $approvalTrail = $subset->first();
                 }
             }
         }
 
         // Final fallback: use the latest trail for this staff (any order in this SR)
-        if ($approvalDate === 'Not Signed' && $approvalTrails && $staffId) {
+        if (!$approvalTrail && $approvalTrails && $staffId) {
             if (is_array($approvalTrails)) { $approvalTrails = collect($approvalTrails); }
             $byStaff = $approvalTrails->filter(function ($t) use ($staffId) {
                 return ((int)($t->staff_id ?? 0) === (int)$staffId) || ((int)($t->oic_staff_id ?? 0) === (int)$staffId);
             })->sortByDesc('created_at');
             if ($byStaff->first()) {
-                $latest = $byStaff->first();
-                $approvalDate = is_object($latest->created_at) ? $latest->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($latest->created_at));
+                $approvalTrail = $byStaff->first();
             }
         }
 
@@ -474,15 +559,18 @@ class PrintHelper
                 ->orderBy('created_at', 'desc')
                 ->first();
             if ($dbFallback && isset($dbFallback->created_at)) {
-                $approvalDate = is_object($dbFallback->created_at) ? $dbFallback->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($dbFallback->created_at));
+                $approvalTrail = $dbFallback;
             }
         }
 
-        if ($approvalDate === 'Not Signed') {
+        if (!$approvalTrail || !isset($approvalTrail->created_at)) {
             echo '<div class="signature-date" style="color:#999;"><em>Not Signed</em></div>';
         } else {
+            $approvalDate = is_object($approvalTrail->created_at)
+                ? $approvalTrail->created_at->format('j F Y H:i')
+                : date('j F Y H:i', strtotime($approvalTrail->created_at));
             echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-            echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars(self::generateVerificationHash($item->id, $staffId, $approvalDate)) . '</div>';
+            echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars(self::generateVerificationHash($item->id, $staffId, $approvalTrail->created_at)) . '</div>';
         }
         
         echo '</div>';
