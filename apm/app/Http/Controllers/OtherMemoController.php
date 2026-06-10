@@ -680,7 +680,7 @@ class OtherMemoController extends Controller
             'memo' => $other_memo,
         ], [
             'preview_html' => false,
-            'document_url' => route('other-memos.print', $other_memo, true),
+            'document_url' => signature_verify_url_for($other_memo) ?? route('other-memos.print', $other_memo, true),
             'attachments_appendix' => $attachments,
         ]);
 

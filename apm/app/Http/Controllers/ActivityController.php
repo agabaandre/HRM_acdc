@@ -2678,7 +2678,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'organized_workflow_steps' => $organizedWorkflowSteps
         ], [
             'preview_html' => $print,
-            'document_url' => route('matrices.activities.memo-pdf', [$matrix, $activity], true),
+            'document_url' => signature_verify_url_for($activity) ?? route('matrices.activities.memo-pdf', [$matrix, $activity], true),
             'attachments_appendix' => $attachments,
         ]);
 

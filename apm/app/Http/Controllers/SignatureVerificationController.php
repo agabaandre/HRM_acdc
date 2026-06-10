@@ -7,12 +7,17 @@ use App\Models\Activity;
 use App\Models\ActivityApprovalTrail;
 use App\Models\ChangeRequest;
 use App\Models\NonTravelMemo;
+use App\Models\OtherMemo;
+use App\Models\OtherMemoApprovalTrail;
 use App\Models\RequestARF;
 use App\Models\SpecialMemo;
 use App\Models\ServiceRequest;
 use App\Services\DocumentNumberService;
+use App\Support\SignatureVerifyUrl;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class SignatureVerificationController extends Controller
 {
@@ -24,6 +29,63 @@ class SignatureVerificationController extends Controller
     public function index()
     {
         return view('signature-verify.index');
+    }
+
+    /**
+     * Public verification by document type + id (used by QR codes on printed PDFs).
+     * GET /signature-verify/{type}/{id}?hash= optional hash to match a signatory.
+     */
+    public function showDocument(Request $request, string $type, int $id): View|JsonResponse
+    {
+        $document = SignatureVerifyUrl::resolve($type, $id);
+        if (! $document) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
+            }
+
+            abort(404, 'Document not found.');
+        }
+
+        $signatories = $this->buildSignatoriesWithHashes($document);
+        $metadata = $this->getDocumentMetadata($document);
+        $year = $document->created_at
+            ? (int) \Carbon\Carbon::parse($document->created_at)->format('Y')
+            : null;
+
+        $hash = $request->filled('hash') ? strtoupper(trim((string) $request->input('hash'))) : null;
+        $matchedSignatory = null;
+        if ($hash !== null && $hash !== '') {
+            foreach ($signatories as $s) {
+                if (isset($s['hash']) && $s['hash'] === $hash) {
+                    $matchedSignatory = $s;
+                    break;
+                }
+            }
+        }
+
+        $payload = $this->buildUnifiedPayload(
+            $matchedSignatory !== null ? 'verify' : 'lookup',
+            $document,
+            $metadata,
+            $signatories,
+            $matchedSignatory,
+            ($hash && $matchedSignatory === null)
+                ? 'The provided hash does not match any signatory for this document.'
+                : null,
+            null,
+            $year
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json($payload);
+        }
+
+        return view('signature-verify.document', [
+            'result_for_display' => $payload,
+            'document_type_slug' => $type,
+            'document_id' => $id,
+            'hash' => $hash,
+        ]);
     }
 
     /**
@@ -235,6 +297,28 @@ class SignatureVerificationController extends Controller
         $signatories = [];
         $itemId = $document->id;
 
+        if ($document instanceof OtherMemo) {
+            $trails = OtherMemoApprovalTrail::query()
+                ->where('other_memo_id', $document->id)
+                ->with('staff')
+                ->orderBy('created_at')
+                ->get();
+
+            foreach ($trails as $trail) {
+                if (! $this->isSigningAction($trail->action ?? '')) {
+                    continue;
+                }
+                $hash = PrintHelper::generateVerificationHash(
+                    $itemId,
+                    $trail->staff_id,
+                    $this->normalizeDateTime($trail->created_at)
+                );
+                $signatories[] = $this->signatoryRow($trail, $hash, false);
+            }
+
+            return $signatories;
+        }
+
         if ($document instanceof Activity) {
             // Matrix/Activity documents can have hashes from both approval_trails (morph, budget section)
             // and activity_approval_trails (main signature section). Include both so all PDF hashes can be matched.
@@ -340,6 +424,10 @@ class SignatureVerificationController extends Controller
         if ($document instanceof ServiceRequest) {
             return 'Request DSA, Imprest and Ticket';
         }
+        if ($document instanceof OtherMemo) {
+            return 'Other Memo';
+        }
+
         return 'APM Document';
     }
 

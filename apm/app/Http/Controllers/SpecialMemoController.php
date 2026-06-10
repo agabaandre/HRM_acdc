@@ -1913,7 +1913,7 @@ class SpecialMemoController extends Controller
             'organized_workflow_steps' => $organizedWorkflowSteps
         ], [
             'preview_html' => $print,
-            'document_url' => route('special-memo.print', $specialMemo, true),
+            'document_url' => signature_verify_url_for($specialMemo) ?? route('special-memo.print', $specialMemo, true),
             'attachments_appendix' => $attachments,
         ]);
 
