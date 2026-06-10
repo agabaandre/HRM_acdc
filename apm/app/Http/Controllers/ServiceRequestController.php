@@ -2557,7 +2557,10 @@ class ServiceRequestController extends Controller
         ]);
 
         try {
-            $pdf = mpdf_print('service-requests.print', $mpdfPayload, ['preview_html' => $print]);
+            $pdf = mpdf_print('service-requests.print', $mpdfPayload, [
+                'preview_html' => $print,
+                'document_url' => signature_verify_url_for($serviceRequest) ?? route('service-requests.print', $serviceRequest, true),
+            ]);
         } catch (\Throwable $e) {
             \Log::warning('Service request print failed; retrying without embedded fragments', [
                 'service_request_id' => $serviceRequest->id,
@@ -2568,7 +2571,10 @@ class ServiceRequestController extends Controller
                 'sourcePdfHtml' => null,
                 'changeRequestPdfHtml' => null,
                 'previousServiceRequestsPdfHtml' => [],
-            ]), ['preview_html' => $print]);
+            ]), [
+                'preview_html' => $print,
+                'document_url' => signature_verify_url_for($serviceRequest) ?? route('service-requests.print', $serviceRequest, true),
+            ]);
         }
 
         $filename = 'Service_Request_' . $serviceRequest->request_number . '_' . now()->format('Y-m-d') . '.pdf';

@@ -1487,7 +1487,9 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         ];
         //dd($sourceData);
         // Generate PDF using the custom generate_pdf function
-        $mpdf = generate_pdf('request-arf.arf-pdf-simple', $data);
+        $mpdf = generate_pdf('request-arf.arf-pdf-simple', $data, [
+            'document_url' => signature_verify_url_for($requestARF) ?? route('request-arf.print', $requestARF, true),
+        ]);
         
         $filename = 'ARF_' . $requestARF->arf_number . '_' . date('Y-m-d') . '.pdf';
 

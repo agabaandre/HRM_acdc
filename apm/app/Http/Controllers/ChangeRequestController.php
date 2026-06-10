@@ -2296,6 +2296,7 @@ class ChangeRequestController extends Controller
             'organized_workflow_steps' => $organizedWorkflowSteps,
         ], [
             'preview_html' => false,
+            'document_url' => signature_verify_url_for($changeRequest) ?? route('change-requests.print', $changeRequest, true),
             'attachments_appendix' => $appendixAttachments,
             'attachments_appendix_title' => $isAddendum
                 ? 'Appendix — Addendum Attachments'

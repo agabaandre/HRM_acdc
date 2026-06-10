@@ -299,6 +299,20 @@ if (! function_exists('get_pending_service_requests_count')) {
     }
 }
 
+if (! function_exists('signature_verify_url_for')) {
+    /**
+     * Public signature-verify URL for a printable document (QR on PDF footer).
+     */
+    function signature_verify_url_for($model): ?string
+    {
+        if (! is_object($model)) {
+            return null;
+        }
+
+        return \App\Support\SignatureVerifyUrl::forModel($model);
+    }
+}
+
 if (! function_exists('generate_pdf')) {
     /**
      * Generate a PDF using mPDF, or preview the HTML in the browser for debugging.

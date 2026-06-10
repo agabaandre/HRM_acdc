@@ -1848,7 +1848,7 @@ class NonTravelMemoController extends Controller
             'organized_workflow_steps' => $organizedWorkflowSteps
         ], [
             'preview_html' => $print,
-            'document_url' => route('non-travel.print', $nonTravel, true),
+            'document_url' => signature_verify_url_for($nonTravel) ?? route('non-travel.print', $nonTravel, true),
             'attachments_appendix' => $attachments,
         ]);
 

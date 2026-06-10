@@ -124,6 +124,12 @@ Route::get('/help/approvers-guide', [App\Http\Controllers\HelpController::class,
 Route::get('/documentation', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation');
 Route::get('/documentation/{file}', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation.file')->where('file', '[a-zA-Z0-9_-]+\.md');
 
+// Public document signature verification (QR on printed PDFs — no login required)
+Route::get('/signature-verify/{type}/{id}', [App\Http\Controllers\SignatureVerificationController::class, 'showDocument'])
+    ->name('signature-verify.document')
+    ->where('type', 'activity|special_memo|non_travel_memo|change_request|service_request|arf|other_memo')
+    ->where('id', '[0-9]+');
+
 // Home route
 Route::get('/home', function () {
     return view('home', [
