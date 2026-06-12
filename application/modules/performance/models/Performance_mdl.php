@@ -844,20 +844,38 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
 }
 
 
-public function get_dashboard_data()
+public function get_dashboard_data($division_id = null, $period = null, $staff_id = null)
 {
-    $division_id = $this->input->get('division_id');
-    $period = $this->input->get('period');
+    if ($division_id === null) {
+        $division_id = $this->input->get('division_id');
+    }
+    if ($period === null) {
+        $period = $this->input->get('period');
+    }
+
+    $division_id = ($division_id !== null && $division_id !== '') ? (int) $division_id : null;
+
     $current_period = str_replace(' ', '-', current_period());
     $period = !empty($period) ? $period : $current_period;
-    
+
     // Handle multiple periods (comma-separated)
     $periods = !empty($period) ? array_map('trim', explode(',', $period)) : [$current_period];
+    $periods = array_values(array_filter($periods, static function ($p) {
+        return $p !== '';
+    }));
+    if (empty($periods)) {
+        $periods = [$current_period];
+        $period = $current_period;
+    }
     $is_multiple_periods = count($periods) > 1;
 
-    $user = $this->session->userdata('user');
-    $is_restricted = ($user && isset($user->role) && $user->role == 17);
-    $staff_id = $is_restricted ? $user->staff_id : null;
+    if ($staff_id === null) {
+        $user = $this->session->userdata('user');
+        $is_restricted = ($user && isset($user->role) && $user->role == 17);
+        $staff_id = $is_restricted ? $user->staff_id : null;
+    } else {
+        $is_restricted = ($staff_id !== null && $staff_id !== '');
+    }
 
     // Get latest contract for each staff
     $subquery = $this->db->select('MAX(staff_contract_id)', false)
@@ -887,6 +905,9 @@ public function get_dashboard_data()
         $this->db->where('pe.performance_period', $period);
     }
     $summary = $this->db->get()->row();
+    if (!$summary) {
+        $summary = (object) ['total' => 0, 'approved' => 0, 'submitted' => 0];
+    }
 
     // Get active staff for "without_ppa" calculation (with contract status filter including Under Renewal)
     $this->db->select('s.staff_id');
@@ -1040,8 +1061,12 @@ public function get_dashboard_data()
         $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
         if ($division_id) $this->db->where('sc.division_id', $division_id);
         if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
-        $this->db->where("pe.performance_period", $period);
         $this->db->where("pe.draft_status !=", 1);
+        if ($is_multiple_periods) {
+            $this->db->where_in('pe.performance_period', $periods);
+        } else {
+            $this->db->where("pe.performance_period", $period);
+        }
         if ($min !== null) $this->db->where("TIMESTAMPDIFF(YEAR, s.date_of_birth, CURDATE()) >=", $min);
         if ($max !== null) $this->db->where("TIMESTAMPDIFF(YEAR, s.date_of_birth, CURDATE()) <=", $max);
         $count = $this->db->count_all_results();
@@ -1058,17 +1083,33 @@ public function get_dashboard_data()
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
-    $this->db->where("pe.performance_period", $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where("pe.performance_period", $period);
+    }
     $this->db->group_by("ts.category_id");
     $training_categories = $this->db->get()->result();
 
-    // Top 10 training skills
+    // Top 10 training skills (use contract join — avoids invalid IN() when division has no active staff)
+    $training_skills = [];
     $this->db->select("ts.skill AS name, COUNT(*) AS y", false);
     $this->db->from("ppa_entries pe");
     $this->db->join("training_skills ts", "JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), '$')", "inner", false);
-    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    if ($division_id) {
+        $this->db->where('sc.division_id', $division_id);
+    }
+    if ($is_restricted) {
+        $this->db->where('pe.staff_id', $staff_id);
+    }
     $this->db->where("pe.draft_status !=", 1);
-    $this->db->where("pe.performance_period", $period);
+    if ($is_multiple_periods) {
+        $this->db->where_in('pe.performance_period', $periods);
+    } else {
+        $this->db->where("pe.performance_period", $period);
+    }
     $this->db->group_by("ts.id");
     $this->db->order_by("y DESC");
     $this->db->limit(10);

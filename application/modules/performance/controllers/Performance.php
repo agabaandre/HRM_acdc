@@ -505,9 +505,33 @@ public function print_ppa($entry_id,$staff_id,$staff_contract_id,$approval_trail
             // $data = cache_list($cache_key, function () use ($division_id, $period, $staff_id) {
             //     return 
             // }, 300); // Cache for 5 minutes
-            $data =  $this->per_mdl->get_dashboard_data($division_id, $period, $staff_id);
-        
-            echo json_encode($data);
+            $this->output->set_content_type('application/json');
+
+            try {
+                $data = $this->per_mdl->get_dashboard_data($division_id, $period, $staff_id);
+                echo json_encode($data);
+            } catch (Throwable $e) {
+                log_message('error', 'PPA dashboard fetch failed: ' . $e->getMessage());
+                $this->output->set_status_header(500);
+                echo json_encode([
+                    'error' => 'Failed to load dashboard data.',
+                    'total' => 0,
+                    'approved' => 0,
+                    'submitted' => 0,
+                    'trend' => [],
+                    'avg_approval_days' => 0,
+                    'by_division' => [],
+                    'by_contract' => [],
+                    'by_age' => [],
+                    'training_categories' => [],
+                    'training_skills' => [],
+                    'staff_count' => 0,
+                    'staff_without_ppas' => 0,
+                    'staff_with_pdps' => 0,
+                    'periods' => [],
+                    'current_period' => str_replace(' ', '-', current_period()),
+                ]);
+            }
         }
         
     
