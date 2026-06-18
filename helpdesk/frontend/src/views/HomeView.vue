@@ -28,7 +28,7 @@ const portalHref = computed(() => staffPortalHomeUrl())
 
 const canManageKb = computed(() => {
   const role = auth.me?.profile?.role ?? ''
-  return role === 'admin' || !!auth.me?.profile?.can_manage_kb
+  return !!auth.me?.profile?.is_helpdesk_admin || role === 'admin' || !!auth.me?.profile?.can_manage_kb
 })
 
 const search = ref('')

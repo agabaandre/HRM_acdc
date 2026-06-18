@@ -16,7 +16,22 @@ interface AgentRow {
   staff_id: number | null
   can_manage_kb: boolean
   can_reassign_tickets: boolean
+  grant_helpdesk_admin: boolean
+  grant_supervisor_access: boolean
   categories: Cat[]
+}
+
+interface StaffPermissionRow {
+  id: number
+  name: string
+  email: string
+  staff_id: number | null
+  role: string | null
+  staff_portal_role: number | null
+  grant_helpdesk_admin: boolean
+  grant_supervisor_access: boolean
+  can_manage_kb: boolean
+  can_reassign_tickets: boolean
 }
 
 interface CandidateRow {
@@ -36,6 +51,13 @@ const agents = ref<AgentRow[]>([])
 const selection = ref<Record<number, number[]>>({})
 const kbToggle = ref<Record<number, boolean>>({})
 const reassignToggle = ref<Record<number, boolean>>({})
+const adminToggle = ref<Record<number, boolean>>({})
+const supervisorToggle = ref<Record<number, boolean>>({})
+const staffPermissions = ref<StaffPermissionRow[]>([])
+const staffPermAdmin = ref<Record<number, boolean>>({})
+const staffPermSupervisor = ref<Record<number, boolean>>({})
+const staffPermKb = ref<Record<number, boolean>>({})
+const staffPermReassign = ref<Record<number, boolean>>({})
 const err = ref<string | null>(null)
 const ok = ref<string | null>(null)
 const catsErr = ref<string | null>(null)
@@ -63,14 +85,40 @@ async function loadAgents() {
   const map: Record<number, number[]> = {}
   const kb: Record<number, boolean> = {}
   const reassign: Record<number, boolean> = {}
+  const admin: Record<number, boolean> = {}
+  const supervisor: Record<number, boolean> = {}
   for (const a of list) {
     map[a.id] = (a.categories ?? []).map((c) => c.id)
     kb[a.id] = !!a.can_manage_kb
     reassign[a.id] = !!a.can_reassign_tickets
+    admin[a.id] = !!a.grant_helpdesk_admin
+    supervisor[a.id] = !!a.grant_supervisor_access
   }
   selection.value = map
   kbToggle.value = kb
   reassignToggle.value = reassign
+  adminToggle.value = admin
+  supervisorToggle.value = supervisor
+}
+
+async function loadStaffPermissions() {
+  const { data } = await api.get<{ data: StaffPermissionRow[] }>('/api/v1/admin/staff-permissions')
+  const list = Array.isArray(data.data) ? data.data : []
+  staffPermissions.value = list
+  const admin: Record<number, boolean> = {}
+  const supervisor: Record<number, boolean> = {}
+  const kb: Record<number, boolean> = {}
+  const reassign: Record<number, boolean> = {}
+  for (const row of list) {
+    admin[row.id] = !!row.grant_helpdesk_admin
+    supervisor[row.id] = !!row.grant_supervisor_access
+    kb[row.id] = !!row.can_manage_kb
+    reassign[row.id] = !!row.can_reassign_tickets
+  }
+  staffPermAdmin.value = admin
+  staffPermSupervisor.value = supervisor
+  staffPermKb.value = kb
+  staffPermReassign.value = reassign
 }
 
 async function loadAll() {
@@ -85,11 +133,44 @@ async function loadAll() {
     selection.value = {}
   }
   try {
+    await loadStaffPermissions()
+  } catch {
+    staffPermissions.value = []
+  }
+  try {
     await loadCats()
   } catch (e: unknown) {
     catsErr.value = apiErrorMessage(e, 'Failed to load categories.')
     cats.value = []
   }
+}
+
+async function saveStaffPermissions(userId: number) {
+  ok.value = null
+  err.value = null
+  try {
+    await api.put(`/api/v1/admin/staff-permissions/${userId}`, {
+      grant_helpdesk_admin: !!staffPermAdmin.value[userId],
+      grant_supervisor_access: !!staffPermSupervisor.value[userId],
+      can_manage_kb: !!staffPermKb.value[userId],
+      can_reassign_tickets: !!staffPermReassign.value[userId],
+    })
+    ok.value = `Saved permission overrides for user #${userId}`
+    await loadStaffPermissions()
+    await loadAgents()
+  } catch (e: unknown) {
+    err.value = apiErrorMessage(e, 'Save failed')
+  }
+}
+
+function portalRoleLabel(role: number | null): string {
+  if (!role) {
+    return '—'
+  }
+  if (role === 10) {
+    return '10 (System admin)'
+  }
+  return String(role)
 }
 
 async function saveAgent(userId: number) {
@@ -100,9 +181,12 @@ async function saveAgent(userId: number) {
       category_ids: (selection.value[userId] ?? []).map((id) => Number(id)),
       can_manage_kb: !!kbToggle.value[userId],
       can_reassign_tickets: !!reassignToggle.value[userId],
+      grant_helpdesk_admin: !!adminToggle.value[userId],
+      grant_supervisor_access: !!supervisorToggle.value[userId],
     })
     ok.value = `Saved settings for agent #${userId}`
     await loadAgents()
+    await loadStaffPermissions()
   } catch (e: unknown) {
     err.value = apiErrorMessage(e, 'Save failed')
   }
@@ -215,6 +299,7 @@ onMounted(() => {
         <p class="lede">
           Pick which issue categories each agent may be assigned to. An agent with <strong>no</strong> categories
           selected receives <strong>all</strong> categories for automatic assignment.
+          Use permission overrides below to grant Helpdesk admin or supervisor access without Staff portal role&nbsp;10.
         </p>
       </div>
       <button type="button" class="primary" @click="openPicker">
@@ -356,6 +441,14 @@ onMounted(() => {
           </td>
           <td>
             <label class="perm-toggle">
+              <input v-model="adminToggle[a.id]" type="checkbox" />
+              <span>Helpdesk admin (all Settings)</span>
+            </label>
+            <label class="perm-toggle">
+              <input v-model="supervisorToggle[a.id]" type="checkbox" />
+              <span>Supervisor access (all tickets)</span>
+            </label>
+            <label class="perm-toggle">
               <input v-model="kbToggle[a.id]" type="checkbox" />
               <span>Can add &amp; edit FAQs</span>
             </label>
@@ -380,6 +473,60 @@ onMounted(() => {
       </p>
       <button type="button" class="primary" @click="openPicker">+ Add agent from directory</button>
     </div>
+
+    <section v-if="staffPermissions.length" class="perm-overrides" aria-labelledby="perm-overrides-heading">
+      <header class="panel-head panel-head--sub">
+        <div>
+          <h2 id="perm-overrides-heading">Permission overrides (non-agents)</h2>
+          <p class="lede">
+            Staff who have signed in to Helpdesk but are not agents. Grant
+            <strong>Helpdesk admin</strong> to open all Settings pages without Staff portal role&nbsp;10 (APM system admin).
+          </p>
+        </div>
+      </header>
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Staff</th>
+            <th>Portal role</th>
+            <th>Helpdesk role</th>
+            <th>Overrides</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in staffPermissions" :key="row.id">
+            <td>
+              <div class="agent-name">{{ row.name }}</div>
+              <div class="agent-email">{{ row.email }}</div>
+            </td>
+            <td>{{ portalRoleLabel(row.staff_portal_role) }}</td>
+            <td>{{ row.role ?? '—' }}</td>
+            <td>
+              <label class="perm-toggle">
+                <input v-model="staffPermAdmin[row.id]" type="checkbox" />
+                <span>Helpdesk admin (all Settings)</span>
+              </label>
+              <label class="perm-toggle">
+                <input v-model="staffPermSupervisor[row.id]" type="checkbox" />
+                <span>Supervisor access (all tickets)</span>
+              </label>
+              <label class="perm-toggle">
+                <input v-model="staffPermKb[row.id]" type="checkbox" />
+                <span>Can add &amp; edit FAQs</span>
+              </label>
+              <label class="perm-toggle">
+                <input v-model="staffPermReassign[row.id]" type="checkbox" />
+                <span>Can reassign tickets</span>
+              </label>
+            </td>
+            <td>
+              <button type="button" class="btn" @click="saveStaffPermissions(row.id)">Save</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
   </section>
 </template>
 
@@ -391,6 +538,14 @@ onMounted(() => {
   gap: 0.85rem;
   flex-wrap: wrap;
   margin-bottom: 0.85rem;
+}
+.panel-head--sub {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e2e8f0;
+}
+.perm-overrides {
+  margin-top: 0.5rem;
 }
 .panel h2 {
   font-size: 1.1rem;

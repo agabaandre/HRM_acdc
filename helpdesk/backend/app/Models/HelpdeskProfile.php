@@ -36,6 +36,8 @@ class HelpdeskProfile extends Model
         'is_designated_agent',
         'can_manage_kb',
         'can_reassign_tickets',
+        'grant_helpdesk_admin',
+        'grant_supervisor_access',
         'directorate_id',
         'division_id',
         'duty_station',
@@ -51,6 +53,8 @@ class HelpdeskProfile extends Model
             'work_mode_updated_at' => 'datetime',
             'can_manage_kb' => 'boolean',
             'can_reassign_tickets' => 'boolean',
+            'grant_helpdesk_admin' => 'boolean',
+            'grant_supervisor_access' => 'boolean',
             'is_designated_agent' => 'boolean',
             'staff_portal_permissions' => 'array',
         ];
@@ -68,7 +72,29 @@ class HelpdeskProfile extends Model
             self::ROLE_SUPERVISOR,
             self::ROLE_ADMIN,
             self::ROLE_AUDITOR,
-        ], true);
+        ], true) || $this->grant_supervisor_access === true;
+    }
+
+    /**
+     * True when this profile may access Helpdesk Settings and admin APIs.
+     * Grants full admin even without Staff portal role 10 (APM system admin).
+     */
+    public function isHelpdeskAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN || $this->grant_helpdesk_admin === true;
+    }
+
+    /**
+     * True when this profile has supervisor-level ticket visibility and actions.
+     */
+    public function hasSupervisorAccess(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return in_array($this->role, [self::ROLE_SUPERVISOR], true)
+            || $this->grant_supervisor_access === true;
     }
 
     /**
@@ -77,7 +103,7 @@ class HelpdeskProfile extends Model
      */
     public function canManageKnowledgeBase(): bool
     {
-        if ($this->role === self::ROLE_ADMIN) {
+        if ($this->isHelpdeskAdmin()) {
             return true;
         }
 
@@ -90,7 +116,7 @@ class HelpdeskProfile extends Model
      */
     public function canReassignTickets(): bool
     {
-        if ($this->role === self::ROLE_ADMIN) {
+        if ($this->isHelpdeskAdmin()) {
             return true;
         }
 

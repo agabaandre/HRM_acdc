@@ -68,7 +68,7 @@ const workModeSaving = ref<'remote' | 'onsite' | 'clear' | null>(null)
 
 const canReassign = computed(() => {
   const p = auth.me?.profile
-  return p?.role === 'admin' || !!p?.can_reassign_tickets
+  return !!p?.is_helpdesk_admin || p?.role === 'admin' || !!p?.can_reassign_tickets
 })
 
 const currentWorkMode = computed(() => auth.me?.profile?.work_mode ?? null)

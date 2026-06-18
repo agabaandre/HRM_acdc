@@ -10,6 +10,6 @@ trait AuthorizesHelpdeskAdmin
     protected function ensureHelpdeskAdmin(Request $request): void
     {
         $p = $request->user()?->helpdeskProfile;
-        abort_unless($p && $p->role === HelpdeskProfile::ROLE_ADMIN, 403, 'Admin role required.');
+        abort_unless($p && $p->isHelpdeskAdmin(), 403, 'Admin role required.');
     }
 }

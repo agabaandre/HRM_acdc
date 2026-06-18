@@ -116,7 +116,7 @@ const canSubmitResolution = computed(() => {
   if (['resolved', 'closed', 'awaiting_requester_confirmation'].includes(t.status)) {
     return false
   }
-  if (role === 'admin' || role === 'supervisor') {
+  if (role === 'admin' || role === 'supervisor' || auth.me?.profile?.is_helpdesk_admin) {
     return true
   }
   if (role === 'agent' && t.assigned_user_id === me.id) {
@@ -147,7 +147,7 @@ const canPublishKb = computed(() => {
   if (!p) {
     return false
   }
-  return p.role === 'admin' || !!p.can_manage_kb
+  return !!p.is_helpdesk_admin || p.role === 'admin' || !!p.can_manage_kb
 })
 
 const canConfirmResolve = computed(() => {

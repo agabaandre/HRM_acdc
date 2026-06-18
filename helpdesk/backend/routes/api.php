@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSlaRuleController;
 use App\Http\Controllers\Api\V1\Admin\AdminKbArticleController;
 use App\Http\Controllers\Api\V1\Admin\AdminReferenceSyncController;
+use App\Http\Controllers\Api\V1\Admin\AdminStaffPermissionController;
 use App\Http\Controllers\Api\V1\Admin\HelpdeskSettingsController;
 use App\Http\Controllers\Api\V1\Auth\ExchangeTokenController;
 use App\Http\Controllers\Api\V1\Auth\StaffSsoController;
@@ -84,6 +85,8 @@ Route::prefix('v1')->group(function () {
         Route::put('/admin/settings', [HelpdeskSettingsController::class, 'update']);
         Route::get('/admin/agents', [AdminHelpdeskAgentController::class, 'index']);
         Route::put('/admin/agents/{user}', [AdminHelpdeskAgentController::class, 'update']);
+        Route::get('/admin/staff-permissions', [AdminStaffPermissionController::class, 'index']);
+        Route::put('/admin/staff-permissions/{user}', [AdminStaffPermissionController::class, 'update']);
 
         // Division-based agent designation (Settings → General).
         Route::get('/admin/agents/division-candidates', [AdminDivisionAgentController::class, 'candidates']);

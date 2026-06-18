@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskProfile;
 use App\Models\User;
+use App\Services\HelpdeskPermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AdminHelpdeskAgentController extends Controller
 {
     use AuthorizesHelpdeskAdmin;
+
+    public function __construct(
+        private readonly HelpdeskPermissionService $permissions,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -32,6 +37,8 @@ class AdminHelpdeskAgentController extends Controller
             'work_mode_updated_at' => $u->helpdeskProfile?->work_mode_updated_at?->toIso8601String(),
             'can_manage_kb' => (bool) ($u->helpdeskProfile?->can_manage_kb),
             'can_reassign_tickets' => (bool) ($u->helpdeskProfile?->can_reassign_tickets),
+            'grant_helpdesk_admin' => (bool) ($u->helpdeskProfile?->grant_helpdesk_admin),
+            'grant_supervisor_access' => (bool) ($u->helpdeskProfile?->grant_supervisor_access),
             'categories' => $u->helpdeskAgentCategories->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->name,
@@ -50,6 +57,8 @@ class AdminHelpdeskAgentController extends Controller
             'category_ids.*' => ['integer', 'exists:helpdesk_categories,id'],
             'can_manage_kb' => ['sometimes', 'boolean'],
             'can_reassign_tickets' => ['sometimes', 'boolean'],
+            'grant_helpdesk_admin' => ['sometimes', 'boolean'],
+            'grant_supervisor_access' => ['sometimes', 'boolean'],
         ]);
 
         $profile = $user->helpdeskProfile;
@@ -66,6 +75,13 @@ class AdminHelpdeskAgentController extends Controller
         if (array_key_exists('can_reassign_tickets', $validated)) {
             $profile->can_reassign_tickets = (bool) $validated['can_reassign_tickets'];
         }
+        if (array_key_exists('grant_helpdesk_admin', $validated)) {
+            $profile->grant_helpdesk_admin = (bool) $validated['grant_helpdesk_admin'];
+        }
+        if (array_key_exists('grant_supervisor_access', $validated)) {
+            $profile->grant_supervisor_access = (bool) $validated['grant_supervisor_access'];
+        }
+        $this->permissions->syncEffectiveRole($profile);
         $profile->save();
 
         $user->helpdeskAgentCategories()->sync($validated['category_ids']);
@@ -79,6 +95,8 @@ class AdminHelpdeskAgentController extends Controller
                 'staff_id' => $user->helpdeskProfile?->staff_id,
                 'can_manage_kb' => (bool) ($user->helpdeskProfile?->can_manage_kb),
                 'can_reassign_tickets' => (bool) ($user->helpdeskProfile?->can_reassign_tickets),
+                'grant_helpdesk_admin' => (bool) ($user->helpdeskProfile?->grant_helpdesk_admin),
+                'grant_supervisor_access' => (bool) ($user->helpdeskProfile?->grant_supervisor_access),
                 'categories' => $user->helpdeskAgentCategories->map(fn ($c) => [
                     'id' => $c->id,
                     'name' => $c->name,

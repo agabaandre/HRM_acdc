@@ -45,7 +45,7 @@ class HelpdeskTicketPolicy
         if (! $p) {
             return false;
         }
-        if (in_array($p->role, [HelpdeskProfile::ROLE_ADMIN, HelpdeskProfile::ROLE_SUPERVISOR], true)) {
+        if ($p->hasSupervisorAccess()) {
             return true;
         }
         if ($p->role === HelpdeskProfile::ROLE_AGENT && (int) $ticket->assigned_user_id === (int) $user->id) {
@@ -64,7 +64,7 @@ class HelpdeskTicketPolicy
     {
         $p = $user->helpdeskProfile;
 
-        return $p && $p->role === HelpdeskProfile::ROLE_ADMIN;
+        return $p && $p->isHelpdeskAdmin();
     }
 
     /**
@@ -144,7 +144,7 @@ class HelpdeskTicketPolicy
         if (! $p) {
             return false;
         }
-        if (in_array($p->role, [HelpdeskProfile::ROLE_ADMIN, HelpdeskProfile::ROLE_SUPERVISOR], true)) {
+        if ($p->hasSupervisorAccess()) {
             return $this->view($user, $ticket);
         }
         if ($p->role === HelpdeskProfile::ROLE_AGENT && (int) $ticket->assigned_user_id === (int) $user->id) {
@@ -161,6 +161,6 @@ class HelpdeskTicketPolicy
             HelpdeskProfile::ROLE_SUPERVISOR,
             HelpdeskProfile::ROLE_AGENT,
             HelpdeskProfile::ROLE_AUDITOR,
-        ], true);
+        ], true) || $p->grant_supervisor_access === true;
     }
 }

@@ -26,6 +26,7 @@ class MeResource extends JsonResource
                 'staff_id' => $p->staff_id,
                 'sap_no' => $p->sap_no ? trim((string) $p->sap_no) : null,
                 'role' => $p->role,
+                'is_helpdesk_admin' => $p->isHelpdeskAdmin(),
                 'directorate_id' => $p->directorate_id,
                 'division_id' => $p->division_id,
                 'duty_station' => $p->duty_station ? trim((string) $p->duty_station) : null,

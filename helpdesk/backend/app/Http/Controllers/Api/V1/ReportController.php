@@ -143,7 +143,7 @@ class ReportController extends Controller
     public function adminSummary(Request $request): JsonResponse
     {
         $p = $request->user()->helpdeskProfile;
-        abort_unless($p && $p->role === HelpdeskProfile::ROLE_ADMIN, 403);
+        abort_unless($p && $p->isHelpdeskAdmin(), 403);
         $qTerm = trim((string) $request->query('q', ''));
         $perPage = min((int) $request->query('per_page', 20), 100);
 
@@ -184,7 +184,7 @@ class ReportController extends Controller
         $scope = $request->query('scope', 'assigned');
         $q = HelpdeskTicket::query()->with(['category', 'assignee']);
 
-        if ($scope === 'all' && $p->role === HelpdeskProfile::ROLE_ADMIN) {
+        if ($scope === 'all' && $p->isHelpdeskAdmin()) {
             // all tickets
         } elseif ($scope === 'mine' && $p->staff_id) {
             $q->where('requester_staff_id', $p->staff_id);

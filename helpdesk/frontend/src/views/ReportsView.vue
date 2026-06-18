@@ -50,7 +50,9 @@ const adminTotal = ref(0)
 const adminQuery = ref('')
 const adminLoading = ref(false)
 
-const isAdmin = computed(() => auth.me?.profile?.role === 'admin')
+const isAdmin = computed(
+  () => !!auth.me?.profile?.is_helpdesk_admin || auth.me?.profile?.role === 'admin',
+)
 const myHasPrev = computed(() => myPage.value > 1)
 const myHasNext = computed(() => myPage.value < myLastPage.value)
 const adminHasPrev = computed(() => adminPage.value > 1)

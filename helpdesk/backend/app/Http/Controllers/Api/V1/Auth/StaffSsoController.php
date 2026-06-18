@@ -8,6 +8,7 @@ use App\Http\Resources\Api\V1\MeResource;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskSetting;
 use App\Models\User;
+use App\Services\HelpdeskPermissionService;
 use App\Services\StaffPortalJwtService;
 use App\Support\StaffSapNoFromPayload;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +18,7 @@ use InvalidArgumentException;
 
 class StaffSsoController extends Controller
 {
-    public function __invoke(StaffSsoRequest $request, StaffPortalJwtService $jwt): JsonResponse
+    public function __invoke(StaffSsoRequest $request, StaffPortalJwtService $jwt, HelpdeskPermissionService $permissions): JsonResponse
     {
         $secret = (string) config('helpdesk.jwt_secret', '');
         if ($secret === '') {
@@ -71,14 +72,10 @@ class StaffSsoController extends Controller
 
         $user->forceFill($attrs)->save();
 
-        // If an admin explicitly designated this person as an agent on
-        // Settings → General, that choice wins over division-based fallback.
-        // (NULL = never reviewed → recompute as before; FALSE = explicitly
-        // removed → also recompute, demotion is the admin's intent.)
+        // Helpdesk-local overrides (designated agent, granted admin/supervisor) win over SSO mapping.
         $existingProfile = $user->helpdeskProfile;
-        if ($existingProfile && $existingProfile->is_designated_agent === true
-            && $role !== HelpdeskProfile::ROLE_ADMIN) {
-            $role = HelpdeskProfile::ROLE_AGENT;
+        if ($existingProfile) {
+            $role = $permissions->applySsoRoleOverrides($existingProfile, $role);
         }
 
         $portalRole = isset($payload['role']) ? (int) $payload['role'] : null;

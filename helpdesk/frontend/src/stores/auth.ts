@@ -9,6 +9,7 @@ export interface MeProfile {
   staff_id: number | null
   sap_no?: string | null
   role: string
+  is_helpdesk_admin?: boolean
   directorate_id: number | null
   division_id: number | null
   duty_station?: string | null

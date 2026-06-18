@@ -10,10 +10,14 @@ const route = useRoute()
 const navOpen = ref(false)
 const settingsOpen = ref(false)
 
-const isAdmin = computed(() => auth.me?.profile?.role === 'admin')
+const isAdmin = computed(
+  () => !!auth.me?.profile?.is_helpdesk_admin || auth.me?.profile?.role === 'admin',
+)
 const staffRole = computed(() => auth.me?.profile?.role ?? '')
 
-const showDesk = computed(() => ['agent', 'supervisor', 'admin', 'auditor'].includes(staffRole.value))
+const showDesk = computed(() =>
+  ['agent', 'supervisor', 'admin', 'auditor'].includes(staffRole.value),
+)
 const canManageKb = computed(() => isAdmin.value || !!auth.me?.profile?.can_manage_kb)
 
 function closeAll() {

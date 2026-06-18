@@ -159,14 +159,17 @@ router.beforeEach(async (to) => {
       }
     }
     const role = auth.me?.profile?.role
-    if (to.meta.requiresAdmin && role !== 'admin') {
+    const isHelpdeskAdmin =
+      !!auth.me?.profile?.is_helpdesk_admin || role === 'admin'
+    if (to.meta.requiresAdmin && !isHelpdeskAdmin) {
       return { name: 'home' }
     }
     if (to.meta.requiresStaff && (!role || !STAFF_ROLES.has(role))) {
       return { name: 'home' }
     }
     if (to.meta.requiresKbManager) {
-      const canKb = role === 'admin' || !!auth.me?.profile?.can_manage_kb
+      const canKb =
+        isHelpdeskAdmin || !!auth.me?.profile?.can_manage_kb
       if (!canKb) {
         return { name: 'home' }
       }
