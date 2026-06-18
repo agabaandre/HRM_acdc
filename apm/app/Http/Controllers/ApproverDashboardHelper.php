@@ -8,6 +8,86 @@ use Illuminate\Support\Facades\Log;
 
 trait ApproverDashboardHelper
 {
+    /** SQL fragment: latest submit/resubmit time (ARF/RFS start at approval_level > 1, so order is not always 0). */
+    private function workflowStatsSubmittedTimeSql(): string
+    {
+        return "MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') THEN at.updated_at END)";
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    protected function getApproverDashboardDocumentTypeOptions(): array
+    {
+        $types = [
+            ['value' => 'matrix', 'label' => 'Matrix'],
+            ['value' => 'non_travel', 'label' => 'Non-Travel Memos'],
+            ['value' => 'single_memos', 'label' => 'Single Memos'],
+            ['value' => 'special', 'label' => 'Special Memos'],
+            ['value' => 'memos', 'label' => 'Memos'],
+            ['value' => 'arf', 'label' => 'ARF Requests'],
+            ['value' => 'requests_for_service', 'label' => 'Requests for Service'],
+            ['value' => 'change_requests', 'label' => 'Change Requests'],
+            ['value' => 'other_memo', 'label' => 'Other Memos (all types)'],
+        ];
+
+        try {
+            $memoTypes = \App\Models\MemoTypeDefinition::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['slug', 'name']);
+
+            foreach ($memoTypes as $memoType) {
+                $types[] = [
+                    'value' => 'other_memo.'.$memoType->slug,
+                    'label' => 'Other Memo: '.$memoType->name,
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::debug('approver_dashboard.memo_type_options_failed', ['error' => $e->getMessage()]);
+        }
+
+        return $types;
+    }
+
+    protected function isValidApproverDashboardDocType(?string $docType): bool
+    {
+        if ($docType === null || $docType === '') {
+            return true;
+        }
+
+        foreach ($this->getApproverDashboardDocumentTypeOptions() as $option) {
+            if (($option['value'] ?? '') === $docType) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return string|null Memo type slug when filtering a specific other memo type; null = all other memos; false = not other-memo scope.
+     */
+    protected function parseOtherMemoDocTypeFilter(?string $docType): string|null|false
+    {
+        if ($docType === null || $docType === '' || $docType === 'memos') {
+            return null;
+        }
+
+        if ($docType === 'other_memo') {
+            return null;
+        }
+
+        if (str_starts_with($docType, 'other_memo.')) {
+            $slug = substr($docType, strlen('other_memo.'));
+
+            return $slug !== '' ? $slug : null;
+        }
+
+        return false;
+    }
+
     /**
      * Request-scoped cache: pending document collections for dashboard counts (division/year/month scope).
      * Avoids reloading all pending matrices/memos/etc. once per approver row.
@@ -453,7 +533,9 @@ trait ApproverDashboardHelper
             ];
         }
 
-        return $approversWithCounts;
+        return array_values(array_filter($approversWithCounts, function (array $row): bool {
+            return (int) ($row['total_handled'] ?? 0) > 0;
+        }));
     }
 
     /**
@@ -845,16 +927,12 @@ trait ApproverDashboardHelper
      */
     protected function getDocumentTypeLabels()
     {
-        return [
-            'matrix' => 'Matrix',
-            'non_travel' => 'Non-Travel Memos',
-            'single_memos' => 'Single Memos',
-            'special' => 'Special Memos',
-            'memos' => 'Memos',
-            'arf' => 'ARF Requests',
-            'requests_for_service' => 'Requests for Service',
-            'change_requests' => 'Change Requests',
-        ];
+        $labels = [];
+        foreach ($this->getApproverDashboardDocumentTypeOptions() as $option) {
+            $labels[$option['value']] = $option['label'];
+        }
+
+        return $labels;
     }
 
     /**
@@ -1094,18 +1172,18 @@ trait ApproverDashboardHelper
             foreach ($workflows as $wf) {
                 $workflowId = $wf->id;
                 // Documents that have been submitted and have at least one approved/rejected in this workflow
+                $submittedSql = $this->workflowStatsSubmittedTimeSql();
                 $rows = DB::select("
                     SELECT 
                         at.model_id,
                         at.model_type,
-                        MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time,
+                        {$submittedSql} AS submitted_time,
                         MAX(CASE WHEN at.action IN ('approved', 'rejected') THEN at.updated_at END) AS last_approval_time
                     FROM approval_trails at
                     WHERE at.forward_workflow_id = ?
                     AND at.is_archived = 0
                     AND (
-                        (at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0)
-                        OR at.action IN ('approved', 'rejected')
+                        at.action IN ('submitted', 'resubmitted', 'approved', 'rejected')
                     )
                     GROUP BY at.model_id, at.model_type
                     HAVING submitted_time IS NOT NULL AND last_approval_time IS NOT NULL AND last_approval_time >= submitted_time
@@ -1121,13 +1199,14 @@ trait ApproverDashboardHelper
                 }
 
                 $avgHours = $count > 0 ? round($totalHours / $count, 2) : 0;
-                $result[] = $this->formatWorkflowStatRow($wf->workflow_name, (int) $workflowId, $count, $avgHours, []);
+                if ($count > 0) {
+                    $result[] = $this->formatWorkflowStatRow($wf->workflow_name, (int) $workflowId, $count, $avgHours, []);
+                }
             }
 
-            $otherMemoAgg = $this->getOtherMemoApprovalDurationAggregates(null, null, null, null);
-            $this->mergeOtherMemoIntoWorkflowStats($result, $otherMemoAgg);
+            $this->appendOtherMemoTypeWorkflowRows($result, null, null, null, null);
 
-            return $result;
+            return $this->workflowStatsRowsWithData($result);
         } catch (\Exception $e) {
             Log::error('Error calculating average approval time by workflow: '.$e->getMessage());
 
@@ -1264,7 +1343,27 @@ trait ApproverDashboardHelper
             'avg_days' => $avgHours > 0 ? round($avgHours / 24, 4) : 0,
             'avg_display' => $this->formatApprovalTime($avgHours),
             'doc_type_labels' => array_values(array_unique($docTypeLabels)),
+            'has_timing_data' => $memosCount > 0 && $avgHours > 0,
         ];
+    }
+
+    /**
+     * Rows with at least one approved document and a measurable average (table + chart).
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function workflowStatsRowsWithData(array $rows): array
+    {
+        $filtered = array_values(array_filter($rows, function (array $row): bool {
+            return (int) ($row['memos'] ?? 0) > 0 && (float) ($row['avg_hours'] ?? 0) > 0;
+        }));
+
+        usort($filtered, function (array $a, array $b): int {
+            return strcasecmp((string) ($a['workflow_name'] ?? ''), (string) ($b['workflow_name'] ?? ''));
+        });
+
+        return $filtered;
     }
 
     /**
@@ -1274,7 +1373,8 @@ trait ApproverDashboardHelper
      */
     protected function getOtherMemoApprovalDurationAggregates(?int $divisionId, ?string $docType, ?int $year, ?int $month): array
     {
-        if ($docType && ! in_array($docType, ['memos', 'other_memo', ''], true)) {
+        $slugFilter = $this->parseOtherMemoDocTypeFilter($docType);
+        if ($slugFilter === false) {
             return ['count' => 0, 'total_hours' => 0.0, 'workflow_id' => null];
         }
 
@@ -1284,6 +1384,10 @@ trait ApproverDashboardHelper
             ->where('overall_status', \App\Models\OtherMemo::STATUS_APPROVED)
             ->whereNotNull('submitted_at')
             ->whereNotNull('approved_at');
+
+        if ($slugFilter !== null) {
+            $q->where('memo_type_slug', $slugFilter);
+        }
 
         if ($divisionId) {
             $q->where('division_id', $divisionId);
@@ -1310,26 +1414,126 @@ trait ApproverDashboardHelper
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, object>  $workflows
-     * @return list<array<string, mixed>>
+     * @return list<array{slug: string, name: string, count: int, total_hours: float, workflow_id: int|null}>
      */
-    protected function getWorkflowStatsOtherMemoOnlyRows($workflows, ?int $divisionId, ?int $year, ?int $month): array
+    protected function getOtherMemoApprovalDurationByType(?int $divisionId, ?string $docType, ?int $year, ?int $month): array
     {
-        $om = $this->getOtherMemoApprovalDurationAggregates($divisionId, 'other_memo', $year, $month);
-        if (! $om['workflow_id'] || $om['count'] < 1) {
+        $slugFilter = $this->parseOtherMemoDocTypeFilter($docType);
+        if ($slugFilter === false) {
             return [];
         }
-        $wf = $workflows->firstWhere('id', (int) $om['workflow_id']);
-        if (! $wf) {
-            return [];
-        }
-        $avgHours = round($om['total_hours'] / $om['count'], 2);
 
-        return [$this->formatWorkflowStatRow($wf->workflow_name, (int) $wf->id, $om['count'], $avgHours, ['Other Memo'])];
+        $workflowId = \App\Models\WorkflowModel::getWorkflowIdForModel('OtherMemo');
+
+        $q = \App\Models\OtherMemo::query()
+            ->where('overall_status', \App\Models\OtherMemo::STATUS_APPROVED)
+            ->whereNotNull('submitted_at')
+            ->whereNotNull('approved_at')
+            ->whereNotNull('memo_type_slug');
+
+        if ($slugFilter !== null) {
+            $q->where('memo_type_slug', $slugFilter);
+        }
+
+        if ($divisionId) {
+            $q->where('division_id', $divisionId);
+        }
+        if ($year) {
+            $q->whereYear('submitted_at', $year);
+        }
+        if ($month) {
+            $q->whereMonth('submitted_at', $month);
+        }
+
+        $groups = [];
+        foreach ($q->cursor() as $om) {
+            $slug = (string) ($om->memo_type_slug ?? '');
+            if ($slug === '') {
+                continue;
+            }
+            if (! isset($groups[$slug])) {
+                $groups[$slug] = [
+                    'slug' => $slug,
+                    'name' => (string) ($om->memo_type_name_snapshot ?? $slug),
+                    'count' => 0,
+                    'total_hours' => 0.0,
+                    'workflow_id' => $workflowId ? (int) $workflowId : null,
+                ];
+            }
+            $groups[$slug]['count']++;
+            $groups[$slug]['total_hours'] += Carbon::parse($om->submitted_at)->diffInSeconds(Carbon::parse($om->approved_at)) / 3600.0;
+        }
+
+        usort($groups, fn ($a, $b) => strcmp($a['name'], $b['name']));
+
+        return array_values($groups);
     }
 
     /**
-     * Merge Other Memo cycle-time stats into the workflow row that owns this model (workflow_models).
+     * @param  \Illuminate\Support\Collection<int, object>  $workflows
+     * @return list<array<string, mixed>>
+     */
+    protected function getWorkflowStatsOtherMemoOnlyRows($workflows, ?int $divisionId, ?string $docType, ?int $year, ?int $month): array
+    {
+        $rows = [];
+        foreach ($this->getOtherMemoApprovalDurationByType($divisionId, $docType, $year, $month) as $om) {
+            if (! $om['workflow_id'] || $om['count'] < 1) {
+                continue;
+            }
+            $wf = $workflows->firstWhere('id', (int) $om['workflow_id']);
+            if (! $wf) {
+                continue;
+            }
+            $avgHours = round($om['total_hours'] / $om['count'], 2);
+            $typeName = $om['name'] ?: $om['slug'];
+            $rows[] = $this->formatWorkflowStatRow(
+                $wf->workflow_name.' — '.$typeName,
+                (int) $wf->id,
+                $om['count'],
+                $avgHours,
+                [$typeName]
+            );
+        }
+
+        return $rows;
+    }
+
+    /**
+     * One workflow-stats row per approved Other Memo type (separate from trail-based workflows).
+     *
+     * @param  list<array<string, mixed>>  $result
+     */
+    protected function appendOtherMemoTypeWorkflowRows(array &$result, ?int $divisionId, ?string $docType, ?int $year, ?int $month): void
+    {
+        $slugFilter = $this->parseOtherMemoDocTypeFilter($docType);
+        if ($slugFilter === false) {
+            return;
+        }
+
+        $workflows = DB::table('workflows')->select('id', 'workflow_name')->get();
+
+        foreach ($this->getOtherMemoApprovalDurationByType($divisionId, $docType, $year, $month) as $om) {
+            if (! $om['workflow_id'] || $om['count'] < 1) {
+                continue;
+            }
+            $wf = $workflows->firstWhere('id', (int) $om['workflow_id']);
+            if (! $wf) {
+                continue;
+            }
+            $avgHours = round($om['total_hours'] / $om['count'], 2);
+            $typeName = $om['name'] ?: $om['slug'];
+            $result[] = $this->formatWorkflowStatRow(
+                $wf->workflow_name.' — '.$typeName,
+                (int) $wf->id,
+                $om['count'],
+                $avgHours,
+                [$typeName]
+            );
+        }
+    }
+
+    /**
+     * @deprecated Use appendOtherMemoTypeWorkflowRows()
      *
      * @param  list<array<string, mixed>>  $result
      */
@@ -1392,12 +1596,15 @@ trait ApproverDashboardHelper
                 ->orderBy('workflow_name')
                 ->get();
 
-            if ($docType === 'other_memo') {
-                return $this->getWorkflowStatsOtherMemoOnlyRows($workflows, $divisionId, $year, $month);
+            if ($docType === 'other_memo' || ($docType && str_starts_with($docType, 'other_memo.'))) {
+                return $this->workflowStatsRowsWithData(
+                    $this->getWorkflowStatsOtherMemoOnlyRows($workflows, $divisionId, $docType, $year, $month)
+                );
             }
 
             $modelType = $docType ? self::getModelTypeByDocType($docType) : null;
             $quarter = ($month && $year) ? 'Q'.ceil($month / 3) : null;
+            $submittedTimeSql = $this->workflowStatsSubmittedTimeSql();
 
             $result = [];
             foreach ($workflows as $wf) {
@@ -1407,7 +1614,7 @@ trait ApproverDashboardHelper
                     ->select(
                         'at.model_id',
                         'at.model_type',
-                        DB::raw("MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0 THEN at.updated_at END) AS submitted_time"),
+                        DB::raw("{$submittedTimeSql} AS submitted_time"),
                         DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) AS last_approval_time")
                     )
                     // Match by trail's workflow OR by document's workflow (same approach as General workflow memos)
@@ -1510,37 +1717,7 @@ trait ApproverDashboardHelper
                                 ->whereExists(function ($ex) {
                                     $ex->select(DB::raw(1))->from('request_arfs as r')
                                         ->whereColumn('r.id', 'at.model_id')
-                                        ->where('r.overall_status', 'approved')
-                                        ->where(function ($parent) {
-                                            // Require parent memo overall_status = 'approved' when parent exists
-                                            $parent->where(function ($noParent) {
-                                                $noParent->whereNull('r.source_id')->orWhereNull('r.model_type');
-                                            })
-                                                ->orWhere(function ($act) {
-                                                    $act->where('r.model_type', 'App\\Models\\Activity')
-                                                        ->whereExists(function ($pa) {
-                                                            $pa->select(DB::raw(1))->from('activities as pa')
-                                                                ->whereColumn('pa.id', 'r.source_id')
-                                                                ->where('pa.overall_status', 'approved');
-                                                        });
-                                                })
-                                                ->orWhere(function ($nt) {
-                                                    $nt->where('r.model_type', 'App\\Models\\NonTravelMemo')
-                                                        ->whereExists(function ($pa) {
-                                                            $pa->select(DB::raw(1))->from('non_travel_memos as pa')
-                                                                ->whereColumn('pa.id', 'r.source_id')
-                                                                ->where('pa.overall_status', 'approved');
-                                                        });
-                                                })
-                                                ->orWhere(function ($sm) {
-                                                    $sm->where('r.model_type', 'App\\Models\\SpecialMemo')
-                                                        ->whereExists(function ($pa) {
-                                                            $pa->select(DB::raw(1))->from('special_memos as pa')
-                                                                ->whereColumn('pa.id', 'r.source_id')
-                                                                ->where('pa.overall_status', 'approved');
-                                                        });
-                                                });
-                                        });
+                                        ->where('r.overall_status', 'approved');
                                 });
                         })
                         ->orWhere(function ($q2) {
@@ -1548,49 +1725,7 @@ trait ApproverDashboardHelper
                                 ->whereExists(function ($ex) {
                                     $ex->select(DB::raw(1))->from('service_requests as sr')
                                         ->whereColumn('sr.id', 'at.model_id')
-                                        ->where('sr.overall_status', 'approved')
-                                        ->where(function ($parent) {
-                                            // Require parent memo overall_status = 'approved' when parent exists
-                                            $parent->where(function ($noParent) {
-                                                $noParent->whereNull('sr.source_id')->whereNull('sr.source_type')->whereNull('sr.activity_id');
-                                            })
-                                                ->orWhere(function ($act) {
-                                                    $act->where(function ($a) {
-                                                        $a->whereNotNull('sr.activity_id')
-                                                            ->whereExists(function ($pa) {
-                                                                $pa->select(DB::raw(1))->from('activities as pa')
-                                                                    ->whereColumn('pa.id', 'sr.activity_id')
-                                                                    ->where('pa.overall_status', 'approved');
-                                                            });
-                                                    })->orWhere(function ($a) {
-                                                        $a->where('sr.source_type', 'activity')
-                                                            ->whereNotNull('sr.source_id')
-                                                            ->whereExists(function ($pa) {
-                                                                $pa->select(DB::raw(1))->from('activities as pa')
-                                                                    ->whereColumn('pa.id', 'sr.source_id')
-                                                                    ->where('pa.overall_status', 'approved');
-                                                            });
-                                                    });
-                                                })
-                                                ->orWhere(function ($sm) {
-                                                    $sm->where('sr.source_type', 'special_memo')
-                                                        ->whereNotNull('sr.source_id')
-                                                        ->whereExists(function ($pa) {
-                                                            $pa->select(DB::raw(1))->from('special_memos as pa')
-                                                                ->whereColumn('pa.id', 'sr.source_id')
-                                                                ->where('pa.overall_status', 'approved');
-                                                        });
-                                                })
-                                                ->orWhere(function ($nt) {
-                                                    $nt->where('sr.source_type', 'non_travel_memo')
-                                                        ->whereNotNull('sr.source_id')
-                                                        ->whereExists(function ($pa) {
-                                                            $pa->select(DB::raw(1))->from('non_travel_memos as pa')
-                                                                ->whereColumn('pa.id', 'sr.source_id')
-                                                                ->where('pa.overall_status', 'approved');
-                                                        });
-                                                });
-                                        });
+                                        ->where('sr.overall_status', 'approved');
                                 });
                         })
                         ->orWhere(function ($q2) {
@@ -1608,69 +1743,87 @@ trait ApproverDashboardHelper
                 }
 
                 if ($divisionId) {
-                    $query->whereExists(function ($ex) use ($divisionId) {
-                        $ex->select(DB::raw(1))
-                            ->from('approval_trails as sub')
-                            ->join('staff as st', 'st.staff_id', '=', 'sub.staff_id')
-                            ->whereColumn('sub.model_id', 'at.model_id')
-                            ->whereColumn('sub.model_type', 'at.model_type')
-                            ->where(function ($q) {
-                                $q->whereColumn('sub.forward_workflow_id', 'at.forward_workflow_id')
-                                    ->orWhere(function ($q2) {
-                                        $q2->whereNull('sub.forward_workflow_id')->whereNull('at.forward_workflow_id');
-                                    })
-                                    ->orWhere(function ($q2) {
-                                        $q2->where('at.model_type', 'App\\Models\\Matrix')
-                                            ->whereNull('at.forward_workflow_id')
-                                            ->whereExists(function ($mx) {
-                                                $mx->select(DB::raw(1))->from('matrices as m')
-                                                    ->whereColumn('m.id', 'at.model_id')
-                                                    ->where(function ($mq) {
-                                                        $mq->whereColumn('m.forward_workflow_id', 'sub.forward_workflow_id')
-                                                            ->orWhereNull('sub.forward_workflow_id');
-                                                    });
-                                            });
-                                    })
-                                    ->orWhere(function ($q2) {
-                                        $q2->where('at.model_type', 'App\\Models\\Activity')
-                                            ->whereNull('at.forward_workflow_id')
-                                            ->whereExists(function ($ax) {
-                                                $ax->select(DB::raw(1))->from('activities as a')
-                                                    ->whereColumn('a.id', 'at.model_id')
-                                                    ->where(function ($aq) {
-                                                        $aq->whereColumn('a.forward_workflow_id', 'sub.forward_workflow_id')
-                                                            ->orWhereNull('sub.forward_workflow_id');
-                                                    });
-                                            });
-                                    })
-                                    ->orWhere(function ($q2) {
-                                        $q2->where('at.model_type', 'App\\Models\\ServiceRequest')
-                                            ->whereNull('at.forward_workflow_id')
-                                            ->whereExists(function ($srx) {
-                                                $srx->select(DB::raw(1))->from('service_requests as sr')
-                                                    ->whereColumn('sr.id', 'at.model_id')
-                                                    ->where(function ($srq) {
-                                                        $srq->whereColumn('sr.forward_workflow_id', 'sub.forward_workflow_id')
-                                                            ->orWhereNull('sub.forward_workflow_id');
-                                                    });
-                                            });
-                                    })
-                                    ->orWhere(function ($q2) {
-                                        $q2->where('at.model_type', 'App\\Models\\RequestARF')
-                                            ->whereNull('at.forward_workflow_id')
-                                            ->whereExists(function ($rx) {
-                                                $rx->select(DB::raw(1))->from('request_arfs as r')
-                                                    ->whereColumn('r.id', 'at.model_id')
-                                                    ->where(function ($rq) {
-                                                        $rq->whereColumn('r.forward_workflow_id', 'sub.forward_workflow_id')
-                                                            ->orWhereNull('sub.forward_workflow_id');
-                                                    });
-                                            });
+                    $query->where(function ($divisionScope) use ($divisionId) {
+                        $divisionScope->whereExists(function ($ex) use ($divisionId) {
+                            $ex->select(DB::raw(1))
+                                ->from('approval_trails as sub')
+                                ->join('staff as st', 'st.staff_id', '=', 'sub.staff_id')
+                                ->whereColumn('sub.model_id', 'at.model_id')
+                                ->whereColumn('sub.model_type', 'at.model_type')
+                                ->where(function ($q) {
+                                    $q->whereColumn('sub.forward_workflow_id', 'at.forward_workflow_id')
+                                        ->orWhere(function ($q2) {
+                                            $q2->whereNull('sub.forward_workflow_id')->whereNull('at.forward_workflow_id');
+                                        })
+                                        ->orWhere(function ($q2) {
+                                            $q2->where('at.model_type', 'App\\Models\\Matrix')
+                                                ->whereNull('at.forward_workflow_id')
+                                                ->whereExists(function ($mx) {
+                                                    $mx->select(DB::raw(1))->from('matrices as m')
+                                                        ->whereColumn('m.id', 'at.model_id')
+                                                        ->where(function ($mq) {
+                                                            $mq->whereColumn('m.forward_workflow_id', 'sub.forward_workflow_id')
+                                                                ->orWhereNull('sub.forward_workflow_id');
+                                                        });
+                                                });
+                                        })
+                                        ->orWhere(function ($q2) {
+                                            $q2->where('at.model_type', 'App\\Models\\Activity')
+                                                ->whereNull('at.forward_workflow_id')
+                                                ->whereExists(function ($ax) {
+                                                    $ax->select(DB::raw(1))->from('activities as a')
+                                                        ->whereColumn('a.id', 'at.model_id')
+                                                        ->where(function ($aq) {
+                                                            $aq->whereColumn('a.forward_workflow_id', 'sub.forward_workflow_id')
+                                                                ->orWhereNull('sub.forward_workflow_id');
+                                                        });
+                                                });
+                                        })
+                                        ->orWhere(function ($q2) {
+                                            $q2->where('at.model_type', 'App\\Models\\ServiceRequest')
+                                                ->whereNull('at.forward_workflow_id')
+                                                ->whereExists(function ($srx) {
+                                                    $srx->select(DB::raw(1))->from('service_requests as sr')
+                                                        ->whereColumn('sr.id', 'at.model_id')
+                                                        ->where(function ($srq) {
+                                                            $srq->whereColumn('sr.forward_workflow_id', 'sub.forward_workflow_id')
+                                                                ->orWhereNull('sub.forward_workflow_id');
+                                                        });
+                                                });
+                                        })
+                                        ->orWhere(function ($q2) {
+                                            $q2->where('at.model_type', 'App\\Models\\RequestARF')
+                                                ->whereNull('at.forward_workflow_id')
+                                                ->whereExists(function ($rx) {
+                                                    $rx->select(DB::raw(1))->from('request_arfs as r')
+                                                        ->whereColumn('r.id', 'at.model_id')
+                                                        ->where(function ($rq) {
+                                                            $rq->whereColumn('r.forward_workflow_id', 'sub.forward_workflow_id')
+                                                                ->orWhereNull('sub.forward_workflow_id');
+                                                        });
+                                                });
+                                        });
+                                })
+                                ->whereIn('sub.action', ['submitted', 'resubmitted'])
+                                ->where('sub.is_archived', 0)
+                                ->where('st.division_id', $divisionId);
+                        })
+                            ->orWhere(function ($q2) use ($divisionId) {
+                                $q2->where('at.model_type', 'App\\Models\\RequestARF')
+                                    ->whereExists(function ($ex) use ($divisionId) {
+                                        $ex->select(DB::raw(1))->from('request_arfs as r')
+                                            ->whereColumn('r.id', 'at.model_id')
+                                            ->where('r.division_id', $divisionId);
                                     });
                             })
-                            ->whereIn('sub.action', ['submitted', 'resubmitted'])
-                            ->where('sub.is_archived', 0)
-                            ->where('st.division_id', $divisionId);
+                            ->orWhere(function ($q2) use ($divisionId) {
+                                $q2->where('at.model_type', 'App\\Models\\ServiceRequest')
+                                    ->whereExists(function ($ex) use ($divisionId) {
+                                        $ex->select(DB::raw(1))->from('service_requests as sr')
+                                            ->whereColumn('sr.id', 'at.model_id')
+                                            ->where('sr.division_id', $divisionId);
+                                    });
+                            });
                     });
                 }
 
@@ -1774,9 +1927,9 @@ trait ApproverDashboardHelper
                 }
 
                 $query->groupBy('at.model_id', 'at.model_type');
-                $query->havingNotNull(DB::raw("MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0 THEN at.updated_at END)"));
+                $query->havingNotNull(DB::raw($submittedTimeSql));
                 $query->havingNotNull(DB::raw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END)"));
-                $query->havingRaw("MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END) >= MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') AND at.approval_order = 0 THEN at.updated_at END)");
+                $query->havingRaw("{$submittedTimeSql} <= MAX(CASE WHEN at.action = 'approved' THEN at.updated_at END)");
 
                 $rows = $query->get();
 
@@ -1801,19 +1954,20 @@ trait ApproverDashboardHelper
                 sort($docTypeLabels);
 
                 $avgHours = $count > 0 ? round($totalHours / $count, 2) : 0;
-                $result[] = $this->formatWorkflowStatRow(
-                    $wf->workflow_name,
-                    (int) $workflowId,
-                    $count,
-                    $avgHours,
-                    $docTypeLabels
-                );
+                if ($count > 0) {
+                    $result[] = $this->formatWorkflowStatRow(
+                        $wf->workflow_name,
+                        (int) $workflowId,
+                        $count,
+                        $avgHours,
+                        $docTypeLabels
+                    );
+                }
             }
 
-            $otherMemoAgg = $this->getOtherMemoApprovalDurationAggregates($divisionId, $docType, $year, $month);
-            $this->mergeOtherMemoIntoWorkflowStats($result, $otherMemoAgg);
+            $this->appendOtherMemoTypeWorkflowRows($result, $divisionId, $docType, $year, $month);
 
-            return $result;
+            return $this->workflowStatsRowsWithData($result);
         } catch (\Exception $e) {
             Log::error('Error calculating average approval time by workflow (filtered): '.$e->getMessage());
 

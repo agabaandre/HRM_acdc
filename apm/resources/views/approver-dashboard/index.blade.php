@@ -658,11 +658,12 @@ function loadWorkflowStats() {
 }
 
 function clearWorkflowChart() {
-    if (typeof Highcharts !== 'undefined') {
-        var chartEl = document.getElementById('workflowAvgTimeChart');
-        if (chartEl && chartEl.__chart) {
-            try { chartEl.__chart.destroy(); chartEl.__chart = null; } catch (e) {}
-        }
+    var chartEl = document.getElementById('workflowAvgTimeChart');
+    if (chartEl && chartEl.__chart) {
+        try { chartEl.__chart.destroy(); chartEl.__chart = null; } catch (e) {}
+    }
+    if (chartEl) {
+        chartEl.innerHTML = '';
     }
 }
 
@@ -707,8 +708,17 @@ function formatWorkflowAvgCell(row) {
     return escapeHtml(String(rounded)) + ' <span class="text-muted small">days</span>';
 }
 
+function workflowStatsChartRows(stats) {
+    return (stats || []).filter(function (row) {
+        var count = Number(row.memos || 0);
+        var avgHours = Number(row.avg_hours || 0);
+        return row.has_timing_data === true || (isFinite(count) && count > 0 && isFinite(avgHours) && avgHours > 0);
+    });
+}
+
 function renderWorkflowStats(stats) {
     workflowStatsData = stats && stats.length ? stats.slice() : [];
+    var chartRows = workflowStatsChartRows(workflowStatsData);
     var tbody = $('#workflowStatsBody');
     var overallCountEl = $('#workflowStatsOverallCount');
     var overallAvgEl = $('#workflowStatsOverallAvg');
@@ -758,9 +768,9 @@ function renderWorkflowStats(stats) {
         overallAvgEl.text('No data');
     }
 
-    // Column chart: defer render so container is in DOM (fixes Livewire/navigation timing)
-    var categories = workflowStatsData.map(function(s) { return s.workflow_name || 'Unknown'; });
-    var seriesData = workflowStatsData.map(function(s) {
+    // Column chart: only workflows / memo types with measurable averages (no 0-day bars).
+    var categories = chartRows.map(function(s) { return s.workflow_name || 'Unknown'; });
+    var seriesData = chartRows.map(function(s) {
         if (unit === 'hours') {
             return Math.round((Number(s.avg_hours) || 0) * 10) / 10;
         }
@@ -771,13 +781,21 @@ function renderWorkflowStats(stats) {
     var yMax = maxVal > 0 ? Math.ceil(maxVal * 1.15 * 100) / 100 : (unit === 'hours' ? 10 : 5);
     var yTitle = unit === 'hours' ? 'Time to last approver (hours)' : 'Time to last approver (days)';
     var subText = unit === 'hours'
-        ? 'Time from submission to final approval, in hours.'
-        : 'Time from submission to final approval, in days (default).';
+        ? 'Time from submission to final approval, in hours. ARF, service requests, and other memo types with approved documents only.'
+        : 'Time from submission to final approval, in days. ARF, service requests, and other memo types with approved documents only.';
 
     function drawChart() {
         var chartEl = document.getElementById('workflowAvgTimeChart');
         if (!chartEl) return false;
         if (typeof Highcharts === 'undefined') return false;
+        if (!chartRows.length) {
+            if (chartEl.__chart) {
+                try { chartEl.__chart.destroy(); chartEl.__chart = null; } catch (e) {}
+            }
+            chartEl.innerHTML = '<p class="text-muted text-center mb-0 py-5">No approved workflow timing data for the current filters.</p>';
+            return true;
+        }
+        chartEl.innerHTML = '';
         if (chartEl.__chart) {
             try { chartEl.__chart.destroy(); chartEl.__chart = null; } catch (e) {}
         }
@@ -786,7 +804,7 @@ function renderWorkflowStats(stats) {
                 chart: { type: 'column', height: 350 },
                 title: { text: 'Average Time to Last Approver (approved documents only)' },
                 subtitle: { text: subText },
-                xAxis: { categories: categories, title: { text: 'Workflow' }, crosshair: true, labels: { rotation: -45 } },
+                xAxis: { categories: categories, title: { text: 'Workflow / memo type' }, crosshair: true, labels: { rotation: -35, style: { fontSize: '11px' } } },
                 yAxis: {
                     min: 0,
                     max: yMax,
@@ -796,8 +814,8 @@ function renderWorkflowStats(stats) {
                 tooltip: {
                     headerFormat: '<b>{point.x}</b><br/>',
                     pointFormat: unit === 'hours'
-                        ? 'Avg. time to last approver: {point.y} hrs'
-                        : 'Avg. time to last approver: {point.y} days'
+                        ? 'Approved: {point.approved}<br/>Avg. time to last approver: {point.y} hrs'
+                        : 'Approved: {point.approved}<br/>Avg. time to last approver: {point.y} days'
                 },
                 plotOptions: {
                     column: {
@@ -809,7 +827,15 @@ function renderWorkflowStats(stats) {
                         }
                     }
                 },
-                series: [{ name: unit === 'hours' ? 'Avg. time (hours)' : 'Avg. time (days)', data: seriesData }],
+                series: [{
+                    name: unit === 'hours' ? 'Avg. time (hours)' : 'Avg. time (days)',
+                    data: chartRows.map(function (row, idx) {
+                        return {
+                            y: seriesData[idx],
+                            approved: Number(row.memos || 0)
+                        };
+                    })
+                }],
                 credits: { enabled: false }
             });
             chartEl.__chart = chart;

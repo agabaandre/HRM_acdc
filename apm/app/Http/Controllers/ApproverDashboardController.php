@@ -52,7 +52,7 @@ class ApproverDashboardController extends Controller
                 ],
                 'q' => 'nullable|string|max:255',
                 'division_id' => 'nullable|integer|exists:divisions,id',
-                'doc_type' => 'nullable|string|in:matrix,non_travel,single_memos,special,memos,arf,requests_for_service,change_requests',
+                'doc_type' => 'nullable|string|max:120',
                 'workflow_definition_id' => 'nullable|integer|exists:workflows,id',
                 'approval_level' => 'nullable|integer|min:1',
                 'month' => 'nullable|integer|min:1|max:12',
@@ -60,6 +60,15 @@ class ApproverDashboardController extends Controller
                 'export' => 'nullable|boolean',
                 'format' => 'nullable|string|in:pdf,csv',
             ]);
+
+            $docType = $request->get('doc_type') ?: null;
+            if (! $this->isValidApproverDashboardDocType($docType)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid document type filter.',
+                    'data' => [],
+                ], 422);
+            }
 
             $userSession = user_session();
             $userDivisionId = $userSession['division_id'] ?? null;
@@ -70,7 +79,6 @@ class ApproverDashboardController extends Controller
             $perPage = $request->get('per_page', 25);
             $search = $request->get('q') ?: null;
             $divisionId = $request->get('division_id') ?: null;
-            $docType = $request->get('doc_type') ?: null;
             $workflowDefinitionId = $request->get('workflow_definition_id') ?: null;
             $approvalLevel = $request->get('approval_level') ?: null;
             $month = $request->get('month') ?: null;
@@ -266,16 +274,7 @@ class ApproverDashboardController extends Controller
                     return ['value' => $item->approval_order, 'label' => $item->role.' (Level '.$item->approval_order.')'];
                 });
 
-            $documentTypes = [
-                ['value' => 'matrix', 'label' => 'Matrix'],
-                ['value' => 'non_travel', 'label' => 'Non-Travel Memos'],
-                ['value' => 'single_memos', 'label' => 'Single Memos'],
-                ['value' => 'special', 'label' => 'Special Memos'],
-                ['value' => 'memos', 'label' => 'Memos'],
-                ['value' => 'arf', 'label' => 'ARF Requests'],
-                ['value' => 'requests_for_service', 'label' => 'Requests for Service'],
-                ['value' => 'change_requests', 'label' => 'Change Requests'],
-            ];
+            $documentTypes = $this->getApproverDashboardDocumentTypeOptions();
 
             // Get distinct years from matrices table
             $years = DB::table('matrices')
@@ -381,6 +380,14 @@ class ApproverDashboardController extends Controller
             $docType = $request->get('doc_type') ?: null;
             $month = $request->get('month') ? (int) $request->get('month') : null;
             $year = $request->get('year') ? (int) $request->get('year') : null;
+
+            if ($docType && ! $this->isValidApproverDashboardDocType($docType)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid document type filter.',
+                    'data' => [],
+                ], 422);
+            }
 
             if (! $hasPermission88 && $userDivisionId && $userDivisionId > 0) {
                 $divisionId = $userDivisionId;
