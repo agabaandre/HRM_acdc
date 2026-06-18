@@ -74,8 +74,10 @@ if [[ -n "$(dotenv_get "$ENV_FILE" APP_URL 2>/dev/null || true)" ]]; then
     printf '    BASE_URL=%s\n' "$(dotenv_get "$ENV_FILE" BASE_URL 2>/dev/null || true)"
 fi
 
+dotenv_load_file "$SETUP_ENV"
 FINANCE_USER="${FINANCE_USER:-www-data}"
 FINANCE_GROUP="${FINANCE_GROUP:-www-data}"
+export FINANCE_USER FINANCE_GROUP
 PHP_BIN="${PHP_BIN:-/usr/bin/php}"
 
 if [[ ! -x "$PHP_BIN" ]]; then
@@ -85,6 +87,10 @@ fi
 
 command -v composer >/dev/null 2>&1 || die "composer not found on PATH"
 command -v npm >/dev/null 2>&1 || die "npm not found on PATH"
+
+log "Preparing storage permissions (fix root-owned files from prior sudo runs)"
+chmod +x "$ROOT/fix-storage-permissions.sh"
+"$ROOT/fix-storage-permissions.sh" || warn "Run: sudo chown -R \$(whoami):${FINANCE_GROUP} storage bootstrap/cache"
 
 jwt="$(dotenv_get "$ENV_FILE" JWT_SECRET 2>/dev/null || true)"
 if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
@@ -106,9 +112,6 @@ else
     log "Skipping migrations (--skip-migrate)"
 fi
 
-chmod +x "$ROOT/fix-storage-permissions.sh"
-"$ROOT/fix-storage-permissions.sh" || warn "Run ./fix-storage-permissions.sh with sudo if Apache cannot write sessions/logs."
-
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
     log "Building frontend assets (Vite production)"
     if [[ -f package-lock.json ]]; then
@@ -129,21 +132,8 @@ if [[ "$SKIP_OPTIMIZE" -eq 0 ]]; then
     "$PHP_BIN" artisan view:cache --no-interaction
 fi
 
-log "Fixing storage permissions ($FINANCE_USER:$FINANCE_GROUP)"
-fix_perms() {
-    local target="$1"
-    if [[ "$(id -u)" -eq 0 ]]; then
-        chown -R "$FINANCE_USER:$FINANCE_GROUP" "$target"
-        chmod -R ug+rwx "$target"
-    elif command -v sudo >/dev/null 2>&1; then
-        sudo chown -R "$FINANCE_USER:$FINANCE_GROUP" "$target"
-        sudo chmod -R ug+rwx "$target"
-    else
-        warn "Not root and no sudo — ensure $target is writable by the web server user"
-    fi
-}
-fix_perms "$ROOT/storage"
-fix_perms "$ROOT/bootstrap/cache"
+log "Fixing storage permissions (deploy user + web group ${FINANCE_GROUP})"
+"$ROOT/fix-storage-permissions.sh" || die "Storage not writable — run: sudo ./fix-storage-permissions.sh"
 
 APP_URL_VAL="$(dotenv_get "$ENV_FILE" APP_URL 2>/dev/null || true)"
 log "Smoke test"

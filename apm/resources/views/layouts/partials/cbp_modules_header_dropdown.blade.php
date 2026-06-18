@@ -15,7 +15,10 @@
     unset($_m);
     $cbpCssBase = rtrim((string) ($staffWebBaseUrl ?? ''), '/');
 @endphp
-<link rel="stylesheet" href="{{ $cbpCssBase }}/assets/css/cbp-modules-nav.css">
+<link rel="stylesheet" href="{{ asset('assets/css/cbp-modules-nav.css') }}">
+@if ($cbpCssBase !== '')
+    <link rel="stylesheet" href="{{ $cbpCssBase }}/assets/css/cbp-modules-nav.css">
+@endif
 
 <li class="nav-item cbp-modules-dd" id="cbp-modules-dd">
     <button
