@@ -24,8 +24,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-# shellcheck source=../scripts/lib/paths.sh
-source "$ROOT/../scripts/lib/paths.sh"
+# shellcheck source=scripts/lib/paths.sh
+source "$ROOT/scripts/lib/paths.sh"
 staff_paths_resolve_from_module "$ROOT"
 
 SETUP_ENV="$ROOT/setup.env"

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 HELPDESK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=../../scripts/lib/paths.sh
-source "$HELPDESK_ROOT/../scripts/lib/paths.sh"
+# shellcheck source=lib/paths.sh
+source "$HELPDESK_ROOT/scripts/lib/paths.sh"
 staff_paths_resolve_from_module "$HELPDESK_ROOT"
 
 # shellcheck source=lib/dotenv.sh

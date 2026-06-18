@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Helpdesk production URL resolution (sources shared Staff portal helpers).
+# Helpdesk production URL resolution.
 
-_MODULE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=paths.sh
+source "$_LIB_DIR/paths.sh"
 if [[ -z "${STAFF_ROOT:-}" ]]; then
-    # shellcheck source=../../../scripts/lib/paths.sh
-    source "$(_MODULE_ROOT/../scripts/lib/paths.sh)"
-    staff_paths_resolve_from_module "$_MODULE_ROOT"
+    staff_paths_resolve_from_module "$(cd "$_LIB_DIR/../.." && pwd)"
 fi
-
 # shellcheck source=staff-portal-urls.sh
-source "${STAFF_ROOT}/scripts/lib/staff-portal-urls.sh"
+source "$_LIB_DIR/staff-portal-urls.sh"
 
 helpdesk_resolve_production_urls() {
     local staff_base origin
