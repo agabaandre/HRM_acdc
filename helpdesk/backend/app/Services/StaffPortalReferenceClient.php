@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\StaffApiBaseUrl;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -150,7 +151,8 @@ class StaffPortalReferenceClient
 
     private function buildUrl(string $endpointKey): string
     {
-        $base = rtrim((string) config('helpdesk.staff_api.base_url'), '/');
+        $base = StaffApiBaseUrl::resolve((string) config('helpdesk.staff_api.base_url'));
+        $base = rtrim($base, '/');
         $path = trim((string) config('helpdesk.staff_api.endpoints.'.$endpointKey));
         if ($path === '') {
             throw new RuntimeException('Missing staff_api endpoint: '.$endpointKey);

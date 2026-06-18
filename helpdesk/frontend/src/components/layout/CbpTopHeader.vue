@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpAvatar from '../common/CbpAvatar.vue'
 import { fetchCbpModules, type CbpNavPayload } from '../../lib/cbpModules'
+import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import { staffPortalBaseUrl, staffPortalProfileUrl } from '../../lib/sso'
 import { useAuthStore } from '../../stores/auth'
 
@@ -47,7 +48,7 @@ async function loadCbpModules() {
   try {
     nav.value = await fetchCbpModules()
   } catch (e) {
-    navError.value = e instanceof Error ? e.message : 'Could not load CBP modules'
+    navError.value = apiErrorMessage(e, 'Could not load CBP modules')
     nav.value = null
   } finally {
     navLoading.value = false

@@ -9,6 +9,21 @@ url_is_localhost() {
     return 1
 }
 
+url_is_local_dev_host() {
+    local value="${1:-}"
+    url_is_localhost "$value" && return 0
+    [[ "$value" =~ \.local(/|$) ]] && return 0
+    local host machine
+    host="$(url_origin_from_base "$value" 2>/dev/null || true)"
+    host="${host#*://}"
+    host="${host%%/*}"
+    host="${host%%:*}"
+    machine="$(hostname -f 2>/dev/null || hostname 2>/dev/null || true)"
+    machine="$(url_trim "$machine")"
+    [[ -n "$machine" && "$host" == "$machine" ]] && return 0
+    return 1
+}
+
 url_trim() {
     local s="${1:-}"
     s="${s%"${s##*[![:space:]]}"}"
@@ -96,7 +111,7 @@ resolve_staff_portal_base_url() {
 url_needs_resolve() {
     local v="${1:-}"
     [[ -z "$v" ]] && return 0
-    url_is_localhost "$v"
+    url_is_local_dev_host "$v"
 }
 
 # Map Staff portal DB_* keys into Laravel DB_* when module values are missing.
