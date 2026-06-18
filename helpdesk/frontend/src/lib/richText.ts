@@ -1,5 +1,3 @@
-import { Quill } from '@vueup/vue-quill'
-
 export type RichTextVariant = 'standard' | 'full'
 
 /** Default minimum visible editor rows (~line height 1.6 × 15px font). */
@@ -29,30 +27,45 @@ export function hasRichTextContent(html: string): boolean {
 }
 
 let linkBlotPatched = false
+let linkBlotPatchPromise: Promise<void> | null = null
 
 /** Open http(s) links from Quill in a new tab. */
-export function patchQuillExternalLinks(): void {
+export function patchQuillExternalLinks(): Promise<void> {
   if (linkBlotPatched) {
-    return
+    return Promise.resolve()
   }
-  const LinkBlot = Quill.import('formats/link') as {
-    create?: (value: string) => HTMLAnchorElement
-    __cbpPatched?: boolean
+  if (linkBlotPatchPromise) {
+    return linkBlotPatchPromise
   }
-  if (!LinkBlot?.create) {
-    return
-  }
-  const origCreate = LinkBlot.create
-  LinkBlot.create = function (value: string) {
-    const node: HTMLAnchorElement = origCreate.call(this, value)
-    if (/^https?:/i.test(value)) {
-      node.setAttribute('target', '_blank')
-      node.setAttribute('rel', 'noopener noreferrer')
+
+  linkBlotPatchPromise = (async () => {
+    const mod = (await import('@vueup/vue-quill')) as typeof import('@vueup/vue-quill') & {
+      loadQuill?: () => Promise<typeof import('quill').default>
     }
-    return node
-  }
-  LinkBlot.__cbpPatched = true
-  linkBlotPatched = true
+    const Quill =
+      typeof mod.loadQuill === 'function' ? await mod.loadQuill() : mod.Quill
+    const LinkBlot = Quill.import('formats/link') as {
+      create?: (value: string) => HTMLAnchorElement
+      __cbpPatched?: boolean
+    }
+    if (!LinkBlot?.create || LinkBlot.__cbpPatched) {
+      linkBlotPatched = true
+      return
+    }
+    const origCreate = LinkBlot.create
+    LinkBlot.create = function (value: string) {
+      const node: HTMLAnchorElement = origCreate.call(this, value)
+      if (/^https?:/i.test(value)) {
+        node.setAttribute('target', '_blank')
+        node.setAttribute('rel', 'noopener noreferrer')
+      }
+      return node
+    }
+    LinkBlot.__cbpPatched = true
+    linkBlotPatched = true
+  })()
+
+  return linkBlotPatchPromise
 }
 
 /** Shared rows for standard + full editors (helpdesk tickets, KB, resolutions). */

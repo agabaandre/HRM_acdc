@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
 import {
   buildQuillOptions,
@@ -11,8 +11,6 @@ import {
   setupQuillAutoGrow,
   type RichTextVariant,
 } from '../../lib/richText'
-
-patchQuillExternalLinks()
 
 const props = withDefaults(
   defineProps<{
@@ -44,8 +42,14 @@ const emit = defineEmits<{
 }>()
 
 const editorRef = ref<InstanceType<typeof QuillEditor> | null>(null)
+const editorReady = ref(false)
 const inlineImageBusy = ref(false)
 const imageHint = ref<string | null>(null)
+
+onMounted(async () => {
+  await patchQuillExternalLinks()
+  editorReady.value = true
+})
 
 watch(inlineImageBusy, (busy) => {
   emit('uploading', busy)
@@ -206,6 +210,7 @@ function onReady(quill: unknown) {
     :style="editorStyle"
   >
     <QuillEditor
+      v-if="editorReady"
       ref="editorRef"
       :content="modelValue"
       content-type="html"
@@ -216,6 +221,14 @@ function onReady(quill: unknown) {
       @update:content="onContentUpdate"
       @ready="onReady"
     />
+    <div
+      v-else
+      class="cbp-rich-text__editor cbp-rich-text__editor--loading"
+      :style="{ minHeight: `${editorMinPx}px` }"
+      aria-busy="true"
+    >
+      Loading editor…
+    </div>
     <p v-if="inlineImageBusy" class="cbp-rich-text__status" role="status">Uploading image…</p>
     <p v-else-if="imageHint" class="cbp-rich-text__hint" role="alert">{{ imageHint }}</p>
     <p v-else-if="enableImages" class="cbp-rich-text__tip muted">
@@ -235,6 +248,14 @@ function onReady(quill: unknown) {
   background: #fff;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
+}
+.cbp-rich-text__editor--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 0.9rem;
+  background: #f8fafc;
 }
 .cbp-rich-text__editor :deep(.ql-toolbar) {
   border-top-left-radius: 8px;
