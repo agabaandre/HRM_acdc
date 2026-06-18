@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Finance production URL resolution (sources shared Staff portal helpers).
+# Finance production URL resolution.
 
-# shellcheck source=../../../scripts/lib/staff-portal-urls.sh
-source "${STAFF_ROOT:?STAFF_ROOT must be set}/scripts/lib/staff-portal-urls.sh"
+_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=paths.sh
+source "$_LIB_DIR/paths.sh"
+if [[ -z "${STAFF_ROOT:-}" ]]; then
+    staff_paths_resolve_from_module "$(cd "$_LIB_DIR/../.." && pwd)"
+fi
+# shellcheck source=staff-portal-urls.sh
+source "$_LIB_DIR/staff-portal-urls.sh"
 
 finance_resolve_production_urls() {
     local staff_base origin

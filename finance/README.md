@@ -19,8 +19,11 @@ Laravel 12 + **Inertia.js (React)** for the CBP Finance module. Navigation and s
 
 ```bash
 cd finance
+cp setup.env.example setup.env   # first time; leave DB_PASSWORD blank to inherit from ../.env
 ./setup.sh
 ```
+
+Do **not** run `./setup.sh` with `sudo` — it can make `.env` root-owned and block later runs.
 
 **Production** (beside Staff at `/staff/finance/`, same pattern as Helpdesk):
 

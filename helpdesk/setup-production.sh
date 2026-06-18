@@ -150,6 +150,11 @@ log "Installing PHP dependencies (production)"
     composer install --no-dev --optimize-autoloader --no-interaction
 )
 
+if [[ -z "$(dotenv_get "$BACKEND_ENV" APP_KEY 2>/dev/null || true)" ]]; then
+    log "Generating Laravel APP_KEY"
+    (cd "$BACKEND" && "$PHP_BIN" artisan key:generate --no-interaction)
+fi
+
 if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
     log "Running database migrations"
     (cd "$BACKEND" && "$PHP_BIN" artisan migrate --force --no-interaction)

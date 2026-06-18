@@ -98,7 +98,9 @@ if [[ -z "${SANCTUM_STATEFUL_DOMAINS:-}" && -n "${HELPDESK_FRONTEND_URL:-}" ]]; 
     dotenv_set "$BACKEND_ENV" SANCTUM_STATEFUL_DOMAINS "localhost,127.0.0.1,${host_port}"
 fi
 
-if [[ -z "$(dotenv_get "$BACKEND_ENV" APP_KEY 2>/dev/null || true)" ]]; then
+# APP_KEY requires vendor/ — setup.sh / setup-production.sh run key:generate after composer install.
+if [[ -z "$(dotenv_get "$BACKEND_ENV" APP_KEY 2>/dev/null || true)" \
+    && -f "$HELPDESK_ROOT/backend/vendor/autoload.php" ]]; then
     (cd "$HELPDESK_ROOT/backend" && php artisan key:generate --no-interaction)
 fi
 

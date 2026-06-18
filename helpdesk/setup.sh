@@ -22,6 +22,11 @@ echo "==> Configuring backend .env from setup.env"
 echo "==> Backend (Composer, migrations, seed)"
 cd "$ROOT/backend"
 composer install --no-interaction
+# shellcheck source=/dev/null
+source "$ROOT/scripts/lib/dotenv.sh"
+if [[ -z "$(dotenv_get .env APP_KEY 2>/dev/null || true)" ]]; then
+  php artisan key:generate --no-interaction
+fi
 php artisan migrate --no-interaction --force
 php artisan storage:link --no-interaction 2>/dev/null || true
 php artisan db:seed --no-interaction --force
