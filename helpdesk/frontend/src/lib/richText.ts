@@ -48,7 +48,7 @@ export function patchQuillExternalLinks(): Promise<void> {
   }
 
   linkBlotPatchPromise = (async () => {
-    const mod = (await import('@vueup/vue-quill')) as VueQuillModule
+    const mod = (await import('@vueup/vue-quill')) as unknown as VueQuillModule
     const Quill =
       typeof mod.loadQuill === 'function' ? await mod.loadQuill() : mod.Quill
     const LinkBlot = Quill.import('formats/link') as {
