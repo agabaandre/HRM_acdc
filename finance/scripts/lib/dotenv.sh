@@ -31,6 +31,28 @@ dotenv_set() {
     mv "$tmp" "$file"
 }
 
+dotenv_value_present() {
+    local val="${1:-}"
+    [[ -n "$val" ]] || return 1
+    [[ "$val" == change-me* ]] && return 1
+    return 0
+}
+
+dotenv_apply_if_missing() {
+    local file="$1" key="$2" value="$3" preexisted="${4:-0}"
+    if ! dotenv_value_present "$value"; then
+        return 0
+    fi
+    if [[ "$preexisted" == "1" ]]; then
+        local existing
+        existing="$(dotenv_get "$file" "$key" 2>/dev/null || true)"
+        if dotenv_value_present "$existing"; then
+            return 0
+        fi
+    fi
+    dotenv_set "$file" "$key" "$value"
+}
+
 dotenv_load_file() {
     local file="$1"
     [[ -f "$file" ]] || return 0

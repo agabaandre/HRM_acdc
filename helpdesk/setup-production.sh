@@ -180,7 +180,10 @@ fi
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
     log "Building frontend (Vite production)"
     PROD_ENV="$FRONTEND/.env.production.local"
-    dotenv_set "$PROD_ENV" VITE_HELPDESK_API_BASE_URL "$VITE_HELPDESK_API_BASE_URL"
+    VITE_ENV_PREEXISTED=0
+    [[ -f "$PROD_ENV" ]] && VITE_ENV_PREEXISTED=1
+    dotenv_apply_if_missing "$PROD_ENV" VITE_HELPDESK_API_BASE_URL \
+        "$VITE_HELPDESK_API_BASE_URL" "$VITE_ENV_PREEXISTED"
     (
         cd "$FRONTEND"
         if [[ -f package-lock.json ]]; then

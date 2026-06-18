@@ -22,24 +22,27 @@ fi
 
 dotenv_load_file "$SETUP_ENV"
 
+ENV_PREEXISTED=0
+[[ -f "$ENV_FILE" ]] && ENV_PREEXISTED=1
+[[ -f "$ENV_FILE" ]] || cp "$FINANCE_ROOT/.env.example" "$ENV_FILE"
+
 if [[ "${FINANCE_PRODUCTION_SETUP:-}" == "1" ]]; then
-    APP_ENV=production
-    APP_DEBUG=false
+    if [[ "$ENV_PREEXISTED" != "1" ]] \
+        || ! dotenv_value_present "$(dotenv_get "$ENV_FILE" APP_ENV 2>/dev/null || true)"; then
+        APP_ENV=production
+        APP_DEBUG=false
+    fi
 fi
 
 if [[ "${APP_ENV:-}" == "production" ]]; then
     finance_resolve_production_urls
 fi
 
-# Local setup.sh and production: copy Staff DB_* when setup.env leaves them blank.
 finance_inherit_database_from_staff
 
-apply_if_set() {
+apply_from_setup() {
     local key="$1" val="${!1:-}"
-    if [[ -z "$val" ]]; then
-        return 0
-    fi
-    dotenv_set "$ENV_FILE" "$key" "$val"
+    dotenv_apply_if_missing "$ENV_FILE" "$key" "$val" "$ENV_PREEXISTED"
 }
 
 inherit_if_empty() {
@@ -86,8 +89,6 @@ inherit_if_empty BASE_URL "$STAFF_ENV"
 inherit_if_empty BASE_URL "$APM_ENV"
 inherit_staff_key_as FINANCE_ASSETS_BASE_URL APM_BASE_URL "$STAFF_ENV"
 
-[[ -f "$ENV_FILE" ]] || cp "$FINANCE_ROOT/.env.example" "$ENV_FILE"
-
 if [[ ! -w "$ENV_FILE" ]]; then
     echo "error: $ENV_FILE is not writable (often caused by running a previous setup with sudo)." >&2
     echo "Fix: sudo chown \$(whoami) \"$ENV_FILE\" \"$SETUP_ENV\" && ./setup.sh" >&2
@@ -99,18 +100,19 @@ for key in \
     APP_ENV APP_DEBUG DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
     JWT_SECRET SESSION_SECRET STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN \
     SESSION_PATH FINANCE_SSO_PERMISSION_ID; do
-    apply_if_set "$key"
+    apply_from_setup "$key"
 done
 
 if [[ -z "${SESSION_PATH:-}" ]]; then
     SESSION_PATH=/staff/finance
 fi
-dotenv_set "$ENV_FILE" SESSION_PATH "$SESSION_PATH"
+dotenv_apply_if_missing "$ENV_FILE" SESSION_PATH "$SESSION_PATH" "$ENV_PREEXISTED"
 
-if [[ "${DB_CONNECTION:-}" == "sqlite" ]]; then
+if [[ "$(dotenv_get "$ENV_FILE" DB_CONNECTION 2>/dev/null || true)" == "sqlite" ]]; then
     mkdir -p "$FINANCE_ROOT/database"
     touch "$FINANCE_ROOT/database/database.sqlite"
-    dotenv_set "$ENV_FILE" DB_DATABASE "$(cd "$FINANCE_ROOT/database" && pwd)/database.sqlite"
+    dotenv_apply_if_missing "$ENV_FILE" DB_DATABASE \
+        "$(cd "$FINANCE_ROOT/database" && pwd)/database.sqlite" "$ENV_PREEXISTED"
 fi
 
 if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" \
@@ -118,22 +120,23 @@ if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" \
     (cd "$FINANCE_ROOT" && php artisan key:generate --no-interaction)
 fi
 
-if [[ "${DB_CONNECTION:-}" == "mysql" ]]; then
-    for key in DB_HOST DB_DATABASE DB_USERNAME; do
-        val="${!key:-}"
-        if [[ -z "$val" ]]; then
-            echo "error: MySQL $key is not set — set it in setup.env or ensure $STAFF_ROOT/.env has DB_HOST / DB_USER" >&2
+if [[ "$(dotenv_get "$ENV_FILE" DB_CONNECTION 2>/dev/null || true)" == "mysql" ]]; then
+    for key in DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD; do
+        val="$(dotenv_get "$ENV_FILE" "$key" 2>/dev/null || true)"
+        if ! dotenv_value_present "$val"; then
+            echo "error: MySQL $key is not set — set it in .env or setup.env (or Staff ../.env DB_PASS)" >&2
             exit 1
         fi
     done
-    if [[ -z "${DB_PASSWORD:-}" ]]; then
-        echo "error: MySQL DB_PASSWORD is not set — set it in setup.env or ensure $STAFF_ROOT/.env has DB_PASS" >&2
-        exit 1
-    fi
 fi
 
-if [[ -z "${JWT_SECRET:-}" || "${JWT_SECRET}" == change-me* ]]; then
+jwt="$(dotenv_get "$ENV_FILE" JWT_SECRET 2>/dev/null || true)"
+if ! dotenv_value_present "$jwt"; then
     echo "Warning: JWT_SECRET is not set — copy from $STAFF_ROOT/.env for Staff SSO." >&2
 fi
 
-echo "Configured $ENV_FILE from $SETUP_ENV"
+if [[ "$ENV_PREEXISTED" == "1" ]]; then
+    echo "Updated $ENV_FILE (existing values preserved; only missing keys filled from $SETUP_ENV)"
+else
+    echo "Configured $ENV_FILE from $SETUP_ENV"
+fi

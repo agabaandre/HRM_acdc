@@ -41,7 +41,10 @@ source "$ROOT/scripts/lib/dotenv.sh"
 dotenv_load_file "$SETUP_ENV"
 if [[ -n "${VITE_HELPDESK_API_BASE_URL:-}" ]]; then
   PROD_ENV="$ROOT/frontend/.env.production.local"
-  dotenv_set "$PROD_ENV" VITE_HELPDESK_API_BASE_URL "$VITE_HELPDESK_API_BASE_URL"
+  VITE_ENV_PREEXISTED=0
+  [[ -f "$PROD_ENV" ]] && VITE_ENV_PREEXISTED=1
+  dotenv_apply_if_missing "$PROD_ENV" VITE_HELPDESK_API_BASE_URL \
+    "$VITE_HELPDESK_API_BASE_URL" "$VITE_ENV_PREEXISTED"
 fi
 
 npm run build
