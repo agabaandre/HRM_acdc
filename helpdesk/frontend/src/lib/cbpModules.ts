@@ -1,29 +1,18 @@
 import { api } from './api'
+import { fallbackCbpNavPayload, type CbpNavPayload } from './cbpSystems'
 
-export interface CbpNavHome {
-  id: string
-  label: string
-  description: string
-  href: string
-  is_active?: boolean
-}
-
-export interface CbpNavModule {
-  id: string
-  label: string
-  description: string
-  href: string
-  icon?: string
-  opens_in_new_tab?: boolean
-  is_active?: boolean
-}
-
-export interface CbpNavPayload {
-  home: CbpNavHome
-  modules: CbpNavModule[]
-}
+export type { CbpNavHome, CbpNavModule, CbpNavPayload } from './cbpSystems'
 
 export async function fetchCbpModules(): Promise<CbpNavPayload> {
-  const { data } = await api.get<{ data: CbpNavPayload }>('/api/v1/cbp-modules')
-  return data.data
+  try {
+    const { data } = await api.get<{ data: CbpNavPayload; meta?: { degraded?: boolean } }>(
+      '/api/v1/cbp-modules',
+    )
+    if (data.data?.home && Array.isArray(data.data.modules)) {
+      return data.data
+    }
+  } catch {
+    /* use client fallback below */
+  }
+  return fallbackCbpNavPayload()
 }

@@ -27,7 +27,7 @@ final class StaffApiBaseUrl
             return $base;
         }
 
-        if (str_ends_with($hostLower, '.local') || self::matchesMachineHostname($hostLower)) {
+        if (str_ends_with($hostLower, '.local')) {
             return self::rewriteHost($base, 'localhost', 'http');
         }
 
@@ -37,16 +37,6 @@ final class StaffApiBaseUrl
     private static function isLoopbackHost(string $hostLower): bool
     {
         return $hostLower === 'localhost' || $hostLower === '127.0.0.1';
-    }
-
-    private static function matchesMachineHostname(string $hostLower): bool
-    {
-        $machine = strtolower(trim((string) (gethostname() ?: '')));
-        if ($machine === '') {
-            return false;
-        }
-
-        return $hostLower === $machine || str_starts_with($hostLower, $machine.'.');
     }
 
     private static function rewriteHost(string $base, string $newHost, string $newScheme): string

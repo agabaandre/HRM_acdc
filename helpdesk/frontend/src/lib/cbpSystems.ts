@@ -50,7 +50,7 @@ function resolveFinanceUrl(): string {
     return 'http://localhost:3002'
   }
   const scheme = window.location.protocol === 'https:' ? 'https' : 'http'
-  return `${scheme}://${window.location.host}/finance`
+  return `${scheme}://${window.location.host}/staff/finance`
 }
 
 function resolveApmUrl(staffBase: string): string {
@@ -82,4 +82,49 @@ export function cbpSystemLinks(): CbpSystemLink[] {
 
 export function staffPortalPrimaryLink(): string {
   return staffPortalHomeUrl()
+}
+
+export interface CbpNavHome {
+  id: string
+  label: string
+  description: string
+  href: string
+  is_active?: boolean
+}
+
+export interface CbpNavModule {
+  id: string
+  label: string
+  description: string
+  href: string
+  icon?: string
+  opens_in_new_tab?: boolean
+  is_active?: boolean
+}
+
+export interface CbpNavPayload {
+  home: CbpNavHome
+  modules: CbpNavModule[]
+}
+
+/** Client-side fallback when /api/v1/cbp-modules is unavailable. */
+export function fallbackCbpNavPayload(): CbpNavPayload {
+  return {
+    home: {
+      id: 'cbp_home',
+      label: 'CBP Home',
+      description: '',
+      href: staffPortalHomeUrl(),
+      is_active: false,
+    },
+    modules: cbpSystemLinks().map((link) => ({
+      id: link.id,
+      label: link.label,
+      description: link.description ?? '',
+      href: link.href,
+      icon: link.id === 'apm' ? 'fa fa-sitemap' : 'fa fa-wallet',
+      opens_in_new_tab: false,
+      is_active: false,
+    })),
+  }
 }

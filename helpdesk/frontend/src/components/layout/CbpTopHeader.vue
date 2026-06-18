@@ -47,9 +47,10 @@ async function loadCbpModules() {
   navError.value = null
   try {
     nav.value = await fetchCbpModules()
+    navError.value = null
   } catch (e) {
-    navError.value = apiErrorMessage(e, 'Could not load CBP modules')
     nav.value = null
+    navError.value = apiErrorMessage(e, 'Could not load CBP modules')
   } finally {
     navLoading.value = false
   }
