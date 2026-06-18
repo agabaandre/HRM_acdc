@@ -3,6 +3,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
+# shellcheck source=scripts/lib/paths.sh
+source "$ROOT/scripts/lib/paths.sh"
+staff_paths_resolve_from_module "$ROOT"
+
+for f in composer.json artisan package.json public/index.php; do
+  if [[ ! -f "$ROOT/$f" ]]; then
+    echo "error: missing finance/$f — deploy the full finance/ module from git (cd ${STAFF_ROOT:-$ROOT/..} && git pull)" >&2
+    exit 1
+  fi
+done
+
 SETUP_ENV="$ROOT/setup.env"
 if [[ ! -f "$SETUP_ENV" ]]; then
   cp "$ROOT/setup.env.example" "$SETUP_ENV"

@@ -54,6 +54,27 @@ log() { printf '==> %s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+verify_finance_app_root() {
+    local f missing=()
+    for f in composer.json artisan package.json public/index.php bootstrap/app.php; do
+        [[ -f "$ROOT/$f" ]] || missing+=("$f")
+    done
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        return 0
+    fi
+    die "Finance Laravel app is incomplete at $ROOT (missing: ${missing[*]}).
+
+Deploy the full finance/ directory from the staff git repository, not just .env or storage/:
+  cd ${STAFF_ROOT:-$ROOT/..}
+  git pull
+  test -f finance/composer.json && echo OK
+
+If finance/ was created by hand, remove it and check out the module from git.
+Apache only needs finance/.htaccess → public/; composer.json and app code must exist beside them."
+}
+
+verify_finance_app_root
+
 if [[ ! -f "$SETUP_ENV" ]]; then
     if [[ -f "$ROOT/setup.env.example" ]]; then
         cp "$ROOT/setup.env.example" "$SETUP_ENV"
@@ -98,7 +119,8 @@ if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
 fi
 
 log "Installing PHP dependencies (production)"
-composer install --no-dev --optimize-autoloader --no-interaction
+[[ -f "$ROOT/composer.json" ]] || die "composer.json missing in $ROOT — deploy full finance/ from git before running setup."
+composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT"
 
 if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" ]]; then
     log "Generating Laravel APP_KEY"
