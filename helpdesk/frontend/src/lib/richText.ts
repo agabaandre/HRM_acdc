@@ -29,6 +29,15 @@ export function hasRichTextContent(html: string): boolean {
 let linkBlotPatched = false
 let linkBlotPatchPromise: Promise<void> | null = null
 
+type QuillLike = {
+  import: (path: string) => unknown
+}
+
+type VueQuillModule = {
+  Quill: QuillLike
+  loadQuill?: () => Promise<QuillLike>
+}
+
 /** Open http(s) links from Quill in a new tab. */
 export function patchQuillExternalLinks(): Promise<void> {
   if (linkBlotPatched) {
@@ -39,9 +48,7 @@ export function patchQuillExternalLinks(): Promise<void> {
   }
 
   linkBlotPatchPromise = (async () => {
-    const mod = (await import('@vueup/vue-quill')) as typeof import('@vueup/vue-quill') & {
-      loadQuill?: () => Promise<typeof import('quill').default>
-    }
+    const mod = (await import('@vueup/vue-quill')) as VueQuillModule
     const Quill =
       typeof mod.loadQuill === 'function' ? await mod.loadQuill() : mod.Quill
     const LinkBlot = Quill.import('formats/link') as {
