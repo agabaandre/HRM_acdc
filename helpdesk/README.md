@@ -31,6 +31,16 @@ cp setup.env.example setup.env   # first time: set DB_* and JWT_SECRET
 
 `setup.sh` writes `backend/.env` from `setup.env` (MySQL, URLs, JWT), runs migrations, builds the SPA, and on **Linux** installs **systemd** units (queue + scheduler) when `INSTALL_SYSTEMD=auto`.
 
+**Production (beside running Staff):**
+
+```bash
+cd helpdesk
+cp setup.env.example setup.env   # set https:// URLs, DB_*, then run:
+./setup-production.sh
+```
+
+`setup-production.sh` is the one-command production installer: production Laravel flags, `composer install --no-dev`, migrations, category seed only (no demo admin), Vite build, permissions, systemd, and smoke tests. Re-run after `git pull` to redeploy.
+
 Smoke-test:
 
 ```bash
