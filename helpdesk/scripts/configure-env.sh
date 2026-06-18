@@ -2,14 +2,15 @@
 set -euo pipefail
 
 HELPDESK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../../scripts/lib/paths.sh
+source "$HELPDESK_ROOT/../scripts/lib/paths.sh"
+staff_paths_resolve_from_module "$HELPDESK_ROOT"
+
 # shellcheck source=lib/dotenv.sh
 source "$HELPDESK_ROOT/scripts/lib/dotenv.sh"
 
 SETUP_ENV="${HELPDESK_SETUP_ENV:-$HELPDESK_ROOT/setup.env}"
 BACKEND_ENV="$HELPDESK_ROOT/backend/.env"
-STAFF_ROOT="$(cd "$HELPDESK_ROOT/.." && pwd)"
-STAFF_ENV="$STAFF_ROOT/.env"
-APM_ENV="$STAFF_ROOT/apm/.env"
 
 # shellcheck source=lib/urls.sh
 source "$HELPDESK_ROOT/scripts/lib/urls.sh"
@@ -28,22 +29,30 @@ fi
 
 if [[ "${APP_ENV:-}" == "production" ]]; then
     helpdesk_resolve_production_urls
-    helpdesk_inherit_database_from_staff
 fi
+
+# Local setup.sh and production: copy Staff DB_* when setup.env leaves them blank.
+helpdesk_inherit_database_from_staff
 
 apply_if_set() {
     local key="$1" val="${!1:-}"
-    [[ -n "$val" ]] || return 0
+    if [[ -z "$val" ]]; then
+        return 0
+    fi
     dotenv_set "$BACKEND_ENV" "$key" "$val"
 }
 
 inherit_if_empty() {
     local key="$1" from_file="$2"
     local current="${!key:-}"
-    [[ -n "$current" ]] && return 0
+    if [[ -n "$current" ]]; then
+        return 0
+    fi
     local inherited
     inherited="$(dotenv_get "$from_file" "$key" 2>/dev/null || true)"
-    [[ -n "$inherited" ]] && printf -v "$key" '%s' "$inherited"
+    if [[ -n "$inherited" ]]; then
+        printf -v "$key" '%s' "$inherited"
+    fi
 }
 
 # Inherit secrets from Staff / APM when setup.env leaves them blank.
@@ -56,6 +65,12 @@ inherit_if_empty STAFF_API_TOKEN "$APM_ENV"
 inherit_if_empty BASE_URL "$APM_ENV"
 
 [[ -f "$BACKEND_ENV" ]] || cp "$HELPDESK_ROOT/backend/.env.example" "$BACKEND_ENV"
+
+if [[ ! -w "$BACKEND_ENV" ]]; then
+    echo "error: $BACKEND_ENV is not writable (often caused by running a previous setup with sudo)." >&2
+    echo "Fix: sudo chown \$(whoami) \"$BACKEND_ENV\" \"$SETUP_ENV\" && ./setup.sh" >&2
+    exit 1
+fi
 
 # --- Critical runtime keys ---
 for key in \

@@ -24,7 +24,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-STAFF_ROOT="$(cd "$ROOT/.." && pwd)"
+# shellcheck source=../scripts/lib/paths.sh
+source "$ROOT/../scripts/lib/paths.sh"
+staff_paths_resolve_from_module "$ROOT"
+
 SETUP_ENV="$ROOT/setup.env"
 BACKEND="$ROOT/backend"
 FRONTEND="$ROOT/frontend"
@@ -56,8 +59,6 @@ done
 
 # shellcheck source=scripts/lib/dotenv.sh
 source "$ROOT/scripts/lib/dotenv.sh"
-# shellcheck source=scripts/lib/urls.sh
-source "$ROOT/scripts/lib/urls.sh"
 
 log() { printf '==> %s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
