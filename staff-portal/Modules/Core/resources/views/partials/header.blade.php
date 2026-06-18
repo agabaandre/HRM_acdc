@@ -1,6 +1,11 @@
+{{--
+    Staff portal top bar. CBP systems are listed in the dropdown partial below —
+    do not add inline APM / Finance / Helpdesk links here (see APM header for the same pattern).
+--}}
 @php
     $user = session('user', []);
     $userName = $user['name'] ?? auth()->user()?->name ?? 'User';
+    // PortalNavigation::cbpModulesPayload() → core::partials.cbp-modules-dropdown
     $cbpNav = \Modules\Core\Support\PortalNavigation::cbpModulesPayload();
 @endphp
 <header>
@@ -19,6 +24,7 @@
             </div>
             <div class="top-menu ms-auto">
                 <ul class="navbar-nav align-items-center">
+                    {{-- CBP Modules dropdown — same UX as APM / Helpdesk top bar --}}
                     @include('core::partials.cbp-modules-dropdown', $cbpNav)
 
                     <li class="nav-item dropdown">

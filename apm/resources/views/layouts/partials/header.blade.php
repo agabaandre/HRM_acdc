@@ -34,6 +34,7 @@
                                     $staffPortalUrl = $staffBaseUrl . '/auth/profile';
                                 @endphp
 
+                                {{-- CBP Modules dropdown (Staff Share API). Do not restore inline Staff Portal / Finance links here. --}}
                                 @include('layouts.partials.cbp_modules_header_dropdown')
 
                                 <!-- Pending Approvals Icon with Counter -->

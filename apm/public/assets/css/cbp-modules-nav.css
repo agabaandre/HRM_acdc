@@ -1,5 +1,6 @@
 /**
  * CBP Modules dropdown — Staff portal top bar (matches Helpdesk / Finance pattern).
+ * Production: ensure apm/public/assets/css/cbp-modules-nav.css is deployed with header.blade.php.
  */
 .cbp-modules-dd {
   position: relative;

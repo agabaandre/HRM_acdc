@@ -1,3 +1,4 @@
+{{-- Top-bar CBP Modules menu (APM + Helpdesk). Data: PortalNavigation::cbpModulesPayload(). --}}
 @php
     $cbp_nav_home = $home ?? ['label' => 'CBP Home', 'href' => route('core.home'), 'is_active' => false];
     $cbp_nav_modules = $modules ?? [];

@@ -39,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer('layouts.partials.header', function ($view) {
+            // CBP Modules dropdown payload for cbp_modules_header_dropdown.blade.php
             $view->with('cbpModulesNav', CbpModulesNavService::headerNav());
             $view->with('staffWebBaseUrl', CbpModulesNavService::staffWebBaseUrl());
         });

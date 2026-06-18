@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Top-bar CBP Modules dropdown (Staff Share API — same payload as Helpdesk).
+ * Fallback modules are rendered inside the dropdown, not as separate header links.
  */
 class CbpModulesNavService
 {

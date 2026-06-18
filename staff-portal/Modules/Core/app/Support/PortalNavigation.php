@@ -24,6 +24,8 @@ class PortalNavigation
     }
 
     /**
+     * Payload for core::partials.cbp-modules-dropdown (top-bar menu, not inline header links).
+     *
      * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
      */
     public static function cbpModulesPayload(): array

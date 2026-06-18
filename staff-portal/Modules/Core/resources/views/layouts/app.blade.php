@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{{ \App\Support\CbpAsset::url('css/semi-dark.css') }}">
     <link rel="stylesheet" href="{{ \App\Support\CbpAsset::url('css/header-colors.css') }}">
     <link rel="stylesheet" href="{{ \App\Support\CbpAsset::url('css/app.css') }}">
+    {{-- Shared with APM: staff/assets/css/cbp-modules-nav.css via /cbp-assets/ --}}
     <link rel="stylesheet" href="{{ \App\Support\CbpAsset::url('css/cbp-modules-nav.css') }}">
     <style>
         :root {
@@ -42,6 +43,7 @@
 </head>
 <body>
     <div class="wrapper">
+        {{-- Top bar: CBP Modules dropdown in core::partials.header (not inline system links) --}}
         @include('core::partials.header')
 
         @unless (request()->routeIs('core.home'))

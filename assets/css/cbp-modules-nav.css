@@ -1,5 +1,6 @@
 /**
- * CBP Modules dropdown — Staff portal top bar (matches Helpdesk / Finance pattern).
+ * CBP Modules dropdown — Staff portal top bar (matches Helpdesk / Finance / APM pattern).
+ * Served from staff/assets/css/ via Staff portal /cbp-assets/ and APM public/assets/css/.
  */
 .cbp-modules-dd {
   position: relative;
