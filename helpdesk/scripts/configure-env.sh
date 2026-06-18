@@ -11,12 +11,25 @@ STAFF_ROOT="$(cd "$HELPDESK_ROOT/.." && pwd)"
 STAFF_ENV="$STAFF_ROOT/.env"
 APM_ENV="$STAFF_ROOT/apm/.env"
 
+# shellcheck source=lib/urls.sh
+source "$HELPDESK_ROOT/scripts/lib/urls.sh"
+
 if [[ ! -f "$SETUP_ENV" ]]; then
     echo "Missing $SETUP_ENV — copy setup.env.example to setup.env and set DB_* / JWT_SECRET." >&2
     exit 1
 fi
 
 dotenv_load_file "$SETUP_ENV"
+
+if [[ "${HELPDESK_PRODUCTION_SETUP:-}" == "1" ]]; then
+    APP_ENV=production
+    APP_DEBUG=false
+fi
+
+if [[ "${APP_ENV:-}" == "production" ]]; then
+    helpdesk_resolve_production_urls
+    helpdesk_inherit_database_from_staff
+fi
 
 apply_if_set() {
     local key="$1" val="${!1:-}"
@@ -50,7 +63,7 @@ for key in \
     DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
     JWT_SECRET SESSION_SECRET JWT_TTL \
     BASE_URL STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN \
-    HELPDESK_STAFF_PORTAL_URL HELPDESK_APM_BASE_URL HELPDESK_FRONTEND_URL \
+    HELPDESK_STAFF_PORTAL_URL HELPDESK_APM_BASE_URL HELPDESK_FRONTEND_URL HELPDESK_HEALTH_URL \
     HELPDESK_SSO_PERMISSION_CODES HELPDESK_BRIDGE_SECRET \
     QUEUE_CONNECTION CACHE_STORE SESSION_DRIVER \
     SANCTUM_STATEFUL_DOMAINS; do
@@ -74,8 +87,18 @@ if [[ -z "$(dotenv_get "$BACKEND_ENV" APP_KEY 2>/dev/null || true)" ]]; then
     (cd "$HELPDESK_ROOT/backend" && php artisan key:generate --no-interaction)
 fi
 
-if [[ "${DB_CONNECTION:-}" == "mysql" && -z "${DB_PASSWORD:-}" ]]; then
-    echo "Warning: DB_PASSWORD is empty in setup.env — MySQL may reject connections." >&2
+if [[ "${DB_CONNECTION:-}" == "mysql" ]]; then
+    for key in DB_HOST DB_DATABASE DB_USERNAME; do
+        val="${!key:-}"
+        if [[ -z "$val" ]]; then
+            echo "error: MySQL $key is not set — set it in setup.env or ensure $STAFF_ROOT/.env has DB_HOST / DB_USER" >&2
+            exit 1
+        fi
+    done
+    if [[ -z "${DB_PASSWORD:-}" ]]; then
+        echo "error: MySQL DB_PASSWORD is not set — set it in setup.env or ensure $STAFF_ROOT/.env has DB_PASS" >&2
+        exit 1
+    fi
 fi
 
 if [[ -z "${JWT_SECRET:-}" || "${JWT_SECRET}" == change-me* ]]; then

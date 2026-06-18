@@ -35,11 +35,11 @@ cp setup.env.example setup.env   # first time: set DB_* and JWT_SECRET
 
 ```bash
 cd helpdesk
-cp setup.env.example setup.env   # set https:// URLs, DB_*, then run:
+cp setup.env.example setup.env   # set DB_DATABASE; leave URLs as localhost or blank
 ./setup-production.sh
 ```
 
-`setup-production.sh` is the one-command production installer: production Laravel flags, `composer install --no-dev`, migrations, category seed only (no demo admin), Vite build, permissions, systemd, and smoke tests. Re-run after `git pull` to redeploy.
+`setup-production.sh` is the one-command production installer: production Laravel flags, `composer install --no-dev`, migrations, category seed only (no demo admin), Vite build, permissions, systemd, and smoke tests. On production it **auto-fills public URLs** from `../.env` (`PRODUCTION_URL`, `CI_BASE_URL`, or `BASE_URL`) or the server hostname (`https://your-server/staff/helpdesk/...`). MySQL credentials copy from Staff `DB_HOST` / `DB_USER` / `DB_PASS` when `DB_PASSWORD` is left blank in `setup.env`. Re-run after `git pull` to redeploy.
 
 Smoke-test:
 

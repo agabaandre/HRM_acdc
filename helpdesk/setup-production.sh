@@ -56,6 +56,8 @@ done
 
 # shellcheck source=scripts/lib/dotenv.sh
 source "$ROOT/scripts/lib/dotenv.sh"
+# shellcheck source=scripts/lib/urls.sh
+source "$ROOT/scripts/lib/urls.sh"
 
 log() { printf '==> %s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
@@ -72,9 +74,11 @@ fi
 export HELPDESK_SETUP_ENV="$SETUP_ENV"
 dotenv_load_file "$SETUP_ENV"
 
-# Production defaults (override in setup.env if needed).
-APP_ENV="${APP_ENV:-production}"
-APP_DEBUG="${APP_DEBUG:-false}"
+# Production deploy always runs as production (overrides APP_ENV=local in setup.env).
+APP_ENV=production
+APP_DEBUG=false
+export HELPDESK_PRODUCTION_SETUP=1
+
 INSTALL_SYSTEMD="${INSTALL_SYSTEMD:-auto}"
 HELPDESK_USER="${HELPDESK_USER:-www-data}"
 HELPDESK_GROUP="${HELPDESK_GROUP:-www-data}"
@@ -93,9 +97,9 @@ chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/scripts/install-systemd.sh" 2>/
 chmod +x "$ROOT/deploy/systemd/install.sh" "$ROOT/deploy/bin/"*.sh 2>/dev/null || true
 
 # Force production flags into setup.env snapshot for configure-env.sh
-export APP_ENV APP_DEBUG
+export APP_ENV APP_DEBUG HELPDESK_PRODUCTION_SETUP
 
-log "Configuring backend .env from setup.env"
+log "Configuring backend .env from setup.env (production URLs auto-resolved when localhost)"
 "$ROOT/scripts/configure-env.sh"
 
 BACKEND_ENV="$BACKEND/.env"
@@ -131,8 +135,12 @@ fi
 if [[ "${DB_CONNECTION:-mysql}" == "mysql" ]]; then
     for key in DB_HOST DB_DATABASE DB_USERNAME; do
         val="$(dotenv_get "$BACKEND_ENV" "$key" 2>/dev/null || true)"
-        [[ -n "$val" ]] || die "MySQL $key is not set in setup.env"
+        [[ -n "$val" ]] || die "MySQL $key is not set — set it in setup.env or ensure $STAFF_ROOT/.env has DB_HOST / DB_USER"
     done
+    db_pass="$(dotenv_get "$BACKEND_ENV" DB_PASSWORD 2>/dev/null || true)"
+    if [[ -z "$db_pass" ]]; then
+        die "MySQL DB_PASSWORD is not set — set it in setup.env or ensure $STAFF_ROOT/.env has DB_PASS"
+    fi
 fi
 
 log "Installing PHP dependencies (production)"

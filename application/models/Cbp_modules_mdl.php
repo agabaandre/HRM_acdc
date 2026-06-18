@@ -33,7 +33,7 @@ class Cbp_modules_mdl extends CI_Model
 	{
 		return [
 			'codeigniter' => 'Staff portal — internal path (no token)',
-			'staff_app_token' => 'Staff host — path with session token (like APM)',
+			'staff_app_token' => 'Staff host — path with session token (APM / Finance / Helpdesk)',
 			'finance_host' => 'Finance app — dev / prod host rules',
 			'external_microservice' => 'External system — different server (HTTPS URL)',
 		];
@@ -96,11 +96,67 @@ class Cbp_modules_mdl extends CI_Model
 	 */
 	public function seed_defaults_if_empty(): void
 	{
-		if (!$this->table_exists() || $this->count_all() > 0) {
+		if (!$this->table_exists()) {
 			return;
 		}
-		foreach (self::default_seed_rows() as $row) {
-			$this->db->insert($this->table, $row);
+		if ($this->count_all() === 0) {
+			foreach (self::default_seed_rows() as $row) {
+				$this->db->insert($this->table, $row);
+			}
+		}
+		$this->repair_staff_app_module_links();
+	}
+
+	/**
+	 * Mounted CBP apps (APM-style) under /staff/{app} must use staff_app_token, not finance_host.
+	 */
+	private function repair_staff_app_module_links(): void
+	{
+		if (!$this->table_exists()) {
+			return;
+		}
+		$specs = [
+			[
+				'module_keys' => ['helpdesk_itsm', 'helpdesk'],
+				'base_url' => 'helpdesk',
+				'description' => 'Log incidents and service requests; session opens from the Staff portal (same sign-on as APM).',
+				'rename_legacy_key' => ['helpdesk' => 'helpdesk_itsm'],
+			],
+			[
+				'module_keys' => ['finance_management', 'finance'],
+				'base_url' => 'finance',
+				'description' => 'Manage financial reports, invoices, budgets, transactions, and vendor information.',
+				'rename_legacy_key' => [],
+			],
+		];
+		foreach ($specs as $spec) {
+			$rows = $this->db->from($this->table)
+				->where_in('module_key', $spec['module_keys'])
+				->get()
+				->result();
+			foreach ($rows as $row) {
+				$dev = (string) ($row->base_url_development ?? '');
+				$needsFix = $row->target_resolver === 'finance_host'
+					|| strpos($dev, '5174') !== false
+					|| trim((string) ($row->base_url ?? '')) === '';
+				if (!$needsFix) {
+					continue;
+				}
+				$update = [
+					'base_url' => $spec['base_url'],
+					'base_url_development' => null,
+					'base_url_production' => null,
+					'target_resolver' => 'staff_app_token',
+					'uses_staff_portal_token' => 1,
+					'description' => $spec['description'],
+				];
+				foreach ($spec['rename_legacy_key'] as $from => $to) {
+					if ($row->module_key === $from && !$this->module_key_exists($to)) {
+						$update['module_key'] = $to;
+					}
+				}
+				$this->db->where('id', (int) $row->id)->update($this->table, $update);
+			}
 		}
 	}
 
@@ -152,8 +208,8 @@ class Cbp_modules_mdl extends CI_Model
 				'module_key' => 'finance_management',
 				'system_name' => 'Finance Management',
 				'description' => 'Manage financial reports, invoices, budgets, transactions, and vendor information.',
-				'base_url' => '',
-				'base_url_development' => 'http://localhost/staff/finance',
+				'base_url' => 'finance',
+				'base_url_development' => null,
 				'base_url_production' => null,
 				'icon_class' => 'fa-wallet',
 				'permission_code' => '92',
@@ -163,16 +219,16 @@ class Cbp_modules_mdl extends CI_Model
 				'show_in_apm_menu' => 1,
 				'alternate_base_url' => null,
 				'alternate_for_role_id' => null,
-				'target_resolver' => 'finance_host',
+				'target_resolver' => 'staff_app_token',
 				'sort_order' => 30,
 			],
 			[
 				'module_key' => 'helpdesk_itsm',
 				'system_name' => 'IT Service Desk (Helpdesk)',
-				'description' => 'Log incidents and service requests; opens from the Staff portal with the same SSO token as Finance.',
-				'base_url' => '',
-				'base_url_development' => 'http://127.0.0.1:5174',
-				'base_url_production' => 'helpdesk',
+				'description' => 'Log incidents and service requests; session opens from the Staff portal (same sign-on as APM).',
+				'base_url' => 'helpdesk',
+				'base_url_development' => null,
+				'base_url_production' => null,
 				'icon_class' => 'fa-headset',
 				'permission_code' => '93',
 				'uses_staff_portal_token' => 1,
@@ -181,7 +237,7 @@ class Cbp_modules_mdl extends CI_Model
 				'show_in_apm_menu' => 0,
 				'alternate_base_url' => null,
 				'alternate_for_role_id' => null,
-				'target_resolver' => 'finance_host',
+				'target_resolver' => 'staff_app_token',
 				'sort_order' => 35,
 			],
 		];
