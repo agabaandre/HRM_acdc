@@ -10,7 +10,7 @@ import { ref } from 'vue'
 
 const auth = useAuthStore()
 const route = useRoute()
-const theme = ref<'dark' | 'light'>('dark')
+const theme = ref<'dark' | 'light'>('light')
 const THEME_KEY = 'helpdesk.theme'
 
 const displayName = computed(() => (auth.isAuthenticated ? auth.me?.name ?? 'Staff' : null))
@@ -34,9 +34,7 @@ const stored = window.localStorage.getItem(THEME_KEY)
 if (stored === 'light' || stored === 'dark') {
   applyTheme(stored)
 } else {
-  // Project default mode.
-  applyTheme('dark')
-  window.localStorage.setItem(THEME_KEY, 'dark')
+  applyTheme('light')
 }
 </script>
 
