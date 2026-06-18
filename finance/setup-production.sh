@@ -69,8 +69,13 @@ Deploy the full finance/ directory from the staff git repository, not just .env 
   git pull
   test -f finance/composer.json && echo OK
 
-If finance/ was created by hand, remove it and check out the module from git.
-Apache only needs finance/.htaccess → public/; composer.json and app code must exist beside them."
+If finance/ was created by hand, restore from git (keeps .env):
+  cd $ROOT && ./restore-from-git.sh
+
+Or from the staff repo root:
+  cd ${STAFF_ROOT:-$ROOT/..}
+  git fetch origin && git checkout HEAD -- finance/
+  test -f finance/composer.json && echo OK"
 }
 
 verify_finance_app_root
@@ -85,7 +90,7 @@ fi
 
 export FINANCE_SETUP_ENV="$SETUP_ENV"
 export FINANCE_PRODUCTION_SETUP=1
-chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
+chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/fix-storage-permissions.sh" "$ROOT/restore-from-git.sh" 2>/dev/null || true
 
 log "Configuring .env from setup.env (production URLs auto-resolved when localhost)"
 "$ROOT/scripts/configure-env.sh"
