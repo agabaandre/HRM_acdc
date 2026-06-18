@@ -4,6 +4,7 @@ import KbArticleEditModal, { type KbArticleEditForm } from '../components/kb/KbA
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
+import { notifyError, notifySuccess } from "../lib/notify"
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { hasRichTextContent } from '../lib/richText'
 import { stripHtml } from '../lib/stripHtml'
@@ -29,8 +30,6 @@ interface KbArticleRow {
 const cats = ref<Cat[]>([])
 const rows = ref<KbArticleRow[]>([])
 const busy = ref<number | null>(null)
-const err = ref<string | null>(null)
-const ok = ref<string | null>(null)
 const filterCat = ref<number | 0>(0)
 const search = ref('')
 
@@ -67,18 +66,16 @@ async function loadCats(): Promise<void> {
 }
 
 async function loadRows(): Promise<void> {
-  err.value = null
   try {
     const { data } = await api.get<{ data: KbArticleRow[] }>('/api/v1/admin/kb/articles')
     rows.value = Array.isArray(data.data) ? data.data : []
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Failed to load articles.')
+    notifyError(apiErrorMessage(e, 'Failed to load articles.'))
     rows.value = []
   }
 }
 
 async function loadAll(): Promise<void> {
-  ok.value = null
   try {
     await loadCats()
   } catch {
@@ -114,12 +111,10 @@ function formatUpdated(row: KbArticleRow): string {
 
 async function createArticle(): Promise<void> {
   if (!create.question.trim() || !hasRichTextContent(create.answer) || !create.category_id) {
-    err.value = 'Category, question, and answer are required.'
+    notifyError('Category, question, and answer are required.')
     return
   }
   busy.value = -1
-  ok.value = null
-  err.value = null
   try {
     await api.post('/api/v1/admin/kb/articles', {
       category_id: create.category_id,
@@ -128,7 +123,7 @@ async function createArticle(): Promise<void> {
       sort_order: create.sort_order,
       is_active: create.is_active,
     })
-    ok.value = 'FAQ published.'
+    notifySuccess('FAQ published.')
     create.question = ''
     create.answer = ''
     create.sort_order = 0
@@ -136,7 +131,7 @@ async function createArticle(): Promise<void> {
     showCreateForm.value = false
     await loadRows()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Create failed.')
+    notifyError(apiErrorMessage(e, 'Create failed.'))
   } finally {
     busy.value = null
   }
@@ -166,8 +161,6 @@ function closeEdit(): void {
 
 async function saveEdit(payload: KbArticleEditForm): Promise<void> {
   busy.value = payload.id
-  ok.value = null
-  err.value = null
   editErr.value = null
   try {
     await api.put(`/api/v1/admin/kb/articles/${payload.id}`, {
@@ -177,13 +170,15 @@ async function saveEdit(payload: KbArticleEditForm): Promise<void> {
       sort_order: payload.sort_order,
       is_active: payload.is_active,
     })
-    ok.value = `Saved “${payload.question}”.`
+    notifySuccess(`Saved “${payload.question}”.`)
     editOpen.value = false
     editTarget.value = null
     editErr.value = null
     await loadRows()
   } catch (e: unknown) {
-    editErr.value = apiErrorMessage(e, 'Save failed.')
+    const message = apiErrorMessage(e, 'Save failed.')
+    editErr.value = message
+    notifyError(message)
   } finally {
     busy.value = null
   }
@@ -194,17 +189,15 @@ async function removeRow(row: KbArticleRow): Promise<void> {
     return
   }
   busy.value = row.id
-  ok.value = null
-  err.value = null
   try {
     await api.delete(`/api/v1/admin/kb/articles/${row.id}`)
-    ok.value = 'Article deleted (logged in audit trail).'
+    notifySuccess('Article deleted (logged in audit trail).')
     if (editTarget.value?.id === row.id) {
       closeEdit()
     }
     await loadRows()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Delete failed.')
+    notifyError(apiErrorMessage(e, 'Delete failed.'))
   } finally {
     busy.value = null
   }
@@ -225,9 +218,6 @@ onMounted(() => {
         <RouterLink to="/settings/logging">audit log</RouterLink>.
       </template>
     </CbpPageHeading>
-
-    <p v-if="err" class="err">{{ err }}</p>
-    <p v-if="ok" class="ok">{{ ok }}</p>
 
     <section class="cbp-card list-card" aria-labelledby="list-heading">
       <header class="list-head">

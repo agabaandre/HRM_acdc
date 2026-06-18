@@ -9,6 +9,8 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
 import { persistStaffSsoToken } from './lib/cbpSystems'
+import { loadLobiboxAssets } from './lib/notify'
+import { getStoredToken } from './lib/api'
 import { getStaffSsoTokenFromUrl, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
 
 type SsoFailure = {
@@ -125,14 +127,20 @@ function redirectToStaffPortalWithError(failure: SsoFailure): void {
 async function bootstrap() {
   syncFaviconWithApm()
 
+  try {
+    await loadLobiboxAssets()
+  } catch (e) {
+    console.warn('[helpdesk] Lobibox failed to load — inline errors only', e)
+  }
+
   const app = createApp(App)
   const pinia = createPinia()
   app.use(pinia)
 
+  const auth = useAuthStore(pinia)
   const urlToken = getStaffSsoTokenFromUrl()
   if (urlToken) {
     persistStaffSsoToken(urlToken)
-    const auth = useAuthStore(pinia)
     try {
       await auth.exchangeStaffSso(urlToken)
       stripStaffSsoTokenFromUrl()
@@ -146,6 +154,12 @@ async function bootstrap() {
       }
       redirectToStaffPortalWithError(failure)
       return
+    }
+  } else if (getStoredToken() && !auth.me) {
+    try {
+      await auth.fetchMe()
+    } catch {
+      auth.invalidateSession()
     }
   }
 

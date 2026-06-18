@@ -24,8 +24,6 @@ onMounted(() => {
       <span>{{ sectionTitle }}</span>
     </nav>
     <h1 class="cbp-settings-page-title">{{ sectionTitle }}</h1>
-    <p v-if="ctx.err" class="cbp-flash cbp-flash-err">{{ ctx.err }}</p>
-    <p v-if="ctx.ok" class="cbp-flash cbp-flash-ok">{{ ctx.ok }}</p>
     <div class="cbp-card">
       <RouterView />
     </div>

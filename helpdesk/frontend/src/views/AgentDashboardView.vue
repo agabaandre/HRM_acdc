@@ -6,6 +6,7 @@ import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { notifyError, notifySuccess } from '../lib/notify'
 import {
   formatTableCountLabel,
   priorityMeta,
@@ -56,14 +57,12 @@ interface EligibleAgent {
 
 const auth = useAuthStore()
 const router = useRouter()
-const err = ref<string | null>(null)
 const loading = ref(false)
 const counts = ref<Counts | null>(null)
 const breakdown = ref<Breakdown | null>(null)
 const recent = ref<RecentRow[]>([])
 const generatedAt = ref<string | null>(null)
 const activeFilter = ref<FilterKey>('all')
-const toast = ref<string | null>(null)
 const workModeSaving = ref<'remote' | 'onsite' | 'clear' | null>(null)
 
 const canReassign = computed(() => {
@@ -77,15 +76,11 @@ async function setWorkMode(mode: 'remote' | 'onsite' | null): Promise<void> {
   workModeSaving.value = mode ?? 'clear'
   try {
     await auth.updateWorkMode(mode)
-    toast.value = mode
-      ? `You're now marked as working ${mode}.`
-      : 'Work-mode cleared.'
-    setTimeout(() => {
-      if (toast.value && toast.value.startsWith('You') ) toast.value = null
-      if (toast.value === 'Work-mode cleared.') toast.value = null
-    }, 2400)
+    notifySuccess(
+      mode ? `You're now marked as working ${mode}.` : 'Work-mode cleared.',
+    )
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Could not update work mode.')
+    notifyError(apiErrorMessage(e, 'Could not update work mode.'))
   } finally {
     workModeSaving.value = null
   }
@@ -98,10 +93,7 @@ const reassignCandidatesLoading = ref(false)
 const reassignSelectedId = ref<number | null>(null)
 const reassignReason = ref('')
 const reassignSubmitting = ref(false)
-const reassignErr = ref<string | null>(null)
-
 async function load(): Promise<void> {
-  err.value = null
   loading.value = true
   try {
     const { data } = await api.get('/api/v1/reports/agent-dashboard')
@@ -110,7 +102,7 @@ async function load(): Promise<void> {
     recent.value = data.data.recent as RecentRow[]
     generatedAt.value = data.data.generated_at ?? null
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Unable to load dashboard.')
+    notifyError(apiErrorMessage(e, 'Unable to load dashboard.'))
   } finally {
     loading.value = false
   }
@@ -217,7 +209,6 @@ async function openReassign(row: RecentRow): Promise<void> {
   reassignTicket.value = row
   reassignSelectedId.value = null
   reassignReason.value = ''
-  reassignErr.value = null
   reassignCandidates.value = []
   reassignCandidatesLoading.value = true
   try {
@@ -226,7 +217,7 @@ async function openReassign(row: RecentRow): Promise<void> {
     )
     reassignCandidates.value = Array.isArray(data.data) ? data.data : []
   } catch (e: unknown) {
-    reassignErr.value = apiErrorMessage(e, 'Could not load agents for this category.')
+    notifyError(apiErrorMessage(e, 'Could not load agents for this category.'))
   } finally {
     reassignCandidatesLoading.value = false
   }
@@ -237,35 +228,32 @@ function closeReassign(): void {
   reassignCandidates.value = []
   reassignSelectedId.value = null
   reassignReason.value = ''
-  reassignErr.value = null
   reassignSubmitting.value = false
 }
 
 async function submitReassign(): Promise<void> {
   if (!reassignTicket.value || !reassignSelectedId.value) {
-    reassignErr.value = 'Pick an agent first.'
+    notifyError('Pick an agent first.')
     return
   }
   if (reassignReason.value.trim().length < 5) {
-    reassignErr.value = 'Reason must be at least 5 characters.'
+    notifyError('Reason must be at least 5 characters.')
     return
   }
   reassignSubmitting.value = true
-  reassignErr.value = null
   try {
     await api.post(`/api/v1/tickets/${reassignTicket.value.id}/reassign`, {
       assignee_user_id: reassignSelectedId.value,
       reason: reassignReason.value.trim(),
     })
     const newAgent = reassignCandidates.value.find((a) => a.id === reassignSelectedId.value)
-    toast.value = `Reassigned ${reassignTicket.value.ticket_number}${newAgent ? ` to ${newAgent.name}` : ''}.`
+    notifySuccess(
+      `Reassigned ${reassignTicket.value.ticket_number}${newAgent ? ` to ${newAgent.name}` : ''}.`,
+    )
     closeReassign()
     await load()
-    window.setTimeout(() => {
-      toast.value = null
-    }, 4000)
   } catch (e: unknown) {
-    reassignErr.value = apiErrorMessage(e, 'Reassignment failed.')
+    notifyError(apiErrorMessage(e, 'Reassignment failed.'))
   } finally {
     reassignSubmitting.value = false
   }
@@ -399,8 +387,6 @@ onUnmounted(() => {
         </button>
       </div>
     </header>
-
-    <p v-if="err" class="err" role="alert">{{ err }}</p>
 
     <template v-if="counts">
       <!-- KPI cards -->
@@ -631,13 +617,9 @@ onUnmounted(() => {
       </section>
     </template>
 
-    <p v-else-if="!err" class="muted">Loading…</p>
+    <p v-else class="muted">Loading…</p>
 
     <!-- Toast -->
-    <Transition name="toast">
-      <div v-if="toast" class="toast" role="status">{{ toast }}</div>
-    </Transition>
-
     <!-- Reassign modal -->
     <Teleport to="body">
       <div v-if="reassignTicket" class="modal-backdrop" @click.self="closeReassign">
@@ -654,13 +636,11 @@ onUnmounted(() => {
           </header>
 
           <div class="modal-body">
-            <p v-if="reassignErr" class="reassign-err" role="alert">{{ reassignErr }}</p>
-
             <section class="modal-section">
               <h3 class="modal-section-title">New assignee</h3>
               <p v-if="reassignCandidatesLoading" class="muted">Loading agents…</p>
               <p
-                v-else-if="reassignCandidates.length === 0 && !reassignErr"
+                v-else-if="reassignCandidates.length === 0"
                 class="muted"
               >
                 No other agents handle this category. Configure category routing on

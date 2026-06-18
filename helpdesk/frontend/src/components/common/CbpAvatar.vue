@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { avatarBackground, avatarInitials } from '../../lib/avatar'
+import { resolveAvatarUrl } from '../../lib/api'
 
 const props = withDefaults(
   defineProps<{
@@ -12,6 +13,8 @@ const props = withDefaults(
 )
 
 const showImg = ref(!!props.imageUrl)
+
+const resolvedImageUrl = computed(() => resolveAvatarUrl(props.imageUrl))
 
 watch(
   () => props.imageUrl,
@@ -34,14 +37,14 @@ function onImgError() {
   <div
     class="cbp-avatar"
     :class="sizeClass"
-    :style="{ backgroundColor: showImg && imageUrl ? 'transparent' : bg }"
+    :style="{ backgroundColor: showImg && resolvedImageUrl ? 'transparent' : bg }"
     :title="name"
     role="img"
     :aria-label="name"
   >
     <img
-      v-if="imageUrl && showImg"
-      :src="imageUrl"
+      v-if="resolvedImageUrl && showImg"
+      :src="resolvedImageUrl"
       alt=""
       class="cbp-avatar__img"
       referrerpolicy="no-referrer"

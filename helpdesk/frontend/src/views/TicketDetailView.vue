@@ -6,6 +6,7 @@ import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { notifyError } from '../lib/notify'
 import { hasRichTextContent, isHtmlContent } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
 
@@ -60,7 +61,6 @@ const ticketId = computed(() => Number(route.params.id))
 
 const ticket = ref<TicketDetail | null>(null)
 const comments = ref<CommentRow[]>([])
-const err = ref<string | null>(null)
 const newBody = ref('')
 const posting = ref(false)
 const resolutionNotes = ref('')
@@ -183,7 +183,6 @@ function onResolveModalKeydown(ev: KeyboardEvent) {
 }
 
 async function loadAll() {
-  err.value = null
   const id = ticketId.value
   if (!id) {
     return
@@ -196,7 +195,7 @@ async function loadAll() {
     ticket.value = tRes.data.data as TicketDetail
     comments.value = cRes.data.data as CommentRow[]
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : 'Failed to load ticket'
+    notifyError(apiErrorMessage(e, 'Failed to load ticket'))
   }
 }
 
@@ -207,13 +206,12 @@ async function postComment() {
     return
   }
   posting.value = true
-  err.value = null
   try {
     await api.post(`/api/v1/tickets/${id}/comments`, { body })
     newBody.value = ''
     await loadAll()
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : 'Failed to post comment'
+    notifyError(apiErrorMessage(e, 'Failed to post comment'))
   } finally {
     posting.value = false
   }
@@ -225,12 +223,11 @@ async function reopenTicket() {
     return
   }
   reopening.value = true
-  err.value = null
   try {
     await api.post(`/api/v1/tickets/${id}/reopen`)
     await loadAll()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Could not reopen ticket')
+    notifyError(apiErrorMessage(e, 'Could not reopen ticket'))
   } finally {
     reopening.value = false
   }
@@ -250,7 +247,6 @@ async function confirmSubmitResolution() {
   }
   resolving.value = true
   resolveModalErr.value = null
-  err.value = null
   try {
     const payload: Record<string, unknown> = { resolution_summary: summary }
     if (publishToKb.value && canPublishKb.value) {
@@ -287,8 +283,7 @@ watch(ticketId, loadAll)
 
 <template>
   <div>
-    <p v-if="err" class="err">{{ err }}</p>
-    <template v-else-if="ticket">
+    <template v-if="ticket">
       <CbpPageHeading :title="ticket.ticket_number" back-to="/tickets" back-label="← Tickets">
         <template #lede>
           <span class="pill">{{ ticket.status }}</span>

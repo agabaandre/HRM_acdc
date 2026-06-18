@@ -34,6 +34,22 @@ function resolveApiBaseUrl(): string {
   return ''
 }
 
+/** Prefix API-relative avatar paths so <img src> hits the Laravel backend in production. */
+export function resolveAvatarUrl(url: string | null | undefined): string | null {
+  if (!url || url.trim() === '') {
+    return null
+  }
+  const trimmed = url.trim()
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed
+  }
+  const base = resolveApiBaseUrl()
+  if (base && trimmed.startsWith('/')) {
+    return `${base}${trimmed}`
+  }
+  return trimmed
+}
+
 export const api = axios.create({
   baseURL: resolveApiBaseUrl(),
   headers: { Accept: 'application/json' },

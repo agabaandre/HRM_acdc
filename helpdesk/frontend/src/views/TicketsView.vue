@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
+import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { notifyError } from '../lib/notify'
 import {
   formatTableCountLabel,
   priorityMeta,
@@ -29,7 +31,6 @@ interface TicketRow {
 }
 
 const rows = ref<TicketRow[]>([])
-const err = ref<string | null>(null)
 const loading = ref(false)
 const q = ref('')
 const page = ref(1)
@@ -48,7 +49,6 @@ function counterFor(idx: number): number {
 }
 
 async function load() {
-  err.value = null
   loading.value = true
   try {
     const { data } = await api.get('/api/v1/tickets', {
@@ -63,7 +63,7 @@ async function load() {
     lastPage.value = Math.max(1, Number(data.meta?.last_page ?? 1))
     page.value = Math.max(1, Number(data.meta?.current_page ?? page.value))
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : 'Failed to load tickets'
+    notifyError(apiErrorMessage(e, 'Failed to load tickets'))
   } finally {
     loading.value = false
   }
@@ -114,8 +114,7 @@ onMounted(load)
         </label>
       </div>
     </div>
-    <p v-if="err" class="err">{{ err }}</p>
-    <div v-else class="cbp-card table-section">
+    <div class="cbp-card table-section">
       <p class="table-count" role="status">
         Showing <strong>{{ tableCountLabel }}</strong>
       </p>

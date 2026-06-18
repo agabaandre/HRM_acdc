@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
+import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { notifyError, notifyWarning } from '../lib/notify'
 import { hasRichTextContent } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
 
@@ -24,7 +26,6 @@ const form = reactive({
   description: '',
   priority: 'medium' as string,
 })
-const err = ref<string | null>(null)
 const catsErr = ref<string | null>(null)
 const catsLoading = ref(true)
 const refErr = ref<string | null>(null)
@@ -125,10 +126,12 @@ async function loadCats() {
     if (cats.value.length === 0) {
       catsErr.value =
         'No issue categories are configured yet. An administrator can add them under Settings → Issue categories, or run the database seeder on the API server.'
+      notifyWarning(catsErr.value)
     }
   } catch {
     cats.value = []
     catsErr.value = 'Could not load issue categories. Check that the Helpdesk API is running, then refresh.'
+    notifyWarning(catsErr.value)
   } finally {
     catsLoading.value = false
   }
@@ -141,6 +144,7 @@ async function loadReferenceData() {
   } catch {
     refErr.value =
       'Could not load the Staff directory. Check API credentials, run directory sync under Settings → Jobs, then retry.'
+    notifyWarning(refErr.value)
   }
 }
 
@@ -161,6 +165,7 @@ async function fetchStaffList() {
     }
   } catch {
     refErr.value = 'Could not load staff from the directory. Retry or ask an admin to sync reference data.'
+    notifyWarning(refErr.value)
     staffRows.value = []
     selectedStaffId.value = ''
   }
@@ -237,15 +242,14 @@ function pickRequester(s: StaffRow) {
 
 async function submit() {
   if (needsDirectoryPicker.value && !selectedStaffId.value) {
-    err.value = 'Choose who this request is for using the staff search below.'
+    notifyError('Choose who this request is for using the staff search below.')
     return
   }
   if (!hasRichTextContent(form.description)) {
-    err.value = 'Please enter a description of the issue. You can add text, lists, links, and images in the editor.'
+    notifyError('Please enter a description of the issue. You can add text, lists, links, and images in the editor.')
     return
   }
   busy.value = true
-  err.value = null
   try {
     const body: Record<string, unknown> = {
       category_id: form.category_id,
@@ -259,8 +263,8 @@ async function submit() {
     }
     await api.post('/api/v1/tickets', body)
     await router.push('/tickets')
-  } catch {
-    err.value = 'Could not create ticket'
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Could not create ticket'))
   } finally {
     busy.value = false
   }
@@ -292,7 +296,6 @@ async function submit() {
             <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
         </label>
-        <p v-if="catsErr" class="warn full" role="alert">{{ catsErr }}</p>
 
         <template v-if="isEndUser">
           <label class="row-check full">
@@ -307,7 +310,6 @@ async function submit() {
         </template>
 
         <template v-if="needsDirectoryPicker">
-          <p v-if="refErr" class="warn full">{{ refErr }}</p>
           <div class="row-actions full">
             <button type="button" class="ghost" @click="retryDirectory">Reload directory</button>
           </div>
@@ -368,7 +370,6 @@ async function submit() {
         </button>
       </form>
     </div>
-    <p v-if="err" class="err">{{ err }}</p>
   </div>
 </template>
 

@@ -1,6 +1,7 @@
 import { inject, reactive, ref, type InjectionKey } from 'vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { notifyError, notifySuccess } from '../lib/notify'
 
 export interface HelpdeskSettingsPayload {
   ai_provider: string | null
@@ -34,8 +35,6 @@ export interface HelpdeskAdminSettingsForm {
 export interface HelpdeskAdminSettingsContext {
   form: HelpdeskAdminSettingsForm
   keyConfigured: boolean
-  err: string | null
-  ok: string | null
   busy: boolean
   load: () => Promise<void>
   savePartial: (patch: Record<string, unknown>, successMessage?: string) => Promise<void>
@@ -44,8 +43,6 @@ export interface HelpdeskAdminSettingsContext {
 export const helpdeskAdminSettingsKey: InjectionKey<HelpdeskAdminSettingsContext> = Symbol('helpdeskAdminSettings')
 
 export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
-  const err = ref<string | null>(null)
-  const ok = ref<string | null>(null)
   const busy = ref(false)
   const keyConfigured = ref(false)
 
@@ -64,7 +61,6 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
   })
 
   async function load() {
-    err.value = null
     try {
       const { data } = await api.get<{ data: HelpdeskSettingsPayload }>('/api/v1/admin/settings')
       const d = data.data
@@ -81,21 +77,19 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
       form.ai_api_key = ''
       keyConfigured.value = Boolean(d.ai_api_key_configured)
     } catch (e: unknown) {
-      err.value = apiErrorMessage(e, 'Failed to load settings')
+      notifyError(apiErrorMessage(e, 'Failed to load settings'))
     }
   }
 
   async function savePartial(patch: Record<string, unknown>, successMessage = 'Saved.') {
     busy.value = true
-    err.value = null
-    ok.value = null
     try {
       await api.put('/api/v1/admin/settings', patch)
       form.ai_api_key = ''
-      ok.value = successMessage
+      notifySuccess(successMessage)
       await load()
     } catch (e: unknown) {
-      err.value = apiErrorMessage(e, 'Save failed')
+      notifyError(apiErrorMessage(e, 'Save failed'))
     } finally {
       busy.value = false
     }
@@ -104,8 +98,6 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
   return reactive({
     form,
     keyConfigured,
-    err,
-    ok,
     busy,
     load,
     savePartial,

@@ -13,6 +13,8 @@ class AvatarImageTest extends TestCase
 
     public function test_signed_avatar_streams_file_from_staff_uploads(): void
     {
+        config(['app.url' => 'https://helpdesk.test/backend']);
+
         $dir = sys_get_temp_dir().'/helpdesk-avatar-test-'.uniqid('', true);
         mkdir($dir.DIRECTORY_SEPARATOR.'staff', 0755, true);
         $filename = 'unit-face.png';
@@ -23,7 +25,7 @@ class AvatarImageTest extends TestCase
         $user = User::factory()->create(['photo' => $filename]);
         $url = StaffPhotoUrl::forUser($user);
         $this->assertIsString($url);
-        $this->assertStringStartsWith('/api/v1/avatar/'.$user->id, $url);
+        $this->assertStringStartsWith('https://helpdesk.test/backend/api/v1/avatar/'.$user->id, $url);
 
         $q = parse_url($url, PHP_URL_QUERY);
         $this->assertIsString($q);

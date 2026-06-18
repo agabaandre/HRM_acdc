@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
 
 interface Cat {
   id: number
@@ -58,22 +59,16 @@ const staffPermAdmin = ref<Record<number, boolean>>({})
 const staffPermSupervisor = ref<Record<number, boolean>>({})
 const staffPermKb = ref<Record<number, boolean>>({})
 const staffPermReassign = ref<Record<number, boolean>>({})
-const err = ref<string | null>(null)
-const ok = ref<string | null>(null)
-const catsErr = ref<string | null>(null)
-
 const pickerOpen = ref(false)
 const candidates = ref<CandidateRow[]>([])
 const candidatesLoading = ref(false)
 const candidatesLoaded = ref(false)
-const candidatesErr = ref<string | null>(null)
 const candidatesMessage = ref<string | null>(null)
 const candidateSearch = ref('')
 const onlyUnassigned = ref(true)
 const busyStaffId = ref<number | null>(null)
 
 async function loadCats() {
-  catsErr.value = null
   const { data } = await api.get<{ data: Cat[] }>('/api/v1/categories')
   cats.value = Array.isArray(data.data) ? data.data : []
 }
@@ -122,13 +117,10 @@ async function loadStaffPermissions() {
 }
 
 async function loadAll() {
-  err.value = null
-  ok.value = null
-  catsErr.value = null
   try {
     await loadAgents()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Failed to load agents.')
+    notifyError(apiErrorMessage(e, 'Failed to load agents.'))
     agents.value = []
     selection.value = {}
   }
@@ -140,14 +132,12 @@ async function loadAll() {
   try {
     await loadCats()
   } catch (e: unknown) {
-    catsErr.value = apiErrorMessage(e, 'Failed to load categories.')
+    notifyWarning(apiErrorMessage(e, 'Failed to load categories.'))
     cats.value = []
   }
 }
 
 async function saveStaffPermissions(userId: number) {
-  ok.value = null
-  err.value = null
   try {
     await api.put(`/api/v1/admin/staff-permissions/${userId}`, {
       grant_helpdesk_admin: !!staffPermAdmin.value[userId],
@@ -155,11 +145,11 @@ async function saveStaffPermissions(userId: number) {
       can_manage_kb: !!staffPermKb.value[userId],
       can_reassign_tickets: !!staffPermReassign.value[userId],
     })
-    ok.value = `Saved permission overrides for user #${userId}`
+    notifySuccess(`Saved permission overrides for user #${userId}`)
     await loadStaffPermissions()
     await loadAgents()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Save failed')
+    notifyError(apiErrorMessage(e, 'Save failed'))
   }
 }
 
@@ -174,8 +164,6 @@ function portalRoleLabel(role: number | null): string {
 }
 
 async function saveAgent(userId: number) {
-  ok.value = null
-  err.value = null
   try {
     await api.put(`/api/v1/admin/agents/${userId}`, {
       category_ids: (selection.value[userId] ?? []).map((id) => Number(id)),
@@ -184,11 +172,11 @@ async function saveAgent(userId: number) {
       grant_helpdesk_admin: !!adminToggle.value[userId],
       grant_supervisor_access: !!supervisorToggle.value[userId],
     })
-    ok.value = `Saved settings for agent #${userId}`
+    notifySuccess(`Saved settings for agent #${userId}`)
     await loadAgents()
     await loadStaffPermissions()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Save failed')
+    notifyError(apiErrorMessage(e, 'Save failed'))
   }
 }
 
@@ -201,7 +189,6 @@ async function openPicker() {
 
 async function loadCandidates() {
   candidatesLoading.value = true
-  candidatesErr.value = null
   candidatesMessage.value = null
   try {
     const { data } = await api.get<{
@@ -212,7 +199,7 @@ async function loadCandidates() {
     candidatesMessage.value = data.meta?.message ?? null
     candidatesLoaded.value = true
   } catch (e: unknown) {
-    candidatesErr.value = apiErrorMessage(e, 'Failed to load staff from configured divisions.')
+    notifyWarning(apiErrorMessage(e, 'Failed to load staff from configured divisions.'))
     candidates.value = []
   } finally {
     candidatesLoading.value = false
@@ -235,12 +222,10 @@ const filteredCandidates = computed<CandidateRow[]>(() => {
 
 async function addAgent(c: CandidateRow) {
   if (!c.work_email) {
-    err.value = `${c.name} has no work email in the directory — cannot add as agent.`
+    notifyError(`${c.name} has no work email in the directory — cannot add as agent.`)
     return
   }
   busyStaffId.value = c.staff_id
-  err.value = null
-  ok.value = null
   try {
     await api.post('/api/v1/admin/agents/designate', {
       staff_id: c.staff_id,
@@ -252,10 +237,10 @@ async function addAgent(c: CandidateRow) {
     c.current_role = 'agent'
     c.is_designated_agent = true
     c.has_user = true
-    ok.value = `${c.name} added as agent — pick their categories below.`
+    notifySuccess(`${c.name} added as agent — pick their categories below.`)
     await loadAgents()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Failed to add agent.')
+    notifyError(apiErrorMessage(e, 'Failed to add agent.'))
   } finally {
     busyStaffId.value = null
   }
@@ -263,17 +248,15 @@ async function addAgent(c: CandidateRow) {
 
 async function removeAgent(a: AgentRow) {
   if (!a.staff_id) {
-    err.value = 'This user has no staff_id and cannot be unmarked from here.'
+    notifyError('This user has no staff_id and cannot be unmarked from here.')
     return
   }
   if (!window.confirm(`Remove ${a.name} from agents? Their assigned tickets are kept; they go back to "user" role.`)) {
     return
   }
-  err.value = null
-  ok.value = null
   try {
     await api.delete(`/api/v1/admin/agents/designate/${a.staff_id}`)
-    ok.value = `${a.name} removed from agents.`
+    notifySuccess(`${a.name} removed from agents.`)
     await loadAgents()
     // Reflect in the picker if it's open
     const match = candidates.value.find((c) => c.staff_id === a.staff_id)
@@ -282,7 +265,7 @@ async function removeAgent(a: AgentRow) {
       match.is_designated_agent = false
     }
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Failed to remove agent.')
+    notifyError(apiErrorMessage(e, 'Failed to remove agent.'))
   }
 }
 
@@ -307,10 +290,6 @@ onMounted(() => {
       </button>
     </header>
 
-    <p v-if="err" class="msg msg-err">{{ err }}</p>
-    <p v-if="catsErr" class="msg msg-warn">{{ catsErr }}</p>
-    <p v-if="ok" class="msg msg-ok" aria-live="polite">{{ ok }}</p>
-
     <!-- Inline directory picker -->
     <section v-if="pickerOpen" class="picker" aria-labelledby="picker-heading">
       <header class="picker-head">
@@ -326,7 +305,6 @@ onMounted(() => {
       </header>
 
       <p v-if="candidatesLoading" class="muted">Loading directory…</p>
-      <p v-else-if="candidatesErr" class="msg msg-err">{{ candidatesErr }}</p>
       <p v-else-if="candidatesMessage" class="msg msg-warn">
         {{ candidatesMessage }}
         <RouterLink to="/settings/general" class="msg-link">Open General settings →</RouterLink>
@@ -465,7 +443,7 @@ onMounted(() => {
       </tbody>
     </table>
 
-    <div v-else-if="!err" class="empty-state">
+    <div v-else class="empty-state">
       <p class="empty-title">No agents yet</p>
       <p class="empty-text">
         Add staff from the configured agent divisions using the button above, or have them sign in once via the Staff

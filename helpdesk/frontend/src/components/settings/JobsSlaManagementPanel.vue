@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import DirectorySyncCard from './DirectorySyncCard.vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
 
 interface CatOpt {
   id: number
@@ -21,8 +22,6 @@ interface SlaRow {
 
 const rules = ref<SlaRow[]>([])
 const categories = ref<CatOpt[]>([])
-const err = ref<string | null>(null)
-const ok = ref<string | null>(null)
 const busyId = ref<number | null>(null)
 
 const draft = reactive({
@@ -43,7 +42,6 @@ async function loadCategories() {
 }
 
 async function loadRules() {
-  err.value = null
   try {
     const { data } = await api.get<{ data: SlaRow[] }>('/api/v1/admin/sla-rules')
     const list = Array.isArray(data.data) ? data.data : []
@@ -52,14 +50,12 @@ async function loadRules() {
       category_id: r.category_id ?? 0,
     }))
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Failed to load SLA rules.')
+    notifyError(apiErrorMessage(e, 'Failed to load SLA rules.'))
   }
 }
 
 async function save(row: SlaRow) {
   busyId.value = row.id
-  err.value = null
-  ok.value = null
   try {
     await api.put(`/api/v1/admin/sla-rules/${row.id}`, {
       name: row.name,
@@ -68,10 +64,10 @@ async function save(row: SlaRow) {
       resolution_minutes: row.resolution_minutes,
       is_active: row.is_active,
     })
-    ok.value = `Updated “${row.name}”.`
+    notifySuccess(`Updated “${row.name}”.`)
     await loadRules()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Save failed')
+    notifyError(apiErrorMessage(e, 'Save failed'))
   } finally {
     busyId.value = null
   }
@@ -79,12 +75,10 @@ async function save(row: SlaRow) {
 
 async function createRule() {
   if (!draft.name.trim()) {
-    err.value = 'Name is required.'
+    notifyWarning('Name is required.')
     return
   }
   busyId.value = -1
-  err.value = null
-  ok.value = null
   try {
     await api.post('/api/v1/admin/sla-rules', {
       name: draft.name.trim(),
@@ -93,7 +87,7 @@ async function createRule() {
       resolution_minutes: draft.resolution_minutes,
       is_active: draft.is_active,
     })
-    ok.value = 'SLA rule created.'
+    notifySuccess('SLA rule created.')
     draft.name = ''
     draft.category_id = 0
     draft.response_minutes = 240
@@ -101,7 +95,7 @@ async function createRule() {
     draft.is_active = true
     await loadRules()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Create failed')
+    notifyError(apiErrorMessage(e, 'Create failed'))
   } finally {
     busyId.value = null
   }
@@ -126,8 +120,6 @@ onMounted(() => {
     <p class="hint narrow">
       Named SLA targets (response and resolution minutes) optionally scoped to a category. Ticket due dates can use these rules as the product evolves.
     </p>
-    <p v-if="err" class="err">{{ err }}</p>
-    <p v-if="ok" class="ok">{{ ok }}</p>
 
     <div class="card new-card">
       <h3>Add SLA rule</h3>
@@ -295,13 +287,6 @@ select {
   color: #fff;
   font-weight: 700;
   cursor: pointer;
-}
-.err {
-  color: #b91c1c;
-}
-.ok {
-  color: #166534;
-  font-weight: 600;
 }
 .muted {
   color: #64748b;

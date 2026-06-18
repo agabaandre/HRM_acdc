@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
 
 interface CategoryRow {
   id: number
@@ -12,8 +13,6 @@ interface CategoryRow {
 }
 
 const rows = ref<CategoryRow[]>([])
-const err = ref<string | null>(null)
-const ok = ref<string | null>(null)
 const busyId = ref<number | null>(null)
 
 const draft = reactive({
@@ -24,19 +23,16 @@ const draft = reactive({
 })
 
 async function load() {
-  err.value = null
   try {
     const { data } = await api.get<{ data: CategoryRow[] }>('/api/v1/admin/categories')
     rows.value = Array.isArray(data.data) ? data.data : []
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Failed to load categories.')
+    notifyError(apiErrorMessage(e, 'Failed to load categories.'))
   }
 }
 
 async function save(row: CategoryRow) {
   busyId.value = row.id
-  err.value = null
-  ok.value = null
   try {
     await api.put(`/api/v1/admin/categories/${row.id}`, {
       name: row.name,
@@ -44,10 +40,10 @@ async function save(row: CategoryRow) {
       sort_order: row.sort_order,
       is_active: row.is_active,
     })
-    ok.value = `Updated “${row.name}”.`
+    notifySuccess(`Updated “${row.name}”.`)
     await load()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Save failed')
+    notifyError(apiErrorMessage(e, 'Save failed'))
   } finally {
     busyId.value = null
   }
@@ -55,12 +51,10 @@ async function save(row: CategoryRow) {
 
 async function createCategory() {
   if (!draft.name.trim()) {
-    err.value = 'Name is required.'
+    notifyWarning('Name is required.')
     return
   }
   busyId.value = -1
-  err.value = null
-  ok.value = null
   try {
     await api.post('/api/v1/admin/categories', {
       name: draft.name.trim(),
@@ -68,14 +62,14 @@ async function createCategory() {
       sort_order: draft.sort_order,
       is_active: draft.is_active,
     })
-    ok.value = 'Category created.'
+    notifySuccess('Category created.')
     draft.name = ''
     draft.slug = ''
     draft.sort_order = 0
     draft.is_active = true
     await load()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Create failed')
+    notifyError(apiErrorMessage(e, 'Create failed'))
   } finally {
     busyId.value = null
   }
@@ -86,14 +80,12 @@ async function remove(row: CategoryRow) {
     return
   }
   busyId.value = row.id
-  err.value = null
-  ok.value = null
   try {
     await api.delete(`/api/v1/admin/categories/${row.id}`)
-    ok.value = 'Category deleted.'
+    notifySuccess('Category deleted.')
     await load()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Delete failed')
+    notifyError(apiErrorMessage(e, 'Delete failed'))
   } finally {
     busyId.value = null
   }
@@ -108,8 +100,6 @@ onMounted(() => {
   <section class="panel" aria-labelledby="cat-heading">
     <h2 id="cat-heading">Issue categories</h2>
     <p class="hint">Used on tickets and agent routing. Inactive categories stay hidden from new requests where the public list filters active only.</p>
-    <p v-if="err" class="err">{{ err }}</p>
-    <p v-if="ok" class="ok">{{ ok }}</p>
 
     <div class="card new-card">
       <h3>Add category</h3>
@@ -266,13 +256,6 @@ input[type='number'] {
   color: #fff;
   font-weight: 700;
   cursor: pointer;
-}
-.err {
-  color: #b91c1c;
-}
-.ok {
-  color: #166534;
-  font-weight: 600;
 }
 .muted {
   color: #64748b;

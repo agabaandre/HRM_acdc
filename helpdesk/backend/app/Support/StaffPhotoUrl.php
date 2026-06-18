@@ -33,8 +33,11 @@ final class StaffPhotoUrl
 
         $path = '/api/v1/avatar/'.$user->id.'?exp='.$exp.'&sig='.$sig;
         $public = trim((string) config('helpdesk.api_public_url', ''));
+        if ($public === '') {
+            $public = rtrim((string) config('app.url'), '/');
+        }
         if ($public !== '') {
-            return rtrim($public, '/').$path;
+            return $public.$path;
         }
 
         return $path;

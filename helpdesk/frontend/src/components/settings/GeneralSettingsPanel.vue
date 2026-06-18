@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue"
 import { api } from "../../lib/api"
 import { useInjectedHelpdeskAdminSettings } from "../../composables/useHelpdeskAdminSettings"
+import { notifyError, notifySuccess, notifyWarning } from "../../lib/notify"
 
 interface DivisionRow {
   id: number
@@ -38,7 +39,6 @@ const candidatesLoaded = ref(false)
 const candidateSearch = ref("")
 const onlyMarked = ref(false)
 const busyStaffId = ref<number | null>(null)
-const lastAction = ref<string | null>(null)
 
 function parseDivisionCsv(csv: string): number[] {
   return csv
@@ -191,7 +191,6 @@ async function loadCandidates() {
   candidatesLoading.value = true
   candidatesErr.value = null
   candidatesMessage.value = null
-  lastAction.value = null
   try {
     const { data } = await api.get<{
       data: { candidates: CandidateRow[]; division_ids: number[] }
@@ -203,6 +202,7 @@ async function loadCandidates() {
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
     candidatesErr.value = msg || (e instanceof Error ? e.message : "Failed to load division staff.")
+    notifyWarning(candidatesErr.value)
     candidates.value = []
   } finally {
     candidatesLoading.value = false
@@ -211,7 +211,7 @@ async function loadCandidates() {
 
 async function designateAgent(c: CandidateRow) {
   if (!c.work_email) {
-    lastAction.value = `${c.name} has no work email in the directory — cannot designate.`
+    notifyWarning(`${c.name} has no work email in the directory — cannot designate.`)
     return
   }
   busyStaffId.value = c.staff_id
@@ -226,10 +226,10 @@ async function designateAgent(c: CandidateRow) {
     c.is_designated_agent = true
     c.has_user = true
     c.current_role = "agent"
-    lastAction.value = `${c.name} marked as agent.`
+    notifySuccess(`${c.name} marked as agent.`)
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-    lastAction.value = msg || (e instanceof Error ? e.message : "Failed to mark as agent.")
+    notifyError(msg || (e instanceof Error ? e.message : "Failed to mark as agent."))
   } finally {
     busyStaffId.value = null
   }
@@ -243,10 +243,10 @@ async function undesignateAgent(c: CandidateRow) {
     if (c.current_role === "agent") {
       c.current_role = "user"
     }
-    lastAction.value = `${c.name} unmarked.`
+    notifySuccess(`${c.name} unmarked.`)
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-    lastAction.value = msg || (e instanceof Error ? e.message : "Failed to unmark agent.")
+    notifyError(msg || (e instanceof Error ? e.message : "Failed to unmark agent."))
   } finally {
     busyStaffId.value = null
   }
@@ -372,7 +372,6 @@ function roleLabel(c: CandidateRow): string {
 
         <p v-if="candidatesErr" class="warn">{{ candidatesErr }}</p>
         <p v-else-if="candidatesMessage" class="muted">{{ candidatesMessage }}</p>
-        <p v-if="lastAction" class="action-ok" aria-live="polite">{{ lastAction }}</p>
 
         <template v-if="candidatesLoaded && !candidatesErr && candidates.length">
           <div class="cand-toolbar">
@@ -696,15 +695,6 @@ code {
 .agents-head .ghost {
   align-self: flex-start;
   margin-top: 0;
-}
-.action-ok {
-  margin: 0.3rem 0 0;
-  font-size: 0.82rem;
-  color: #166534;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  padding: 0.35rem 0.55rem;
-  border-radius: 6px;
 }
 .cand-toolbar {
   display: flex;

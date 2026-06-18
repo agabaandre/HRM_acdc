@@ -2,10 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { notifyError, notifySuccess } from '../../lib/notify'
 
 const busy = ref(false)
-const err = ref<string | null>(null)
-const ok = ref<string | null>(null)
 const last = ref<{ divisions: number; directorates: number; staff_rows: number; cache_ttl_seconds: number } | null>(null)
 /** null = health check failed or unknown */
 const staffShareConfigured = ref<boolean | null>(null)
@@ -21,17 +20,15 @@ onMounted(async () => {
 
 async function syncNow() {
   busy.value = true
-  err.value = null
-  ok.value = null
   last.value = null
   try {
     const { data } = await api.post<{ data: { divisions: number; directorates: number; staff_rows: number; cache_ttl_seconds: number } }>(
       '/api/v1/admin/reference-sync',
     )
     last.value = data.data
-    ok.value = `Synced: ${data.data.divisions} divisions, ${data.data.directorates} directorates, ${data.data.staff_rows} staff rows cached (TTL ${data.data.cache_ttl_seconds}s).`
+    notifySuccess(`Synced: ${data.data.divisions} divisions, ${data.data.directorates} directorates, ${data.data.staff_rows} staff rows cached (TTL ${data.data.cache_ttl_seconds}s).`)
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Sync failed.')
+    notifyError(apiErrorMessage(e, 'Sync failed.'))
   } finally {
     busy.value = false
   }
@@ -55,8 +52,6 @@ async function syncNow() {
       <code>php artisan serve</code>.
     </p>
     <button type="button" class="primary" :disabled="busy || staffShareConfigured === false" @click="syncNow()">{{ busy ? 'Syncing…' : 'Run directory sync now' }}</button>
-    <p v-if="err" class="err">{{ err }}</p>
-    <p v-if="ok" class="ok">{{ ok }}</p>
   </section>
 </template>
 
@@ -110,16 +105,6 @@ h3 {
 .primary:disabled {
   opacity: 0.65;
   cursor: not-allowed;
-}
-.err {
-  color: #b91c1c;
-  font-weight: 600;
-  margin-top: 0.65rem;
-}
-.ok {
-  color: #166534;
-  font-weight: 600;
-  margin-top: 0.65rem;
 }
 code {
   font-size: 0.82em;

@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { notifyError, notifySuccess } from '../../lib/notify'
 
 interface SettingsPayload {
   whatsapp_enabled?: boolean | string
@@ -20,8 +21,6 @@ interface SettingsPayload {
   webhook_base_url?: string
 }
 
-const err = ref<string | null>(null)
-const ok = ref<string | null>(null)
 const busy = ref(false)
 
 const form = reactive({
@@ -46,7 +45,6 @@ const flags = reactive({
 const webhookBase = ref('')
 
 async function load() {
-  err.value = null
   try {
     const { data } = await api.get<{ data: SettingsPayload }>('/api/v1/admin/settings')
     const d = data.data
@@ -65,14 +63,12 @@ async function load() {
     flags.teamsPwd = Boolean(d.teams_app_password_configured)
     webhookBase.value = d.webhook_base_url ?? ''
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Failed to load integration settings.')
+    notifyError(apiErrorMessage(e, 'Failed to load integration settings.'))
   }
 }
 
 async function save() {
   busy.value = true
-  err.value = null
-  ok.value = null
   try {
     const payload: Record<string, unknown> = {
       whatsapp_enabled: form.whatsapp_enabled,
@@ -93,10 +89,10 @@ async function save() {
       payload.teams_app_password = form.teams_app_password.trim()
     }
     await api.put('/api/v1/admin/settings', payload)
-    ok.value = 'Integration settings saved.'
+    notifySuccess('Integration settings saved.')
     await load()
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Save failed.')
+    notifyError(apiErrorMessage(e, 'Save failed.'))
   } finally {
     busy.value = false
   }
@@ -114,8 +110,6 @@ onMounted(() => {
       specifications; ticket creation from raw channel events is completed in a follow-up release — this screen stores credentials and exposes stable URLs for
       Meta / Azure registration.
     </p>
-    <p v-if="err" class="err">{{ err }}</p>
-    <p v-if="ok" class="ok">{{ ok }}</p>
 
     <section class="card">
       <h3>Webhook base URL</h3>
@@ -271,13 +265,5 @@ input[type='password'] {
 .primary:disabled {
   opacity: 0.65;
   cursor: not-allowed;
-}
-.err {
-  color: #b91c1c;
-  font-weight: 600;
-}
-.ok {
-  color: #166534;
-  font-weight: 600;
 }
 </style>

@@ -43,6 +43,9 @@ helpdesk_resolve_production_urls() {
         if url_needs_resolve "${HELPDESK_HEALTH_URL:-}"; then
             HELPDESK_HEALTH_URL="${origin}/staff/helpdesk/backend/api/v1/health"
         fi
+        if url_needs_resolve "${HELPDESK_API_PUBLIC_URL:-}"; then
+            HELPDESK_API_PUBLIC_URL="${origin}/staff/helpdesk/backend"
+        fi
         if [[ -z "${VITE_HELPDESK_API_BASE_URL:-}" ]]; then
             VITE_HELPDESK_API_BASE_URL="/staff/helpdesk/backend"
         fi

@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { staffPortalHomeUrl } from '../lib/sso'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { notifyError } from '../lib/notify'
 
 interface KbCategoryRef {
   id: number
@@ -34,7 +35,6 @@ const canManageKb = computed(() => {
 const search = ref('')
 const articles = ref<KbArticle[]>([])
 const loading = ref(false)
-const err = ref<string | null>(null)
 const expanded = ref<Set<number>>(new Set())
 
 let searchTimer: number | undefined
@@ -45,7 +45,6 @@ async function loadArticles(query = ''): Promise<void> {
     return
   }
   loading.value = true
-  err.value = null
   try {
     const params: Record<string, string | number> = {}
     if (query.trim() !== '') {
@@ -54,7 +53,7 @@ async function loadArticles(query = ''): Promise<void> {
     const { data } = await api.get<{ data: KbArticle[] }>('/api/v1/kb/articles', { params })
     articles.value = Array.isArray(data.data) ? data.data : []
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Could not load knowledge base.')
+    notifyError(apiErrorMessage(e, 'Could not load knowledge base.'))
     articles.value = []
   } finally {
     loading.value = false
@@ -159,7 +158,6 @@ onMounted(() => {
       </label>
 
       <p v-if="loading" class="kb-status" role="status">Loading articles…</p>
-      <p v-else-if="err" class="kb-error" role="alert">{{ err }}</p>
       <p v-else-if="articles.length === 0 && search.trim() === ''" class="kb-empty">
         No articles yet.
         <template v-if="canManageKb">

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { notifyError } from '../../lib/notify'
 
 interface AuditRow {
   id: number
@@ -15,11 +16,9 @@ interface AuditRow {
 
 const rows = ref<AuditRow[]>([])
 const meta = ref<{ total: number; current_page: number } | null>(null)
-const err = ref<string | null>(null)
 const isoJson = ref(false)
 
 async function load() {
-  err.value = null
   try {
     const [auditRes, settingsRes] = await Promise.all([
       api.get<{ data: AuditRow[]; meta: { total: number; current_page: number } }>('/api/v1/admin/audit-logs', { params: { per_page: 25 } }),
@@ -30,7 +29,9 @@ async function load() {
     meta.value = a.meta ?? null
     isoJson.value = Boolean(settingsRes.data.data?.iso_json_log_in_stack)
   } catch (e: unknown) {
-    err.value = apiErrorMessage(e, 'Failed to load audit data.')
+    notifyError(apiErrorMessage(e, 'Failed to load audit data.'))
+    rows.value = []
+    meta.value = null
   }
 }
 
@@ -65,8 +66,7 @@ onMounted(() => {
 
     <section class="card">
       <h3>Recent audit events</h3>
-      <p v-if="err" class="err">{{ err }}</p>
-      <p v-else-if="meta" class="meta">Showing {{ rows.length }} of {{ meta.total }} (page {{ meta.current_page }})</p>
+      <p v-if="meta" class="meta">Showing {{ rows.length }} of {{ meta.total }} (page {{ meta.current_page }})</p>
       <div v-if="rows.length" class="table-wrap">
         <table class="tbl">
           <thead>
@@ -89,7 +89,7 @@ onMounted(() => {
           </tbody>
         </table>
       </div>
-      <p v-else-if="!err" class="muted">No audit rows yet.</p>
+      <p v-else-if="meta" class="muted">No audit rows yet.</p>
     </section>
   </div>
 </template>
@@ -155,10 +155,6 @@ onMounted(() => {
   max-width: 12rem;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.err {
-  color: #b91c1c;
-  font-weight: 600;
 }
 .muted {
   color: #64748b;

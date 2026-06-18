@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
+import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { notifyError } from '../lib/notify'
 import {
   formatTableCountLabel,
   rowIndex,
@@ -12,7 +14,6 @@ import {
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
-const err = ref<string | null>(null)
 const tab = ref<'mine' | 'admin'>('mine')
 
 /** Ticket rows from report APIs (aligned with ticket API resource fields). */
@@ -122,7 +123,6 @@ async function switchTab(next: 'mine' | 'admin') {
 }
 
 async function load() {
-  err.value = null
   try {
     if (tab.value === 'admin' && isAdmin.value) {
       await loadAdmin()
@@ -130,7 +130,7 @@ async function load() {
       await loadMine()
     }
   } catch (e: unknown) {
-    err.value = e instanceof Error ? e.message : 'Failed to load report'
+    notifyError(apiErrorMessage(e, 'Failed to load report'))
     myLoading.value = false
     adminLoading.value = false
   }
@@ -171,7 +171,7 @@ async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
     a.click()
     URL.revokeObjectURL(url)
   } catch {
-    err.value = 'Export failed (check you are signed in as staff).'
+    notifyError('Export failed (check you are signed in as staff).')
   }
 }
 
@@ -194,9 +194,7 @@ onMounted(async () => {
         <button type="button" :class="{ on: tab === 'mine' }" @click="switchTab('mine')">My issues</button>
       </div>
 
-      <p v-if="err" class="err">{{ err }}</p>
-
-      <template v-else-if="tab === 'mine' && myStats">
+      <template v-if="tab === 'mine' && myStats">
       <div class="tiles">
         <article class="tile tile-total">
           <header>
