@@ -15,10 +15,22 @@ Laravel 12 + **Inertia.js (React)** for the CBP Finance module. Navigation and s
 
 ## Quick start
 
+**Local dev:**
+
 ```bash
 cd finance
 ./setup.sh
 ```
+
+**Production** (beside Staff at `/staff/finance/`, same pattern as Helpdesk):
+
+```bash
+cd finance
+cp setup.env.example setup.env   # set DB_DATABASE; leave URLs as localhost or blank
+./setup-production.sh
+```
+
+On production, `setup-production.sh` sets `APP_ENV=production` and **auto-fills public URLs** from `../.env` (`PRODUCTION_URL`, `CI_BASE_URL`, or `BASE_URL`) or the server hostname (`https://your-server/staff/...`). MySQL credentials copy from Staff `DB_HOST` / `DB_USER` / `DB_PASS` when `DB_PASSWORD` is left blank in `setup.env`.
 
 Or manually:
 

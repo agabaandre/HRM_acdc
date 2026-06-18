@@ -3,6 +3,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
+# Local dev shortcut. For production beside Staff at /staff/finance/, use ./setup-production.sh
+if [[ -f setup.env ]]; then
+  echo "Tip: for production deploy use ./setup-production.sh (reads setup.env)."
+fi
+
 if [[ ! -f .env ]]; then
   cp .env.example .env
   php artisan key:generate --no-interaction
@@ -17,3 +22,4 @@ npm run build
 
 echo "Finance (Laravel + Inertia) ready."
 echo "Open: http://localhost/staff/finance/?token=… (from Staff home)"
+echo "Production: cp setup.env.example setup.env && ./setup-production.sh"
