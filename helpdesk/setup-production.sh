@@ -184,6 +184,16 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
     [[ -f "$PROD_ENV" ]] && VITE_ENV_PREEXISTED=1
     dotenv_apply_if_missing "$PROD_ENV" VITE_HELPDESK_API_BASE_URL \
         "$VITE_HELPDESK_API_BASE_URL" "$VITE_ENV_PREEXISTED"
+    if [[ -d "$FRONTEND/dist" ]] && ! [[ -w "$FRONTEND/dist" ]]; then
+        warn "frontend/dist is not writable — fixing ownership for $(id -un)"
+        if chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist" 2>/dev/null; then
+            :
+        elif command -v sudo >/dev/null 2>&1 && sudo chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist"; then
+            :
+        else
+            die "Cannot write to $FRONTEND/dist — run: sudo chown -R \$(whoami) $FRONTEND/dist"
+        fi
+    fi
     (
         cd "$FRONTEND"
         if [[ -f package-lock.json ]]; then
