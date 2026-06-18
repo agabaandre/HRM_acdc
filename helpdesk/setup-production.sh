@@ -212,11 +212,31 @@ if [[ "$SKIP_OPTIMIZE" -eq 0 ]]; then
     log "Caching Laravel config / routes / views"
     (
         cd "$BACKEND"
+        "$PHP_BIN" artisan config:clear --no-interaction
         "$PHP_BIN" artisan config:cache --no-interaction
         "$PHP_BIN" artisan route:cache --no-interaction
         "$PHP_BIN" artisan view:cache --no-interaction
     )
 fi
+
+verify_queue_table() {
+    local queue_table expected
+    queue_table="$(
+        cd "$BACKEND" && "$PHP_BIN" artisan tinker --execute="echo config('queue.connections.database.table');" 2>/dev/null \
+            | tail -1 | tr -d '\r'
+    )"
+    expected="$(dotenv_get "$BACKEND_ENV" DB_QUEUE_TABLE 2>/dev/null || true)"
+    [[ -n "$expected" ]] || expected="helpdesk_queue_jobs"
+    if [[ -z "$queue_table" ]]; then
+        warn "Could not read queue table from Laravel config — check backend/.env DB_QUEUE_TABLE"
+        return 0
+    fi
+    if [[ "$queue_table" != "$expected" ]]; then
+        warn "Queue table mismatch: config uses '$queue_table' but expected '$expected' — run: cd backend && php artisan config:clear && php artisan config:cache"
+    fi
+}
+
+verify_queue_table
 
 log "Fixing storage permissions ($HELPDESK_USER:$HELPDESK_GROUP)"
 fix_perms() {

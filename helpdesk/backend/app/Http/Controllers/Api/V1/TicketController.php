@@ -23,6 +23,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class TicketController extends Controller
 {
@@ -158,7 +160,14 @@ class TicketController extends Controller
             $ticket->save();
         }
 
-        ScanTicketForAiSignals::dispatch($ticket->id);
+        try {
+            ScanTicketForAiSignals::dispatchAfterResponse($ticket->id);
+        } catch (Throwable $e) {
+            Log::warning('helpdesk.ticket.ai_scan_dispatch_failed', [
+                'ticket_id' => $ticket->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
 
         return (new TicketResource($ticket->load(['category', 'assignee.helpdeskProfile', 'attachments'])))
             ->response()
