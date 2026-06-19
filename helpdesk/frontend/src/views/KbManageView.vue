@@ -243,11 +243,30 @@ onMounted(() => {
 
     <section class="cbp-card list-card" aria-labelledby="list-heading">
       <header class="list-head">
-        <h2 id="list-heading">Articles</h2>
+        <div class="list-head-title">
+          <h2 id="list-heading">Articles</h2>
+          <p class="table-count" role="status">
+            Showing <strong>{{ filtered.length }}</strong> of <strong>{{ rows.length }}</strong> articles
+          </p>
+        </div>
         <div class="list-head-actions">
+          <UFormField label="Filter by category" name="filterCat" class="kb-toolbar-field kb-toolbar-field--filter">
+            <USelect v-model="filterCat" :items="categoryItems" class="w-full" />
+          </UFormField>
+          <UFormField label="Search" name="search" class="kb-toolbar-field kb-toolbar-field--search">
+            <UInput
+              v-model="search"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Question, answer, category…"
+              aria-label="Search articles"
+              class="w-full"
+            />
+          </UFormField>
           <UButton
             type="button"
             color="primary"
+            class="kb-toolbar-add"
             :aria-expanded="showCreateForm"
             aria-controls="create-faq-panel"
             @click="toggleCreateForm"
@@ -255,19 +274,6 @@ onMounted(() => {
             <i class="bx bx-plus" aria-hidden="true" />
             {{ showCreateForm ? 'Hide form' : 'Add FAQ' }}
           </UButton>
-          <UFormField label="Filter by category" name="filterCat" class="filter-field">
-            <USelect v-model="filterCat" :items="categoryItems" class="w-full" />
-          </UFormField>
-          <UFormField name="search" class="search-wrap">
-            <UInput
-              v-model="search"
-              type="search"
-              icon="i-lucide-search"
-              placeholder="Search question, answer, category…"
-              aria-label="Search"
-              class="w-full"
-            />
-          </UFormField>
         </div>
       </header>
 
@@ -317,9 +323,6 @@ onMounted(() => {
       </UCard>
 
       <div class="table-wrap">
-        <p class="table-count">
-          Showing <strong>{{ filtered.length }}</strong> of <strong>{{ rows.length }}</strong> articles
-        </p>
         <div v-if="filtered.length === 0" class="table-empty muted">
           {{
             rows.length === 0
@@ -418,6 +421,69 @@ onMounted(() => {
   font-size: 1.05rem;
   margin: 0;
 }
+.list-head-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.list-head-title .table-count {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+.list-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1rem;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 0.85rem;
+}
+.list-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: flex-end;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: min(100%, 28rem);
+}
+.kb-toolbar-field {
+  margin: 0;
+  min-width: 0;
+}
+.kb-toolbar-field--filter {
+  width: 11.5rem;
+  flex-shrink: 0;
+}
+.kb-toolbar-field--search {
+  flex: 1;
+  min-width: min(16rem, 100%);
+  max-width: 22rem;
+}
+.kb-toolbar-add {
+  flex-shrink: 0;
+  align-self: flex-end;
+}
+@media (max-width: 720px) {
+  .list-head {
+    align-items: stretch;
+  }
+  .list-head-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .kb-toolbar-field--filter,
+  .kb-toolbar-field--search {
+    width: 100%;
+    max-width: none;
+  }
+  .kb-toolbar-add {
+    width: 100%;
+    justify-content: center;
+  }
+}
 .create-panel {
   margin: 0.85rem 0 1rem;
 }
@@ -426,26 +492,6 @@ onMounted(() => {
   font-size: 0.95rem;
   font-weight: 700;
   color: #1a1a1a;
-}
-.filter-field {
-  min-width: 10rem;
-}
-.list-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.85rem;
-}
-.list-head-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.search-wrap {
-  min-width: min(280px, 100%);
 }
 .table-empty {
   padding: 1.25rem;
