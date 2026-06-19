@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
+import type { FormError } from '@nuxt/ui'
 import CbpRichTextEditor from '../common/CbpRichTextEditor.vue'
+import { fieldError } from '../../lib/helpdeskForm'
 import { hasRichTextContent } from '../../lib/richText'
 
 export interface KbCat {
@@ -39,6 +41,10 @@ const form = reactive<KbArticleEditForm>({
   is_active: true,
 })
 
+const categoryItems = computed(() =>
+  props.categories.map((c) => ({ label: c.name, value: c.id })),
+)
+
 watch(
   () => props.article,
   (a) => {
@@ -55,13 +61,28 @@ watch(
   { immediate: true },
 )
 
+function validateForm(state: typeof form): FormError[] {
+  const errors: FormError[] = []
+  if (!state.category_id) {
+    errors.push({ name: 'category_id', message: 'Choose a category' })
+  }
+  const qErr = fieldError('question', state.question, 'Question is required')
+  if (qErr) {
+    errors.push(qErr)
+  }
+  if (!hasRichTextContent(state.answer)) {
+    errors.push({ name: 'answer', message: 'Answer is required' })
+  }
+  return errors
+}
+
 function onBackdrop(e: MouseEvent) {
   if ((e.target as HTMLElement).classList.contains('kb-modal-backdrop')) {
     emit('close')
   }
 }
 
-function submit() {
+function submitForm() {
   if (!form.question.trim() || !hasRichTextContent(form.answer) || !form.category_id) {
     return
   }
@@ -78,47 +99,47 @@ function submit() {
     <div class="kb-modal" role="dialog" aria-modal="true" aria-labelledby="kb-edit-title" @click.stop>
       <header class="kb-modal-head">
         <h3 id="kb-edit-title" class="kb-modal-title">Edit article</h3>
-        <button type="button" class="kb-modal-close" aria-label="Close" :disabled="busy" @click="emit('close')">
+        <UButton type="button" color="neutral" variant="ghost" size="sm" aria-label="Close" :disabled="busy" @click="emit('close')">
           ×
-        </button>
+        </UButton>
       </header>
       <div class="kb-modal-body">
         <p v-if="error" class="kb-modal-err" role="alert">{{ error }}</p>
-        <div class="kb-form-grid">
-          <label>
-            Category
-            <select v-model.number="form.category_id" :disabled="busy">
-              <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
-          </label>
-          <label>
-            Sort order
-            <input v-model.number="form.sort_order" type="number" min="0" :disabled="busy" />
-          </label>
-          <label class="kb-check">
-            <input v-model="form.is_active" type="checkbox" :disabled="busy" />
-            Active (visible on home knowledge base)
-          </label>
-        </div>
-        <label class="kb-full">
-          Question
-          <input v-model="form.question" type="text" maxlength="255" :disabled="busy" />
-        </label>
-        <label class="kb-full">
-          Answer
-          <CbpRichTextEditor v-model="form.answer" :disabled="busy" />
-        </label>
+        <UForm
+          :state="form"
+          :validate="validateForm"
+          class="hd-form hd-form--grid"
+          :disabled="busy"
+          @submit="submitForm"
+        >
+          <UFormField label="Category" name="category_id" required>
+            <USelect v-model="form.category_id" :items="categoryItems" class="w-full" />
+          </UFormField>
+          <UFormField label="Sort order" name="sort_order">
+            <UInput v-model.number="form.sort_order" type="number" min="0" class="w-full" />
+          </UFormField>
+          <UFormField name="is_active" class="full">
+            <UCheckbox v-model="form.is_active" label="Active (visible on home knowledge base)" />
+          </UFormField>
+          <UFormField label="Question" name="question" required class="full">
+            <UInput v-model="form.question" type="text" maxlength="255" class="w-full" />
+          </UFormField>
+          <UFormField label="Answer" name="answer" required class="full hd-rich-field">
+            <CbpRichTextEditor v-model="form.answer" :disabled="busy" />
+          </UFormField>
+        </UForm>
       </div>
       <footer class="kb-modal-foot">
-        <button type="button" class="btn ghost" :disabled="busy" @click="emit('close')">Cancel</button>
-        <button
+        <UButton type="button" color="neutral" variant="outline" :disabled="busy" @click="emit('close')">Cancel</UButton>
+        <UButton
           type="button"
-          class="btn primary"
-          :disabled="busy || !form.question.trim() || !hasRichTextContent(form.answer)"
-          @click="submit"
+          color="primary"
+          :loading="busy"
+          :disabled="!form.question.trim() || !hasRichTextContent(form.answer)"
+          @click="submitForm"
         >
-          {{ busy ? 'Saving…' : 'Save changes' }}
-        </button>
+          Save changes
+        </UButton>
       </footer>
     </div>
   </div>
@@ -161,16 +182,6 @@ function submit() {
   color: #1a1a1a;
 }
 
-.kb-modal-close {
-  border: none;
-  background: transparent;
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-  color: #64748b;
-  padding: 0.15rem 0.35rem;
-}
-
 .kb-modal-body {
   padding: 1rem;
   overflow-y: auto;
@@ -193,64 +204,5 @@ function submit() {
   color: #991b1b;
   border-radius: 4px;
   font-size: 0.875rem;
-}
-
-.kb-form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-label {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #3a4452;
-  gap: 0.3rem;
-}
-
-input,
-select {
-  padding: 0.5rem 0.65rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-family: inherit;
-}
-
-.kb-check {
-  flex-direction: row;
-  align-items: center;
-  font-weight: 500;
-}
-
-.kb-full {
-  margin-top: 0.5rem;
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  border: none;
-}
-
-.btn.primary {
-  background: linear-gradient(135deg, #119a48 0%, #0d7a3a 100%);
-  color: #fff;
-}
-
-.btn.ghost {
-  background: #f1f5f9;
-  color: #334155;
-}
-
-.btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 </style>

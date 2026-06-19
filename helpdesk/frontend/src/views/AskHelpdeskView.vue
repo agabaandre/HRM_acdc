@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import { RouterLink } from 'vue-router'
 import CbpBadgeStrip from '../components/common/CbpBadgeStrip.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { minLengthError } from '../lib/helpdeskForm'
 import { notifyError } from '../lib/notify'
 
 interface ChatMessage {
@@ -26,7 +28,7 @@ interface AskResponse {
   source: string
 }
 
-const draft = ref('')
+const form = reactive({ question: '' })
 const sending = ref(false)
 const messages = ref<ChatMessage[]>([])
 const messagesEl = ref<HTMLElement | null>(null)
@@ -38,6 +40,15 @@ const starterPrompts = [
   'How do I reset my email password?',
   'The printer on my floor is not working',
 ]
+
+function validateAsk(state: typeof form): FormError[] {
+  const errors: FormError[] = []
+  const lenErr = minLengthError('question', state.question, 8, 'Enter at least 8 characters')
+  if (lenErr) {
+    errors.push(lenErr)
+  }
+  return errors
+}
 
 async function scrollToBottom(): Promise<void> {
   await nextTick()
@@ -58,7 +69,7 @@ async function sendQuestion(text: string): Promise<void> {
     role: 'user',
     text: question,
   })
-  draft.value = ''
+  form.question = ''
   sending.value = true
   await scrollToBottom()
 
@@ -82,12 +93,12 @@ async function sendQuestion(text: string): Promise<void> {
   }
 }
 
-function onSubmit(): void {
-  void sendQuestion(draft.value)
+async function onSubmit(_event: FormSubmitEvent<typeof form>): Promise<void> {
+  await sendQuestion(form.question)
 }
 
 function usePrompt(prompt: string): void {
-  draft.value = prompt
+  form.question = prompt
   void sendQuestion(prompt)
 }
 
@@ -158,36 +169,45 @@ function confidenceClass(level?: string): string {
           <p v-if="sending" class="hd-ask-empty" role="status">Thinking…</p>
         </div>
 
-        <form class="hd-ask-compose" @submit.prevent="onSubmit">
-          <label class="sr-only" for="ask-input">Your question</label>
-          <textarea
-            id="ask-input"
-            v-model="draft"
-            class="hd-ask-input"
-            rows="2"
-            placeholder="e.g. I cannot access my email after changing my password…"
-            :disabled="sending"
-            @keydown.enter.exact.prevent="onSubmit"
-          />
-          <button type="submit" class="hd-btn hd-btn--primary hd-ask-send" :disabled="sending || draft.trim().length < 8">
-            {{ sending ? '…' : 'Ask' }}
-          </button>
-        </form>
+        <UForm
+          :state="form"
+          :validate="validateAsk"
+          class="hd-ask-compose hd-search-form"
+          :disabled="sending"
+          @submit="onSubmit"
+        >
+          <UFormField name="question" class="hd-form-toolbar-grow">
+            <UTextarea
+              id="ask-input"
+              v-model="form.question"
+              :rows="2"
+              placeholder="e.g. I cannot access my email after changing my password…"
+              class="w-full"
+              @keydown.enter.exact.prevent="() => { if (form.question.trim().length >= 8 && !sending) void sendQuestion(form.question) }"
+            />
+          </UFormField>
+          <UButton type="submit" color="primary" :loading="sending" :disabled="form.question.trim().length < 8">
+            Ask
+          </UButton>
+        </UForm>
       </section>
 
       <aside class="hd-ask-side" aria-label="Ask Helpdesk tips">
         <div class="hd-side-card">
           <h3>Suggested prompts</h3>
-          <button
+          <UButton
             v-for="p in starterPrompts"
             :key="p"
             type="button"
+            color="neutral"
+            variant="outline"
+            size="sm"
             class="hd-prompt-chip"
             :disabled="sending"
             @click="usePrompt(p)"
           >
             {{ p }}
-          </button>
+          </UButton>
         </div>
         <div class="hd-side-card">
           <h3>Before you ask</h3>
@@ -206,19 +226,18 @@ function confidenceClass(level?: string): string {
 </template>
 
 <style scoped>
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 .hd-bubble-text {
   margin: 0;
+}
+.hd-ask-compose {
+  align-items: flex-end;
+}
+.hd-prompt-chip {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  height: auto;
+  margin-bottom: 0.35rem;
 }
 </style>

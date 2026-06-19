@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import KbArticleEditModal, { type KbArticleEditForm } from '../components/kb/KbArticleEditModal.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { notifyError, notifySuccess } from "../lib/notify"
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { fieldError } from '../lib/helpdeskForm'
 import { hasRichTextContent } from '../lib/richText'
 import { stripHtml } from '../lib/stripHtml'
 
@@ -56,6 +58,15 @@ const create = reactive({
   sort_order: 0,
   is_active: true,
 })
+
+const categoryItems = computed(() => [
+  { label: 'All categories', value: 0 },
+  ...cats.value.map((c) => ({ label: c.name, value: c.id })),
+])
+
+const categorySelectItems = computed(() =>
+  cats.value.map((c) => ({ label: c.name, value: c.id })),
+)
 
 async function loadCats(): Promise<void> {
   const { data } = await api.get<{ data: Cat[] }>('/api/v1/categories')
@@ -109,11 +120,22 @@ function formatUpdated(row: KbArticleRow): string {
   return who ? `${when} · ${who}` : when
 }
 
-async function createArticle(): Promise<void> {
-  if (!create.question.trim() || !hasRichTextContent(create.answer) || !create.category_id) {
-    notifyError('Category, question, and answer are required.')
-    return
+function validateCreateForm(state: typeof create): FormError[] {
+  const errors: FormError[] = []
+  if (!state.category_id) {
+    errors.push({ name: 'category_id', message: 'Choose a category' })
   }
+  const qErr = fieldError('question', state.question, 'Question is required')
+  if (qErr) {
+    errors.push(qErr)
+  }
+  if (!hasRichTextContent(state.answer)) {
+    errors.push({ name: 'answer', message: 'Answer is required' })
+  }
+  return errors
+}
+
+async function onCreateArticle(_event: FormSubmitEvent<typeof create>): Promise<void> {
   busy.value = -1
   try {
     await api.post('/api/v1/admin/kb/articles', {
@@ -223,73 +245,76 @@ onMounted(() => {
       <header class="list-head">
         <h2 id="list-heading">Articles</h2>
         <div class="list-head-actions">
-          <button
+          <UButton
             type="button"
-            class="btn-add-faq"
+            color="primary"
             :aria-expanded="showCreateForm"
             aria-controls="create-faq-panel"
             @click="toggleCreateForm"
           >
             <i class="bx bx-plus" aria-hidden="true" />
             {{ showCreateForm ? 'Hide form' : 'Add FAQ' }}
-          </button>
-          <label>
-            <span class="sr-only">Filter by category</span>
-            <select v-model.number="filterCat">
-              <option :value="0">All categories</option>
-              <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
-          </label>
-          <label class="search-wrap">
-            <span class="sr-only">Search</span>
-            <input v-model="search" type="search" placeholder="Search question, answer, category…" />
-          </label>
+          </UButton>
+          <UFormField label="Filter by category" name="filterCat" class="filter-field">
+            <USelect v-model="filterCat" :items="categoryItems" class="w-full" />
+          </UFormField>
+          <UFormField name="search" class="search-wrap">
+            <UInput
+              v-model="search"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Search question, answer, category…"
+              aria-label="Search"
+              class="w-full"
+            />
+          </UFormField>
         </div>
       </header>
 
-      <section
+      <UCard
         v-show="showCreateForm"
         id="create-faq-panel"
         class="create-panel"
         aria-labelledby="create-heading"
       >
-        <h3 id="create-heading" class="create-panel-title">New FAQ</h3>
-        <div class="grid">
-          <label>
-            Category
-            <select v-model.number="create.category_id">
-              <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
-          </label>
-          <label>
-            Sort order
-            <input v-model.number="create.sort_order" type="number" min="0" />
-          </label>
-          <label class="row-check">
-            <input v-model="create.is_active" type="checkbox" />
-            Active (visible on the home knowledge base)
-          </label>
-        </div>
-        <label class="full">
-          Question
-          <input v-model="create.question" type="text" maxlength="255" placeholder="e.g. How do I reset my password?" />
-        </label>
-        <label class="full">
-          Answer
-          <CbpRichTextEditor
-            v-model="create.answer"
-            placeholder="Step-by-step instructions, links, screenshots…"
-          />
-        </label>
-        <div class="create-panel-actions">
-          <button type="button" class="btn-ghost" :disabled="busy === -1" @click="closeCreateForm">
-            Cancel
-          </button>
-          <button type="button" class="primary" :disabled="busy === -1" @click="createArticle">
-            {{ busy === -1 ? 'Publishing…' : 'Publish FAQ' }}
-          </button>
-        </div>
-      </section>
+        <template #header>
+          <h3 id="create-heading" class="create-panel-title">New FAQ</h3>
+        </template>
+        <UForm
+          :state="create"
+          :validate="validateCreateForm"
+          class="hd-form hd-form--grid"
+          :disabled="busy === -1"
+          @submit="onCreateArticle"
+        >
+          <UFormField label="Category" name="category_id" required>
+            <USelect v-model="create.category_id" :items="categorySelectItems" class="w-full" />
+          </UFormField>
+          <UFormField label="Sort order" name="sort_order">
+            <UInput v-model.number="create.sort_order" type="number" min="0" class="w-full" />
+          </UFormField>
+          <UFormField name="is_active" class="full">
+            <UCheckbox v-model="create.is_active" label="Active (visible on the home knowledge base)" />
+          </UFormField>
+          <UFormField label="Question" name="question" required class="full">
+            <UInput v-model="create.question" type="text" maxlength="255" placeholder="e.g. How do I reset my password?" class="w-full" />
+          </UFormField>
+          <UFormField label="Answer" name="answer" required class="full hd-rich-field">
+            <CbpRichTextEditor
+              v-model="create.answer"
+              placeholder="Step-by-step instructions, links, screenshots…"
+            />
+          </UFormField>
+          <div class="full hd-form-actions">
+            <UButton type="button" color="neutral" variant="outline" :disabled="busy === -1" @click="closeCreateForm">
+              Cancel
+            </UButton>
+            <UButton type="submit" color="primary" :loading="busy === -1">
+              Publish FAQ
+            </UButton>
+          </div>
+        </UForm>
+      </UCard>
 
       <div class="table-wrap">
         <p class="table-count">
@@ -341,12 +366,12 @@ onMounted(() => {
                 </td>
                 <td class="col-actions">
                   <div class="action-btns">
-                    <button type="button" class="btn-sm" :disabled="busy === r.id" @click="openEdit(r)">
+                    <UButton type="button" color="neutral" variant="outline" size="xs" :disabled="busy === r.id" @click="openEdit(r)">
                       Edit
-                    </button>
-                    <button type="button" class="btn-sm danger" :disabled="busy === r.id" @click="removeRow(r)">
+                    </UButton>
+                    <UButton type="button" color="error" variant="soft" size="xs" :disabled="busy === r.id" @click="removeRow(r)">
                       Delete
-                    </button>
+                    </UButton>
                   </div>
                 </td>
               </tr>
@@ -395,101 +420,15 @@ onMounted(() => {
 }
 .create-panel {
   margin: 0.85rem 0 1rem;
-  padding: 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  background: #f8fafc;
 }
 .create-panel-title {
-  margin: 0 0 0.75rem;
+  margin: 0;
   font-size: 0.95rem;
   font-weight: 700;
   color: #1a1a1a;
 }
-.create-panel-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  margin-top: 0.75rem;
-}
-.btn-add-faq {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.85rem;
-  border-radius: 4px;
-  border: none;
-  background: linear-gradient(135deg, #119a48 0%, #0d7a3a 100%);
-  color: #fff;
-  font-size: 0.875rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.btn-add-faq i {
-  font-size: 1.1rem;
-  line-height: 1;
-}
-.btn-ghost {
-  padding: 0.55rem 1rem;
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #475569;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-.btn-ghost:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-label {
-  display: flex;
-  flex-direction: column;
-  font-size: 0.85rem;
-  color: #3a4452;
-  font-weight: 600;
-  gap: 0.3rem;
-}
-input,
-select {
-  padding: 0.5rem 0.65rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  background: #fff;
-  font-family: inherit;
-}
-.row-check {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.45rem;
-  font-weight: 500;
-}
-.full {
-  margin-top: 0.5rem;
-}
-.primary {
-  margin-top: 0.75rem;
-  padding: 0.55rem 1.1rem;
-  border-radius: 4px;
-  border: 0;
-  background: linear-gradient(135deg, #119a48 0%, #0d7a3a 100%);
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-}
-.primary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+.filter-field {
+  min-width: 10rem;
 }
 .list-head {
   display: flex;
@@ -505,19 +444,8 @@ select {
   flex-wrap: wrap;
   align-items: center;
 }
-.search-wrap input {
+.search-wrap {
   min-width: min(280px, 100%);
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 .table-empty {
   padding: 1.25rem;
@@ -594,25 +522,6 @@ tbody tr.row-inactive td {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-}
-.btn-sm {
-  padding: 0.35rem 0.6rem;
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #0d7a3a;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.btn-sm.danger {
-  border-color: #fecaca;
-  color: #b91c1c;
-  background: #fff;
-}
-.btn-sm:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 .muted {
   color: #64748b;

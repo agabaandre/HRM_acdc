@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
@@ -11,6 +11,8 @@ import {
   rowIndex,
   statusMeta,
 } from '../lib/ticketTableMeta'
+import { PER_PAGE_ITEMS } from '../lib/helpdeskForm'
+
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
@@ -36,19 +38,17 @@ interface PaginatedTickets {
 const myStats = ref<{ total_received: number; pending: number; resolved: number } | null>(null)
 const myTickets = ref<ReportTicket[]>([])
 const myPage = ref(1)
-const myPerPage = ref(20)
 const myLastPage = ref(1)
 const myTotal = ref(0)
-const myQuery = ref('')
+const mySearchState = reactive({ q: '', perPage: 20 })
 const myLoading = ref(false)
 
 const adminCounts = ref<Record<string, number> | null>(null)
 const adminRecent = ref<ReportTicket[]>([])
 const adminPage = ref(1)
-const adminPerPage = ref(20)
 const adminLastPage = ref(1)
 const adminTotal = ref(0)
-const adminQuery = ref('')
+const adminSearchState = reactive({ q: '', perPage: 20 })
 const adminLoading = ref(false)
 
 const isAdmin = computed(
@@ -59,18 +59,18 @@ const myHasNext = computed(() => myPage.value < myLastPage.value)
 const adminHasPrev = computed(() => adminPage.value > 1)
 const adminHasNext = computed(() => adminPage.value < adminLastPage.value)
 const myTableCountLabel = computed(() =>
-  formatTableCountLabel(myTickets.value.length, myTotal.value, myPage.value, myPerPage.value),
+  formatTableCountLabel(myTickets.value.length, myTotal.value, myPage.value, mySearchState.perPage),
 )
 const adminTableCountLabel = computed(() =>
-  formatTableCountLabel(adminRecent.value.length, adminTotal.value, adminPage.value, adminPerPage.value),
+  formatTableCountLabel(adminRecent.value.length, adminTotal.value, adminPage.value, adminSearchState.perPage),
 )
 
 function myCounter(idx: number): number {
-  return rowIndex(myPage.value, myPerPage.value, idx)
+  return rowIndex(myPage.value, mySearchState.perPage, idx)
 }
 
 function adminCounter(idx: number): number {
-  return rowIndex(adminPage.value, adminPerPage.value, idx)
+  return rowIndex(adminPage.value, adminSearchState.perPage, idx)
 }
 
 async function loadMine() {
@@ -78,9 +78,9 @@ async function loadMine() {
   try {
     const { data } = await api.get('/api/v1/reports/my-requester', {
       params: {
-        q: myQuery.value.trim() || undefined,
+        q: mySearchState.q.trim() || undefined,
         page: myPage.value,
-        per_page: myPerPage.value,
+        per_page: mySearchState.perPage,
       },
     })
     myStats.value = data.data.stats
@@ -88,7 +88,7 @@ async function loadMine() {
     myTickets.value = (tickets.data ?? []) as ReportTicket[]
     myPage.value = Number(tickets.current_page ?? myPage.value)
     myLastPage.value = Math.max(1, Number(tickets.last_page ?? 1))
-    myPerPage.value = Number(tickets.per_page ?? myPerPage.value)
+    mySearchState.perPage = Number(tickets.per_page ?? mySearchState.perPage)
     myTotal.value = Number(tickets.total ?? myTickets.value.length)
   } finally {
     myLoading.value = false
@@ -100,9 +100,9 @@ async function loadAdmin() {
   try {
     const { data } = await api.get('/api/v1/reports/admin-summary', {
       params: {
-        q: adminQuery.value.trim() || undefined,
+        q: adminSearchState.q.trim() || undefined,
         page: adminPage.value,
-        per_page: adminPerPage.value,
+        per_page: adminSearchState.perPage,
       },
     })
     adminCounts.value = data.data.counts
@@ -110,7 +110,7 @@ async function loadAdmin() {
     adminRecent.value = (recent.data ?? []) as ReportTicket[]
     adminPage.value = Number(recent.current_page ?? adminPage.value)
     adminLastPage.value = Math.max(1, Number(recent.last_page ?? 1))
-    adminPerPage.value = Number(recent.per_page ?? adminPerPage.value)
+    adminSearchState.perPage = Number(recent.per_page ?? adminSearchState.perPage)
     adminTotal.value = Number(recent.total ?? adminRecent.value.length)
   } finally {
     adminLoading.value = false
@@ -141,7 +141,7 @@ function mySearch() {
   loadMine()
 }
 function myClear() {
-  myQuery.value = ''
+  mySearchState.q = ''
   myPage.value = 1
   loadMine()
 }
@@ -150,10 +150,20 @@ function adminSearch() {
   loadAdmin()
 }
 function adminClear() {
-  adminQuery.value = ''
+  adminSearchState.q = ''
   adminPage.value = 1
   loadAdmin()
 }
+
+watch(() => mySearchState.perPage, () => {
+  myPage.value = 1
+  loadMine()
+})
+
+watch(() => adminSearchState.perPage, () => {
+  adminPage.value = 1
+  loadAdmin()
+})
 
 async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
   try {
@@ -222,30 +232,26 @@ onMounted(async () => {
         </article>
       </div>
       <div class="toolbar">
-        <form class="searchbar" @submit.prevent="mySearch">
-          <input
-            v-model="myQuery"
-            type="search"
-            placeholder="Search my tickets by #, subject, status, assignee…"
-            aria-label="Search my tickets"
-          />
-          <button type="submit" class="btn">Search</button>
-          <button type="button" class="btn secondary" @click="myClear">Clear</button>
-        </form>
-        <div class="meta">
-          <label>
-            Per page
-            <select v-model.number="myPerPage" @change="myPage = 1; loadMine()">
-              <option :value="10">10</option>
-              <option :value="20">20</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-            </select>
-          </label>
-        </div>
+        <UForm :state="mySearchState" class="hd-search-form searchbar" @submit="mySearch">
+          <UFormField name="q" class="hd-form-toolbar-grow">
+            <UInput
+              v-model="mySearchState.q"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Search my tickets by #, subject, status, assignee…"
+              aria-label="Search my tickets"
+              class="w-full"
+            />
+          </UFormField>
+          <UButton type="submit" color="primary">Search</UButton>
+          <UButton type="button" color="neutral" variant="outline" @click="myClear">Clear</UButton>
+        </UForm>
+        <UFormField label="Per page" name="perPage" class="meta">
+          <USelect v-model="mySearchState.perPage" :items="[...PER_PAGE_ITEMS]" class="w-full" />
+        </UFormField>
       </div>
       <p class="tools">
-        <button type="button" class="btn" @click="downloadExcel('mine')">Export my issues (Excel)</button>
+        <UButton type="button" color="primary" @click="downloadExcel('mine')">Export my issues (Excel)</UButton>
       </p>
       <h2>My tickets &amp; assignees</h2>
       <div class="table-wrap">
@@ -361,31 +367,27 @@ onMounted(async () => {
         </article>
       </div>
       <p class="tools">
-        <button type="button" class="btn" @click="downloadExcel('all')">Export all tickets (Excel)</button>
-        <button type="button" class="btn secondary" @click="downloadExcel('assigned')">Export my assigned (Excel)</button>
+        <UButton type="button" color="primary" @click="downloadExcel('all')">Export all tickets (Excel)</UButton>
+        <UButton type="button" color="neutral" variant="outline" @click="downloadExcel('assigned')">Export my assigned (Excel)</UButton>
       </p>
       <div class="toolbar">
-        <form class="searchbar" @submit.prevent="adminSearch">
-          <input
-            v-model="adminQuery"
-            type="search"
-            placeholder="Search recent activity by #, subject, requester, assignee…"
-            aria-label="Search admin recent activity"
-          />
-          <button type="submit" class="btn">Search</button>
-          <button type="button" class="btn secondary" @click="adminClear">Clear</button>
-        </form>
-        <div class="meta">
-          <label>
-            Per page
-            <select v-model.number="adminPerPage" @change="adminPage = 1; loadAdmin()">
-              <option :value="10">10</option>
-              <option :value="20">20</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-            </select>
-          </label>
-        </div>
+        <UForm :state="adminSearchState" class="hd-search-form searchbar" @submit="adminSearch">
+          <UFormField name="q" class="hd-form-toolbar-grow">
+            <UInput
+              v-model="adminSearchState.q"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Search recent activity by #, subject, requester, assignee…"
+              aria-label="Search admin recent activity"
+              class="w-full"
+            />
+          </UFormField>
+          <UButton type="submit" color="primary">Search</UButton>
+          <UButton type="button" color="neutral" variant="outline" @click="adminClear">Clear</UButton>
+        </UForm>
+        <UFormField label="Per page" name="perPage" class="meta">
+          <USelect v-model="adminSearchState.perPage" :items="[...PER_PAGE_ITEMS]" class="w-full" />
+        </UFormField>
       </div>
       <h2>Recent activity</h2>
       <div class="table-wrap">

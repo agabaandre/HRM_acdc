@@ -1,0 +1,63 @@
+/* Shared Nuxt UI form layout across Helpdesk */
+.hd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.hd-form--grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.hd-form--grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .hd-form--grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hd-form .full,
+.hd-form--grid .full {
+  grid-column: 1 / -1;
+}
+
+.hd-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.hd-form-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.hd-form-toolbar .hd-form-toolbar-grow {
+  flex: 1;
+  min-width: min(28rem, 100%);
+}
+
+.hd-search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.hd-search-form .u-input,
+.hd-search-form .u-form-field {
+  flex: 1;
+  min-width: 14rem;
+}
+
+.hd-rich-field :deep(.cbp-rich-text) {
+  width: 100%;
+}

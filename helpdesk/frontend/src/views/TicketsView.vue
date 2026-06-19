@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
@@ -9,6 +9,7 @@ import TicketReassignModal, {
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { canReassignTickets, ticketStatusAllowsReassign } from '../lib/canReassignTickets'
+import { PER_PAGE_ITEMS } from '../lib/helpdeskForm'
 import { notifyError } from '../lib/notify'
 import { useAuthStore } from '../stores/auth'
 import {
@@ -38,11 +39,22 @@ interface TicketRow {
 const auth = useAuthStore()
 const rows = ref<TicketRow[]>([])
 const loading = ref(false)
-const q = ref('')
-const page = ref(1)
-const perPage = ref(20)
+const searchState = reactive({ q: '', perPage: 20 })
+const q = computed({
+  get: () => searchState.q,
+  set: (v: string) => {
+    searchState.q = v
+  },
+})
+const perPage = computed({
+  get: () => searchState.perPage,
+  set: (v: number) => {
+    searchState.perPage = v
+  },
+})
 const total = ref(0)
 const lastPage = ref(1)
+const page = ref(1)
 const reassignTicket = ref<ReassignTicketRef | null>(null)
 
 const canReassign = computed(() => canReassignTickets(auth.me?.profile))
@@ -105,7 +117,7 @@ function resetSearch() {
   load()
 }
 
-watch(perPage, () => {
+watch(() => searchState.perPage, () => {
   page.value = 1
   load()
 })
@@ -117,27 +129,27 @@ onMounted(load)
   <div>
     <CbpPageHeading title="Tickets" back-to="/" back-label="← Overview" />
     <div class="tools">
-      <form class="searchbar" @submit.prevent="doSearch">
-        <input
-          v-model="q"
-          type="search"
-          placeholder="Search by ticket #, subject, requester, assignee, category, status…"
-          aria-label="Search tickets"
+      <UForm :state="searchState" class="hd-search-form searchbar" @submit="doSearch">
+        <UFormField name="q" class="hd-form-toolbar-grow">
+          <UInput
+            v-model="searchState.q"
+            type="search"
+            icon="i-lucide-search"
+            placeholder="Search by ticket #, subject, requester, assignee, category, status…"
+            aria-label="Search tickets"
+            class="w-full"
+          />
+        </UFormField>
+        <UButton type="submit" color="primary">Search</UButton>
+        <UButton type="button" color="neutral" variant="outline" @click="resetSearch">Clear</UButton>
+      </UForm>
+      <UFormField label="Per page" name="perPage" class="meta">
+        <USelect
+          v-model="searchState.perPage"
+          :items="[...PER_PAGE_ITEMS]"
+          class="w-full"
         />
-        <button type="submit">Search</button>
-        <button type="button" class="ghost" @click="resetSearch">Clear</button>
-      </form>
-      <div class="meta">
-        <label>
-          Per page
-          <select v-model.number="perPage">
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
-        </label>
-      </div>
+      </UFormField>
     </div>
     <div class="cbp-card table-section">
       <p class="table-count" role="status">
@@ -202,15 +214,16 @@ onMounted(load)
                 </span>
               </td>
               <td v-if="canReassign" class="col-action">
-                <button
+                <UButton
                   v-if="canReassignRow(t)"
                   type="button"
-                  class="reassign-btn"
+                  color="neutral"
+                  variant="outline"
+                  size="xs"
+                  label="Reassign"
                   title="Reassign this ticket to another agent"
                   @click.stop="openReassign(t)"
-                >
-                  Reassign
-                </button>
+                />
                 <span v-else class="cell-empty">—</span>
               </td>
             </tr>
@@ -224,9 +237,13 @@ onMounted(load)
         </table>
       </div>
       <div class="pager">
-        <button type="button" :disabled="!hasPrev || loading" @click="page -= 1; load()">Previous</button>
+        <UButton type="button" color="neutral" variant="outline" size="sm" :disabled="!hasPrev || loading" @click="page -= 1; load()">
+          Previous
+        </UButton>
         <span>Page {{ page }} of {{ lastPage }}</span>
-        <button type="button" :disabled="!hasNext || loading" @click="page += 1; load()">Next</button>
+        <UButton type="button" color="neutral" variant="outline" size="sm" :disabled="!hasNext || loading" @click="page += 1; load()">
+          Next
+        </UButton>
       </div>
     </div>
 

@@ -120,11 +120,6 @@ function toggleDivision(id: number, checked: boolean) {
   selectedDivisionIds.value = current
 }
 
-function onDivisionCheckboxChange(id: number, ev: Event) {
-  const t = ev.target as HTMLInputElement
-  toggleDivision(id, t.checked)
-}
-
 function selectAllFiltered() {
   const set = new Set(selectedDivisionIds.value)
   for (const d of filteredDivisionOptions.value) {
@@ -305,11 +300,12 @@ function roleLabel(c: CandidateRow): string {
                 class="color-swatch-input"
                 :aria-label="'Primary colour picker'"
               />
-              <input
+              <UInput
                 v-model="ctx.form.branding_primary_hex"
                 type="text"
                 pattern="^#[0-9A-Fa-f]{6}$"
                 placeholder="#0d7a3a"
+                class="w-full"
               />
             </div>
           </label>
@@ -322,11 +318,12 @@ function roleLabel(c: CandidateRow): string {
                 class="color-swatch-input"
                 :aria-label="'Accent colour picker'"
               />
-              <input
+              <UInput
                 v-model="ctx.form.branding_secondary_hex"
                 type="text"
                 pattern="^#[0-9A-Fa-f]{6}$"
                 placeholder="#c9a227"
+                class="w-full"
               />
             </div>
           </label>
@@ -343,13 +340,8 @@ function roleLabel(c: CandidateRow): string {
             </p>
           </div>
         </header>
-        <label class="toggle-row">
-          <input
-            v-model="ctx.form.requester_unsatisfied_follow_up_enabled"
-            type="checkbox"
-            class="toggle-input"
-          />
-          <span class="toggle-ui" aria-hidden="true" />
+        <div class="toggle-row">
+          <USwitch v-model="ctx.form.requester_unsatisfied_follow_up_enabled" />
           <span class="toggle-copy">
             <strong>Allow reopen via comment &amp; email agent</strong>
             <span class="toggle-hint">
@@ -357,7 +349,7 @@ function roleLabel(c: CandidateRow): string {
               agents receive the comment in their inbox.
             </span>
           </span>
-        </label>
+        </div>
       </article>
     </div>
 
@@ -384,31 +376,34 @@ function roleLabel(c: CandidateRow): string {
 
           <div v-if="divisionOptions.length" class="division-picker">
             <div class="picker-toolbar">
-              <label class="search-wrap">
-                <span class="sr-only">Search divisions</span>
-                <input
+              <UFormField name="divisionSearch" class="search-wrap">
+                <UInput
                   v-model="divisionSearch"
                   type="search"
-                  class="search-input"
+                  icon="i-lucide-search"
                   placeholder="Search by name, short name, or ID…"
                   autocomplete="off"
+                  aria-label="Search divisions"
+                  class="w-full"
                 />
-              </label>
+              </UFormField>
               <div class="picker-actions">
-                <button type="button" class="ghost ghost--sm" @click="selectAllFiltered()">Select all shown</button>
-                <button type="button" class="ghost ghost--sm" @click="clearAllSelections()">Clear all</button>
+                <UButton type="button" color="neutral" variant="outline" size="xs" @click="selectAllFiltered()">Select all shown</UButton>
+                <UButton type="button" color="neutral" variant="outline" size="xs" @click="clearAllSelections()">Clear all</UButton>
               </div>
             </div>
             <div class="checks-scroll" role="group" aria-label="Division checkboxes">
-              <label v-for="d in filteredDivisionOptions" :key="d.id" class="check-row">
-                <input
-                  type="checkbox"
-                  :checked="isDivisionSelected(d.id)"
-                  @change="onDivisionCheckboxChange(d.id, $event)"
-                />
-                <span class="check-row__name">{{ divisionLabel(d) }}</span>
-                <span class="check-row__id">ID {{ d.id }}</span>
-              </label>
+              <div v-for="d in filteredDivisionOptions" :key="d.id" class="check-row">
+                <UCheckbox
+                  :model-value="isDivisionSelected(d.id)"
+                  @update:model-value="(checked: boolean) => toggleDivision(d.id, checked)"
+                >
+                  <template #label>
+                    <span class="check-row__name">{{ divisionLabel(d) }}</span>
+                    <span class="check-row__id">ID {{ d.id }}</span>
+                  </template>
+                </UCheckbox>
+              </div>
             </div>
             <p class="selection-summary" aria-live="polite">
               <template v-if="selectedDivisionIds.length">
@@ -426,13 +421,12 @@ function roleLabel(c: CandidateRow): string {
             <p class="hint-tight manual-details-hint">
               Comma-separated IDs for edge cases or when the directory list is incomplete.
             </p>
-            <label>
-              Division IDs (comma-separated)
-              <input v-model="ctx.form.default_agent_division_ids" type="text" placeholder="21, 34" />
-            </label>
+            <UFormField label="Division IDs (comma-separated)" name="default_agent_division_ids">
+              <UInput v-model="ctx.form.default_agent_division_ids" type="text" placeholder="21, 34" class="w-full" />
+            </UFormField>
           </details>
 
-          <button type="button" class="ghost" :disabled="divisionsLoading" @click="loadDivisions()">Reload divisions</button>
+          <UButton type="button" color="neutral" variant="outline" size="sm" :disabled="divisionsLoading" @click="loadDivisions()">Reload divisions</UButton>
         </template>
       </div>
 
@@ -448,11 +442,9 @@ function roleLabel(c: CandidateRow): string {
               portal — nothing is duplicated locally.
             </p>
           </div>
-          <button type="button" class="ghost" :disabled="candidatesLoading" @click="loadCandidates()">
-            {{ candidatesLoading
-              ? "Loading…"
-              : (candidatesLoaded ? "Reload from directory" : "View staff in these divisions") }}
-          </button>
+          <UButton type="button" color="neutral" variant="outline" size="sm" :disabled="candidatesLoading" :loading="candidatesLoading" @click="loadCandidates()">
+            {{ candidatesLoaded ? "Reload from directory" : "View staff in these divisions" }}
+          </UButton>
         </div>
 
         <p v-if="candidatesErr" class="warn">{{ candidatesErr }}</p>
@@ -460,20 +452,18 @@ function roleLabel(c: CandidateRow): string {
 
         <template v-if="candidatesLoaded && !candidatesErr && candidates.length">
           <div class="cand-toolbar">
-            <label class="search-wrap">
-              <span class="sr-only">Search staff</span>
-              <input
+            <UFormField name="candidateSearch" class="search-wrap">
+              <UInput
                 v-model="candidateSearch"
                 type="search"
-                class="search-input"
+                icon="i-lucide-search"
                 placeholder="Search by name, email, division, or staff ID…"
                 autocomplete="off"
+                aria-label="Search staff"
+                class="w-full"
               />
-            </label>
-            <label class="filter-toggle">
-              <input v-model="onlyMarked" type="checkbox" />
-              Only marked ({{ markedCount }})
-            </label>
+            </UFormField>
+            <UCheckbox v-model="onlyMarked" :label="`Only marked (${markedCount})`" class="filter-toggle" />
             <span class="muted cand-meta">{{ filteredCandidates.length }} of {{ candidates.length }} shown</span>
           </div>
 
@@ -518,24 +508,28 @@ function roleLabel(c: CandidateRow): string {
                     <span v-else class="badge badge-unmarked">—</span>
                   </td>
                   <td class="cand-actions">
-                    <button
+                    <UButton
                       v-if="!c.is_designated_agent"
                       type="button"
-                      class="btn-mark"
-                      :disabled="busyStaffId === c.staff_id || !c.work_email"
+                      color="primary"
+                      size="xs"
+                      :disabled="!c.work_email"
+                      :loading="busyStaffId === c.staff_id"
                       @click="designateAgent(c)"
                     >
-                      {{ busyStaffId === c.staff_id ? "Saving…" : "Mark as agent" }}
-                    </button>
-                    <button
+                      Mark as agent
+                    </UButton>
+                    <UButton
                       v-else
                       type="button"
-                      class="btn-unmark"
-                      :disabled="busyStaffId === c.staff_id"
+                      color="error"
+                      variant="soft"
+                      size="xs"
+                      :loading="busyStaffId === c.staff_id"
                       @click="undesignateAgent(c)"
                     >
-                      {{ busyStaffId === c.staff_id ? "Saving…" : "Unmark" }}
-                    </button>
+                      Unmark
+                    </UButton>
                   </td>
                 </tr>
                 <tr v-if="filteredCandidates.length === 0">
@@ -552,9 +546,9 @@ function roleLabel(c: CandidateRow): string {
       </div>
 
       <div class="actions actions--sticky">
-        <button type="button" class="primary" :disabled="ctx.busy" @click="saveGeneral()">
-          {{ ctx.busy ? "Saving…" : "Save general settings" }}
-        </button>
+        <UButton type="button" color="primary" :loading="ctx.busy" @click="saveGeneral()">
+          Save general settings
+        </UButton>
       </div>
     </article>
   </section>
@@ -632,13 +626,9 @@ function roleLabel(c: CandidateRow): string {
   gap: 0.5rem;
   align-items: center;
 }
-.color-input-row input[type='text'] {
+.color-input-row :deep(.u-input) {
   flex: 1;
   min-width: 0;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 0.45rem 0.6rem;
-  font: inherit;
 }
 .color-swatch-input {
   width: 2.5rem;
@@ -657,40 +647,6 @@ function roleLabel(c: CandidateRow): string {
   border-radius: 4px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
-  cursor: pointer;
-}
-.toggle-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.toggle-ui {
-  flex-shrink: 0;
-  width: 2.4rem;
-  height: 1.35rem;
-  border-radius: 999px;
-  background: #cbd5e1;
-  position: relative;
-  margin-top: 0.15rem;
-  transition: background 0.15s ease;
-}
-.toggle-ui::after {
-  content: '';
-  position: absolute;
-  top: 0.15rem;
-  left: 0.15rem;
-  width: 1.05rem;
-  height: 1.05rem;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
-  transition: transform 0.15s ease;
-}
-.toggle-input:checked + .toggle-ui {
-  background: var(--cdc-green, #0d7a3a);
-}
-.toggle-input:checked + .toggle-ui::after {
-  transform: translateX(1.05rem);
 }
 .toggle-copy {
   display: flex;
@@ -794,9 +750,6 @@ input {
 .search-wrap {
   flex: 1 1 12rem;
   min-width: 0;
-}
-.search-input {
-  width: 100%;
 }
 .picker-actions {
   display: flex;
@@ -948,9 +901,6 @@ code {
   flex: 1 1 16rem;
 }
 .filter-toggle {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.35rem;
   font-size: 0.82rem;
   font-weight: 500;
   color: #475569;

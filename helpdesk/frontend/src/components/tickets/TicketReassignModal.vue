@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { minLengthError } from '../../lib/helpdeskForm'
 import { notifyError, notifySuccess } from '../../lib/notify'
 
 export interface ReassignTicketRef {
@@ -33,7 +35,7 @@ const candidatesLoading = ref(false)
 const selectedId = ref<number | null>(null)
 const agentSearch = ref('')
 const resultsOpen = ref(false)
-const reason = ref('')
+const reassignForm = reactive({ reason: '' })
 const submitting = ref(false)
 
 const modalOpen = computed({
@@ -72,7 +74,7 @@ function resetState(): void {
   selectedId.value = null
   agentSearch.value = ''
   resultsOpen.value = false
-  reason.value = ''
+  reassignForm.reason = ''
   submitting.value = false
 }
 
@@ -138,13 +140,25 @@ watch(agentSearch, (value) => {
   resultsOpen.value = true
 })
 
-async function submit(): Promise<void> {
-  if (!props.ticket || !selectedId.value) {
-    notifyError('Pick an agent from the search results first.')
-    return
+function validateReassign(state: typeof reassignForm): FormError[] {
+  const errors: FormError[] = []
+  if (!selectedId.value) {
+    errors.push({ name: 'assignee', message: 'Pick an agent from the search results first.' })
   }
-  if (reason.value.trim().length < 5) {
-    notifyError('Reason must be at least 5 characters.')
+  const reasonErr = minLengthError(
+    'reason',
+    state.reason,
+    5,
+    'Reason must be at least 5 characters.',
+  )
+  if (reasonErr) {
+    errors.push(reasonErr)
+  }
+  return errors
+}
+
+async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): Promise<void> {
+  if (!props.ticket || !selectedId.value) {
     return
   }
 
@@ -152,7 +166,7 @@ async function submit(): Promise<void> {
   try {
     await api.post(`/api/v1/tickets/${props.ticket.id}/reassign`, {
       assignee_user_id: selectedId.value,
-      reason: reason.value.trim(),
+      reason: reassignForm.reason.trim(),
     })
     const newAgent = selectedAgent.value
     notifySuccess(
@@ -177,13 +191,19 @@ async function submit(): Promise<void> {
     :ui="{ content: 'max-w-lg' }"
   >
     <template #body>
-      <div class="reassign-body">
+      <UForm
+        id="reassign-form"
+        :state="reassignForm"
+        :validate="validateReassign"
+        class="hd-form reassign-body"
+        @submit="onReassignSubmit"
+      >
         <p v-if="candidatesLoading" class="muted">Loading agents…</p>
         <p v-else-if="candidates.length === 0" class="muted">
           No other agents are available to assign this ticket to.
         </p>
         <template v-else>
-          <UFormField label="Search agents">
+          <UFormField label="Search agents" name="assignee" required>
             <UInput
               v-model="agentSearch"
               type="search"
@@ -191,6 +211,7 @@ async function submit(): Promise<void> {
               placeholder="Type name, email, or duty station…"
               autocomplete="off"
               @focus="onSearchFocus"
+              class="w-full"
             />
           </UFormField>
 
@@ -239,29 +260,31 @@ async function submit(): Promise<void> {
 
         <UFormField
           label="Reason for reassigning"
+          name="reason"
           required
           description="Recorded on the ticket history and as an internal comment for the new assignee."
           class="reason-field"
         >
           <UTextarea
-            v-model="reason"
+            v-model="reassignForm.reason"
             :rows="4"
             placeholder="e.g. Out of office for 3 days — please pick this up."
-            required
             :maxlength="2000"
+            class="w-full"
           />
         </UFormField>
-      </div>
+      </UForm>
     </template>
 
     <template #footer>
       <UButton color="neutral" variant="outline" label="Cancel" :disabled="submitting" @click="close" />
       <UButton
+        type="submit"
+        form="reassign-form"
         color="primary"
         label="Reassign ticket"
         :loading="submitting"
-        :disabled="!selectedId || reason.trim().length < 5"
-        @click="submit"
+        :disabled="!selectedId || reassignForm.reason.trim().length < 5"
       />
     </template>
   </UModal>

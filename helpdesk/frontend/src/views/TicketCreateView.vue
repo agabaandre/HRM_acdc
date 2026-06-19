@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { PRIORITY_ITEMS } from '../lib/helpdeskForm'
 import { notifyError, notifyWarning } from '../lib/notify'
 import { hasRichTextContent } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
@@ -121,6 +123,28 @@ const canSubmit = computed(
     && !catsLoading.value
     && cats.value.length > 0,
 )
+
+const categoryItems = computed(() =>
+  cats.value.map((c) => ({ label: c.name, value: c.id })),
+)
+
+function validateCreateForm(_state: typeof form): FormError[] {
+  const errors: FormError[] = []
+  if (!_state.category_id) {
+    errors.push({ name: 'category_id', message: 'Choose a category' })
+  }
+  if (!hasRichTextContent(_state.description)) {
+    errors.push({ name: 'description', message: 'Description is required' })
+  }
+  if (needsDirectoryPicker.value && !selectedStaffId.value) {
+    errors.push({ name: 'requester_staff_id', message: 'Choose a requester from the directory' })
+  }
+  return errors
+}
+
+async function onFormSubmit(_event: FormSubmitEvent<typeof form>): Promise<void> {
+  await submit()
+}
 
 async function loadCats() {
   catsErr.value = null
@@ -273,14 +297,6 @@ async function submit() {
   if (busy.value) {
     return
   }
-  if (needsDirectoryPicker.value && !selectedStaffId.value) {
-    notifyError('Choose who this request is for using the staff search below.')
-    return
-  }
-  if (!hasRichTextContent(form.description)) {
-    notifyError('Please enter a description of the issue. You can add text, lists, links, and images in the editor.')
-    return
-  }
   busy.value = true
   try {
     const body: Record<string, unknown> = {
@@ -317,24 +333,31 @@ async function submit() {
       </template>
     </CbpPageHeading>
     <div class="cbp-card" :class="{ 'is-submitting': busy }">
-      <form class="grid" @submit.prevent="submit">
-        <label class="full">Category
-          <select
-            v-model.number="form.category_id"
-            required
+      <UForm
+        :state="form"
+        :validate="validateCreateForm"
+        class="hd-form hd-form--grid"
+        :disabled="busy"
+        @submit="onFormSubmit"
+      >
+        <UFormField label="Category" name="category_id" required class="full">
+          <USelect
+            v-model="form.category_id"
+            :items="categoryItems"
             :disabled="busy || catsLoading || cats.length === 0"
-          >
-            <option v-if="catsLoading" :value="0" disabled>Loading categories…</option>
-            <option v-else-if="cats.length === 0" :value="0" disabled>No categories available</option>
-            <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </select>
-        </label>
+            :placeholder="catsLoading ? 'Loading categories…' : cats.length === 0 ? 'No categories available' : 'Select category'"
+            class="w-full"
+          />
+        </UFormField>
 
         <template v-if="isEndUser">
-          <label class="row-check full">
-            <input v-model="forSomeoneElse" type="checkbox" :disabled="busy" />
-            <span>This request is for <strong>another staff member</strong> (not me)</span>
-          </label>
+          <UFormField name="for_someone_else" class="full">
+            <UCheckbox v-model="forSomeoneElse" :disabled="busy">
+              <template #label>
+                This request is for <strong>another staff member</strong> (not me)
+              </template>
+            </UCheckbox>
+          </UFormField>
           <div v-if="!forSomeoneElse && selfRequesterLine" class="session-summary full" role="status">
             <span class="label">Requester</span>
             <p class="line">{{ selfRequesterLine }}</p>
@@ -344,17 +367,19 @@ async function submit() {
 
         <template v-if="needsDirectoryPicker">
           <div class="row-actions full">
-            <button type="button" class="ghost" :disabled="busy" @click="retryDirectory">Reload directory</button>
+            <UButton type="button" color="neutral" variant="outline" size="sm" :disabled="busy" @click="retryDirectory">
+              Reload directory
+            </UButton>
           </div>
 
-          <div class="requester-combo full">
-            <span class="combo-label">Find requester</span>
-            <input
+          <UFormField label="Find requester" name="requester_staff_id" required class="full requester-combo">
+            <UInput
               v-model="staffSearch"
               type="search"
-              class="combo-search"
+              icon="i-lucide-search"
               placeholder="Type name, email, or duty station…"
               autocomplete="off"
+              class="w-full"
               :disabled="busy || !!refErr"
               @focus="onStaffSearchFocus"
             />
@@ -383,36 +408,31 @@ async function submit() {
             <p v-if="selectedRequesterPreview" class="preview" role="status">
               <strong>Selected:</strong> {{ selectedRequesterPreview }}
             </p>
-          </div>
+          </UFormField>
         </template>
 
-        <label class="full desc-label">
-          <span>Description <span class="req" aria-hidden="true">*</span></span>
+        <UFormField label="Description" name="description" required class="full hd-rich-field">
           <CbpRichTextEditor
             v-model="form.description"
             :disabled="busy"
             placeholder="Describe the issue (required). Add text, screenshots, and other details in the editor…"
           />
-          <span v-if="!descriptionReady" class="desc-hint muted">A description is required before you can submit.</span>
-        </label>
+          <template #hint>
+            <span v-if="!descriptionReady" class="desc-hint muted">A description is required before you can submit.</span>
+          </template>
+        </UFormField>
 
-        <label v-if="canSetPriority">Priority
-          <select v-model="form.priority" :disabled="busy">
-            <option value="low">low</option>
-            <option value="medium">medium</option>
-            <option value="high">high</option>
-            <option value="critical">critical</option>
-          </select>
-        </label>
+        <UFormField v-if="canSetPriority" label="Priority" name="priority" class="full">
+          <USelect v-model="form.priority" :items="[...PRIORITY_ITEMS]" :disabled="busy" class="w-full" />
+        </UFormField>
         <p v-else class="muted full">Priority defaults to <strong>medium</strong> for requesters.</p>
-        <button
-          class="primary"
-          type="submit"
-          :disabled="busy || !canSubmit"
-        >
-          {{ busy ? 'Submitting…' : 'Submit' }}
-        </button>
-      </form>
+
+        <div class="full hd-form-actions">
+          <UButton type="submit" color="primary" :loading="busy" :disabled="!canSubmit">
+            Submit request
+          </UButton>
+        </div>
+      </UForm>
     </div>
 
     <Teleport to="body">

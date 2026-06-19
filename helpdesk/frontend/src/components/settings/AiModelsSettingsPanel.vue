@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { FormSubmitEvent } from '@nuxt/ui'
 import { useInjectedHelpdeskAdminSettings } from '../../composables/useHelpdeskAdminSettings'
 import { applyAiProviderPreset, aiModelPlaceholder, normalizeAiProvider } from '../../lib/aiProviderPresets'
 
 const ctx = useInjectedHelpdeskAdminSettings()
+
+const providerItems = [
+  { label: 'OpenAI', value: 'openai' },
+  { label: 'Gemini', value: 'gemini' },
+  { label: 'Custom API', value: 'custom' },
+] as const
 
 const endpointHint = computed(() => {
   switch (normalizeAiProvider(ctx.form.ai_provider)) {
@@ -33,7 +40,7 @@ function onAiProviderChange() {
   applyAiProviderPreset(ctx.form, ctx.form.ai_provider)
 }
 
-async function saveAi() {
+async function onSaveAi(_event: FormSubmitEvent<typeof ctx.form>) {
   const payload: Record<string, unknown> = {
     ai_provider: ctx.form.ai_provider,
     ai_api_endpoint: ctx.form.ai_api_endpoint || null,
@@ -54,43 +61,51 @@ async function saveAi() {
     <h2 id="ai-heading">AI provider &amp; models</h2>
     <p class="hint">URS §10 — provider, endpoint, model, keys, and fallback. Keys are stored encrypted; leave blank to keep the current key.</p>
 
-    <div class="card">
-      <label>Provider
-        <select v-model="ctx.form.ai_provider" @change="onAiProviderChange">
-          <option value="openai">OpenAI</option>
-          <option value="gemini">Gemini</option>
-          <option value="custom">Custom API</option>
-        </select>
-      </label>
-      <p class="field-hint">{{ endpointHint }}</p>
-      <label>API base
-        <input v-model="ctx.form.ai_api_endpoint" type="url" autocomplete="off" placeholder="https://…" />
-      </label>
-      <label>Model name
-        <input v-model="ctx.form.ai_model_name" type="text" :placeholder="modelPlaceholder" />
-      </label>
-      <label class="row">
-        <input v-model="ctx.form.ai_active" type="checkbox" />
-        AI active (subject hints &amp; optional agent routing)
-      </label>
-      <label class="row">
-        <input v-model="ctx.form.ai_agent_assignment_enabled" type="checkbox" />
-        AI-assisted agent assignment (end-user tickets only — uses the same API key; falls back to duty station, division, category &amp; workload rules)
-      </label>
-      <p v-if="ctx.keyConfigured" class="key-hint">API key is on file. Enter a new key only to replace it.</p>
-      <label>API key (optional)
-        <input v-model="ctx.form.ai_api_key" type="password" autocomplete="new-password" :placeholder="apiKeyPlaceholder" />
-      </label>
-      <label>Fallback order (comma-separated provider ids)
-        <input v-model="ctx.form.ai_fallback_order" type="text" placeholder="openai" />
-      </label>
+    <UCard>
+      <UForm :state="ctx.form" class="hd-form" :disabled="ctx.busy" @submit="onSaveAi">
+        <UFormField label="Provider" name="ai_provider">
+          <USelect
+            v-model="ctx.form.ai_provider"
+            :items="[...providerItems]"
+            class="w-full"
+            @update:model-value="onAiProviderChange"
+          />
+        </UFormField>
+        <p class="field-hint">{{ endpointHint }}</p>
+        <UFormField label="API base" name="ai_api_endpoint">
+          <UInput v-model="ctx.form.ai_api_endpoint" type="url" autocomplete="off" placeholder="https://…" class="w-full" />
+        </UFormField>
+        <UFormField label="Model name" name="ai_model_name">
+          <UInput v-model="ctx.form.ai_model_name" type="text" :placeholder="modelPlaceholder" class="w-full" />
+        </UFormField>
+        <UFormField name="ai_active">
+          <UCheckbox v-model="ctx.form.ai_active" label="AI active (subject hints & optional agent routing)" />
+        </UFormField>
+        <UFormField name="ai_agent_assignment_enabled">
+          <UCheckbox
+            v-model="ctx.form.ai_agent_assignment_enabled"
+            label="AI-assisted agent assignment (end-user tickets only — uses the same API key; falls back to duty station, division, category & workload rules)"
+          />
+        </UFormField>
+        <p v-if="ctx.keyConfigured" class="key-hint">API key is on file. Enter a new key only to replace it.</p>
+        <UFormField label="API key (optional)" name="ai_api_key">
+          <UInput
+            v-model="ctx.form.ai_api_key"
+            type="password"
+            autocomplete="new-password"
+            :placeholder="apiKeyPlaceholder"
+            class="w-full"
+          />
+        </UFormField>
+        <UFormField label="Fallback order (comma-separated provider ids)" name="ai_fallback_order">
+          <UInput v-model="ctx.form.ai_fallback_order" type="text" placeholder="openai" class="w-full" />
+        </UFormField>
 
-      <div class="actions">
-        <button type="button" class="primary" :disabled="ctx.busy" @click="saveAi()">
-          {{ ctx.busy ? 'Saving…' : 'Save AI settings' }}
-        </button>
-      </div>
-    </div>
+        <div class="hd-form-actions">
+          <UButton type="submit" color="primary" :loading="ctx.busy">Save AI settings</UButton>
+        </div>
+      </UForm>
+    </UCard>
   </section>
 </template>
 
@@ -111,56 +126,10 @@ async function saveAi() {
   margin: -0.35rem 0 0.25rem;
   line-height: 1.45;
 }
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  padding: 1.25rem 1.35rem;
-  border-radius: 4px;
-  border: 1px solid var(--cdc-line, rgba(12, 26, 18, 0.08));
-  background: var(--cdc-white, #fff);
-  box-shadow: var(--cdc-shadow, 0 8px 24px rgba(6, 95, 44, 0.08));
-}
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #334155;
-}
-.row {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-}
-input,
-select {
-  padding: 0.45rem 0.5rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 0.95rem;
-}
 .key-hint {
   font-size: 0.8rem;
   color: #64748b;
   margin: 0;
-}
-.actions {
-  margin-top: 0.35rem;
-}
-.primary {
-  padding: 0.55rem 1.1rem;
-  border-radius: 4px;
-  border: none;
-  background: linear-gradient(135deg, var(--cdc-green, #0d7a3a), var(--cdc-green-deep, #065f2c));
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-}
-.primary:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 code {
   font-size: 0.85em;

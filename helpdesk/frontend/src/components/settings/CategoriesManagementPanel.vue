@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
-import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
+import { fieldError } from '../../lib/helpdeskForm'
+import { notifyError, notifySuccess } from '../../lib/notify'
 
 interface CategoryRow {
   id: number
@@ -21,6 +23,15 @@ const draft = reactive({
   sort_order: 0,
   is_active: true,
 })
+
+function validateDraft(state: typeof draft): FormError[] {
+  const errors: FormError[] = []
+  const nameErr = fieldError('name', state.name, 'Name is required')
+  if (nameErr) {
+    errors.push(nameErr)
+  }
+  return errors
+}
 
 async function load() {
   try {
@@ -49,11 +60,7 @@ async function save(row: CategoryRow) {
   }
 }
 
-async function createCategory() {
-  if (!draft.name.trim()) {
-    notifyWarning('Name is required.')
-    return
-  }
+async function onCreate(_event: FormSubmitEvent<typeof draft>) {
   busyId.value = -1
   try {
     await api.post('/api/v1/admin/categories', {
@@ -101,25 +108,33 @@ onMounted(() => {
     <h2 id="cat-heading">Issue categories</h2>
     <p class="hint">Used on tickets and agent routing. Inactive categories stay hidden from new requests where the public list filters active only.</p>
 
-    <div class="card new-card">
-      <h3>Add category</h3>
-      <div class="grid">
-        <label>Name
-          <input v-model="draft.name" type="text" maxlength="191" />
-        </label>
-        <label>Slug (optional)
-          <input v-model="draft.slug" type="text" maxlength="191" placeholder="auto from name" />
-        </label>
-        <label>Sort order
-          <input v-model.number="draft.sort_order" type="number" min="0" />
-        </label>
-        <label class="row">
-          <input v-model="draft.is_active" type="checkbox" />
-          Active
-        </label>
-      </div>
-      <button type="button" class="primary" :disabled="busyId === -1" @click="createCategory()">Create</button>
-    </div>
+    <UCard class="new-card">
+      <template #header>
+        <h3>Add category</h3>
+      </template>
+      <UForm
+        :state="draft"
+        :validate="validateDraft"
+        class="hd-form hd-form--grid hd-form--grid-2"
+        @submit="onCreate"
+      >
+        <UFormField label="Name" name="name" required>
+          <UInput v-model="draft.name" maxlength="191" class="w-full" />
+        </UFormField>
+        <UFormField label="Slug (optional)" name="slug" description="Leave blank to auto-generate from the name">
+          <UInput v-model="draft.slug" maxlength="191" placeholder="auto from name" class="w-full" />
+        </UFormField>
+        <UFormField label="Sort order" name="sort_order">
+          <UInput v-model.number="draft.sort_order" type="number" min="0" class="w-full" />
+        </UFormField>
+        <UFormField name="is_active">
+          <UCheckbox v-model="draft.is_active" label="Active" />
+        </UFormField>
+        <div class="full hd-form-actions">
+          <UButton type="submit" color="primary" :loading="busyId === -1">Create category</UButton>
+        </div>
+      </UForm>
+    </UCard>
 
     <div v-if="rows.length" class="table-wrap">
       <table class="tbl">
@@ -134,13 +149,17 @@ onMounted(() => {
         </thead>
         <tbody>
           <tr v-for="r in rows" :key="r.id">
-            <td><input v-model="r.name" class="cell" type="text" /></td>
-            <td><input v-model="r.slug" class="cell" type="text" /></td>
-            <td><input v-model.number="r.sort_order" class="cell narrow" type="number" min="0" /></td>
-            <td><input v-model="r.is_active" type="checkbox" /></td>
+            <td><UInput v-model="r.name" class="w-full" /></td>
+            <td><UInput v-model="r.slug" class="w-full" /></td>
+            <td><UInput v-model.number="r.sort_order" type="number" min="0" class="w-24" /></td>
+            <td><UCheckbox v-model="r.is_active" /></td>
             <td class="actions">
-              <button type="button" class="btn" :disabled="busyId === r.id" @click="save(r)">Save</button>
-              <button type="button" class="btn danger" :disabled="busyId === r.id" @click="remove(r)">Delete</button>
+              <UButton type="button" color="neutral" variant="outline" size="xs" :loading="busyId === r.id" @click="save(r)">
+                Save
+              </UButton>
+              <UButton type="button" color="error" variant="soft" size="xs" :disabled="busyId === r.id" @click="remove(r)">
+                Delete
+              </UButton>
             </td>
           </tr>
         </tbody>
@@ -157,7 +176,7 @@ onMounted(() => {
 }
 .panel h3 {
   font-size: 0.95rem;
-  margin: 0 0 0.5rem;
+  margin: 0;
 }
 .hint {
   color: var(--cdc-ink-muted, #3d5247);
@@ -165,50 +184,8 @@ onMounted(() => {
   margin: 0 0 1rem;
   line-height: 1.5;
 }
-.card {
-  padding: 1rem 1.15rem;
-  border-radius: 4px;
-  border: 1px solid var(--cdc-line, rgba(12, 26, 18, 0.08));
-  background: var(--cdc-white, #fff);
+.new-card {
   margin-bottom: 1rem;
-}
-.new-card .grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-  margin-bottom: 0.75rem;
-}
-@media (max-width: 720px) {
-  .new-card .grid {
-    grid-template-columns: 1fr;
-  }
-}
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #334155;
-}
-.row {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-}
-input.cell {
-  width: 100%;
-  min-width: 0;
-}
-input.narrow {
-  width: 5rem;
-}
-input[type='text'],
-input[type='number'] {
-  padding: 0.35rem 0.45rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 0.88rem;
 }
 .table-wrap {
   overflow-x: auto;
@@ -224,7 +201,7 @@ input[type='number'] {
 .tbl th,
 .tbl td {
   text-align: left;
-  padding: 0.45rem 0.5rem;
+  padding: 0.55rem 0.65rem;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: middle;
 }
@@ -233,29 +210,6 @@ input[type='number'] {
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
-}
-.btn {
-  padding: 0.3rem 0.55rem;
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.btn.danger {
-  border-color: #fecaca;
-  color: #991b1b;
-  background: #fef2f2;
-}
-.primary {
-  padding: 0.45rem 0.9rem;
-  border-radius: 4px;
-  border: none;
-  background: linear-gradient(135deg, var(--cdc-green, #0d7a3a), var(--cdc-green-deep, #065f2c));
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
 }
 .muted {
   color: #64748b;

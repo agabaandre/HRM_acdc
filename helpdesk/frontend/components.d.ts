@@ -9,9 +9,13 @@ declare module 'vue' {
     UBadge: UiComponent
     UButton: UiComponent
     UCard: UiComponent
+    UCheckbox: UiComponent
+    UForm: UiComponent
     UFormField: UiComponent
     UInput: UiComponent
     UModal: UiComponent
+    USelect: UiComponent
+    USwitch: UiComponent
     UTextarea: UiComponent
   }
 }

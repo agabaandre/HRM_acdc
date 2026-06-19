@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { fieldError } from '../lib/helpdeskForm'
 import { formatDateTime, formatDateTimeLong } from '../lib/formatDateTime'
 import { notifyError } from '../lib/notify'
 import { hasRichTextContent, isHtmlContent } from '../lib/richText'
@@ -63,8 +65,10 @@ const ticketId = computed(() => Number(route.params.id))
 
 const ticket = ref<TicketDetail | null>(null)
 const comments = ref<CommentRow[]>([])
-const newBody = ref('')
-const reopenWithComment = ref(true)
+const commentForm = reactive({
+  body: '',
+  reopen_with_comment: true,
+})
 const posting = ref(false)
 const resolutionNotes = ref('')
 const resolving = ref(false)
@@ -209,21 +213,25 @@ async function loadAll() {
   }
 }
 
-async function postComment() {
+function validateComment(state: typeof commentForm): FormError[] {
+  return [fieldError('body', state.body, 'Enter a comment')].filter(Boolean) as FormError[]
+}
+
+async function onCommentSubmit(event: FormSubmitEvent<typeof commentForm>) {
   const id = ticketId.value
-  const body = newBody.value.trim()
+  const body = event.data.body.trim()
   if (!id || !body) {
     return
   }
   posting.value = true
   try {
     const payload: Record<string, unknown> = { body }
-    if (canReopenWithComment.value && reopenWithComment.value) {
+    if (canReopenWithComment.value && commentForm.reopen_with_comment) {
       payload.reopen_ticket = true
     }
     await api.post(`/api/v1/tickets/${id}/comments`, payload)
-    newBody.value = ''
-    reopenWithComment.value = false
+    commentForm.body = ''
+    commentForm.reopen_with_comment = true
     await loadAll()
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Failed to post comment'))
@@ -280,7 +288,7 @@ onUnmounted(() => {
 watch(ticketId, loadAll)
 watch(canReopenWithComment, (can) => {
   if (can) {
-    reopenWithComment.value = true
+    commentForm.reopen_with_comment = true
   }
 })
 </script>
@@ -439,83 +447,75 @@ watch(canReopenWithComment, (can) => {
           placeholder="Describe what was fixed. Supports headings, lists, links, code blocks, screenshots, and video embeds…"
           @uploading="inlineImageBusy = $event"
         />
-        <button type="button" class="primary" :disabled="resolving || inlineImageBusy" @click="openResolveModal">
+        <UButton type="button" color="primary" :disabled="resolving || inlineImageBusy" @click="openResolveModal">
           Close ticket &amp; notify requester
-        </button>
+        </UButton>
       </section>
 
-      <Teleport to="body">
-        <div
-          v-if="showResolveModal"
-          class="resolve-modal-backdrop"
-          role="presentation"
-          @click.self="closeResolveModal"
-        >
-          <div class="resolve-modal" role="dialog" aria-modal="true" aria-labelledby="resolve-modal-title">
-            <header class="resolve-modal-head">
-              <h3 id="resolve-modal-title" class="resolve-modal-title">Close this ticket?</h3>
-              <button
-                type="button"
-                class="resolve-modal-close"
-                aria-label="Close"
-                @click="closeResolveModal"
-              >
-                ×
-              </button>
-            </header>
-            <div class="resolve-modal-body">
-              <p
-                v-if="!hasRichTextContent(resolutionNotes)"
-                class="resolve-modal-warn"
-                role="alert"
-              >
-                Please describe what was fixed in the <strong>Submit resolution</strong> editor above before you continue.
-              </p>
-              <p v-else class="resolve-modal-ok muted small">
-                The ticket will be <strong>closed</strong> and the requester will receive an email with your
-                resolution notes and a link to review the ticket, add comments, or reopen if the issue persists.
-                <span v-if="ticket.category?.name">
-                  If you publish to the knowledge base, the article will appear under
-                  <strong>{{ ticket.category.name }}</strong>.
-                </span>
-              </p>
+      <UModal
+        v-model:open="showResolveModal"
+        title="Close this ticket?"
+        :ui="{ content: 'max-w-lg' }"
+      >
+        <template #body>
+          <div class="resolve-modal-body">
+            <p
+              v-if="!hasRichTextContent(resolutionNotes)"
+              class="resolve-modal-warn"
+              role="alert"
+            >
+              Please describe what was fixed in the <strong>Submit resolution</strong> editor above before you continue.
+            </p>
+            <p v-else class="resolve-modal-ok muted small">
+              The ticket will be <strong>closed</strong> and the requester will receive an email with your
+              resolution notes and a link to review the ticket, add comments, or reopen if the issue persists.
+              <span v-if="ticket.category?.name">
+                If you publish to the knowledge base, the article will appear under
+                <strong>{{ ticket.category.name }}</strong>.
+              </span>
+            </p>
 
-              <label v-if="canPublishKb" class="resolve-kb-check">
-                <input v-model="publishToKb" type="checkbox" :disabled="!hasRichTextContent(resolutionNotes)" />
-                <span>Publish this solution to the knowledge base</span>
-              </label>
+            <UForm :state="{ publishToKb, kbSubject }" class="hd-form resolve-modal-form">
+              <UFormField v-if="canPublishKb" name="publishToKb">
+                <UCheckbox
+                  v-model="publishToKb"
+                  :disabled="!hasRichTextContent(resolutionNotes)"
+                  label="Publish this solution to the knowledge base"
+                />
+              </UFormField>
 
-              <label v-if="publishToKb && canPublishKb" class="resolve-kb-subject">
-                <span>Knowledge base subject</span>
-                <input
+              <UFormField
+                v-if="publishToKb && canPublishKb"
+                label="Knowledge base subject"
+                name="kbSubject"
+                description="Shown as the FAQ question on the home page search."
+                required
+              >
+                <UInput
                   v-model="kbSubject"
                   type="text"
                   maxlength="255"
-                  required
                   placeholder="e.g. How to reset your VPN password"
                   :disabled="!hasRichTextContent(resolutionNotes)"
+                  class="w-full"
                 />
-                <span class="resolve-kb-hint muted small">Shown as the FAQ question on the home page search.</span>
-              </label>
+              </UFormField>
+            </UForm>
 
-              <p v-if="resolveModalErr" class="resolve-modal-err" role="alert">{{ resolveModalErr }}</p>
-            </div>
-            <footer class="resolve-modal-foot">
-              <button type="button" class="ghost" :disabled="resolving" @click="closeResolveModal">
-                Cancel
-              </button>
-              <button
-                type="button"
-                class="primary"
-                :disabled="resolving || !canConfirmResolve"
-                @click="confirmSubmitResolution"
-              >
-                {{ resolving ? 'Closing…' : 'Confirm & close ticket' }}
-              </button>
-            </footer>
+            <p v-if="resolveModalErr" class="resolve-modal-err" role="alert">{{ resolveModalErr }}</p>
           </div>
-        </div>
-      </Teleport>
+        </template>
+        <template #footer>
+          <UButton color="neutral" variant="outline" label="Cancel" :disabled="resolving" @click="closeResolveModal" />
+          <UButton
+            color="primary"
+            :label="resolving ? 'Closing…' : 'Confirm & close ticket'"
+            :loading="resolving"
+            :disabled="!canConfirmResolve"
+            @click="confirmSubmitResolution"
+          />
+        </template>
+      </UModal>
 
       <section v-if="canReopenWithComment" class="closed-banner closed-banner--follow-up" role="status">
         <div class="closed-banner-icon" aria-hidden="true">💬</div>
@@ -576,13 +576,17 @@ watch(canReopenWithComment, (can) => {
           </li>
         </ul>
 
-        <form class="composer" @submit.prevent="postComment">
-          <UFormField label="Add comment">
+        <UForm
+          :state="commentForm"
+          :validate="validateComment"
+          class="hd-form composer"
+          @submit="onCommentSubmit"
+        >
+          <UFormField label="Add comment" name="body" required>
             <UTextarea
               id="ticket-comment-body"
-              v-model="newBody"
+              v-model="commentForm.body"
               :rows="4"
-              required
               :placeholder="
                 canReopenWithComment
                   ? 'Explain what is still wrong or ask a follow-up question…'
@@ -590,26 +594,30 @@ watch(canReopenWithComment, (can) => {
                     ? 'Explain what is still wrong or ask a follow-up question…'
                     : 'Describe an update…'
               "
+              class="w-full"
             />
           </UFormField>
-          <label v-if="canReopenWithComment" class="reopen-check">
-            <input v-model="reopenWithComment" type="checkbox" />
-            <span class="reopen-check-copy">
-              <strong>I'm not satisfied — reopen this ticket</strong>
-              <span class="reopen-check-hint">Your assigned agent receives one email with your comment and the reopen alert.</span>
-            </span>
-          </label>
+          <UFormField v-if="canReopenWithComment" name="reopen_with_comment" class="reopen-check-field">
+            <UCheckbox v-model="commentForm.reopen_with_comment">
+              <template #label>
+                <span class="reopen-check-copy">
+                  <strong>I'm not satisfied — reopen this ticket</strong>
+                  <span class="reopen-check-hint">Your assigned agent receives one email with your comment and the reopen alert.</span>
+                </span>
+              </template>
+            </UCheckbox>
+          </UFormField>
           <div class="composer-actions">
             <UButton
               type="submit"
               color="primary"
               :loading="posting"
-              :disabled="!newBody.trim()"
+              :disabled="!commentForm.body.trim()"
             >
-              {{ reopenWithComment && canReopenWithComment ? 'Post & reopen' : 'Post comment' }}
+              {{ commentForm.reopen_with_comment && canReopenWithComment ? 'Post & reopen' : 'Post comment' }}
             </UButton>
           </div>
-        </form>
+        </UForm>
       </section>
       </div>
     </template>

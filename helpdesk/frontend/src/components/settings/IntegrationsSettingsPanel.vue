@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import type { FormSubmitEvent } from '@nuxt/ui'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import { notifyError, notifySuccess } from '../../lib/notify'
@@ -67,7 +68,7 @@ async function load() {
   }
 }
 
-async function save() {
+async function onSave(_event: FormSubmitEvent<typeof form>) {
   busy.value = true
   try {
     const payload: Record<string, unknown> = {
@@ -111,77 +112,85 @@ onMounted(() => {
       Meta / Azure registration.
     </p>
 
-    <section class="card">
-      <h3>Webhook base URL</h3>
+    <UCard>
+      <template #header>
+        <h3>Webhook base URL</h3>
+      </template>
       <p class="mono">{{ webhookBase || '—' }}</p>
-    </section>
+    </UCard>
 
-    <section class="card">
-      <h3>WhatsApp Cloud API</h3>
-      <p class="doc">
-        Official reference:
-        <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/overview" rel="noopener noreferrer" target="_blank">WhatsApp Cloud API overview</a>
-        ·
-        <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components" rel="noopener noreferrer" target="_blank">Webhooks</a>
-      </p>
-      <label class="row-check">
-        <input v-model="form.whatsapp_enabled" type="checkbox" />
-        Enable WhatsApp channel (webhook registration)
-      </label>
-      <label>Phone number ID
-        <input v-model="form.whatsapp_phone_number_id" type="text" autocomplete="off" placeholder="from Meta Business Suite" />
-      </label>
-      <label>Verify token (webhook challenge)
-        <input v-model="form.whatsapp_verify_token" type="text" autocomplete="off" />
-      </label>
-      <p class="ep">
-        <strong>GET</strong> verification URL:
-        <code>{{ webhookBase }}/whatsapp</code>
-        (Meta sends <code>hub.mode</code>, <code>hub.verify_token</code>, <code>hub.challenge</code>.)
-      </p>
-      <p class="ep"><strong>POST</strong> inbound URL: <code>{{ webhookBase }}/whatsapp</code></p>
-      <label>Permanent access token (stored encrypted)
-        <input v-model="form.whatsapp_access_token" type="password" autocomplete="new-password" placeholder="leave blank to keep current" />
-      </label>
-      <p v-if="flags.waTok" class="flag">Access token is on file.</p>
-      <label>App secret (stored encrypted — for <code>X-Hub-Signature-256</code> verification)
-        <input v-model="form.whatsapp_app_secret" type="password" autocomplete="new-password" placeholder="leave blank to keep current" />
-      </label>
-      <p v-if="flags.waSec" class="flag">App secret is on file.</p>
-    </section>
+    <UForm :state="form" class="hd-form" :disabled="busy" @submit="onSave">
+      <UCard>
+        <template #header>
+          <h3>WhatsApp Cloud API</h3>
+        </template>
+        <p class="doc">
+          Official reference:
+          <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/overview" rel="noopener noreferrer" target="_blank">WhatsApp Cloud API overview</a>
+          ·
+          <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components" rel="noopener noreferrer" target="_blank">Webhooks</a>
+        </p>
+        <UFormField name="whatsapp_enabled">
+          <USwitch v-model="form.whatsapp_enabled" label="Enable WhatsApp channel (webhook registration)" />
+        </UFormField>
+        <UFormField label="Phone number ID" name="whatsapp_phone_number_id">
+          <UInput v-model="form.whatsapp_phone_number_id" type="text" autocomplete="off" placeholder="from Meta Business Suite" class="w-full" />
+        </UFormField>
+        <UFormField label="Verify token (webhook challenge)" name="whatsapp_verify_token">
+          <UInput v-model="form.whatsapp_verify_token" type="text" autocomplete="off" class="w-full" />
+        </UFormField>
+        <p class="ep">
+          <strong>GET</strong> verification URL:
+          <code>{{ webhookBase }}/whatsapp</code>
+          (Meta sends <code>hub.mode</code>, <code>hub.verify_token</code>, <code>hub.challenge</code>.)
+        </p>
+        <p class="ep"><strong>POST</strong> inbound URL: <code>{{ webhookBase }}/whatsapp</code></p>
+        <UFormField label="Permanent access token (stored encrypted)" name="whatsapp_access_token">
+          <UInput v-model="form.whatsapp_access_token" type="password" autocomplete="new-password" placeholder="leave blank to keep current" class="w-full" />
+        </UFormField>
+        <p v-if="flags.waTok" class="flag">Access token is on file.</p>
+        <UFormField label="App secret (stored encrypted — for X-Hub-Signature-256 verification)" name="whatsapp_app_secret">
+          <UInput v-model="form.whatsapp_app_secret" type="password" autocomplete="new-password" placeholder="leave blank to keep current" class="w-full" />
+        </UFormField>
+        <p v-if="flags.waSec" class="flag">App secret is on file.</p>
+      </UCard>
 
-    <section class="card">
-      <h3>Microsoft Teams (Azure Bot Service)</h3>
-      <p class="doc">
-        Official reference:
-        <a href="https://learn.microsoft.com/en-us/azure/bot-service/bot-service-overview-introduction" rel="noopener noreferrer" target="_blank">Azure Bot Service</a>
-        ·
-        <a href="https://learn.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-api-reference" rel="noopener noreferrer" target="_blank">Bot Framework REST</a>
-      </p>
-      <label class="row-check">
-        <input v-model="form.teams_enabled" type="checkbox" />
-        Enable Teams bot endpoint (registration)
-      </label>
-      <label>Microsoft App ID
-        <input v-model="form.teams_app_id" type="text" autocomplete="off" />
-      </label>
-      <label>Directory (tenant) ID
-        <input v-model="form.teams_tenant_id" type="text" autocomplete="off" />
-      </label>
-      <label>Messaging path segment (appended to webhook base; default <code>activities</code>)
-        <input v-model="form.teams_messaging_path" type="text" autocomplete="off" />
-      </label>
-      <p class="ep">
-        <strong>POST</strong> messaging URL:
-        <code>{{ webhookBase }}/teams/{{ form.teams_messaging_path || 'activities' }}</code>
-      </p>
-      <label>Client secret / app password (stored encrypted)
-        <input v-model="form.teams_app_password" type="password" autocomplete="new-password" placeholder="leave blank to keep current" />
-      </label>
-      <p v-if="flags.teamsPwd" class="flag">Bot password is on file.</p>
-    </section>
+      <UCard>
+        <template #header>
+          <h3>Microsoft Teams (Azure Bot Service)</h3>
+        </template>
+        <p class="doc">
+          Official reference:
+          <a href="https://learn.microsoft.com/en-us/azure/bot-service/bot-service-overview-introduction" rel="noopener noreferrer" target="_blank">Azure Bot Service</a>
+          ·
+          <a href="https://learn.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-api-reference" rel="noopener noreferrer" target="_blank">Bot Framework REST</a>
+        </p>
+        <UFormField name="teams_enabled">
+          <USwitch v-model="form.teams_enabled" label="Enable Teams bot endpoint (registration)" />
+        </UFormField>
+        <UFormField label="Microsoft App ID" name="teams_app_id">
+          <UInput v-model="form.teams_app_id" type="text" autocomplete="off" class="w-full" />
+        </UFormField>
+        <UFormField label="Directory (tenant) ID" name="teams_tenant_id">
+          <UInput v-model="form.teams_tenant_id" type="text" autocomplete="off" class="w-full" />
+        </UFormField>
+        <UFormField label="Messaging path segment (appended to webhook base; default activities)" name="teams_messaging_path">
+          <UInput v-model="form.teams_messaging_path" type="text" autocomplete="off" class="w-full" />
+        </UFormField>
+        <p class="ep">
+          <strong>POST</strong> messaging URL:
+          <code>{{ webhookBase }}/teams/{{ form.teams_messaging_path || 'activities' }}</code>
+        </p>
+        <UFormField label="Client secret / app password (stored encrypted)" name="teams_app_password">
+          <UInput v-model="form.teams_app_password" type="password" autocomplete="new-password" placeholder="leave blank to keep current" class="w-full" />
+        </UFormField>
+        <p v-if="flags.teamsPwd" class="flag">Bot password is on file.</p>
+      </UCard>
 
-    <button type="button" class="primary" :disabled="busy" @click="save()">{{ busy ? 'Saving…' : 'Save integrations' }}</button>
+      <div class="hd-form-actions">
+        <UButton type="submit" color="primary" :loading="busy">Save integrations</UButton>
+      </div>
+    </UForm>
   </div>
 </template>
 
@@ -197,14 +206,9 @@ onMounted(() => {
   line-height: 1.55;
   margin: 0;
 }
-.card {
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  padding: 1rem 1.1rem;
-  background: #fafafa;
-}
-.card h3 {
-  margin: 0 0 0.5rem;
+.card h3,
+:deep(.u-card-header) h3 {
+  margin: 0;
   font-size: 0.98rem;
   color: #1e293b;
 }
@@ -215,27 +219,6 @@ onMounted(() => {
 .doc a {
   color: #119a48;
   font-weight: 600;
-}
-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #334155;
-  margin-bottom: 0.65rem;
-}
-.row-check {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-}
-input[type='text'],
-input[type='password'] {
-  padding: 0.4rem 0.5rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 0.9rem;
 }
 .mono,
 .ep code {
@@ -251,19 +234,5 @@ input[type='password'] {
   font-size: 0.78rem;
   color: #166534;
   margin: -0.35rem 0 0.5rem;
-}
-.primary {
-  align-self: flex-start;
-  padding: 0.55rem 1.1rem;
-  border-radius: 4px;
-  border: none;
-  background: linear-gradient(135deg, #119a48, #0d7a3a);
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-}
-.primary:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 </style>

@@ -173,16 +173,17 @@ onMounted(() => {
         </RouterLink>
       </header>
 
-      <label class="kb-search">
-        <span class="sr-only">Search the knowledge base</span>
-        <input
+      <UFormField name="kbSearch" class="kb-search">
+        <UInput
           v-model="search"
           type="search"
-          class="kb-search-input"
+          icon="i-lucide-search"
           placeholder="Search FAQs — try “password reset”, “VPN”, “printer”…"
           autocomplete="off"
+          aria-label="Search the knowledge base"
+          class="w-full"
         />
-      </label>
+      </UFormField>
 
       <p v-if="loading" class="kb-status" role="status">Loading articles…</p>
       <p v-else-if="articles.length === 0 && search.trim() === ''" class="kb-empty">
@@ -289,32 +290,6 @@ onMounted(() => {
 .kb-search {
   display: block;
   margin: 0.25rem 0 1rem;
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-.kb-search-input {
-  width: 100%;
-  padding: 0.7rem 0.9rem;
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  font-size: 0.95rem;
-  font-family: inherit;
-  background: #fff;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-.kb-search-input:focus {
-  outline: none;
-  border-color: #119a48;
-  box-shadow: 0 0 0 3px rgba(17, 154, 72, 0.18);
 }
 .kb-status,
 .kb-empty {

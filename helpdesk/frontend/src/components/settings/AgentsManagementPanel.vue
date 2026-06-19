@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import { RouterLink } from 'vue-router'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { fieldError } from '../../lib/helpdeskForm'
 import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
 
 interface Cat {
@@ -101,6 +103,27 @@ const savingGroupId = ref<number | null>(null)
 const agentOptions = computed(() =>
   agents.value.map((a) => ({ id: a.id, label: `${a.name} (${a.email})` })),
 )
+
+const agentSelectItems = computed(() =>
+  agentOptions.value.map((o) => ({ label: o.label, value: o.id })),
+)
+
+const categorySelectItems = computed(() =>
+  cats.value.map((c) => ({ label: c.name, value: c.id })),
+)
+
+const activeGroupSelectItems = computed(() =>
+  groups.value.filter((g) => g.is_active).map((g) => ({ label: g.name, value: g.id })),
+)
+
+function toggleIdInList(list: number[], id: number, checked: boolean): void {
+  const i = list.indexOf(id)
+  if (checked && i < 0) {
+    list.push(id)
+  } else if (!checked && i >= 0) {
+    list.splice(i, 1)
+  }
+}
 
 async function loadCats() {
   const { data } = await api.get<{ data: Cat[] }>('/api/v1/categories')
@@ -221,12 +244,8 @@ async function saveGroup(group: SupportGroupRow) {
   }
 }
 
-async function createGroup() {
+async function onCreateGroup(_event: FormSubmitEvent<typeof newGroupForm>) {
   const name = newGroupForm.name.trim()
-  if (!name) {
-    notifyError('Enter a group name.')
-    return
-  }
   savingGroupId.value = -1
   try {
     await api.post('/api/v1/admin/support-groups', {
@@ -248,6 +267,15 @@ async function createGroup() {
   } finally {
     savingGroupId.value = null
   }
+}
+
+function validateNewGroup(state: typeof newGroupForm): FormError[] {
+  const errors: FormError[] = []
+  const nameErr = fieldError('name', state.name, 'Enter a group name')
+  if (nameErr) {
+    errors.push(nameErr)
+  }
+  return errors
 }
 
 async function deleteGroup(group: SupportGroupRow) {
@@ -423,12 +451,12 @@ onMounted(() => {
           Empty category lists mean <strong>all categories</strong> for that group or agent.
         </p>
       </div>
-      <button v-if="activeTab === 'agents'" type="button" class="primary" @click="openPicker">
+      <UButton v-if="activeTab === 'agents'" type="button" color="primary" @click="openPicker">
         + Add agent
-      </button>
-      <button v-else-if="activeTab === 'groups'" type="button" class="primary" @click="newGroupForm.open = true">
+      </UButton>
+      <UButton v-else-if="activeTab === 'groups'" type="button" color="primary" @click="newGroupForm.open = true">
         + New group
-      </button>
+      </UButton>
     </header>
 
     <nav class="hub-tabs" aria-label="Routing settings sections">
@@ -453,41 +481,51 @@ onMounted(() => {
 
     <!-- Support groups -->
     <div v-show="activeTab === 'groups'" class="tab-panel">
-      <section v-if="newGroupForm.open" class="card card--new">
-        <h3>New support group</h3>
-        <div class="form-grid">
-          <label class="full">
-            Name
-            <input v-model="newGroupForm.name" type="text" placeholder="e.g. Field support" />
-          </label>
-          <label class="full">
-            Description
-            <textarea v-model="newGroupForm.description" rows="2" placeholder="Optional summary for admins" />
-          </label>
+      <UCard v-if="newGroupForm.open" class="card--new">
+        <template #header>
+          <h3>New support group</h3>
+        </template>
+        <UForm
+          :state="newGroupForm"
+          :validate="validateNewGroup"
+          class="hd-form hd-form--grid"
+          @submit="onCreateGroup"
+        >
+          <UFormField label="Name" name="name" required class="full">
+            <UInput v-model="newGroupForm.name" type="text" placeholder="e.g. Field support" class="w-full" />
+          </UFormField>
+          <UFormField label="Description" name="description" class="full">
+            <UTextarea v-model="newGroupForm.description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
+          </UFormField>
           <fieldset class="full cat-fieldset">
             <legend>Issue categories</legend>
             <div class="cat-grid">
-              <label v-for="c in cats" :key="c.id" class="cat-check">
-                <input v-model="newGroupForm.category_ids" type="checkbox" :value="c.id" />
-                {{ c.name }}
-              </label>
+              <UCheckbox
+                v-for="c in cats"
+                :key="c.id"
+                :model-value="newGroupForm.category_ids.includes(c.id)"
+                :label="c.name"
+                class="cat-check"
+                @update:model-value="(checked: boolean) => toggleIdInList(newGroupForm.category_ids, c.id, checked)"
+              />
             </div>
             <p class="hint">Leave all unchecked to route every category to this group.</p>
           </fieldset>
-          <label class="full">
-            Members
-            <select v-model="newGroupForm.member_user_ids" multiple class="multi">
-              <option v-for="opt in agentOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
-            </select>
-          </label>
-        </div>
-        <div class="card-actions">
-          <button type="button" class="btn" :disabled="savingGroupId === -1" @click="createGroup">
-            {{ savingGroupId === -1 ? 'Creating…' : 'Create group' }}
-          </button>
-          <button type="button" class="ghost" @click="newGroupForm.open = false">Cancel</button>
-        </div>
-      </section>
+          <UFormField label="Members" name="member_user_ids" class="full">
+            <USelect
+              v-model="newGroupForm.member_user_ids"
+              multiple
+              :items="agentSelectItems"
+              placeholder="Select agents…"
+              class="w-full"
+            />
+          </UFormField>
+          <div class="full hd-form-actions">
+            <UButton type="submit" color="primary" :loading="savingGroupId === -1">Create group</UButton>
+            <UButton type="button" color="neutral" variant="outline" @click="newGroupForm.open = false">Cancel</UButton>
+          </div>
+        </UForm>
+      </UCard>
 
       <div v-if="groups.length" class="group-grid">
         <article v-for="g in groups" :key="g.id" class="card group-card">
@@ -508,41 +546,44 @@ onMounted(() => {
           <fieldset class="cat-fieldset">
             <legend>Categories</legend>
             <div class="cat-grid">
-              <label v-for="c in cats" :key="c.id" class="cat-check">
-                <input
-                  type="checkbox"
-                  :checked="(groupDraft[g.id]?.category_ids ?? []).includes(c.id)"
-                  @change="toggleCategoryInDraft(g.id, c.id, ($event.target as HTMLInputElement).checked)"
-                />
-                {{ c.name }}
-              </label>
+              <UCheckbox
+                v-for="c in cats"
+                :key="c.id"
+                :model-value="(groupDraft[g.id]?.category_ids ?? []).includes(c.id)"
+                :label="c.name"
+                class="cat-check"
+                @update:model-value="(checked: boolean) => toggleCategoryInDraft(g.id, c.id, checked)"
+              />
             </div>
           </fieldset>
 
-          <label>
-            Members
-            <select v-if="groupDraft[g.id]" v-model="groupDraft[g.id].member_user_ids" multiple class="multi multi--compact">
-              <option v-for="opt in agentOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
-            </select>
-          </label>
+          <UFormField label="Members">
+            <USelect
+              v-if="groupDraft[g.id]"
+              v-model="groupDraft[g.id].member_user_ids"
+              multiple
+              :items="agentSelectItems"
+              placeholder="Select members…"
+              class="w-full"
+            />
+          </UFormField>
 
-          <label v-if="groupDraft[g.id]" class="row-check">
-            <input v-model="groupDraft[g.id].is_active" type="checkbox" />
-            <span>Group is active for routing</span>
-          </label>
+          <UFormField v-if="groupDraft[g.id]" name="is_active">
+            <USwitch v-model="groupDraft[g.id].is_active" label="Group is active for routing" />
+          </UFormField>
 
           <div class="card-actions">
-            <button type="button" class="btn" :disabled="savingGroupId === g.id" @click="saveGroup(g)">
-              {{ savingGroupId === g.id ? 'Saving…' : 'Save group' }}
-            </button>
-            <button v-if="!g.is_system" type="button" class="btn-link-danger" @click="deleteGroup(g)">Delete</button>
+            <UButton type="button" color="primary" size="sm" :loading="savingGroupId === g.id" @click="saveGroup(g)">
+              Save group
+            </UButton>
+            <UButton v-if="!g.is_system" type="button" color="error" variant="link" size="sm" @click="deleteGroup(g)">Delete</UButton>
           </div>
         </article>
       </div>
       <div v-else class="empty-state">
         <p class="empty-title">No support groups yet</p>
         <p class="empty-text">Create groups to share category routing across agents. Default groups are seeded on deploy.</p>
-        <button type="button" class="primary" @click="newGroupForm.open = true">+ New group</button>
+        <UButton type="button" color="primary" @click="newGroupForm.open = true">+ New group</UButton>
       </div>
     </div>
 
@@ -558,7 +599,7 @@ onMounted(() => {
               After adding, subscribe them to support groups on this page.
             </p>
           </div>
-          <button type="button" class="ghost" @click="pickerOpen = false">Close</button>
+          <UButton type="button" color="neutral" variant="outline" size="sm" @click="pickerOpen = false">Close</UButton>
         </header>
         <p v-if="candidatesLoading" class="muted">Loading directory…</p>
         <p v-else-if="candidatesMessage" class="msg msg-warn">
@@ -567,15 +608,19 @@ onMounted(() => {
         </p>
         <template v-else-if="candidates.length">
           <div class="picker-toolbar">
-            <label class="search-wrap">
-              <span class="sr-only">Search staff</span>
-              <input v-model="candidateSearch" type="search" class="search-input" placeholder="Search staff…" autocomplete="off" />
-            </label>
-            <label class="filter-toggle">
-              <input v-model="onlyUnassigned" type="checkbox" />
-              Hide existing agents
-            </label>
-            <button type="button" class="ghost ghost-sm" :disabled="candidatesLoading" @click="loadCandidates">Reload</button>
+            <UFormField name="candidateSearch" class="search-wrap">
+              <UInput
+                v-model="candidateSearch"
+                type="search"
+                icon="i-lucide-search"
+                placeholder="Search staff…"
+                autocomplete="off"
+                aria-label="Search staff"
+                class="w-full"
+              />
+            </UFormField>
+            <UCheckbox v-model="onlyUnassigned" label="Hide existing agents" />
+            <UButton type="button" color="neutral" variant="outline" size="sm" :loading="candidatesLoading" @click="loadCandidates">Reload</UButton>
           </div>
           <div class="picker-table-wrap">
             <table class="picker-table">
@@ -597,15 +642,17 @@ onMounted(() => {
                     }}
                   </td>
                   <td class="cand-actions">
-                    <button
+                    <UButton
                       v-if="!c.is_designated_agent"
                       type="button"
-                      class="btn-add"
-                      :disabled="busyStaffId === c.staff_id || !c.work_email"
+                      color="primary"
+                      size="xs"
+                      :disabled="!c.work_email"
+                      :loading="busyStaffId === c.staff_id"
                       @click="addAgent(c)"
                     >
-                      {{ busyStaffId === c.staff_id ? 'Adding…' : 'Add' }}
-                    </button>
+                      Add
+                    </UButton>
                     <span v-else class="muted">Already agent</span>
                   </td>
                 </tr>
@@ -630,9 +677,13 @@ onMounted(() => {
           <div class="agent-cols">
             <div class="agent-col">
               <h4>Support groups</h4>
-              <select v-model="groupSelection[a.id]" multiple class="multi multi--compact">
-                <option v-for="g in groups.filter((x) => x.is_active)" :key="g.id" :value="g.id">{{ g.name }}</option>
-              </select>
+              <USelect
+                v-model="groupSelection[a.id]"
+                multiple
+                :items="activeGroupSelectItems"
+                placeholder="Select groups…"
+                class="w-full"
+              />
               <p v-if="a.inherited_categories.length" class="inherited">
                 Inherited:
                 <span v-for="c in a.inherited_categories" :key="c.id" class="chip chip--inherited">{{ c.name }}</span>
@@ -641,31 +692,35 @@ onMounted(() => {
 
             <div class="agent-col">
               <h4>Direct categories</h4>
-              <select v-model="selection[a.id]" multiple class="multi multi--compact">
-                <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
+              <USelect
+                v-model="selection[a.id]"
+                multiple
+                :items="categorySelectItems"
+                placeholder="Select categories…"
+                class="w-full"
+              />
               <p v-if="!(selection[a.id] ?? []).length" class="hint">No direct filter — uses group inheritance or all categories.</p>
             </div>
 
             <div class="agent-col">
               <h4>Permissions</h4>
-              <label class="perm-toggle"><input v-model="adminToggle[a.id]" type="checkbox" /><span>Helpdesk admin</span></label>
-              <label class="perm-toggle"><input v-model="supervisorToggle[a.id]" type="checkbox" /><span>Supervisor access</span></label>
-              <label class="perm-toggle"><input v-model="kbToggle[a.id]" type="checkbox" /><span>Manage FAQs</span></label>
-              <label class="perm-toggle"><input v-model="reassignToggle[a.id]" type="checkbox" /><span>Reassign tickets</span></label>
+              <UCheckbox v-model="adminToggle[a.id]" label="Helpdesk admin" class="perm-toggle" />
+              <UCheckbox v-model="supervisorToggle[a.id]" label="Supervisor access" class="perm-toggle" />
+              <UCheckbox v-model="kbToggle[a.id]" label="Manage FAQs" class="perm-toggle" />
+              <UCheckbox v-model="reassignToggle[a.id]" label="Reassign tickets" class="perm-toggle" />
             </div>
           </div>
 
           <div class="card-actions">
-            <button type="button" class="btn" @click="saveAgent(a.id)">Save agent</button>
-            <button type="button" class="btn-link-danger" @click="removeAgent(a)">Remove</button>
+            <UButton type="button" color="primary" size="sm" @click="saveAgent(a.id)">Save agent</UButton>
+            <UButton type="button" color="error" variant="link" size="sm" @click="removeAgent(a)">Remove</UButton>
           </div>
         </article>
       </div>
       <div v-else class="empty-state">
         <p class="empty-title">No agents yet</p>
         <p class="empty-text">Add agents from the staff directory, then assign them to support groups.</p>
-        <button type="button" class="primary" @click="openPicker">+ Add agent</button>
+        <UButton type="button" color="primary" @click="openPicker">+ Add agent</UButton>
       </div>
     </div>
 
@@ -685,12 +740,12 @@ onMounted(() => {
             <td>{{ portalRoleLabel(row.staff_portal_role) }}</td>
             <td>{{ row.role ?? '—' }}</td>
             <td>
-              <label class="perm-toggle"><input v-model="staffPermAdmin[row.id]" type="checkbox" /><span>Helpdesk admin</span></label>
-              <label class="perm-toggle"><input v-model="staffPermSupervisor[row.id]" type="checkbox" /><span>Supervisor</span></label>
-              <label class="perm-toggle"><input v-model="staffPermKb[row.id]" type="checkbox" /><span>Manage FAQs</span></label>
-              <label class="perm-toggle"><input v-model="staffPermReassign[row.id]" type="checkbox" /><span>Reassign</span></label>
+              <UCheckbox v-model="staffPermAdmin[row.id]" label="Helpdesk admin" class="perm-toggle" />
+              <UCheckbox v-model="staffPermSupervisor[row.id]" label="Supervisor" class="perm-toggle" />
+              <UCheckbox v-model="staffPermKb[row.id]" label="Manage FAQs" class="perm-toggle" />
+              <UCheckbox v-model="staffPermReassign[row.id]" label="Reassign" class="perm-toggle" />
             </td>
-            <td><button type="button" class="btn" @click="saveStaffPermissions(row.id)">Save</button></td>
+            <td><UButton type="button" color="primary" size="xs" @click="saveStaffPermissions(row.id)">Save</UButton></td>
           </tr>
         </tbody>
       </table>
