@@ -13,9 +13,9 @@ html.helpdesk-theme-light {
   --cdc-shadow: 0 18px 48px rgba(6, 95, 44, 0.12);
   --font-sans: Arial, Helvetica, 'Helvetica Neue', sans-serif;
   --font-display: Arial, Helvetica, 'Helvetica Neue', sans-serif;
-  /* Body 500 +15% ≈ 600; nav 600 +30% ≈ 800 (CSS weight scale) */
-  --hd-body-font-weight: 600;
-  --hd-nav-font-weight: 800;
+  /* Base 400 → body +20% ≈ 500, nav +30% ≈ 520 → 600 on the CSS weight scale */
+  --hd-body-font-weight: 500;
+  --hd-nav-font-weight: 600;
 }
 
 html.helpdesk-theme-dark {
