@@ -116,7 +116,7 @@ html.helpdesk-theme-dark {
   color: #fff;
   text-decoration: none;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
   padding: 0.45rem 0.65rem;
   border-radius: 4px;
   display: inline-flex;
@@ -148,7 +148,7 @@ html.helpdesk-theme-dark {
   background: transparent;
   color: #fff;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
@@ -177,7 +177,7 @@ html.helpdesk-theme-dark {
 
 .cbp-topbar-dd-toggle-label {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .cbp-topbar-dd-caret {
@@ -307,7 +307,7 @@ html.helpdesk-theme-dark {
 .cbp-topbar-dd-item-label {
   display: block;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 500;
   color: inherit;
 }
 
@@ -383,7 +383,7 @@ html.helpdesk-theme-dark {
 }
 
 .cbp-topbar-user-name {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.82rem;
   color: #fff;
   overflow: hidden;
@@ -415,7 +415,7 @@ html.helpdesk-theme-dark {
 
 .cbp-primary-nav {
   --bs-body-font-size: 0.9rem;
-  --bs-body-font-weight: var(--hd-nav-font-weight, 600);
+  --bs-body-font-weight: var(--hd-nav-font-weight, 500);
   position: fixed;
   top: 60px;
   left: 0;
@@ -515,7 +515,7 @@ html.helpdesk-theme-dark {
 .cbp-nav-link {
   color: var(--cbp-nav-text) !important;
   font-size: var(--bs-body-font-size, 1rem);
-  font-weight: var(--bs-body-font-weight, var(--hd-nav-font-weight, 600));
+  font-weight: var(--bs-body-font-weight, var(--hd-nav-font-weight, 500));
   text-decoration: none !important;
   padding: 0.5rem 0.85rem;
   border-radius: 4px;
