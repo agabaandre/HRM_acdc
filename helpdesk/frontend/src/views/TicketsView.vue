@@ -9,7 +9,7 @@ import TicketReassignModal, {
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { canReassignTickets, ticketStatusAllowsReassign } from '../lib/canReassignTickets'
-import { PER_PAGE_ITEMS, normalizePageSize, type PageSize } from '../lib/helpdeskForm'
+import { PER_PAGE_ITEMS, type PageSize } from '../lib/helpdeskForm'
 import { notifyError } from '../lib/notify'
 import { useAuthStore } from '../stores/auth'
 import {

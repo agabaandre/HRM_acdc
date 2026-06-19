@@ -31,6 +31,13 @@ export function minLengthError(
   return null
 }
 
+export type CheckboxValue = boolean | 'indeterminate'
+
+/** UCheckbox can emit `indeterminate`; treat that as unchecked. */
+export function isCheckboxChecked(value: CheckboxValue): boolean {
+  return value === true
+}
+
 export type TicketPriority = 'low' | 'medium' | 'high' | 'critical'
 export type PageSize = 10 | 20 | 50 | 100
 

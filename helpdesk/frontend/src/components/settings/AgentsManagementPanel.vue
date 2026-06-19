@@ -4,7 +4,7 @@ import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import { RouterLink } from 'vue-router'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
-import { fieldError, type SelectNumberItem } from '../../lib/helpdeskForm'
+import { fieldError, isCheckboxChecked, type CheckboxValue, type SelectNumberItem } from '../../lib/helpdeskForm'
 import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
 
 interface Cat {
@@ -116,7 +116,8 @@ const activeGroupSelectItems = computed((): SelectNumberItem[] =>
   groups.value.filter((g) => g.is_active).map((g) => ({ label: g.name, value: g.id })),
 )
 
-function toggleIdInList(list: number[], id: number, checked: boolean): void {
+function toggleIdInList(list: number[], id: number, value: CheckboxValue): void {
+  const checked = isCheckboxChecked(value)
   const i = list.indexOf(id)
   if (checked && i < 0) {
     list.push(id)
@@ -426,7 +427,8 @@ async function removeAgent(a: AgentRow) {
   }
 }
 
-function toggleCategoryInDraft(groupId: number, catId: number, checked: boolean) {
+function toggleCategoryInDraft(groupId: number, catId: number, value: CheckboxValue) {
+  const checked = isCheckboxChecked(value)
   const draft = groupDraft[groupId]
   if (!draft) return
   const set = new Set(draft.category_ids)
@@ -506,7 +508,7 @@ onMounted(() => {
                 :model-value="newGroupForm.category_ids.includes(c.id)"
                 :label="c.name"
                 class="cat-check"
-                @update:model-value="(checked: boolean) => toggleIdInList(newGroupForm.category_ids, c.id, checked)"
+                @update:model-value="(value) => toggleIdInList(newGroupForm.category_ids, c.id, value)"
               />
             </div>
             <p class="hint">Leave all unchecked to route every category to this group.</p>
@@ -552,7 +554,7 @@ onMounted(() => {
                 :model-value="(groupDraft[g.id]?.category_ids ?? []).includes(c.id)"
                 :label="c.name"
                 class="cat-check"
-                @update:model-value="(checked: boolean) => toggleCategoryInDraft(g.id, c.id, checked)"
+                @update:model-value="(value) => toggleCategoryInDraft(g.id, c.id, value)"
               />
             </div>
           </fieldset>

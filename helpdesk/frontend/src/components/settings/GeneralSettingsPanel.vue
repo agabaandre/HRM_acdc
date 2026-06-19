@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue"
 import { api } from "../../lib/api"
 import { useInjectedHelpdeskAdminSettings } from "../../composables/useHelpdeskAdminSettings"
+import { isCheckboxChecked, type CheckboxValue } from "../../lib/helpdeskForm"
 import { notifyError, notifySuccess, notifyWarning } from "../../lib/notify"
 
 interface DivisionRow {
@@ -105,7 +106,8 @@ function isDivisionSelected(id: number): boolean {
   return selectedDivisionIds.value.includes(id)
 }
 
-function toggleDivision(id: number, checked: boolean) {
+function toggleDivision(id: number, value: CheckboxValue) {
+  const checked = isCheckboxChecked(value)
   const current = [...selectedDivisionIds.value]
   if (checked) {
     if (!current.includes(id)) {
@@ -396,7 +398,7 @@ function roleLabel(c: CandidateRow): string {
               <div v-for="d in filteredDivisionOptions" :key="d.id" class="check-row">
                 <UCheckbox
                   :model-value="isDivisionSelected(d.id)"
-                  @update:model-value="(checked: boolean) => toggleDivision(d.id, checked)"
+                  @update:model-value="(value) => toggleDivision(d.id, value)"
                 >
                   <template #label>
                     <span class="check-row__name">{{ divisionLabel(d) }}</span>
