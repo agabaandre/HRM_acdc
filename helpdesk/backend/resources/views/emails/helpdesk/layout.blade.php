@@ -83,7 +83,6 @@
         .details {
             background-color: #f8faf9;
             border: 1px solid #e2ebe6;
-            border-left: 4px solid {{ $primary }};
             border-radius: 8px;
             padding: 18px 20px;
             margin: 18px 0 22px;

@@ -30,6 +30,12 @@ const catsErr = ref<string | null>(null)
 const catsLoading = ref(true)
 const refErr = ref<string | null>(null)
 const busy = ref(false)
+/** Stable per visit so retries / double-clicks do not create duplicate tickets. */
+const ticketCreateIdempotencyKey = ref(
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+)
 
 const staffRows = ref<StaffRow[]>([])
 const selectedStaffId = ref('')
@@ -264,6 +270,9 @@ function onStaffSearchFocus() {
 }
 
 async function submit() {
+  if (busy.value) {
+    return
+  }
   if (needsDirectoryPicker.value && !selectedStaffId.value) {
     notifyError('Choose who this request is for using the staff search below.')
     return
@@ -284,11 +293,12 @@ async function submit() {
     if (needsDirectoryPicker.value) {
       body.requester_staff_id = Number(selectedStaffId.value)
     }
-    await api.post('/api/v1/tickets', body)
+    await api.post('/api/v1/tickets', body, {
+      headers: { 'Idempotency-Key': ticketCreateIdempotencyKey.value },
+    })
     await router.push('/tickets')
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Could not create ticket'))
-  } finally {
     busy.value = false
   }
 }
@@ -306,13 +316,13 @@ async function submit() {
         </template>
       </template>
     </CbpPageHeading>
-    <div class="cbp-card">
+    <div class="cbp-card" :class="{ 'is-submitting': busy }">
       <form class="grid" @submit.prevent="submit">
         <label class="full">Category
           <select
             v-model.number="form.category_id"
             required
-            :disabled="catsLoading || cats.length === 0"
+            :disabled="busy || catsLoading || cats.length === 0"
           >
             <option v-if="catsLoading" :value="0" disabled>Loading categories…</option>
             <option v-else-if="cats.length === 0" :value="0" disabled>No categories available</option>
@@ -322,7 +332,7 @@ async function submit() {
 
         <template v-if="isEndUser">
           <label class="row-check full">
-            <input v-model="forSomeoneElse" type="checkbox" />
+            <input v-model="forSomeoneElse" type="checkbox" :disabled="busy" />
             <span>This request is for <strong>another staff member</strong> (not me)</span>
           </label>
           <div v-if="!forSomeoneElse && selfRequesterLine" class="session-summary full" role="status">
@@ -334,7 +344,7 @@ async function submit() {
 
         <template v-if="needsDirectoryPicker">
           <div class="row-actions full">
-            <button type="button" class="ghost" @click="retryDirectory">Reload directory</button>
+            <button type="button" class="ghost" :disabled="busy" @click="retryDirectory">Reload directory</button>
           </div>
 
           <div class="requester-combo full">
@@ -345,7 +355,7 @@ async function submit() {
               class="combo-search"
               placeholder="Type name, email, or duty station…"
               autocomplete="off"
-              :disabled="!!refErr"
+              :disabled="busy || !!refErr"
               @focus="onStaffSearchFocus"
             />
             <ul
@@ -380,13 +390,14 @@ async function submit() {
           <span>Description <span class="req" aria-hidden="true">*</span></span>
           <CbpRichTextEditor
             v-model="form.description"
+            :disabled="busy"
             placeholder="Describe the issue (required). Add text, screenshots, and other details in the editor…"
           />
           <span v-if="!descriptionReady" class="desc-hint muted">A description is required before you can submit.</span>
         </label>
 
         <label v-if="canSetPriority">Priority
-          <select v-model="form.priority">
+          <select v-model="form.priority" :disabled="busy">
             <option value="low">low</option>
             <option value="medium">medium</option>
             <option value="high">high</option>
@@ -403,6 +414,24 @@ async function submit() {
         </button>
       </form>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="busy"
+        class="submit-overlay"
+        role="alertdialog"
+        aria-modal="true"
+        aria-busy="true"
+        aria-live="polite"
+        aria-labelledby="submit-wait-title"
+      >
+        <div class="submit-overlay-card">
+          <div class="submit-spinner" aria-hidden="true" />
+          <p id="submit-wait-title" class="submit-overlay-title">Please wait</p>
+          <p class="submit-overlay-text">Submitting your request…</p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -591,5 +620,58 @@ textarea {
   font-weight: 500;
   font-size: 0.8rem;
   margin-top: 0.15rem;
+}
+.is-submitting {
+  pointer-events: none;
+  user-select: none;
+}
+</style>
+
+<style>
+.submit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+.submit-overlay-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: min(18rem, 100%);
+  padding: 1.5rem 1.75rem;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.2);
+  text-align: center;
+}
+.submit-spinner {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 3px solid #e2e8f0;
+  border-top-color: #119a48;
+  border-radius: 50%;
+  animation: submit-spin 0.75s linear infinite;
+}
+.submit-overlay-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.submit-overlay-text {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+@keyframes submit-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

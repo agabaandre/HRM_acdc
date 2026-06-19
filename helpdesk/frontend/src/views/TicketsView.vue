@@ -3,9 +3,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
+import TicketReassignModal, {
+  type ReassignTicketRef,
+} from '../components/tickets/TicketReassignModal.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { canReassignTickets, ticketStatusAllowsReassign } from '../lib/canReassignTickets'
 import { notifyError } from '../lib/notify'
+import { useAuthStore } from '../stores/auth'
 import {
   formatTableCountLabel,
   priorityMeta,
@@ -30,6 +35,7 @@ interface TicketRow {
   assignee?: AssigneeBrief | null
 }
 
+const auth = useAuthStore()
 const rows = ref<TicketRow[]>([])
 const loading = ref(false)
 const q = ref('')
@@ -37,6 +43,9 @@ const page = ref(1)
 const perPage = ref(20)
 const total = ref(0)
 const lastPage = ref(1)
+const reassignTicket = ref<ReassignTicketRef | null>(null)
+
+const canReassign = computed(() => canReassignTickets(auth.me?.profile))
 
 const hasPrev = computed(() => page.value > 1)
 const hasNext = computed(() => page.value < lastPage.value)
@@ -46,6 +55,22 @@ const tableCountLabel = computed(() =>
 
 function counterFor(idx: number): number {
   return rowIndex(page.value, perPage.value, idx)
+}
+
+function canReassignRow(row: TicketRow): boolean {
+  return canReassign.value && ticketStatusAllowsReassign(row.status)
+}
+
+function openReassign(row: TicketRow): void {
+  reassignTicket.value = {
+    id: row.id,
+    ticket_number: row.ticket_number,
+    subject: row.subject,
+  }
+}
+
+function closeReassign(): void {
+  reassignTicket.value = null
 }
 
 async function load() {
@@ -129,11 +154,12 @@ onMounted(load)
               <th class="col-assignee" scope="col">Assigned to</th>
               <th class="col-status" scope="col">Status</th>
               <th class="col-priority" scope="col">Priority</th>
+              <th v-if="canReassign" class="col-action" scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="7" class="cell-loading">Loading…</td>
+              <td :colspan="canReassign ? 8 : 7" class="cell-loading">Loading…</td>
             </tr>
             <template v-else>
             <tr v-for="(t, idx) in rows" :key="t.id">
@@ -175,9 +201,21 @@ onMounted(load)
                   {{ priorityMeta(t.priority).label }}
                 </span>
               </td>
+              <td v-if="canReassign" class="col-action">
+                <button
+                  v-if="canReassignRow(t)"
+                  type="button"
+                  class="reassign-btn"
+                  title="Reassign this ticket to another agent"
+                  @click.stop="openReassign(t)"
+                >
+                  Reassign
+                </button>
+                <span v-else class="cell-empty">—</span>
+              </td>
             </tr>
             <tr v-if="rows.length === 0">
-              <td colspan="7" class="cell-empty-msg">
+              <td :colspan="canReassign ? 8 : 7" class="cell-empty-msg">
                 No tickets yet — create one from <RouterLink to="/tickets/new">New ticket</RouterLink>.
               </td>
             </tr>
@@ -191,6 +229,12 @@ onMounted(load)
         <button type="button" :disabled="!hasNext || loading" @click="page += 1; load()">Next</button>
       </div>
     </div>
+
+    <TicketReassignModal
+      :ticket="reassignTicket"
+      @close="closeReassign"
+      @reassigned="load"
+    />
   </div>
 </template>
 
@@ -267,5 +311,26 @@ onMounted(load)
 .pager button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.col-action {
+  text-align: right;
+  white-space: nowrap;
+}
+.reassign-btn {
+  padding: 0.25rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #1e293b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.reassign-btn:hover {
+  background: #0d7a3a;
+  border-color: #0d7a3a;
+  color: #fff;
 }
 </style>

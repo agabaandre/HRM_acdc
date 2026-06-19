@@ -88,6 +88,29 @@ class HelpdeskProfile extends Model
     }
 
     /**
+     * True when tickets may be assigned to this profile (auto-routing or manual reassign).
+     */
+    public function canBeAssignedTickets(): bool
+    {
+        return $this->actsAsAgent() || in_array($this->role, [
+            self::ROLE_SUPERVISOR,
+            self::ROLE_ADMIN,
+        ], true);
+    }
+
+    /**
+     * @param  Builder<HelpdeskProfile>  $query
+     * @return Builder<HelpdeskProfile>
+     */
+    public function scopeAssignableAsTicketAssignee(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->actsAsAgent()
+                ->orWhereIn('role', [self::ROLE_SUPERVISOR, self::ROLE_ADMIN]);
+        });
+    }
+
+    /**
      * @param  Builder<HelpdeskProfile>  $query
      * @return Builder<HelpdeskProfile>
      */

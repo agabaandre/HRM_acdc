@@ -52,6 +52,30 @@ class TicketApiTest extends TestCase
         $this->assertNotEmpty($list->json('data'));
     }
 
+    public function test_duplicate_create_with_same_idempotency_key_returns_existing_ticket(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $user = $this->actingHelpdeskUser(77703);
+        Sanctum::actingAs($user);
+
+        $payload = [
+            'category_id' => $cat->id,
+            'description' => '<p>Network issue</p>',
+        ];
+        $headers = ['Idempotency-Key' => 'create-'.uniqid('', true)];
+
+        $first = $this->postJson('/api/v1/tickets', $payload, $headers);
+        $first->assertCreated();
+        $ticketId = (int) $first->json('data.id');
+
+        $second = $this->postJson('/api/v1/tickets', $payload, $headers);
+        $second->assertOk();
+        $this->assertSame($ticketId, (int) $second->json('data.id'));
+        $this->assertDatabaseCount('helpdesk_tickets', 1);
+    }
+
     public function test_end_user_can_create_ticket_on_behalf_of_other_staff_when_directory_cached(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);

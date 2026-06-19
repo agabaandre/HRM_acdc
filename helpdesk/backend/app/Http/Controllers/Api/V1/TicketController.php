@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreTicketRequest;
 use App\Http\Requests\Api\V1\UpdateTicketRequest;
 use App\Http\Resources\Api\V1\TicketResource;
+use App\Jobs\AssignEndUserTicket;
 use App\Jobs\ScanTicketForAiSignals;
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
@@ -16,12 +17,12 @@ use App\Models\User;
 use App\Services\HtmlSanitizer;
 use App\Services\RequesterTicketFollowUpService;
 use App\Services\StaffDirectoryLookupService;
-use App\Services\TicketAssignmentService;
 use App\Services\TicketHistoryLogger;
 use App\Services\TicketNumberGenerator;
 use App\Services\TicketReadCache;
 use App\Services\TicketSubjectGenerator;
 use App\Support\StaffPhotoUrl;
+use App\Support\TicketCreateIdempotency;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -67,13 +68,29 @@ class TicketController extends Controller
         StoreTicketRequest $request,
         TicketNumberGenerator $numbers,
         TicketSubjectGenerator $subjects,
-        TicketAssignmentService $assignment,
         StaffDirectoryLookupService $directoryLookup,
     ): JsonResponse {
         $user = $request->user();
         $profile = $user->helpdeskProfile;
         if (! $profile || ! $profile->staff_id) {
             abort(422, 'Helpdesk profile must include staff_id to create tickets.');
+        }
+
+        $idempotencyKey = TicketCreateIdempotency::normalizeClientKey($request->header('Idempotency-Key'));
+        if ($idempotencyKey !== null) {
+            $existingId = TicketCreateIdempotency::findTicketId((int) $user->id, $idempotencyKey);
+            if ($existingId !== null) {
+                $existing = HelpdeskTicket::query()
+                    ->with(['category', 'assignee.helpdeskProfile', 'attachments'])
+                    ->where('id', $existingId)
+                    ->where('created_by_user_id', $user->id)
+                    ->first();
+                if ($existing) {
+                    return (new TicketResource($existing))
+                        ->response()
+                        ->setStatusCode(200);
+                }
+            }
         }
 
         $category = HelpdeskCategory::query()->findOrFail((int) $request->validated('category_id'));
@@ -158,15 +175,14 @@ class TicketController extends Controller
 
         if ($isEndUser) {
             $station = $directoryLookup->dutyStationForStaffId($requesterStaffId);
-            $assignmentResult = $assignment->assignAgent($ticket, $station);
-            if ($assignmentResult['user_id'] || $assignmentResult['group_id']) {
-                $ticket->assigned_user_id = $assignmentResult['user_id'];
-                $ticket->assigned_group_id = $assignmentResult['group_id'];
-                $ticket->save();
-            }
+            AssignEndUserTicket::dispatchAfterResponse($ticket->id, $station);
         } else {
             $ticket->assigned_user_id = $user->id;
             $ticket->save();
+        }
+
+        if ($idempotencyKey !== null) {
+            TicketCreateIdempotency::remember((int) $user->id, $idempotencyKey, (int) $ticket->id);
         }
 
         try {
@@ -228,38 +244,29 @@ class TicketController extends Controller
 
     /**
      * List candidate agents the current user may reassign this ticket to.
-     * Returns agents that handle the ticket's category, excluding the
-     * current assignee.
+     * Users with reassign permission may pick any assignable agent or group,
+     * not only those routed to the ticket category.
      */
-    public function eligibleAgents(Request $request, HelpdeskTicket $ticket, TicketAssignmentService $assignment): JsonResponse
+    public function eligibleAgents(Request $request, HelpdeskTicket $ticket): JsonResponse
     {
         $this->authorize('view', $ticket);
         $this->ensureReassignAllowed($request, $ticket);
 
-        $eligibleIds = $assignment->eligibleAgentUserIds($ticket);
         $currentAssignee = (int) ($ticket->assigned_user_id ?? 0);
-        $filtered = array_values(array_filter($eligibleIds, fn (int $id) => $id !== $currentAssignee));
+
+        $agents = User::query()
+            ->whereHas('helpdeskProfile', fn ($q) => $q->assignableAsTicketAssignee())
+            ->when($currentAssignee > 0, fn ($q) => $q->where('id', '!=', $currentAssignee))
+            ->with(['helpdeskProfile:id,user_id,duty_station,role', 'helpdeskSupportGroups:id,name'])
+            ->orderBy('name')
+            ->get();
 
         $groups = HelpdeskSupportGroup::query()
             ->where('is_active', true)
             ->withCount('members')
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get()
-            ->filter(function (HelpdeskSupportGroup $group) use ($ticket, $assignment) {
-                $eligible = $assignment->eligibleGroupIds($ticket);
-
-                return in_array((int) $group->id, $eligible, true);
-            })
-            ->values();
-
-        $agents = $filtered === []
-            ? collect()
-            : User::query()
-                ->whereIn('id', $filtered)
-                ->with(['helpdeskProfile:id,user_id,duty_station,role', 'helpdeskSupportGroups:id,name'])
-                ->orderBy('name')
-                ->get();
+            ->get();
 
         return response()->json([
             'data' => [
@@ -327,10 +334,7 @@ class TicketController extends Controller
         if ($newAssigneeId) {
             $newAssignee = User::query()->with('helpdeskProfile')->findOrFail($newAssigneeId);
             $newProfile = $newAssignee->helpdeskProfile;
-            if (! $newProfile || ! ($newProfile->actsAsAgent() || in_array($newProfile->role, [
-                HelpdeskProfile::ROLE_SUPERVISOR,
-                HelpdeskProfile::ROLE_ADMIN,
-            ], true))) {
+            if (! $newProfile || ! $newProfile->canBeAssignedTickets()) {
                 abort(422, 'Selected user is not a Helpdesk agent.');
             }
         }

@@ -5,7 +5,7 @@ const TOKEN_KEY = 'helpdesk_api_token'
 
 /** Allow slow cold starts / gateway wake-up before surfacing an error. */
 const API_TIMEOUT_MS = 60_000
-const MAX_GET_RETRIES = 2
+const MAX_TRANSIENT_RETRIES = 2
 
 type RetryableConfig = InternalAxiosRequestConfig & { __retryCount?: number }
 
@@ -111,14 +111,10 @@ api.interceptors.response.use(
     }
 
     if (config && isRetryableError(error)) {
-      const method = (config?.method ?? 'get').toLowerCase()
-      const isSsoPost = method === 'post' && config.url?.includes('/auth/staff-sso')
-      if (method === 'get' || isSsoPost) {
-        config.__retryCount = (config.__retryCount ?? 0) + 1
-        if (config.__retryCount <= MAX_GET_RETRIES) {
-          await sleep(500 * config.__retryCount)
-          return api.request(config)
-        }
+      config.__retryCount = (config.__retryCount ?? 0) + 1
+      if (config.__retryCount <= MAX_TRANSIENT_RETRIES) {
+        await sleep(800 * config.__retryCount)
+        return api.request(config)
       }
     }
 
