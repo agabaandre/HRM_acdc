@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
 use App\Support\StaffPhotoUrl;
 use Illuminate\Http\Request;
@@ -42,6 +43,7 @@ class TicketResource extends JsonResource
             'requester_name' => $this->requester_name,
             'requester_email' => $this->requester_email,
             'assigned_user_id' => $this->assigned_user_id,
+            'assigned_group_id' => $this->assigned_group_id,
             'directorate_id' => $this->directorate_id,
             'division_id' => $this->division_id,
             'country_id' => $this->country_id,
@@ -65,6 +67,15 @@ class TicketResource extends JsonResource
                         : null,
                 ]
             ),
+            'assigned_group' => $this->when(
+                $this->relationLoaded('assignedGroup') && $this->assignedGroup !== null,
+                fn () => [
+                    'id' => $this->assignedGroup->id,
+                    'name' => $this->assignedGroup->name,
+                    'slug' => $this->assignedGroup->slug,
+                ]
+            ),
+            'requester_unsatisfied_follow_up_enabled' => HelpdeskSetting::requesterUnsatisfiedFollowUpEnabled(),
         ];
     }
 }

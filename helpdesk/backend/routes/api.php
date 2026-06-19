@@ -5,7 +5,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminDivisionAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminFaqIngestController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskCategoryController;
-use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSlaRuleController;
+use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSupportGroupController;
 use App\Http\Controllers\Api\V1\Admin\AdminKbArticleController;
 use App\Http\Controllers\Api\V1\Admin\AdminReferenceSyncController;
 use App\Http\Controllers\Api\V1\Admin\AdminStaffPermissionController;
@@ -91,6 +91,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/admin/faq-ingest', [AdminFaqIngestController::class, 'store']);
         Route::get('/admin/agents', [AdminHelpdeskAgentController::class, 'index']);
         Route::put('/admin/agents/{user}', [AdminHelpdeskAgentController::class, 'update']);
+        Route::get('/admin/support-groups', [AdminHelpdeskSupportGroupController::class, 'index']);
+        Route::post('/admin/support-groups', [AdminHelpdeskSupportGroupController::class, 'store']);
+        Route::put('/admin/support-groups/{group}', [AdminHelpdeskSupportGroupController::class, 'update']);
+        Route::delete('/admin/support-groups/{group}', [AdminHelpdeskSupportGroupController::class, 'destroy']);
         Route::get('/admin/staff-permissions', [AdminStaffPermissionController::class, 'index']);
         Route::put('/admin/staff-permissions/{user}', [AdminStaffPermissionController::class, 'update']);
 

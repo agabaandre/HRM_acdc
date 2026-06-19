@@ -10,7 +10,7 @@ export function parseSettingsSection(value: unknown): SettingsSectionId {
 export const SETTINGS_SECTION_LABELS: Record<SettingsSectionId, string> = {
   general: 'General',
   ai: 'AI models & provider',
-  agents: 'Agents & category routing',
+  agents: 'Agents & support groups',
   categories: 'Issue categories',
   jobs: 'Jobs',
   integrations: 'WhatsApp & Teams',

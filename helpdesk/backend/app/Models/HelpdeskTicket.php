@@ -59,6 +59,7 @@ class HelpdeskTicket extends Model
         'requester_name',
         'requester_email',
         'assigned_user_id',
+        'assigned_group_id',
         'directorate_id',
         'division_id',
         'country_id',
@@ -92,6 +93,11 @@ class HelpdeskTicket extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
+    public function assignedGroup(): BelongsTo
+    {
+        return $this->belongsTo(HelpdeskSupportGroup::class, 'assigned_group_id');
     }
 
     public function createdBy(): BelongsTo

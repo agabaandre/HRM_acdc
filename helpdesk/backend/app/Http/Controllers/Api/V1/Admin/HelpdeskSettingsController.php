@@ -28,6 +28,7 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::KEY_BRANDING_SECONDARY,
             HelpdeskSetting::KEY_DEFAULT_AGENT_DIVISION_IDS,
             HelpdeskSetting::KEY_REQUIRE_RESOLUTION_CONFIRMATION,
+            HelpdeskSetting::KEY_REQUESTER_UNSATISFIED_FOLLOW_UP,
             HelpdeskSetting::KEY_WHATSAPP_ENABLED,
             HelpdeskSetting::KEY_WHATSAPP_PHONE_NUMBER_ID,
             HelpdeskSetting::KEY_WHATSAPP_VERIFY_TOKEN,
@@ -47,6 +48,7 @@ class HelpdeskSettingsController extends Controller
         $data[HelpdeskSetting::KEY_AI_ACTIVE] = (($data[HelpdeskSetting::KEY_AI_ACTIVE] ?? '0') === '1');
         $data[HelpdeskSetting::KEY_AI_AGENT_ASSIGNMENT] = (($data[HelpdeskSetting::KEY_AI_AGENT_ASSIGNMENT] ?? '0') === '1');
         $data[HelpdeskSetting::KEY_REQUIRE_RESOLUTION_CONFIRMATION] = (($data[HelpdeskSetting::KEY_REQUIRE_RESOLUTION_CONFIRMATION] ?? '1') === '1');
+        $data[HelpdeskSetting::KEY_REQUESTER_UNSATISFIED_FOLLOW_UP] = (($data[HelpdeskSetting::KEY_REQUESTER_UNSATISFIED_FOLLOW_UP] ?? '1') === '1');
         $data[HelpdeskSetting::KEY_WHATSAPP_ENABLED] = (($data[HelpdeskSetting::KEY_WHATSAPP_ENABLED] ?? '0') === '1');
         $data[HelpdeskSetting::KEY_TEAMS_ENABLED] = (($data[HelpdeskSetting::KEY_TEAMS_ENABLED] ?? '0') === '1');
 
@@ -93,6 +95,7 @@ class HelpdeskSettingsController extends Controller
             'branding_secondary_hex' => ['nullable', 'string', 'max:32'],
             'default_agent_division_ids' => ['nullable', 'string', 'max:128'],
             'require_resolution_confirmation' => ['nullable', 'boolean'],
+            'requester_unsatisfied_follow_up_enabled' => ['nullable', 'boolean'],
             'ai_api_key' => ['nullable', 'string', 'max:8192'],
             'whatsapp_enabled' => ['nullable', 'boolean'],
             'whatsapp_phone_number_id' => ['nullable', 'string', 'max:64'],
@@ -145,6 +148,13 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::setValue(
                 HelpdeskSetting::KEY_REQUIRE_RESOLUTION_CONFIRMATION,
                 $validated['require_resolution_confirmation'] ? '1' : '0'
+            );
+        }
+
+        if (array_key_exists('requester_unsatisfied_follow_up_enabled', $validated) && $validated['requester_unsatisfied_follow_up_enabled'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_REQUESTER_UNSATISFIED_FOLLOW_UP,
+                $validated['requester_unsatisfied_follow_up_enabled'] ? '1' : '0'
             );
         }
 

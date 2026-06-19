@@ -44,6 +44,12 @@ class HelpdeskSetting extends Model
     /** Deprecated: resolution now closes the ticket and emails a review link. Kept for API compatibility. */
     public const KEY_REQUIRE_RESOLUTION_CONFIRMATION = 'require_resolution_confirmation';
 
+    /**
+     * When "1" (default), requesters on closed tickets may reopen via a comment checkbox and
+     * assigned agents receive email when a requester posts a public comment.
+     */
+    public const KEY_REQUESTER_UNSATISFIED_FOLLOW_UP = 'requester_unsatisfied_follow_up_enabled';
+
     /** WhatsApp Cloud API — see https://developers.facebook.com/docs/whatsapp/cloud-api */
     public const KEY_WHATSAPP_ENABLED = 'whatsapp_enabled';
 
@@ -82,6 +88,13 @@ class HelpdeskSetting extends Model
     public static function aiAgentAssignmentEnabled(): bool
     {
         $v = static::getValue(self::KEY_AI_AGENT_ASSIGNMENT, '0');
+
+        return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
+    }
+
+    public static function requesterUnsatisfiedFollowUpEnabled(): bool
+    {
+        $v = static::getValue(self::KEY_REQUESTER_UNSATISFIED_FOLLOW_UP, '1');
 
         return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
     }

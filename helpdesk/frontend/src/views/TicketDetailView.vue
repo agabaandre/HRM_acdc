@@ -45,6 +45,7 @@ interface TicketDetail {
   assignee?: AssigneeBrief | null
   attachments?: TicketAttachment[]
   category?: TicketCategory | null
+  requester_unsatisfied_follow_up_enabled?: boolean
 }
 
 interface CommentRow {
@@ -62,6 +63,7 @@ const ticketId = computed(() => Number(route.params.id))
 const ticket = ref<TicketDetail | null>(null)
 const comments = ref<CommentRow[]>([])
 const newBody = ref('')
+const reopenWithComment = ref(false)
 const posting = ref(false)
 const resolutionNotes = ref('')
 const resolving = ref(false)
@@ -142,6 +144,18 @@ const isClosedForRequester = computed(() => {
   return ['closed', 'resolved', 'awaiting_requester_confirmation'].includes(t.status)
 })
 
+const requesterFollowUpEnabled = computed(
+  () => ticket.value?.requester_unsatisfied_follow_up_enabled !== false,
+)
+
+const canReopenWithComment = computed(
+  () => isClosedForRequester.value && isRequester.value && requesterFollowUpEnabled.value,
+)
+
+const showStandaloneReopen = computed(
+  () => isClosedForRequester.value && isRequester.value && !requesterFollowUpEnabled.value,
+)
+
 const canPublishKb = computed(() => {
   const p = auth.me?.profile
   if (!p) {
@@ -207,8 +221,13 @@ async function postComment() {
   }
   posting.value = true
   try {
-    await api.post(`/api/v1/tickets/${id}/comments`, { body })
+    const payload: Record<string, unknown> = { body }
+    if (canReopenWithComment.value && reopenWithComment.value) {
+      payload.reopen_ticket = true
+    }
+    await api.post(`/api/v1/tickets/${id}/comments`, payload)
     newBody.value = ''
+    reopenWithComment.value = false
     await loadAll()
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Failed to post comment'))
@@ -513,7 +532,18 @@ watch(ticketId, loadAll)
         </div>
       </Teleport>
 
-      <section v-if="isClosedForRequester" class="closed-banner" role="status">
+      <section v-if="canReopenWithComment" class="closed-banner closed-banner--follow-up" role="status">
+        <div class="closed-banner-icon" aria-hidden="true">💬</div>
+        <div class="closed-banner-copy">
+          <p class="closed-banner-title">This ticket is closed</p>
+          <p class="closed-banner-text">
+            Review the resolution above. If the issue is not fixed, add a comment below and check
+            <strong>Reopen this ticket</strong> so your assigned agent is notified by email and support can continue.
+          </p>
+        </div>
+      </section>
+
+      <section v-else-if="showStandaloneReopen" class="closed-banner" role="status">
         <p class="closed-banner-text">
           This ticket is closed. Review the resolution above. If the issue is not fixed, add a comment below or
           reopen the ticket so support can continue.
@@ -523,34 +553,61 @@ watch(ticketId, loadAll)
         </button>
       </section>
 
-      <h3 class="h3">Comments</h3>
-      <ul class="comments">
-        <li v-for="c in comments" :key="c.id" class="citem">
-          <div class="citem-top">
-            <CbpAvatar size="sm" :name="c.author?.name ?? 'User'" :image-url="c.author?.avatar_url ?? null" />
-            <div class="citem-head">
-              <div class="meta">
-                <strong>{{ c.author?.name ?? 'User' }}</strong>
-                <span v-if="c.is_internal" class="tag">internal</span>
-                <time :datetime="c.created_at">{{ c.created_at }}</time>
+      <section class="comments-section">
+        <header class="comments-head">
+          <h3 class="h3">Comments</h3>
+          <span v-if="comments.length" class="comments-count">{{ comments.length }}</span>
+        </header>
+        <ul class="comments">
+          <li v-for="c in comments" :key="c.id" class="citem">
+            <div class="citem-top">
+              <CbpAvatar size="sm" :name="c.author?.name ?? 'User'" :image-url="c.author?.avatar_url ?? null" />
+              <div class="citem-head">
+                <div class="meta">
+                  <strong>{{ c.author?.name ?? 'User' }}</strong>
+                  <span v-if="c.is_internal" class="tag">internal</span>
+                  <time :datetime="c.created_at">{{ c.created_at }}</time>
+                </div>
+                <p class="cbody">{{ c.body }}</p>
               </div>
-              <p class="cbody">{{ c.body }}</p>
             </div>
-          </div>
-        </li>
-        <li v-if="comments.length === 0" class="muted">No comments yet.</li>
-      </ul>
+          </li>
+          <li v-if="comments.length === 0" class="comments-empty">
+            <span class="comments-empty-icon" aria-hidden="true">✉️</span>
+            <p>No comments yet. Be the first to add an update.</p>
+          </li>
+        </ul>
 
-      <form class="composer" @submit.prevent="postComment">
-        <label>Add comment</label>
-        <textarea
-          v-model="newBody"
-          rows="4"
-          required
-          :placeholder="isClosedForRequester ? 'Explain what is still wrong or ask a follow-up question…' : 'Describe an update…'"
-        />
-        <button type="submit" class="primary" :disabled="posting">{{ posting ? 'Posting…' : 'Post' }}</button>
-      </form>
+        <form class="composer" @submit.prevent="postComment">
+          <label class="composer-label" for="ticket-comment-body">Add comment</label>
+          <textarea
+            id="ticket-comment-body"
+            v-model="newBody"
+            rows="4"
+            required
+            class="composer-input"
+            :placeholder="
+              canReopenWithComment
+                ? 'Explain what is still wrong or ask a follow-up question…'
+                : isClosedForRequester
+                  ? 'Explain what is still wrong or ask a follow-up question…'
+                  : 'Describe an update…'
+            "
+          />
+          <label v-if="canReopenWithComment" class="reopen-check">
+            <input v-model="reopenWithComment" type="checkbox" />
+            <span class="reopen-check-copy">
+              <strong>I'm not satisfied — reopen this ticket</strong>
+              <span class="reopen-check-hint">Your assigned agent will receive your comment by email.</span>
+            </span>
+          </label>
+          <div class="composer-actions">
+            <button type="submit" class="primary" :disabled="posting || !newBody.trim()">
+              {{ posting ? 'Posting…' : reopenWithComment ? 'Post & reopen' : 'Post comment' }}
+            </button>
+          </div>
+        </form>
+      </section>
       </div>
     </template>
     <p v-else class="muted">Loading…</p>
@@ -587,11 +644,129 @@ watch(ticketId, loadAll)
   border: 1px solid #fcd34d;
   background: #fffbeb;
 }
+.closed-banner--follow-up {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  border-color: #86efac;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+}
+.closed-banner-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+.closed-banner-copy {
+  flex: 1;
+  min-width: 0;
+}
+.closed-banner-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #14532d;
+}
 .closed-banner-text {
-  margin: 0 0 0.75rem;
+  margin: 0;
   font-size: 0.9rem;
   line-height: 1.5;
   color: #78350f;
+}
+.closed-banner--follow-up .closed-banner-text {
+  color: #166534;
+}
+.comments-section {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e2e8f0;
+}
+.comments-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.comments-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+.comments-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.25rem 1rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: center;
+}
+.comments-empty p {
+  margin: 0;
+  font-size: 0.88rem;
+}
+.comments-empty-icon {
+  font-size: 1.25rem;
+}
+.composer {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.composer-label {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #334155;
+}
+.composer-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+  background: #fff;
+}
+.composer-input:focus {
+  outline: none;
+  border-color: var(--cdc-green, #0d7a3a);
+  box-shadow: 0 0 0 3px rgba(13, 122, 58, 0.12);
+}
+.reopen-check {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  cursor: pointer;
+}
+.reopen-check input {
+  margin-top: 0.2rem;
+}
+.reopen-check-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.88rem;
+  color: #14532d;
+}
+.reopen-check-hint {
+  font-size: 0.8rem;
+  color: #166534;
+  font-weight: 400;
+}
+.composer-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 .people-strip {
   display: flex;

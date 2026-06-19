@@ -65,4 +65,13 @@ class User extends Authenticatable
         return $this->belongsToMany(HelpdeskCategory::class, 'helpdesk_agent_categories', 'user_id', 'category_id')
             ->withTimestamps();
     }
+
+    /**
+     * Support groups this user belongs to.
+     */
+    public function helpdeskSupportGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(HelpdeskSupportGroup::class, 'helpdesk_support_group_members', 'user_id', 'group_id')
+            ->withTimestamps();
+    }
 }

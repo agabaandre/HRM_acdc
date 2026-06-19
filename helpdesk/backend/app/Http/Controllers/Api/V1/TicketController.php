@@ -10,7 +10,7 @@ use App\Jobs\ScanTicketForAiSignals;
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
-use App\Models\HelpdeskTicketComment;
+use App\Models\HelpdeskSupportGroup;
 use App\Models\User;
 use App\Services\HtmlSanitizer;
 use App\Services\StaffDirectoryLookupService;
@@ -39,7 +39,7 @@ class TicketController extends Controller
             $profile = $user->helpdeskProfile;
             $qTerm = trim((string) $request->query('q', ''));
             $q = HelpdeskTicket::query()
-                ->with(['category', 'assignee.helpdeskProfile', 'attachments'])
+                ->with(['category', 'assignee.helpdeskProfile', 'assignedGroup', 'attachments'])
                 ->orderByDesc('id');
 
             if ($profile && $profile->role === HelpdeskProfile::ROLE_USER && $profile->staff_id) {
@@ -156,9 +156,10 @@ class TicketController extends Controller
 
         if ($isEndUser) {
             $station = $directoryLookup->dutyStationForStaffId($requesterStaffId);
-            $agentId = $assignment->assignAgent($ticket, $station);
-            if ($agentId) {
-                $ticket->assigned_user_id = $agentId;
+            $assignmentResult = $assignment->assignAgent($ticket, $station);
+            if ($assignmentResult['user_id'] || $assignmentResult['group_id']) {
+                $ticket->assigned_user_id = $assignmentResult['user_id'];
+                $ticket->assigned_group_id = $assignmentResult['group_id'];
                 $ticket->save();
             }
         } else {
@@ -233,28 +234,54 @@ class TicketController extends Controller
         $currentAssignee = (int) ($ticket->assigned_user_id ?? 0);
         $filtered = array_values(array_filter($eligibleIds, fn (int $id) => $id !== $currentAssignee));
 
-        if ($filtered === []) {
-            return response()->json(['data' => []]);
-        }
-
-        $agents = User::query()
-            ->whereIn('id', $filtered)
-            ->with(['helpdeskProfile:id,user_id,duty_station,role'])
+        $groups = HelpdeskSupportGroup::query()
+            ->where('is_active', true)
+            ->withCount('members')
+            ->orderBy('sort_order')
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->filter(function (HelpdeskSupportGroup $group) use ($ticket, $assignment) {
+                $eligible = $assignment->eligibleGroupIds($ticket);
+
+                return in_array((int) $group->id, $eligible, true);
+            })
+            ->values();
+
+        $agents = $filtered === []
+            ? collect()
+            : User::query()
+                ->whereIn('id', $filtered)
+                ->with(['helpdeskProfile:id,user_id,duty_station,role', 'helpdeskSupportGroups:id,name'])
+                ->orderBy('name')
+                ->get();
 
         return response()->json([
-            'data' => $agents->map(fn (User $u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'avatar_url' => StaffPhotoUrl::forUser($u),
-                'duty_station' => $u->helpdeskProfile?->duty_station,
-                'open_workload' => HelpdeskTicket::query()
-                    ->where('assigned_user_id', $u->id)
-                    ->whereIn('status', ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'])
-                    ->count(),
-            ])->values(),
+            'data' => [
+                'agents' => $agents->map(fn (User $u) => [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email,
+                    'avatar_url' => StaffPhotoUrl::forUser($u),
+                    'duty_station' => $u->helpdeskProfile?->duty_station,
+                    'support_groups' => $u->helpdeskSupportGroups->map(fn ($g) => [
+                        'id' => $g->id,
+                        'name' => $g->name,
+                    ])->values(),
+                    'open_workload' => HelpdeskTicket::query()
+                        ->where('assigned_user_id', $u->id)
+                        ->whereIn('status', ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'])
+                        ->count(),
+                ])->values(),
+                'groups' => $groups->map(fn (HelpdeskSupportGroup $g) => [
+                    'id' => $g->id,
+                    'name' => $g->name,
+                    'members_count' => (int) $g->members_count,
+                    'open_workload' => HelpdeskTicket::query()
+                        ->where('assigned_group_id', $g->id)
+                        ->whereIn('status', ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'])
+                        ->count(),
+                ])->values(),
+            ],
         ]);
     }
 
@@ -272,48 +299,77 @@ class TicketController extends Controller
         }
 
         $validated = $request->validate([
-            'assignee_user_id' => ['required', 'integer', 'exists:users,id'],
+            'assignee_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'assignee_group_id' => ['nullable', 'integer', 'exists:helpdesk_support_groups,id'],
             'reason' => ['required', 'string', 'min:5', 'max:2000'],
         ]);
 
-        $newAssigneeId = (int) $validated['assignee_user_id'];
-        $oldAssigneeId = (int) ($ticket->assigned_user_id ?? 0);
-        if ($newAssigneeId === $oldAssigneeId) {
-            abort(422, 'That ticket is already assigned to this agent — pick a different one.');
+        if (empty($validated['assignee_user_id']) && empty($validated['assignee_group_id'])) {
+            abort(422, 'Select an agent, a support group, or both.');
         }
 
-        $newAssignee = User::query()->with('helpdeskProfile')->findOrFail($newAssigneeId);
-        $newProfile = $newAssignee->helpdeskProfile;
-        if (! $newProfile || ! in_array($newProfile->role, [
-            HelpdeskProfile::ROLE_AGENT,
-            HelpdeskProfile::ROLE_SUPERVISOR,
-            HelpdeskProfile::ROLE_ADMIN,
-        ], true)) {
-            abort(422, 'Selected user is not a Helpdesk agent.');
+        $newAssigneeId = isset($validated['assignee_user_id']) ? (int) $validated['assignee_user_id'] : null;
+        $newGroupId = isset($validated['assignee_group_id']) ? (int) $validated['assignee_group_id'] : null;
+        $oldAssigneeId = (int) ($ticket->assigned_user_id ?? 0);
+        $oldGroupId = (int) ($ticket->assigned_group_id ?? 0);
+
+        if ($newAssigneeId && $newAssigneeId === $oldAssigneeId && $newGroupId === $oldGroupId) {
+            abort(422, 'That ticket already has this assignment — pick a different agent or group.');
+        }
+
+        $newAssignee = null;
+        if ($newAssigneeId) {
+            $newAssignee = User::query()->with('helpdeskProfile')->findOrFail($newAssigneeId);
+            $newProfile = $newAssignee->helpdeskProfile;
+            if (! $newProfile || ! in_array($newProfile->role, [
+                HelpdeskProfile::ROLE_AGENT,
+                HelpdeskProfile::ROLE_SUPERVISOR,
+                HelpdeskProfile::ROLE_ADMIN,
+            ], true)) {
+                abort(422, 'Selected user is not a Helpdesk agent.');
+            }
+        }
+
+        $newGroup = null;
+        if ($newGroupId) {
+            $newGroup = HelpdeskSupportGroup::query()->where('is_active', true)->findOrFail($newGroupId);
         }
 
         $oldAssignee = $oldAssigneeId > 0
             ? User::query()->find($oldAssigneeId)
             : null;
+        $oldGroup = $oldGroupId > 0
+            ? HelpdeskSupportGroup::query()->find($oldGroupId)
+            : null;
 
         $reason = trim((string) $validated['reason']);
 
         $ticket->assigned_user_id = $newAssigneeId;
+        $ticket->assigned_group_id = $newGroupId;
         $ticket->save();
 
-        // Structured history entry — surfaces on the ticket activity timeline
-        // with from/to/reason metadata for audit and analytics.
         $logger->log($ticket, 'ticket.reassigned', $request->user()->id, [
             'from_user_id' => $oldAssigneeId > 0 ? $oldAssigneeId : null,
             'from_user_name' => $oldAssignee?->name,
+            'from_group_id' => $oldGroupId > 0 ? $oldGroupId : null,
+            'from_group_name' => $oldGroup?->name,
             'to_user_id' => $newAssigneeId,
-            'to_user_name' => $newAssignee->name,
+            'to_user_name' => $newAssignee?->name,
+            'to_group_id' => $newGroupId,
+            'to_group_name' => $newGroup?->name,
             'reason' => $reason,
         ]);
 
-        // Internal comment so the new assignee + other agents see the reason
-        // inline without digging into the history payload.
-        $fromLabel = $oldAssignee?->name ?? 'Unassigned';
+        $fromParts = array_filter([
+            $oldAssignee?->name,
+            $oldGroup?->name ? 'group '.$oldGroup->name : null,
+        ]);
+        $toParts = array_filter([
+            $newAssignee?->name,
+            $newGroup?->name ? 'group '.$newGroup->name : null,
+        ]);
+        $fromLabel = $fromParts !== [] ? implode(' / ', $fromParts) : 'Unassigned';
+        $toLabel = $toParts !== [] ? implode(' / ', $toParts) : 'Unassigned';
         HelpdeskTicketComment::query()->create([
             'ticket_id' => $ticket->id,
             'user_id' => $request->user()->id,
@@ -322,16 +378,18 @@ class TicketController extends Controller
             'body' => sprintf(
                 "Reassigned from %s to %s.\n\nReason: %s",
                 $fromLabel,
-                $newAssignee->name,
+                $toLabel,
                 $reason
             ),
         ]);
 
         return response()->json([
-            'data' => (new TicketResource($ticket->fresh()->load(['category', 'assignee.helpdeskProfile', 'attachments'])))->resolve(),
+            'data' => (new TicketResource($ticket->fresh()->load(['category', 'assignee.helpdeskProfile', 'assignedGroup', 'attachments'])))->resolve(),
             'meta' => [
                 'from_user_id' => $oldAssigneeId > 0 ? $oldAssigneeId : null,
+                'from_group_id' => $oldGroupId > 0 ? $oldGroupId : null,
                 'to_user_id' => $newAssigneeId,
+                'to_group_id' => $newGroupId,
                 'reason' => $reason,
             ],
         ]);

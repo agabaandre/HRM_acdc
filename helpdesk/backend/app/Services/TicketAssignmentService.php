@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskSupportGroup;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,7 @@ class TicketAssignmentService
 {
     public function __construct(
         private readonly AiAgentPickerService $aiAgentPicker,
+        private readonly AgentCategoryRoutingService $routing,
     ) {}
 
     /**
@@ -31,13 +33,23 @@ class TicketAssignmentService
 
         $eligible = [];
         foreach ($agentUserIds as $uid) {
-            $catIds = DB::table('helpdesk_agent_categories')->where('user_id', $uid)->pluck('category_id')->all();
-            if ($catIds === [] || in_array($categoryId, array_map('intval', $catIds), true)) {
+            if ($this->routing->agentHandlesCategory((int) $uid, $categoryId)) {
                 $eligible[] = (int) $uid;
             }
         }
 
         return $eligible;
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function eligibleGroupIds(HelpdeskTicket $ticket): array
+    {
+        return $this->routing->eligibleGroupsForCategory((int) $ticket->category_id)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     /**
@@ -96,20 +108,54 @@ class TicketAssignmentService
         return $ranked;
     }
 
-    public function assignAgent(HelpdeskTicket $ticket, ?string $requesterDutyStation): ?int
+    /**
+     * @return array{user_id: ?int, group_id: ?int}
+     */
+    public function assignAgent(HelpdeskTicket $ticket, ?string $requesterDutyStation): array
     {
-        $eligible = $this->eligibleAgentUserIds($ticket);
-        if ($eligible === []) {
+        $categoryId = (int) $ticket->category_id;
+        $groups = $this->routing->eligibleGroupsForCategory($categoryId);
+
+        $groupPick = $this->pickGroup($groups);
+        $pool = $groupPick !== null
+            ? $this->routing->eligibleMemberUserIdsForGroup($groupPick, $categoryId)
+            : $this->eligibleAgentUserIds($ticket);
+
+        if ($pool === []) {
+            return ['user_id' => null, 'group_id' => $groupPick?->id];
+        }
+
+        $aiPick = $this->aiAgentPicker->pickUserId($ticket, $pool, $requesterDutyStation);
+        if ($aiPick !== null && in_array($aiPick, $pool, true)) {
+            return ['user_id' => $aiPick, 'group_id' => $groupPick?->id];
+        }
+
+        $ranked = $this->rankAgentUserIds($pool, $ticket, $requesterDutyStation);
+
+        return [
+            'user_id' => $ranked[0] ?? null,
+            'group_id' => $groupPick?->id,
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, HelpdeskSupportGroup>  $groups
+     */
+    private function pickGroup($groups): ?HelpdeskSupportGroup
+    {
+        if ($groups->isEmpty()) {
             return null;
         }
 
-        $aiPick = $this->aiAgentPicker->pickUserId($ticket, $eligible, $requesterDutyStation);
-        if ($aiPick !== null && in_array($aiPick, $eligible, true)) {
-            return $aiPick;
-        }
+        $openStatuses = ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'];
 
-        $ranked = $this->rankAgentUserIds($eligible, $ticket, $requesterDutyStation);
+        return $groups->sortBy(function (HelpdeskSupportGroup $group) use ($openStatuses) {
+            $load = HelpdeskTicket::query()
+                ->where('assigned_group_id', $group->id)
+                ->whereIn('status', $openStatuses)
+                ->count();
 
-        return $ranked[0] ?? null;
+            return [$load, $group->sort_order, $group->name];
+        })->first();
     }
 }

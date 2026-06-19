@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreTicketCommentRequest;
 use App\Http\Resources\Api\V1\TicketCommentResource;
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
+use App\Services\TicketCommentNotifier;
+use App\Services\TicketHistoryLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -29,8 +32,12 @@ class TicketCommentController extends Controller
         return TicketCommentResource::collection($comments);
     }
 
-    public function store(StoreTicketCommentRequest $request, HelpdeskTicket $ticket): JsonResponse
-    {
+    public function store(
+        StoreTicketCommentRequest $request,
+        HelpdeskTicket $ticket,
+        TicketCommentNotifier $notifier,
+        TicketHistoryLogger $logger,
+    ): JsonResponse {
         $this->authorize('comment', $ticket);
 
         $user = $request->user();
@@ -48,7 +55,41 @@ class TicketCommentController extends Controller
             'body' => $request->validated('body'),
         ]);
 
+        $isRequesterComment = $profile
+            && $profile->role === HelpdeskProfile::ROLE_USER
+            && ! $wantsInternal;
+
+        $ticketReopened = false;
+        if (
+            $isRequesterComment
+            && $request->boolean('reopen_ticket')
+            && HelpdeskSetting::requesterUnsatisfiedFollowUpEnabled()
+            && in_array($ticket->status, ['closed', 'resolved', 'awaiting_requester_confirmation'], true)
+        ) {
+            $this->authorize('reopen', $ticket);
+
+            $previousStatus = $ticket->status;
+            $ticket->forceFill([
+                'status' => 'open',
+                'closed_at' => null,
+                'resolved_at' => null,
+                'resolution_confirmed_at' => null,
+                'resolution_confirm_token' => null,
+            ])->save();
+
+            $logger->log($ticket, 'ticket.reopened', $user->id, [
+                'previous_status' => $previousStatus,
+                'via' => 'requester_comment',
+            ]);
+            $ticketReopened = true;
+        }
+
+        if ($isRequesterComment && HelpdeskSetting::requesterUnsatisfiedFollowUpEnabled()) {
+            $notifier->notifyAssigneeOnRequesterComment($ticket, $comment, $user, $ticketReopened);
+        }
+
         return (new TicketCommentResource($comment->load('user')))
+            ->additional(['meta' => ['ticket_reopened' => $ticketReopened]])
             ->response()
             ->setStatusCode(201);
     }

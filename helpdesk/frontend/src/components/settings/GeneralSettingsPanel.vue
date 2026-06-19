@@ -166,6 +166,7 @@ async function saveGeneral() {
       branding_secondary_hex: ctx.form.branding_secondary_hex || null,
       default_agent_division_ids: ctx.form.default_agent_division_ids.trim() || null,
       require_resolution_confirmation: ctx.form.require_resolution_confirmation,
+      requester_unsatisfied_follow_up_enabled: ctx.form.requester_unsatisfied_follow_up_enabled,
     },
     "General settings saved.",
   )
@@ -273,20 +274,102 @@ function roleLabel(c: CandidateRow): string {
 </script>
 
 <template>
-  <section class="panel" aria-labelledby="general-heading">
-    <h2 id="general-heading">Branding &amp; workflow</h2>
-    <p class="hint">URS §22 (branding colours) and agent onboarding / resolution workflow.</p>
+  <section class="general-panel" aria-labelledby="general-heading">
+    <header class="general-hero">
+      <div>
+        <h2 id="general-heading">General settings</h2>
+        <p class="hero-lede">
+          Branding, requester follow-up on closed tickets, and how staff become Helpdesk agents.
+        </p>
+      </div>
+    </header>
 
-    <div class="card">
-      <h3>Branding</h3>
-      <label>Primary colour (hex)
-        <input v-model="ctx.form.branding_primary_hex" type="text" pattern="^#[0-9A-Fa-f]{6}$" />
-      </label>
-      <label>Secondary / accent gold (hex)
-        <input v-model="ctx.form.branding_secondary_hex" type="text" pattern="^#[0-9A-Fa-f]{6}$" />
-      </label>
+    <div class="settings-grid">
+      <article class="settings-card settings-card--branding">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true">🎨</span>
+          <div>
+            <h3>Branding</h3>
+            <p class="card-lede">Colours used across the IT Service Desk portal.</p>
+          </div>
+        </header>
+        <div class="color-grid">
+          <label class="color-field">
+            <span>Primary colour</span>
+            <div class="color-input-row">
+              <input
+                v-model="ctx.form.branding_primary_hex"
+                type="color"
+                class="color-swatch-input"
+                :aria-label="'Primary colour picker'"
+              />
+              <input
+                v-model="ctx.form.branding_primary_hex"
+                type="text"
+                pattern="^#[0-9A-Fa-f]{6}$"
+                placeholder="#0d7a3a"
+              />
+            </div>
+          </label>
+          <label class="color-field">
+            <span>Accent gold</span>
+            <div class="color-input-row">
+              <input
+                v-model="ctx.form.branding_secondary_hex"
+                type="color"
+                class="color-swatch-input"
+                :aria-label="'Accent colour picker'"
+              />
+              <input
+                v-model="ctx.form.branding_secondary_hex"
+                type="text"
+                pattern="^#[0-9A-Fa-f]{6}$"
+                placeholder="#c9a227"
+              />
+            </div>
+          </label>
+        </div>
+      </article>
 
-      <h3>Workflow</h3>
+      <article class="settings-card settings-card--requester">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true">💬</span>
+          <div>
+            <h3>Requester follow-up</h3>
+            <p class="card-lede">
+              When a requester comments on a closed ticket, they can reopen it if unsatisfied and the assigned agent is emailed.
+            </p>
+          </div>
+        </header>
+        <label class="toggle-row">
+          <input
+            v-model="ctx.form.requester_unsatisfied_follow_up_enabled"
+            type="checkbox"
+            class="toggle-input"
+          />
+          <span class="toggle-ui" aria-hidden="true" />
+          <span class="toggle-copy">
+            <strong>Allow reopen via comment &amp; email agent</strong>
+            <span class="toggle-hint">
+              Enabled by default. Requesters see a “reopen this ticket” option when posting a comment on closed tickets;
+              agents receive the comment in their inbox.
+            </span>
+          </span>
+        </label>
+      </article>
+    </div>
+
+    <article class="settings-card settings-card--agents">
+      <header class="card-head">
+        <span class="card-icon" aria-hidden="true">👥</span>
+        <div>
+          <h3>Agent onboarding</h3>
+          <p class="card-lede">
+            Staff in selected divisions become agents on SSO unless they are portal admins. Mark individuals explicitly when needed.
+          </p>
+        </div>
+      </header>
+
       <div class="field-block">
         <span class="label">Default agent divisions</span>
         <p class="hint-tight">
@@ -352,7 +435,7 @@ function roleLabel(c: CandidateRow): string {
       </div>
 
       <!-- Division agents register -->
-      <div class="field-block">
+      <div class="field-block field-block--agents">
         <div class="agents-head">
           <div>
             <span class="label">Agents from selected divisions</span>
@@ -466,16 +549,172 @@ function roleLabel(c: CandidateRow): string {
         </p>
       </div>
 
-      <div class="actions">
+      <div class="actions actions--sticky">
         <button type="button" class="primary" :disabled="ctx.busy" @click="saveGeneral()">
-          {{ ctx.busy ? "Saving…" : "Save general" }}
+          {{ ctx.busy ? "Saving…" : "Save general settings" }}
         </button>
       </div>
-    </div>
+    </article>
   </section>
 </template>
 
 <style scoped>
+.general-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.general-hero h2 {
+  font-size: 1.35rem;
+  margin: 0 0 0.35rem;
+  color: var(--cdc-ink, #0c1a12);
+}
+.hero-lede {
+  margin: 0;
+  color: var(--cdc-ink-muted, #3d5247);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  max-width: 42rem;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+}
+.settings-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  padding: 1rem 1.1rem 1.1rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.settings-card--agents {
+  padding-bottom: 0.5rem;
+}
+.card-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.85rem;
+}
+.card-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+.card-head h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1rem;
+  color: var(--cdc-ink, #0c1a12);
+}
+.card-lede {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+.color-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+.color-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+}
+.color-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.color-input-row input[type='text'] {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+}
+.color-swatch-input {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+}
+.toggle-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  cursor: pointer;
+}
+.toggle-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.toggle-ui {
+  flex-shrink: 0;
+  width: 2.4rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: #cbd5e1;
+  position: relative;
+  margin-top: 0.15rem;
+  transition: background 0.15s ease;
+}
+.toggle-ui::after {
+  content: '';
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
+  transition: transform 0.15s ease;
+}
+.toggle-input:checked + .toggle-ui {
+  background: var(--cdc-green, #0d7a3a);
+}
+.toggle-input:checked + .toggle-ui::after {
+  transform: translateX(1.05rem);
+}
+.toggle-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.88rem;
+  color: #334155;
+}
+.toggle-hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.45;
+}
+.field-block--agents {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+}
+.actions--sticky {
+  position: sticky;
+  bottom: 0;
+  margin-top: 1rem;
+  padding: 0.85rem 0 0.25rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #fff 35%);
+}
 .panel h2 {
   font-size: 1.1rem;
   margin: 0 0 0.35rem;

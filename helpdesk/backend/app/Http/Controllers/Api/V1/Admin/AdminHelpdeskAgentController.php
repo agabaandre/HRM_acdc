@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskProfile;
 use App\Models\User;
+use App\Services\AgentCategoryRoutingService;
 use App\Services\HelpdeskPermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class AdminHelpdeskAgentController extends Controller
 
     public function __construct(
         private readonly HelpdeskPermissionService $permissions,
+        private readonly AgentCategoryRoutingService $routing,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -23,7 +25,7 @@ class AdminHelpdeskAgentController extends Controller
 
         $agents = User::query()
             ->whereHas('helpdeskProfile', fn ($q) => $q->where('role', HelpdeskProfile::ROLE_AGENT))
-            ->with(['helpdeskProfile', 'helpdeskAgentCategories:id,name,slug'])
+            ->with(['helpdeskProfile', 'helpdeskAgentCategories:id,name,slug', 'helpdeskSupportGroups:id,name,slug'])
             ->orderBy('name')
             ->get();
 
@@ -43,6 +45,13 @@ class AdminHelpdeskAgentController extends Controller
                 'id' => $c->id,
                 'name' => $c->name,
             ]),
+            'support_groups' => $u->helpdeskSupportGroups->map(fn ($g) => [
+                'id' => $g->id,
+                'name' => $g->name,
+                'slug' => $g->slug,
+            ]),
+            'inherited_categories' => $this->routing->groupInheritedCategoriesForUser($u->id),
+            'effective_categories' => $this->routing->inheritedCategoriesForUser($u->id),
         ]);
 
         return response()->json(['data' => $data]);
@@ -55,6 +64,8 @@ class AdminHelpdeskAgentController extends Controller
         $validated = $request->validate([
             'category_ids' => ['present', 'array'],
             'category_ids.*' => ['integer', 'exists:helpdesk_categories,id'],
+            'support_group_ids' => ['sometimes', 'array'],
+            'support_group_ids.*' => ['integer', 'exists:helpdesk_support_groups,id'],
             'can_manage_kb' => ['sometimes', 'boolean'],
             'can_reassign_tickets' => ['sometimes', 'boolean'],
             'grant_helpdesk_admin' => ['sometimes', 'boolean'],
@@ -85,7 +96,10 @@ class AdminHelpdeskAgentController extends Controller
         $profile->save();
 
         $user->helpdeskAgentCategories()->sync($validated['category_ids']);
-        $user->load(['helpdeskProfile', 'helpdeskAgentCategories:id,name']);
+        if (array_key_exists('support_group_ids', $validated)) {
+            $user->helpdeskSupportGroups()->sync($validated['support_group_ids']);
+        }
+        $user->load(['helpdeskProfile', 'helpdeskAgentCategories:id,name', 'helpdeskSupportGroups:id,name,slug']);
 
         return response()->json([
             'data' => [
@@ -101,6 +115,13 @@ class AdminHelpdeskAgentController extends Controller
                     'id' => $c->id,
                     'name' => $c->name,
                 ]),
+                'support_groups' => $user->helpdeskSupportGroups->map(fn ($g) => [
+                    'id' => $g->id,
+                    'name' => $g->name,
+                    'slug' => $g->slug,
+                ]),
+                'inherited_categories' => $this->routing->inheritedCategoriesForUser($user->id),
+                'effective_categories' => $this->routing->inheritedCategoriesForUser($user->id),
             ],
         ]);
     }

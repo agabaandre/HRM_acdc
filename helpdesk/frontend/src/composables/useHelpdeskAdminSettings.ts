@@ -14,6 +14,7 @@ export interface HelpdeskSettingsPayload {
   branding_secondary_hex: string | null
   default_agent_division_ids: string | null
   require_resolution_confirmation: boolean
+  requester_unsatisfied_follow_up_enabled: boolean
   ai_api_key: string
   ai_api_key_configured: boolean
 }
@@ -29,6 +30,7 @@ export interface HelpdeskAdminSettingsForm {
   branding_secondary_hex: string
   default_agent_division_ids: string
   require_resolution_confirmation: boolean
+  requester_unsatisfied_follow_up_enabled: boolean
   ai_api_key: string
 }
 
@@ -57,6 +59,7 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
     branding_secondary_hex: '',
     default_agent_division_ids: '21',
     require_resolution_confirmation: true,
+    requester_unsatisfied_follow_up_enabled: true,
     ai_api_key: '',
   })
 
@@ -74,6 +77,7 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
       form.branding_secondary_hex = d.branding_secondary_hex ?? '#c9a227'
       form.default_agent_division_ids = d.default_agent_division_ids ?? '21'
       form.require_resolution_confirmation = Boolean(d.require_resolution_confirmation)
+      form.requester_unsatisfied_follow_up_enabled = d.requester_unsatisfied_follow_up_enabled !== false
       form.ai_api_key = ''
       keyConfigured.value = Boolean(d.ai_api_key_configured)
     } catch (e: unknown) {

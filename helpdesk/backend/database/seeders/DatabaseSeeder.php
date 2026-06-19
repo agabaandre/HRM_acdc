@@ -26,5 +26,6 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(HelpdeskCategorySeeder::class);
+        $this->call(HelpdeskSupportGroupSeeder::class);
     }
 }

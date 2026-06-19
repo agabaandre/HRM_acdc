@@ -44,7 +44,7 @@ interface RecentRow {
   created_at?: string | null
 }
 
-type FilterKey = 'all' | 'pending' | 'awaiting' | 'overdue' | 'high'
+type FilterKey = 'all' | 'pending' | 'awaiting' | 'overdue' | 'due_today' | 'high' | 'resolved'
 
 interface EligibleAgent {
   id: number
@@ -63,6 +63,7 @@ const breakdown = ref<Breakdown | null>(null)
 const recent = ref<RecentRow[]>([])
 const generatedAt = ref<string | null>(null)
 const activeFilter = ref<FilterKey>('all')
+const recentSectionRef = ref<HTMLElement | null>(null)
 const workModeSaving = ref<'remote' | 'onsite' | 'clear' | null>(null)
 
 const canReassign = computed(() => {
@@ -185,7 +186,9 @@ const filterChips = computed(() => {
     { key: 'pending' as FilterKey, label: 'Open queue', count: counts.value.pending },
     { key: 'awaiting' as FilterKey, label: 'Awaiting confirm', count: counts.value.awaiting_requester_confirmation },
     { key: 'overdue' as FilterKey, label: 'Overdue', count: counts.value.overdue },
+    { key: 'due_today' as FilterKey, label: 'Due today', count: counts.value.due_today },
     { key: 'high' as FilterKey, label: 'High priority', count: counts.value.high_priority_pending },
+    { key: 'resolved' as FilterKey, label: 'Resolved (7 days)', count: counts.value.resolved_this_week },
   ]
 })
 
@@ -199,6 +202,33 @@ function isOverdue(row: RecentRow): boolean {
   if (!row.sla_resolution_due_at) return false
   if (['resolved', 'closed', 'awaiting_requester_confirmation'].includes(row.status)) return false
   return new Date(row.sla_resolution_due_at).getTime() < now.value
+}
+
+function isDueToday(row: RecentRow): boolean {
+  if (!row.sla_resolution_due_at) return false
+  if (['resolved', 'closed', 'awaiting_requester_confirmation'].includes(row.status)) return false
+  const due = new Date(row.sla_resolution_due_at)
+  if (Number.isNaN(due.getTime())) return false
+  const today = new Date(now.value)
+  return (
+    due.getFullYear() === today.getFullYear()
+    && due.getMonth() === today.getMonth()
+    && due.getDate() === today.getDate()
+  )
+}
+
+function focusFilter(key: FilterKey): void {
+  activeFilter.value = key
+  requestAnimationFrame(() => {
+    recentSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+function onKpiKeydown(event: KeyboardEvent, key: FilterKey): void {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    focusFilter(key)
+  }
 }
 
 function canReassignRow(row: RecentRow): boolean {
@@ -268,8 +298,12 @@ const filteredRecent = computed<RecentRow[]>(() => {
       return rows.filter((r) => r.status === 'awaiting_requester_confirmation')
     case 'overdue':
       return rows.filter(isOverdue)
+    case 'due_today':
+      return rows.filter(isDueToday)
     case 'high':
-      return rows.filter((r) => ['high', 'urgent'].includes(r.priority))
+      return rows.filter((r) => ['high', 'urgent'].includes(r.priority) && ['open', 'pending', 'in_progress'].includes(r.status))
+    case 'resolved':
+      return rows.filter((r) => ['resolved', 'closed'].includes(r.status))
     case 'all':
     default:
       return rows
@@ -391,7 +425,15 @@ onUnmounted(() => {
     <template v-if="counts">
       <!-- KPI cards -->
       <section class="kpis" aria-label="Key metrics">
-        <article class="kpi kpi-pending">
+        <article
+          class="kpi kpi-pending kpi-action"
+          :class="{ 'kpi-active': activeFilter === 'pending' }"
+          role="button"
+          tabindex="0"
+          aria-label="Open queue — view tickets you are working on"
+          @click="focusFilter('pending')"
+          @keydown="onKpiKeydown($event, 'pending')"
+        >
           <header>
             <span class="kpi-icon" aria-hidden="true">🗂</span>
             <span class="kpi-label">Open queue</span>
@@ -400,7 +442,15 @@ onUnmounted(() => {
           <p class="kpi-sub">Tickets you're working on</p>
         </article>
 
-        <article class="kpi kpi-awaiting">
+        <article
+          class="kpi kpi-awaiting kpi-action"
+          :class="{ 'kpi-active': activeFilter === 'awaiting' }"
+          role="button"
+          tabindex="0"
+          aria-label="Awaiting confirm — view tickets waiting on requester"
+          @click="focusFilter('awaiting')"
+          @keydown="onKpiKeydown($event, 'awaiting')"
+        >
           <header>
             <span class="kpi-icon" aria-hidden="true">⏳</span>
             <span class="kpi-label">Awaiting confirm</span>
@@ -409,7 +459,15 @@ onUnmounted(() => {
           <p class="kpi-sub">Resolution sent — waiting on requester</p>
         </article>
 
-        <article class="kpi kpi-overdue" :class="{ alert: counts.overdue > 0 }">
+        <article
+          class="kpi kpi-overdue kpi-action"
+          :class="{ alert: counts.overdue > 0, 'kpi-active': activeFilter === 'overdue' }"
+          role="button"
+          tabindex="0"
+          aria-label="Overdue — view tickets past SLA"
+          @click="focusFilter('overdue')"
+          @keydown="onKpiKeydown($event, 'overdue')"
+        >
           <header>
             <span class="kpi-icon" aria-hidden="true">⚠️</span>
             <span class="kpi-label">Overdue</span>
@@ -418,7 +476,15 @@ onUnmounted(() => {
           <p class="kpi-sub">{{ counts.overdue > 0 ? 'Past SLA — handle now' : 'No SLA breaches' }}</p>
         </article>
 
-        <article class="kpi kpi-due-today">
+        <article
+          class="kpi kpi-due-today kpi-action"
+          :class="{ 'kpi-active': activeFilter === 'due_today' }"
+          role="button"
+          tabindex="0"
+          aria-label="Due today — view tickets with SLA expiring today"
+          @click="focusFilter('due_today')"
+          @keydown="onKpiKeydown($event, 'due_today')"
+        >
           <header>
             <span class="kpi-icon" aria-hidden="true">📅</span>
             <span class="kpi-label">Due today</span>
@@ -427,7 +493,15 @@ onUnmounted(() => {
           <p class="kpi-sub">SLA expires before midnight</p>
         </article>
 
-        <article class="kpi kpi-high">
+        <article
+          class="kpi kpi-high kpi-action"
+          :class="{ 'kpi-active': activeFilter === 'high' }"
+          role="button"
+          tabindex="0"
+          aria-label="High priority — view urgent open tickets"
+          @click="focusFilter('high')"
+          @keydown="onKpiKeydown($event, 'high')"
+        >
           <header>
             <span class="kpi-icon" aria-hidden="true">🔥</span>
             <span class="kpi-label">High priority</span>
@@ -436,7 +510,15 @@ onUnmounted(() => {
           <p class="kpi-sub">High or urgent — still open</p>
         </article>
 
-        <article class="kpi kpi-resolved">
+        <article
+          class="kpi kpi-resolved kpi-action"
+          :class="{ 'kpi-active': activeFilter === 'resolved' }"
+          role="button"
+          tabindex="0"
+          aria-label="Resolved — view recently resolved tickets"
+          @click="focusFilter('resolved')"
+          @keydown="onKpiKeydown($event, 'resolved')"
+        >
           <header>
             <span class="kpi-icon" aria-hidden="true">✅</span>
             <span class="kpi-label">Resolved (7 days)</span>
@@ -498,7 +580,7 @@ onUnmounted(() => {
       </section>
 
       <!-- Recent activity -->
-      <section class="cbp-card recent" aria-labelledby="recent-heading">
+      <section ref="recentSectionRef" class="cbp-card recent" aria-labelledby="recent-heading">
         <header class="recent-head">
           <div>
             <h2 id="recent-heading">Recent tickets</h2>
@@ -516,7 +598,7 @@ onUnmounted(() => {
             class="chip"
             :class="{ 'is-active': activeFilter === c.key, 'chip-warn': c.key === 'overdue' && c.count > 0, 'chip-hot': c.key === 'high' && c.count > 0 }"
             :aria-selected="activeFilter === c.key"
-            @click="activeFilter = c.key"
+            @click="focusFilter(c.key)"
           >
             {{ c.label }} <span class="chip-count">{{ c.count }}</span>
           </button>
@@ -860,6 +942,18 @@ onUnmounted(() => {
 .kpi:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+.kpi-action {
+  cursor: pointer;
+  user-select: none;
+}
+.kpi-action:focus-visible {
+  outline: 2px solid #0d7a3a;
+  outline-offset: 2px;
+}
+.kpi-active {
+  border-color: var(--kpi-accent, #119a48);
+  box-shadow: 0 0 0 2px var(--kpi-accent-soft, rgba(17, 154, 72, 0.2)), 0 6px 18px rgba(15, 23, 42, 0.08);
 }
 .kpi::before {
   content: '';

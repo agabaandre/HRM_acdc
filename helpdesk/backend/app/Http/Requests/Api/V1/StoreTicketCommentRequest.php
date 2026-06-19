@@ -19,6 +19,7 @@ class StoreTicketCommentRequest extends FormRequest
         return [
             'body' => ['required', 'string', 'max:65535'],
             'is_internal' => ['sometimes', 'boolean'],
+            'reopen_ticket' => ['sometimes', 'boolean'],
         ];
     }
 }
