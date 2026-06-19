@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Models\ApproverDocumentTimingRecord;
 use App\Models\Division;
 use App\Models\Staff;
@@ -11,6 +12,8 @@ use Illuminate\View\View;
 
 class ApproverDocumentTimingReportController extends Controller
 {
+    use CachesApmPageResponses;
+
     public function __construct(
         protected ApproverDocumentTimingService $timingService
     ) {}
@@ -19,86 +22,95 @@ class ApproverDocumentTimingReportController extends Controller
     {
         approver_timing_report_authorize_web_request($request);
 
-        $staffId = approver_timing_report_effective_staff_id($request);
-        $divisionId = $request->filled('division_id') ? (int) $request->division_id : null;
-        $documentType = $request->filled('document_type') ? (string) $request->document_type : null;
-        $year = $request->filled('year') ? (int) $request->year : null;
-        $month = $request->filled('month') ? (int) $request->month : null;
-        $search = $request->filled('q') ? trim((string) $request->q) : null;
+        return $this->apmCachedView(
+            'reports',
+            $request,
+            'reports.approver-document-timing.index',
+            ['staff_id', 'division_id', 'document_type', 'year', 'month', 'q', 'page'],
+            function () use ($request): array {
+                $staffId = approver_timing_report_effective_staff_id($request);
+                $divisionId = $request->filled('division_id') ? (int) $request->division_id : null;
+                $documentType = $request->filled('document_type') ? (string) $request->document_type : null;
+                $year = $request->filled('year') ? (int) $request->year : null;
+                $month = $request->filled('month') ? (int) $request->month : null;
+                $search = $request->filled('q') ? trim((string) $request->q) : null;
 
-        $baseQuery = ApproverDocumentTimingRecord::query()
-            ->when($staffId !== null && $staffId > 0, fn ($q) => $q->where('staff_id', $staffId))
-            ->when($divisionId, fn ($q) => $q->where('division_id', $divisionId))
-            ->when($documentType, fn ($q) => $q->where('document_type_label', $documentType))
-            ->when($year, fn ($q) => $q->whereYear('acted_at', $year))
-            ->when($month, fn ($q) => $q->whereMonth('acted_at', $month))
-            ->when($search, function ($q) use ($search): void {
-                $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $search).'%';
-                $q->where(function ($q2) use ($like): void {
-                    $q2->where('document_title', 'like', $like)
-                        ->orWhere('document_number_snapshot', 'like', $like)
-                        ->orWhere('staff_name_snapshot', 'like', $like)
-                        ->orWhere('workflow_role_snapshot', 'like', $like);
-                });
-            });
+                $baseQuery = ApproverDocumentTimingRecord::query()
+                    ->when($staffId !== null && $staffId > 0, fn ($q) => $q->where('staff_id', $staffId))
+                    ->when($divisionId, fn ($q) => $q->where('division_id', $divisionId))
+                    ->when($documentType, fn ($q) => $q->where('document_type_label', $documentType))
+                    ->when($year, fn ($q) => $q->whereYear('acted_at', $year))
+                    ->when($month, fn ($q) => $q->whereMonth('acted_at', $month))
+                    ->when($search, function ($q) use ($search): void {
+                        $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $search).'%';
+                        $q->where(function ($q2) use ($like): void {
+                            $q2->where('document_title', 'like', $like)
+                                ->orWhere('document_number_snapshot', 'like', $like)
+                                ->orWhere('staff_name_snapshot', 'like', $like)
+                                ->orWhere('workflow_role_snapshot', 'like', $like);
+                        });
+                    });
 
-        $summaryQuery = clone $baseQuery;
+                $summaryQuery = clone $baseQuery;
 
-        $records = (clone $baseQuery)
-            ->orderByDesc('acted_at')
-            ->paginate(40)
-            ->withQueryString();
+                $records = (clone $baseQuery)
+                    ->orderByDesc('acted_at')
+                    ->paginate(40)
+                    ->withQueryString();
 
-        $totalRows = (clone $summaryQuery)->count();
-        $avgHours = null;
-        $totalHours = 0.0;
-        if ($totalRows > 0) {
-            $avgHours = round((float) (clone $summaryQuery)->avg('hours_elapsed'), 2);
-            $totalHours = round((float) (clone $summaryQuery)->sum('hours_elapsed'), 2);
-        }
+                $totalRows = (clone $summaryQuery)->count();
+                $avgHours = null;
+                $totalHours = 0.0;
+                if ($totalRows > 0) {
+                    $avgHours = round((float) (clone $summaryQuery)->avg('hours_elapsed'), 2);
+                    $totalHours = round((float) (clone $summaryQuery)->sum('hours_elapsed'), 2);
+                }
 
-        $staffIdsWithData = ApproverDocumentTimingRecord::query()->distinct()->orderBy('staff_id')->pluck('staff_id');
-        if (! approver_timing_report_can_view_all()) {
-            $ownId = (int) user_session('staff_id');
-            $staffIdsWithData = $staffIdsWithData->filter(fn ($id): bool => (int) $id === $ownId)->values();
-        }
+                $staffIdsWithData = ApproverDocumentTimingRecord::query()->distinct()->orderBy('staff_id')->pluck('staff_id');
+                if (! approver_timing_report_can_view_all()) {
+                    $ownId = (int) user_session('staff_id');
+                    $staffIdsWithData = $staffIdsWithData->filter(fn ($id): bool => (int) $id === $ownId)->values();
+                }
 
-        $staffOptions = Staff::query()
-            ->whereIn('staff_id', $staffIdsWithData)
-            ->orderBy('fname')
-            ->orderBy('lname')
-            ->get();
+                $staffOptions = Staff::query()
+                    ->whereIn('staff_id', $staffIdsWithData)
+                    ->orderBy('fname')
+                    ->orderBy('lname')
+                    ->get();
 
-        $documentTypes = ApproverDocumentTimingRecord::query()
-            ->whereNotNull('document_type_label')
-            ->distinct()
-            ->orderBy('document_type_label')
-            ->pluck('document_type_label');
+                $documentTypes = ApproverDocumentTimingRecord::query()
+                    ->whereNotNull('document_type_label')
+                    ->distinct()
+                    ->orderBy('document_type_label')
+                    ->pluck('document_type_label');
 
-        $divisions = Division::orderBy('division_name')->get();
+                $divisions = Division::orderBy('division_name')->get();
 
-        return view('reports.approver-document-timing.index', [
-            'records' => $records,
-            'staffOptions' => $staffOptions,
-            'divisions' => $divisions,
-            'documentTypes' => $documentTypes,
-            'reportFullAccess' => approver_timing_report_can_view_all(),
-            'filters' => [
-                'staff_id' => $staffId,
-                'division_id' => $divisionId,
-                'document_type' => $documentType,
-                'year' => $year,
-                'month' => $month,
-                'q' => $search,
-            ],
-            'summary' => [
-                'total_rows' => $totalRows,
-                'avg_hours' => $avgHours,
-                'total_hours' => $totalHours,
-                'avg_display' => $avgHours === null ? '—' : $this->formatHoursForDisplay((float) $avgHours),
-            ],
-            'timingService' => $this->timingService,
-        ]);
+                return [
+                    'records' => $records,
+                    'staffOptions' => $staffOptions,
+                    'divisions' => $divisions,
+                    'documentTypes' => $documentTypes,
+                    'reportFullAccess' => approver_timing_report_can_view_all(),
+                    'filters' => [
+                        'staff_id' => $staffId,
+                        'division_id' => $divisionId,
+                        'document_type' => $documentType,
+                        'year' => $year,
+                        'month' => $month,
+                        'q' => $search,
+                    ],
+                    'summary' => [
+                        'total_rows' => $totalRows,
+                        'avg_hours' => $avgHours,
+                        'total_hours' => $totalHours,
+                        'avg_display' => $avgHours === null ? '—' : $this->formatHoursForDisplay((float) $avgHours),
+                    ],
+                    'timingService' => $this->timingService,
+                ];
+            },
+            ['report' => 'approver_document_timing']
+        );
     }
 
     public function exportCsv(Request $request)

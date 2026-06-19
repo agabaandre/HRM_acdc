@@ -30,10 +30,12 @@ use App\Services\ApprovalService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use function PHPUnit\Framework\isEmpty;
+use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
 
 class ActivityController extends Controller
 {
+    use CachesApmPageResponses;
     use SendsSelfDocumentPdfEmail;
 
     
@@ -2289,6 +2291,30 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         if (!str_starts_with($selectedQuarter, 'Q')) {
             $selectedQuarter = 'Q' . $selectedQuarter;
         }
+
+        if (\App\Support\ApmListFragment::wants($request)) {
+            $fragmentKey = $this->apmCacheKeyFromRequest($request, [
+                'tab', 'page', 'year', 'quarter', 'division_id', 'document_number',
+                'staff_id', 'status', 'search',
+            ], ['fragment' => $request->get('tab', '')]);
+            if (! $request->boolean('nocache')) {
+                $cachedFragment = \App\Services\ApmPageCache::get('activities', $fragmentKey);
+                if (is_array($cachedFragment)) {
+                    return \App\Support\ApmListFragment::json($cachedFragment);
+                }
+            }
+        } else {
+            $pageKey = $this->apmCacheKeyFromRequest($request, [
+                'page', 'tab', 'year', 'quarter', 'division_id', 'document_number',
+                'staff_id', 'status', 'search',
+            ], ['page' => 'index']);
+            if (! $request->boolean('nocache')) {
+                $cachedPage = \App\Services\ApmPageCache::get('activities', $pageKey);
+                if (is_array($cachedPage)) {
+                    return view('activities.index', $cachedPage);
+                }
+            }
+        }
         
         // Base query for activities - show ALL activities regardless of approval status
         $baseQuery = Activity::with([
@@ -2460,12 +2486,17 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         // Handle AJAX requests for tab content only (not initial Livewire navigation)
         if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
+            $fragmentKey = $this->apmCacheKeyFromRequest($request, [
+                'tab', 'page', 'year', 'quarter', 'division_id', 'document_number',
+                'staff_id', 'status', 'search',
+            ], ['fragment' => $tab]);
+
             $html = '';
             $countAll = $allActivities->total();
             $countMyDivision = $myDivisionActivities->total();
             $countShared = $sharedActivities->total();
 
-            switch($tab) {
+            switch ($tab) {
                 case 'all-activities':
                     $html = view('activities.partials.all-activities-tab', compact(
                         'allActivities',
@@ -2504,17 +2535,20 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                     break;
             }
 
-            return \App\Support\ApmListFragment::json([
+            $payload = [
                 'html' => $html,
                 'count_all_activities' => $countAll,
                 'count_my_division' => $countMyDivision,
                 'count_shared_activities' => $countShared,
-            ]);
+            ];
+            \App\Services\ApmPageCache::put('activities', $fragmentKey, $payload);
+
+            return \App\Support\ApmListFragment::json($payload);
         }
-        
-        return view('activities.index', compact(
+
+        $viewData = compact(
             'allActivities',
-            'myDivisionActivities', 
+            'myDivisionActivities',
             'sharedActivities',
             'divisions',
             'staff',
@@ -2528,7 +2562,10 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'selectedStatus',
             'searchTerm',
             'userDivisionId'
-        ));
+        );
+        \App\Services\ApmPageCache::put('activities', $pageKey, $viewData);
+
+        return view('activities.index', $viewData);
     }
 
     /**

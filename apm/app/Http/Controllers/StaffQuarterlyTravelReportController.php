@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Models\Activity;
 use App\Models\Division;
 use App\Models\Matrix;
@@ -12,6 +13,8 @@ use Illuminate\View\View;
 
 class StaffQuarterlyTravelReportController extends Controller
 {
+    use CachesApmPageResponses;
+
     /**
      * Only users with session role 10 (admin) may access this report.
      */
@@ -66,29 +69,36 @@ class StaffQuarterlyTravelReportController extends Controller
             'sort_dir' => 'nullable|string|in:asc,desc',
         ]);
 
-        $rows = $this->buildReportData(
-            $request->get('division_id') ? (int) $request->get('division_id') : null,
-            $request->get('staff_id') ? (int) $request->get('staff_id') : null,
-            $request->get('year') ? (int) $request->get('year') : null,
-            $request->get('quarter') ?: null
-        );
+        $keyParts = $this->apmCacheKeyFromRequest($request, [
+            'division_id', 'staff_id', 'year', 'quarter', 'sort_column', 'sort_dir',
+        ], ['report' => 'staff_quarterly_travel']);
 
-        $sortColumn = $request->get('sort_column', 'division_name');
-        $sortDir = strtolower($request->get('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        usort($rows, function ($a, $b) use ($sortColumn, $sortDir) {
-            $va = $a[$sortColumn] ?? '';
-            $vb = $b[$sortColumn] ?? '';
-            if (in_array($sortColumn, ['activity_count', 'approved_travel_days'], true)) {
-                $va = (int) $va;
-                $vb = (int) $vb;
-                $cmp = $va <=> $vb;
-            } else {
-                $cmp = strcmp((string) $va, (string) $vb);
-            }
-            return $sortDir === 'desc' ? -$cmp : $cmp;
+        return $this->apmCachedJson('reports', $request, $keyParts, function () use ($request) {
+            $rows = $this->buildReportData(
+                $request->get('division_id') ? (int) $request->get('division_id') : null,
+                $request->get('staff_id') ? (int) $request->get('staff_id') : null,
+                $request->get('year') ? (int) $request->get('year') : null,
+                $request->get('quarter') ?: null
+            );
+
+            $sortColumn = $request->get('sort_column', 'division_name');
+            $sortDir = strtolower($request->get('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+            usort($rows, function ($a, $b) use ($sortColumn, $sortDir) {
+                $va = $a[$sortColumn] ?? '';
+                $vb = $b[$sortColumn] ?? '';
+                if (in_array($sortColumn, ['activity_count', 'approved_travel_days'], true)) {
+                    $va = (int) $va;
+                    $vb = (int) $vb;
+                    $cmp = $va <=> $vb;
+                } else {
+                    $cmp = strcmp((string) $va, (string) $vb);
+                }
+
+                return $sortDir === 'desc' ? -$cmp : $cmp;
+            });
+
+            return response()->json(['success' => true, 'data' => $rows]);
         });
-
-        return response()->json(['success' => true, 'data' => $rows]);
     }
 
     /**

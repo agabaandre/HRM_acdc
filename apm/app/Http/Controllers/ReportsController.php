@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Models\Activity;
 use App\Models\ChangeRequest;
 use App\Models\Division;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
 {
+    use CachesApmPageResponses;
+
     /** Default year for filters: current year. Use "all" for all years. */
     private function defaultYear(Request $request)
     {
@@ -375,45 +378,52 @@ class ReportsController extends Controller
      */
     public function divisionCountsData(Request $request)
     {
-        $memoType = $request->filled('memo_type') ? $request->memo_type : null;
-        $counts = $this->getDivisionCountsByMemoType($request, $memoType);
-        $divisionIds = $counts->keys()->filter()->unique()->values()->toArray();
-        $divisionsForCounts = Division::whereIn('id', $divisionIds)->get()->keyBy('id');
+        $keyParts = $this->apmCacheKeyFromRequest($request, [
+            'memo_type', 'division', 'year', 'quarter', 'status', 'sort_column', 'sort_dir',
+        ]);
 
-        $sortColumn = $request->get('sort_column', 'division');
-        $sortDir = strtolower($request->get('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        $allowedSort = ['division', 'approved_count', 'pending_count', 'returned_count', 'draft_count', 'total_count'];
-        if (!in_array($sortColumn, $allowedSort, true)) {
-            $sortColumn = 'division';
-        }
+        return $this->apmCachedJson('reports', $request, array_merge($keyParts, ['report' => 'division_counts']), function () use ($request) {
+            $memoType = $request->filled('memo_type') ? $request->memo_type : null;
+            $counts = $this->getDivisionCountsByMemoType($request, $memoType);
+            $divisionIds = $counts->keys()->filter()->unique()->values()->toArray();
+            $divisionsForCounts = Division::whereIn('id', $divisionIds)->get()->keyBy('id');
 
-        $countsArray = $counts->values()->all();
-        usort($countsArray, function ($a, $b) use ($sortColumn, $sortDir, $divisionsForCounts) {
-            if ($sortColumn === 'division') {
-                $divA = $divisionsForCounts->get($a->division_id);
-                $divB = $divisionsForCounts->get($b->division_id);
-                $na = $divA ? $divA->division_name : '';
-                $nb = $divB ? $divB->division_name : '';
-                $cmp = strcmp((string) $na, (string) $nb);
-            } else {
-                $va = (int) ($a->{$sortColumn} ?? 0);
-                $vb = (int) ($b->{$sortColumn} ?? 0);
-                $cmp = $va <=> $vb;
+            $sortColumn = $request->get('sort_column', 'division');
+            $sortDir = strtolower($request->get('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+            $allowedSort = ['division', 'approved_count', 'pending_count', 'returned_count', 'draft_count', 'total_count'];
+            if (! in_array($sortColumn, $allowedSort, true)) {
+                $sortColumn = 'division';
             }
-            return $sortDir === 'asc' ? $cmp : -$cmp;
+
+            $countsArray = $counts->values()->all();
+            usort($countsArray, function ($a, $b) use ($sortColumn, $sortDir, $divisionsForCounts) {
+                if ($sortColumn === 'division') {
+                    $divA = $divisionsForCounts->get($a->division_id);
+                    $divB = $divisionsForCounts->get($b->division_id);
+                    $na = $divA ? $divA->division_name : '';
+                    $nb = $divB ? $divB->division_name : '';
+                    $cmp = strcmp((string) $na, (string) $nb);
+                } else {
+                    $va = (int) ($a->{$sortColumn} ?? 0);
+                    $vb = (int) ($b->{$sortColumn} ?? 0);
+                    $cmp = $va <=> $vb;
+                }
+
+                return $sortDir === 'asc' ? $cmp : -$cmp;
+            });
+
+            $detailsUrl = route('reports.memo-list');
+            $html = view('reports.partials.counts-table', [
+                'counts' => collect($countsArray),
+                'divisionsForCounts' => $divisionsForCounts,
+                'detailsUrl' => $detailsUrl,
+                'request' => $request,
+                'sortColumn' => $sortColumn,
+                'sortDir' => $sortDir,
+            ])->render();
+
+            return response()->json(['html' => $html]);
         });
-
-        $detailsUrl = route('reports.memo-list');
-        $html = view('reports.partials.counts-table', [
-            'counts' => collect($countsArray),
-            'divisionsForCounts' => $divisionsForCounts,
-            'detailsUrl' => $detailsUrl,
-            'request' => $request,
-            'sortColumn' => $sortColumn,
-            'sortDir' => $sortDir,
-        ])->render();
-
-        return response()->json(['html' => $html]);
     }
 
     /**
@@ -461,86 +471,97 @@ class ReportsController extends Controller
      */
     public function memoListData(Request $request)
     {
-        $memoType = $request->filled('memo_type') ? $request->memo_type : null;
-        $perPage = 20;
-        $page = (int) $request->get('page', 1);
-
-        if ($memoType && in_array($memoType, self::MEMO_LIST_DOC_TYPES, true)) {
-            $allRows = $this->getMemoListRowsForType($memoType, $request);
-        } else {
-            $allRows = collect();
-            foreach (self::MEMO_LIST_DOC_TYPES as $type) {
-                $allRows = $allRows->concat($this->getMemoListRowsForType($type, $request));
-            }
-        }
-
-        $sortColumn = $request->get('sort_column', 'year_quarter');
-        $sortDir = strtolower($request->get('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
-        $allowedSort = ['document_number', 'title', 'division_id', 'document_type', 'year_quarter', 'overall_status', 'date_from', 'responsible_person_name'];
-        if (!in_array($sortColumn, $allowedSort, true)) {
-            $sortColumn = 'year_quarter';
-        }
-        $allRows = $allRows->sort(function ($a, $b) use ($sortColumn, $sortDir) {
-            if ($sortColumn === 'year_quarter') {
-                $ya = (int) ($a->year ?? 0);
-                $yb = (int) ($b->year ?? 0);
-                if ($ya !== $yb) {
-                    $cmp = $ya <=> $yb;
-                    return $sortDir === 'asc' ? $cmp : -$cmp;
-                }
-                $oq = ['Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4];
-                $qa = $oq[$a->quarter ?? ''] ?? 0;
-                $qb = $oq[$b->quarter ?? ''] ?? 0;
-                if ($qa !== $qb) {
-                    $cmp = $qa <=> $qb;
-                    return $sortDir === 'asc' ? $cmp : -$cmp;
-                }
-                $ta = $a->created_at ? \Carbon\Carbon::parse($a->created_at)->timestamp : 0;
-                $tb = $b->created_at ? \Carbon\Carbon::parse($b->created_at)->timestamp : 0;
-                $cmp = $ta <=> $tb;
-                return $sortDir === 'asc' ? $cmp : -$cmp;
-            }
-            $va = $a->{$sortColumn} ?? '';
-            $vb = $b->{$sortColumn} ?? '';
-            if (in_array($sortColumn, ['date_from'], true) && ($va || $vb)) {
-                $va = $va ? \Carbon\Carbon::parse($va)->format('Y-m-d') : '';
-                $vb = $vb ? \Carbon\Carbon::parse($vb)->format('Y-m-d') : '';
-            }
-            $cmp = strcmp((string) $va, (string) $vb);
-            return $sortDir === 'asc' ? $cmp : -$cmp;
-        })->values();
-
-        $total = $allRows->count();
-        $slice = $allRows->slice(($page - 1) * $perPage, $perPage)->values();
-        $paginator = new LengthAwarePaginator(
-            $slice,
-            $total,
-            $perPage,
-            $page,
-            ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $request->query()]
-        );
-
-        $divisions = Division::orderBy('division_name')->get();
-        $memoTypeLabels = DocumentCounter::getDocumentTypes();
-
-        $html = view('reports.partials.memo-list-table', [
-            'memoList' => $paginator,
-            'divisions' => $divisions,
-            'memoTypeLabels' => $memoTypeLabels,
-            'sortColumn' => $sortColumn,
-            'sortDir' => $sortDir,
-        ])->render();
-
-        return response()->json([
-            'html' => $html,
-            'current_page' => $paginator->currentPage(),
-            'last_page' => $paginator->lastPage(),
-            'total' => $paginator->total(),
-            'debug' => $request->has('_debug') ? [
-                'received' => ['division' => $request->get('division'), 'year' => $request->get('year'), 'quarter' => $request->get('quarter')],
-                'total_rows' => $total,
-            ] : null,
+        $keyParts = $this->apmCacheKeyFromRequest($request, [
+            'memo_type', 'division', 'year', 'quarter', 'status', 'page',
+            'sort_column', 'sort_dir', 'document_number', 'search',
         ]);
+
+        return $this->apmCachedJson('reports', $request, array_merge($keyParts, ['report' => 'memo_list']), function () use ($request) {
+            $memoType = $request->filled('memo_type') ? $request->memo_type : null;
+            $perPage = 20;
+            $page = (int) $request->get('page', 1);
+
+            if ($memoType && in_array($memoType, self::MEMO_LIST_DOC_TYPES, true)) {
+                $allRows = $this->getMemoListRowsForType($memoType, $request);
+            } else {
+                $allRows = collect();
+                foreach (self::MEMO_LIST_DOC_TYPES as $type) {
+                    $allRows = $allRows->concat($this->getMemoListRowsForType($type, $request));
+                }
+            }
+
+            $sortColumn = $request->get('sort_column', 'year_quarter');
+            $sortDir = strtolower($request->get('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+            $allowedSort = ['document_number', 'title', 'division_id', 'document_type', 'year_quarter', 'overall_status', 'date_from', 'responsible_person_name'];
+            if (! in_array($sortColumn, $allowedSort, true)) {
+                $sortColumn = 'year_quarter';
+            }
+            $allRows = $allRows->sort(function ($a, $b) use ($sortColumn, $sortDir) {
+                if ($sortColumn === 'year_quarter') {
+                    $ya = (int) ($a->year ?? 0);
+                    $yb = (int) ($b->year ?? 0);
+                    if ($ya !== $yb) {
+                        $cmp = $ya <=> $yb;
+
+                        return $sortDir === 'asc' ? $cmp : -$cmp;
+                    }
+                    $oq = ['Q1' => 1, 'Q2' => 2, 'Q3' => 3, 'Q4' => 4];
+                    $qa = $oq[$a->quarter ?? ''] ?? 0;
+                    $qb = $oq[$b->quarter ?? ''] ?? 0;
+                    if ($qa !== $qb) {
+                        $cmp = $qa <=> $qb;
+
+                        return $sortDir === 'asc' ? $cmp : -$cmp;
+                    }
+                    $ta = $a->created_at ? \Carbon\Carbon::parse($a->created_at)->timestamp : 0;
+                    $tb = $b->created_at ? \Carbon\Carbon::parse($b->created_at)->timestamp : 0;
+                    $cmp = $ta <=> $tb;
+
+                    return $sortDir === 'asc' ? $cmp : -$cmp;
+                }
+                $va = $a->{$sortColumn} ?? '';
+                $vb = $b->{$sortColumn} ?? '';
+                if (in_array($sortColumn, ['date_from'], true) && ($va || $vb)) {
+                    $va = $va ? \Carbon\Carbon::parse($va)->format('Y-m-d') : '';
+                    $vb = $vb ? \Carbon\Carbon::parse($vb)->format('Y-m-d') : '';
+                }
+                $cmp = strcmp((string) $va, (string) $vb);
+
+                return $sortDir === 'asc' ? $cmp : -$cmp;
+            })->values();
+
+            $total = $allRows->count();
+            $slice = $allRows->slice(($page - 1) * $perPage, $perPage)->values();
+            $paginator = new LengthAwarePaginator(
+                $slice,
+                $total,
+                $perPage,
+                $page,
+                ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $request->query()]
+            );
+
+            $divisions = Division::orderBy('division_name')->get();
+            $memoTypeLabels = DocumentCounter::getDocumentTypes();
+
+            $html = view('reports.partials.memo-list-table', [
+                'memoList' => $paginator,
+                'divisions' => $divisions,
+                'memoTypeLabels' => $memoTypeLabels,
+                'sortColumn' => $sortColumn,
+                'sortDir' => $sortDir,
+            ])->render();
+
+            return response()->json([
+                'html' => $html,
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+                'debug' => $request->has('_debug') ? [
+                    'received' => ['division' => $request->get('division'), 'year' => $request->get('year'), 'quarter' => $request->get('quarter')],
+                    'total_rows' => $total,
+                ] : null,
+            ]);
+        });
     }
 
     /**

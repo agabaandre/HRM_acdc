@@ -34,7 +34,9 @@ const busy = ref(false)
 const staffRows = ref<StaffRow[]>([])
 const selectedStaffId = ref('')
 const staffSearch = ref('')
+const staffResultsOpen = ref(false)
 let staffSearchTimer: ReturnType<typeof setTimeout> | null = null
+let skipStaffSearchWatch = false
 
 /** End user: open ticket for another staff member (loads directory picker). */
 const forSomeoneElse = ref(false)
@@ -159,9 +161,12 @@ async function fetchStaffList() {
       params.q = staffSearch.value.trim()
     }
     const { data } = await api.get('/api/v1/reference-data/staff', { params })
-    staffRows.value = data.data.staff as StaffRow[]
-    if (selectedStaffId.value && !staffRows.value.some((s) => String(s.id) === selectedStaffId.value)) {
-      selectedStaffId.value = ''
+    const incoming = data.data.staff as StaffRow[]
+    const keepId = selectedStaffId.value ? Number(selectedStaffId.value) : null
+    const kept = keepId ? staffRows.value.find((s) => s.id === keepId) ?? null : null
+    staffRows.value = incoming
+    if (kept && !staffRows.value.some((s) => s.id === keepId)) {
+      staffRows.value = [kept, ...staffRows.value]
     }
   } catch {
     refErr.value = 'Could not load staff from the directory. Retry or ask an admin to sync reference data.'
@@ -171,11 +176,15 @@ async function fetchStaffList() {
   }
 }
 
-watch(staffSearch, () => {
-  if (!needsDirectoryPicker.value) {
+watch(staffSearch, (q) => {
+  if (!needsDirectoryPicker.value || skipStaffSearchWatch) {
     return
   }
-  selectedStaffId.value = ''
+  staffResultsOpen.value = true
+  const selected = selectedStaffRow.value
+  if (!selected || q.trim() !== selected.name) {
+    selectedStaffId.value = ''
+  }
   if (staffSearchTimer) clearTimeout(staffSearchTimer)
   staffSearchTimer = setTimeout(() => {
     void fetchStaffList()
@@ -236,8 +245,22 @@ function staffOptionLabel(s: StaffRow): string {
 }
 
 function pickRequester(s: StaffRow) {
+  skipStaffSearchWatch = true
   selectedStaffId.value = String(s.id)
+  if (!staffRows.value.some((r) => r.id === s.id)) {
+    staffRows.value = [s, ...staffRows.value]
+  }
   staffSearch.value = s.name
+  staffResultsOpen.value = false
+  queueMicrotask(() => {
+    skipStaffSearchWatch = false
+  })
+}
+
+function onStaffSearchFocus() {
+  if (!refErr.value) {
+    staffResultsOpen.value = true
+  }
 }
 
 async function submit() {
@@ -323,20 +346,30 @@ async function submit() {
               placeholder="Type name, email, or duty station…"
               autocomplete="off"
               :disabled="!!refErr"
+              @focus="onStaffSearchFocus"
             />
-            <ul v-if="filteredStaffRows.length" class="combo-results" role="listbox" aria-label="Requester results">
+            <ul
+              v-if="staffResultsOpen && filteredStaffRows.length"
+              class="combo-results"
+              :class="{ 'combo-results--searching': staffSearch.trim() }"
+              role="listbox"
+              aria-label="Requester results"
+            >
               <li
                 v-for="s in filteredStaffRows"
                 :key="s.id"
+                role="option"
                 class="combo-result"
                 :class="{ selected: selectedStaffId === String(s.id) }"
+                :aria-selected="selectedStaffId === String(s.id)"
+                @mousedown.prevent
                 @click="pickRequester(s)"
               >
                 <span class="combo-result-name">{{ s.name }}</span>
                 <span class="combo-result-meta">{{ staffOptionLabel(s) }}</span>
               </li>
             </ul>
-            <p v-else class="combo-empty">No staff found. Try another name/email.</p>
+            <p v-else-if="staffResultsOpen && staffSearch.trim()" class="combo-empty">No staff found. Try another name/email.</p>
             <p v-if="selectedRequesterPreview" class="preview" role="status">
               <strong>Selected:</strong> {{ selectedRequesterPreview }}
             </p>
@@ -457,6 +490,9 @@ label {
   max-height: 240px;
   overflow: auto;
   background: #fff;
+}
+.combo-results--searching {
+  max-height: 120px;
 }
 .combo-result {
   padding: 0.45rem 0.5rem;

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Models\User;
 use App\Models\Workflow;
 use Carbon\Carbon;
@@ -13,6 +14,7 @@ use Illuminate\View\View;
 class ApproverDashboardController extends Controller
 {
     use ApproverDashboardHelper;
+    use CachesApmPageResponses;
 
     /**
      * Display the approver dashboard page.
@@ -102,6 +104,16 @@ class ApproverDashboardController extends Controller
                     'message' => 'No active workflow found',
                     'data' => [],
                 ]);
+            }
+
+            $cacheKeyParts = $this->apmCacheKeyFromRequest($request, [
+                'page', 'per_page', 'q', 'division_id', 'doc_type', 'workflow_definition_id',
+                'approval_level', 'month', 'year', 'order',
+            ]);
+            if (! $isExport) {
+                if ($cached = \App\Services\ApmPageCache::get('approver_dashboard', $cacheKeyParts)) {
+                    return response()->json(is_array($cached) ? $cached : []);
+                }
             }
 
             // Build the query for approvers with pending counts
@@ -202,7 +214,7 @@ class ApproverDashboardController extends Controller
             );
 
             // Return response compatible with both DataTables and original format
-            return response()->json([
+            $payload = [
                 'success' => true,
                 'data' => $approversWithCounts,
                 'recordsTotal' => $totalCount,
@@ -225,7 +237,13 @@ class ApproverDashboardController extends Controller
                     'month' => $month,
                     'year' => $year,
                 ],
-            ]);
+            ];
+
+            if (! $isExport) {
+                \App\Services\ApmPageCache::put('approver_dashboard', $cacheKeyParts, $payload);
+            }
+
+            return response()->json($payload);
 
         } catch (\Exception $e) {
             return response()->json([
@@ -241,75 +259,81 @@ class ApproverDashboardController extends Controller
      */
     public function getFilterOptions(): JsonResponse
     {
-        try {
-            $userSession = user_session();
-            $userDivisionId = $userSession['division_id'] ?? null;
-            $userPermissions = $userSession['permissions'] ?? [];
-            $hasPermission88 = in_array(88, $userPermissions);
+        return $this->apmCachedJson(
+            'approver_dashboard',
+            request(),
+            $this->apmCacheKeyFromRequest(request(), [], ['filter_options' => 1]),
+            function (): JsonResponse {
+            try {
+                $userSession = user_session();
+                $userDivisionId = $userSession['division_id'] ?? null;
+                $userPermissions = $userSession['permissions'] ?? [];
+                $hasPermission88 = in_array(88, $userPermissions);
 
-            // Get divisions - restrict to user's division if no permission 88
-            $divisionsQuery = DB::table('divisions')->select('id', 'division_name');
-            // Only apply restriction if we have valid session data
-            if (! $hasPermission88 && $userDivisionId && $userDivisionId > 0) {
-                $divisionsQuery->where('id', $userDivisionId);
+                // Get divisions - restrict to user's division if no permission 88
+                $divisionsQuery = DB::table('divisions')->select('id', 'division_name');
+                // Only apply restriction if we have valid session data
+                if (! $hasPermission88 && $userDivisionId && $userDivisionId > 0) {
+                    $divisionsQuery->where('id', $userDivisionId);
+                }
+                $divisions = $divisionsQuery->orderBy('division_name')->get();
+
+                $workflowDefinitions = DB::table('workflows')
+                    ->select('id', 'workflow_name as name', 'is_active')
+                    ->orderBy('workflow_name')
+                    ->get();
+
+                // Get active workflow
+                $activeWorkflow = Workflow::where('is_active', 1)->first();
+
+                // Get approval levels from workflow_definition with role names
+                $approvalLevels = DB::table('workflow_definition')
+                    ->select('approval_order', 'role')
+                    ->where('workflow_id', $activeWorkflow ? $activeWorkflow->id : 1)
+                    ->where('is_enabled', 1)
+                    ->orderBy('approval_order')
+                    ->get()
+                    ->map(function ($item) {
+                        return ['value' => $item->approval_order, 'label' => $item->role.' (Level '.$item->approval_order.')'];
+                    });
+
+                $documentTypes = $this->getApproverDashboardDocumentTypeOptions();
+
+                // Get distinct years from matrices table
+                $years = DB::table('matrices')
+                    ->select(DB::raw('DISTINCT year'))
+                    ->whereNotNull('year')
+                    ->orderBy('year', 'desc')
+                    ->pluck('year')
+                    ->toArray();
+
+                // If no years found, generate default years
+                if (empty($years)) {
+                    $currentYear = Carbon::now()->year;
+                    $years = range($currentYear - 5, $currentYear + 2);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'divisions' => $divisions,
+                        'workflow_definitions' => $workflowDefinitions,
+                        'document_types' => $documentTypes,
+                        'approval_levels' => $approvalLevels,
+                        'years' => $years,
+                        'user_division_id' => $userDivisionId,
+                        'has_permission_88' => $hasPermission88,
+                    ],
+                ]);
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error retrieving filter options: '.$e->getMessage(),
+                    'data' => [],
+                ], 500);
             }
-            $divisions = $divisionsQuery->orderBy('division_name')->get();
-
-            $workflowDefinitions = DB::table('workflows')
-                ->select('id', 'workflow_name as name', 'is_active')
-                ->orderBy('workflow_name')
-                ->get();
-
-            // Get active workflow
-            $activeWorkflow = Workflow::where('is_active', 1)->first();
-
-            // Get approval levels from workflow_definition with role names
-            $approvalLevels = DB::table('workflow_definition')
-                ->select('approval_order', 'role')
-                ->where('workflow_id', $activeWorkflow ? $activeWorkflow->id : 1)
-                ->where('is_enabled', 1)
-                ->orderBy('approval_order')
-                ->get()
-                ->map(function ($item) {
-                    return ['value' => $item->approval_order, 'label' => $item->role.' (Level '.$item->approval_order.')'];
-                });
-
-            $documentTypes = $this->getApproverDashboardDocumentTypeOptions();
-
-            // Get distinct years from matrices table
-            $years = DB::table('matrices')
-                ->select(DB::raw('DISTINCT year'))
-                ->whereNotNull('year')
-                ->orderBy('year', 'desc')
-                ->pluck('year')
-                ->toArray();
-
-            // If no years found, generate default years
-            if (empty($years)) {
-                $currentYear = Carbon::now()->year;
-                $years = range($currentYear - 5, $currentYear + 2);
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'divisions' => $divisions,
-                    'workflow_definitions' => $workflowDefinitions,
-                    'document_types' => $documentTypes,
-                    'approval_levels' => $approvalLevels,
-                    'years' => $years,
-                    'user_division_id' => $userDivisionId,
-                    'has_permission_88' => $hasPermission88,
-                ],
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving filter options: '.$e->getMessage(),
-                'data' => [],
-            ], 500);
-        }
+        });
     }
 
     /**
@@ -370,42 +394,48 @@ class ApproverDashboardController extends Controller
      */
     public function getWorkflowStats(Request $request): JsonResponse
     {
-        try {
-            $userSession = user_session();
-            $userDivisionId = $userSession['division_id'] ?? null;
-            $userPermissions = $userSession['permissions'] ?? [];
-            $hasPermission88 = in_array(88, $userPermissions);
+        $keyParts = $this->apmCacheKeyFromRequest($request, [
+            'division_id', 'doc_type', 'month', 'year',
+        ]);
 
-            $divisionId = $request->get('division_id') ? (int) $request->get('division_id') : null;
-            $docType = $request->get('doc_type') ?: null;
-            $month = $request->get('month') ? (int) $request->get('month') : null;
-            $year = $request->get('year') ? (int) $request->get('year') : null;
+        return $this->apmCachedJson('approver_dashboard', $request, array_merge($keyParts, ['workflow_stats' => 1]), function () use ($request): JsonResponse {
+            try {
+                $userSession = user_session();
+                $userDivisionId = $userSession['division_id'] ?? null;
+                $userPermissions = $userSession['permissions'] ?? [];
+                $hasPermission88 = in_array(88, $userPermissions);
 
-            if ($docType && ! $this->isValidApproverDashboardDocType($docType)) {
+                $divisionId = $request->get('division_id') ? (int) $request->get('division_id') : null;
+                $docType = $request->get('doc_type') ?: null;
+                $month = $request->get('month') ? (int) $request->get('month') : null;
+                $year = $request->get('year') ? (int) $request->get('year') : null;
+
+                if ($docType && ! $this->isValidApproverDashboardDocType($docType)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid document type filter.',
+                        'data' => [],
+                    ], 422);
+                }
+
+                if (! $hasPermission88 && $userDivisionId && $userDivisionId > 0) {
+                    $divisionId = $userDivisionId;
+                }
+
+                $workflowStats = $this->getAverageApprovalTimeByWorkflowFiltered($divisionId, $docType, $year, $month);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $workflowStats,
+                ]);
+            } catch (\Exception $e) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid document type filter.',
+                    'message' => 'Error retrieving workflow stats: '.$e->getMessage(),
                     'data' => [],
-                ], 422);
+                ], 500);
             }
-
-            if (! $hasPermission88 && $userDivisionId && $userDivisionId > 0) {
-                $divisionId = $userDivisionId;
-            }
-
-            $workflowStats = $this->getAverageApprovalTimeByWorkflowFiltered($divisionId, $docType, $year, $month);
-
-            return response()->json([
-                'success' => true,
-                'data' => $workflowStats,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving workflow stats: '.$e->getMessage(),
-                'data' => [],
-            ], 500);
-        }
+        });
     }
 
     /**

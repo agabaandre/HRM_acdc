@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Models\ChangeRequest;
 use App\Models\Activity;
 use App\Models\SpecialMemo;
@@ -31,6 +32,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class ChangeRequestController extends Controller
 {
+    use CachesApmPageResponses;
+
     /**
      * Display a listing of change requests.
      */
@@ -58,6 +61,30 @@ class ChangeRequestController extends Controller
         $staffId = (int) $request->get('staff_id');
         $memoType = $request->get('memo_type');
         $parentMemoId = $request->get('parent_memo_id');
+
+        if (\App\Support\ApmListFragment::wants($request)) {
+            $fragmentKey = $this->apmCacheKeyFromRequest($request, [
+                'tab', 'page', 'year', 'quarter', 'status', 'document_number', 'staff_id',
+                'memo_type', 'parent_memo_id', 'division_id', 'search',
+            ], ['fragment' => $request->get('tab', '')]);
+            if (! $request->boolean('nocache')) {
+                $cachedFragment = \App\Services\ApmPageCache::get('change_requests', $fragmentKey);
+                if (is_array($cachedFragment)) {
+                    return \App\Support\ApmListFragment::json($cachedFragment);
+                }
+            }
+        } else {
+            $pageKey = $this->apmCacheKeyFromRequest($request, [
+                'page', 'tab', 'year', 'quarter', 'status', 'document_number', 'staff_id',
+                'memo_type', 'parent_memo_id', 'division_id', 'search',
+            ], ['page' => 'index']);
+            if (! $request->boolean('nocache')) {
+                $cachedPage = \App\Services\ApmPageCache::get('change_requests', $pageKey);
+                if (is_array($cachedPage)) {
+                    return view('change-requests.index', $cachedPage);
+                }
+            }
+        }
 
         // Base query with relationships
         $baseQuery = ChangeRequest::with([
@@ -225,11 +252,17 @@ class ChangeRequestController extends Controller
                     $allChangeRequests = (clone $baseQuery)->paginate(20)->withQueryString();
                 }
             }
+            $fragmentKey = $this->apmCacheKeyFromRequest($request, [
+                'tab', 'page', 'year', 'quarter', 'status', 'document_number', 'staff_id',
+                'memo_type', 'parent_memo_id', 'division_id', 'search',
+            ], ['fragment' => $tab]);
+
+            $html = '';
             $countMy = $myChangeRequests->total();
             $countDivision = $myDivisionChangeRequests->total();
             $countShared = $sharedChangeRequests->total();
             $countAll = $allChangeRequests ? $allChangeRequests->total() : 0;
-            switch($tab) {
+            switch ($tab) {
                 case 'myChangeRequests':
                     $html = view('change-requests.partials.my-change-requests-tab', compact('myChangeRequests'))->render();
                     break;
@@ -243,16 +276,20 @@ class ChangeRequestController extends Controller
                     $html = view('change-requests.partials.all-change-requests-tab', compact('allChangeRequests'))->render();
                     break;
             }
-            return \App\Support\ApmListFragment::json([
+
+            $payload = [
                 'html' => $html,
                 'count_my_change_requests' => $countMy,
                 'count_my_division' => $countDivision,
                 'count_shared' => $countShared,
                 'count_all' => $countAll,
-            ]);
+            ];
+            \App\Services\ApmPageCache::put('change_requests', $fragmentKey, $payload);
+
+            return \App\Support\ApmListFragment::json($payload);
         }
 
-        return view('change-requests.index', [
+        $viewData = [
             'myChangeRequests' => $myChangeRequests,
             'myDivisionChangeRequests' => $myDivisionChangeRequests,
             'sharedChangeRequests' => $sharedChangeRequests,
@@ -266,8 +303,11 @@ class ChangeRequestController extends Controller
             'selectedQuarter' => $selectedQuarter,
             'selectedStatus' => $status,
             'selectedMemoType' => $memoType,
-            'userDivisionId' => $userDivisionId
-        ]);
+            'userDivisionId' => $userDivisionId,
+        ];
+        \App\Services\ApmPageCache::put('change_requests', $pageKey, $viewData);
+
+        return view('change-requests.index', $viewData);
     }
 
     /**

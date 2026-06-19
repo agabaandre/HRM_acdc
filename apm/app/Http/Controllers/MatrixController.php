@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Models\Approver;
 use App\Models\Division;
 use App\Models\ApprovalTrail;
@@ -23,6 +24,8 @@ use Illuminate\Support\Facades\Log;
 
 class MatrixController extends Controller
 {
+    use CachesApmPageResponses;
+
     /**
      * Display a listing of matrices.
      *
@@ -44,74 +47,113 @@ class MatrixController extends Controller
 
         if (\App\Support\ApmListFragment::wants($request)) {
             $tab = $request->get('tab', '');
-            $html = '';
+            $keyParts = $this->apmCacheKeyFromRequest($request, [
+                'tab', 'year', 'quarter', 'status', 'focal_person', 'division',
+                'my_division_page', 'all_matrices_page',
+            ], ['fragment' => $tab]);
 
-            switch ($tab) {
-                case 'myDivision':
-                    $myDivisionMatrices = $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)
-                        ->paginate(24, ['*'], 'my_division_page');
-                    $html = view('matrices.partials.my-division-tab', compact(
-                        'myDivisionMatrices',
-                        'selectedYear',
-                        'selectedQuarter',
-                        'selectedStatus'
-                    ))->render();
-                    break;
-                case 'allMatrices':
-                    if (! in_array(87, user_session('permissions', []))) {
-                        return \App\Support\ApmListFragment::json(['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>']);
-                    }
-                    $allBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
-                    if ($allBuilder === null) {
-                        return \App\Support\ApmListFragment::json(['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>']);
-                    }
-                    $allMatrices = $allBuilder->paginate(24, ['*'], 'all_matrices_page');
-                    $html = view('matrices.partials.all-matrices-tab', compact(
-                        'allMatrices',
-                        'selectedYear',
-                        'selectedQuarter',
-                        'selectedStatus'
-                    ))->render();
-                    break;
+            if (! $request->boolean('nocache')) {
+                $cachedFragment = \App\Services\ApmPageCache::get('matrices', $keyParts);
+                if (is_array($cachedFragment)) {
+                    return \App\Support\ApmListFragment::json($cachedFragment);
+                }
             }
 
-            return \App\Support\ApmListFragment::json(['html' => $html]);
+            $fragmentPayload = \App\Services\ApmPageCache::remember('matrices', $keyParts, function () use ($request, $tab, $selectedYear, $selectedQuarter, $selectedStatus) {
+                $html = '';
+
+                switch ($tab) {
+                    case 'myDivision':
+                        $myDivisionMatrices = $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)
+                            ->paginate(24, ['*'], 'my_division_page');
+                        $html = view('matrices.partials.my-division-tab', compact(
+                            'myDivisionMatrices',
+                            'selectedYear',
+                            'selectedQuarter',
+                            'selectedStatus'
+                        ))->render();
+                        break;
+                    case 'allMatrices':
+                        if (! in_array(87, user_session('permissions', []))) {
+                            return ['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>'];
+                        }
+                        $allBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
+                        if ($allBuilder === null) {
+                            return ['html' => '<div class="text-center py-3 text-muted">You do not have access to this list.</div>'];
+                        }
+                        $allMatrices = $allBuilder->paginate(24, ['*'], 'all_matrices_page');
+                        $html = view('matrices.partials.all-matrices-tab', compact(
+                            'allMatrices',
+                            'selectedYear',
+                            'selectedQuarter',
+                            'selectedStatus'
+                        ))->render();
+                        break;
+                }
+
+                return ['html' => $html];
+            });
+
+            return \App\Support\ApmListFragment::json(is_array($fragmentPayload) ? $fragmentPayload : ['html' => '']);
         }
 
-        $myDivisionMatricesCount = (int) $this->newMyDivisionMatricesCountQuery($request, $selectedYear, $selectedQuarter, $selectedStatus)->count();
+        $pageKeyParts = $this->apmCacheKeyFromRequest($request, [
+            'year', 'quarter', 'status', 'focal_person', 'division', 'my_division_page', 'all_matrices_page',
+        ], ['page' => 'index']);
 
-        $allMatricesCount = 0;
-        $allCountQuery = $this->newAllMatricesCountQuery($request, $selectedYear, $selectedQuarter, $selectedStatus);
-        if ($allCountQuery !== null) {
-            $allMatricesCount = (int) $allCountQuery->count();
-        }
-
-        // First visible tab: render server-side (same single request) so the browser does not wait on a follow-up AJAX for initial data.
-        $initialMyDivisionMatrices = null;
-        $initialAllMatrices = null;
-        if ($myDivisionMatricesCount > 0) {
-            $initialMyDivisionMatrices = $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)
-                ->paginate(24, ['*'], 'my_division_page');
-        } elseif ($allMatricesCount > 0 && $allCountQuery !== null) {
-            $allMatricesBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
-            if ($allMatricesBuilder !== null) {
-                $initialAllMatrices = $allMatricesBuilder->paginate(24, ['*'], 'all_matrices_page');
+        if (! $request->boolean('nocache')) {
+            $cachedPage = \App\Services\ApmPageCache::get('matrices', $pageKeyParts);
+            if (is_array($cachedPage) && isset($cachedPage['myDivisionMatricesCount'])) {
+                return view('matrices.index', array_merge($cachedPage, [
+                    'title' => user_session('division_name'),
+                    'module' => 'Quarterly Matrix',
+                    'divisions' => \App\Services\ApmPageCache::rememberLookups('matrix_divisions', fn () => Division::all()),
+                    'focalPersons' => \App\Services\ApmPageCache::rememberLookups('matrix_focal_persons', fn () => Staff::active()->get()),
+                    'selectedYear' => $selectedYear,
+                    'selectedQuarter' => $selectedQuarter,
+                    'selectedStatus' => $selectedStatus,
+                ]));
             }
         }
 
-        return view('matrices.index', [
-            'myDivisionMatricesCount' => $myDivisionMatricesCount,
-            'allMatricesCount' => $allMatricesCount,
-            'initialMyDivisionMatrices' => $initialMyDivisionMatrices,
-            'initialAllMatrices' => $initialAllMatrices,
+        $pageData = \App\Services\ApmPageCache::remember('matrices', $pageKeyParts, function () use ($request, $selectedYear, $selectedQuarter, $selectedStatus) {
+            $myDivisionMatricesCount = (int) $this->newMyDivisionMatricesCountQuery($request, $selectedYear, $selectedQuarter, $selectedStatus)->count();
+
+            $allMatricesCount = 0;
+            $allCountQuery = $this->newAllMatricesCountQuery($request, $selectedYear, $selectedQuarter, $selectedStatus);
+            if ($allCountQuery !== null) {
+                $allMatricesCount = (int) $allCountQuery->count();
+            }
+
+            $initialMyDivisionMatrices = null;
+            $initialAllMatrices = null;
+            if ($myDivisionMatricesCount > 0) {
+                $initialMyDivisionMatrices = $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)
+                    ->paginate(24, ['*'], 'my_division_page');
+            } elseif ($allMatricesCount > 0 && $allCountQuery !== null) {
+                $allMatricesBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
+                if ($allMatricesBuilder !== null) {
+                    $initialAllMatrices = $allMatricesBuilder->paginate(24, ['*'], 'all_matrices_page');
+                }
+            }
+
+            return [
+                'myDivisionMatricesCount' => $myDivisionMatricesCount,
+                'allMatricesCount' => $allMatricesCount,
+                'initialMyDivisionMatrices' => $initialMyDivisionMatrices,
+                'initialAllMatrices' => $initialAllMatrices,
+            ];
+        });
+
+        return view('matrices.index', array_merge($pageData, [
             'title' => user_session('division_name'),
             'module' => 'Quarterly Matrix',
-            'divisions' => Division::all(),
-            'focalPersons' => Staff::active()->get(),
+            'divisions' => \App\Services\ApmPageCache::rememberLookups('matrix_divisions', fn () => Division::all()),
+            'focalPersons' => \App\Services\ApmPageCache::rememberLookups('matrix_focal_persons', fn () => Staff::active()->get()),
             'selectedYear' => $selectedYear,
             'selectedQuarter' => $selectedQuarter,
             'selectedStatus' => $selectedStatus,
-        ]);
+        ]));
     }
 
     /**
