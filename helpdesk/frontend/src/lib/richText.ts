@@ -140,3 +140,64 @@ export function setupQuillAutoGrow(quill: { root: HTMLElement; on: (e: string, f
   quill.on('text-change', grow)
   grow()
 }
+
+const ATTACHMENT_IMAGE_RE = /\/api\/v1\/attachments\/(\d+)\/file/i
+const RICH_TEXT_IMAGE_RE = /\/storage\/helpdesk\/rich-text\/|helpdesk\/rich-text\//i
+
+/** img src URLs embedded in Quill HTML. */
+export function extractImageUrlsFromHtml(html: string): string[] {
+  if (!html || !isHtmlContent(html)) {
+    return []
+  }
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  return Array.from(doc.querySelectorAll('img[src]'))
+    .map((img) => img.getAttribute('src') ?? '')
+    .filter((url) => url.trim() !== '')
+}
+
+/** Compare image URLs ignoring signed attachment query params. */
+export function normalizeImageUrlForCompare(url: string): string {
+  try {
+    const parsed = new URL(url, window.location.origin)
+    if (ATTACHMENT_IMAGE_RE.test(parsed.pathname)) {
+      return parsed.pathname
+    }
+    return parsed.pathname + parsed.search
+  } catch {
+    return url
+  }
+}
+
+/** URLs removed from the editor since the previous HTML snapshot. */
+export function diffRemovedImageUrls(previousHtml: string, nextHtml: string): string[] {
+  const nextKeys = new Set(
+    extractImageUrlsFromHtml(nextHtml).map((url) => normalizeImageUrlForCompare(url)),
+  )
+  return extractImageUrlsFromHtml(previousHtml).filter(
+    (url) => !nextKeys.has(normalizeImageUrlForCompare(url)),
+  )
+}
+
+/** True when the URL points at helpdesk-managed inline upload storage. */
+export function isManagedInlineImageUrl(url: string): boolean {
+  return ATTACHMENT_IMAGE_RE.test(url) || RICH_TEXT_IMAGE_RE.test(url)
+}
+
+export function attachmentIdFromImageUrl(url: string): number | null {
+  try {
+    const parsed = new URL(url, window.location.origin)
+    const match = parsed.pathname.match(ATTACHMENT_IMAGE_RE)
+    if (!match?.[1]) {
+      return null
+    }
+    const id = Number(match[1])
+    return Number.isFinite(id) && id > 0 ? id : null
+  } catch {
+    const match = url.match(ATTACHMENT_IMAGE_RE)
+    if (!match?.[1]) {
+      return null
+    }
+    const id = Number(match[1])
+    return Number.isFinite(id) && id > 0 ? id : null
+  }
+}

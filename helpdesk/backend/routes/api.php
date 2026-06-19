@@ -60,6 +60,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/reference-data', [ReferenceDataController::class, 'index']);
         Route::get('/reference-data/staff', [ReferenceDataController::class, 'staff']);
         Route::post('/rich-text-images', [RichTextImageController::class, 'store']);
+        Route::delete('/rich-text-images', [RichTextImageController::class, 'destroy']);
 
         Route::post('/ai/ask', HelpdeskAskController::class)->middleware('throttle:24,1');
 
@@ -82,6 +83,7 @@ Route::prefix('v1')->group(function () {
         Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store']);
         Route::post('tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store']);
         Route::post('tickets/{ticket}/inline-images', [TicketInlineImageController::class, 'store']);
+        Route::delete('tickets/{ticket}/inline-images/{attachment}', [TicketInlineImageController::class, 'destroy']);
         Route::post('tickets/{ticket}/submit-resolution', [TicketResolutionController::class, 'submit']);
         Route::post('tickets/{ticket}/reopen', [TicketController::class, 'reopen']);
 

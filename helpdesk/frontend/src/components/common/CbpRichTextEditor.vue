@@ -6,7 +6,10 @@ import { api } from '../../lib/api'
 import {
   buildQuillOptions,
   DEFAULT_RICH_TEXT_MIN_ROWS,
+  diffRemovedImageUrls,
   editorMinHeightPx,
+  isManagedInlineImageUrl,
+  attachmentIdFromImageUrl,
   patchQuillExternalLinks,
   setupQuillAutoGrow,
   type RichTextVariant,
@@ -45,6 +48,8 @@ const editorRef = ref<InstanceType<typeof QuillEditor> | null>(null)
 const editorReady = ref(false)
 const inlineImageBusy = ref(false)
 const imageHint = ref<string | null>(null)
+const lastHtml = ref(props.modelValue)
+const pendingDeleteKeys = new Set<string>()
 
 onMounted(async () => {
   await patchQuillExternalLinks()
@@ -54,6 +59,13 @@ onMounted(async () => {
 watch(inlineImageBusy, (busy) => {
   emit('uploading', busy)
 })
+
+watch(
+  () => props.modelValue,
+  (value) => {
+    lastHtml.value = value
+  },
+)
 
 const MAX_INLINE_IMAGE_BYTES = 10 * 1024 * 1024
 const ALLOWED_INLINE_MIME = new Set([
@@ -98,6 +110,41 @@ function validateImageFile(file: File): boolean {
   }
   imageHint.value = null
   return true
+}
+
+async function deleteManagedImage(url: string): Promise<void> {
+  if (!isManagedInlineImageUrl(url)) {
+    return
+  }
+  try {
+    if (props.ticketId) {
+      const attachmentId = attachmentIdFromImageUrl(url)
+      if (!attachmentId) {
+        return
+      }
+      await api.delete(`/api/v1/tickets/${props.ticketId}/inline-images/${attachmentId}`)
+    } else {
+      await api.delete('/api/v1/rich-text-images', { data: { url } })
+    }
+  } catch {
+    // Non-blocking: orphaned files can be cleaned manually if delete fails.
+  }
+}
+
+function queueRemovedImages(previousHtml: string, nextHtml: string): void {
+  for (const url of diffRemovedImageUrls(previousHtml, nextHtml)) {
+    if (!isManagedInlineImageUrl(url)) {
+      continue
+    }
+    const key = `${props.ticketId ?? 'draft'}:${url}`
+    if (pendingDeleteKeys.has(key)) {
+      continue
+    }
+    pendingDeleteKeys.add(key)
+    void deleteManagedImage(url).finally(() => {
+      pendingDeleteKeys.delete(key)
+    })
+  }
 }
 
 async function uploadInlineImage(file: File): Promise<string | null> {
@@ -149,6 +196,8 @@ const quillOptions = computed(() =>
 )
 
 function onContentUpdate(value: string) {
+  queueRemovedImages(lastHtml.value, value)
+  lastHtml.value = value
   emit('update:modelValue', value)
 }
 

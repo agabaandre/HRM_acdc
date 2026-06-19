@@ -51,4 +51,24 @@ class TicketInlineImageController extends Controller
             ],
         ], 201);
     }
+
+    public function destroy(Request $request, HelpdeskTicket $ticket, HelpdeskTicketAttachment $attachment): JsonResponse
+    {
+        $this->authorize('attachFiles', $ticket);
+
+        if ((int) $attachment->ticket_id !== (int) $ticket->id) {
+            abort(404);
+        }
+
+        if (! str_contains($attachment->path, '/inline/')) {
+            abort(422, 'Only inline editor images can be removed this way.');
+        }
+
+        Storage::disk($attachment->disk)->delete($attachment->path);
+        $attachment->delete();
+
+        return response()->json([
+            'data' => ['deleted' => true],
+        ]);
+    }
 }

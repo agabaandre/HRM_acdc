@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Support\RichTextImagePath;
 use Illuminate\Support\Str;
 
 /**
@@ -35,5 +36,26 @@ class RichTextImageController extends Controller
                 'original_name' => $file->getClientOriginalName(),
             ],
         ], 201);
+    }
+
+    public function destroy(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user !== null, 401);
+
+        $validated = $request->validate([
+            'url' => ['required', 'string', 'max:2048'],
+        ]);
+
+        $path = RichTextImagePath::pathForUser($validated['url'], (int) $user->id);
+        if ($path === null) {
+            abort(404, 'Image not found.');
+        }
+
+        Storage::disk('public')->delete($path);
+
+        return response()->json([
+            'data' => ['deleted' => true],
+        ]);
     }
 }
