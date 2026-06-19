@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -63,6 +64,42 @@ class HelpdeskProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * True when this profile should appear in agent routing, support groups, and the agent desk.
+     * Portal admins (role 10) keep role=admin but participate as agents when designated.
+     */
+    public function actsAsAgent(): bool
+    {
+        return $this->role === self::ROLE_AGENT || $this->is_designated_agent === true;
+    }
+
+    /**
+     * @param  Builder<HelpdeskProfile>  $query
+     * @return Builder<HelpdeskProfile>
+     */
+    public function scopeActsAsAgent(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->where('role', self::ROLE_AGENT)
+                ->orWhere('is_designated_agent', true);
+        });
+    }
+
+    /**
+     * @param  Builder<HelpdeskProfile>  $query
+     * @return Builder<HelpdeskProfile>
+     */
+    public function scopeWithoutAgentDuties(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->where('role', '!=', self::ROLE_AGENT)
+                ->where(function (Builder $q) {
+                    $q->where('is_designated_agent', false)
+                        ->orWhereNull('is_designated_agent');
+                });
+        });
     }
 
     public function isStaffRole(): bool

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskSupportGroup;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -82,7 +81,7 @@ class AgentCategoryRoutingService
     public function eligibleMemberUserIdsForGroup(HelpdeskSupportGroup $group, int $categoryId): array
     {
         $memberIds = $group->members()
-            ->whereHas('helpdeskProfile', fn ($q) => $q->where('role', HelpdeskProfile::ROLE_AGENT))
+            ->actsAsHelpdeskAgent()
             ->pluck('users.id')
             ->map(fn ($id) => (int) $id)
             ->all();

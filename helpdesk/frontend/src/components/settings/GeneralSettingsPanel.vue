@@ -226,7 +226,9 @@ async function designateAgent(c: CandidateRow) {
     })
     c.is_designated_agent = true
     c.has_user = true
-    c.current_role = "agent"
+    if (!c.current_role || c.current_role === 'user') {
+      c.current_role = 'agent'
+    }
     notifySuccess(`${c.name} marked as agent.`)
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message

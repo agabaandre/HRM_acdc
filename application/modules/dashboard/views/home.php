@@ -63,7 +63,7 @@
           <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
               <div class="me-3">
-                <img src="https://khub.africacdc.org/storage/uploads/config/fcb24779b37db15ee15fd4a32eaab0ac.png" alt="Africa CDC Logo" style="max-height: 60px; filter: brightness(0) invert(1);">
+                <img src="<?php echo mail_logo_url(); ?>" alt="Africa CDC Logo" style="max-height: 60px; filter: brightness(0) invert(1);">
               </div>
               <div>
                 <h2 class="mb-1 text-white" style="font-weight: 700; font-size: 28px;">

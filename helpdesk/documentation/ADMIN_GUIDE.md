@@ -340,7 +340,7 @@ Full template: [`backend/.env.example`](../backend/.env.example)
 
 ## Mail & branded notifications
 
-Transactional emails use the **Africa CDC Helpdesk** HTML template with logo from `{staff_portal}/cbp-assets/images/AU_CDC_Logo-800.png`.
+Transactional emails use the **Africa CDC Helpdesk** HTML template with logo from `APP_LOGO_URL` / `{staff_portal}/assets/images/AU_CDC_Logo-800.png`.
 
 | Email | Trigger |
 |-------|---------|

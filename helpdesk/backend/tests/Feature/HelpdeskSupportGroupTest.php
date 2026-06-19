@@ -72,4 +72,69 @@ class HelpdeskSupportGroupTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.0.name', 'Systems Administration');
     }
+
+    public function test_portal_admin_designated_agent_inherits_group_routing(): void
+    {
+        $category = HelpdeskCategory::query()->create([
+            'name' => 'Admin Routed',
+            'slug' => 'admin-routed',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $adminAgent = User::factory()->create();
+        HelpdeskProfile::query()->create([
+            'user_id' => $adminAgent->id,
+            'role' => HelpdeskProfile::ROLE_ADMIN,
+            'staff_id' => 9002,
+            'staff_portal_role' => 10,
+            'is_designated_agent' => true,
+        ]);
+
+        $group = HelpdeskSupportGroup::query()->create([
+            'name' => 'Admin Group',
+            'slug' => 'admin-group',
+            'sort_order' => 20,
+            'is_active' => true,
+            'is_system' => false,
+        ]);
+        $group->categories()->sync([$category->id]);
+        $group->members()->sync([$adminAgent->id]);
+
+        $routing = app(AgentCategoryRoutingService::class);
+
+        $this->assertTrue($adminAgent->fresh('helpdeskProfile')->helpdeskProfile->actsAsAgent());
+        $this->assertTrue($routing->agentHandlesCategory($adminAgent->id, $category->id));
+        $this->assertContains(
+            $adminAgent->id,
+            $routing->eligibleMemberUserIdsForGroup($group->fresh(), $category->id)
+        );
+    }
+
+    public function test_designated_portal_admin_listed_in_admin_agents_api(): void
+    {
+        $admin = User::factory()->create(['name' => 'Portal Admin']);
+        HelpdeskProfile::query()->create([
+            'user_id' => $admin->id,
+            'role' => HelpdeskProfile::ROLE_ADMIN,
+            'staff_id' => 1,
+            'staff_portal_role' => 10,
+            'grant_helpdesk_admin' => true,
+        ]);
+
+        $designated = User::factory()->create(['name' => 'Admin Agent']);
+        HelpdeskProfile::query()->create([
+            'user_id' => $designated->id,
+            'role' => HelpdeskProfile::ROLE_ADMIN,
+            'staff_id' => 2,
+            'staff_portal_role' => 10,
+            'is_designated_agent' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/v1/admin/agents');
+
+        $response->assertOk();
+        $names = collect($response->json('data'))->pluck('name')->all();
+        $this->assertContains('Admin Agent', $names);
+    }
 }

@@ -22,7 +22,7 @@ class AdminStaffPermissionController extends Controller
         $this->ensureHelpdeskAdmin($request);
 
         $rows = User::query()
-            ->whereHas('helpdeskProfile', fn ($q) => $q->where('role', '!=', HelpdeskProfile::ROLE_AGENT))
+            ->whereHas('helpdeskProfile', fn ($q) => $q->withoutAgentDuties())
             ->with('helpdeskProfile')
             ->orderBy('name')
             ->get();
@@ -48,7 +48,7 @@ class AdminStaffPermissionController extends Controller
             abort(422, 'User has no Helpdesk profile (must sign in via Staff SSO at least once).');
         }
 
-        if ($profile->role === HelpdeskProfile::ROLE_AGENT) {
+        if ($profile->actsAsAgent()) {
             abort(422, 'Use Agents & category routing to manage agents.');
         }
 

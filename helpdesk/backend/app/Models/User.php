@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -73,5 +74,14 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(HelpdeskSupportGroup::class, 'helpdesk_support_group_members', 'user_id', 'group_id')
             ->withTimestamps();
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeActsAsHelpdeskAgent(Builder $query): Builder
+    {
+        return $query->whereHas('helpdeskProfile', fn (Builder $q) => $q->actsAsAgent());
     }
 }

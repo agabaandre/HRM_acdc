@@ -1990,3 +1990,19 @@ if (!function_exists('calculate_endterm_overall_rating')) {
         ];
     }
 }
+
+if (!function_exists('mail_logo_url')) {
+    /**
+     * Absolute Africa CDC logo URL for HTML emails (see APP_LOGO_URL / STAFF_MAIL_LOGO_URL in .env).
+     */
+    function mail_logo_url(): string
+    {
+        $CI = &get_instance();
+        $configured = $CI->config->item('mail_logo_url');
+        if (is_string($configured) && $configured !== '') {
+            return $configured;
+        }
+
+        return base_url('assets/images/AU_CDC_Logo-800.png');
+    }
+}

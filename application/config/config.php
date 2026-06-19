@@ -73,6 +73,23 @@ $config['apm_base_url'] = $apm_base;
 
 /*
 |--------------------------------------------------------------------------
+| Mail logo URL (HTML emails — must be absolute, publicly reachable)
+|--------------------------------------------------------------------------
+| APP_LOGO_URL or STAFF_MAIL_LOGO_URL in .env overrides the default below.
+*/
+$mail_logo = trim((string) (getenv('APP_LOGO_URL') ?: (isset($_ENV['APP_LOGO_URL']) ? $_ENV['APP_LOGO_URL'] : '')));
+if ($mail_logo === '') {
+	$mail_logo = trim((string) (getenv('STAFF_MAIL_LOGO_URL') ?: (isset($_ENV['STAFF_MAIL_LOGO_URL']) ? $_ENV['STAFF_MAIL_LOGO_URL'] : '')));
+}
+if ($mail_logo !== '') {
+	$config['mail_logo_url'] = $mail_logo;
+} else {
+	$portal_base = rtrim($config['base_url'], '/');
+	$config['mail_logo_url'] = $portal_base.'/assets/images/AU_CDC_Logo-800.png';
+}
+
+/*
+|--------------------------------------------------------------------------
 | Index File
 |--------------------------------------------------------------------------
 |

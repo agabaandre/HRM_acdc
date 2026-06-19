@@ -52,6 +52,7 @@ helpdesk_inherit_sensitive_from_portal_env() {
     local key from
 
     for key in STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN BASE_URL \
+        APP_LOGO_URL STAFF_MAIL_LOGO_URL \
         HELPDESK_BRIDGE_SECRET \
         MAIL_MAILER USE_EXCHANGE_EMAIL MAIL_FROM_ADDRESS MAIL_FROM_NAME \
         EXCHANGE_TENANT_ID EXCHANGE_CLIENT_ID EXCHANGE_CLIENT_SECRET \
@@ -76,6 +77,28 @@ helpdesk_inherit_sensitive_from_portal_env() {
     fi
 
     helpdesk_resolve_staff_api_token_from_apm "$backend_env" "$staff_root"
+    helpdesk_ensure_app_logo_url "$backend_env"
+}
+
+helpdesk_ensure_app_logo_url() {
+    local backend_env="$1"
+    local current base
+
+    for key in APP_LOGO_URL STAFF_MAIL_LOGO_URL HELPDESK_MAIL_LOGO_URL; do
+        current="$(dotenv_get "$backend_env" "$key" 2>/dev/null || true)"
+        if dotenv_value_present "$current"; then
+            if [[ "$key" != "APP_LOGO_URL" ]]; then
+                dotenv_set "$backend_env" APP_LOGO_URL "$current"
+            fi
+            return 0
+        fi
+    done
+
+    base="$(dotenv_get "$backend_env" BASE_URL 2>/dev/null || true)"
+    base="${base%/}"
+    if dotenv_value_present "$base"; then
+        dotenv_set "$backend_env" APP_LOGO_URL "${base}/assets/images/AU_CDC_Logo-800.png"
+    fi
 }
 
 # Backward-compatible alias used by configure-env.sh / setup-production.sh

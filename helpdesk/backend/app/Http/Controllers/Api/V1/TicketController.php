@@ -327,11 +327,10 @@ class TicketController extends Controller
         if ($newAssigneeId) {
             $newAssignee = User::query()->with('helpdeskProfile')->findOrFail($newAssigneeId);
             $newProfile = $newAssignee->helpdeskProfile;
-            if (! $newProfile || ! in_array($newProfile->role, [
-                HelpdeskProfile::ROLE_AGENT,
+            if (! $newProfile || ! ($newProfile->actsAsAgent() || in_array($newProfile->role, [
                 HelpdeskProfile::ROLE_SUPERVISOR,
                 HelpdeskProfile::ROLE_ADMIN,
-            ], true)) {
+            ], true))) {
                 abort(422, 'Selected user is not a Helpdesk agent.');
             }
         }

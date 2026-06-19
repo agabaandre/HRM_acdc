@@ -24,7 +24,7 @@ class AdminHelpdeskAgentController extends Controller
         $this->ensureHelpdeskAdmin($request);
 
         $agents = User::query()
-            ->whereHas('helpdeskProfile', fn ($q) => $q->where('role', HelpdeskProfile::ROLE_AGENT))
+            ->actsAsHelpdeskAgent()
             ->with(['helpdeskProfile', 'helpdeskAgentCategories:id,name,slug', 'helpdeskSupportGroups:id,name,slug'])
             ->orderBy('name')
             ->get();
@@ -41,6 +41,8 @@ class AdminHelpdeskAgentController extends Controller
             'can_reassign_tickets' => (bool) ($u->helpdeskProfile?->can_reassign_tickets),
             'grant_helpdesk_admin' => (bool) ($u->helpdeskProfile?->grant_helpdesk_admin),
             'grant_supervisor_access' => (bool) ($u->helpdeskProfile?->grant_supervisor_access),
+            'role' => $u->helpdeskProfile?->role,
+            'is_designated_agent' => (bool) ($u->helpdeskProfile?->is_designated_agent),
             'categories' => $u->helpdeskAgentCategories->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->name,
@@ -77,9 +79,7 @@ class AdminHelpdeskAgentController extends Controller
             abort(422, 'User has no Helpdesk profile (must sign in via Staff SSO at least once).');
         }
 
-        if ($profile->role !== HelpdeskProfile::ROLE_AGENT) {
-            $profile->role = HelpdeskProfile::ROLE_AGENT;
-        }
+        $profile->is_designated_agent = true;
         if (array_key_exists('can_manage_kb', $validated)) {
             $profile->can_manage_kb = (bool) $validated['can_manage_kb'];
         }
@@ -111,6 +111,8 @@ class AdminHelpdeskAgentController extends Controller
                 'can_reassign_tickets' => (bool) ($user->helpdeskProfile?->can_reassign_tickets),
                 'grant_helpdesk_admin' => (bool) ($user->helpdeskProfile?->grant_helpdesk_admin),
                 'grant_supervisor_access' => (bool) ($user->helpdeskProfile?->grant_supervisor_access),
+                'role' => $user->helpdeskProfile?->role,
+                'is_designated_agent' => (bool) ($user->helpdeskProfile?->is_designated_agent),
                 'categories' => $user->helpdeskAgentCategories->map(fn ($c) => [
                     'id' => $c->id,
                     'name' => $c->name,

@@ -23,7 +23,7 @@ class TicketAssignmentService
         $categoryId = (int) $ticket->category_id;
 
         $agentUserIds = User::query()
-            ->whereHas('helpdeskProfile', fn ($q) => $q->where('role', HelpdeskProfile::ROLE_AGENT))
+            ->actsAsHelpdeskAgent()
             ->pluck('id')
             ->all();
 

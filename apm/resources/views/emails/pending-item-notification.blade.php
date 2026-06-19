@@ -92,7 +92,7 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <img src="https://khub.africacdc.org/storage/uploads/config/fcb24779b37db15ee15fd4a32eaab0ac.png" alt="Africa CDC Logo">
+            <img src="{{ config('branding.mail_logo_url') }}" alt="Africa CDC Logo">
             <h2>New {{ $itemType }} Pending Approval</h2>
             <p>Hello  {{ $approverName }},</p>
             <p>A new {{ $itemType }} requires your approval.</p>

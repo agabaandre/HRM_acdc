@@ -48,7 +48,7 @@ class HelpdeskTicketPolicy
         if ($p->hasSupervisorAccess()) {
             return true;
         }
-        if ($p->role === HelpdeskProfile::ROLE_AGENT && (int) $ticket->assigned_user_id === (int) $user->id) {
+        if ($p->actsAsAgent() && (int) $ticket->assigned_user_id === (int) $user->id) {
             return true;
         }
         if ($p->role === HelpdeskProfile::ROLE_USER && $p->staff_id
@@ -85,7 +85,7 @@ class HelpdeskTicketPolicy
             return true;
         }
 
-        if ($p->role === HelpdeskProfile::ROLE_AGENT && (int) $ticket->assigned_user_id === (int) $user->id) {
+        if ($p->actsAsAgent() && (int) $ticket->assigned_user_id === (int) $user->id) {
             return true;
         }
 
@@ -121,12 +121,11 @@ class HelpdeskTicketPolicy
 
         $p = $user->helpdeskProfile;
 
-        return $p && in_array($p->role, [
+        return $p && ($p->actsAsAgent() || in_array($p->role, [
             HelpdeskProfile::ROLE_ADMIN,
             HelpdeskProfile::ROLE_SUPERVISOR,
-            HelpdeskProfile::ROLE_AGENT,
             HelpdeskProfile::ROLE_AUDITOR,
-        ], true);
+        ], true));
     }
 
     public function attachFiles(User $user, HelpdeskTicket $ticket): bool
@@ -147,7 +146,7 @@ class HelpdeskTicketPolicy
         if ($p->hasSupervisorAccess()) {
             return $this->view($user, $ticket);
         }
-        if ($p->role === HelpdeskProfile::ROLE_AGENT && (int) $ticket->assigned_user_id === (int) $user->id) {
+        if ($p->actsAsAgent() && (int) $ticket->assigned_user_id === (int) $user->id) {
             return true;
         }
 

@@ -38,7 +38,7 @@
     <div class="container">
       <!-- Header with Africa CDC logo -->
       <div class="header">
-        <img src="https://khub.africacdc.org/storage/uploads/config/fcb24779b37db15ee15fd4a32eaab0ac.png" alt="Africa CDC">
+        <img src="<?php echo mail_logo_url(); ?>" alt="Africa CDC">
       </div>
       <!-- Email Content -->
       <div class="content">

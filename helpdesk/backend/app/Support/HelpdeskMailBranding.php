@@ -19,11 +19,14 @@ final class HelpdeskMailBranding
         }
 
         $base = rtrim((string) config('helpdesk.staff_portal_url', ''), '/');
+        if ($base === '') {
+            $base = rtrim((string) config('helpdesk.staff_api.base_url', ''), '/');
+        }
         if ($base !== '') {
-            return $base.'/cbp-assets/images/AU_CDC_Logo-800.png';
+            return $base.'/assets/images/AU_CDC_Logo-800.png';
         }
 
-        return 'https://cbp.africacdc.org/staff/cbp-assets/images/AU_CDC_Logo-800.png';
+        return 'https://cbp.africacdc.org/staff/assets/images/AU_CDC_Logo-800.png';
     }
 
     public static function primaryColor(): string

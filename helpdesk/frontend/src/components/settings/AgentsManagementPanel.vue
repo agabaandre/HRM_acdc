@@ -340,7 +340,7 @@ async function loadCandidates() {
 const filteredCandidates = computed<CandidateRow[]>(() => {
   const q = candidateSearch.value.trim().toLowerCase()
   return candidates.value.filter((c) => {
-    if (onlyUnassigned.value && c.current_role === 'agent') return false
+    if (onlyUnassigned.value && (c.current_role === 'agent' || c.is_designated_agent)) return false
     if (q === '') return true
     const hay = `${c.name} ${c.work_email ?? ''} ${c.division_name} ${c.staff_id}`.toLowerCase()
     return hay.includes(q)
@@ -361,9 +361,11 @@ async function addAgent(c: CandidateRow) {
       division_id: c.division_id || null,
       duty_station: c.duty_station_name || null,
     })
-    c.current_role = 'agent'
     c.is_designated_agent = true
     c.has_user = true
+    if (!c.current_role || c.current_role === 'user') {
+      c.current_role = 'agent'
+    }
     notifySuccess(`${c.name} added — assign support groups and categories below.`)
     await loadAgents()
   } catch (e: unknown) {
@@ -587,10 +589,16 @@ onMounted(() => {
                     <div class="cand-sub">{{ c.work_email || 'No email' }} · SID {{ c.staff_id }}</div>
                   </td>
                   <td><span class="badge badge-div">{{ c.division_name }}</span></td>
-                  <td>{{ c.current_role === 'agent' ? 'Agent' : c.current_role || 'User' }}</td>
+                  <td>
+                    {{
+                      c.is_designated_agent
+                        ? (c.current_role === 'admin' ? 'Admin (agent)' : 'Agent')
+                        : (c.current_role === 'agent' ? 'Agent' : c.current_role || 'User')
+                    }}
+                  </td>
                   <td class="cand-actions">
                     <button
-                      v-if="c.current_role !== 'agent'"
+                      v-if="!c.is_designated_agent"
                       type="button"
                       class="btn-add"
                       :disabled="busyStaffId === c.staff_id || !c.work_email"
