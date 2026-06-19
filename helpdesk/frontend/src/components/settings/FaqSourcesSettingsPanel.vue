@@ -226,7 +226,7 @@ onMounted(() => {
   color: #92400e;
   background: #fffbeb;
   border: 1px solid #fcd34d;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.65rem 0.75rem;
   margin: 0 0 0.75rem;
 }
@@ -235,7 +235,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.85rem;
   padding: 1.25rem 1.35rem;
-  border-radius: 14px;
+  border-radius: 4px;
   border: 1px solid var(--cdc-line, rgba(12, 26, 18, 0.08));
   background: var(--cdc-paper, #fafbf9);
 }
@@ -274,7 +274,7 @@ input[type='url'] {
   font-weight: 400;
   padding: 0.5rem 0.65rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   font-family: inherit;
 }
 .actions {
@@ -286,7 +286,7 @@ input[type='url'] {
 .primary,
 .ghost {
   padding: 0.5rem 1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;

@@ -246,7 +246,7 @@ function onReady(quill: unknown) {
 }
 .cbp-rich-text__editor {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
 }
 .cbp-rich-text__editor--loading {
@@ -288,7 +288,7 @@ function onReady(quill: unknown) {
 .cbp-rich-text__editor :deep(.ql-editor img) {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
+  border-radius: 4px;
   margin: 0.35rem 0;
 }
 .cbp-rich-text__editor :deep(.ql-editor.ql-blank::before) {
@@ -311,7 +311,7 @@ function onReady(quill: unknown) {
   background: #fef2f2;
   border: 1px solid #fecaca;
   padding: 0.4rem 0.55rem;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 .cbp-rich-text__tip.muted {
   color: #64748b;

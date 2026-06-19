@@ -102,7 +102,7 @@ onMounted(() => {
 }
 .card {
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 1rem 1.1rem;
   background: #fafafa;
 }
@@ -124,7 +124,7 @@ onMounted(() => {
 .pill {
   font-size: 0.82rem;
   padding: 0.45rem 0.65rem;
-  border-radius: 8px;
+  border-radius: 4px;
   background: #fef3c7;
   color: #92400e;
 }

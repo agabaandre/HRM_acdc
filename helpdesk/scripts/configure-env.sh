@@ -14,6 +14,8 @@ BACKEND_ENV="$HELPDESK_ROOT/backend/.env"
 
 # shellcheck source=lib/urls.sh
 source "$HELPDESK_ROOT/scripts/lib/urls.sh"
+# shellcheck source=lib/staff-api-env.sh
+source "$HELPDESK_ROOT/scripts/lib/staff-api-env.sh"
 
 if [[ ! -f "$SETUP_ENV" ]]; then
     echo "Missing $SETUP_ENV — copy setup.env.example to setup.env and set DB_* / JWT_SECRET." >&2
@@ -58,14 +60,10 @@ inherit_if_empty() {
     fi
 }
 
-# Inherit secrets from Staff / APM when setup.env leaves them blank.
+# Inherit secrets into shell for setup.env apply (backend .env filled from portal below).
 inherit_if_empty JWT_SECRET "$STAFF_ENV"
 inherit_if_empty JWT_SECRET "$APM_ENV"
 inherit_if_empty SESSION_SECRET "$STAFF_ENV"
-inherit_if_empty STAFF_API_USERNAME "$APM_ENV"
-inherit_if_empty STAFF_API_PASSWORD "$APM_ENV"
-inherit_if_empty STAFF_API_TOKEN "$APM_ENV"
-inherit_if_empty BASE_URL "$APM_ENV"
 
 inherit_redis_from_staff() {
     local key val
@@ -106,9 +104,12 @@ for key in \
     CACHE_STORE SESSION_DRIVER \
     REDIS_CLIENT REDIS_HOST REDIS_PASSWORD REDIS_PORT REDIS_URL \
     HELPDESK_TICKET_READ_CACHE_ENABLED HELPDESK_TICKET_READ_CACHE_TTL \
+    HELPDESK_STAFF_API_INTERNAL_BASE_URL \
     SANCTUM_STATEFUL_DOMAINS; do
     apply_from_setup "$key"
 done
+
+helpdesk_inherit_sensitive_from_portal_env "$BACKEND_ENV" "$STAFF_ROOT"
 
 # SQLite quick path: ensure database file exists.
 if [[ "${DB_CONNECTION:-}" == "sqlite" ]]; then

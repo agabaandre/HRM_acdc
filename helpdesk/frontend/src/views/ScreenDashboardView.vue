@@ -570,7 +570,7 @@ body.screen-mode #app {
 .kpi {
   background: var(--tile-bg);
   border: 1px solid var(--tile-border);
-  border-radius: 14px;
+  border-radius: 4px;
   padding: 0.95rem 1.05rem;
   position: relative;
   overflow: hidden;
@@ -623,7 +623,7 @@ body.screen-mode #app {
 .card {
   background: var(--tile-bg);
   border: 1px solid var(--tile-border);
-  border-radius: 14px;
+  border-radius: 4px;
   padding: 0.95rem 1.05rem;
   display: flex;
   flex-direction: column;
@@ -672,7 +672,7 @@ body.screen-mode #app {
 .wait-block {
   background: rgba(15, 23, 42, 0.55);
   border: 1px solid var(--tile-border);
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 0.7rem 0.85rem;
   text-align: center;
 }
@@ -711,7 +711,7 @@ body.screen-mode #app {
 .priority-cell {
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid var(--tile-border);
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 0.55rem 0.75rem;
 }
 .priority-cell-head {

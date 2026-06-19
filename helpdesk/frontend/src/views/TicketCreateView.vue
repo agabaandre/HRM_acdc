@@ -435,7 +435,7 @@ label {
 }
 .session-summary {
   padding: 0.65rem 0.85rem;
-  border-radius: 10px;
+  border-radius: 4px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
 }
@@ -460,7 +460,7 @@ label {
 }
 .requester-combo {
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 0.65rem 0.75rem;
   background: #fff;
   display: flex;
@@ -478,7 +478,7 @@ label {
   width: 100%;
   padding: 0.45rem 0.5rem;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.9rem;
 }
 .combo-results {
@@ -486,7 +486,7 @@ label {
   margin: 0;
   padding: 0.25rem;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 4px;
   max-height: 240px;
   overflow: auto;
   background: #fff;
@@ -496,7 +496,7 @@ label {
 }
 .combo-result {
   padding: 0.45rem 0.5rem;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -530,7 +530,7 @@ label {
   line-height: 1.45;
   padding: 0.45rem 0.5rem;
   background: #f1f5f9;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 .muted {
   font-size: 0.85rem;
@@ -542,7 +542,7 @@ label {
   color: #92400e;
   background: #fffbeb;
   padding: 0.5rem 0.65rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #fcd34d;
 }
 .row-actions {
@@ -552,7 +552,7 @@ label {
 }
 .ghost {
   padding: 0.35rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #fff;
   font-weight: 600;
@@ -564,7 +564,7 @@ select,
 textarea {
   padding: 0.45rem 0.5rem;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 .primary {
   justify-self: start;
@@ -572,7 +572,7 @@ textarea {
   background: #119a48;
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   font-weight: 700;
   cursor: pointer;
 }

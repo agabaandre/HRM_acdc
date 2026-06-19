@@ -207,7 +207,7 @@ onMounted(() => {
 }
 .card {
   padding: 1rem 1.15rem;
-  border-radius: 14px;
+  border-radius: 4px;
   border: 1px solid var(--cdc-line, rgba(12, 26, 18, 0.08));
   background: var(--cdc-white, #fff);
   margin-bottom: 1rem;
@@ -249,12 +249,12 @@ input[type='number'],
 select {
   padding: 0.35rem 0.45rem;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.88rem;
 }
 .table-wrap {
   overflow-x: auto;
-  border-radius: 12px;
+  border-radius: 4px;
   border: 1px solid var(--cdc-line, rgba(12, 26, 18, 0.08));
   background: var(--cdc-white, #fff);
 }
@@ -272,7 +272,7 @@ select {
 }
 .btn {
   padding: 0.3rem 0.55rem;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #f8fafc;
   font-weight: 600;
@@ -281,7 +281,7 @@ select {
 }
 .primary {
   padding: 0.45rem 0.9rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: none;
   background: linear-gradient(135deg, var(--cdc-green, #0d7a3a), var(--cdc-green-deep, #065f2c));
   color: #fff;

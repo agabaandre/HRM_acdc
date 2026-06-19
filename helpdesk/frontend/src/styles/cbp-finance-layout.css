@@ -197,7 +197,7 @@ html.helpdesk-theme-dark {
   right: 0;
   min-width: 220px;
   padding: 0.35rem 0;
-  border-radius: 10px;
+  border-radius: 4px;
   background: var(--cbp-dd-bg);
   border: 1px solid var(--cbp-dd-border);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
@@ -213,7 +213,7 @@ html.helpdesk-theme-dark {
   display: block;
   padding: 0.65rem 0.85rem;
   margin: 0.2rem 0.35rem 0.45rem;
-  border-radius: 8px;
+  border-radius: 4px;
   text-decoration: none;
   background: linear-gradient(135deg, rgba(17, 154, 72, 0.14), rgba(17, 154, 72, 0.06));
   border: 1px solid rgba(17, 154, 72, 0.22);
@@ -364,7 +364,7 @@ html.helpdesk-theme-dark {
   gap: 0.45rem;
   padding: 0.2rem 0.35rem 0.2rem 0.2rem;
   border: 0;
-  border-radius: 8px;
+  border-radius: 4px;
   background: transparent;
   color: #fff;
   font-family: inherit;
@@ -585,7 +585,7 @@ html.helpdesk-theme-dark {
   left: 0;
   min-width: 220px;
   background: var(--cbp-dd-bg);
-  border-radius: 6px;
+  border-radius: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   padding: 0.35rem 0;
   z-index: 1100;
@@ -664,7 +664,7 @@ html.helpdesk-theme-dark {
 .cbp-card {
   background: var(--cbp-card-bg);
   color: var(--cbp-card-text);
-  border-radius: 8px;
+  border-radius: 4px;
   box-shadow: var(--cbp-card-shadow);
   padding: 1.5rem 1.35rem;
   margin-bottom: 1.25rem;
@@ -715,7 +715,7 @@ html.helpdesk-theme-dark {
 .cbp-flash {
   margin: 0 0 0.75rem;
   padding: 0.55rem 0.75rem;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.9rem;
   font-weight: 600;
 }

@@ -213,14 +213,14 @@ onMounted(load)
   flex: 1;
   min-width: 14rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.45rem 0.65rem;
 }
 .searchbar button {
   border: 1px solid #119a48;
   background: #119a48;
   color: #fff;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.45rem 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -239,7 +239,7 @@ onMounted(load)
 }
 .meta select {
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.25rem 0.5rem;
 }
 .table-section {
@@ -259,7 +259,7 @@ onMounted(load)
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #334155;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.35rem 0.75rem;
   font-weight: 600;
   cursor: pointer;

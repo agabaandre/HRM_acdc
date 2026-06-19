@@ -199,7 +199,7 @@ onMounted(() => {
 }
 .card {
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 1rem 1.1rem;
   background: #fafafa;
 }
@@ -234,7 +234,7 @@ input[type='text'],
 input[type='password'] {
   padding: 0.4rem 0.5rem;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.9rem;
 }
 .mono,
@@ -255,7 +255,7 @@ input[type='password'] {
 .primary {
   align-self: flex-start;
   padding: 0.55rem 1.1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: none;
   background: linear-gradient(135deg, #119a48, #0d7a3a);
   color: #fff;

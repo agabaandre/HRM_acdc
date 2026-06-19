@@ -281,7 +281,7 @@ onMounted(() => {
   text-decoration: none;
   padding: 0.45rem 0.85rem;
   border: 1px solid rgba(13, 122, 58, 0.35);
-  border-radius: 8px;
+  border-radius: 4px;
 }
 .kb-manage-link:hover {
   background: rgba(13, 122, 58, 0.08);
@@ -304,7 +304,7 @@ onMounted(() => {
 .kb-search-input {
   width: 100%;
   padding: 0.7rem 0.9rem;
-  border-radius: 10px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   font-size: 0.95rem;
   font-family: inherit;
@@ -350,7 +350,7 @@ onMounted(() => {
 }
 .kb-item {
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 4px;
   overflow: hidden;
   background: #fff;
   transition: border-color 0.15s ease;

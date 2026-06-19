@@ -621,7 +621,7 @@ watch(canReopenWithComment, (can) => {
 .closed-banner {
   margin: 1rem 0 1.25rem;
   padding: 1rem 1.1rem;
-  border-radius: 10px;
+  border-radius: 4px;
   border: 1px solid #fcd34d;
   background: #fffbeb;
 }
@@ -682,7 +682,7 @@ watch(canReopenWithComment, (can) => {
   gap: 0.35rem;
   padding: 1.25rem 1rem;
   border: 1px dashed #cbd5e1;
-  border-radius: 10px;
+  border-radius: 4px;
   background: #f8fafc;
   color: #64748b;
   text-align: center;
@@ -708,7 +708,7 @@ watch(canReopenWithComment, (can) => {
 .composer-input {
   width: 100%;
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 0.65rem 0.75rem;
   font: inherit;
   line-height: 1.45;
@@ -725,7 +725,7 @@ watch(canReopenWithComment, (can) => {
   gap: 0.65rem;
   align-items: flex-start;
   padding: 0.75rem 0.85rem;
-  border-radius: 10px;
+  border-radius: 4px;
   border: 1px solid #bbf7d0;
   background: #f0fdf4;
   cursor: pointer;
@@ -761,7 +761,7 @@ watch(canReopenWithComment, (can) => {
   gap: 0.65rem;
   padding: 0.65rem 0.85rem;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 4px;
   background: #f8fafc;
   min-width: min(100%, 16rem);
 }
@@ -832,7 +832,7 @@ watch(canReopenWithComment, (can) => {
   gap: 0.4rem;
   padding: 0.65rem;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 4px;
   background: #f8fafc;
   text-decoration: none;
   color: #0f172a;
@@ -867,7 +867,7 @@ watch(canReopenWithComment, (can) => {
   max-height: min(90vh, 48rem);
   margin: auto;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 4px;
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.35);
   overflow: hidden;
 }
@@ -894,7 +894,7 @@ watch(canReopenWithComment, (can) => {
   width: 2rem;
   height: 2rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   background: transparent;
   color: #64748b;
   font-size: 1.5rem;
@@ -952,7 +952,7 @@ watch(canReopenWithComment, (can) => {
   width: min(92vw, 28rem);
   margin: auto;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 4px;
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.35);
   overflow: hidden;
 }
@@ -975,7 +975,7 @@ watch(canReopenWithComment, (can) => {
   width: 2rem;
   height: 2rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   background: transparent;
   color: #64748b;
   font-size: 1.5rem;
@@ -995,7 +995,7 @@ watch(canReopenWithComment, (can) => {
 .resolve-modal-warn {
   margin: 0;
   padding: 0.65rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 4px;
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #991b1b;
@@ -1034,7 +1034,7 @@ watch(canReopenWithComment, (can) => {
   font-weight: 400;
   padding: 0.5rem 0.65rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.9rem;
 }
 .resolve-kb-hint {
@@ -1053,7 +1053,7 @@ watch(canReopenWithComment, (can) => {
   width: 100%;
   max-height: 8rem;
   object-fit: contain;
-  border-radius: 6px;
+  border-radius: 4px;
   background: #fff;
 }
 .attach-file-icon {
@@ -1072,7 +1072,7 @@ watch(canReopenWithComment, (can) => {
   padding: 1rem;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.95rem;
   line-height: 1.55;
   color: #334155;
@@ -1091,13 +1091,13 @@ watch(canReopenWithComment, (can) => {
   padding: 1rem;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 4px;
   color: #334155;
 }
 .resbox {
   margin-bottom: 1.25rem;
   padding: 0.85rem 1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #bbf7d0;
   background: #f0fdf4;
 }
@@ -1114,7 +1114,7 @@ watch(canReopenWithComment, (can) => {
 .res-html :deep(img) {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
+  border-radius: 4px;
   margin: 0.35rem 0;
 }
 .res-html :deep(p) {
@@ -1148,13 +1148,13 @@ watch(canReopenWithComment, (can) => {
   width: 100%;
   aspect-ratio: 16 / 9;
   border: 0;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 .resolve {
   margin-bottom: 1.5rem;
   padding: 1rem;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 4px;
   background: #fff;
   display: flex;
   flex-direction: column;
@@ -1176,7 +1176,7 @@ watch(canReopenWithComment, (can) => {
 }
 .citem {
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.75rem 1rem;
   margin-bottom: 0.5rem;
   background: #fff;
@@ -1226,7 +1226,7 @@ watch(canReopenWithComment, (can) => {
 textarea {
   padding: 0.5rem;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border-radius: 4px;
   font-family: inherit;
 }
 .primary {
@@ -1235,7 +1235,7 @@ textarea {
   background: #119a48;
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   font-weight: 700;
   cursor: pointer;
 }

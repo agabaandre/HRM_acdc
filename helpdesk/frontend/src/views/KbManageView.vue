@@ -375,7 +375,7 @@ onMounted(() => {
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #991b1b;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 .ok {
   margin: 0.75rem 0;
@@ -383,7 +383,7 @@ onMounted(() => {
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
   color: #166534;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 .list-card {
   padding: 1.1rem;
@@ -397,7 +397,7 @@ onMounted(() => {
   margin: 0.85rem 0 1rem;
   padding: 1rem;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 4px;
   background: #f8fafc;
 }
 .create-panel-title {
@@ -418,7 +418,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.35rem;
   padding: 0.45rem 0.85rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: none;
   background: linear-gradient(135deg, #119a48 0%, #0d7a3a 100%);
   color: #fff;
@@ -433,7 +433,7 @@ onMounted(() => {
 }
 .btn-ghost {
   padding: 0.55rem 1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #475569;
@@ -463,7 +463,7 @@ input,
 select {
   padding: 0.5rem 0.65rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.9rem;
   background: #fff;
   font-family: inherit;
@@ -480,7 +480,7 @@ select {
 .primary {
   margin-top: 0.75rem;
   padding: 0.55rem 1.1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 0;
   background: linear-gradient(135deg, #119a48 0%, #0d7a3a 100%);
   color: #fff;
@@ -597,7 +597,7 @@ tbody tr.row-inactive td {
 }
 .btn-sm {
   padding: 0.35rem 0.6rem;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #0d7a3a;

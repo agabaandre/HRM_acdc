@@ -474,7 +474,7 @@ h2 {
 }
 .tabs button {
   padding: 0.4rem 0.85rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #fff;
   cursor: pointer;
@@ -494,7 +494,7 @@ h2 {
 .tile {
   background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 0.85rem 0.9rem 0.8rem;
   position: relative;
   overflow: hidden;
@@ -587,7 +587,7 @@ h2 {
   flex: 1;
   min-width: 14rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.45rem 0.65rem;
 }
 .meta {
@@ -604,12 +604,12 @@ h2 {
 }
 .meta select {
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.25rem 0.5rem;
 }
 .btn {
   padding: 0.5rem 1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: none;
   background: #119a48;
   color: #fff;
@@ -641,7 +641,7 @@ h2 {
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #334155;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.35rem 0.75rem;
   font-weight: 600;
   cursor: pointer;

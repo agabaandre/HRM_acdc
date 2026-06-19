@@ -38,7 +38,7 @@ const onFaqSources = computed(() => route.name === 'settings-ai-faq-sources')
 
 .ai-subtab {
   padding: 0.45rem 0.85rem;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.88rem;
   font-weight: 700;
   text-decoration: none;

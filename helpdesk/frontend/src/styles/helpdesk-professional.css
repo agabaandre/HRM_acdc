@@ -5,9 +5,9 @@
 
 :root,
 html.helpdesk-theme-light {
-  --hd-radius-sm: 8px;
-  --hd-radius-md: 12px;
-  --hd-radius-lg: 16px;
+  --hd-radius-sm: 4px;
+  --hd-radius-md: 4px;
+  --hd-radius-lg: 4px;
   --hd-shadow-soft: 0 4px 20px rgba(15, 23, 42, 0.06);
   --hd-shadow-card: 0 8px 28px rgba(15, 23, 42, 0.08);
   --hd-border: rgba(15, 23, 42, 0.08);

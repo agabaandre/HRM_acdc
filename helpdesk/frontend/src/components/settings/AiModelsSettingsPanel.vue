@@ -116,7 +116,7 @@ async function saveAi() {
   flex-direction: column;
   gap: 0.85rem;
   padding: 1.25rem 1.35rem;
-  border-radius: 14px;
+  border-radius: 4px;
   border: 1px solid var(--cdc-line, rgba(12, 26, 18, 0.08));
   background: var(--cdc-white, #fff);
   box-shadow: var(--cdc-shadow, 0 8px 24px rgba(6, 95, 44, 0.08));
@@ -138,7 +138,7 @@ input,
 select {
   padding: 0.45rem 0.5rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.95rem;
 }
 .key-hint {
@@ -151,7 +151,7 @@ select {
 }
 .primary {
   padding: 0.55rem 1.1rem;
-  border-radius: 10px;
+  border-radius: 4px;
   border: none;
   background: linear-gradient(135deg, var(--cdc-green, #0d7a3a), var(--cdc-green-deep, #065f2c));
   color: #fff;

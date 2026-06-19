@@ -59,6 +59,8 @@ done
 
 # shellcheck source=scripts/lib/dotenv.sh
 source "$ROOT/scripts/lib/dotenv.sh"
+# shellcheck source=scripts/lib/staff-api-env.sh
+source "$ROOT/scripts/lib/staff-api-env.sh"
 
 log() { printf '==> %s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
@@ -121,18 +123,9 @@ inherit_from_file() {
     dotenv_set "$BACKEND_ENV" "$key" "$inherited"
 }
 
-log "Inheriting SSO / Staff API secrets from Staff and APM when missing"
-for key in JWT_SECRET SESSION_SECRET STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN BASE_URL; do
-    inherit_from_file "$key" "$STAFF_ROOT/.env"
-    inherit_from_file "$key" "$STAFF_ROOT/apm/.env"
-done
-
-log "Inheriting Exchange mail settings from APM when missing"
-for key in MAIL_MAILER USE_EXCHANGE_EMAIL MAIL_FROM_ADDRESS MAIL_FROM_NAME \
-    EXCHANGE_TENANT_ID EXCHANGE_CLIENT_ID EXCHANGE_CLIENT_SECRET \
-    EXCHANGE_REDIRECT_URI EXCHANGE_SCOPE EXCHANGE_AUTH_METHOD; do
-    inherit_from_file "$key" "$STAFF_ROOT/apm/.env"
-done
+log "Inheriting sensitive credentials from Staff / APM (not stored in git)"
+helpdesk_inherit_sensitive_from_portal_env "$BACKEND_ENV" "$STAFF_ROOT"
+helpdesk_validate_staff_api_env "$BACKEND_ENV" "$STAFF_ROOT" || die "Staff Share API credentials are required. Set STAFF_API_* in $STAFF_ROOT/apm/.env then re-run ./setup-production.sh"
 
 jwt="$(dotenv_get "$BACKEND_ENV" JWT_SECRET 2>/dev/null || true)"
 if [[ -z "$jwt" || "$jwt" == change-me* ]]; then

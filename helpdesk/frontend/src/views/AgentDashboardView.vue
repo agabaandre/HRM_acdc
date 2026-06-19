@@ -804,7 +804,7 @@ onUnmounted(() => {
   padding: 1rem 1.1rem;
   background: linear-gradient(135deg, #0d7a3a 0%, #119a48 100%);
   color: #fff;
-  border-radius: 14px;
+  border-radius: 4px;
   box-shadow: 0 6px 18px rgba(13, 122, 58, 0.18);
 }
 .dash-greet {
@@ -909,7 +909,7 @@ onUnmounted(() => {
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.35);
   padding: 0.45rem 0.9rem;
-  border-radius: 8px;
+  border-radius: 4px;
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
@@ -931,7 +931,7 @@ onUnmounted(() => {
 }
 .kpi {
   background: #fff;
-  border-radius: 14px;
+  border-radius: 4px;
   padding: 1rem 1.1rem;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -977,7 +977,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   background: var(--kpi-accent-soft, rgba(17, 154, 72, 0.12));
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.95rem;
 }
 .kpi-label {
@@ -1064,7 +1064,7 @@ onUnmounted(() => {
   display: flex;
   width: 100%;
   height: 12px;
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
   background: #f1f5f9;
 }
@@ -1234,7 +1234,7 @@ onUnmounted(() => {
 }
 .table-scroll {
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 4px;
   background: #fff;
   overflow: hidden;
 }
@@ -1430,7 +1430,7 @@ onUnmounted(() => {
 }
 .reassign-btn {
   padding: 0.25rem 0.45rem;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #1e293b;
@@ -1454,7 +1454,7 @@ onUnmounted(() => {
   background: #0f172a;
   color: #fff;
   padding: 0.75rem 1rem;
-  border-radius: 10px;
+  border-radius: 4px;
   font-size: 0.88rem;
   font-weight: 600;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
@@ -1486,7 +1486,7 @@ onUnmounted(() => {
   width: 100%;
   max-width: 560px;
   background: #fff;
-  border-radius: 14px;
+  border-radius: 4px;
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35);
   display: flex;
   flex-direction: column;
@@ -1520,7 +1520,7 @@ onUnmounted(() => {
   line-height: 1;
   cursor: pointer;
   padding: 0.15rem 0.4rem;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 .modal-close:hover {
   background: #f1f5f9;
@@ -1553,7 +1553,7 @@ onUnmounted(() => {
   max-height: 260px;
   overflow-y: auto;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 0.4rem;
 }
 .agent-choice {
@@ -1561,7 +1561,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.6rem;
   padding: 0.5rem 0.55rem;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
   border: 1px solid transparent;
   background: #fff;
@@ -1611,7 +1611,7 @@ onUnmounted(() => {
   font-family: inherit;
   font-size: 0.9rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.55rem 0.7rem;
   resize: vertical;
   min-height: 100px;
@@ -1637,7 +1637,7 @@ onUnmounted(() => {
 }
 .btn-secondary {
   padding: 0.5rem 0.95rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #1f2937;
@@ -1650,7 +1650,7 @@ onUnmounted(() => {
 }
 .btn-primary {
   padding: 0.5rem 1.1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 0;
   background: linear-gradient(135deg, #0d7a3a, #065f2c);
   color: #fff;
@@ -1671,7 +1671,7 @@ onUnmounted(() => {
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #991b1b;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.86rem;
 }
 
@@ -1684,6 +1684,6 @@ onUnmounted(() => {
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #991b1b;
-  border-radius: 10px;
+  border-radius: 4px;
 }
 </style>

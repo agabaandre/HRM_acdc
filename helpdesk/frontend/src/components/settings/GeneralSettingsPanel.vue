@@ -583,7 +583,7 @@ function roleLabel(c: CandidateRow): string {
 }
 .settings-card {
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 4px;
   background: #fff;
   padding: 1rem 1.1rem 1.1rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -634,7 +634,7 @@ function roleLabel(c: CandidateRow): string {
   flex: 1;
   min-width: 0;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.45rem 0.6rem;
   font: inherit;
 }
@@ -643,7 +643,7 @@ function roleLabel(c: CandidateRow): string {
   height: 2.5rem;
   padding: 0;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
   background: transparent;
 }
@@ -652,7 +652,7 @@ function roleLabel(c: CandidateRow): string {
   gap: 0.75rem;
   align-items: flex-start;
   padding: 0.85rem 0.9rem;
-  border-radius: 10px;
+  border-radius: 4px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   cursor: pointer;
@@ -753,7 +753,7 @@ function roleLabel(c: CandidateRow): string {
   flex-direction: column;
   gap: 0.85rem;
   padding: 1.25rem 1.35rem;
-  border-radius: 14px;
+  border-radius: 4px;
   border: 1px solid var(--cdc-line, rgba(12, 26, 18, 0.08));
   background: var(--cdc-white, #fff);
   box-shadow: var(--cdc-shadow, 0 8px 24px rgba(6, 95, 44, 0.08));
@@ -774,7 +774,7 @@ label {
 input {
   padding: 0.45rem 0.5rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.95rem;
 }
 .division-picker {
@@ -805,7 +805,7 @@ input {
   max-height: 14rem;
   overflow-y: auto;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.35rem 0.5rem;
   background: #fff;
 }
@@ -884,14 +884,14 @@ input {
   margin: 0;
   padding: 0.35rem 0.5rem;
   background: #fffbeb;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid #fcd34d;
 }
 .ghost {
   align-self: flex-start;
   margin-top: 0.15rem;
   padding: 0.35rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #cbd5e1;
   background: #fff;
   font-weight: 600;
@@ -908,7 +908,7 @@ input {
 }
 .primary {
   padding: 0.55rem 1.1rem;
-  border-radius: 10px;
+  border-radius: 4px;
   border: none;
   background: linear-gradient(135deg, var(--cdc-green, #0d7a3a), var(--cdc-green-deep, #065f2c));
   color: #fff;
@@ -959,7 +959,7 @@ code {
 }
 .cand-table-wrap {
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 4px;
   overflow: auto;
   max-height: 22rem;
   background: #fff;
@@ -1058,7 +1058,7 @@ code {
 .btn-mark,
 .btn-unmark {
   padding: 0.32rem 0.7rem;
-  border-radius: 8px;
+  border-radius: 4px;
   font-weight: 600;
   font-size: 0.8rem;
   cursor: pointer;

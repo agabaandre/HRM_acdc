@@ -86,7 +86,7 @@ h3 {
   color: #92400e;
   background: #fffbeb;
   border: 1px solid #fcd34d;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.65rem 0.75rem;
   margin: 0 0 0.75rem;
 }
@@ -95,7 +95,7 @@ h3 {
 }
 .primary {
   padding: 0.5rem 1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   border: none;
   background: linear-gradient(135deg, #119a48, #0d7a3a);
   color: #fff;

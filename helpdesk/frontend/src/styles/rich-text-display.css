@@ -10,7 +10,7 @@
 .rich-text-content img {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .rich-text-content .ql-align-center {
@@ -88,7 +88,7 @@
 .rich-text-content pre.ql-syntax,
 .rich-text-content pre {
   background: #f1f5f9;
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 0.65rem 0.85rem;
   overflow-x: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -100,5 +100,5 @@
   max-width: 100%;
   aspect-ratio: 16 / 9;
   border: 0;
-  border-radius: 8px;
+  border-radius: 4px;
 }

@@ -142,7 +142,7 @@ function submit() {
   display: flex;
   flex-direction: column;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 4px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
 }
 
@@ -191,7 +191,7 @@ function submit() {
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #991b1b;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.875rem;
 }
 
@@ -215,7 +215,7 @@ input,
 select {
   padding: 0.5rem 0.65rem;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.9rem;
   font-family: inherit;
 }
@@ -232,7 +232,7 @@ select {
 
 .btn {
   padding: 0.5rem 1rem;
-  border-radius: 8px;
+  border-radius: 4px;
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
