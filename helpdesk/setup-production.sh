@@ -199,8 +199,12 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
     fi
     (
         cd "$FRONTEND"
+        # package-lock.json is committed for helpdesk/frontend; fall back to install when missing.
         if [[ -f package-lock.json ]]; then
-            npm ci --legacy-peer-deps
+            if ! npm ci --legacy-peer-deps; then
+                warn "npm ci failed (stale lock?) — running npm install --legacy-peer-deps"
+                npm install --legacy-peer-deps
+            fi
         else
             npm install --legacy-peer-deps
         fi

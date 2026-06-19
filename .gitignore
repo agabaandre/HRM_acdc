@@ -20,6 +20,7 @@ node_modules
 .sql
 compser.lock
 package-lock.json
+!helpdesk/frontend/package-lock.json
 
 /apm/vendor/
 
