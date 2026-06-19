@@ -9,10 +9,12 @@ use App\Http\Resources\Api\V1\TicketResource;
 use App\Jobs\ScanTicketForAiSignals;
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskSupportGroup;
 use App\Models\User;
 use App\Services\HtmlSanitizer;
+use App\Services\RequesterTicketFollowUpService;
 use App\Services\StaffDirectoryLookupService;
 use App\Services\TicketAssignmentService;
 use App\Services\TicketHistoryLogger;
@@ -197,6 +199,10 @@ class TicketController extends Controller
 
         if ($profile && $profile->role === HelpdeskProfile::ROLE_USER) {
             unset($data['status'], $data['assigned_user_id'], $data['category_id'], $data['priority']);
+        }
+
+        if (array_key_exists('description', $data)) {
+            $data['description'] = HtmlSanitizer::sanitize($data['description']);
         }
 
         $ticket->fill($data);
@@ -397,24 +403,42 @@ class TicketController extends Controller
 
     /**
      * Requester reopens a closed ticket when the resolution did not fix the issue.
+     * When requester follow-up is enabled, a comment body is required so the assignee
+     * receives one email containing both the comment and the reopen alert.
      */
-    public function reopen(Request $request, HelpdeskTicket $ticket, TicketHistoryLogger $logger): JsonResponse
-    {
+    public function reopen(
+        Request $request,
+        HelpdeskTicket $ticket,
+        RequesterTicketFollowUpService $followUp,
+    ): JsonResponse {
         $this->authorize('reopen', $ticket);
 
+        $user = $request->user();
+        $profile = $user->helpdeskProfile;
+        abort_unless($profile, 403);
+
+        if (HelpdeskSetting::requesterUnsatisfiedFollowUpEnabled()) {
+            $validated = $request->validate([
+                'body' => ['required', 'string', 'max:65535'],
+            ]);
+
+            $result = $followUp->commentAndMaybeReopen(
+                $ticket,
+                $user,
+                $profile,
+                $validated['body'],
+                true,
+            );
+
+            return response()->json([
+                'message' => 'Ticket reopened and your comment was sent to the assigned agent.',
+                'data' => (new TicketResource($ticket->fresh()->load(['category', 'assignee.helpdeskProfile', 'attachments'])))->resolve(),
+                'meta' => ['ticket_reopened' => $result['ticket_reopened']],
+            ]);
+        }
+
         $previousStatus = $ticket->status;
-
-        $ticket->forceFill([
-            'status' => 'open',
-            'closed_at' => null,
-            'resolved_at' => null,
-            'resolution_confirmed_at' => null,
-            'resolution_confirm_token' => null,
-        ])->save();
-
-        $logger->log($ticket, 'ticket.reopened', $request->user()->id, [
-            'previous_status' => $previousStatus,
-        ]);
+        $followUp->reopenTicket($ticket, $user, (string) $previousStatus, 'requester_reopen');
 
         return response()->json([
             'message' => 'Ticket reopened. Add a comment below with any extra details for the support team.',

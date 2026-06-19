@@ -2,30 +2,65 @@
     $base = rtrim((string) config('helpdesk.frontend_url', 'http://localhost:5174'), '/');
     $ticketUrl = $base.'/tickets/'.$ticket->id;
 @endphp
-<x-mail::message>
-# New comment from {{ $requester->name }}
 
-@if($ticketReopened)
-The requester added a comment and **reopened** ticket **{{ $ticket->ticket_number }}** because the issue is not resolved.
-@else
-The requester added a comment on ticket **{{ $ticket->ticket_number }}**.
-@endif
+@extends('emails.helpdesk.layout')
 
-**Subject:** {{ $ticket->subject }}
+@section('title', 'New requester comment')
+@section('headline', $ticketReopened ? 'Ticket reopened by requester' : 'New requester comment')
+@section('subheadline', 'A requester has added an update that needs your attention.')
 
-**Requester:** {{ $ticket->requester_name ?? $requester->name }} — {{ $ticket->requester_email ?? $requester->email }}
+@section('content')
+    <p>Hello,</p>
 
-**Comment:**
+    @if($ticketReopened)
+        <div class="note-box" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;">
+            <strong>Action required:</strong> this ticket was <strong>reopened</strong> by the requester and needs your attention.
+        </div>
+        <p>
+            <strong>{{ $requester->name }}</strong> commented on ticket
+            <strong>{{ $ticket->ticket_number }}</strong> and reopened it because the issue is not resolved.
+        </p>
+    @else
+        <p>
+            <strong>{{ $requester->name }}</strong> added a comment on ticket
+            <strong>{{ $ticket->ticket_number }}</strong>.
+        </p>
+    @endif
 
-{{ $comment->body }}
+    <div class="details">
+        <p class="details-title">Ticket details</p>
+        <div class="detail-row">
+            <span class="detail-label">Subject</span>
+            <span class="detail-value">{{ $ticket->subject }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+                @if($ticketReopened)
+                    Open <span style="color:#b45309;font-weight:700;">(reopened)</span>
+                @else
+                    {{ ucfirst(str_replace('_', ' ', $ticket->status)) }}
+                @endif
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Requester</span>
+            <span class="detail-value">
+                {{ $ticket->requester_name ?? $requester->name }}
+                @php $email = $ticket->requester_email ?? $requester->email; @endphp
+                @if($email)
+                    <br><a href="mailto:{{ $email }}">{{ $email }}</a>
+                @endif
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Comment</span>
+            <span class="detail-value">
+                <div class="comment-box">{{ $comment->body }}</div>
+            </span>
+        </div>
+    </div>
+@endsection
 
-<x-mail::button :url="$ticketUrl">
-Open ticket
-</x-mail::button>
-
-If the button does not work, copy this link into your browser:<br>
-<span style="word-break: break-all;">{{ $ticketUrl }}</span>
-
-Thanks,<br>
-{{ config('app.name') }}
-</x-mail::message>
+@section('action_url', $ticketUrl)
+@section('action_label', 'Open ticket')

@@ -7,9 +7,11 @@
     "install:all": "cd backend && composer install && cd ../frontend && npm install --cache ./.npm-cache --legacy-peer-deps",
     "dev:api": "cd backend && composer run dev",
     "dev:web": "cd frontend && npm run dev",
-    "dev:all": "npx concurrently -c \"#119a48,#0d7a3a\" \"npm run dev:api\" \"npm run dev:web\" --names=api,web"
+    "dev:all": "npx concurrently -c \"#119a48,#0d7a3a\" \"npm run dev:api\" \"npm run dev:web\" --names=api,web",
+    "docs:screenshots": "node scripts/capture-documentation-screenshots.mjs"
   },
   "devDependencies": {
-    "concurrently": "^9.0.0"
+    "concurrently": "^9.0.0",
+    "playwright": "^1.52.0"
   }
 }

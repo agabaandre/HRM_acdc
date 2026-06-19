@@ -91,6 +91,31 @@ If global Composer cache is not writable, this repo configures a **project-local
 
 OpenAPI 3 outline lives in `documentation/openapi.yaml`. For generated Swagger UI, add `darkaonline/l5-swagger` when your Composer cache is writable, or use an external spec viewer against `openapi.yaml`.
 
-## Compliance & roadmap
+## Compliance & features
 
-ISO **27001 / 20000 / 9001** controls, AI providers, WhatsApp, Teams, SLA engine, RTL locales, and exports are phased per `helpdesk-module.text` and `cursor.txt` — schema stubs and category seeder are in place; controllers and UI will follow the same module layout.
+| Area | Status |
+|------|--------|
+| Ticket lifecycle, comments, reopen-via-comment, agent email | Live |
+| Support groups & category routing | Live |
+| Agent desk KPI filters, reports, Excel export | Live |
+| Knowledge base + APM FAQ ingest | Live |
+| Branded email (Africa CDC Helpdesk template) | Live |
+| Signed attachment downloads | Live |
+| AI provider (OpenAI / Gemini / custom) + optional agent assignment | Live |
+| WhatsApp & Teams webhook registration | Credentials + verify; ticket creation phased |
+| Public TV dashboard (`/screen`) | Live |
+| Security tests (IDOR, XSS sanitization, signed URLs) | `tests/Feature/SecurityApiTest.php` |
+| ISO JSON logging (`LOG_STACK=iso_json`) | Optional |
+
+Phased per `helpdesk-module.text` and `cursor.txt`: full WhatsApp/Teams ticket creation, RTL locales, advanced SLA automation.
+
+## Documentation
+
+| Guide | Path |
+|-------|------|
+| **User guide** (requesters & agents) | [`documentation/USER_GUIDE.md`](./documentation/USER_GUIDE.md) |
+| **Administrator guide** (AI, WhatsApp, Teams, env) | [`documentation/ADMIN_GUIDE.md`](./documentation/ADMIN_GUIDE.md) |
+| **Developer guide** | [`documentation/DEVELOPER_GUIDE.md`](./documentation/DEVELOPER_GUIDE.md) |
+| **Doc index + screenshots** | [`documentation/README.md`](./documentation/README.md) |
+
+Regenerate UI screenshots: `npm run docs:screenshots` (see [`documentation/screenshots/README.md`](./documentation/screenshots/README.md)).

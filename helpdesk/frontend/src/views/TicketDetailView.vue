@@ -63,11 +63,10 @@ const ticketId = computed(() => Number(route.params.id))
 const ticket = ref<TicketDetail | null>(null)
 const comments = ref<CommentRow[]>([])
 const newBody = ref('')
-const reopenWithComment = ref(false)
+const reopenWithComment = ref(true)
 const posting = ref(false)
 const resolutionNotes = ref('')
 const resolving = ref(false)
-const reopening = ref(false)
 const inlineImageBusy = ref(false)
 const showResolveModal = ref(false)
 const publishToKb = ref(false)
@@ -152,10 +151,6 @@ const canReopenWithComment = computed(
   () => isClosedForRequester.value && isRequester.value && requesterFollowUpEnabled.value,
 )
 
-const showStandaloneReopen = computed(
-  () => isClosedForRequester.value && isRequester.value && !requesterFollowUpEnabled.value,
-)
-
 const canPublishKb = computed(() => {
   const p = auth.me?.profile
   if (!p) {
@@ -236,22 +231,6 @@ async function postComment() {
   }
 }
 
-async function reopenTicket() {
-  const id = ticketId.value
-  if (!id) {
-    return
-  }
-  reopening.value = true
-  try {
-    await api.post(`/api/v1/tickets/${id}/reopen`)
-    await loadAll()
-  } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Could not reopen ticket'))
-  } finally {
-    reopening.value = false
-  }
-}
-
 async function confirmSubmitResolution() {
   const id = ticketId.value
   const summary = resolutionNotes.value
@@ -298,6 +277,11 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onDocumentKeydown)
 })
 watch(ticketId, loadAll)
+watch(canReopenWithComment, (can) => {
+  if (can) {
+    reopenWithComment.value = true
+  }
+})
 </script>
 
 <template>
@@ -537,20 +521,17 @@ watch(ticketId, loadAll)
         <div class="closed-banner-copy">
           <p class="closed-banner-title">This ticket is closed</p>
           <p class="closed-banner-text">
-            Review the resolution above. If the issue is not fixed, add a comment below and check
-            <strong>Reopen this ticket</strong> so your assigned agent is notified by email and support can continue.
+            Review the resolution above. Add a comment below to explain what is still wrong. When you post with
+            <strong>Reopen this ticket</strong> checked, your assigned agent receives one email with your comment and
+            the reopen alert.
           </p>
         </div>
       </section>
 
-      <section v-else-if="showStandaloneReopen" class="closed-banner" role="status">
+      <section v-else-if="isClosedForRequester" class="closed-banner" role="status">
         <p class="closed-banner-text">
-          This ticket is closed. Review the resolution above. If the issue is not fixed, add a comment below or
-          reopen the ticket so support can continue.
+          This ticket is closed. Review the resolution above and add a comment below if you need further help.
         </p>
-        <button type="button" class="primary" :disabled="reopening" @click="reopenTicket">
-          {{ reopening ? 'Reopening…' : 'Reopen ticket' }}
-        </button>
       </section>
 
       <section class="comments-section">
@@ -598,12 +579,12 @@ watch(ticketId, loadAll)
             <input v-model="reopenWithComment" type="checkbox" />
             <span class="reopen-check-copy">
               <strong>I'm not satisfied — reopen this ticket</strong>
-              <span class="reopen-check-hint">Your assigned agent will receive your comment by email.</span>
+              <span class="reopen-check-hint">Your assigned agent receives one email with your comment and the reopen alert.</span>
             </span>
           </label>
           <div class="composer-actions">
             <button type="submit" class="primary" :disabled="posting || !newBody.trim()">
-              {{ posting ? 'Posting…' : reopenWithComment ? 'Post & reopen' : 'Post comment' }}
+              {{ posting ? 'Posting…' : reopenWithComment && canReopenWithComment ? 'Post & reopen' : 'Post comment' }}
             </button>
           </div>
         </form>

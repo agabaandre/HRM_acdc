@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\ReferenceDataController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RichTextImageController;
 use App\Http\Controllers\Api\V1\TicketAttachmentController;
+use App\Http\Controllers\Api\V1\TicketAttachmentDownloadController;
 use App\Http\Controllers\Api\V1\TicketCommentController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\TicketInlineImageController;
@@ -36,9 +37,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::get('/health', HealthController::class);
-    Route::post('/auth/exchange', ExchangeTokenController::class);
-    Route::post('/auth/staff-sso', StaffSsoController::class);
-    Route::post('/public/tickets/confirm-resolution', [PublicTicketResolutionController::class, 'confirm']);
+    Route::post('/auth/exchange', ExchangeTokenController::class)->middleware('throttle:30,1');
+    Route::post('/auth/staff-sso', StaffSsoController::class)->middleware('throttle:30,1');
+    Route::post('/public/tickets/confirm-resolution', [PublicTicketResolutionController::class, 'confirm'])
+        ->middleware('throttle:30,1');
+
+    Route::get('/attachments/{attachment}/file', [TicketAttachmentDownloadController::class, 'file'])
+        ->middleware('throttle:300,1');
 
     // Read-only TV / lobby dashboard — aggregate stats only, NEVER PII.
     Route::get('/public/screen', PublicScreenController::class)->middleware('throttle:120,1');

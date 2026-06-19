@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskTicketComment;
 use App\Models\User;
+use App\Support\HelpdeskMailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -27,14 +28,14 @@ class TicketRequesterCommentMail extends Mailable
         $suffix = $this->ticketReopened ? ' (reopened)' : '';
 
         return new Envelope(
-            subject: 'IT Service Desk — New requester comment'.$suffix.': '.$this->ticket->ticket_number,
+            subject: HelpdeskMailBranding::brandName().' — New requester comment'.$suffix.': '.$this->ticket->ticket_number,
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.helpdesk.ticket-requester-comment',
+            view: 'emails.helpdesk.ticket-requester-comment',
         );
     }
 }

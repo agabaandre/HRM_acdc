@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskTicketAttachment;
+use App\Support\HelpdeskAttachmentUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -32,7 +33,7 @@ class TicketAttachmentController extends Controller
             'uploaded_by' => $request->user()->id,
         ]);
 
-        $url = Storage::disk('public')->url($row->path);
+        $url = HelpdeskAttachmentUrl::forAttachment($row);
 
         return response()->json([
             'data' => [

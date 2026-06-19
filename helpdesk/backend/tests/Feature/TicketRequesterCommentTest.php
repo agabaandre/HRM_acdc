@@ -112,6 +112,29 @@ class TicketRequesterCommentTest extends TestCase
         $ticket->refresh();
         $this->assertSame('closed', $ticket->status);
 
-        Mail::assertNothingSent();
+    public function test_reopen_endpoint_with_body_sends_single_comment_email_when_enabled(): void
+    {
+        Mail::fake();
+        $this->seed(HelpdeskCategorySeeder::class);
+
+        $agent = $this->agent(901, 'agent3@example.org');
+        $requester = $this->requester(1001);
+        $ticket = $this->closedTicket($agent, 1001);
+
+        Sanctum::actingAs($requester);
+        $this->postJson('/api/v1/tickets/'.$ticket->id.'/reopen', [
+            'body' => 'Issue persists after reboot.',
+        ])->assertOk()
+            ->assertJsonPath('meta.ticket_reopened', true);
+
+        $ticket->refresh();
+        $this->assertSame('open', $ticket->status);
+
+        Mail::assertSent(TicketRequesterCommentMail::class, 1);
+        Mail::assertSent(TicketRequesterCommentMail::class, function (TicketRequesterCommentMail $mail) {
+            return $mail->hasTo('agent3@example.org')
+                && $mail->ticketReopened === true
+                && str_contains($mail->comment->body, 'Issue persists');
+        });
     }
 }

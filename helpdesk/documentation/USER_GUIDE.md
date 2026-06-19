@@ -1,8 +1,10 @@
 # Helpdesk — User Guide
 
-Welcome to the **Africa CDC IT Service Desk**. This guide walks every audience through what they can do in the helpdesk SPA, including a step-by-step walkthrough of **creating a ticket**.
+Welcome to the **Africa CDC IT Service Desk**. This guide walks every audience through what they can do in the helpdesk SPA, including step-by-step **creating a ticket**, **reopening closed tickets**, and **agent desk** workflows.
 
 > The helpdesk is reached from the Staff portal home page (the **IT Service Desk** tile). You will be signed in automatically — there is no separate password.
+
+![Helpdesk home — knowledge base search](./screenshots/01-home-knowledge-base.png)
 
 ## Table of contents
 
@@ -11,14 +13,17 @@ Welcome to the **Africa CDC IT Service Desk**. This guide walks every audience t
 3. [The home page](#the-home-page)
 4. [Creating a ticket](#creating-a-ticket) ← step-by-step
 5. [Tracking your tickets (requesters)](#tracking-your-tickets-requesters)
-6. [Confirming a resolution](#confirming-a-resolution)
+6. [Comments, reopen & agent email](#comments-reopen--agent-email)
 7. [Agent desk](#agent-desk-agents--supervisors)
-8. [Reassigning a ticket](#reassigning-a-ticket-permission-required)
-9. [Knowledge base](#knowledge-base)
-10. [Reports](#reports)
-11. [TV / lobby dashboard](#tv--lobby-dashboard)
-12. [Admin settings](#admin-settings-administrators)
-13. [Troubleshooting](#troubleshooting)
+8. [Support groups](#support-groups)
+9. [Reassigning a ticket](#reassigning-a-ticket-permission-required)
+10. [Knowledge base](#knowledge-base)
+11. [Reports](#reports)
+12. [TV / lobby dashboard](#tv--lobby-dashboard)
+13. [Admin settings](#admin-settings-administrators)
+14. [Troubleshooting](#troubleshooting)
+
+> **Administrators:** see the dedicated [Administrator Guide](./ADMIN_GUIDE.md) for AI, WhatsApp, Teams, mail, env vars, and security configuration.
 
 ---
 
@@ -38,6 +43,8 @@ Two granular flags live on top of the agent role and can be toggled by admins fr
 
 - **`can_manage_kb`** — lets a non-admin create / edit knowledge-base articles.
 - **`can_reassign_tickets`** — lets an agent hand a ticket over to a different agent (with a reason).
+
+Agents may belong to **support groups** (e.g. Software Development, Infrastructure). Groups inherit issue categories and participate in automatic routing — see [Support groups](#support-groups).
 
 ---
 
@@ -76,6 +83,8 @@ You can open this flow from:
 - **As an agent / supervisor / admin** — you **must** select a requester from the Staff directory before saving. The picker searches `name`, `work email`, and `staff id` against the Staff portal directory in real time. The form sets a `agent_logged_for_requester` flag automatically so reports can tell agent-logged tickets apart from self-service.
 
 ### Step-by-step
+
+![Create ticket form](./screenshots/02-create-ticket.png)
 
 1. **Open the form** at `/tickets/new`. You'll see four sections: *Requester*, *Issue details*, *Description*, and *Attachments*.
 
@@ -128,6 +137,8 @@ You can open this flow from:
 
 Click **My tickets** in the top bar (or visit `/tickets`).
 
+![My tickets list](./screenshots/03-my-tickets.png)
+
 You'll see:
 
 - Your full list, newest first, with status, priority, category, assignee, and created date.
@@ -142,19 +153,26 @@ Open any ticket to see:
 
 You cannot change priority, category, status, or the assignee yourself — those belong to the agent.
 
+You cannot change priority, category, status, or the assignee yourself — those belong to the agent.
+
 ---
 
-## Confirming a resolution
+## Comments, reopen & agent email
 
-If your administrator has enabled **resolution confirmation** (default), this is the flow:
+When an agent **closes** your ticket, you receive a branded email from **Africa CDC Helpdesk** with resolution notes and a link back to the ticket.
 
-1. The agent submits a resolution. Your ticket moves to **`awaiting_requester_confirmation`** and you receive an email with a one-time confirmation link.
-2. Open the link (the page is at `/tickets/confirm-resolution?token=…` and is publicly reachable from outside the helpdesk).
-3. Review the resolution summary.
-4. Click **"Yes, this is resolved"** — the ticket moves to **`resolved`** and the agent is notified.
-5. If the issue is **not** resolved, click **"Re-open"** and add a comment explaining why. The ticket goes back to `open`.
+On a **closed**, **resolved**, or **awaiting confirmation** ticket:
 
-If the toggle is off, agents move tickets straight to `resolved` and you only see a notification.
+1. Scroll to **Comments** on the ticket detail page.
+2. Describe what is still wrong.
+3. If **Requester follow-up** is enabled in settings (default **on**), check **“I'm not satisfied — reopen this ticket”**.
+4. Click **Post & reopen**.
+
+Your assigned agent receives **one email** containing your comment and a clear **reopened** alert. The ticket returns to **open** status.
+
+If you only need to add information without reopening, uncheck the box and click **Post comment** — the agent is still emailed when follow-up is enabled.
+
+> Administrators can disable reopen-via-comment and agent email under **Settings → General → Requester follow-up**. See [ADMIN_GUIDE.md](./ADMIN_GUIDE.md).
 
 ---
 
@@ -162,16 +180,29 @@ If the toggle is off, agents move tickets straight to `resolved` and you only se
 
 The **Agent desk** at `/desk/agent` is the daily workspace for everyone with a staff role.
 
+![Agent desk KPIs](./screenshots/05-agent-desk.png)
+
 What you see:
 
 - A greeting + the current time, with a pulse on whether you're "in service hours".
-- **KPI tiles**: *Pending*, *Due today*, *Overdue*, *Awaiting confirmation*, *High-priority pending*, *New today*, *Resolved this week*, *Closed*.
+- **KPI tiles** (clickable — filter the recent-tickets table and scroll to it): *Pending*, *Due today*, *Overdue*, *Awaiting confirmation*, *High-priority*, *Resolved*, and more.
 - **Status bar chart** showing your queue by status.
 - **Priority bar chart** showing your queue by urgency.
 - A live **recent tickets** table (the 25 most recent assigned to you) with quick filters (status, priority, due-soon).
 - **Action buttons** per ticket: *Open* (full detail view), and *Reassign* (only if you have the permission — see next section).
 
-The data refreshes automatically when you switch tabs and on each visit; for a longer-running session click any KPI tile to re-pull.
+The data refreshes when you switch tabs and on each visit; click any KPI tile to filter the list below.
+
+---
+
+## Support groups
+
+Support groups bundle agents who handle related issue categories (for example **Network and Infrastructure** or **Software Development**).
+
+- Admins manage groups under **Settings → Agents & support groups → Support groups**.
+- Each group has members and **inherited categories** used for routing.
+- Tickets may show an assigned **group** as well as an individual agent.
+- When reassigning, eligible agents respect group and category rules.
 
 ---
 
@@ -237,7 +268,9 @@ The **Export** button on each tab streams an Excel workbook (`maatwebsite/excel`
 
 ## TV / lobby dashboard
 
-A public, full-screen dashboard for office TVs lives at **`/staff/helpdesk/screen`** (or `http://localhost:5174/screen` in development). It does **not** require authentication and exposes only aggregate metrics — never ticket subjects, descriptions, or requester identities.
+A public, full-screen dashboard for office TVs lives at **`/staff/helpdesk/screen`**. It does **not** require authentication and exposes only aggregate metrics — never ticket subjects, descriptions, or requester identities.
+
+![TV lobby dashboard](./screenshots/15-tv-screen.png)
 
 What it shows:
 
@@ -258,17 +291,23 @@ Point a TV browser at the screen URL once and leave it — no sign-in required.
 
 ## Admin settings (administrators)
 
-The **Settings** area (`/settings`) is gated to `role = admin`. It contains seven panels:
+The **Settings** area (`/settings`) is gated to `role = admin`. Use the **[Administrator Guide](./ADMIN_GUIDE.md)** for full configuration steps (AI, WhatsApp, Teams, env vars, security).
 
-- **General** — branding colours, default agent divisions, division-staff picker for promoting agents, and the **"Require resolution confirmation"** toggle.
-- **AI models & provider** — choose OpenAI / Gemini / a custom provider, the model name, endpoint, encrypted API key, and toggles for *AI active* and *AI helps pick the assignee*.
-- **Agents & category routing** — the agent roster. For each agent, configure which categories they handle and toggle `can_manage_kb` / `can_reassign_tickets`. Embedded picker lets you add new agents from any division.
-- **Issue categories** — CRUD on the categories shown to requesters. Categories used by existing tickets cannot be deleted (the API responds with 409).
-- **Jobs (SLA rules + directory sync)** — define response and resolution targets in minutes per category, plus a **"Sync now"** card that warms the Staff Share API cache.
-- **WhatsApp & Teams** — enable/disable each channel and store the credentials. The page shows the webhook base URL to paste into Meta / Azure.
-- **Audit & ISO logging** — paginated read-only viewer over `helpdesk_audit_logs` and a status indicator for the `iso_json` channel (JSON Lines for ISO/IEC 27001 / 27014 evidence).
+| Panel | Path | Summary |
+|-------|------|---------|
+| **General** | `/settings/general` | Branding, **requester follow-up** (reopen + email), agent divisions |
+| **AI models & provider** | `/settings/ai` | OpenAI / Gemini / custom, encrypted API key, AI assignment |
+| **Agents & support groups** | `/settings/agents` | Groups, roster, categories, permissions |
+| **Issue categories** | `/settings/categories` | Requester categories |
+| **Jobs** | `/settings/jobs` | SLA rules, directory sync, FAQ ingest |
+| **WhatsApp & Teams** | `/settings/integrations` | Webhook URLs and encrypted credentials |
+| **Audit & ISO logging** | `/settings/logging` | Audit viewer, ISO JSON log status |
+
+![General settings](./screenshots/08-settings-general.png)
 
 Every settings save writes an entry to the audit log with the actor, IP, user-agent, and a JSON diff.
+
+**Regenerate screenshots:** `npm run docs:screenshots` from the `helpdesk/` folder (see [screenshots/README.md](./screenshots/README.md)).
 
 ---
 
@@ -280,7 +319,9 @@ Every settings save writes an entry to the audit log with the actor, IP, user-ag
 | "Could not load staff from the directory" when filing a ticket | The Staff Share API credentials are stale. An admin should open **Settings → Jobs** and click **Sync now** (`POST /admin/reference-sync`). |
 | Attachment upload fails | Check the file is under 10 MB and is a supported MIME (`jpg/jpeg/png/gif/webp/pdf/doc/docx`). Network firewalls also block some MIMEs — try a PDF. |
 | You can't see the **Reassign** button | Either the ticket isn't in `open` / `pending` / `in_progress`, or you don't have `can_reassign_tickets`. Admins set this on **Settings → Agents**. |
-| Resolution confirmation email never arrives | Check **Settings → Logging** for outbound mail failures and confirm `MAIL_*` is configured. Confirmation tokens stay valid until the ticket is reopened. |
+| Resolution email never arrives | Check `MAIL_*` / Exchange Graph vars; see [ADMIN_GUIDE → Mail](./ADMIN_GUIDE.md#mail--branded-notifications). |
+| Reopen checkbox missing | **Settings → General → Requester follow-up** may be off, or ticket is not closed. |
+| Agent not emailed on comment | Same toggle; ticket must have an assigned agent with a valid email. |
 | The TV screen says "Reconnecting" indefinitely | The browser can't reach `/api/v1/public/screen`. Confirm Apache is up and `throttle:120,1` isn't being hit by another consumer. |
 
 ---

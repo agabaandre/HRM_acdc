@@ -4,10 +4,10 @@ namespace App\Http\Resources\Api\V1;
 
 use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
+use App\Support\HelpdeskAttachmentUrl;
 use App\Support\StaffPhotoUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 /** @mixin HelpdeskTicket */
 class TicketResource extends JsonResource
@@ -22,7 +22,7 @@ class TicketResource extends JsonResource
             foreach ($this->attachments as $a) {
                 $attachments[] = [
                     'id' => $a->id,
-                    'url' => $a->disk === 'public' ? Storage::disk('public')->url($a->path) : $a->path,
+                    'url' => HelpdeskAttachmentUrl::forAttachment($a),
                     'original_name' => $a->original_name,
                     'mime_type' => $a->mime_type,
                 ];

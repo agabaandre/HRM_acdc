@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\HelpdeskTicket;
 use App\Models\User;
+use App\Support\HelpdeskMailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -25,14 +26,14 @@ class TicketAssignedToAgentMail extends Mailable
         $verb = $this->isReassignment ? 'Reassigned to you' : 'Assigned to you';
 
         return new Envelope(
-            subject: 'IT Service Desk — '.$verb.': '.$this->ticket->ticket_number,
+            subject: HelpdeskMailBranding::brandName().' — '.$verb.': '.$this->ticket->ticket_number,
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.helpdesk.ticket-assigned-to-agent',
+            view: 'emails.helpdesk.ticket-assigned-to-agent',
         );
     }
 }

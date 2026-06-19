@@ -128,7 +128,7 @@ return [
                 env('STAFF_API_BASE_URL', env('BASE_URL', env('HELPDESK_STAFF_PORTAL_URL', 'http://localhost/staff')))
             )
         ),
-        'token' => env('HELPDESK_STAFF_API_TOKEN', env('STAFF_API_TOKEN', 'YWZyY2FjZGNzdGFmZnRyYWNrZXI')),
+        'token' => env('HELPDESK_STAFF_API_TOKEN', env('STAFF_API_TOKEN')),
         'username' => env('HELPDESK_STAFF_API_USERNAME', env('STAFF_API_USERNAME')),
         'password' => env('HELPDESK_STAFF_API_PASSWORD', env('STAFF_API_PASSWORD')),
         'endpoints' => [
@@ -157,4 +157,17 @@ return [
     'ticket_read_cache_enabled' => filter_var(env('HELPDESK_TICKET_READ_CACHE_ENABLED', true), FILTER_VALIDATE_BOOL),
     'ticket_read_cache_ttl' => (int) env('HELPDESK_TICKET_READ_CACHE_TTL', 60),
     'ticket_read_cache_store' => env('HELPDESK_TICKET_READ_CACHE_STORE'),
+
+    'attachment_signed_ttl_seconds' => (int) env('HELPDESK_ATTACHMENT_SIGNED_TTL', 604800),
+
+    /** Optional; defaults to APP_KEY. */
+    'attachment_signing_secret' => env('HELPDESK_ATTACHMENT_SIGNING_SECRET'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Transactional email branding
+    |--------------------------------------------------------------------------
+    */
+    'mail_brand_name' => env('HELPDESK_MAIL_BRAND_NAME', 'Africa CDC Helpdesk'),
+    'mail_logo_url' => env('HELPDESK_MAIL_LOGO_URL'),
 ];

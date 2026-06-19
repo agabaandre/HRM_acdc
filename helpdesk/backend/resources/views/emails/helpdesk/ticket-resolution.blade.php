@@ -1,24 +1,29 @@
-<x-mail::message>
-# Hello {{ $ticket->requester_name ?? 'colleague' }},
+@extends('emails.helpdesk.layout')
 
-Your ticket **{{ $ticket->ticket_number }}** — *{{ $ticket->subject }}* — has been **closed** by the IT Service Desk.
+@section('title', 'Ticket closed')
+@section('headline', 'Your ticket has been closed')
+@section('subheadline', 'Please review the resolution below.')
 
-**What we did**
+@section('content')
+    <p>Hello <strong>{{ $ticket->requester_name ?? 'colleague' }}</strong>,</p>
 
-<div style="font-size:14px; line-height:1.55; color:#1e293b;">
-{{-- resolution_summary is sanitised server-side via App\Services\HtmlSanitizer --}}
-{!! $ticket->resolution_summary !!}
-</div>
+    <p>
+        Your ticket <strong>{{ $ticket->ticket_number }}</strong> —
+        <em>{{ $ticket->subject }}</em> — has been closed by the IT Service Desk team.
+    </p>
 
-Please review the resolution. If the issue is **not** fixed, open the ticket in the Helpdesk (sign in via the Staff portal) to **add a comment** or **reopen** the request so we can continue working on it.
+    <div class="details">
+        <p class="details-title">What we did</p>
+        <div class="resolution-box">
+            {!! $ticket->resolution_summary !!}
+        </div>
+    </div>
 
-<x-mail::button :url="$ticketUrl">
-View ticket &amp; respond
-</x-mail::button>
+    <div class="note-box">
+        If the issue is <strong>not</strong> fixed, open the ticket in the Helpdesk (sign in via the Staff portal)
+        to add a comment or reopen the request so we can continue working on it.
+    </div>
+@endsection
 
-If the button does not work, copy this link into your browser:<br>
-<span style="word-break: break-all;">{{ $ticketUrl }}</span>
-
-Thanks,<br>
-{{ config('app.name') }}
-</x-mail::message>
+@section('action_url', $ticketUrl)
+@section('action_label', 'View ticket & respond')

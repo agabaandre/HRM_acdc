@@ -1,0 +1,82 @@
+{
+  "captured_at": "2026-06-19T13:47:47.674Z",
+  "baseUrl": "http://localhost/staff/helpdesk",
+  "manifest": [
+    {
+      "file": "01-home-knowledge-base.png",
+      "route": "/",
+      "url": "http://localhost/staff/helpdesk/"
+    },
+    {
+      "file": "02-create-ticket.png",
+      "route": "/tickets/new",
+      "url": "http://localhost/staff/helpdesk/tickets/new"
+    },
+    {
+      "file": "03-my-tickets.png",
+      "route": "/tickets",
+      "url": "http://localhost/staff/helpdesk/tickets"
+    },
+    {
+      "file": "04-ticket-detail.png",
+      "route": "/tickets/1",
+      "url": "http://localhost/staff/helpdesk/tickets/1"
+    },
+    {
+      "file": "05-agent-desk.png",
+      "route": "/desk/agent",
+      "url": "http://localhost/staff/helpdesk/desk/agent"
+    },
+    {
+      "file": "06-knowledge-base-manage.png",
+      "route": "/knowledge-base/manage",
+      "url": "http://localhost/staff/helpdesk/knowledge-base/manage"
+    },
+    {
+      "file": "07-reports.png",
+      "route": "/reports",
+      "url": "http://localhost/staff/helpdesk/reports"
+    },
+    {
+      "file": "08-settings-general.png",
+      "route": "/settings/general",
+      "url": "http://localhost/staff/helpdesk/settings/general"
+    },
+    {
+      "file": "09-settings-ai.png",
+      "route": "/settings/ai",
+      "url": "http://localhost/staff/helpdesk/settings/ai"
+    },
+    {
+      "file": "10-settings-agents.png",
+      "route": "/settings/agents",
+      "url": "http://localhost/staff/helpdesk/settings/agents"
+    },
+    {
+      "file": "11-settings-categories.png",
+      "route": "/settings/categories",
+      "url": "http://localhost/staff/helpdesk/settings/categories"
+    },
+    {
+      "file": "12-settings-jobs.png",
+      "route": "/settings/jobs",
+      "url": "http://localhost/staff/helpdesk/settings/jobs"
+    },
+    {
+      "file": "13-settings-integrations.png",
+      "route": "/settings/integrations",
+      "url": "http://localhost/staff/helpdesk/settings/integrations"
+    },
+    {
+      "file": "14-settings-logging.png",
+      "route": "/settings/logging",
+      "url": "http://localhost/staff/helpdesk/settings/logging"
+    },
+    {
+      "file": "15-tv-screen.png",
+      "route": "/screen",
+      "url": "http://localhost/staff/helpdesk/screen"
+    }
+  ],
+  "errors": []
+}

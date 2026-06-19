@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\HelpdeskTicket;
+use App\Support\HelpdeskMailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -21,14 +22,14 @@ class TicketResolutionMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'IT Service Desk — '.$this->ticket->ticket_number.' closed',
+            subject: HelpdeskMailBranding::brandName().' — '.$this->ticket->ticket_number.' closed',
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.helpdesk.ticket-resolution',
+            view: 'emails.helpdesk.ticket-resolution',
         );
     }
 }

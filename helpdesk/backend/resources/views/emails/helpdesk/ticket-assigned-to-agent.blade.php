@@ -2,30 +2,47 @@
     $base = rtrim((string) config('helpdesk.frontend_url', 'http://localhost:5174'), '/');
     $ticketUrl = $base.'/tickets/'.$ticket->id;
 @endphp
-<x-mail::message>
-# Hello {{ $assignee->name }},
 
-@if($isReassignment)
-Ticket **{{ $ticket->ticket_number }}** has been **reassigned to you**. Please review and take the next step.
-@else
-Ticket **{{ $ticket->ticket_number }}** is **assigned to you**. Please review and take the next step.
-@endif
+@extends('emails.helpdesk.layout')
 
-**Subject:** {{ $ticket->subject }}
+@section('title', $isReassignment ? 'Ticket reassigned to you' : 'Ticket assigned to you')
+@section('headline', $isReassignment ? 'Ticket reassigned to you' : 'New ticket assigned to you')
+@section('subheadline', 'Please review and take the next step.')
 
-**Requester:** {{ $ticket->requester_name ?? '—' }} — {{ $ticket->requester_email ?? '—' }}
+@section('content')
+    <p>Hello <strong>{{ $assignee->name }}</strong>,</p>
 
-**Priority:** {{ $ticket->priority }}
+    @if($isReassignment)
+        <p>Ticket <strong>{{ $ticket->ticket_number }}</strong> has been reassigned to you.</p>
+    @else
+        <p>Ticket <strong>{{ $ticket->ticket_number }}</strong> is now assigned to you.</p>
+    @endif
 
-**Status:** {{ $ticket->status }}
+    <div class="details">
+        <p class="details-title">Ticket details</p>
+        <div class="detail-row">
+            <span class="detail-label">Subject</span>
+            <span class="detail-value">{{ $ticket->subject }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Requester</span>
+            <span class="detail-value">
+                {{ $ticket->requester_name ?? '—' }}
+                @if($ticket->requester_email)
+                    <br><a href="mailto:{{ $ticket->requester_email }}">{{ $ticket->requester_email }}</a>
+                @endif
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Priority</span>
+            <span class="detail-value">{{ ucfirst($ticket->priority) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">{{ ucfirst(str_replace('_', ' ', $ticket->status)) }}</span>
+        </div>
+    </div>
+@endsection
 
-<x-mail::button :url="$ticketUrl">
-Open ticket
-</x-mail::button>
-
-If the button does not work, copy this link into your browser:<br>
-<span style="word-break: break-all;">{{ $ticketUrl }}</span>
-
-Thanks,<br>
-{{ config('app.name') }}
-</x-mail::message>
+@section('action_url', $ticketUrl)
+@section('action_label', 'Open ticket')
