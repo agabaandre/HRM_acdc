@@ -35,6 +35,8 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::KEY_TEAMS_APP_ID,
             HelpdeskSetting::KEY_TEAMS_TENANT_ID,
             HelpdeskSetting::KEY_TEAMS_MESSAGING_PATH,
+            HelpdeskSetting::KEY_FAQ_SOURCES_JSON,
+            HelpdeskSetting::KEY_FAQ_INGEST_LAST_RESULT,
         ];
 
         $data = [];
@@ -68,6 +70,11 @@ class HelpdeskSettingsController extends Controller
         $data['webhook_base_url'] = $base.'/api/v1/webhooks';
         $data['iso_json_log_in_stack'] = str_contains((string) env('LOG_STACK', ''), 'iso_json');
 
+        $faqSourcesRaw = HelpdeskSetting::getValue(HelpdeskSetting::KEY_FAQ_SOURCES_JSON);
+        $data[HelpdeskSetting::KEY_FAQ_SOURCES_JSON] = $faqSourcesRaw ?? '';
+        $lastIngestRaw = HelpdeskSetting::getValue(HelpdeskSetting::KEY_FAQ_INGEST_LAST_RESULT);
+        $data[HelpdeskSetting::KEY_FAQ_INGEST_LAST_RESULT] = $lastIngestRaw ?? '';
+
         return response()->json(['data' => $data]);
     }
 
@@ -97,6 +104,7 @@ class HelpdeskSettingsController extends Controller
             'teams_tenant_id' => ['nullable', 'string', 'max:128'],
             'teams_messaging_path' => ['nullable', 'string', 'max:191'],
             'teams_app_password' => ['nullable', 'string', 'max:8192'],
+            'faq_sources_json' => ['nullable', 'string', 'max:65535'],
         ]);
 
         $map = [
@@ -165,6 +173,20 @@ class HelpdeskSettingsController extends Controller
             $incoming = $validated[$req];
             if ($incoming !== null && $incoming !== '') {
                 HelpdeskSetting::setValue($dbKey, Crypt::encryptString($incoming));
+            }
+        }
+
+        if (array_key_exists('faq_sources_json', $validated)) {
+            $incoming = $validated['faq_sources_json'];
+            if ($incoming === null || trim($incoming) === '') {
+                HelpdeskSetting::setValue(HelpdeskSetting::KEY_FAQ_SOURCES_JSON, null);
+            } else {
+                try {
+                    json_decode($incoming, true, 512, JSON_THROW_ON_ERROR);
+                } catch (\Throwable) {
+                    return response()->json(['message' => 'FAQ sources must be valid JSON.'], 422);
+                }
+                HelpdeskSetting::setValue(HelpdeskSetting::KEY_FAQ_SOURCES_JSON, $incoming);
             }
         }
 

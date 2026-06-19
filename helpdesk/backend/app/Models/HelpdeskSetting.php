@@ -28,6 +28,12 @@ class HelpdeskSetting extends Model
 
     public const KEY_AI_FALLBACK_ORDER = 'ai_fallback_order';
 
+    /** JSON array of external FAQ ingest sources (APM, other systems). */
+    public const KEY_FAQ_SOURCES_JSON = 'faq_sources_json';
+
+    /** JSON summary of the last FAQ ingest run. */
+    public const KEY_FAQ_INGEST_LAST_RESULT = 'faq_ingest_last_result';
+
     public const KEY_BRANDING_PRIMARY = 'branding_primary_hex';
 
     public const KEY_BRANDING_SECONDARY = 'branding_secondary_hex';

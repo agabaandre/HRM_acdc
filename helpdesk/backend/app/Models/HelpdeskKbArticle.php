@@ -22,6 +22,12 @@ class HelpdeskKbArticle extends Model
         'answer',
         'sort_order',
         'is_active',
+        'source',
+        'external_id',
+        'source_url',
+        'search_keywords',
+        'ingested_at',
+        'content_hash',
         'created_by_user_id',
         'updated_by_user_id',
     ];
@@ -30,6 +36,7 @@ class HelpdeskKbArticle extends Model
     {
         return [
             'is_active' => 'boolean',
+            'ingested_at' => 'datetime',
         ];
     }
 

@@ -30,7 +30,8 @@ class KbArticleController extends Controller
             $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%';
             $query->where(function ($w) use ($like) {
                 $w->where('question', 'like', $like)
-                    ->orWhere('answer', 'like', $like);
+                    ->orWhere('answer', 'like', $like)
+                    ->orWhere('search_keywords', 'like', $like);
             });
         }
 
@@ -73,6 +74,10 @@ class KbArticleController extends Controller
             'answer' => $a->answer,
             'sort_order' => $a->sort_order,
             'is_active' => $a->is_active,
+            'source' => $a->source,
+            'external_id' => $a->external_id,
+            'source_url' => $a->source_url,
+            'ingested_at' => optional($a->ingested_at)->toIso8601String(),
             'updated_at' => optional($a->updated_at)->toIso8601String(),
         ];
     }

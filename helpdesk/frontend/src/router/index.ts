@@ -3,8 +3,10 @@ import { getActivePinia } from 'pinia'
 import AskHelpdeskView from '../views/AskHelpdeskView.vue'
 import HomeView from '../views/HomeView.vue'
 import SettingsLayoutView from '../views/settings/SettingsLayoutView.vue'
+import AiSettingsLayoutView from '../views/settings/AiSettingsLayoutView.vue'
 import GeneralSettingsPanel from '../components/settings/GeneralSettingsPanel.vue'
 import AiModelsSettingsPanel from '../components/settings/AiModelsSettingsPanel.vue'
+import FaqSourcesSettingsPanel from '../components/settings/FaqSourcesSettingsPanel.vue'
 import AgentsManagementPanel from '../components/settings/AgentsManagementPanel.vue'
 import CategoriesManagementPanel from '../components/settings/CategoriesManagementPanel.vue'
 import JobsSlaManagementPanel from '../components/settings/JobsSlaManagementPanel.vue'
@@ -50,9 +52,21 @@ const router = createRouter({
         },
         {
           path: 'ai',
-          name: 'settings-ai',
-          component: AiModelsSettingsPanel,
+          component: AiSettingsLayoutView,
           meta: { settingsTitle: 'AI models & provider' },
+          children: [
+            {
+              path: '',
+              name: 'settings-ai',
+              component: AiModelsSettingsPanel,
+            },
+            {
+              path: 'faq-sources',
+              name: 'settings-ai-faq-sources',
+              component: FaqSourcesSettingsPanel,
+              meta: { settingsTitle: 'FAQ sources' },
+            },
+          ],
         },
         {
           path: 'agents',

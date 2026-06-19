@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\SessionController;
+use App\Http\Controllers\Api\ApmFaqExportController;
 use App\Http\Controllers\Api\ApmAuthController;
 use App\Http\Controllers\Api\ApmPendingController;
 use App\Http\Controllers\Api\ApmDocumentController;
@@ -50,6 +51,9 @@ Route::prefix('apm/v1')->group(function () {
 
     // System settings (public; for branding/app name before login)
     Route::get('settings', [ApmSettingsController::class, 'index']);
+
+    // FAQ export for Helpdesk KB ingest (Staff Share API Basic Auth)
+    Route::get('faqs/export', ApmFaqExportController::class);
 
     // Document signature verification (public; POST with PDF file)
     Route::post('documents/verify', [SignatureVerificationController::class, 'validateUpload'])->name('apm.documents.verify');

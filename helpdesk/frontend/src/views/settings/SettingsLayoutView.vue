@@ -7,7 +7,12 @@ const ctx = createHelpdeskAdminSettings()
 provide(helpdeskAdminSettingsKey, ctx)
 
 const route = useRoute()
-const sectionTitle = computed(() => (route.meta.settingsTitle as string) ?? 'Settings')
+const sectionTitle = computed(() => {
+  if (route.name === 'settings-ai-faq-sources') {
+    return 'AI · FAQ sources'
+  }
+  return (route.meta.settingsTitle as string) ?? 'Settings'
+})
 
 onMounted(() => {
   void ctx.load()

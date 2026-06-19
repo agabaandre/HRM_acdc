@@ -142,7 +142,8 @@ class HelpdeskAskService
                 foreach ($terms as $term) {
                     $like = '%'.$term.'%';
                     $w->orWhere('question', 'like', $like)
-                        ->orWhere('answer', 'like', $like);
+                        ->orWhere('answer', 'like', $like)
+                        ->orWhere('search_keywords', 'like', $like);
                 }
             });
         }

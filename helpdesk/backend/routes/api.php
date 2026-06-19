@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Admin\AdminAuditLogController;
 use App\Http\Controllers\Api\V1\Admin\AdminDivisionAgentController;
+use App\Http\Controllers\Api\V1\Admin\AdminFaqIngestController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSlaRuleController;
@@ -86,6 +87,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/admin/settings', [HelpdeskSettingsController::class, 'show']);
         Route::put('/admin/settings', [HelpdeskSettingsController::class, 'update']);
+        Route::get('/admin/faq-ingest', [AdminFaqIngestController::class, 'show']);
+        Route::post('/admin/faq-ingest', [AdminFaqIngestController::class, 'store']);
         Route::get('/admin/agents', [AdminHelpdeskAgentController::class, 'index']);
         Route::put('/admin/agents/{user}', [AdminHelpdeskAgentController::class, 'update']);
         Route::get('/admin/staff-permissions', [AdminStaffPermissionController::class, 'index']);
