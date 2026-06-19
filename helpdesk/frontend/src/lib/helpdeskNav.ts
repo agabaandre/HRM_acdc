@@ -1,6 +1,7 @@
 /** Primary nav icons (Boxicons — loaded in index.html). */
 export const HELP_DESK_NAV_ICONS = {
   overview: 'bx bx-home-alt',
+  ask: 'bx bx-bot',
   tickets: 'bx bx-support',
   newRequest: 'bx bx-plus-circle',
   agentDesk: 'bx bx-desktop',

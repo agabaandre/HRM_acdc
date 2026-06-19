@@ -1,0 +1,412 @@
+/**
+ * Professional Helpdesk UI — typography, hero, Ask Helpdesk chat, refined cards.
+ * Default font: Arial (see style.css --font-sans).
+ */
+
+:root,
+html.helpdesk-theme-light {
+  --hd-radius-sm: 8px;
+  --hd-radius-md: 12px;
+  --hd-radius-lg: 16px;
+  --hd-shadow-soft: 0 4px 20px rgba(15, 23, 42, 0.06);
+  --hd-shadow-card: 0 8px 28px rgba(15, 23, 42, 0.08);
+  --hd-border: rgba(15, 23, 42, 0.08);
+  --hd-muted: #5c6c7c;
+  --hd-hero-from: #0d7a3a;
+  --hd-hero-to: #119a48;
+}
+
+html.helpdesk-theme-dark {
+  --hd-border: rgba(148, 163, 184, 0.2);
+  --hd-muted: #94a3b8;
+  --hd-shadow-soft: 0 8px 28px rgba(2, 6, 23, 0.35);
+  --hd-shadow-card: 0 12px 36px rgba(2, 6, 23, 0.45);
+}
+
+.cbp-card {
+  border: 1px solid var(--hd-border);
+  border-radius: var(--hd-radius-md);
+  box-shadow: var(--hd-shadow-soft);
+  padding: 1.35rem 1.5rem;
+}
+
+.cbp-view-title {
+  font-family: var(--font-sans);
+  letter-spacing: -0.02em;
+}
+
+.cbp-view-lede {
+  max-width: 52rem;
+}
+
+/* Hero strip on overview */
+.hd-hero {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+  padding: 1.5rem 1.5rem 1.35rem;
+  border-radius: var(--hd-radius-lg);
+  background: linear-gradient(135deg, var(--hd-hero-from) 0%, var(--hd-hero-to) 100%);
+  color: #fff;
+  box-shadow: var(--hd-shadow-card);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+@media (min-width: 768px) {
+  .hd-hero {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 1.75rem 1.85rem;
+  }
+}
+
+.hd-hero-eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.hd-hero-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.hd-hero-text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  opacity: 0.95;
+  max-width: 38rem;
+}
+
+.hd-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.hd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--hd-radius-sm);
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.hd-btn:hover {
+  transform: translateY(-1px);
+}
+
+.hd-btn--white {
+  background: #fff;
+  color: var(--hd-hero-from);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.hd-btn--ghost-light {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.hd-btn--primary {
+  background: linear-gradient(135deg, #119a48 0%, #0d7a3a 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(17, 154, 72, 0.35);
+}
+
+.hd-btn--outline {
+  background: transparent;
+  color: #0d7a3a;
+  border-color: rgba(13, 122, 58, 0.35);
+}
+
+html.helpdesk-theme-dark .hd-btn--outline {
+  color: #86efac;
+  border-color: rgba(134, 239, 172, 0.35);
+}
+
+/* Quick action tiles */
+.hd-quick-grid {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .hd-quick-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.hd-quick-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--hd-radius-md);
+  background: var(--cbp-card-bg);
+  border: 1px solid var(--hd-border);
+  box-shadow: var(--hd-shadow-soft);
+  text-decoration: none;
+  color: var(--cbp-card-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.hd-quick-tile:hover {
+  border-color: rgba(17, 154, 72, 0.35);
+  box-shadow: var(--hd-shadow-card);
+  transform: translateY(-2px);
+}
+
+.hd-quick-tile i {
+  font-size: 1.35rem;
+  color: #119a48;
+}
+
+.hd-quick-tile strong {
+  font-size: 0.95rem;
+}
+
+.hd-quick-tile span {
+  font-size: 0.82rem;
+  color: var(--hd-muted);
+  line-height: 1.45;
+}
+
+/* Ask Helpdesk chat */
+.hd-ask-layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 960px) {
+  .hd-ask-layout {
+    grid-template-columns: 1fr 280px;
+    align-items: start;
+  }
+}
+
+.hd-ask-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  max-height: min(72vh, 640px);
+  border: 1px solid var(--hd-border);
+  border-radius: var(--hd-radius-md);
+  background: var(--cbp-card-bg);
+  box-shadow: var(--hd-shadow-soft);
+  overflow: hidden;
+}
+
+.hd-ask-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background: linear-gradient(180deg, rgba(17, 154, 72, 0.04) 0%, transparent 120px);
+}
+
+.hd-ask-empty {
+  margin: auto;
+  text-align: center;
+  max-width: 22rem;
+  color: var(--hd-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.hd-ask-empty i {
+  display: block;
+  font-size: 2.25rem;
+  color: #119a48;
+  margin-bottom: 0.65rem;
+}
+
+.hd-bubble {
+  max-width: min(100%, 36rem);
+  padding: 0.75rem 0.95rem;
+  border-radius: var(--hd-radius-md);
+  font-size: 0.93rem;
+  line-height: 1.55;
+}
+
+.hd-bubble--user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #119a48 0%, #0d7a3a 100%);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.hd-bubble--agent {
+  align-self: flex-start;
+  background: var(--cbp-card-bg);
+  border: 1px solid var(--hd-border);
+  border-bottom-left-radius: 4px;
+  color: var(--cbp-card-text);
+}
+
+.hd-bubble-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.hd-steps {
+  margin: 0.65rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.hd-steps li {
+  margin: 0.35rem 0;
+}
+
+.hd-ask-meta {
+  margin-top: 0.65rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--hd-border);
+  font-size: 0.8rem;
+  color: var(--hd-muted);
+}
+
+.hd-ask-compose {
+  display: flex;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--hd-border);
+  background: var(--cbp-card-bg);
+}
+
+.hd-ask-input {
+  flex: 1;
+  min-height: 44px;
+  max-height: 120px;
+  resize: vertical;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--hd-radius-sm);
+  font-family: inherit;
+  font-size: 0.93rem;
+  line-height: 1.45;
+  background: #fff;
+  color: #1f2933;
+}
+
+html.helpdesk-theme-dark .hd-ask-input {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.3);
+  color: var(--cdc-ink);
+}
+
+.hd-ask-input:focus {
+  outline: none;
+  border-color: #119a48;
+  box-shadow: 0 0 0 3px rgba(17, 154, 72, 0.18);
+}
+
+.hd-ask-send {
+  align-self: flex-end;
+  min-width: 5.5rem;
+}
+
+.hd-ask-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hd-side-card {
+  padding: 1rem 1.1rem;
+  border-radius: var(--hd-radius-md);
+  border: 1px solid var(--hd-border);
+  background: var(--cbp-card-bg);
+  font-size: 0.88rem;
+  color: var(--hd-muted);
+  line-height: 1.5;
+}
+
+.hd-side-card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0d7a3a;
+}
+
+.hd-prompt-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--hd-border);
+  border-radius: var(--hd-radius-sm);
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: var(--cbp-card-text);
+  cursor: pointer;
+}
+
+.hd-prompt-chip:hover {
+  border-color: rgba(17, 154, 72, 0.4);
+  background: rgba(17, 154, 72, 0.06);
+}
+
+.hd-confidence {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hd-confidence--high {
+  background: rgba(17, 154, 72, 0.15);
+  color: #0d7a3a;
+}
+
+.hd-confidence--medium {
+  background: rgba(201, 162, 39, 0.18);
+  color: #92680a;
+}
+
+.hd-confidence--low {
+  background: rgba(148, 163, 184, 0.2);
+  color: #64748b;
+}
+
+.hd-related-link {
+  display: block;
+  margin-top: 0.35rem;
+  color: #0d7a3a;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.hd-related-link:hover {
+  text-decoration: underline;
+}

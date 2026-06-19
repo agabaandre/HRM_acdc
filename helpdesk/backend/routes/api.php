@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\AvatarController;
 use App\Http\Controllers\Api\V1\CbpModulesController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\HelpdeskAskController;
 use App\Http\Controllers\Api\V1\KbArticleController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MeWorkModeController;
@@ -53,6 +54,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/reference-data', [ReferenceDataController::class, 'index']);
         Route::get('/reference-data/staff', [ReferenceDataController::class, 'staff']);
         Route::post('/rich-text-images', [RichTextImageController::class, 'store']);
+
+        Route::post('/ai/ask', HelpdeskAskController::class)->middleware('throttle:24,1');
 
         // Knowledge base — readable by any signed-in helpdesk user.
         Route::get('/kb/articles', [KbArticleController::class, 'index']);

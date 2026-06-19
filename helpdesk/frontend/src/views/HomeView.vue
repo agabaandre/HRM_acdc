@@ -113,26 +113,53 @@ onMounted(() => {
     <CbpBadgeStrip product="ITSM" />
     <CbpPageHeading title="IT Service Desk">
       <template #lede>
-        Log and track incidents and requests for Africa CDC. You arrive here from the
-        <strong>Staff portal home</strong> — the same secure session hand-off as Finance and APM.
+        Log and track incidents and requests for Africa CDC. Arrive from the Staff portal home with the same secure session as Finance and APM.
       </template>
     </CbpPageHeading>
 
     <div v-if="!auth.isAuthenticated" class="cbp-card gate">
       <p class="gate-title">No active session in this app</p>
       <p class="gate-text">
-        Open the Staff portal, sign in there, then choose <strong>IT Service Desk (Helpdesk)</strong> from your home dashboard. Your browser will receive a
-        one-time token in the URL; this page exchanges it for an app session.
+        Open the Staff portal, sign in there, then choose <strong>IT Service Desk (Helpdesk)</strong> from your home dashboard.
       </p>
-      <a class="cbp-btn cbp-btn-primary" :href="portalHref">Go to Staff portal home</a>
+      <a class="hd-btn hd-btn--primary" :href="portalHref">Go to Staff portal home</a>
     </div>
 
-    <div v-else class="cbp-card welcome">
-      <div class="actions">
-        <RouterLink class="cbp-btn cbp-btn-primary" to="/tickets">My tickets</RouterLink>
-        <RouterLink class="cbp-btn cbp-btn-ghost" to="/tickets/new">New request</RouterLink>
+    <template v-else>
+      <section class="hd-hero" aria-label="Quick start">
+        <div>
+          <p class="hd-hero-eyebrow">Africa CDC · IT Service Desk</p>
+          <h2 class="hd-hero-title">Get support faster</h2>
+          <p class="hd-hero-text">
+            Ask our AI assistant for guided troubleshooting, browse FAQs, or log a request for the service desk team.
+          </p>
+        </div>
+        <div class="hd-hero-actions">
+          <RouterLink class="hd-btn hd-btn--white" to="/ask">
+            <i class="bx bx-bot" aria-hidden="true" /> Ask Helpdesk
+          </RouterLink>
+          <RouterLink class="hd-btn hd-btn--ghost-light" to="/tickets/new">New request</RouterLink>
+        </div>
+      </section>
+
+      <div class="hd-quick-grid">
+        <RouterLink class="hd-quick-tile" to="/ask">
+          <i class="bx bx-bot" aria-hidden="true" />
+          <strong>Ask Helpdesk</strong>
+          <span>AI-guided answers and step-by-step fixes from our knowledge base.</span>
+        </RouterLink>
+        <RouterLink class="hd-quick-tile" to="/tickets">
+          <i class="bx bx-support" aria-hidden="true" />
+          <strong>My tickets</strong>
+          <span>Track open requests, replies, and resolution status.</span>
+        </RouterLink>
+        <RouterLink class="hd-quick-tile" to="/tickets/new">
+          <i class="bx bx-plus-circle" aria-hidden="true" />
+          <strong>New request</strong>
+          <span>Log an incident or service request for an IT agent.</span>
+        </RouterLink>
       </div>
-    </div>
+    </template>
 
     <section v-if="auth.isAuthenticated" class="cbp-card kb-card" aria-labelledby="kb-heading">
       <header class="kb-header">
@@ -169,8 +196,9 @@ onMounted(() => {
         </template>
       </p>
       <p v-else-if="articles.length === 0" class="kb-empty">
-        No articles match <em>“{{ search }}”</em>. Try a different search, or
-        <RouterLink to="/tickets/new">log a new request</RouterLink>.
+        No articles match <em>“{{ search }}”</em>. Try
+        <RouterLink to="/ask">Ask Helpdesk</RouterLink>
+        or <RouterLink to="/tickets/new">log a new request</RouterLink>.
       </p>
 
       <div v-else class="kb-groups">
@@ -215,37 +243,6 @@ onMounted(() => {
   line-height: 1.55;
   font-size: 0.95rem;
 }
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-.cbp-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.55rem 1.1rem;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 0.95rem;
-  text-decoration: none;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-.cbp-btn:hover {
-  transform: translateY(-1px);
-}
-.cbp-btn-primary {
-  background: linear-gradient(135deg, #119a48 0%, #0d7a3a 100%);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(17, 154, 72, 0.35);
-}
-.cbp-btn-ghost {
-  background: transparent;
-  color: #0d7a3a;
-  border-color: rgba(17, 154, 72, 0.35);
-}
 .panel-title {
   margin: 0 0 0.25rem;
   font-size: 0.8rem;
@@ -256,8 +253,7 @@ onMounted(() => {
 }
 
 .kb-card {
-  margin-top: 1rem;
-  padding: 1.25rem;
+  margin-top: 0;
 }
 .kb-header {
   display: flex;
@@ -311,6 +307,7 @@ onMounted(() => {
   border-radius: 10px;
   border: 1px solid #cbd5e1;
   font-size: 0.95rem;
+  font-family: inherit;
   background: #fff;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -324,14 +321,6 @@ onMounted(() => {
   margin: 0.5rem 0;
   color: #5c6c7c;
   font-size: 0.92rem;
-}
-.kb-error {
-  margin: 0.5rem 0;
-  padding: 0.65rem 0.85rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  color: #991b1b;
 }
 .kb-groups {
   display: flex;
@@ -382,6 +371,7 @@ onMounted(() => {
   text-align: left;
   font-size: 0.95rem;
   font-weight: 600;
+  font-family: inherit;
   color: #1f2933;
   cursor: pointer;
 }

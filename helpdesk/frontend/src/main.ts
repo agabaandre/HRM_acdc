@@ -5,6 +5,7 @@ import './style.css'
 import './styles/cbp-finance-layout.css'
 import './styles/rich-text-display.css'
 import './styles/ticket-table.css'
+import './styles/helpdesk-professional.css'
 import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
@@ -106,7 +107,7 @@ function renderSsoErrorScreen(failure: SsoFailure): void {
   const safeMessage = failure.message
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   root.innerHTML = `
-    <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f4f5f7;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">
       <section style="max-width:560px;width:100%;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);padding:28px;">
         <p style="margin:0 0 8px;font-size:0.85rem;letter-spacing:0.04em;text-transform:uppercase;color:#0d7a3a;font-weight:600;">IT Service Desk</p>
         <h1 style="margin:0 0 12px;font-size:1.4rem;color:#1f2933;">We couldn’t open the Helpdesk</h1>

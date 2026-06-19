@@ -13,10 +13,10 @@ html.helpdesk-theme-light {
   --cbp-footer-bg: #f8f9fa;
   --cbp-footer-border: #e9ecef;
   --cbp-footer-text: #6c757d;
-  --cbp-page-bg: #f8f9fa;
+  --cbp-page-bg: #f4f6f8;
   --cbp-card-bg: #ffffff;
   --cbp-card-text: #1f2937;
-  --cbp-card-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  --cbp-card-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
   --cbp-dd-bg: #ffffff;
   --cbp-dd-border: #e9ecef;
   --cbp-dd-text: #2c3e50;
