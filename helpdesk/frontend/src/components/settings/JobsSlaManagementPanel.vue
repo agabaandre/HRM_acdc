@@ -4,7 +4,7 @@ import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import DirectorySyncCard from './DirectorySyncCard.vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
-import { fieldError } from '../../lib/helpdeskForm'
+import { fieldError, type SelectNumberItem } from '../../lib/helpdeskForm'
 import { notifyError, notifySuccess } from '../../lib/notify'
 
 interface CatOpt {
@@ -34,7 +34,7 @@ const draft = reactive({
   is_active: true,
 })
 
-const categoryItems = computed(() => [
+const categoryItems = computed((): SelectNumberItem[] => [
   { label: 'All categories', value: 0 },
   ...categories.value.map((c) => ({ label: c.name, value: c.id })),
 ])

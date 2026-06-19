@@ -2,15 +2,16 @@
 import { computed } from 'vue'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { useInjectedHelpdeskAdminSettings } from '../../composables/useHelpdeskAdminSettings'
+import type { AiProviderId } from '../../lib/aiProviderPresets'
 import { applyAiProviderPreset, aiModelPlaceholder, normalizeAiProvider } from '../../lib/aiProviderPresets'
 
 const ctx = useInjectedHelpdeskAdminSettings()
 
-const providerItems = [
+const providerItems: { label: string; value: AiProviderId }[] = [
   { label: 'OpenAI', value: 'openai' },
   { label: 'Gemini', value: 'gemini' },
   { label: 'Custom API', value: 'custom' },
-] as const
+]
 
 const endpointHint = computed(() => {
   switch (normalizeAiProvider(ctx.form.ai_provider)) {
@@ -66,7 +67,7 @@ async function onSaveAi(_event: FormSubmitEvent<typeof ctx.form>) {
         <UFormField label="Provider" name="ai_provider">
           <USelect
             v-model="ctx.form.ai_provider"
-            :items="[...providerItems]"
+            :items="providerItems"
             class="w-full"
             @update:model-value="onAiProviderChange"
           />

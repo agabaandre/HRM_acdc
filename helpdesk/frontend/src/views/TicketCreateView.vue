@@ -6,7 +6,7 @@ import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
-import { PRIORITY_ITEMS } from '../lib/helpdeskForm'
+import { PRIORITY_ITEMS, type SelectNumberItem, type TicketPriority } from '../lib/helpdeskForm'
 import { notifyError, notifyWarning } from '../lib/notify'
 import { hasRichTextContent } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
@@ -26,7 +26,7 @@ const cats = ref<{ id: number; name: string }[]>([])
 const form = reactive({
   category_id: 0 as number,
   description: '',
-  priority: 'medium' as string,
+  priority: 'medium' as TicketPriority,
 })
 const catsErr = ref<string | null>(null)
 const catsLoading = ref(true)
@@ -124,7 +124,7 @@ const canSubmit = computed(
     && cats.value.length > 0,
 )
 
-const categoryItems = computed(() =>
+const categoryItems = computed((): SelectNumberItem[] =>
   cats.value.map((c) => ({ label: c.name, value: c.id })),
 )
 
@@ -423,7 +423,7 @@ async function submit() {
         </UFormField>
 
         <UFormField v-if="canSetPriority" label="Priority" name="priority" class="full">
-          <USelect v-model="form.priority" :items="[...PRIORITY_ITEMS]" :disabled="busy" class="w-full" />
+          <USelect v-model="form.priority" :items="PRIORITY_ITEMS" :disabled="busy" class="w-full" />
         </UFormField>
         <p v-else class="muted full">Priority defaults to <strong>medium</strong> for requesters.</p>
 

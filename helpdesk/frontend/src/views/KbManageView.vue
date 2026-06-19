@@ -7,7 +7,7 @@ import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { notifyError, notifySuccess } from "../lib/notify"
 import { apiErrorMessage } from '../lib/apiErrorMessage'
-import { fieldError } from '../lib/helpdeskForm'
+import { fieldError, type SelectNumberItem } from '../lib/helpdeskForm'
 import { hasRichTextContent } from '../lib/richText'
 import { stripHtml } from '../lib/stripHtml'
 
@@ -59,12 +59,12 @@ const create = reactive({
   is_active: true,
 })
 
-const categoryItems = computed(() => [
+const categoryItems = computed((): SelectNumberItem[] => [
   { label: 'All categories', value: 0 },
   ...cats.value.map((c) => ({ label: c.name, value: c.id })),
 ])
 
-const categorySelectItems = computed(() =>
+const categorySelectItems = computed((): SelectNumberItem[] =>
   cats.value.map((c) => ({ label: c.name, value: c.id })),
 )
 

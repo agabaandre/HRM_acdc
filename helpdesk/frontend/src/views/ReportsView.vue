@@ -11,7 +11,7 @@ import {
   rowIndex,
   statusMeta,
 } from '../lib/ticketTableMeta'
-import { PER_PAGE_ITEMS } from '../lib/helpdeskForm'
+import { PER_PAGE_ITEMS, normalizePageSize, type PageSize } from '../lib/helpdeskForm'
 
 import { useAuthStore } from '../stores/auth'
 
@@ -40,7 +40,7 @@ const myTickets = ref<ReportTicket[]>([])
 const myPage = ref(1)
 const myLastPage = ref(1)
 const myTotal = ref(0)
-const mySearchState = reactive({ q: '', perPage: 20 })
+const mySearchState = reactive<{ q: string; perPage: PageSize }>({ q: '', perPage: 20 })
 const myLoading = ref(false)
 
 const adminCounts = ref<Record<string, number> | null>(null)
@@ -48,7 +48,7 @@ const adminRecent = ref<ReportTicket[]>([])
 const adminPage = ref(1)
 const adminLastPage = ref(1)
 const adminTotal = ref(0)
-const adminSearchState = reactive({ q: '', perPage: 20 })
+const adminSearchState = reactive<{ q: string; perPage: PageSize }>({ q: '', perPage: 20 })
 const adminLoading = ref(false)
 
 const isAdmin = computed(
@@ -88,7 +88,7 @@ async function loadMine() {
     myTickets.value = (tickets.data ?? []) as ReportTicket[]
     myPage.value = Number(tickets.current_page ?? myPage.value)
     myLastPage.value = Math.max(1, Number(tickets.last_page ?? 1))
-    mySearchState.perPage = Number(tickets.per_page ?? mySearchState.perPage)
+    mySearchState.perPage = normalizePageSize(Number(tickets.per_page ?? mySearchState.perPage))
     myTotal.value = Number(tickets.total ?? myTickets.value.length)
   } finally {
     myLoading.value = false
@@ -110,7 +110,7 @@ async function loadAdmin() {
     adminRecent.value = (recent.data ?? []) as ReportTicket[]
     adminPage.value = Number(recent.current_page ?? adminPage.value)
     adminLastPage.value = Math.max(1, Number(recent.last_page ?? 1))
-    adminSearchState.perPage = Number(recent.per_page ?? adminSearchState.perPage)
+    adminSearchState.perPage = normalizePageSize(Number(recent.per_page ?? adminSearchState.perPage))
     adminTotal.value = Number(recent.total ?? adminRecent.value.length)
   } finally {
     adminLoading.value = false
@@ -247,7 +247,7 @@ onMounted(async () => {
           <UButton type="button" color="neutral" variant="outline" @click="myClear">Clear</UButton>
         </UForm>
         <UFormField label="Per page" name="perPage" class="meta">
-          <USelect v-model="mySearchState.perPage" :items="[...PER_PAGE_ITEMS]" class="w-full" />
+          <USelect v-model="mySearchState.perPage" :items="PER_PAGE_ITEMS" class="w-full" />
         </UFormField>
       </div>
       <p class="tools">
@@ -386,7 +386,7 @@ onMounted(async () => {
           <UButton type="button" color="neutral" variant="outline" @click="adminClear">Clear</UButton>
         </UForm>
         <UFormField label="Per page" name="perPage" class="meta">
-          <USelect v-model="adminSearchState.perPage" :items="[...PER_PAGE_ITEMS]" class="w-full" />
+          <USelect v-model="adminSearchState.perPage" :items="PER_PAGE_ITEMS" class="w-full" />
         </UFormField>
       </div>
       <h2>Recent activity</h2>

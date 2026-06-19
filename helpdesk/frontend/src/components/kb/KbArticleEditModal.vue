@@ -2,7 +2,7 @@
 import { computed, reactive, watch } from 'vue'
 import type { FormError } from '@nuxt/ui'
 import CbpRichTextEditor from '../common/CbpRichTextEditor.vue'
-import { fieldError } from '../../lib/helpdeskForm'
+import { fieldError, type SelectNumberItem } from '../../lib/helpdeskForm'
 import { hasRichTextContent } from '../../lib/richText'
 
 export interface KbCat {
@@ -41,7 +41,7 @@ const form = reactive<KbArticleEditForm>({
   is_active: true,
 })
 
-const categoryItems = computed(() =>
+const categoryItems = computed((): SelectNumberItem[] =>
   props.categories.map((c) => ({ label: c.name, value: c.id })),
 )
 

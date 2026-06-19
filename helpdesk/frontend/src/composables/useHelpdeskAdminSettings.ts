@@ -1,4 +1,6 @@
 import { inject, reactive, ref, type InjectionKey } from 'vue'
+import type { AiProviderId } from '../lib/aiProviderPresets'
+import { normalizeAiProvider } from '../lib/aiProviderPresets'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { notifyError, notifySuccess } from '../lib/notify'
@@ -20,7 +22,7 @@ export interface HelpdeskSettingsPayload {
 }
 
 export interface HelpdeskAdminSettingsForm {
-  ai_provider: string
+  ai_provider: AiProviderId
   ai_api_endpoint: string
   ai_model_name: string
   ai_active: boolean
@@ -67,7 +69,7 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
     try {
       const { data } = await api.get<{ data: HelpdeskSettingsPayload }>('/api/v1/admin/settings')
       const d = data.data
-      form.ai_provider = d.ai_provider ?? 'openai'
+      form.ai_provider = normalizeAiProvider(d.ai_provider)
       form.ai_api_endpoint = d.ai_api_endpoint ?? ''
       form.ai_model_name = d.ai_model_name ?? ''
       form.ai_active = Boolean(d.ai_active)

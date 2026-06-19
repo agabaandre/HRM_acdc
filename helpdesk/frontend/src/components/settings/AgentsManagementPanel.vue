@@ -4,7 +4,7 @@ import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import { RouterLink } from 'vue-router'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
-import { fieldError } from '../../lib/helpdeskForm'
+import { fieldError, type SelectNumberItem } from '../../lib/helpdeskForm'
 import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
 
 interface Cat {
@@ -104,15 +104,15 @@ const agentOptions = computed(() =>
   agents.value.map((a) => ({ id: a.id, label: `${a.name} (${a.email})` })),
 )
 
-const agentSelectItems = computed(() =>
+const agentSelectItems = computed((): SelectNumberItem[] =>
   agentOptions.value.map((o) => ({ label: o.label, value: o.id })),
 )
 
-const categorySelectItems = computed(() =>
+const categorySelectItems = computed((): SelectNumberItem[] =>
   cats.value.map((c) => ({ label: c.name, value: c.id })),
 )
 
-const activeGroupSelectItems = computed(() =>
+const activeGroupSelectItems = computed((): SelectNumberItem[] =>
   groups.value.filter((g) => g.is_active).map((g) => ({ label: g.name, value: g.id })),
 )
 

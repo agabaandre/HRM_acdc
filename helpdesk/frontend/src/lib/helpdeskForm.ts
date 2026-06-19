@@ -31,16 +31,29 @@ export function minLengthError(
   return null
 }
 
-export const PRIORITY_ITEMS = [
+export type TicketPriority = 'low' | 'medium' | 'high' | 'critical'
+export type PageSize = 10 | 20 | 50 | 100
+
+export type SelectNumberItem = { label: string; value: number }
+export type SelectStringItem = { label: string; value: string }
+
+export const PRIORITY_ITEMS: { label: string; value: TicketPriority }[] = [
   { label: 'Low', value: 'low' },
   { label: 'Medium', value: 'medium' },
   { label: 'High', value: 'high' },
   { label: 'Critical', value: 'critical' },
-] as const
+]
 
-export const PER_PAGE_ITEMS = [
+export const PER_PAGE_ITEMS: { label: string; value: PageSize }[] = [
   { label: '10 per page', value: 10 },
   { label: '20 per page', value: 20 },
   { label: '50 per page', value: 50 },
   { label: '100 per page', value: 100 },
-] as const
+]
+
+const PAGE_SIZE_SET = new Set<number>(PER_PAGE_ITEMS.map((i) => i.value))
+
+/** Coerce API pagination to a supported page size for USelect. */
+export function normalizePageSize(n: number, fallback: PageSize = 20): PageSize {
+  return PAGE_SIZE_SET.has(n) ? (n as PageSize) : fallback
+}

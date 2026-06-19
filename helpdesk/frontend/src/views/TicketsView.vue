@@ -9,7 +9,7 @@ import TicketReassignModal, {
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { canReassignTickets, ticketStatusAllowsReassign } from '../lib/canReassignTickets'
-import { PER_PAGE_ITEMS } from '../lib/helpdeskForm'
+import { PER_PAGE_ITEMS, normalizePageSize, type PageSize } from '../lib/helpdeskForm'
 import { notifyError } from '../lib/notify'
 import { useAuthStore } from '../stores/auth'
 import {
@@ -39,7 +39,7 @@ interface TicketRow {
 const auth = useAuthStore()
 const rows = ref<TicketRow[]>([])
 const loading = ref(false)
-const searchState = reactive({ q: '', perPage: 20 })
+const searchState = reactive<{ q: string; perPage: PageSize }>({ q: '', perPage: 20 })
 const q = computed({
   get: () => searchState.q,
   set: (v: string) => {
@@ -48,7 +48,7 @@ const q = computed({
 })
 const perPage = computed({
   get: () => searchState.perPage,
-  set: (v: number) => {
+  set: (v: PageSize) => {
     searchState.perPage = v
   },
 })
@@ -146,7 +146,7 @@ onMounted(load)
       <UFormField label="Per page" name="perPage" class="meta">
         <USelect
           v-model="searchState.perPage"
-          :items="[...PER_PAGE_ITEMS]"
+          :items="PER_PAGE_ITEMS"
           class="w-full"
         />
       </UFormField>
