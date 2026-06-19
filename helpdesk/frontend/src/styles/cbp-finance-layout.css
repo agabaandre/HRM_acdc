@@ -415,7 +415,7 @@ html.helpdesk-theme-dark {
 
 .cbp-primary-nav {
   --bs-body-font-size: 0.9rem;
-  --bs-body-font-weight: var(--hd-nav-font-weight, 600);
+  --bs-body-font-weight: var(--hd-nav-font-weight, 800);
   position: fixed;
   top: 60px;
   left: 0;
@@ -515,7 +515,7 @@ html.helpdesk-theme-dark {
 .cbp-nav-link {
   color: var(--cbp-nav-text) !important;
   font-size: var(--bs-body-font-size, 1rem);
-  font-weight: var(--bs-body-font-weight, var(--hd-nav-font-weight, 600));
+  font-weight: var(--bs-body-font-weight, var(--hd-nav-font-weight, 800));
   text-decoration: none !important;
   padding: 0.5rem 0.85rem;
   border-radius: 4px;
