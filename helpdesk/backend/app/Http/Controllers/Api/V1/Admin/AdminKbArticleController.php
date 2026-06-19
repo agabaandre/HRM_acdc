@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HelpdeskKbArticle;
 use App\Services\HelpdeskAuditLogger;
 use App\Services\HtmlSanitizer;
+use App\Services\TicketReadCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -19,12 +20,17 @@ class AdminKbArticleController extends Controller
     {
         $this->ensureKbManager($request);
 
-        $rows = HelpdeskKbArticle::query()
-            ->with(['category:id,name,slug', 'createdBy:id,name', 'updatedBy:id,name'])
-            ->orderBy('category_id')
-            ->orderBy('sort_order')
-            ->orderBy('question')
-            ->get();
+        $user = $request->user();
+        $cacheKey = TicketReadCache::key('kb', 'admin_index', (int) $user->id, $request->query());
+
+        $rows = TicketReadCache::remember($cacheKey, function () {
+            return HelpdeskKbArticle::query()
+                ->with(['category:id,name,slug', 'createdBy:id,name', 'updatedBy:id,name'])
+                ->orderBy('category_id')
+                ->orderBy('sort_order')
+                ->orderBy('question')
+                ->get();
+        });
 
         return response()->json(['data' => $rows->map(fn (HelpdeskKbArticle $a) => $this->format($a))->values()]);
     }

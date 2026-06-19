@@ -49,6 +49,9 @@ helpdesk_resolve_production_urls() {
         if [[ -z "${VITE_HELPDESK_API_BASE_URL:-}" ]]; then
             VITE_HELPDESK_API_BASE_URL="/staff/helpdesk/backend"
         fi
+        if [[ -z "${VITE_STAFF_PORTAL_HOME_URL:-}" ]]; then
+            VITE_STAFF_PORTAL_HOME_URL="${origin}/staff/home/index"
+        fi
     fi
 }
 

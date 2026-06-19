@@ -67,6 +67,26 @@ inherit_if_empty STAFF_API_PASSWORD "$APM_ENV"
 inherit_if_empty STAFF_API_TOKEN "$APM_ENV"
 inherit_if_empty BASE_URL "$APM_ENV"
 
+inherit_redis_from_staff() {
+    local key val
+    for key in REDIS_CLIENT REDIS_HOST REDIS_PASSWORD REDIS_PORT REDIS_URL; do
+        inherit_if_empty "$key" "$STAFF_ENV"
+        inherit_if_empty "$key" "$APM_ENV"
+    done
+}
+
+inherit_redis_from_staff
+
+# Production: prefer Redis for ticket/report list caching when available.
+if [[ "${APP_ENV:-}" == "production" ]]; then
+    if [[ -z "${CACHE_STORE:-}" || "${CACHE_STORE:-}" == "database" ]]; then
+        redis_host="${REDIS_HOST:-}"
+        if [[ -n "$redis_host" && "$redis_host" != "null" ]]; then
+            CACHE_STORE=redis
+        fi
+    fi
+fi
+
 if [[ ! -w "$BACKEND_ENV" ]]; then
     echo "error: $BACKEND_ENV is not writable (often caused by running a previous setup with sudo)." >&2
     echo "Fix: sudo chown \$(whoami) \"$BACKEND_ENV\" \"$SETUP_ENV\" && ./setup.sh" >&2
@@ -84,6 +104,8 @@ for key in \
     HELPDESK_SSO_PERMISSION_CODES HELPDESK_BRIDGE_SECRET \
     QUEUE_CONNECTION DB_QUEUE_TABLE DB_QUEUE_BATCHES_TABLE DB_QUEUE_FAILED_TABLE \
     CACHE_STORE SESSION_DRIVER \
+    REDIS_CLIENT REDIS_HOST REDIS_PASSWORD REDIS_PORT REDIS_URL \
+    HELPDESK_TICKET_READ_CACHE_ENABLED HELPDESK_TICKET_READ_CACHE_TTL \
     SANCTUM_STATEFUL_DOMAINS; do
     apply_from_setup "$key"
 done

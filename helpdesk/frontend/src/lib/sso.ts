@@ -30,7 +30,24 @@ export function staffPortalHomeUrl(): string {
   if (fromEnv && fromEnv.trim() !== '') {
     return fromEnv.trim()
   }
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `${protocol}//${hostname}/staff/home/index`
+    }
+  }
   return 'http://localhost/staff/home/index'
+}
+
+let redirectingToStaffPortal = false
+
+/** Send the user back to Staff portal sign-in (session expired / invalid token). */
+export function redirectToStaffPortalHome(): void {
+  if (redirectingToStaffPortal) {
+    return
+  }
+  redirectingToStaffPortal = true
+  window.location.href = staffPortalHomeUrl()
 }
 
 /** Base Staff portal URL (no `/home/index`) for shared assets, e.g. logo — same pattern as Finance. */

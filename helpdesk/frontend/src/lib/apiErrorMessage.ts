@@ -1,5 +1,9 @@
 import axios from 'axios'
 
+function isDevHelpdesk(): boolean {
+  return import.meta.env.DEV
+}
+
 export function apiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
     const raw = error.response?.data
@@ -22,8 +26,14 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
         return m
       }
     }
-    if (error.code === 'ERR_NETWORK') {
-      return 'Could not reach the helpdesk API. Is the backend running (e.g. :8000) and Vite proxying /api?'
+    if (error.code === 'ECONNABORTED') {
+      return 'The helpdesk API is taking longer than usual. Please wait a moment and try again.'
+    }
+    if (error.code === 'ERR_NETWORK' || (!error.response && error.request)) {
+      if (isDevHelpdesk()) {
+        return 'Could not reach the helpdesk API. Is the backend running (e.g. :8000) and Vite proxying /api?'
+      }
+      return 'Could not reach the helpdesk API. The server may be waking up — try again in a few seconds.'
     }
     if (typeof error.message === 'string' && error.message !== 'Request failed with status code 403') {
       return error.message

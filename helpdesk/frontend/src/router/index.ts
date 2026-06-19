@@ -18,7 +18,7 @@ import ConfirmResolutionView from '../views/ConfirmResolutionView.vue'
 import KbManageView from '../views/KbManageView.vue'
 import ScreenDashboardView from '../views/ScreenDashboardView.vue'
 import { getStoredToken } from '../lib/api'
-import { staffPortalHomeUrl } from '../lib/sso'
+import { redirectToStaffPortalHome, staffPortalHomeUrl } from '../lib/sso'
 import { parseSettingsSection } from '../settings/settingsSections'
 import { useAuthStore } from '../stores/auth'
 
@@ -155,7 +155,8 @@ router.beforeEach(async (to) => {
         await auth.fetchMe()
       } catch {
         auth.invalidateSession()
-        return { name: 'home' }
+        redirectToStaffPortalHome()
+        return false
       }
     }
     const role = auth.me?.profile?.role

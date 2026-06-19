@@ -11,7 +11,7 @@ import { useAuthStore } from './stores/auth'
 import { persistStaffSsoToken } from './lib/cbpSystems'
 import { loadLobiboxAssets } from './lib/notify'
 import { getStoredToken } from './lib/api'
-import { getStaffSsoTokenFromUrl, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
+import { getStaffSsoTokenFromUrl, redirectToStaffPortalHome, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
 
 type SsoFailure = {
   code: 'network' | 'forbidden' | 'unauthorized' | 'invalid' | 'config' | 'unknown'
@@ -37,10 +37,22 @@ function classifyExchangeError(err: unknown): SsoFailure {
     const apiMessage = typeof body?.message === 'string' && body.message.trim() !== ''
       ? body.message.trim()
       : ''
-    if (err.code === 'ERR_NETWORK' || (!err.response && err.request)) {
+    if (err.code === 'ECONNABORTED') {
       return {
         code: 'network',
-        message: 'Could not reach the Helpdesk API. Make sure the Laravel backend is running (php artisan serve on :8000 in dev, or the production API host is reachable).',
+        message: 'The helpdesk API is taking longer than usual. Please wait a moment and try again.',
+      }
+    }
+    if (err.code === 'ERR_NETWORK' || (!err.response && err.request)) {
+      if (import.meta.env.DEV) {
+        return {
+          code: 'network',
+          message: 'Could not reach the Helpdesk API. Make sure the Laravel backend is running (php artisan serve on :8000 in dev, or the production API host is reachable).',
+        }
+      }
+      return {
+        code: 'network',
+        message: 'Could not reach the Helpdesk API. The server may be waking up — try again in a few seconds.',
       }
     }
     if (status === 403) {
@@ -160,6 +172,8 @@ async function bootstrap() {
       await auth.fetchMe()
     } catch {
       auth.invalidateSession()
+      redirectToStaffPortalHome()
+      return
     }
   }
 

@@ -17,42 +17,48 @@ use App\Services\StaffDirectoryLookupService;
 use App\Services\TicketAssignmentService;
 use App\Services\TicketHistoryLogger;
 use App\Services\TicketNumberGenerator;
+use App\Services\TicketReadCache;
 use App\Services\TicketSubjectGenerator;
 use App\Support\StaffPhotoUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class TicketController extends Controller
 {
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', HelpdeskTicket::class);
 
         $user = $request->user();
-        $profile = $user->helpdeskProfile;
-        $qTerm = trim((string) $request->query('q', ''));
-        $q = HelpdeskTicket::query()
-            ->with(['category', 'assignee.helpdeskProfile', 'attachments'])
-            ->orderByDesc('id');
+        $cacheKey = TicketReadCache::key('tickets', 'index', (int) $user->id, $request->query());
 
-        if ($profile && $profile->role === HelpdeskProfile::ROLE_USER && $profile->staff_id) {
-            $uid = $user->id;
-            $sid = (int) $profile->staff_id;
-            $q->where(function ($w) use ($sid, $uid) {
-                $w->where('requester_staff_id', $sid)
-                    ->orWhere('created_by_user_id', $uid);
-            });
-        }
+        $payload = TicketReadCache::remember($cacheKey, function () use ($request, $user) {
+            $profile = $user->helpdeskProfile;
+            $qTerm = trim((string) $request->query('q', ''));
+            $q = HelpdeskTicket::query()
+                ->with(['category', 'assignee.helpdeskProfile', 'attachments'])
+                ->orderByDesc('id');
 
-        $this->applyTicketSearch($q, $qTerm);
+            if ($profile && $profile->role === HelpdeskProfile::ROLE_USER && $profile->staff_id) {
+                $uid = $user->id;
+                $sid = (int) $profile->staff_id;
+                $q->where(function ($w) use ($sid, $uid) {
+                    $w->where('requester_staff_id', $sid)
+                        ->orWhere('created_by_user_id', $uid);
+                });
+            }
 
-        $tickets = $q->paginate(min((int) $request->get('per_page', 20), 100));
+            $this->applyTicketSearch($q, $qTerm);
 
-        return TicketResource::collection($tickets);
+            $tickets = $q->paginate(min((int) $request->get('per_page', 20), 100));
+
+            return TicketResource::collection($tickets)->response()->getData(true);
+        });
+
+        return response()->json($payload);
     }
 
     public function store(

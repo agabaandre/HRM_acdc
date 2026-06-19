@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\TicketResource;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
+use App\Services\TicketReadCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,20 @@ class ReportController extends Controller
         $p = $user->helpdeskProfile;
         abort_unless($p && $this->isStaff($p), 403);
 
+        $cacheKey = TicketReadCache::key('reports', 'agent_dashboard', (int) $user->id, $request->query());
+
+        $payload = TicketReadCache::remember($cacheKey, function () use ($user) {
+            return $this->buildAgentDashboardPayload($user);
+        });
+
+        return response()->json(['data' => $payload]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildAgentDashboardPayload(\App\Models\User $user): array
+    {
         $base = HelpdeskTicket::query()->where('assigned_user_id', $user->id);
 
         $pendingStatuses = ['open', 'pending', 'in_progress'];
@@ -92,42 +107,43 @@ class ReportController extends Controller
             ->limit(25)
             ->get();
 
-        return response()->json([
-            'data' => [
-                'counts' => $counts,
-                'breakdown' => [
-                    'by_status' => $byStatus,
-                    'by_priority' => $byPriority,
-                ],
-                'recent' => TicketResource::collection($recent)->resolve(),
-                'generated_at' => $now->toIso8601String(),
+        return [
+            'counts' => $counts,
+            'breakdown' => [
+                'by_status' => $byStatus,
+                'by_priority' => $byPriority,
             ],
-        ]);
+            'recent' => TicketResource::collection($recent)->resolve(),
+            'generated_at' => $now->toIso8601String(),
+        ];
     }
 
     public function myRequesterReport(Request $request): JsonResponse
     {
-        $p = $request->user()->helpdeskProfile;
+        $user = $request->user();
+        $p = $user->helpdeskProfile;
         abort_unless($p && $p->staff_id, 422, 'Missing staff_id on profile.');
 
-        $sid = (int) $p->staff_id;
-        $qTerm = trim((string) $request->query('q', ''));
-        $q = HelpdeskTicket::query()
-            ->with(['category', 'assignee', 'resolvedBy'])
-            ->where('requester_staff_id', $sid);
+        $cacheKey = TicketReadCache::key('reports', 'my_requester', (int) $user->id, $request->query());
 
-        $this->applyTicketSearch($q, $qTerm);
+        $payload = TicketReadCache::remember($cacheKey, function () use ($request, $user, $p) {
+            $sid = (int) $p->staff_id;
+            $qTerm = trim((string) $request->query('q', ''));
+            $q = HelpdeskTicket::query()
+                ->with(['category', 'assignee', 'resolvedBy'])
+                ->where('requester_staff_id', $sid);
 
-        $stats = [
-            'total_received' => (clone $q)->count(),
-            'pending' => (clone $q)->whereIn('status', ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'])->count(),
-            'resolved' => (clone $q)->where('status', 'resolved')->count(),
-        ];
+            $this->applyTicketSearch($q, $qTerm);
 
-        $tickets = (clone $q)->orderByDesc('id')->paginate(min((int) $request->get('per_page', 20), 100));
+            $stats = [
+                'total_received' => (clone $q)->count(),
+                'pending' => (clone $q)->whereIn('status', ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'])->count(),
+                'resolved' => (clone $q)->where('status', 'resolved')->count(),
+            ];
 
-        return response()->json([
-            'data' => [
+            $tickets = (clone $q)->orderByDesc('id')->paginate(min((int) $request->get('per_page', 20), 100));
+
+            return [
                 'stats' => $stats,
                 'tickets' => [
                     'current_page' => $tickets->currentPage(),
@@ -136,33 +152,39 @@ class ReportController extends Controller
                     'per_page' => $tickets->perPage(),
                     'total' => $tickets->total(),
                 ],
-            ],
-        ]);
+            ];
+        });
+
+        return response()->json(['data' => $payload]);
     }
 
     public function adminSummary(Request $request): JsonResponse
     {
-        $p = $request->user()->helpdeskProfile;
+        $user = $request->user();
+        $p = $user->helpdeskProfile;
         abort_unless($p && $p->isHelpdeskAdmin(), 403);
-        $qTerm = trim((string) $request->query('q', ''));
-        $perPage = min((int) $request->query('per_page', 20), 100);
 
-        $counts = [
-            'total' => HelpdeskTicket::query()->count(),
-            'open' => HelpdeskTicket::query()->whereIn('status', ['open', 'pending', 'in_progress'])->count(),
-            'awaiting_requester_confirmation' => HelpdeskTicket::query()->where('status', 'awaiting_requester_confirmation')->count(),
-            'resolved' => HelpdeskTicket::query()->where('status', 'resolved')->count(),
-            'closed' => HelpdeskTicket::query()->where('status', 'closed')->count(),
-        ];
+        $cacheKey = TicketReadCache::key('reports', 'admin_summary', (int) $user->id, $request->query());
 
-        $recentQuery = HelpdeskTicket::query()
-            ->with(['category', 'assignee'])
-            ->orderByDesc('id');
-        $this->applyTicketSearch($recentQuery, $qTerm);
-        $recent = $recentQuery->paginate($perPage);
+        $payload = TicketReadCache::remember($cacheKey, function () use ($request) {
+            $qTerm = trim((string) $request->query('q', ''));
+            $perPage = min((int) $request->query('per_page', 20), 100);
 
-        return response()->json([
-            'data' => [
+            $counts = [
+                'total' => HelpdeskTicket::query()->count(),
+                'open' => HelpdeskTicket::query()->whereIn('status', ['open', 'pending', 'in_progress'])->count(),
+                'awaiting_requester_confirmation' => HelpdeskTicket::query()->where('status', 'awaiting_requester_confirmation')->count(),
+                'resolved' => HelpdeskTicket::query()->where('status', 'resolved')->count(),
+                'closed' => HelpdeskTicket::query()->where('status', 'closed')->count(),
+            ];
+
+            $recentQuery = HelpdeskTicket::query()
+                ->with(['category', 'assignee'])
+                ->orderByDesc('id');
+            $this->applyTicketSearch($recentQuery, $qTerm);
+            $recent = $recentQuery->paginate($perPage);
+
+            return [
                 'counts' => $counts,
                 'recent' => [
                     'current_page' => $recent->currentPage(),
@@ -171,8 +193,10 @@ class ReportController extends Controller
                     'per_page' => $recent->perPage(),
                     'total' => $recent->total(),
                 ],
-            ],
-        ]);
+            ];
+        });
+
+        return response()->json(['data' => $payload]);
     }
 
     public function exportExcel(Request $request): BinaryFileResponse

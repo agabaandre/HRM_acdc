@@ -148,4 +148,13 @@ return [
     |--------------------------------------------------------------------------
     */
     'reference_data_cache_ttl' => (int) env('HELPDESK_REFERENCE_CACHE_TTL', 300),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ticket / report / KB list cache (Redis recommended in production)
+    |--------------------------------------------------------------------------
+    */
+    'ticket_read_cache_enabled' => filter_var(env('HELPDESK_TICKET_READ_CACHE_ENABLED', true), FILTER_VALIDATE_BOOL),
+    'ticket_read_cache_ttl' => (int) env('HELPDESK_TICKET_READ_CACHE_TTL', 60),
+    'ticket_read_cache_store' => env('HELPDESK_TICKET_READ_CACHE_STORE'),
 ];

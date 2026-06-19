@@ -1,6 +1,13 @@
-import axios from 'axios'
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { redirectToStaffPortalHome } from './sso'
 
 const TOKEN_KEY = 'helpdesk_api_token'
+
+/** Allow slow cold starts / gateway wake-up before surfacing an error. */
+const API_TIMEOUT_MS = 60_000
+const MAX_GET_RETRIES = 2
+
+type RetryableConfig = InternalAxiosRequestConfig & { __retryCount?: number }
 
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
@@ -50,9 +57,37 @@ export function resolveAvatarUrl(url: string | null | undefined): string | null 
   return trimmed
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+function isAuthEndpoint(url: string | undefined): boolean {
+  if (!url) {
+    return false
+  }
+  return url.includes('/auth/')
+}
+
+function isRetryableError(error: AxiosError): boolean {
+  const status = error.response?.status
+  if (status === 502 || status === 503 || status === 504) {
+    return true
+  }
+  if (error.code === 'ECONNABORTED') {
+    return true
+  }
+  if (!error.response && error.request) {
+    return true
+  }
+  return false
+}
+
 export const api = axios.create({
   baseURL: resolveApiBaseUrl(),
   headers: { Accept: 'application/json' },
+  timeout: API_TIMEOUT_MS,
 })
 
 api.interceptors.request.use((config) => {
@@ -62,3 +97,31 @@ api.interceptors.request.use((config) => {
   }
   return config
 })
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const config = error.config as RetryableConfig | undefined
+    const status = error.response?.status
+
+    if (status === 401 && config && !isAuthEndpoint(config.url)) {
+      setStoredToken(null)
+      redirectToStaffPortalHome()
+      return Promise.reject(error)
+    }
+
+    if (config && isRetryableError(error)) {
+      const method = (config?.method ?? 'get').toLowerCase()
+      const isSsoPost = method === 'post' && config.url?.includes('/auth/staff-sso')
+      if (method === 'get' || isSsoPost) {
+        config.__retryCount = (config.__retryCount ?? 0) + 1
+        if (config.__retryCount <= MAX_GET_RETRIES) {
+          await sleep(500 * config.__retryCount)
+          return api.request(config)
+        }
+      }
+    }
+
+    return Promise.reject(error)
+  },
+)

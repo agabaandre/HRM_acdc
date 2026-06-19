@@ -2,12 +2,19 @@
 
 namespace App\Models;
 
+use App\Services\TicketReadCache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HelpdeskKbArticle extends Model
 {
     protected $table = 'helpdesk_kb_articles';
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => TicketReadCache::bust(['kb']));
+        static::deleted(fn () => TicketReadCache::bust(['kb']));
+    }
 
     protected $fillable = [
         'category_id',

@@ -85,6 +85,7 @@ HELPDESK_USER="${HELPDESK_USER:-www-data}"
 HELPDESK_GROUP="${HELPDESK_GROUP:-www-data}"
 PHP_BIN="${PHP_BIN:-/usr/bin/php}"
 VITE_HELPDESK_API_BASE_URL="${VITE_HELPDESK_API_BASE_URL:-/staff/helpdesk/backend}"
+VITE_STAFF_PORTAL_HOME_URL="${VITE_STAFF_PORTAL_HOME_URL:-}"
 
 if [[ ! -x "$PHP_BIN" ]]; then
     PHP_BIN="$(command -v php || true)"
@@ -104,6 +105,11 @@ log "Configuring backend .env from setup.env (production URLs auto-resolved when
 "$ROOT/scripts/configure-env.sh"
 
 BACKEND_ENV="$BACKEND/.env"
+
+staff_portal_url="$(dotenv_get "$BACKEND_ENV" HELPDESK_STAFF_PORTAL_URL 2>/dev/null || true)"
+if [[ -z "${VITE_STAFF_PORTAL_HOME_URL:-}" && -n "$staff_portal_url" ]]; then
+    VITE_STAFF_PORTAL_HOME_URL="${staff_portal_url%/}/home/index"
+fi
 
 inherit_from_file() {
     local key="$1" from="$2"
@@ -184,6 +190,10 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
     [[ -f "$PROD_ENV" ]] && VITE_ENV_PREEXISTED=1
     dotenv_apply_if_missing "$PROD_ENV" VITE_HELPDESK_API_BASE_URL \
         "$VITE_HELPDESK_API_BASE_URL" "$VITE_ENV_PREEXISTED"
+    if [[ -n "${VITE_STAFF_PORTAL_HOME_URL:-}" ]]; then
+        dotenv_apply_if_missing "$PROD_ENV" VITE_STAFF_PORTAL_HOME_URL \
+            "$VITE_STAFF_PORTAL_HOME_URL" "$VITE_ENV_PREEXISTED"
+    fi
     if [[ -d "$FRONTEND/dist" ]] && ! [[ -w "$FRONTEND/dist" ]]; then
         warn "frontend/dist is not writable — fixing ownership for $(id -un)"
         if chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist" 2>/dev/null; then

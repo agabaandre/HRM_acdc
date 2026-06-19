@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\TicketAssignmentNotifier;
 use App\Services\TicketHistoryLogger;
+use App\Services\TicketReadCache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,6 +34,10 @@ class HelpdeskTicket extends Model
             }
             app(TicketAssignmentNotifier::class)->notifyIfAssigneeChanged($ticket);
         });
+
+        static::created(fn () => TicketReadCache::bust(['tickets', 'reports']));
+        static::updated(fn () => TicketReadCache::bust(['tickets', 'reports']));
+        static::deleted(fn () => TicketReadCache::bust(['tickets', 'reports']));
     }
 
     protected $fillable = [
