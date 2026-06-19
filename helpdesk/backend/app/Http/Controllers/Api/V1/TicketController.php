@@ -12,6 +12,7 @@ use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
+use App\Models\HelpdeskTicketComment;
 use App\Models\HelpdeskSupportGroup;
 use App\Models\User;
 use App\Services\HtmlSanitizer;

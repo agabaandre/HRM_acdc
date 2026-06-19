@@ -1,6 +1,8 @@
 import axios from 'axios'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import ui from '@nuxt/ui/vue-plugin'
+import './styles/nuxt-ui.css'
 import './style.css'
 import './styles/cbp-finance-layout.css'
 import './styles/rich-text-display.css'
@@ -149,6 +151,7 @@ async function bootstrap() {
   const app = createApp(App)
   const pinia = createPinia()
   app.use(pinia)
+  app.use(ui)
 
   const auth = useAuthStore(pinia)
   const urlToken = getStaffSsoTokenFromUrl()

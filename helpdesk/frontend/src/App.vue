@@ -39,7 +39,8 @@ if (stored === 'light' || stored === 'dark') {
 </script>
 
 <template>
-  <div v-if="showChrome" class="cbp-wrapper">
+  <UApp>
+    <div v-if="showChrome" class="cbp-wrapper">
     <CbpTopHeader
       :user-name="displayName"
       :avatar-url="auth.isAuthenticated ? (auth.me?.avatar_url ?? null) : null"
@@ -56,6 +57,7 @@ if (stored === 'light' || stored === 'dark') {
       </div>
     </div>
     <CbpPageFooter />
-  </div>
-  <RouterView v-else />
+    </div>
+    <RouterView v-else />
+  </UApp>
 </template>

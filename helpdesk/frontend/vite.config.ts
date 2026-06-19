@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import ui from '@nuxt/ui/vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -20,7 +21,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
-    plugins: [vue()],
+    plugins: [vue(), ui()],
     server: {
       port: 5174,
       proxy: {

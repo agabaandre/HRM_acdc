@@ -79,4 +79,41 @@ class TicketReassignEligibleAgentsTest extends TestCase
         $this->assertContains($agentB->id, $agentIds);
         $this->assertNotContains($agentA->id, $agentIds);
     }
+
+    public function test_reassign_endpoint_updates_assignee_and_records_internal_comment(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $agentA = $this->agent(9201, 'reassign-from@example.org');
+        $agentB = $this->agent(9202, 'reassign-to@example.org');
+
+        $ticket = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-REAS-1',
+            'category_id' => $cat->id,
+            'subject' => 'Handoff ticket',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 900,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $agentA->id,
+        ]);
+
+        Sanctum::actingAs($this->reassigner(9200));
+        $res = $this->postJson('/api/v1/tickets/'.$ticket->id.'/reassign', [
+            'assignee_user_id' => $agentB->id,
+            'reason' => 'Covering while colleague is away',
+        ]);
+
+        $res->assertOk();
+        $ticket->refresh();
+        $this->assertSame($agentB->id, (int) $ticket->assigned_user_id);
+        $this->assertDatabaseHas('helpdesk_ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'is_internal' => true,
+        ]);
+    }
 }

@@ -6,6 +6,7 @@ import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
+import { formatDateTime, formatDateTimeLong } from '../lib/formatDateTime'
 import { notifyError } from '../lib/notify'
 import { hasRichTextContent, isHtmlContent } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
@@ -537,21 +538,37 @@ watch(canReopenWithComment, (can) => {
       <section class="comments-section">
         <header class="comments-head">
           <h3 class="h3">Comments</h3>
-          <span v-if="comments.length" class="comments-count">{{ comments.length }}</span>
+          <UBadge v-if="comments.length" color="neutral" variant="subtle" size="sm">
+            {{ comments.length }}
+          </UBadge>
         </header>
         <ul class="comments">
-          <li v-for="c in comments" :key="c.id" class="citem">
-            <div class="citem-top">
-              <CbpAvatar size="sm" :name="c.author?.name ?? 'User'" :image-url="c.author?.avatar_url ?? null" />
-              <div class="citem-head">
-                <div class="meta">
-                  <strong>{{ c.author?.name ?? 'User' }}</strong>
-                  <span v-if="c.is_internal" class="tag">internal</span>
-                  <time :datetime="c.created_at">{{ c.created_at }}</time>
+          <li v-for="c in comments" :key="c.id" class="comment-item">
+            <UCard variant="outline">
+              <div class="citem-top">
+                <UAvatar
+                  :alt="c.author?.name ?? 'User'"
+                  :src="c.author?.avatar_url ?? undefined"
+                  size="sm"
+                />
+                <div class="citem-head">
+                  <div class="meta">
+                    <strong>{{ c.author?.name ?? 'User' }}</strong>
+                    <UBadge v-if="c.is_internal" color="warning" variant="subtle" size="xs">
+                      Internal
+                    </UBadge>
+                    <time
+                      :datetime="c.created_at"
+                      :title="formatDateTimeLong(c.created_at)"
+                      class="comment-time"
+                    >
+                      {{ formatDateTime(c.created_at) }}
+                    </time>
+                  </div>
+                  <p class="cbody">{{ c.body }}</p>
                 </div>
-                <p class="cbody">{{ c.body }}</p>
               </div>
-            </div>
+            </UCard>
           </li>
           <li v-if="comments.length === 0" class="comments-empty">
             <span class="comments-empty-icon" aria-hidden="true">✉️</span>
@@ -560,21 +577,21 @@ watch(canReopenWithComment, (can) => {
         </ul>
 
         <form class="composer" @submit.prevent="postComment">
-          <label class="composer-label" for="ticket-comment-body">Add comment</label>
-          <textarea
-            id="ticket-comment-body"
-            v-model="newBody"
-            rows="4"
-            required
-            class="composer-input"
-            :placeholder="
-              canReopenWithComment
-                ? 'Explain what is still wrong or ask a follow-up question…'
-                : isClosedForRequester
+          <UFormField label="Add comment">
+            <UTextarea
+              id="ticket-comment-body"
+              v-model="newBody"
+              :rows="4"
+              required
+              :placeholder="
+                canReopenWithComment
                   ? 'Explain what is still wrong or ask a follow-up question…'
-                  : 'Describe an update…'
-            "
-          />
+                  : isClosedForRequester
+                    ? 'Explain what is still wrong or ask a follow-up question…'
+                    : 'Describe an update…'
+              "
+            />
+          </UFormField>
           <label v-if="canReopenWithComment" class="reopen-check">
             <input v-model="reopenWithComment" type="checkbox" />
             <span class="reopen-check-copy">
@@ -583,9 +600,14 @@ watch(canReopenWithComment, (can) => {
             </span>
           </label>
           <div class="composer-actions">
-            <button type="submit" class="primary" :disabled="posting || !newBody.trim()">
-              {{ posting ? 'Posting…' : reopenWithComment && canReopenWithComment ? 'Post & reopen' : 'Post comment' }}
-            </button>
+            <UButton
+              type="submit"
+              color="primary"
+              :loading="posting"
+              :disabled="!newBody.trim()"
+            >
+              {{ reopenWithComment && canReopenWithComment ? 'Post & reopen' : 'Post comment' }}
+            </UButton>
           </div>
         </form>
       </section>
@@ -1174,12 +1196,12 @@ watch(canReopenWithComment, (can) => {
   padding: 0;
   margin: 0 0 1.5rem;
 }
-.citem {
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  padding: 0.75rem 1rem;
+.comment-item {
   margin-bottom: 0.5rem;
-  background: #fff;
+}
+.comment-time {
+  font-size: 0.8rem;
+  color: #64748b;
 }
 .citem-top {
   display: flex;
@@ -1198,15 +1220,6 @@ watch(canReopenWithComment, (can) => {
   color: #64748b;
   margin-bottom: 0.35rem;
 }
-.tag {
-  background: #fef3c7;
-  color: #92400e;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.1rem 0.35rem;
-  border-radius: 4px;
-  text-transform: uppercase;
-}
 .cbody {
   margin: 0;
   white-space: pre-wrap;
@@ -1216,32 +1229,11 @@ watch(canReopenWithComment, (can) => {
 .composer {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
-.composer label {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: #334155;
-}
-textarea {
-  padding: 0.5rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-family: inherit;
-}
-.primary {
-  align-self: flex-start;
-  padding: 0.5rem 1rem;
-  background: #119a48;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.composer-actions {
+  display: flex;
+  justify-content: flex-start;
 }
 .muted {
   color: #64748b;
