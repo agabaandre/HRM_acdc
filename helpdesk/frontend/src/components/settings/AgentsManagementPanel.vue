@@ -508,7 +508,7 @@ onMounted(() => {
                 :model-value="newGroupForm.category_ids.includes(c.id)"
                 :label="c.name"
                 class="cat-check"
-                @update:model-value="(value) => toggleIdInList(newGroupForm.category_ids, c.id, value)"
+                @update:model-value="(value: CheckboxValue) => toggleIdInList(newGroupForm.category_ids, c.id, value)"
               />
             </div>
             <p class="hint">Leave all unchecked to route every category to this group.</p>
@@ -554,7 +554,7 @@ onMounted(() => {
                 :model-value="(groupDraft[g.id]?.category_ids ?? []).includes(c.id)"
                 :label="c.name"
                 class="cat-check"
-                @update:model-value="(value) => toggleCategoryInDraft(g.id, c.id, value)"
+                @update:model-value="(value: CheckboxValue) => toggleCategoryInDraft(g.id, c.id, value)"
               />
             </div>
           </fieldset>

@@ -398,7 +398,7 @@ function roleLabel(c: CandidateRow): string {
               <div v-for="d in filteredDivisionOptions" :key="d.id" class="check-row">
                 <UCheckbox
                   :model-value="isDivisionSelected(d.id)"
-                  @update:model-value="(value) => toggleDivision(d.id, value)"
+                  @update:model-value="(value: CheckboxValue) => toggleDivision(d.id, value)"
                 >
                   <template #label>
                     <span class="check-row__name">{{ divisionLabel(d) }}</span>
