@@ -17,6 +17,33 @@ helpdesk_inherit_env_key() {
     fi
 }
 
+# APM often omits STAFF_API_TOKEN from apm/.env and relies on config('services.staff_api.token').
+# Resolve the effective token from a working APM install — nothing is written to the Helpdesk git tree.
+helpdesk_resolve_staff_api_token_from_apm() {
+    local backend_env="$1"
+    local staff_root="$2"
+    local php_bin="${3:-${PHP_BIN:-php}}"
+    local apm_dir current token
+
+    current="$(dotenv_get "$backend_env" STAFF_API_TOKEN 2>/dev/null || true)"
+    if dotenv_value_present "$current"; then
+        return 0
+    fi
+
+    apm_dir="$staff_root/apm"
+    if [[ ! -f "$apm_dir/artisan" || ! -f "$apm_dir/vendor/autoload.php" ]]; then
+        return 0
+    fi
+
+    token="$(
+        cd "$apm_dir" && "$php_bin" artisan tinker --execute="echo (string) config('services.staff_api.token');" 2>/dev/null \
+            | tail -1 | tr -d '\r'
+    )"
+    if dotenv_value_present "$token"; then
+        dotenv_set "$backend_env" STAFF_API_TOKEN "$token"
+    fi
+}
+
 helpdesk_inherit_sensitive_from_portal_env() {
     local backend_env="$1"
     local staff_root="${2:-${STAFF_ROOT:-}}"
@@ -47,6 +74,8 @@ helpdesk_inherit_sensitive_from_portal_env() {
             dotenv_set "$backend_env" HELPDESK_STAFF_API_INTERNAL_BASE_URL "http://127.0.0.1/staff"
         fi
     fi
+
+    helpdesk_resolve_staff_api_token_from_apm "$backend_env" "$staff_root"
 }
 
 # Backward-compatible alias used by configure-env.sh / setup-production.sh
@@ -62,8 +91,13 @@ helpdesk_validate_staff_api_env() {
     for key in STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN; do
         val="$(dotenv_get "$backend_env" "$key" 2>/dev/null || true)"
         if ! dotenv_value_present "$val"; then
-            printf 'error: %s is not set in %s — add it to %s/apm/.env (same values as `php artisan staff:sync`).\n' \
-                "$key" "$backend_env" "$staff_root" >&2
+            if [[ "$key" == "STAFF_API_TOKEN" ]]; then
+                printf 'error: %s is not set in %s — add it to %s/apm/.env or ensure APM vendor is installed so setup can resolve config(services.staff_api.token).\n' \
+                    "$key" "$backend_env" "$staff_root" >&2
+            else
+                printf 'error: %s is not set in %s — add it to %s/apm/.env (same values as `php artisan staff:sync`).\n' \
+                    "$key" "$backend_env" "$staff_root" >&2
+            fi
             return 1
         fi
     done
