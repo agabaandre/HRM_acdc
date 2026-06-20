@@ -1,0 +1,409 @@
+/* System configs hub — modern tabbed admin surface */
+.sys-config-page {
+  --sys-accent: #119a48;
+  --sys-accent-soft: rgba(17, 154, 72, 0.1);
+  --sys-border: #e2e8f0;
+  --sys-muted: #64748b;
+  --sys-surface: #ffffff;
+  --sys-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.sys-config-hero {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 55%, #f8fafc 100%);
+  border: 1px solid var(--sys-border);
+  border-radius: 14px;
+  padding: 1.35rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--sys-shadow);
+}
+
+.sys-config-hero h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.35rem;
+}
+
+.sys-config-hero p {
+  margin: 0;
+  color: var(--sys-muted);
+  font-size: 0.92rem;
+  max-width: 52rem;
+}
+
+.sys-config-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.sys-config-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.35rem;
+  background: #f1f5f9;
+  border-radius: 12px;
+  border: 1px solid var(--sys-border);
+}
+
+.sys-config-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sys-config-tab:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.sys-config-tab.is-active {
+  background: var(--sys-surface);
+  color: var(--sys-accent);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.sys-config-tab i {
+  font-size: 1.05rem;
+}
+
+.sys-config-tab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sys-config-panel {
+  background: var(--sys-surface);
+  border: 1px solid var(--sys-border);
+  border-radius: 14px;
+  box-shadow: var(--sys-shadow);
+  overflow: hidden;
+}
+
+.sys-config-panel > .sys-config-jobs,
+.sys-config-panel > .sys-config-monitor,
+.sys-config-panel > .sys-config-settings,
+.sys-config-panel > .sys-config-audit,
+.sys-config-panel > .container-fluid,
+.sys-config-panel > .row,
+.sys-config-panel > #settings-alert,
+.sys-config-panel > .card {
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.sys-config-monitor,
+.sys-config-settings,
+.sys-config-audit {
+  padding: 1.25rem 1.35rem 1.5rem;
+}
+
+/* Shared stat grid (jobs + monitor) */
+.sys-config-panel .sc-stats,
+.sys-config-jobs .sc-jobs-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.sys-config-panel .sc-stats--services {
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.sys-config-panel .sc-stat-card,
+.sys-config-jobs .sc-stat-card {
+  background: #fff;
+  border: 1px solid var(--sys-border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.sys-config-panel .sc-stat-card--service {
+  align-items: center;
+}
+
+.sys-config-panel .sc-stat-card:hover,
+.sys-config-jobs .sc-stat-card:hover {
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.sys-config-panel .sc-stat-icon,
+.sys-config-jobs .sc-stat-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.sys-config-panel .sc-stat-icon--primary,
+.sys-config-jobs .sc-stat-icon--primary { background: var(--sys-accent-soft); color: var(--sys-accent); }
+.sys-config-panel .sc-stat-icon--success,
+.sys-config-jobs .sc-stat-icon--success { background: #dcfce7; color: #166534; }
+.sys-config-panel .sc-stat-icon--info,
+.sys-config-jobs .sc-stat-icon--info { background: #e0f2fe; color: #0369a1; }
+.sys-config-panel .sc-stat-icon--warning,
+.sys-config-jobs .sc-stat-icon--warning { background: #fef3c7; color: #b45309; }
+.sys-config-panel .sc-stat-icon--danger,
+.sys-config-jobs .sc-stat-icon--danger { background: #fee2e2; color: #b91c1c; }
+
+.sys-config-panel .sc-stat-label,
+.sys-config-jobs .sc-stat-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sys-muted);
+  margin-bottom: 0.2rem;
+}
+
+.sys-config-panel .sc-stat-value,
+.sys-config-jobs .sc-stat-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.sys-config-panel .sc-stat-hint,
+.sys-config-jobs .sc-stat-hint {
+  font-size: 0.75rem;
+  color: var(--sys-muted);
+  margin-top: 0.15rem;
+}
+
+.sys-config-jobs {
+  padding: 1.25rem 1.35rem 1.5rem;
+}
+
+.sys-config-jobs .sc-jobs-stats {
+  margin-bottom: 1.25rem;
+}
+
+.sys-config-jobs .sc-section {
+  border: 1px solid var(--sys-border);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.sys-config-jobs .sc-section-head {
+  background: #f8fafc;
+  border-bottom: 1px solid var(--sys-border);
+  padding: 0.85rem 1.1rem;
+}
+
+.sys-config-jobs .sc-section-head h6 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.sys-config-jobs .sc-section-head p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--sys-muted);
+}
+
+.sys-config-jobs .sc-section-body {
+  padding: 1rem 1.1rem;
+}
+
+.sys-config-jobs .sc-cmd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.75rem;
+}
+
+.sys-config-jobs .sc-cmd-card {
+  border: 1px solid var(--sys-border);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sys-config-jobs .sc-cmd-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.sys-config-jobs .sc-cmd-card .sc-cmd-icon {
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.sys-config-jobs .sc-cmd-card h6 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.sys-config-jobs .sc-cmd-card p {
+  font-size: 0.78rem;
+  color: var(--sys-muted);
+  flex: 1;
+  margin-bottom: 0.65rem;
+}
+
+/* Legacy bootstrap columns inside modern command grid */
+.sys-config-jobs .sc-cmd-grid > [class*="col-"] {
+  padding: 0;
+  width: auto;
+  max-width: none;
+  flex: none;
+}
+
+.sys-config-jobs .sc-cmd-grid .card.border-0.shadow-sm {
+  border: 1px solid var(--sys-border) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  height: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sys-config-jobs .sc-cmd-grid .card.border-0.shadow-sm:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06) !important;
+}
+
+.sys-config-jobs .sc-cmd-grid .card-body {
+  padding: 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sys-config-jobs .sc-cmd-grid .card-body .card-text,
+.sys-config-jobs .sc-cmd-grid .card-body p.small {
+  flex: 1;
+}
+
+.sys-config-jobs .sc-cmd-grid .card-body i[style*="font-size: 2rem"] {
+  font-size: 1.75rem !important;
+}
+
+.sys-config-jobs .sc-weekly-brief {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--sys-border);
+}
+
+.sys-config-jobs .sc-weekly-brief-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 0.35rem;
+}
+
+.sys-config-jobs .sc-weekly-brief-desc {
+  font-size: 0.8rem;
+  color: var(--sys-muted);
+  margin-bottom: 0.85rem;
+}
+
+.sys-config-jobs .sc-terminal-output {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 1rem 1.1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 0 0 12px 12px;
+}
+
+.sys-config-audit .card {
+  border: 1px solid var(--sys-border);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.sys-config-audit .card.border-primary,
+.sys-config-audit .card.border-success,
+.sys-config-audit .card.border-info,
+.sys-config-audit .card.border-warning {
+  border-width: 1px !important;
+  border-color: var(--sys-border) !important;
+}
+
+.sys-config-settings .card {
+  border-radius: 12px;
+}
+
+.sys-config-monitor .card.border-0.shadow-sm {
+  border: 1px solid var(--sys-border) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.sys-config-jobs .card.shadow-sm.mb-4,
+.sys-config-jobs > .card.shadow-sm.mb-4 {
+  border: 0;
+  box-shadow: none !important;
+  margin-bottom: 0 !important;
+}
+
+.sys-config-jobs .card.shadow-sm.mb-4 > .card-header.bg-light {
+  display: none;
+}
+
+.sys-config-jobs .card.shadow-sm.mb-4 > .card-body.p-4 {
+  padding: 0 !important;
+}
+
+.sys-config-jobs .card.mb-4 {
+  border: 1px solid var(--sys-border);
+  border-radius: 12px;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.sys-config-jobs .card.mb-4 > .card-header.bg-light {
+  background: #f8fafc !important;
+  border-bottom: 1px solid var(--sys-border);
+}
+
+@media (max-width: 768px) {
+  .sys-config-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sys-config-tabs {
+    width: 100%;
+  }
+  .sys-config-tab {
+    flex: 1;
+    justify-content: center;
+    min-width: calc(50% - 0.25rem);
+  }
+}

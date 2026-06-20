@@ -79,24 +79,9 @@
             'title' => 'API users',
         ],
         [
-            'route' => 'jobs.index',
-            'icon' => 'fas fa-tasks',
-            'title' => 'Jobs',
-        ],
-        [
-            'url' => url('systemd-monitor'),
-            'icon' => 'fas fa-server',
-            'title' => 'Systemd Monitor',
-        ],
-        [
-            'route' => 'system-settings.index',
-            'icon' => 'fas fa-sliders-h',
-            'title' => 'App Settings',
-        ],
-        [
-            'route' => 'audit-logs.index',
-            'icon' => 'fas fa-clipboard-list',
-            'title' => 'Audit Logs',
+            'route' => 'system-configs.index',
+            'icon' => 'fas fa-cogs',
+            'title' => 'System configs',
         ],
         [
             'route' => 'backups.index',
@@ -355,7 +340,7 @@
             <!-- Settings -->
             @if (in_array(89, user_session('permissions', [])))
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {{ Request::is('memo-type-definitions*') || Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('apm-api-users*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') || Request::is('weekly-briefing/settings*') ? 'active' : '' }}"
+                    <a class="nav-link dropdown-toggle {{ Request::is('memo-type-definitions*') || Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('apm-api-users*') || Request::is('system-configs*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('systemd-monitor*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') || Request::is('weekly-briefing/settings*') ? 'active' : '' }}"
                         href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                         <div class="menu-title">Settings</div>

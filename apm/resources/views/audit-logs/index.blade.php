@@ -1,21 +1,7 @@
-@extends('layouts.app')
-
-@section('title', 'Audit Logs')
-
-@section('header', 'Audit Logs')
-
-@section('header-actions')
-<div class="d-flex gap-2">
-    <a href="{{ route('audit-logs.index', array_merge(request()->query(), ['export' => 'csv'])) }}" class="btn btn-success">
-        <i class="bx bx-download"></i> Export CSV
-    </a>
-    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#cleanupModal">
-        <i class="bx bx-trash"></i> Cleanup Old Logs
-    </button>
-</div>
-@endsection
-
-@section('content')
+@php
+    $auditLogsUrl = route('system-configs.index', ['tab' => 'audit-logs']);
+@endphp
+<div class="sys-config-audit">
 <div class="row">
     <!-- Statistics Cards -->
     <div class="col-12 mb-4">
@@ -78,7 +64,7 @@
                 <h6 class="mb-0"><i class="bx bx-filter me-2 text-primary"></i>Filters</h6>
             </div>
             <div class="card-body">
-                <form method="GET" action="{{ route('audit-logs.index') }}" id="filterForm">
+                <form method="GET" action="{{ $auditLogsUrl }}" id="filterForm">
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label for="search" class="form-label">Search</label>
@@ -131,7 +117,7 @@
                                 <button type="submit" class="btn btn-primary btn-sm">
                                     <i class="bx bx-search"></i>
                                 </button>
-                                <a wire:navigate href="{{ route('audit-logs.index') }}" class="btn btn-secondary btn-sm">
+                                <a wire:navigate href="{{ $auditLogsUrl }}" class="btn btn-secondary btn-sm">
                                     <i class="bx bx-x"></i>
                                 </a>
                             </div>
@@ -642,7 +628,7 @@
         </div>
     </div>
 </div>
-@endsection
+</div>
 
 @push('styles')
 <style>

@@ -1,10 +1,4 @@
-@extends('layouts.app')
-
-@section('title', 'App Settings')
-
-@section('header', 'App Settings')
-
-@section('content')
+<div class="sys-config-settings">
 <div id="settings-alert" class="alert alert-dismissible fade show d-none" role="alert">
     <span id="settings-alert-msg"></span>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -382,4 +376,4 @@ window.SystemSettings = {
 .settings-table .setting-value-cell .input-group { min-width: 0; }
 .form-control-color { height: 31px; padding: 2px; cursor: pointer; }
 </style>
-@endsection
+</div>

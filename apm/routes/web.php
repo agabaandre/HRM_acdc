@@ -281,6 +281,11 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::resource('cost-items', App\Http\Controllers\CostItemController::class)->except(['destroy']);
     Route::resource('non-travel-categories', App\Http\Controllers\NonTravelMemoCategoryController::class);
     
+    // System configuration hub (jobs default tab)
+    Route::get('/system-configs/{tab?}', [App\Http\Controllers\SystemConfigsController::class, 'index'])
+        ->where('tab', 'jobs|monitor|app-settings|audit-logs')
+        ->name('system-configs.index');
+
     // Jobs Management Routes
     Route::get('/jobs', [App\Http\Controllers\JobsController::class, 'index'])->name('jobs.index');
     Route::post('/jobs/execute-command', [App\Http\Controllers\JobsController::class, 'executeCommand'])->name('jobs.execute-command');

@@ -8,14 +8,16 @@ use Illuminate\Support\Facades\Log;
 
 class SystemdMonitorController extends Controller
 {
-    public function index()
+    /**
+     * @return array<string, mixed>
+     */
+    public function getIndexData(): array
     {
-        // Check if user has permission to access systemd monitor
-        if (!in_array(89, user_session('permissions', []))) {
+        if (! in_array(89, user_session('permissions', []))) {
             abort(403, 'Unauthorized access to systemd monitor');
         }
 
-        $data = [
+        return [
             'queue_worker_status' => $this->getServiceStatus('laravel-queue-worker'),
             'scheduler_status' => $this->getServiceStatus('laravel-scheduler'),
             'failed_jobs_count' => $this->getFailedJobsCount(),
@@ -25,8 +27,11 @@ class SystemdMonitorController extends Controller
             'last_daily_notification' => $this->getLastDailyNotificationTime(),
             'approver_count' => $this->getApproverCount(),
         ];
+    }
 
-        return view('systemd-monitor.index', $data);
+    public function index()
+    {
+        return redirect()->route('system-configs.index', ['tab' => 'monitor']);
     }
 
     private function getServiceStatus($serviceName)

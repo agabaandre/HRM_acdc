@@ -1,26 +1,4 @@
-@extends('layouts.app')
-
-@section('title', 'Jobs Management')
-
-@section('header', 'Jobs Management')
-
-@section('header-actions')
-<div class="d-flex gap-2">
-    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#envEditorModal">
-        <i class="bx bx-edit"></i> Edit Environment
-    </button>
-</div>
-@endsection
-
-@section('content')
-<div class="card shadow-sm mb-4">
-    <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="bx bx-tasks me-2 text-primary"></i>System Jobs & Maintenance</h5>
-        <div class="text-muted small mt-1">
-            <i class="bx bx-info-circle me-1"></i>Execute artisan commands and manage system configuration
-        </div>
-    </div>
-    <div class="card-body p-4">
+<div class="sys-config-jobs">
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show">
                 {{ session('success') }}
@@ -29,85 +7,71 @@
         @endif
 
         <!-- System Status Cards -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card border-primary">
-                    <div class="card-body text-center">
-                        <h6 class="card-title text-primary">Cache Status</h6>
-                        <h3 class="text-primary" id="cacheStatus">
-                            <i class="bx bx-loader-alt bx-spin"></i>
-                        </h3>
-                        <small class="text-muted">System Cache</small>
-                    </div>
+        <div class="sc-jobs-stats">
+            <div class="sc-stat-card">
+                <div class="sc-stat-icon sc-stat-icon--primary"><i class="bx bx-data"></i></div>
+                <div>
+                    <div class="sc-stat-label">Cache status</div>
+                    <div class="sc-stat-value" id="cacheStatus"><i class="bx bx-loader-alt bx-spin"></i></div>
+                    <div class="sc-stat-hint">Application cache</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card border-success">
-                    <div class="card-body text-center">
-                        <h6 class="card-title text-success">Last Sync</h6>
-                        <h3 class="text-success" id="lastSync">
-                            <i class="bx bx-time"></i>
-                        </h3>
-                        <small class="text-muted">Data Synchronization</small>
-                    </div>
+            <div class="sc-stat-card">
+                <div class="sc-stat-icon sc-stat-icon--success"><i class="bx bx-sync"></i></div>
+                <div>
+                    <div class="sc-stat-label">Last sync</div>
+                    <div class="sc-stat-value" id="lastSync"><i class="bx bx-time"></i></div>
+                    <div class="sc-stat-hint">Directory data</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card border-info">
-                    <div class="card-body text-center">
-                        <h6 class="card-title text-info">Environment</h6>
-                        <h3 class="text-info" id="envStatus">
-                            <span class="badge bg-info">{{ config('app.env') }}</span>
-                        </h3>
-                        <small class="text-muted">Application Environment</small>
-                    </div>
+            <div class="sc-stat-card">
+                <div class="sc-stat-icon sc-stat-icon--info"><i class="bx bx-globe"></i></div>
+                <div>
+                    <div class="sc-stat-label">Environment</div>
+                    <div class="sc-stat-value" id="envStatus"><span class="badge bg-info">{{ config('app.env') }}</span></div>
+                    <div class="sc-stat-hint">Runtime mode</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card border-warning">
-                    <div class="card-body text-center">
-                        <h6 class="card-title text-warning">Debug Mode</h6>
-                        <h3 class="text-warning" id="debugStatus">
-                            @if(config('app.debug'))
-                                <span class="badge bg-warning">ON</span>
-                            @else
-                                <span class="badge bg-success">OFF</span>
-                            @endif
-                        </h3>
-                        <small class="text-muted">Debug Status</small>
+            <div class="sc-stat-card">
+                <div class="sc-stat-icon sc-stat-icon--warning"><i class="bx bx-bug"></i></div>
+                <div>
+                    <div class="sc-stat-label">Debug mode</div>
+                    <div class="sc-stat-value" id="debugStatus">
+                        @if(config('app.debug'))
+                            <span class="badge bg-warning text-dark">ON</span>
+                        @else
+                            <span class="badge bg-success">OFF</span>
+                        @endif
                     </div>
+                    <div class="sc-stat-hint">Diagnostics</div>
                 </div>
             </div>
         </div>
 
         <!-- System Information -->
-        <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="bx bx-info-circle me-2 text-primary"></i>System Information</h6>
-                <div class="text-muted small mt-1">
-                    <i class="bx bx-info-circle me-1"></i>Current system status and configuration
-                </div>
+        <div class="sc-section">
+            <div class="sc-section-head">
+                <h6><i class="bx bx-info-circle me-2 text-primary"></i>System Information</h6>
+                <p>Current system status and configuration</p>
             </div>
-            <div class="card-body">
+            <div class="sc-section-body">
                 <div id="systemInfoContent">
-                    <div class="text-center">
+                    <div class="text-center py-3">
                         <i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i>
-                        <p class="mt-2">Loading system information...</p>
+                        <p class="mt-2 mb-0 text-muted">Loading system information...</p>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Laravel Maintenance Commands -->
-        <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="bx bx-cog me-2 text-primary"></i>Laravel Maintenance Commands</h6>
-                <div class="text-muted small mt-1">
-                    <i class="bx bx-info-circle me-1"></i>Clear caches, optimize application, and manage storage
-                </div>
+        <div class="sc-section">
+            <div class="sc-section-head">
+                <h6><i class="bx bx-cog me-2 text-primary"></i>Laravel Maintenance Commands</h6>
+                <p>Clear caches, optimize application, and manage storage</p>
             </div>
-            <div class="card-body">
-                <div class="row g-3">
+            <div class="sc-section-body">
+                <div class="sc-cmd-grid">
                     <!-- Clear Cache Command -->
                     <div class="col-md-6 col-lg-3">
                         <div class="card border-0 shadow-sm h-100">
@@ -316,15 +280,13 @@
         </div>
 
         <!-- Data Synchronization Commands -->
-        <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="bx bx-sync me-2 text-primary"></i>Data Synchronization Commands</h6>
-                <div class="text-muted small mt-1">
-                    <i class="bx bx-info-circle me-1"></i>Synchronize data from external sources
-                </div>
+        <div class="sc-section">
+            <div class="sc-section-head">
+                <h6><i class="bx bx-sync me-2 text-primary"></i>Data Synchronization Commands</h6>
+                <p>Synchronize data from external sources</p>
             </div>
-            <div class="card-body">
-                <div class="row g-3">
+            <div class="sc-section-body">
+                <div class="sc-cmd-grid">
                     <!-- Divisions Sync Command -->
                     <div class="col-md-6 col-lg-4">
                         <div class="card border-0 shadow-sm h-100">
@@ -380,15 +342,13 @@
         </div>
 
         <!-- Notification & Reminders Commands -->
-        <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="bx bx-bell me-2 text-primary"></i>Notification & Reminders Commands</h6>
-                <div class="text-muted small mt-1">
-                    <i class="bx bx-info-circle me-1"></i>Manage email notifications and reminder schedules
-                </div>
+        <div class="sc-section">
+            <div class="sc-section-head">
+                <h6><i class="bx bx-bell me-2 text-primary"></i>Notification &amp; Reminders Commands</h6>
+                <p>Manage email notifications and reminder schedules</p>
             </div>
-            <div class="card-body">
-                <div class="row g-3">
+            <div class="sc-section-body">
+                <div class="sc-cmd-grid">
                     <!-- Reminders Schedule Command -->
                     <div class="col-md-6 col-lg-4">
                         <div class="card border-0 shadow-sm h-100">
@@ -463,12 +423,11 @@
                     </div>
                 </div>
 
-                <div class="row g-3 mt-2">
-                    <div class="col-12">
-                        <hr class="my-2">
-                        <h6 class="mb-2 text-secondary"><i class="bx bx-news me-1"></i>Weekly brief (email)</h6>
-                        <p class="small text-muted mb-3">Production sends are also triggered by the scheduler every minute (<code>weekly-briefing:hod-reminders</code>, <code>weekly-briefing:director-review-reminders</code>, <code>weekly-briefing:compiled-summary</code>). Use <strong>Send test emails</strong> to verify SMTP to a safe inbox; force buttons email <em>real</em> contributors, directors, or compiled recipients.</p>
-                    </div>
+                <div class="sc-weekly-brief">
+                    <h6 class="sc-weekly-brief-title"><i class="bx bx-news me-1"></i>Weekly brief (email)</h6>
+                    <p class="sc-weekly-brief-desc">Production sends are also triggered by the scheduler every minute (<code>weekly-briefing:hod-reminders</code>, <code>weekly-briefing:director-review-reminders</code>, <code>weekly-briefing:compiled-summary</code>). Use <strong>Send test emails</strong> to verify SMTP to a safe inbox; force buttons email <em>real</em> contributors, directors, or compiled recipients.</p>
+                </div>
+                <div class="sc-cmd-grid sc-cmd-grid--weekly">
                     <div class="col-md-6 col-lg-3">
                         <div class="card border-0 shadow-sm h-100 border-start border-success border-3">
                             <div class="card-body text-center">
@@ -532,14 +491,12 @@
         </div>
 
         <!-- Document Counter Management -->
-        <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="bx bx-reset me-2 text-primary"></i>Document Counter Management</h6>
-                <div class="text-muted small mt-1">
-                    <i class="bx bx-info-circle me-1"></i>Reset document counters for specific years, divisions, or document types
-                </div>
+        <div class="sc-section">
+            <div class="sc-section-head">
+                <h6><i class="bx bx-reset me-2 text-primary"></i>Document Counter Management</h6>
+                <p>Reset document counters for specific years, divisions, or document types</p>
             </div>
-            <div class="card-body">
+            <div class="sc-section-body">
                 <!-- Filters -->
                 <div class="row mb-4">
                     <div class="col-md-3">
@@ -639,23 +596,19 @@
         </div>
 
         <!-- Command Output -->
-        <div class="card" id="outputCard" style="display: none;">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <div class="sc-section sc-section--output" id="outputCard" style="display: none;">
+            <div class="sc-section-head d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h6 class="mb-0"><i class="bx bx-terminal me-2 text-primary"></i>Command Output</h6>
                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearOutput()">
                     <i class="bx bx-x"></i> Clear
                 </button>
             </div>
-            <div class="card-body">
-                <div id="commandOutput" class="bg-dark text-light p-3 rounded" style="font-family: 'Courier New', monospace; font-size: 0.9rem; max-height: 400px; overflow-y: auto;">
+            <div class="sc-section-body p-0">
+                <div id="commandOutput" class="sc-terminal-output">
                     <!-- Command output will be displayed here -->
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-
 
 <!-- Environment Editor Modal -->
 <div class="modal fade" id="envEditorModal" tabindex="-1" aria-labelledby="envEditorModalLabel" aria-hidden="true">
@@ -695,7 +648,7 @@
         </div>
     </div>
 </div>
-@endsection
+</div>
 
 @push('scripts')
 <script>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,45 @@ class AuditLogsController extends Controller
     /**
      * Display the audit logs index page.
      */
-    public function index(Request $request)
+    public function index(Request $request): RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        if ($request->has('export')) {
+            return $this->exportRequest($request);
+        }
+
+        return redirect()->route('system-configs.index', array_merge(
+            ['tab' => 'audit-logs'],
+            $request->except('tab')
+        ));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getIndexData(Request $request): array
+    {
+        $built = $this->buildAuditLogListing($request);
+
+        return [
+            'paginatedLogs' => $built['paginatedLogs'],
+            'actions' => $built['actions'],
+            'tables' => $built['tables'],
+            'stats' => $built['stats'],
+            'pagination' => $built['pagination'],
+        ];
+    }
+
+    public function exportRequest(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $built = $this->buildAuditLogListing($request);
+
+        return $this->exportAuditLogs($built['auditLogs']);
+    }
+
+    /**
+     * @return array{auditLogs:\Illuminate\Support\Collection, paginatedLogs:\Illuminate\Support\Collection, actions:\Illuminate\Support\Collection, tables:\Illuminate\Support\Collection, stats:array<string, mixed>, pagination:array<string, int|float>}
+     */
+    private function buildAuditLogListing(Request $request): array
     {
         // Get all audit tables
         $auditTables = $this->getAuditTables();
@@ -135,11 +174,6 @@ class AuditLogsController extends Controller
             })->count(),
         ];
         
-        // Handle export request
-        if ($request->has('export')) {
-            return $this->exportAuditLogs($auditLogs);
-        }
-        
         // Paginate results
         $perPage = 25;
         $currentPage = $request->get('page', 1);
@@ -158,8 +192,8 @@ class AuditLogsController extends Controller
             'from' => $offset + 1,
             'to' => min($offset + $perPage, $total),
         ];
-        
-        return view('audit-logs.index', compact('paginatedLogs', 'actions', 'tables', 'stats', 'pagination'));
+
+        return compact('auditLogs', 'paginatedLogs', 'actions', 'tables', 'stats', 'pagination');
     }
     
     /**

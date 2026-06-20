@@ -26,11 +26,11 @@ class SystemSettingsController extends Controller
     ];
 
     /**
-     * Show the form for editing app settings (table layout with types).
+     * @return array<string, mixed>
      */
-    public function index(): View
+    public function getIndexData(): array
     {
-        if (!in_array(89, user_session('permissions', []))) {
+        if (! in_array(89, user_session('permissions', []))) {
             abort(403, 'Unauthorized access to app settings');
         }
         $grouped = SystemSetting::getGroupedForEditing();
@@ -43,13 +43,20 @@ class SystemSettingsController extends Controller
             ];
         }
         foreach (array_keys($grouped) as $g) {
-            if (!isset($groups[$g])) {
+            if (! isset($groups[$g])) {
                 $groups[$g] = ['label' => self::GROUP_LABELS[$g] ?? $g, 'items' => $grouped[$g]];
             }
         }
-        return view('system-settings.index', [
-            'groups' => $groups,
-        ]);
+
+        return compact('groups');
+    }
+
+    /**
+     * Show the form for editing app settings (table layout with types).
+     */
+    public function index(): RedirectResponse
+    {
+        return redirect()->route('system-configs.index', ['tab' => 'app-settings']);
     }
 
     /**
@@ -81,7 +88,7 @@ class SystemSettingsController extends Controller
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json(['success' => true, 'message' => 'Settings updated successfully.']);
         }
-        return redirect()->route('system-settings.index')
+        return redirect()->route('system-configs.index', ['tab' => 'app-settings'])
             ->with('msg', 'App settings updated successfully.')
             ->with('type', 'success');
     }
@@ -120,7 +127,7 @@ class SystemSettingsController extends Controller
                 ],
             ]);
         }
-        return redirect()->route('system-settings.index')
+        return redirect()->route('system-configs.index', ['tab' => 'app-settings'])
             ->with('msg', 'Setting "' . $key . '" added successfully.')
             ->with('type', 'success');
     }
@@ -142,7 +149,7 @@ class SystemSettingsController extends Controller
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json(['success' => true, 'message' => 'Setting removed.']);
         }
-        return redirect()->route('system-settings.index')
+        return redirect()->route('system-configs.index', ['tab' => 'app-settings'])
             ->with('msg', 'Setting "' . $key . '" removed.')
             ->with('type', 'success');
     }

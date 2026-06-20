@@ -1,77 +1,40 @@
-@extends('layouts.app')
-
-@section('title', 'Systemd Monitor')
-
-@section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title">
-                        <i class="fas fa-server me-2"></i>Systemd Service Monitor
-                    </h4>
-                    <p class="card-subtitle text-muted">Monitor and manage Laravel queue workers and scheduler services</p>
+<div class="sys-config-monitor">
+    <div class="sc-stats sc-stats--services">
+        <div class="sc-stat-card sc-stat-card--service">
+            <div class="sc-stat-icon sc-stat-icon--{{ $queue_worker_status['is_running'] ? 'success' : 'danger' }}">
+                <i class="bx bx-task"></i>
+            </div>
+            <div class="flex-grow-1">
+                <div class="sc-stat-label">Queue worker</div>
+                <div class="sc-stat-value">
+                    <span class="badge bg-{{ $queue_worker_status['is_running'] ? 'success' : 'danger' }}">
+                        {{ ucfirst($queue_worker_status['status']) }}
+                    </span>
                 </div>
-                <div class="card-body">
-                    <!-- Service Status Cards -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0">
-                                            <div class="avatar avatar-lg bg-{{ $queue_worker_status['is_running'] ? 'success' : 'danger' }} text-white rounded-circle d-flex align-items-center justify-content-center">
-                                                <i class="fas fa-tasks"></i>
-                                            </div>
-                                        </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <h5 class="mb-1">Queue Worker</h5>
-                                            <p class="text-muted mb-0">
-                                                Status: 
-                                                <span class="badge bg-{{ $queue_worker_status['is_running'] ? 'success' : 'danger' }}">
-                                                    {{ ucfirst($queue_worker_status['status']) }}
-                                                </span>
-                                            </p>
-                                        </div>
-                                        <div class="flex-shrink-0">
-                                            <button class="btn btn-sm btn-outline-primary" onclick="executeCommand('restart-queue-worker')">
-                                                <i class="fas fa-redo"></i> Restart
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0">
-                                            <div class="avatar avatar-lg bg-{{ $scheduler_status['is_running'] ? 'success' : 'danger' }} text-white rounded-circle d-flex align-items-center justify-content-center">
-                                                <i class="fas fa-clock"></i>
-                                            </div>
-                                        </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <h5 class="mb-1">Scheduler</h5>
-                                            <p class="text-muted mb-0">
-                                                Status: 
-                                                <span class="badge bg-{{ $scheduler_status['is_running'] ? 'success' : 'danger' }}">
-                                                    {{ ucfirst($scheduler_status['status']) }}
-                                                </span>
-                                            </p>
-                                        </div>
-                                        <div class="flex-shrink-0">
-                                            <button class="btn btn-sm btn-outline-primary" onclick="executeCommand('restart-scheduler')">
-                                                <i class="fas fa-redo"></i> Restart
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="sc-stat-hint">Laravel queue processor</div>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="executeCommand('restart-queue-worker')">
+                <i class="bx bx-revision"></i> Restart
+            </button>
+        </div>
+        <div class="sc-stat-card sc-stat-card--service">
+            <div class="sc-stat-icon sc-stat-icon--{{ $scheduler_status['is_running'] ? 'success' : 'danger' }}">
+                <i class="bx bx-time-five"></i>
+            </div>
+            <div class="flex-grow-1">
+                <div class="sc-stat-label">Scheduler</div>
+                <div class="sc-stat-value">
+                    <span class="badge bg-{{ $scheduler_status['is_running'] ? 'success' : 'danger' }}">
+                        {{ ucfirst($scheduler_status['status']) }}
+                    </span>
+                </div>
+                <div class="sc-stat-hint">Cron &amp; scheduled tasks</div>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="executeCommand('restart-scheduler')">
+                <i class="bx bx-revision"></i> Restart
+            </button>
+        </div>
+    </div>
 
                     <!-- Queue Statistics -->
                     <div class="row mb-4">
@@ -222,10 +185,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Loading Modal -->
@@ -260,7 +219,6 @@
         </div>
     </div>
 </div>
-@endsection
 
 @push('scripts')
 <script>

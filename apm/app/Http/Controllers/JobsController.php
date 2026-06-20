@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -19,9 +20,9 @@ class JobsController extends Controller
     /**
      * Display the jobs management page.
      */
-    public function index(): View
+    public function index(): RedirectResponse
     {
-        return view('jobs.index');
+        return redirect()->route('system-configs.index', ['tab' => 'jobs']);
     }
 
     /**
