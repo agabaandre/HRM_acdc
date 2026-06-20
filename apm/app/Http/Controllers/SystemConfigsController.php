@@ -30,6 +30,11 @@ class SystemConfigsController extends Controller
             'icon' => 'bx-list-check',
             'description' => 'Activity history, exports & compliance review',
         ],
+        'backups' => [
+            'label' => 'Database backups',
+            'icon' => 'bx-data',
+            'description' => 'Scheduled backups, retention policy & archive delivery',
+        ],
     ];
 
     public function index(Request $request, string $tab = 'jobs'): View|RedirectResponse|StreamedResponse
@@ -66,6 +71,7 @@ class SystemConfigsController extends Controller
             'monitor' => app(SystemdMonitorController::class)->getIndexData(),
             'app-settings' => app(SystemSettingsController::class)->getIndexData(),
             'audit-logs' => app(AuditLogsController::class)->getIndexData($request),
+            'backups' => app(BackupController::class)->getIndexData(),
             default => [],
         };
     }

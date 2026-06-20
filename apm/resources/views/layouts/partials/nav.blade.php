@@ -84,11 +84,6 @@
             'title' => 'System configs',
         ],
         [
-            'route' => 'backups.index',
-            'icon' => 'fas fa-database',
-            'title' => 'Database Backups',
-        ],
-        [
             'route' => 'faqs.index',
             'icon' => 'fas fa-question-circle',
             'title' => 'FAQs',

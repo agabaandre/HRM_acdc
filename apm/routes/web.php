@@ -283,7 +283,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     
     // System configuration hub (jobs default tab)
     Route::get('/system-configs/{tab?}', [App\Http\Controllers\SystemConfigsController::class, 'index'])
-        ->where('tab', 'jobs|monitor|app-settings|audit-logs')
+        ->where('tab', 'jobs|monitor|app-settings|audit-logs|backups')
         ->name('system-configs.index');
 
     // Jobs Management Routes

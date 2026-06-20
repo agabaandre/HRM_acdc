@@ -15,7 +15,7 @@
 <div class="sys-config-page">
     <header class="sys-config-hero">
         <h1><i class="bx bx-cog me-2 text-success"></i>System configs</h1>
-        <p>Operations, monitoring, application settings and audit history — one place for platform administration.</p>
+        <p>Operations, monitoring, backups, application settings and audit history — one place for platform administration.</p>
     </header>
 
     <div class="sys-config-toolbar">
@@ -37,6 +37,13 @@
             @if ($tab === 'jobs')
                 <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#envEditorModal">
                     <i class="bx bx-edit"></i> Edit environment
+                </button>
+            @elseif ($tab === 'backups')
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="typeof refreshStats === 'function' && refreshStats()">
+                    <i class="bx bx-revision"></i> Refresh
+                </button>
+                <button type="button" class="btn btn-sm btn-success" onclick="typeof showDatabaseModal === 'function' && showDatabaseModal()">
+                    <i class="bx bx-data"></i> Manage databases
                 </button>
             @elseif ($tab === 'audit-logs')
                 <a href="{{ $auditExportUrl }}" class="btn btn-sm btn-success">
@@ -66,6 +73,9 @@
                 @break
             @case('audit-logs')
                 @include('audit-logs.index', $panelData)
+                @break
+            @case('backups')
+                @include('backups.index', $panelData)
                 @break
         @endswitch
     </div>

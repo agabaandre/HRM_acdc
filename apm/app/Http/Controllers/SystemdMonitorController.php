@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\DiskSpaceMonitorService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Redis;
 
 class SystemdMonitorController extends Controller
 {
@@ -17,6 +20,8 @@ class SystemdMonitorController extends Controller
             abort(403, 'Unauthorized access to systemd monitor');
         }
 
+        $diskMonitor = app(DiskSpaceMonitorService::class);
+
         return [
             'queue_worker_status' => $this->getServiceStatus('laravel-queue-worker'),
             'scheduler_status' => $this->getServiceStatus('laravel-scheduler'),
@@ -26,7 +31,281 @@ class SystemdMonitorController extends Controller
             'recent_scheduler_logs' => $this->getRecentLogs('laravel-scheduler'),
             'last_daily_notification' => $this->getLastDailyNotificationTime(),
             'approver_count' => $this->getApproverCount(),
+            'health' => $this->getSystemHealth($diskMonitor),
+            'disk' => $diskMonitor->getDiskSpace(base_path()) ?: null,
         ];
+    }
+
+    /**
+     * @return array{overall: string, checks: list<array<string, mixed>>}
+     */
+    private function getSystemHealth(DiskSpaceMonitorService $diskMonitor): array
+    {
+        $checks = [
+            $this->buildCheck('php', 'PHP', PHP_VERSION, 'ok', 'bx-code-alt', 'SAPI: '.php_sapi_name()),
+            $this->buildCheck('laravel', 'Laravel', app()->version(), 'ok', 'bx-layer', config('app.name')),
+            $this->buildCheck('environment', 'Environment', config('app.env'), config('app.env') === 'production' ? 'ok' : 'warning', 'bx-globe', config('app.debug') ? 'Debug mode ON' : 'Debug mode OFF'),
+            $this->checkDatabase(),
+            $this->checkRedis(),
+            $this->buildCheck('cache', 'Cache driver', config('cache.default', 'unknown'), 'ok', 'bx-data', 'Store: '.config('cache.stores.'.config('cache.default').'.driver', 'n/a')),
+            $this->buildCheck('queue', 'Queue driver', config('queue.default', 'unknown'), 'ok', 'bx-list-ul', 'Connection: '.config('queue.connections.'.config('queue.default').'.driver', 'n/a')),
+            $this->checkMemory(),
+            $this->checkCpu(),
+            $this->checkDisk($diskMonitor),
+            $this->checkStorageWritable(),
+            $this->checkOpcache(),
+        ];
+
+        $overall = 'healthy';
+        foreach ($checks as $check) {
+            if ($check['status'] === 'critical') {
+                $overall = 'critical';
+                break;
+            }
+            if ($check['status'] === 'warning' && $overall !== 'critical') {
+                $overall = 'warning';
+            }
+        }
+
+        return ['overall' => $overall, 'checks' => $checks];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildCheck(string $key, string $label, string $value, string $status, string $icon, string $detail = ''): array
+    {
+        return compact('key', 'label', 'value', 'status', 'icon', 'detail');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkDatabase(): array
+    {
+        try {
+            DB::connection()->getPdo();
+            $version = DB::selectOne('select version() as version');
+            $driver = config('database.default');
+
+            return $this->buildCheck(
+                'database',
+                'Database',
+                $driver,
+                'ok',
+                'bx-server',
+                isset($version->version) ? strtok((string) $version->version, '-') : 'Connected'
+            );
+        } catch (\Throwable $e) {
+            return $this->buildCheck('database', 'Database', 'Offline', 'critical', 'bx-server', $e->getMessage());
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkRedis(): array
+    {
+        $default = config('database.redis.default.host') ? 'default' : null;
+        $usesRedis = in_array(config('cache.default'), ['redis'], true)
+            || in_array(config('queue.default'), ['redis'], true)
+            || in_array(config('session.driver'), ['redis'], true);
+
+        if (! $usesRedis && ! $default) {
+            return $this->buildCheck('redis', 'Redis', 'Not configured', 'ok', 'bx-memory-card', 'Application not using Redis');
+        }
+
+        try {
+            $connection = Redis::connection();
+            $ping = $connection->ping();
+            $info = method_exists($connection, 'info') ? $connection->info('server') : [];
+            $version = is_array($info) ? ($info['redis_version'] ?? 'Connected') : 'Connected';
+
+            return $this->buildCheck(
+                'redis',
+                'Redis',
+                is_string($ping) ? strtoupper($ping) : 'PONG',
+                'ok',
+                'bx-memory-card',
+                'Version '.$version
+            );
+        } catch (\Throwable $e) {
+            return $this->buildCheck('redis', 'Redis', 'Unreachable', $usesRedis ? 'critical' : 'warning', 'bx-memory-card', $e->getMessage());
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkMemory(): array
+    {
+        $used = memory_get_usage(true);
+        $peak = memory_get_peak_usage(true);
+        $limit = ini_get('memory_limit');
+
+        $limitBytes = $this->parseIniSize($limit);
+        $percent = ($limitBytes > 0) ? round(($used / $limitBytes) * 100, 1) : null;
+        $status = 'ok';
+        if ($percent !== null && $percent >= 90) {
+            $status = 'critical';
+        } elseif ($percent !== null && $percent >= 75) {
+            $status = 'warning';
+        }
+
+        return $this->buildCheck(
+            'memory',
+            'PHP memory',
+            $this->formatBytes($used),
+            $status,
+            'bx-chip',
+            'Peak '.$this->formatBytes($peak).($limit ? ' · Limit '.$limit : '')
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkCpu(): array
+    {
+        $load = function_exists('sys_getloadavg') ? sys_getloadavg() : false;
+
+        if (is_array($load) && isset($load[0])) {
+            $value = number_format($load[0], 2);
+            $status = $load[0] >= 4 ? 'critical' : ($load[0] >= 2 ? 'warning' : 'ok');
+
+            return $this->buildCheck(
+                'cpu',
+                'CPU load',
+                $value,
+                $status,
+                'bx-microchip',
+                '1m / 5m / 15m: '.implode(' · ', array_map(fn ($n) => number_format((float) $n, 2), $load))
+            );
+        }
+
+        try {
+            $result = Process::run('uptime');
+            if ($result->successful()) {
+                return $this->buildCheck('cpu', 'CPU load', 'Available', 'ok', 'bx-microchip', trim($result->output()));
+            }
+        } catch (\Throwable) {
+            // fall through
+        }
+
+        return $this->buildCheck('cpu', 'CPU load', 'N/A', 'ok', 'bx-microchip', 'Load average unavailable on this host');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkDisk(DiskSpaceMonitorService $diskMonitor): array
+    {
+        $disk = $diskMonitor->getDiskSpace(base_path());
+
+        if (! $disk) {
+            return $this->buildCheck('disk', 'Disk space', 'Unknown', 'warning', 'bx-hdd', 'Unable to read disk metrics');
+        }
+
+        $status = match ($disk['status'] ?? 'ok') {
+            'critical' => 'critical',
+            'warning' => 'warning',
+            default => 'ok',
+        };
+
+        return $this->buildCheck(
+            'disk',
+            'Disk space',
+            $disk['usage_percent'].'% used',
+            $status,
+            'bx-hdd',
+            $disk['free_formatted'].' free of '.$disk['total_formatted']
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkStorageWritable(): array
+    {
+        $paths = [
+            storage_path('logs'),
+            storage_path('framework/cache'),
+            storage_path('app'),
+        ];
+
+        $failed = [];
+        foreach ($paths as $path) {
+            if (! is_writable($path)) {
+                $failed[] = basename($path);
+            }
+        }
+
+        if ($failed !== []) {
+            return $this->buildCheck('storage', 'Storage writable', 'Issues detected', 'critical', 'bx-folder', 'Not writable: '.implode(', ', $failed));
+        }
+
+        return $this->buildCheck('storage', 'Storage writable', 'OK', 'ok', 'bx-folder', 'Logs, cache & app storage');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function checkOpcache(): array
+    {
+        if (! function_exists('opcache_get_status')) {
+            return $this->buildCheck('opcache', 'OPcache', 'Not available', 'ok', 'bx-bolt-circle', 'Extension not loaded');
+        }
+
+        $status = @opcache_get_status(false);
+        if (! is_array($status)) {
+            return $this->buildCheck('opcache', 'OPcache', 'Disabled', 'warning', 'bx-bolt-circle', 'OPcache installed but inactive');
+        }
+
+        $enabled = ! empty($status['opcache_enabled']);
+        $hitRate = isset($status['opcache_statistics']['opcache_hit_rate'])
+            ? round((float) $status['opcache_statistics']['opcache_hit_rate'], 1).'% hit rate'
+            : 'Enabled';
+
+        return $this->buildCheck(
+            'opcache',
+            'OPcache',
+            $enabled ? 'Enabled' : 'Disabled',
+            $enabled ? 'ok' : 'warning',
+            'bx-bolt-circle',
+            $hitRate
+        );
+    }
+
+    private function parseIniSize(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '' || $value === '-1') {
+            return 0;
+        }
+
+        $unit = strtolower(substr($value, -1));
+        $number = (float) $value;
+
+        return (int) match ($unit) {
+            'g' => $number * 1024 * 1024 * 1024,
+            'm' => $number * 1024 * 1024,
+            'k' => $number * 1024,
+            default => (float) $value,
+        };
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = 0;
+        $size = (float) $bytes;
+
+        while ($size >= 1024 && $i < count($units) - 1) {
+            $size /= 1024;
+            $i++;
+        }
+
+        return round($size, 1).' '.$units[$i];
     }
 
     public function index()

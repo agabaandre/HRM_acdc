@@ -1,11 +1,6 @@
-@extends('layouts.app')
-
-@section('title', 'Database Backups')
-@section('header', 'Database Backup Management')
-
+<div class="sys-config-backups">
 @push('styles')
 <style>
-    .backup-card {
         transition: transform 0.2s, box-shadow 0.2s;
     }
     .backup-card:hover {
@@ -64,8 +59,7 @@
 </style>
 @endpush
 
-@section('content')
-<div class="container-fluid">
+<div class="container-fluid px-0">
     <!-- Disk Space Alert -->
     @if($diskSpace && $diskSpace['status'] !== 'ok')
     <div class="row mb-3">
@@ -798,7 +792,7 @@
         <p class="mb-0">Processing...</p>
     </div>
 </div>
-@endsection
+</div>
 
 @push('scripts')
 <script>

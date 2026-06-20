@@ -26,24 +26,30 @@ class BackupController extends Controller
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function getIndexData(): array
+    {
+        if (! in_array(89, user_session('permissions', []))) {
+            abort(403, 'Unauthorized access to database backups');
+        }
+
+        return [
+            'stats' => $this->backupService->getBackupStats(),
+            'config' => config('backup'),
+            'backups' => $this->getBackupList(),
+            'diskSpace' => $this->diskMonitorService->getDiskSpace(),
+            'databases' => BackupDatabase::orderedByPriority()->get(),
+            'backupSettings' => BackupSetting::instance(),
+        ];
+    }
+
+    /**
      * Display backup management page
      */
     public function index()
     {
-        $stats = $this->backupService->getBackupStats();
-        $config = config('backup');
-        
-        // Get list of backup files
-        $backups = $this->getBackupList();
-        
-        // Get disk space information
-        $diskSpace = $this->diskMonitorService->getDiskSpace();
-        
-        // Get configured databases
-        $databases = BackupDatabase::orderedByPriority()->get();
-        $backupSettings = BackupSetting::instance();
-
-        return view('backups.index', compact('stats', 'config', 'backups', 'diskSpace', 'databases', 'backupSettings'));
+        return redirect()->route('system-configs.index', ['tab' => 'backups']);
     }
 
     /**
