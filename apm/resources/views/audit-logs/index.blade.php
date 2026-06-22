@@ -698,30 +698,39 @@ function formatAuditCreatedAt(value) {
         + '<small class="text-muted">' + date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + '</small>';
 }
 
-function renderAuditActions(row) {
-    const attrs = [
-        'data-log-id="' + escapeAuditHtml(row.id) + '"',
-        'data-log-table="' + escapeAuditHtml(row.source_table) + '"',
-        'data-log-action="' + escapeAuditHtml(row.action) + '"',
-        'data-log-entity="' + escapeAuditHtml(row.entity_id ?? 'N/A') + '"',
-        'data-log-causer-type="' + escapeAuditHtml(row.causer_type ?? '') + '"',
-        'data-log-causer-id="' + escapeAuditHtml(row.causer_id ?? '') + '"',
-        'data-log-causer-name="' + escapeAuditHtml(row.causer_name ?? 'Unknown User') + '"',
-        'data-log-causer-email="' + escapeAuditHtml(row.causer_email ?? 'N/A') + '"',
-        'data-log-causer-job="' + escapeAuditHtml(row.causer_job_title ?? 'N/A') + '"',
-        'data-log-causer-division="' + escapeAuditHtml(row.causer_division_name ?? 'N/A') + '"',
-        'data-log-causer-duty-station="' + escapeAuditHtml(row.causer_duty_station_name ?? 'N/A') + '"',
-        'data-log-source="' + escapeAuditHtml(row.source ?? 'Unknown') + '"',
-        'data-log-suspicious="' + (row.is_suspicious ? 'Yes' : 'No') + '"',
-        'data-log-suspicious-reasons="' + escapeAuditHtml(row.suspicious_reasons ?? '') + '"',
-        'data-log-created="' + escapeAuditHtml(row.created_at ?? '') + '"',
-        'data-log-old-values="' + escapeAuditHtml(row.old_values ?? '') + '"',
-        'data-log-new-values="' + escapeAuditHtml(row.new_values ?? '') + '"',
-        'data-log-metadata="' + escapeAuditHtml(row.metadata ?? '') + '"'
-    ].join(' ');
+function formatAuditJsonBlock(value) {
+    if (value == null || value === '') {
+        return null;
+    }
+    if (typeof value === 'object') {
+        return JSON.stringify(value, null, 2);
+    }
+    const text = String(value).trim();
+    if (!text) {
+        return null;
+    }
+    try {
+        return JSON.stringify(JSON.parse(text), null, 2);
+    } catch (e) {
+        return text;
+    }
+}
 
+function setAuditModalCodeContent(elementId, value, emptyLabel) {
+    const container = document.getElementById(elementId);
+    if (!container) return;
+    const formatted = formatAuditJsonBlock(value);
+    let code = container.querySelector('code');
+    if (!code) {
+        container.innerHTML = '<code></code>';
+        code = container.querySelector('code');
+    }
+    code.textContent = formatted ?? emptyLabel;
+}
+
+function renderAuditActions(row) {
     let html = '<div class="btn-group" role="group">'
-        + '<button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#auditLogModal" ' + attrs + '>'
+        + '<button type="button" class="btn btn-sm btn-outline-primary audit-log-view-btn" data-bs-toggle="modal" data-bs-target="#auditLogModal">'
         + '<i class="bx bx-show me-1"></i>View</button>';
 
     if (auditLogsCanReverse && ['created', 'updated', 'deleted'].includes(row.action)) {
@@ -1190,107 +1199,67 @@ document.getElementById('confirm-reversal-btn').addEventListener('click', functi
     });
 });
 
-// Handle modal data population
+// Handle modal data population — read full row from DataTable (JSON cannot live in HTML attributes)
 document.getElementById('auditLogModal').addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
-    
-    // Get data attributes
-    const logId = button.getAttribute('data-log-id');
-    const logTable = button.getAttribute('data-log-table');
-    const logAction = button.getAttribute('data-log-action');
-    const logEntity = button.getAttribute('data-log-entity');
-    const logCauserType = button.getAttribute('data-log-causer-type');
-    const logCauserId = button.getAttribute('data-log-causer-id');
-    const logCauserName = button.getAttribute('data-log-causer-name');
-    const logCauserEmail = button.getAttribute('data-log-causer-email');
-    const logCauserJob = button.getAttribute('data-log-causer-job');
-    const logCauserDivision = button.getAttribute('data-log-causer-division');
-    const logCauserDutyStation = button.getAttribute('data-log-causer-duty-station');
-    const logSource = button.getAttribute('data-log-source');
-    const logSuspicious = button.getAttribute('data-log-suspicious');
-    const logSuspiciousReasons = button.getAttribute('data-log-suspicious-reasons');
-    const logCreated = button.getAttribute('data-log-created');
-    const logOldValues = button.getAttribute('data-log-old-values');
-    const logNewValues = button.getAttribute('data-log-new-values');
-    const logMetadata = button.getAttribute('data-log-metadata');
-    
-    // Populate basic information
-    document.getElementById('modal-log-id').textContent = logId;
-    document.getElementById('modal-log-entity').textContent = logEntity;
-    document.getElementById('modal-log-table').textContent = logTable;
-    document.getElementById('modal-log-causer-name').textContent = logCauserName || 'Unknown User';
-    document.getElementById('modal-log-causer-email').textContent = logCauserEmail || 'N/A';
-    document.getElementById('modal-log-causer-job').textContent = logCauserJob || 'N/A';
-    document.getElementById('modal-log-causer-id').textContent = logCauserId || 'N/A';
-    document.getElementById('modal-log-causer-division').textContent = logCauserDivision || 'N/A';
-    document.getElementById('modal-log-causer-duty-station').textContent = logCauserDutyStation || 'N/A';
-    document.getElementById('modal-log-source').textContent = logSource || 'Unknown';
-    
-    // Set suspicious status
+    const row = (auditLogsTable && button)
+        ? auditLogsTable.row($(button).closest('tr')).data()
+        : null;
+
+    if (!row) {
+        return;
+    }
+
+    document.getElementById('modal-log-id').textContent = row.id ?? '-';
+    document.getElementById('modal-log-entity').textContent = row.entity_id ?? 'N/A';
+    document.getElementById('modal-log-table').textContent = row.source_table ?? '-';
+    document.getElementById('modal-log-causer-name').textContent = row.causer_name || 'Unknown User';
+    document.getElementById('modal-log-causer-email').textContent = row.causer_email || 'N/A';
+    document.getElementById('modal-log-causer-job').textContent = row.causer_job_title || 'N/A';
+    document.getElementById('modal-log-causer-id').textContent = row.causer_id || 'N/A';
+    document.getElementById('modal-log-causer-division').textContent = row.causer_division_name || 'N/A';
+    document.getElementById('modal-log-causer-duty-station').textContent = row.causer_duty_station_name || 'N/A';
+    document.getElementById('modal-log-source').textContent = row.source || 'Unknown';
+
     const suspiciousElement = document.getElementById('modal-log-suspicious');
-    if (logSuspicious === 'Yes') {
+    if (row.is_suspicious) {
         suspiciousElement.innerHTML = '<span class="badge bg-danger"><i class="bx bx-shield-x"></i> Yes</span>';
     } else {
         suspiciousElement.innerHTML = '<span class="badge bg-success"><i class="bx bx-shield-check"></i> No</span>';
     }
-    
-    // Set suspicious reasons
-    document.getElementById('modal-log-suspicious-reasons').textContent = logSuspiciousReasons || 'None';
-    
-    // Format and set action badge
+
+    document.getElementById('modal-log-suspicious-reasons').textContent = row.suspicious_reasons || 'None';
+
+    const logAction = row.action || '-';
     const actionBadge = document.getElementById('modal-log-action');
     actionBadge.textContent = logAction;
     actionBadge.className = 'badge ' + (logAction === 'created' ? 'bg-success' : (logAction === 'updated' ? 'bg-warning' : 'bg-danger'));
-    
-    // Format and set created date
-    if (logCreated) {
-        const createdDate = new Date(logCreated);
-        document.getElementById('modal-log-created').innerHTML = 
-            createdDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + 
+
+    if (row.created_at) {
+        const createdDate = new Date(row.created_at);
+        document.getElementById('modal-log-created').innerHTML =
+            createdDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) +
             ' ' + createdDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) +
             '<br><small class="text-muted">(' + getRelativeTime(createdDate) + ')</small>';
+    } else {
+        document.getElementById('modal-log-created').textContent = '-';
     }
-    
-    // Handle old/new values
+
     const dataChangesSection = document.getElementById('data-changes-section');
-    if (logOldValues || logNewValues) {
+    const hasOldValues = formatAuditJsonBlock(row.old_values) !== null;
+    const hasNewValues = formatAuditJsonBlock(row.new_values) !== null;
+    if (hasOldValues || hasNewValues) {
         dataChangesSection.style.display = 'block';
-        
-        if (logOldValues) {
-            try {
-                const oldValues = JSON.parse(logOldValues);
-                document.getElementById('modal-log-old-values').innerHTML = '<code>' + JSON.stringify(oldValues, null, 2) + '</code>';
-            } catch (e) {
-                document.getElementById('modal-log-old-values').innerHTML = '<code>' + logOldValues + '</code>';
-            }
-        } else {
-            document.getElementById('modal-log-old-values').innerHTML = '<code>No old values</code>';
-        }
-        
-        if (logNewValues) {
-            try {
-                const newValues = JSON.parse(logNewValues);
-                document.getElementById('modal-log-new-values').innerHTML = '<code>' + JSON.stringify(newValues, null, 2) + '</code>';
-            } catch (e) {
-                document.getElementById('modal-log-new-values').innerHTML = '<code>' + logNewValues + '</code>';
-            }
-        } else {
-            document.getElementById('modal-log-new-values').innerHTML = '<code>No new values</code>';
-        }
+        setAuditModalCodeContent('modal-log-old-values', row.old_values, 'No old values');
+        setAuditModalCodeContent('modal-log-new-values', row.new_values, 'No new values');
     } else {
         dataChangesSection.style.display = 'none';
     }
-    
-    // Handle metadata
+
     const metadataSection = document.getElementById('metadata-section');
-    if (logMetadata) {
+    if (formatAuditJsonBlock(row.metadata) !== null) {
         metadataSection.style.display = 'block';
-        try {
-            const metadata = JSON.parse(logMetadata);
-            document.getElementById('modal-log-metadata').innerHTML = '<code>' + JSON.stringify(metadata, null, 2) + '</code>';
-        } catch (e) {
-            document.getElementById('modal-log-metadata').innerHTML = '<code>' + logMetadata + '</code>';
-        }
+        setAuditModalCodeContent('modal-log-metadata', row.metadata, 'No metadata');
     } else {
         metadataSection.style.display = 'none';
     }
