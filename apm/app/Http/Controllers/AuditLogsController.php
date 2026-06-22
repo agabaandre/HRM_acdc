@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Services\AuditLogService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -14,6 +16,10 @@ use Carbon\Carbon;
 
 class AuditLogsController extends Controller
 {
+    public function __construct(
+        protected AuditLogService $auditLogService
+    ) {}
+
     /**
      * Display the audit logs index page.
      */
@@ -34,169 +40,31 @@ class AuditLogsController extends Controller
      */
     public function getIndexData(Request $request): array
     {
-        $built = $this->buildAuditLogListing($request);
+        $stats = $this->auditLogService->getStats($request);
 
         return [
-            'paginatedLogs' => $built['paginatedLogs'],
-            'actions' => $built['actions'],
-            'tables' => $built['tables'],
-            'stats' => $built['stats'],
-            'pagination' => $built['pagination'],
+            'actions' => $this->auditLogService->getDistinctActions(),
+            'tables' => collect($this->auditLogService->getAuditTables()),
+            'stats' => $stats,
         ];
+    }
+
+    public function data(Request $request): JsonResponse
+    {
+        if (! in_array(89, user_session('permissions', []))) {
+            abort(403, 'Unauthorized access to audit logs');
+        }
+
+        return response()->json($this->auditLogService->paginateForDataTable($request));
     }
 
     public function exportRequest(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $built = $this->buildAuditLogListing($request);
+        $auditLogs = $this->auditLogService->exportRows($request);
 
-        return $this->exportAuditLogs($built['auditLogs']);
+        return $this->exportAuditLogs($auditLogs);
     }
 
-    /**
-     * @return array{auditLogs:\Illuminate\Support\Collection, paginatedLogs:\Illuminate\Support\Collection, actions:\Illuminate\Support\Collection, tables:\Illuminate\Support\Collection, stats:array<string, mixed>, pagination:array<string, int|float>}
-     */
-    private function buildAuditLogListing(Request $request): array
-    {
-        // Get all audit tables
-        $auditTables = $this->getAuditTables();
-        
-        // Get audit logs from all tables
-        $auditLogs = collect();
-        
-        foreach ($auditTables as $table) {
-            try {
-                // Check if table has entity_id or resource_id column
-                $columns = DB::select("SHOW COLUMNS FROM {$table}");
-                $hasEntityId = collect($columns)->contains('Field', 'entity_id');
-                $hasResourceId = collect($columns)->contains('Field', 'resource_id');
-                
-                if ($hasEntityId) {
-                    // Table has entity_id column
-                    $tableLogs = DB::table($table)
-                        ->select('*')
-                        ->addSelect(DB::raw("'{$table}' as source_table"))
-                        ->orderBy('created_at', 'desc')
-                        ->limit(100)
-                        ->get();
-                } elseif ($hasResourceId) {
-                    // Table has resource_id column, map it to entity_id
-                    $tableLogs = DB::table($table)
-                        ->select('*')
-                        ->addSelect(DB::raw("'{$table}' as source_table"))
-                        ->addSelect(DB::raw("CAST(resource_id AS CHAR) as entity_id"))
-                        ->orderBy('created_at', 'desc')
-                        ->limit(100)
-                        ->get();
-                } else {
-                    // Table has neither, use id as entity_id
-                    $tableLogs = DB::table($table)
-                        ->select('*')
-                        ->addSelect(DB::raw("'{$table}' as source_table"))
-                        ->addSelect(DB::raw("CAST(id AS CHAR) as entity_id"))
-                        ->orderBy('created_at', 'desc')
-                        ->limit(100)
-                        ->get();
-                }
-                    
-                $auditLogs = $auditLogs->merge($tableLogs);
-            } catch (\Exception $e) {
-                // Log error and continue with other tables
-                Log::error("Error processing audit table {$table}: " . $e->getMessage());
-                continue;
-            }
-        }
-        
-        // Sort by created_at desc
-        $auditLogs = $auditLogs->sortByDesc('created_at');
-        
-        // Resolve causer information (staff details)
-        $auditLogs = $this->resolveCauserInformation($auditLogs);
-        
-        // Mark suspicious activities
-        $auditLogs = $this->markSuspiciousActivities($auditLogs);
-        
-        // Apply filters
-        if ($request->filled('search')) {
-            $search = trim((string) $request->get('search'));
-            $searchLower = strtolower($search);
-            $matchingStaffIds = $this->findStaffIdsMatchingSearch($search);
-
-            $auditLogs = $auditLogs->filter(function ($log) use ($searchLower, $matchingStaffIds) {
-                return $this->auditLogMatchesSearch($log, $searchLower, $matchingStaffIds);
-            });
-        }
-
-        if ($request->filled('action')) {
-            $auditLogs = $auditLogs->where('action', $request->get('action'));
-        }
-
-        if ($request->filled('date_from')) {
-            $dateFrom = Carbon::parse($request->get('date_from'))->startOfDay();
-            $auditLogs = $auditLogs->filter(function ($log) use ($dateFrom) {
-                return Carbon::parse($log->created_at)->gte($dateFrom);
-            });
-        }
-
-        if ($request->filled('date_to')) {
-            $dateTo = Carbon::parse($request->get('date_to'))->endOfDay();
-            $auditLogs = $auditLogs->filter(function ($log) use ($dateTo) {
-                return Carbon::parse($log->created_at)->lte($dateTo);
-            });
-        }
-        
-        if ($request->filled('table')) {
-            $auditLogs = $auditLogs->where('source_table', $request->get('table'));
-        }
-        
-        if ($request->filled('suspicious')) {
-            $suspiciousFilter = $request->get('suspicious');
-            if ($suspiciousFilter === '1') {
-                $auditLogs = $auditLogs->filter(function ($log) {
-                    return $log->is_suspicious ?? false;
-                });
-            } elseif ($suspiciousFilter === '0') {
-                $auditLogs = $auditLogs->filter(function ($log) {
-                    return !($log->is_suspicious ?? false);
-                });
-            }
-        }
-        
-        // Get filter options
-        $actions = $auditLogs->pluck('action')->unique()->sort()->values();
-        $tables = $auditLogs->pluck('source_table')->unique()->sort()->values();
-        
-        // Get statistics
-        $stats = [
-            'total_logs' => $auditLogs->count(),
-            'actions_count' => $auditLogs->groupBy('action')->map->count()->sortDesc(),
-            'tables_count' => $auditLogs->groupBy('source_table')->map->count()->sortDesc(),
-            'recent_activity' => $auditLogs->filter(function ($log) {
-                return Carbon::parse($log->created_at)->gte(Carbon::now()->subHours(24));
-            })->count(),
-        ];
-        
-        // Paginate results
-        $perPage = 25;
-        $currentPage = $request->get('page', 1);
-        $offset = ($currentPage - 1) * $perPage;
-        $paginatedLogs = $auditLogs->slice($offset, $perPage)->values();
-        
-        // Create pagination data
-        $total = $auditLogs->count();
-        $lastPage = ceil($total / $perPage);
-        
-        $pagination = [
-            'current_page' => $currentPage,
-            'last_page' => $lastPage,
-            'per_page' => $perPage,
-            'total' => $total,
-            'from' => $offset + 1,
-            'to' => min($offset + $perPage, $total),
-        ];
-
-        return compact('auditLogs', 'paginatedLogs', 'actions', 'tables', 'stats', 'pagination');
-    }
-    
     /**
      * Export audit logs to CSV
      */
@@ -257,7 +125,7 @@ class AuditLogsController extends Controller
     public function showCleanupModal()
     {
         // Get audit log statistics for the modal
-        $auditTables = $this->getAuditTables();
+        $auditTables = $this->auditLogService->getAuditTables();
         $totalLogs = 0;
         $oldLogs = 0;
         
@@ -291,7 +159,7 @@ class AuditLogsController extends Controller
             $retentionDays = $request->input('retention_days', env('LOGS_RETENTION_PERIOD', 365));
             $cutoffDate = Carbon::now()->subDays($retentionDays);
             
-            $auditTables = $this->getAuditTables();
+            $auditTables = $this->auditLogService->getAuditTables();
             $deletedCount = 0;
             
             foreach ($auditTables as $table) {
@@ -743,293 +611,5 @@ class AuditLogsController extends Controller
                 'message' => 'Error during data reversal: ' . $e->getMessage()
             ];
         }
-    }
-    
-    /**
-     * Mark suspicious activities based on external sources and unknown users
-     */
-    private function markSuspiciousActivities($auditLogs)
-    {
-        // Group logs by IP address and time window to detect patterns
-        $logsByIp = $auditLogs->groupBy(function ($log) {
-            // Extract IP from metadata if available
-            $metadata = json_decode($log->metadata ?? '{}', true);
-            return $metadata['ip'] ?? 'unknown';
-        });
-        
-        // Group logs by causer_id to detect unknown user patterns
-        $logsByCauser = $auditLogs->groupBy('causer_id');
-        
-        return $auditLogs->map(function ($log) use ($logsByIp, $logsByCauser) {
-            $isSuspicious = false;
-            $suspiciousReasons = [];
-            
-            // Check for external source
-            $metadata = json_decode($log->metadata ?? '{}', true);
-            $ip = $metadata['ip'] ?? null;
-            $userAgent = $metadata['user_agent'] ?? null;
-            
-            // Mark as suspicious if from external IP (not local/private)
-            if ($ip && $ip !== 'unknown' && filter_var($ip, FILTER_VALIDATE_IP)) {
-                try {
-                    if (!$this->isInternalIp($ip)) {
-                        $isSuspicious = true;
-                        $suspiciousReasons[] = 'External IP';
-                    }
-                } catch (\Exception $e) {
-                    // Log the error but don't mark as suspicious due to IP parsing error
-                    Log::warning('Error checking IP for suspicious activity: ' . $e->getMessage(), [
-                        'ip' => $ip,
-                        'log_id' => $log->id
-                    ]);
-                }
-            }
-            
-            // Mark as suspicious if unknown user (no causer_id or causer_name is "Unknown User")
-            if (!$log->causer_id || $log->causer_name === 'Unknown User') {
-                $isSuspicious = true;
-                $suspiciousReasons[] = 'Unknown User';
-            }
-            
-            // Mark as suspicious if multiple activities from same IP in short time
-            if ($ip && $ip !== 'unknown') {
-                $ipLogs = $logsByIp->get($ip, collect());
-                $recentLogs = $ipLogs->filter(function ($ipLog) use ($log) {
-                    $logTime = Carbon::parse($log->created_at);
-                    $ipLogTime = Carbon::parse($ipLog->created_at);
-                    return $ipLogTime->diffInMinutes($logTime) <= 30; // Within 30 minutes
-                });
-                
-                if ($recentLogs->count() > 5) {
-                    $isSuspicious = true;
-                    $suspiciousReasons[] = 'Multiple activities from same IP';
-                }
-            }
-            
-            // Mark as suspicious if user has many unknown activities
-            if ($log->causer_id) {
-                $userLogs = $logsByCauser->get($log->causer_id, collect());
-                $unknownLogs = $userLogs->filter(function ($userLog) {
-                    return !$userLog->causer_id || $userLog->causer_name === 'Unknown User';
-                });
-                
-                if ($unknownLogs->count() > 3) {
-                    $isSuspicious = true;
-                    $suspiciousReasons[] = 'Multiple unknown activities';
-                }
-            }
-            
-            // Mark as suspicious if unusual user agent
-            if ($userAgent && $this->isSuspiciousUserAgent($userAgent)) {
-                $isSuspicious = true;
-                $suspiciousReasons[] = 'Suspicious User Agent';
-            }
-            
-            $log->is_suspicious = $isSuspicious;
-            $log->suspicious_reasons = implode(', ', $suspiciousReasons);
-            
-            return $log;
-        });
-    }
-    
-    /**
-     * Check if IP address is internal/private
-     */
-    private function isInternalIp($ip)
-    {
-        // Check for private IP ranges
-        $privateRanges = [
-            '10.0.0.0/8',
-            '172.16.0.0/12',
-            '192.168.0.0/16',
-            '127.0.0.0/8',
-            '::1/128'
-        ];
-        
-        foreach ($privateRanges as $range) {
-            if ($this->ipInRange($ip, $range)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Check if IP is in CIDR range
-     */
-    private function ipInRange($ip, $range)
-    {
-        if (strpos($range, '/') === false) {
-            return $ip === $range;
-        }
-        
-        $parts = explode('/', $range);
-        if (count($parts) !== 2) {
-            return false;
-        }
-        
-        $subnet = $parts[0];
-        $bits = (int) $parts[1];
-        
-        // Check if bits is empty or invalid
-        if (empty($parts[1]) || $bits <= 0) {
-            return false;
-        }
-        
-        // Validate bits value
-        if ($bits < 0 || $bits > 32) {
-            return false;
-        }
-        
-        $ip = ip2long($ip);
-        $subnet = ip2long($subnet);
-        
-        // Handle invalid IP addresses
-        if ($ip === false || $subnet === false) {
-            return false;
-        }
-        
-        $mask = -1 << (32 - $bits);
-        $subnet &= $mask;
-        
-        return ($ip & $mask) === $subnet;
-    }
-    
-    /**
-     * Check if user agent is suspicious
-     */
-    private function isSuspiciousUserAgent($userAgent)
-    {
-        $suspiciousPatterns = [
-            'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget',
-            'python', 'java', 'php', 'perl', 'ruby', 'go-http',
-            'postman', 'insomnia', 'httpie'
-        ];
-        
-        $userAgentLower = strtolower($userAgent);
-        
-        foreach ($suspiciousPatterns as $pattern) {
-            if (strpos($userAgentLower, $pattern) !== false) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Get all audit tables from the database.
-     */
-    private function getAuditTables(): array
-    {
-        $tables = DB::select('SHOW TABLES');
-        $auditTables = [];
-        
-        foreach ($tables as $table) {
-            $tableName = array_values((array)$table)[0];
-            // Include tables that start with 'audit_' and end with '_logs', or are named 'audit_logs'
-            if ((strpos($tableName, 'audit_') === 0 && strpos($tableName, '_logs') !== false) || 
-                $tableName === 'audit_logs' ||
-                strpos($tableName, '_audit') !== false) {
-                $auditTables[] = $tableName;
-            }
-        }
-        
-        return $auditTables;
-    }
-    
-    /**
-     * Resolve causer information by matching causer_id with staff table
-     */
-    private function resolveCauserInformation($auditLogs)
-    {
-        // Get all unique causer_ids that are not null
-        $causerIds = $auditLogs->whereNotNull('causer_id')
-                              ->pluck('causer_id')
-                              ->unique()
-                              ->filter()
-                              ->values();
-        
-        if ($causerIds->isEmpty()) {
-            return $auditLogs;
-        }
-        
-        // Fetch staff information for all causer_ids
-        $staffMembers = DB::table('staff')
-            ->whereIn('staff_id', $causerIds)
-            ->select('staff_id', 'fname', 'lname', 'work_email', 'job_name', 'division_name', 'duty_station_name')
-            ->get()
-            ->keyBy('staff_id');
-        
-        // Add staff information to each audit log
-        return $auditLogs->map(function ($log) use ($staffMembers) {
-            if ($log->causer_id && isset($staffMembers[$log->causer_id])) {
-                $staff = $staffMembers[$log->causer_id];
-                $log->causer_name = trim($staff->fname . ' ' . $staff->lname);
-                $log->causer_email = $staff->work_email;
-                $log->causer_job_title = $staff->job_name ?? 'N/A';
-                $log->causer_division_name = $staff->division_name ?? 'N/A';
-                $log->causer_duty_station_name = $staff->duty_station_name ?? 'N/A';
-            } else {
-                $log->causer_name = trim((string) ($log->user_name ?? '')) ?: 'Unknown User';
-                $log->causer_email = $log->user_email ?? 'N/A';
-                $log->causer_job_title = 'N/A';
-                $log->causer_division_name = 'N/A';
-                $log->causer_duty_station_name = 'N/A';
-            }
-            
-            return $log;
-        });
-    }
-
-    /**
-     * @return \Illuminate\Support\Collection<int, int|string>
-     */
-    private function findStaffIdsMatchingSearch(string $search): \Illuminate\Support\Collection
-    {
-        if ($search === '') {
-            return collect();
-        }
-
-        $like = '%'.$search.'%';
-
-        return DB::table('staff')
-            ->where(function ($query) use ($like) {
-                $query->where('fname', 'like', $like)
-                    ->orWhere('lname', 'like', $like)
-                    ->orWhere('work_email', 'like', $like)
-                    ->orWhereRaw("CONCAT(fname, ' ', lname) LIKE ?", [$like]);
-            })
-            ->pluck('staff_id');
-    }
-
-    /**
-     * @param  \Illuminate\Support\Collection<int, int|string>  $matchingStaffIds
-     */
-    private function auditLogMatchesSearch(object $log, string $searchLower, \Illuminate\Support\Collection $matchingStaffIds): bool
-    {
-        $fields = [
-            $log->action ?? '',
-            $log->source_table ?? '',
-            (string) ($log->entity_id ?? ''),
-            (string) ($log->causer_id ?? ''),
-            $log->causer_name ?? '',
-            $log->causer_email ?? '',
-            $log->causer_job_title ?? '',
-            $log->causer_division_name ?? '',
-            $log->causer_duty_station_name ?? '',
-            $log->user_name ?? '',
-            $log->user_email ?? '',
-            $log->description ?? '',
-        ];
-
-        foreach ($fields as $value) {
-            if ($value !== '' && str_contains(strtolower((string) $value), $searchLower)) {
-                return true;
-            }
-        }
-
-        return $log->causer_id && $matchingStaffIds->contains($log->causer_id);
     }
 }

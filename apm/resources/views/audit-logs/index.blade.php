@@ -13,7 +13,7 @@
                             <i class="fas fa-list-alt fa-2x text-primary"></i>
                         </div>
                         <h6 class="card-title text-primary">Total Logs</h6>
-                        <h3 class="text-primary">{{ number_format($stats['total_logs']) }}</h3>
+                        <h3 class="text-primary" id="auditStatsTotal">{{ number_format($stats['total_logs']) }}</h3>
                         <small class="text-muted">All Time</small>
                     </div>
                 </div>
@@ -25,7 +25,7 @@
                             <i class="fas fa-clock fa-2x text-success"></i>
                         </div>
                         <h6 class="card-title text-success">Recent Activity</h6>
-                        <h3 class="text-success">{{ number_format($stats['recent_activity']) }}</h3>
+                        <h3 class="text-success" id="auditStatsRecent">{{ number_format($stats['recent_activity']) }}</h3>
                         <small class="text-muted">Last 24 Hours</small>
                     </div>
                 </div>
@@ -37,8 +37,8 @@
                             <i class="fas fa-chart-line fa-2x text-info"></i>
                         </div>
                         <h6 class="card-title text-info">Top Action</h6>
-                        <h3 class="text-info">{{ $stats['actions_count']->keys()->first() ?? 'N/A' }}</h3>
-                        <small class="text-muted">{{ $stats['actions_count']->first() ?? 0 }} times</small>
+                        <h3 class="text-info" id="auditStatsTopAction">{{ $stats['top_action'] ?? ($stats['actions_count']->keys()->first() ?? 'N/A') }}</h3>
+                        <small class="text-muted" id="auditStatsTopActionCount">{{ $stats['top_action_count'] ?? ($stats['actions_count']->first() ?? 0) }} times</small>
                     </div>
                 </div>
             </div>
@@ -49,8 +49,8 @@
                             <i class="fas fa-database fa-2x text-warning"></i>
                         </div>
                         <h6 class="card-title text-dark">Top Table</h6>
-                        <h4 class="text-dark">{{ str_replace('audit_', '', $stats['tables_count']->keys()->first()) ?? 'N/A' }}</h4>
-                        <small class="text-muted">{{ $stats['tables_count']->first() ?? 0 }} records</small>
+                        <h4 class="text-dark" id="auditStatsTopTable">{{ str_replace('audit_', '', $stats['top_table'] ?? ($stats['tables_count']->keys()->first() ?? 'N/A')) }}</h4>
+                        <small class="text-muted" id="auditStatsTopTableCount">{{ $stats['top_table_count'] ?? ($stats['tables_count']->first() ?? 0) }} records</small>
                     </div>
                 </div>
             </div>
@@ -64,7 +64,7 @@
                 <h6 class="mb-0"><i class="bx bx-filter me-2 text-primary"></i>Filters</h6>
             </div>
             <div class="card-body">
-                <form method="GET" action="{{ $auditLogsUrl }}" id="filterForm">
+                <form method="GET" action="{{ $auditLogsUrl }}" id="filterForm" onsubmit="return false;">
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label for="search" class="form-label">Search</label>
@@ -114,12 +114,12 @@
                         <div class="col-md-1">
                             <label class="form-label">&nbsp;</label>
                             <div class="d-flex gap-1">
-                                <button type="submit" class="btn btn-primary btn-sm">
+                                <button type="button" class="btn btn-primary btn-sm" id="auditFilterApply">
                                     <i class="bx bx-search"></i>
                                 </button>
-                                <a wire:navigate href="{{ $auditLogsUrl }}" class="btn btn-secondary btn-sm">
+                                <button type="button" class="btn btn-secondary btn-sm" id="auditFilterReset">
                                     <i class="bx bx-x"></i>
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -131,199 +131,35 @@
     <!-- Audit Logs Table -->
     <div class="col-12">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h6 class="mb-0"><i class="bx bx-list-ul me-2 text-primary"></i>Audit Logs</h6>
-                <small class="text-muted">Showing {{ $pagination['from'] }}-{{ $pagination['to'] }} of {{ $pagination['total'] }} logs</small>
+                <small class="text-muted" id="auditTableRange">Loading…</small>
             </div>
             <div class="card-body p-0">
-                @if($paginatedLogs->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0 audit-logs-table">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Action</th>
-                                    <th>Entity</th>
-                                    <th>Table</th>
-                                    <th>Causer</th>
-                                    <th>Division & Duty Station</th>
-                                    <th>Source</th>
-                                    <th>Suspicious</th>
-                                    <th>Date/Time</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($paginatedLogs as $log)
-                                    <tr>
-                                        <td>
-                                            <span class="badge bg-secondary">#{{ $log->id }}</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge {{ $log->action == 'created' ? 'bg-success' : ($log->action == 'updated' ? 'bg-warning' : 'bg-danger') }}">
-                                                {{ $log->action }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <div class="fw-semibold">ID: {{ $log->entity_id ?? 'N/A' }}</div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <code class="small">{{ $log->source_table }}</code>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                @if($log->causer_id)
-                                                    <div class="fw-semibold">{{ $log->causer_name ?? 'Unknown User' }}</div>
-                                                    <small class="text-muted">{{ $log->causer_job_title ?? 'N/A' }}</small>
-                                                    <br>
-                                                    <small class="text-muted">{{ $log->causer_email ?? 'N/A' }}</small>
-                                                @else
-                                                    <span class="text-muted">System</span>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td class="division-duty-station">
-                                            <div>
-                                                @if($log->causer_id)
-                                                    <div class="mb-1">
-                                                        <span class="badge bg-primary">{{ $log->causer_division_name ?? 'N/A' }}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span class="badge bg-secondary">{{ $log->causer_duty_station_name ?? 'N/A' }}</span>
-                                                    </div>
-                                                @else
-                                                    <span class="text-muted">-</span>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info">{{ $log->source ?? 'Unknown' }}</span>
-                                        </td>
-                                        <td>
-                                            @if($log->is_suspicious ?? false)
-                                                <span class="badge bg-danger suspicious-badge" title="{{ $log->suspicious_reasons ?? 'Suspicious activity detected' }}">
-                                                    <i class="bx bx-shield-x"></i> Yes
-                                                </span>
-                                            @else
-                                                <span class="badge bg-success suspicious-badge">
-                                                    <i class="bx bx-shield-check"></i> No
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <div class="fw-semibold">{{ \Carbon\Carbon::parse($log->created_at)->format('M j, Y') }}</div>
-                                                <small class="text-muted">{{ \Carbon\Carbon::parse($log->created_at)->format('g:i A') }}</small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#auditLogModal" 
-                                                        data-log-id="{{ $log->id }}" 
-                                                        data-log-table="{{ $log->source_table }}"
-                                                        data-log-action="{{ $log->action }}"
-                                                        data-log-entity="{{ $log->entity_id ?? 'N/A' }}"
-                                                        data-log-causer-type="{{ $log->causer_type }}"
-                                                        data-log-causer-id="{{ $log->causer_id }}"
-                                                        data-log-causer-name="{{ $log->causer_name ?? 'Unknown User' }}"
-                                                        data-log-causer-email="{{ $log->causer_email ?? 'N/A' }}"
-                                                        data-log-causer-job="{{ $log->causer_job_title ?? 'N/A' }}"
-                                                        data-log-causer-division="{{ $log->causer_division_name ?? 'N/A' }}"
-                                                        data-log-causer-duty-station="{{ $log->causer_duty_station_name ?? 'N/A' }}"
-                                                        data-log-source="{{ $log->source }}"
-                                                        data-log-suspicious="{{ $log->is_suspicious ? 'Yes' : 'No' }}"
-                                                        data-log-suspicious-reasons="{{ $log->suspicious_reasons ?? '' }}"
-                                                        data-log-created="{{ $log->created_at }}"
-                                                        data-log-old-values="{{ $log->old_values }}"
-                                                        data-log-new-values="{{ $log->new_values }}"
-                                                        data-log-metadata="{{ $log->metadata }}"
-                                                        title="View Details">
-                                                    <i class="bx bx-show me-1"></i>View
-                                                </button>
-                                                @if(in_array(91, user_session('permissions')) && in_array($log->action, ['created', 'updated', 'deleted']))
-                                                    @php
-                                                        $actionText = 'Action';
-                                                        $actionIcon = 'bx-undo';
-                                                        if ($log->action === 'created') {
-                                                            $actionText = 'Delete';
-                                                            $actionIcon = 'bx-trash';
-                                                        } elseif ($log->action === 'deleted') {
-                                                            $actionText = 'Recover';
-                                                            $actionIcon = 'bx-refresh';
-                                                        } elseif ($log->action === 'updated') {
-                                                            $actionText = 'Restore';
-                                                            $actionIcon = 'bx-reset';
-                                                        }
-                                                    @endphp
-                                                    <button type="button" class="btn btn-sm btn-outline-warning" 
-                                                            data-bs-toggle="modal" data-bs-target="#reversalModal"
-                                                            data-log-id="{{ $log->id }}"
-                                                            data-log-table="{{ $log->source_table }}"
-                                                            data-log-action="{{ $log->action }}"
-                                                            data-log-entity="{{ $log->entity_id ?? 'N/A' }}"
-                                                            title="{{ $actionText }}">
-                                                        <i class="bx {{ $actionIcon }} me-1"></i>{{ $actionText }}
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- Pagination -->
-                    @if($pagination['last_page'] > 1)
-                        <div class="card-footer">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="text-muted">
-                                    Showing {{ $pagination['from'] }} to {{ $pagination['to'] }} of {{ $pagination['total'] }} results
-                                </div>
-                                <nav aria-label="Audit logs pagination">
-                                    <ul class="pagination pagination-sm mb-0">
-                                        <!-- Previous Page Link -->
-                                        @if($pagination['current_page'] > 1)
-                                            <li class="page-item">
-                                                <a class="page-link" href="{{ request()->fullUrlWithQuery(['page' => $pagination['current_page'] - 1]) }}" aria-label="Previous">
-                                                    <span aria-hidden="true">&laquo;</span>
-                                                </a>
-                                            </li>
-                                        @endif
-                                        
-                                        <!-- Page Numbers -->
-                                        @for($i = max(1, $pagination['current_page'] - 2); $i <= min($pagination['last_page'], $pagination['current_page'] + 2); $i++)
-                                            <li class="page-item {{ $i == $pagination['current_page'] ? 'active' : '' }}">
-                                                <a class="page-link" href="{{ request()->fullUrlWithQuery(['page' => $i]) }}">{{ $i }}</a>
-                                            </li>
-                                        @endfor
-                                        
-                                        <!-- Next Page Link -->
-                                        @if($pagination['current_page'] < $pagination['last_page'])
-                                            <li class="page-item">
-                                                <a class="page-link" href="{{ request()->fullUrlWithQuery(['page' => $pagination['current_page'] + 1]) }}" aria-label="Next">
-                                                    <span aria-hidden="true">&raquo;</span>
-                                                </a>
-                                            </li>
-                                        @endif
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    @endif
-                @else
-                    <div class="text-center py-5">
-                        <i class="bx bx-clipboard text-muted" style="font-size: 3rem;"></i>
-                        <h5 class="mt-3 text-muted">No audit logs found</h5>
-                        <p class="text-muted">Try adjusting your filters or check back later.</p>
-                    </div>
-                @endif
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 audit-logs-table w-100" id="auditLogsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Action</th>
+                                <th>Entity</th>
+                                <th>Table</th>
+                                <th>Causer</th>
+                                <th>Division & Duty Station</th>
+                                <th>Source</th>
+                                <th>Suspicious</th>
+                                <th>Date/Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
 
 <!-- Audit Log Details Modal -->
 <div class="modal fade" id="auditLogModal" tabindex="-1" aria-labelledby="auditLogModalLabel" aria-hidden="true">
@@ -794,21 +630,255 @@
 
 @push('scripts')
 <script>
-// Initialize datepicker for custom date fields
+const auditLogsDataUrl = @json(route('audit-logs.data'));
+const auditLogsCanReverse = @json(in_array(91, user_session('permissions', [])));
+let auditLogsTable = null;
+
+function escapeAuditHtml(value) {
+    if (value == null) return '';
+    const div = document.createElement('div');
+    div.textContent = String(value);
+    return div.innerHTML;
+}
+
+function getAuditFilterParams() {
+    return {
+        search: document.getElementById('search')?.value || '',
+        action: document.getElementById('action')?.value || '',
+        table: document.getElementById('table')?.value || '',
+        date_from: document.getElementById('date_from')?.value || '',
+        date_to: document.getElementById('date_to')?.value || '',
+        suspicious: document.getElementById('suspicious')?.value || ''
+    };
+}
+
+function updateAuditStats(stats) {
+    if (!stats) return;
+    const totalEl = document.getElementById('auditStatsTotal');
+    const recentEl = document.getElementById('auditStatsRecent');
+    const topActionEl = document.getElementById('auditStatsTopAction');
+    const topActionCountEl = document.getElementById('auditStatsTopActionCount');
+    const topTableEl = document.getElementById('auditStatsTopTable');
+    const topTableCountEl = document.getElementById('auditStatsTopTableCount');
+
+    if (totalEl) totalEl.textContent = Number(stats.total_logs || 0).toLocaleString();
+    if (recentEl) recentEl.textContent = Number(stats.recent_activity || 0).toLocaleString();
+    if (topActionEl) topActionEl.textContent = stats.top_action || 'N/A';
+    if (topActionCountEl) topActionCountEl.textContent = (stats.top_action_count || 0) + ' times';
+    if (topTableEl) {
+        topTableEl.textContent = String(stats.top_table || 'N/A').replace(/^audit_/, '');
+    }
+    if (topTableCountEl) topTableCountEl.textContent = (stats.top_table_count || 0) + ' records';
+}
+
+function updateAuditTableRange(start, total, pageCount) {
+    const el = document.getElementById('auditTableRange');
+    if (!el) return;
+    if (!total) {
+        el.textContent = 'No logs match the current filters';
+        return;
+    }
+    const from = start + 1;
+    const to = start + pageCount;
+    el.textContent = 'Showing ' + from + '–' + to + ' of ' + Number(total).toLocaleString() + ' logs';
+}
+
+function reversalActionMeta(action) {
+    if (action === 'created') return { text: 'Delete', icon: 'bx-trash' };
+    if (action === 'deleted') return { text: 'Recover', icon: 'bx-refresh' };
+    if (action === 'updated') return { text: 'Restore', icon: 'bx-reset' };
+    return { text: 'Action', icon: 'bx-undo' };
+}
+
+function formatAuditCreatedAt(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return escapeAuditHtml(value);
+    return '<div class="fw-semibold">' + date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + '</div>'
+        + '<small class="text-muted">' + date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + '</small>';
+}
+
+function renderAuditActions(row) {
+    const attrs = [
+        'data-log-id="' + escapeAuditHtml(row.id) + '"',
+        'data-log-table="' + escapeAuditHtml(row.source_table) + '"',
+        'data-log-action="' + escapeAuditHtml(row.action) + '"',
+        'data-log-entity="' + escapeAuditHtml(row.entity_id ?? 'N/A') + '"',
+        'data-log-causer-type="' + escapeAuditHtml(row.causer_type ?? '') + '"',
+        'data-log-causer-id="' + escapeAuditHtml(row.causer_id ?? '') + '"',
+        'data-log-causer-name="' + escapeAuditHtml(row.causer_name ?? 'Unknown User') + '"',
+        'data-log-causer-email="' + escapeAuditHtml(row.causer_email ?? 'N/A') + '"',
+        'data-log-causer-job="' + escapeAuditHtml(row.causer_job_title ?? 'N/A') + '"',
+        'data-log-causer-division="' + escapeAuditHtml(row.causer_division_name ?? 'N/A') + '"',
+        'data-log-causer-duty-station="' + escapeAuditHtml(row.causer_duty_station_name ?? 'N/A') + '"',
+        'data-log-source="' + escapeAuditHtml(row.source ?? 'Unknown') + '"',
+        'data-log-suspicious="' + (row.is_suspicious ? 'Yes' : 'No') + '"',
+        'data-log-suspicious-reasons="' + escapeAuditHtml(row.suspicious_reasons ?? '') + '"',
+        'data-log-created="' + escapeAuditHtml(row.created_at ?? '') + '"',
+        'data-log-old-values="' + escapeAuditHtml(row.old_values ?? '') + '"',
+        'data-log-new-values="' + escapeAuditHtml(row.new_values ?? '') + '"',
+        'data-log-metadata="' + escapeAuditHtml(row.metadata ?? '') + '"'
+    ].join(' ');
+
+    let html = '<div class="btn-group" role="group">'
+        + '<button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#auditLogModal" ' + attrs + '>'
+        + '<i class="bx bx-show me-1"></i>View</button>';
+
+    if (auditLogsCanReverse && ['created', 'updated', 'deleted'].includes(row.action)) {
+        const meta = reversalActionMeta(row.action);
+        html += '<button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#reversalModal" '
+            + 'data-log-id="' + escapeAuditHtml(row.id) + '" '
+            + 'data-log-table="' + escapeAuditHtml(row.source_table) + '" '
+            + 'data-log-action="' + escapeAuditHtml(row.action) + '" '
+            + 'data-log-entity="' + escapeAuditHtml(row.entity_id ?? 'N/A') + '" '
+            + 'title="' + escapeAuditHtml(meta.text) + '">'
+            + '<i class="bx ' + meta.icon + ' me-1"></i>' + escapeAuditHtml(meta.text) + '</button>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+function initializeAuditLogsTable() {
+    if (typeof $ === 'undefined' || !$.fn.DataTable) return;
+
+    const $table = $('#auditLogsTable');
+    if (!$table.length) return;
+
+    if ($.fn.DataTable.isDataTable($table[0])) {
+        $table.DataTable().destroy();
+    }
+
+    auditLogsTable = $table.DataTable({
+        processing: true,
+        serverSide: true,
+        searching: false,
+        ordering: false,
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        ajax: function(data, callback) {
+            const params = Object.assign({}, data, getAuditFilterParams());
+            $.get(auditLogsDataUrl, params)
+                .done(function(json) {
+                    if (json && json.stats) {
+                        updateAuditStats(json.stats);
+                    }
+                    const rows = (json && json.data) ? json.data : [];
+                    updateAuditTableRange(data.start || 0, json.recordsFiltered || 0, rows.length);
+                    callback(json);
+                })
+                .fail(function() {
+                    updateAuditTableRange(0, 0, 0);
+                    callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
+                });
+        },
+        columns: [
+            {
+                data: 'id',
+                render: function(data) {
+                    return '<span class="badge bg-secondary">#' + escapeAuditHtml(data) + '</span>';
+                }
+            },
+            {
+                data: 'action',
+                render: function(data) {
+                    const cls = data === 'created' ? 'bg-success' : (data === 'updated' ? 'bg-warning' : 'bg-danger');
+                    return '<span class="badge ' + cls + '">' + escapeAuditHtml(data) + '</span>';
+                }
+            },
+            {
+                data: 'entity_id',
+                render: function(data) {
+                    return '<div class="fw-semibold">ID: ' + escapeAuditHtml(data ?? 'N/A') + '</div>';
+                }
+            },
+            {
+                data: 'source_table',
+                render: function(data) {
+                    return '<code class="small">' + escapeAuditHtml(data) + '</code>';
+                }
+            },
+            {
+                data: null,
+                render: function(data, type, row) {
+                    if (!row.causer_id) {
+                        return '<span class="text-muted">System</span>';
+                    }
+                    return '<div class="fw-semibold">' + escapeAuditHtml(row.causer_name || 'Unknown User') + '</div>'
+                        + '<small class="text-muted">' + escapeAuditHtml(row.causer_job_title || 'N/A') + '</small><br>'
+                        + '<small class="text-muted">' + escapeAuditHtml(row.causer_email || 'N/A') + '</small>';
+                }
+            },
+            {
+                data: null,
+                className: 'division-duty-station',
+                render: function(data, type, row) {
+                    if (!row.causer_id) return '<span class="text-muted">-</span>';
+                    return '<div class="mb-1"><span class="badge bg-primary">' + escapeAuditHtml(row.causer_division_name || 'N/A') + '</span></div>'
+                        + '<div><span class="badge bg-secondary">' + escapeAuditHtml(row.causer_duty_station_name || 'N/A') + '</span></div>';
+                }
+            },
+            {
+                data: 'source',
+                render: function(data) {
+                    return '<span class="badge bg-info">' + escapeAuditHtml(data || 'Unknown') + '</span>';
+                }
+            },
+            {
+                data: 'is_suspicious',
+                render: function(data, type, row) {
+                    if (data) {
+                        return '<span class="badge bg-danger suspicious-badge" title="' + escapeAuditHtml(row.suspicious_reasons || 'Suspicious activity detected') + '"><i class="bx bx-shield-x"></i> Yes</span>';
+                    }
+                    return '<span class="badge bg-success suspicious-badge"><i class="bx bx-shield-check"></i> No</span>';
+                }
+            },
+            {
+                data: 'created_at',
+                render: function(data) {
+                    return formatAuditCreatedAt(data);
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                render: function(data, type, row) {
+                    return renderAuditActions(row);
+                }
+            }
+        ],
+        language: {
+            emptyTable: 'No audit logs found for the current filters',
+            processing: '<i class="bx bx-loader-alt bx-spin"></i> Loading audit logs…'
+        }
+    });
+}
+
 $(document).ready(function() {
     $('.datepicker').datepicker({
         format: 'yyyy-mm-dd',
         autoclose: true,
         todayHighlight: true
     });
+
+    initializeAuditLogsTable();
+
+    document.getElementById('auditFilterApply')?.addEventListener('click', function() {
+        if (auditLogsTable) auditLogsTable.ajax.reload();
+    });
+
+    document.getElementById('auditFilterReset')?.addEventListener('click', function() {
+        const form = document.getElementById('filterForm');
+        if (form) form.reset();
+        if (auditLogsTable) auditLogsTable.ajax.reload();
+    });
+
+    document.getElementById('filterForm')?.addEventListener('change', function() {
+        if (auditLogsTable) auditLogsTable.ajax.reload();
+    });
 });
 
-// Auto-submit form on filter change
-document.getElementById('filterForm').addEventListener('change', function() {
-    this.submit();
-});
-
-// Show reversal/restore error in a Lobibox that allows copying the whole error
+// Initialize datepicker for custom date fields
 function show_reversal_error(message) {
     var text = (message && String(message).trim()) ? String(message) : 'An error occurred. No details available.';
     function escapeHtml(s) {

@@ -339,6 +339,7 @@ Route::get('/api/approver-dashboard/workflow-stats', [App\Http\Controllers\Appro
 
 // Audit Logs Routes
 Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');
+Route::get('/audit-logs/data', [App\Http\Controllers\AuditLogsController::class, 'data'])->name('audit-logs.data');
 Route::get('/audit-logs/cleanup-modal', [App\Http\Controllers\AuditLogsController::class, 'showCleanupModal'])->name('audit-logs.cleanup-modal');
 Route::post('/audit-logs/cleanup', [App\Http\Controllers\AuditLogsController::class, 'cleanup'])->name('audit-logs.cleanup');
 Route::get('/audit-logs/reversal-modal', [App\Http\Controllers\AuditLogsController::class, 'showReversalModal'])->name('audit-logs.reversal-modal');
