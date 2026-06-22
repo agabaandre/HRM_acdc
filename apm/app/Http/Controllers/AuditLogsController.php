@@ -117,11 +117,12 @@ class AuditLogsController extends Controller
         
         // Apply filters
         if ($request->filled('search')) {
-            $search = $request->get('search');
-            $auditLogs = $auditLogs->filter(function ($log) use ($search) {
-                return str_contains(strtolower($log->action ?? ''), strtolower($search)) ||
-                       str_contains(strtolower($log->source_table ?? ''), strtolower($search)) ||
-                       str_contains(strtolower($log->entity_id ?? ''), strtolower($search));
+            $search = trim((string) $request->get('search'));
+            $searchLower = strtolower($search);
+            $matchingStaffIds = $this->findStaffIdsMatchingSearch($search);
+
+            $auditLogs = $auditLogs->filter(function ($log) use ($searchLower, $matchingStaffIds) {
+                return $this->auditLogMatchesSearch($log, $searchLower, $matchingStaffIds);
             });
         }
 
@@ -971,8 +972,8 @@ class AuditLogsController extends Controller
                 $log->causer_division_name = $staff->division_name ?? 'N/A';
                 $log->causer_duty_station_name = $staff->duty_station_name ?? 'N/A';
             } else {
-                $log->causer_name = 'Unknown User';
-                $log->causer_email = 'N/A';
+                $log->causer_name = trim((string) ($log->user_name ?? '')) ?: 'Unknown User';
+                $log->causer_email = $log->user_email ?? 'N/A';
                 $log->causer_job_title = 'N/A';
                 $log->causer_division_name = 'N/A';
                 $log->causer_duty_station_name = 'N/A';
@@ -980,5 +981,55 @@ class AuditLogsController extends Controller
             
             return $log;
         });
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, int|string>
+     */
+    private function findStaffIdsMatchingSearch(string $search): \Illuminate\Support\Collection
+    {
+        if ($search === '') {
+            return collect();
+        }
+
+        $like = '%'.$search.'%';
+
+        return DB::table('staff')
+            ->where(function ($query) use ($like) {
+                $query->where('fname', 'like', $like)
+                    ->orWhere('lname', 'like', $like)
+                    ->orWhere('work_email', 'like', $like)
+                    ->orWhereRaw("CONCAT(fname, ' ', lname) LIKE ?", [$like]);
+            })
+            ->pluck('staff_id');
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, int|string>  $matchingStaffIds
+     */
+    private function auditLogMatchesSearch(object $log, string $searchLower, \Illuminate\Support\Collection $matchingStaffIds): bool
+    {
+        $fields = [
+            $log->action ?? '',
+            $log->source_table ?? '',
+            (string) ($log->entity_id ?? ''),
+            (string) ($log->causer_id ?? ''),
+            $log->causer_name ?? '',
+            $log->causer_email ?? '',
+            $log->causer_job_title ?? '',
+            $log->causer_division_name ?? '',
+            $log->causer_duty_station_name ?? '',
+            $log->user_name ?? '',
+            $log->user_email ?? '',
+            $log->description ?? '',
+        ];
+
+        foreach ($fields as $value) {
+            if ($value !== '' && str_contains(strtolower((string) $value), $searchLower)) {
+                return true;
+            }
+        }
+
+        return $log->causer_id && $matchingStaffIds->contains($log->causer_id);
     }
 }
