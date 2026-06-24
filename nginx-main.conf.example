@@ -1,0 +1,41 @@
+# Example top of /etc/nginx/nginx.conf
+#
+# The "user" directive warning:
+#   user www-data;
+# appears when you run `nginx -t` WITHOUT sudo. Nginx ignores "user" unless the
+# master process starts as root. This is a harmless warning, not a failure.
+#
+# Always validate and reload with:
+#   sudo nginx -t && sudo systemctl reload nginx
+#
+# Only remove or comment out `user` if nginx runs entirely as a non-root user
+# (e.g. some container images). Standard Ubuntu/Debian installs need this line.
+
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+error_log /var/log/nginx/error.log warn;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+    worker_connections 768;
+    multi_accept on;
+}
+
+http {
+    # Shared CPHIA snippets (map + rate limits) — see nginx-http.conf
+    include /etc/nginx/conf.d/cphia-http.conf;
+
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    sendfile        on;
+    tcp_nopush      on;
+    tcp_nodelay     on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    server_tokens off;
+
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
+}

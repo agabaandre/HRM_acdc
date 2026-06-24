@@ -35,7 +35,7 @@ class AdminKbArticleController extends Controller
         return response()->json(['data' => $rows->map(fn (HelpdeskKbArticle $a) => $this->format($a))->values()]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, HelpdeskAuditLogger $auditLogger): JsonResponse
     {
         $this->ensureKbManager($request);
 
