@@ -50,6 +50,8 @@ return [
             'directorates' => '/share/directorates',
             'users' => '/share/users',
             'cbp_modules' => '/share/cbp_modules',
+            'signature' => '/share/get_signature',
+            'photo' => '/share/get_photo',
         ],
     ],
 

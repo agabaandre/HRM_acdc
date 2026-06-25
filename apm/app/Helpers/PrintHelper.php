@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\Models\OtherMemo;
 use App\Models\Staff;
+use App\Services\StaffPortalShareClient;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
@@ -128,6 +129,9 @@ class PrintHelper
      * Embed staff signature in mPDF HTML: CI3 blocks direct /uploads/staff/signature/* and
      * server-side PDF generation cannot use session-cookie URLs. Read from disk + data URI.
      */
+    /** @var array<int, string> staff_id => data URI (empty string = miss) */
+    private static array $signatureShareApiCache = [];
+
     public static function signatureDataUriForPdf(?string $filename, ?int $staffId = null): string
     {
         $basename = self::normalizeSignatureBasename($filename);
@@ -136,24 +140,35 @@ class PrintHelper
             $basename = self::lookupSignatureBasenameForStaff($staffId);
         }
 
-        if ($basename === '') {
-            return '';
+        if ($basename !== '') {
+            $full = self::locateSignatureFile($basename);
+            if ($full !== null) {
+                $blob = @file_get_contents($full);
+                if ($blob !== false && $blob !== '') {
+                    return self::blobToSignatureDataUri($blob);
+                }
+            }
         }
 
-        $full = self::locateSignatureFile($basename);
-        if ($full === null) {
-            return '';
+        if ($staffId !== null && $staffId > 0) {
+            $fromApi = self::signatureDataUriFromStaffShareApi($staffId);
+            if ($fromApi !== '') {
+                return $fromApi;
+            }
         }
 
-        if (! self::signatureRegisteredOnStaffPortal($basename, $staffId)) {
-            return '';
+        if ($basename !== '') {
+            $resolvedStaffId = self::lookupStaffIdForSignatureBasename($basename);
+            if ($resolvedStaffId > 0) {
+                return self::signatureDataUriFromStaffShareApi($resolvedStaffId);
+            }
         }
 
-        $blob = @file_get_contents($full);
-        if ($blob === false || $blob === '') {
-            return '';
-        }
+        return '';
+    }
 
+    private static function blobToSignatureDataUri(string $blob): string
+    {
         $mime = 'image/png';
         if (function_exists('finfo_open')) {
             $f = @finfo_open(FILEINFO_MIME_TYPE);
@@ -167,6 +182,45 @@ class PrintHelper
         }
 
         return 'data:'.$mime.';base64,'.base64_encode($blob);
+    }
+
+    private static function signatureDataUriFromStaffShareApi(int $staffId): string
+    {
+        if ($staffId < 1) {
+            return '';
+        }
+
+        if (array_key_exists($staffId, self::$signatureShareApiCache)) {
+            return self::$signatureShareApiCache[$staffId];
+        }
+
+        self::$signatureShareApiCache[$staffId] = '';
+
+        try {
+            $client = app(StaffPortalShareClient::class);
+            if (! $client->isConfigured()) {
+                return '';
+            }
+
+            $b64 = $client->fetchStaffSignatureBase64($staffId);
+            if ($b64 === null) {
+                return '';
+            }
+
+            $blob = base64_decode($b64, true);
+            if ($blob === false || $blob === '') {
+                return '';
+            }
+
+            self::$signatureShareApiCache[$staffId] = self::blobToSignatureDataUri($blob);
+        } catch (\Throwable $e) {
+            Log::debug('Staff signature Share API failed', [
+                'staff_id' => $staffId,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return self::$signatureShareApiCache[$staffId];
     }
 
     private static function normalizeSignatureBasename(?string $filename): string
@@ -295,11 +349,62 @@ class PrintHelper
         return strcasecmp(self::normalizeSignatureBasename($stored), $basename) === 0;
     }
 
+    private static function lookupStaffIdForSignatureBasename(string $basename): int
+    {
+        $variants = self::signatureFilenameVariants($basename);
+
+        $apmStaffId = Staff::query()
+            ->where(function ($query) use ($basename, $variants) {
+                $query->whereIn('signature', $variants)
+                    ->orWhereRaw(
+                        "SUBSTRING_INDEX(REPLACE(TRIM(signature), CHAR(92), '/'), '/', -1) = ?",
+                        [$basename]
+                    );
+            })
+            ->value('staff_id');
+
+        if (is_numeric($apmStaffId) && (int) $apmStaffId > 0) {
+            return (int) $apmStaffId;
+        }
+
+        $staffAppDb = (string) config('database.connections.staff_app.database', '');
+        if ($staffAppDb === '') {
+            return 0;
+        }
+
+        try {
+            $ciStaffId = \Illuminate\Support\Facades\DB::connection('staff_app')
+                ->table('staff')
+                ->where(function ($query) use ($basename, $variants) {
+                    $query->whereIn('signature', $variants)
+                        ->orWhereRaw(
+                            "SUBSTRING_INDEX(REPLACE(TRIM(signature), CHAR(92), '/'), '/', -1) = ?",
+                            [$basename]
+                        )
+                        ->orWhereRaw(
+                            "LOWER(SUBSTRING_INDEX(REPLACE(TRIM(signature), CHAR(92), '/'), '/', -1)) = LOWER(?)",
+                            [$basename]
+                        );
+                })
+                ->value('staff_id');
+        } catch (\Throwable $e) {
+            return 0;
+        }
+
+        return is_numeric($ciStaffId) && (int) $ciStaffId > 0 ? (int) $ciStaffId : 0;
+    }
+
     private static function locateSignatureFile(string $basename): ?string
     {
         $roots = array_values(array_unique(array_filter([
             (string) config('staff_portal.uploads_root', ''),
+            (string) config('services.staff_api.uploads_path', ''),
             dirname(base_path()).DIRECTORY_SEPARATOR.'uploads',
+            public_path('uploads'),
+            base_path('uploads'),
+            base_path('../uploads'),
+            base_path('../../uploads'),
+            storage_path('app/public/uploads'),
         ])));
 
         foreach ($roots as $uploadsRoot) {

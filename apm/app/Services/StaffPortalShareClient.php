@@ -68,6 +68,43 @@ class StaffPortalShareClient
         return $data;
     }
 
+    /**
+     * Fetch staff signature image from CI Share API (reads from staff portal uploads on that server).
+     *
+     * @return non-empty-string|null Base64-encoded image bytes (not a data URI)
+     */
+    public function fetchStaffSignatureBase64(int $staffId): ?string
+    {
+        if (! $this->isConfigured() || $staffId < 1) {
+            return null;
+        }
+
+        $base = StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
+        $path = trim((string) config('services.staff_api.endpoints.signature', '/share/get_signature'));
+        if ($path === '') {
+            return null;
+        }
+
+        $url = rtrim($base, '/').$path.'?staff_id='.$staffId;
+
+        try {
+            $payload = $this->getJsonAssoc($url);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (empty($payload['success'])) {
+            return null;
+        }
+
+        $data = $payload['signature_data'] ?? null;
+        if (! is_string($data) || trim($data) === '') {
+            return null;
+        }
+
+        return trim($data);
+    }
+
     private function buildUrl(string $endpointKey): string
     {
         $base = StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
