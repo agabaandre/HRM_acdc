@@ -264,7 +264,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     // Staff specific routes (must come before resource route)
     Route::get('staff/ajax', [App\Http\Controllers\StaffController::class, 'getStaffAjax'])->name('staff.ajax');
     Route::get('staff/export/{format}', [App\Http\Controllers\StaffController::class, 'export'])->name('staff.export');
-    Route::get('/staff/{staff}/activities', [App\Http\Controllers\StaffController::class, 'getActivities'])->name('staff.activities');
+    Route::get('/staff/{staff}/activities', [App\Http\Controllers\StaffController::class, 'getActivities'])->name('staff.activities.data');
     
     // Staff resource routes
     Route::resource('staff', App\Http\Controllers\StaffController::class);
