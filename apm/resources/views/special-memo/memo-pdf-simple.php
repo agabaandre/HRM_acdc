@@ -382,15 +382,19 @@
         }
         
         if (!empty($signature)) {
-            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($signature);
-            echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
+            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($signature, is_numeric($staffId) ? (int) $staffId : null);
             if ($sigSrc !== '') {
                 echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
             } else {
-                echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($workEmail ?? 'Email not available') . '</small>';
+                echo '<small style="color: #666; font-style:normal;">' . htmlspecialchars($workEmail ?? 'Email not available') . '</small>';
             }
         } else {
-            echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($workEmail ?? 'Email not available') . '</small>';
+            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf(null, is_numeric($staffId) ? (int) $staffId : null);
+            if ($sigSrc !== '') {
+                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+            } else {
+                echo '<small style="color: #666; font-style:normal;">' . htmlspecialchars($workEmail ?? 'Email not available') . '</small>';
+            }
         }
         
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
@@ -433,7 +437,8 @@
         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
         
         if (!empty($staff->signature)) {
-            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staff->signature);
+            $staffId = (int) ($isOic ? ($approval->oic_staff_id ?? 0) : ($approval->staff_id ?? 0));
+            $sigSrc = \App\Helpers\PrintHelper::signatureDataUriForPdf($staff->signature, $staffId > 0 ? $staffId : null);
             if ($sigSrc !== '') {
                 echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
             } else {

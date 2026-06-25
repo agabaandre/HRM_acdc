@@ -128,29 +128,24 @@ class PrintHelper
      * Embed staff signature in mPDF HTML: CI3 blocks direct /uploads/staff/signature/* and
      * server-side PDF generation cannot use session-cookie URLs. Read from disk + data URI.
      */
-    public static function signatureDataUriForPdf(?string $filename): string
+    public static function signatureDataUriForPdf(?string $filename, ?int $staffId = null): string
     {
-        if ($filename === null || $filename === '') {
+        $basename = self::normalizeSignatureBasename($filename);
+
+        if ($basename === '' && $staffId !== null && $staffId > 0) {
+            $basename = self::lookupSignatureBasenameForStaff($staffId);
+        }
+
+        if ($basename === '') {
             return '';
         }
 
-        $filename = basename(str_replace('\\', '/', $filename));
-        if ($filename === '' || $filename === '.' || $filename === '..'
-            || !preg_match('/^[a-zA-Z0-9_.-]+$/', $filename)) {
+        $full = self::locateSignatureFile($basename);
+        if ($full === null) {
             return '';
         }
 
-        $uploadsRoot = (string) config('staff_portal.uploads_root', dirname(base_path()) . DIRECTORY_SEPARATOR . 'uploads');
-        $full = rtrim($uploadsRoot, DIRECTORY_SEPARATOR)
-            . DIRECTORY_SEPARATOR . 'staff'
-            . DIRECTORY_SEPARATOR . 'signature'
-            . DIRECTORY_SEPARATOR . $filename;
-
-        if (!is_file($full) || !is_readable($full)) {
-            return '';
-        }
-
-        if (!Staff::query()->where('signature', $filename)->exists()) {
+        if (! self::signatureRegisteredOnStaffPortal($basename, $staffId)) {
             return '';
         }
 
@@ -171,7 +166,170 @@ class PrintHelper
             }
         }
 
-        return 'data:' . $mime . ';base64,' . base64_encode($blob);
+        return 'data:'.$mime.';base64,'.base64_encode($blob);
+    }
+
+    private static function normalizeSignatureBasename(?string $filename): string
+    {
+        if ($filename === null || trim($filename) === '') {
+            return '';
+        }
+
+        $filename = basename(str_replace('\\', '/', trim($filename)));
+        if ($filename === '' || $filename === '.' || $filename === '..'
+            || ! preg_match('/^[a-zA-Z0-9_.-]+$/', $filename)) {
+            return '';
+        }
+
+        return $filename;
+    }
+
+    /**
+     * Resolve signature filename from APM staff row, then CI staff_app DB if configured.
+     */
+    private static function lookupSignatureBasenameForStaff(int $staffId): string
+    {
+        $fromApm = Staff::query()->where('staff_id', $staffId)->value('signature');
+        $basename = self::normalizeSignatureBasename(is_string($fromApm) ? $fromApm : null);
+        if ($basename !== '') {
+            return $basename;
+        }
+
+        $staffAppDb = (string) config('database.connections.staff_app.database', '');
+        if ($staffAppDb === '') {
+            return '';
+        }
+
+        try {
+            $fromCi = \Illuminate\Support\Facades\DB::connection('staff_app')
+                ->table('staff')
+                ->where('staff_id', $staffId)
+                ->value('signature');
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        return self::normalizeSignatureBasename(is_string($fromCi) ? $fromCi : null);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function signatureFilenameVariants(string $basename): array
+    {
+        $variants = [$basename];
+        foreach ([
+            'uploads/staff/signature/',
+            './uploads/staff/signature/',
+            '/uploads/staff/signature/',
+        ] as $prefix) {
+            $variants[] = $prefix.$basename;
+        }
+
+        return array_values(array_unique($variants));
+    }
+
+    private static function signatureRegisteredOnStaffPortal(string $basename, ?int $staffId = null): bool
+    {
+        if ($staffId !== null && $staffId > 0) {
+            $apmSig = Staff::query()->where('staff_id', $staffId)->value('signature');
+            if (self::signatureValuesMatch($basename, is_string($apmSig) ? $apmSig : null)) {
+                return true;
+            }
+
+            $staffAppDb = (string) config('database.connections.staff_app.database', '');
+            if ($staffAppDb !== '') {
+                try {
+                    $ciSig = \Illuminate\Support\Facades\DB::connection('staff_app')
+                        ->table('staff')
+                        ->where('staff_id', $staffId)
+                        ->value('signature');
+                    if (self::signatureValuesMatch($basename, is_string($ciSig) ? $ciSig : null)) {
+                        return true;
+                    }
+                } catch (\Throwable $e) {
+                    // fall through to global lookup
+                }
+            }
+        }
+
+        if (Staff::query()->whereIn('signature', self::signatureFilenameVariants($basename))->exists()) {
+            return true;
+        }
+
+        $staffAppDb = (string) config('database.connections.staff_app.database', '');
+        if ($staffAppDb === '') {
+            return false;
+        }
+
+        try {
+            return \Illuminate\Support\Facades\DB::connection('staff_app')
+                ->table('staff')
+                ->where(function ($query) use ($basename) {
+                    $query->whereIn('signature', self::signatureFilenameVariants($basename))
+                        ->orWhereRaw(
+                            "SUBSTRING_INDEX(REPLACE(TRIM(signature), CHAR(92), '/'), '/', -1) = ?",
+                            [$basename]
+                        )
+                        ->orWhereRaw(
+                            "LOWER(SUBSTRING_INDEX(REPLACE(TRIM(signature), CHAR(92), '/'), '/', -1)) = LOWER(?)",
+                            [$basename]
+                        );
+                })
+                ->exists();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private static function signatureValuesMatch(string $basename, ?string $stored): bool
+    {
+        if ($stored === null || trim($stored) === '') {
+            return false;
+        }
+
+        if (in_array(trim($stored), self::signatureFilenameVariants($basename), true)) {
+            return true;
+        }
+
+        return strcasecmp(self::normalizeSignatureBasename($stored), $basename) === 0;
+    }
+
+    private static function locateSignatureFile(string $basename): ?string
+    {
+        $roots = array_values(array_unique(array_filter([
+            (string) config('staff_portal.uploads_root', ''),
+            dirname(base_path()).DIRECTORY_SEPARATOR.'uploads',
+        ])));
+
+        foreach ($roots as $uploadsRoot) {
+            $dir = rtrim($uploadsRoot, DIRECTORY_SEPARATOR)
+                .DIRECTORY_SEPARATOR.'staff'
+                .DIRECTORY_SEPARATOR.'signature';
+
+            $full = $dir.DIRECTORY_SEPARATOR.$basename;
+            if (is_file($full) && is_readable($full)) {
+                return $full;
+            }
+
+            if (! is_dir($dir)) {
+                continue;
+            }
+
+            foreach (scandir($dir) ?: [] as $entry) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+                if (strcasecmp($entry, $basename) === 0) {
+                    $candidate = $dir.DIRECTORY_SEPARATOR.$entry;
+                    if (is_file($candidate) && is_readable($candidate)) {
+                        return $candidate;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -534,16 +692,16 @@ class PrintHelper
         echo '<div style="line-height: 1.2;">';
         
         // Always show signature image if available (even if not yet signed)
-        if (isset($staff['signature']) && !empty($staff['signature'])) {
-            $sigSrc = self::signatureDataUriForPdf($staff['signature']);
-            echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-            if ($sigSrc !== '') {
-                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
-            } else {
-                echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
-            }
+        $sigFilename = $staff['signature'] ?? null;
+        $sigSrc = self::signatureDataUriForPdf(
+            is_string($sigFilename) ? $sigFilename : null,
+            is_numeric($staffId) ? (int) $staffId : null
+        );
+        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
+        if ($sigSrc !== '') {
+            echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
         } else {
-            echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+            echo '<small style="color: #666; font-style:normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
         }
 
         // For Service Requests, always use direct DB lookup with staff_id to ensure correct dates
@@ -644,7 +802,8 @@ class PrintHelper
         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
         
         if (!empty($staff->signature)) {
-            $sigSrc = self::signatureDataUriForPdf($staff->signature);
+            $ownerId = (int) ($isOic ? ($approval->oic_staff_id ?? 0) : ($approval->staff_id ?? 0));
+            $sigSrc = self::signatureDataUriForPdf($staff->signature, $ownerId > 0 ? $ownerId : null);
             if ($sigSrc !== '') {
                 echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
             } else {
@@ -828,7 +987,7 @@ class PrintHelper
             $approver = [
                 'staff' => $trail->staff ? [
                     'id' => $trail->staff->id,
-                    'staff_id' => $trail->staff->id,
+                    'staff_id' => $trail->staff->staff_id,
                     'name' => trim(($trail->staff->fname ?? '') . ' ' . ($trail->staff->lname ?? '') . ' ' . ($trail->staff->oname ?? '')),
                     'fname' => $trail->staff->fname ?? '',
                     'lname' => $trail->staff->lname ?? '',
@@ -839,7 +998,7 @@ class PrintHelper
                 ] : null,
                 'oic_staff' => $trail->oicStaff ? [
                     'id' => $trail->oicStaff->id,
-                    'staff_id' => $trail->oicStaff->id,
+                    'staff_id' => $trail->oicStaff->staff_id,
                     'name' => trim(($trail->oicStaff->fname ?? '') . ' ' . ($trail->oicStaff->lname ?? '') . ' ' . ($trail->oicStaff->oname ?? '')),
                     'fname' => $trail->oicStaff->fname ?? '',
                     'lname' => $trail->oicStaff->lname ?? '',
