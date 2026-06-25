@@ -117,6 +117,12 @@ class Cbp_modules_mdl extends CI_Model
 		}
 		$specs = [
 			[
+				'module_keys' => ['approvals_management'],
+				'base_url' => 'apm',
+				'description' => 'Tracks submissions, reviews, and approvals for travel matrices, single and special memos, change, DSA and ARF requests.',
+				'rename_legacy_key' => [],
+			],
+			[
 				'module_keys' => ['helpdesk_itsm', 'helpdesk'],
 				'base_url' => 'helpdesk',
 				'description' => 'Log incidents and service requests; session opens from the Staff portal (same sign-on as APM).',
@@ -136,9 +142,14 @@ class Cbp_modules_mdl extends CI_Model
 				->result();
 			foreach ($rows as $row) {
 				$dev = (string) ($row->base_url_development ?? '');
-				$needsFix = $row->target_resolver === 'finance_host'
-					|| strpos($dev, '5174') !== false
-					|| trim((string) ($row->base_url ?? '')) === '';
+				$baseUrl = trim((string) ($row->base_url ?? ''));
+				$needsFix = $row->target_resolver !== 'staff_app_token'
+					|| strpos($dev, 'localhost') !== false
+					|| strpos($dev, '127.0.0.1') !== false
+					|| strpos($baseUrl, 'http://') === 0
+					|| strpos($baseUrl, 'https://') === 0
+					|| strpos($baseUrl, 'localhost') !== false
+					|| $baseUrl === '';
 				if (!$needsFix) {
 					continue;
 				}
@@ -695,12 +706,11 @@ class Cbp_modules_mdl extends CI_Model
 			return $path === '' ? null : $path;
 		}
 		if ($resolver === 'staff_app_token') {
-			$base = rtrim(base_url(), '/');
 			$seg = trim((string) $row->base_url, '/');
 			if ($seg === '') {
 				return null;
 			}
-			$url = $base . '/' . $seg;
+			$url = rtrim($this->staff_portal_mount_base_url(), '/') . '/' . $seg;
 			if (!empty($row->uses_staff_portal_token)) {
 				$url = $this->append_staff_portal_token_to_url($url, $sessionArray);
 			}
@@ -755,6 +765,62 @@ class Cbp_modules_mdl extends CI_Model
 		$host = $_SERVER['HTTP_HOST'] ?? '';
 
 		return $host !== '' && (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false);
+	}
+
+	/**
+	 * Staff portal mount URL for cross-app links (APM, Finance, Helpdesk).
+	 * Uses the current request host in production even when CI base_url is still localhost in .env.
+	 */
+	public function staff_portal_mount_base_url(): string
+	{
+		$base = rtrim(base_url(), '/');
+		if (!$this->is_request_local_host() && $this->url_looks_like_local_dev($base)) {
+			$host = $_SERVER['HTTP_HOST'] ?? '';
+			if ($host !== '') {
+				$path = $this->staff_mount_path_from_base_url($base);
+
+				return $this->request_scheme() . '://' . $host . $path;
+			}
+		}
+
+		return $base;
+	}
+
+	private function url_looks_like_local_dev(string $url): bool
+	{
+		if ($url === '') {
+			return true;
+		}
+		if (strpos($url, 'localhost') !== false || strpos($url, '127.0.0.1') !== false) {
+			return true;
+		}
+		$host = parse_url($url, PHP_URL_HOST);
+		if (is_string($host) && $host !== '' && substr(strtolower($host), -6) === '.local') {
+			return true;
+		}
+
+		return false;
+	}
+
+	private function request_scheme(): string
+	{
+		if ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+			|| (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) {
+			return 'https';
+		}
+
+		return 'http';
+	}
+
+	private function staff_mount_path_from_base_url(string $base): string
+	{
+		$path = parse_url($base, PHP_URL_PATH);
+		$path = is_string($path) ? rtrim($path, '/') : '';
+		if ($path === '' || $path === '/') {
+			return '/staff';
+		}
+
+		return $path;
 	}
 
 	/**

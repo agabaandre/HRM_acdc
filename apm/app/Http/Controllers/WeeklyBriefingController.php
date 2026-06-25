@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Jobs\SendWeeklyBriefingDirectorReviewReminderJob;
 use App\Models\Directorate;
 use App\Models\Division;
@@ -22,21 +21,9 @@ use Illuminate\View\View;
 
 class WeeklyBriefingController extends Controller
 {
-    use CachesApmPageResponses;
-
     public function index(Request $request): View
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
-
-        $pageKey = $this->apmCacheKeyFromRequest($request, [
-            'tab', 'year', 'week', 'status', 'search', 'tw_status', 'tw_search', 'tw_page', 'page',
-        ], ['page' => 'index']);
-        if (! $request->boolean('nocache')) {
-            $cached = \App\Services\ApmPageCache::get('weekly_briefing', $pageKey);
-            if (is_array($cached)) {
-                return view('weekly-briefing.index', $cached);
-            }
-        }
 
         $contributorRows = DivisionWeeklyBriefGate::contributorsForReportListing();
         $effectiveKeys = WeeklyBriefingContributionKeyResolver::effectiveKeysForContributors($contributorRows);
@@ -318,11 +305,7 @@ class WeeklyBriefingController extends Controller
         $yearOptions = range($filingIsoYear - 2, $filingIsoYear + 1);
         $configuredUnitCount = $contributorRows->count();
 
-        $pageKey = $this->apmCacheKeyFromRequest($request, [
-            'tab', 'year', 'week', 'status', 'search', 'tw_status', 'tw_search', 'tw_page', 'page',
-        ], ['page' => 'index']);
-
-        $viewData = compact(
+        return view('weekly-briefing.index', compact(
             'tab',
             'thisWeekPaginator',
             'twStatus',
@@ -351,11 +334,7 @@ class WeeklyBriefingController extends Controller
             'directorReviewKeySet',
             'hubShowsDirectorateOversight',
             'hubCanViewAllReports'
-        );
-
-        \App\Services\ApmPageCache::put('weekly_briefing', $pageKey, $viewData);
-
-        return view('weekly-briefing.index', $viewData);
+        ));
     }
 
     public function create(Request $request): RedirectResponse

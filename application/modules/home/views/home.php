@@ -295,13 +295,14 @@ if ($helpdeskErrorParam === 'sso') {
   </div>
   <footer class="cbp-home-footer">
     <?php
-    $apm_base = $this->config->item('apm_base_url');
-    if (empty($apm_base)) {
-      $apm_base = rtrim(base_url(), '/') . '/apm';
-    }
-    $apm_base = rtrim($apm_base, '/');
-    if (!empty($apm_base) && strpos($apm_base, 'http') !== 0) {
-      $apm_base = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http') . '://' . ltrim($apm_base, '/');
+    $this->load->model('cbp_modules_mdl');
+    $apm_base = rtrim($this->cbp_modules_mdl->staff_portal_mount_base_url(), '/') . '/apm';
+    $configured_apm = trim((string) $this->config->item('apm_base_url'));
+    if ($configured_apm !== '' && strpos($configured_apm, 'localhost') === false && strpos($configured_apm, '127.0.0.1') === false) {
+      $apm_base = rtrim($configured_apm, '/');
+      if (strpos($apm_base, 'http') !== 0) {
+        $apm_base = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http') . '://' . ltrim($apm_base, '/');
+      }
     }
     ?>
     <p class="mb-0 text-center text-md-start">
