@@ -167,10 +167,10 @@ class StaffController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $staff)
     {
-        $staff = Staff::with(['division', 'directorate', 'dutyStation', 'supervisor'])->findOrFail($id);
-        $activities = Activity::where('staff_id', $id)->latest()->take(5)->get();
+        $staff = Staff::with(['division', 'directorate', 'dutyStation', 'supervisor'])->findOrFail($staff);
+        $activities = Activity::where('staff_id', $staff->staff_id)->latest()->take(5)->get();
 
         return view('staff.show', compact('staff', 'activities'));
     }
@@ -178,15 +178,15 @@ class StaffController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(string $staff)
     {
-        $staff = Staff::findOrFail($id);
+        $staff = Staff::findOrFail($staff);
         $divisions = Division::orderBy('division_name')->get();
         $directorates = Directorate::where('is_active', 1)->orderBy('name')->get();
         $dutyStations = DutyStation::where('is_active', 1)->orderBy('name')->get();
         // Exclude Expired and Separated staff from supervisor dropdown
         $supervisors = Staff::where('active', 1)
-            ->where('id', '!=', $id)
+            ->where('staff_id', '!=', $staff->staff_id)
             ->whereNotIn('status', ['Expired', 'Separated'])
             ->orderBy('fname')->get();
 
@@ -196,16 +196,16 @@ class StaffController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id): RedirectResponse
+    public function update(Request $request, string $staff): RedirectResponse
     {
-        $staff = Staff::findOrFail($id);
+        $staff = Staff::findOrFail($staff);
 
         $validated = $request->validate([
-            'staff_id' => 'required|string|max:20|unique:staff,staff_id,' . $id,
+            'staff_id' => 'required|string|max:20|unique:staff,staff_id,' . $staff->staff_id . ',staff_id',
             'fname' => 'required|string|max:100',
             'oname' => 'nullable|string|max:100',
             'lname' => 'required|string|max:100',
-            'email' => 'required|email|max:100|unique:staff,email,' . $id,
+            'email' => 'required|email|max:100|unique:staff,email,' . $staff->staff_id . ',staff_id',
             'tel_1' => 'required|string|max:20',
             'gender' => 'required|string|in:Male,Female',
             'dob' => 'nullable|date',
@@ -261,13 +261,13 @@ class StaffController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id): RedirectResponse
+    public function destroy(string $staff): RedirectResponse
     {
-        $staff = Staff::findOrFail($id);
+        $staff = Staff::findOrFail($staff);
         
         // Check if there are related activities or other dependencies
-        $activitiesCount = Activity::where('staff_id', $id)->count();
-        $subordinatesCount = Staff::where('supervisor_id', $id)->count();
+        $activitiesCount = Activity::where('staff_id', $staff->staff_id)->count();
+        $subordinatesCount = Staff::where('supervisor_id', $staff->staff_id)->count();
         
         if ($activitiesCount > 0 || $subordinatesCount > 0) {
             return redirect()->route('staff.index')
@@ -356,9 +356,9 @@ class StaffController extends Controller
     /**
      * Get activities for a specific staff member in a matrix
      */
-    public function getActivities(Request $request, $staffId)
+    public function getActivities(Request $request, $staff)
     {
-        Log::info('getActivities called with staffId: ' . $staffId);
+        Log::info('getActivities called with staffId: ' . $staff);
         Log::info('Request data: ' . json_encode($request->all()));
         
         $matrixId = $request->query('matrix_id');
@@ -368,7 +368,7 @@ class StaffController extends Controller
         }
 
         // Get the staff member
-        $staff = Staff::findOrFail($staffId);
+        $staff = Staff::findOrFail($staff);
         
         // Get the matrix to get quarter and year
         $matrix = \App\Models\Matrix::find($matrixId);
@@ -377,8 +377,8 @@ class StaffController extends Controller
         // Get activities where this staff is a participant
         $activities = Activity::with(['matrix', 'focalPerson', 'matrix.division', 'participantSchedules'])
             ->where('matrix_id', $matrixId)
-            ->whereHas('participantSchedules', function($query) use ($staffId) {
-                $query->where('participant_id', $staffId);
+            ->whereHas('participantSchedules', function($query) use ($staff) {
+                $query->where('participant_id', $staff->staff_id);
             })
             ->get();
 
