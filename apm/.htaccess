@@ -5,6 +5,10 @@
 
     RewriteEngine On
 
+    # Legacy /staff/apm/?token= → /staff/apm/sso?token= (route:cache returns 405 on app root).
+    RewriteCond %{QUERY_STRING} (^|&)token=
+    RewriteRule ^$ /staff/apm/sso [R=302,L,QSA]
+
     RewriteCond %{REQUEST_FILENAME} -d [OR]
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteCond %{REQUEST_URI} !^/\.well-known/cpanel-dcv/[0-9a-zA-Z_-]+$

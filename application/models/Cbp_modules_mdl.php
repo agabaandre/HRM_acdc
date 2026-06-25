@@ -701,6 +701,10 @@ class Cbp_modules_mdl extends CI_Model
 				return null;
 			}
 			$url = $base . '/' . $seg;
+			// APM SSO must not use the directory root (Apache trailing-slash + route:cache => 405).
+			if ($seg === 'apm' && !empty($row->uses_staff_portal_token)) {
+				$url .= '/sso';
+			}
 			if (!empty($row->uses_staff_portal_token)) {
 				$url = $this->append_staff_portal_token_to_url($url, $sessionArray);
 			}

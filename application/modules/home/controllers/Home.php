@@ -158,7 +158,7 @@ class Home extends MX_Controller
 		if (in_array('85', $permissions, true) || in_array(85, $permissions, true)) {
 			$token = rawurlencode($this->build_sso_jwt($session));
 			$settings[] = [
-				'href' => rtrim(base_url(), '/') . '/apm?token=' . $token,
+				'href' => rtrim(base_url(), '/') . '/apm/sso?token=' . $token,
 				'label' => 'Approvals Management (APM)',
 				'icon' => 'fa-sitemap',
 				'absolute' => true,

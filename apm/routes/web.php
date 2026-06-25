@@ -22,6 +22,7 @@ Route::get('/manifest.json', function () {
 
 // SSO entry: decode ?token= from Staff portal and open an APM session.
 Route::get('/', [AuthController::class, 'ssoEntry'])->name('sso.entry');
+Route::get('/sso', [AuthController::class, 'ssoEntry'])->name('sso.callback');
 
 // Logout route (should be accessible without middleware)
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
