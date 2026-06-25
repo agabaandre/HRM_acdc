@@ -13,6 +13,7 @@ use App\Http\Controllers\GenericApprovalController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\Api\SessionController;
 use App\Http\Controllers\AuthController;
+use App\Support\RuntimeUrl;
 
 // PWA disabled: prevent install prompt and standalone window
 Route::get('/manifest.json', function () {
@@ -78,8 +79,7 @@ Route::get('/', function (Request $request) {
             // Log the error for debugging
             \Illuminate\Support\Facades\Log::error('Token processing error: ' . $e->getMessage());
             // Redirect to CodeIgniter login if token is invalid
-            $base_url = env('BASE_URL', 'http://localhost/staff/');
-            return redirect($base_url . 'auth/login');
+            return redirect(RuntimeUrl::staffPortalLoginUrl());
         }
     }
 
@@ -91,8 +91,7 @@ Route::get('/', function (Request $request) {
     }
 
     // No token and no session, redirect to CodeIgniter login
-    $base_url = env('BASE_URL', 'http://localhost/staff/');
-    return redirect($base_url . 'auth/login');
+    return redirect(RuntimeUrl::staffPortalLoginUrl());
 });
 
 // Logout route (should be accessible without middleware)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\RuntimeUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Session;
@@ -16,8 +17,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         try {
-            // Get CodeIgniter base URL
-            $baseUrl = env('BASE_URL', 'http://localhost/staff');
+            $baseUrl = RuntimeUrl::staffPortalBaseUrl();
             $ciLogoutUrl = rtrim($baseUrl, '/') . '/auth/logout';
             
             // Get all cookies from the request to pass to CI logout
@@ -88,7 +88,7 @@ class AuthController extends Controller
             // Even if there's an error, fully destroy Laravel session and redirect
             Session::invalidate();
             
-            $baseUrl = env('BASE_URL', 'http://localhost/staff');
+            $baseUrl = RuntimeUrl::staffPortalBaseUrl();
             $loginUrl = rtrim($baseUrl, '/') . '/auth';
             
             /** @var RedirectResponse $response */

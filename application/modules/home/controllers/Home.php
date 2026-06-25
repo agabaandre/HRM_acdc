@@ -157,10 +157,8 @@ class Home extends MX_Controller
 
 		if (in_array('85', $permissions, true) || in_array(85, $permissions, true)) {
 			$token = rawurlencode($this->build_sso_jwt($session));
-			$this->load->model('cbp_modules_mdl');
-			$apmBase = rtrim($this->cbp_modules_mdl->staff_portal_mount_base_url(), '/');
 			$settings[] = [
-				'href' => $apmBase . '/apm?token=' . $token,
+				'href' => rtrim(base_url(), '/') . '/apm?token=' . $token,
 				'label' => 'Approvals Management (APM)',
 				'icon' => 'fa-sitemap',
 				'absolute' => true,

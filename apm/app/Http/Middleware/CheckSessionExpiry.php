@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\RuntimeUrl;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -63,8 +64,7 @@ class CheckSessionExpiry
             }
             
             // Redirect to CodeIgniter login page which will check session and redirect to home if authenticated
-            $base_url = env('BASE_URL', 'http://localhost/staff/');
-            return redirect($base_url . 'auth/login');
+            return redirect(RuntimeUrl::staffPortalLoginUrl());
         }
         $lastActivity = session('last_activity', now());
         $sessionTimeout = config('session.lifetime', 120) * 60; // Convert to seconds
@@ -85,8 +85,7 @@ class CheckSessionExpiry
                     ], 401);
                 }
                 
-                $base_url = env('BASE_URL', 'http://localhost/staff/');
-                return redirect($base_url . 'auth/login');
+                return redirect(RuntimeUrl::staffPortalLoginUrl());
             }
         }
 
@@ -105,9 +104,7 @@ class CheckSessionExpiry
     private function isCiSessionExpired(array $userSession): bool
     {
         try {
-            // Get CI app base URL from confi
-            $base_url = env('BASE_URL','http://localhost/staff/');
-            $ciBaseUrl = config('app.ci_base_url', $base_url.'/auth/login');
+            $ciBaseUrl = RuntimeUrl::staffPortalBaseUrl();
             $ciToken = $userSession['ci_token'] ?? null;
             
             if (!$ciToken) {

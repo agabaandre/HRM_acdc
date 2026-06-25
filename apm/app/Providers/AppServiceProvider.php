@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\WeeklyBriefingReport;
 use App\Services\CbpPlatformMenuService;
 use App\Services\DivisionWeeklyBriefGate;
+use App\Support\RuntimeUrl;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -25,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RuntimeUrl::applyFromRequest();
+
         // Use Bootstrap for pagination styling
         Paginator::useBootstrap();
 

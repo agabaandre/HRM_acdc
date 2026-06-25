@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\RuntimeUrl;
 use App\Support\StaffApiBaseUrl;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -47,23 +48,7 @@ class CbpModulesNavService
 
     public static function staffWebBaseUrl(): string
     {
-        $fromSession = rtrim((string) session('user.base_url', ''), '/');
-        $fromSession = rtrim(str_replace('/apm', '', $fromSession), '/');
-
-        $fromConfig = rtrim((string) config('services.staff_api.base_url', 'http://localhost/staff/'), '/');
-        $fromConfig = rtrim(str_replace('/apm', '', $fromConfig), '/');
-
-        $candidate = $fromSession !== '' ? $fromSession : $fromConfig;
-
-        if (self::isLocalDevUrl($candidate) && ! app()->runningInConsole()) {
-            $request = request();
-            $host = $request?->getHost() ?? '';
-            if ($host !== '' && ! self::isLocalDevHost($host)) {
-                return $request->getSchemeAndHttpHost().'/staff';
-            }
-        }
-
-        return $candidate !== '' ? $candidate : 'http://localhost/staff';
+        return RuntimeUrl::staffPortalBaseUrl();
     }
 
     /**
