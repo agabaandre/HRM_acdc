@@ -20,79 +20,8 @@ Route::get('/manifest.json', function () {
     return response('', 404);
 })->name('manifest.disabled');
 
-// The root route that handles token decoding and user session management
-Route::get('/', function (Request $request) {
-    $decodeSsoToken = function (?string $token): ?array {
-        if (!is_string($token) || trim($token) === '') {
-            return null;
-        }
-        $token = trim($token);
-        $parts = explode('.', $token);
-        $jwtSecret = (string) (env('JWT_SECRET', env('APP_KEY', '')));
-
-        // Try JWT first (HS256)
-        if (count($parts) === 3 && $jwtSecret !== '') {
-            [$h, $p, $s] = $parts;
-            $sig = rtrim(strtr(base64_encode(hash_hmac('sha256', $h . '.' . $p, $jwtSecret, true)), '+/', '-_'), '=');
-            if (hash_equals($sig, $s)) {
-                $payloadJson = base64_decode(strtr($p, '-_', '+/') . str_repeat('=', (4 - strlen($p) % 4) % 4));
-                $payload = is_string($payloadJson) ? json_decode($payloadJson, true) : null;
-                if (is_array($payload)) {
-                    $exp = isset($payload['exp']) ? (int) $payload['exp'] : 0;
-                    if ($exp === 0 || $exp >= time()) {
-                        return $payload;
-                    }
-                }
-            }
-        }
-
-        // Backward-compatible fallback: base64(json)
-        $decoded = base64_decode($token, true);
-        $json = is_string($decoded) ? json_decode($decoded, true) : null;
-        return is_array($json) ? $json : null;
-    };
-
-    $rawToken = $request->query('token');
-
-    if ($rawToken) {
-        try {
-            $json = $decodeSsoToken($rawToken);
-
-            if (!$json) {
-                throw new Exception('Invalid token format');
-            }
-
-            // Save the decoded token to session as user data
-            session([
-                'user' => $json, 
-                'base_url' => $json['base_url'] ?? '', 
-                'permissions' => $json['permissions'] ?? [],
-                'last_activity' => now()
-            ]);
-            
-            // Ensure session is saved before redirecting
-            session()->save();
-
-            // Redirect to home page with session data
-            return redirect('/home');
-        } catch (\Exception $e) {
-            // Log the error for debugging
-            \Illuminate\Support\Facades\Log::error('Token processing error: ' . $e->getMessage());
-            // Redirect to CodeIgniter login if token is invalid
-            return redirect(RuntimeUrl::staffPortalLoginUrl());
-        }
-    }
-
-    // If no token, check if user has existing session
-    $userSession = session('user', []);
-    if (!empty($userSession) && isset($userSession['staff_id'])) {
-        // User has session, redirect to home
-    return redirect('/home');
-    }
-
-    // No token and no session, redirect to CodeIgniter login
-    return redirect(RuntimeUrl::staffPortalLoginUrl());
-});
+// SSO entry: decode ?token= from Staff portal and open an APM session.
+Route::get('/', [AuthController::class, 'ssoEntry'])->name('sso.entry');
 
 // Logout route (should be accessible without middleware)
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -267,7 +196,8 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::get('/staff/{staff}/activities', [App\Http\Controllers\StaffController::class, 'getActivities'])->name('staff.activities.data');
     
     // Staff resource routes
-    Route::resource('staff', App\Http\Controllers\StaffController::class);
+    Route::resource('staff', App\Http\Controllers\StaffController::class)
+        ->where(['staff' => '[0-9]+']);
 
     Route::get('apm-api-users', [App\Http\Controllers\ApmApiUserController::class, 'index'])->name('apm-api-users.index');
     Route::post('apm-api-users/{apmApiUser}/impersonate', [App\Http\Controllers\ApmApiUserController::class, 'impersonate'])->name('apm-api-users.impersonate');

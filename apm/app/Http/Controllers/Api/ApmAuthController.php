@@ -232,7 +232,7 @@ class ApmAuthController extends Controller
         ]);
         session()->save();
 
-        return redirect('/home');
+        return redirect()->route('home');
     }
 
     private function exchangeMicrosoftCodeForToken(string $code, string $redirectUri): ?string

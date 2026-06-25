@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\RuntimeUrl;
+use App\Support\StaffSsoToken;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Session;
@@ -11,6 +12,45 @@ use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
+    /**
+     * SSO entry point: decode ?token= from Staff portal and open an APM session.
+     */
+    public function ssoEntry(Request $request): RedirectResponse
+    {
+        $rawToken = $request->query('token');
+
+        if ($rawToken) {
+            try {
+                $json = StaffSsoToken::decode(is_string($rawToken) ? $rawToken : null);
+
+                if (! $json) {
+                    throw new \Exception('Invalid token format');
+                }
+
+                session([
+                    'user' => $json,
+                    'base_url' => $json['base_url'] ?? '',
+                    'permissions' => $json['permissions'] ?? [],
+                    'last_activity' => now(),
+                ]);
+                session()->save();
+
+                return redirect()->route('home');
+            } catch (\Exception $e) {
+                Log::error('Token processing error: '.$e->getMessage());
+
+                return redirect(RuntimeUrl::staffPortalLoginUrl());
+            }
+        }
+
+        $userSession = session('user', []);
+        if (! empty($userSession) && isset($userSession['staff_id'])) {
+            return redirect()->route('home');
+        }
+
+        return redirect(RuntimeUrl::staffPortalLoginUrl());
+    }
+
     /**
      * Logout user from both Laravel and CodeIgniter sessions
      */
