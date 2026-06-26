@@ -2,6 +2,7 @@ import axios from 'axios'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ui from '@nuxt/ui/vue-plugin'
+import './styles/app-preloader.css'
 import './styles/nuxt-ui.css'
 import './styles/helpdesk-forms.css'
 import './style.css'
@@ -15,6 +16,7 @@ import { useAuthStore } from './stores/auth'
 import { persistStaffSsoToken } from './lib/cbpSystems'
 import { loadLobiboxAssets } from './lib/notify'
 import { getStoredToken } from './lib/api'
+import { dismissBootPreloader } from './lib/appPreloader'
 import { getStaffSsoTokenFromUrl, redirectToStaffPortalHome, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
 
 type SsoFailure = {
@@ -102,6 +104,7 @@ function classifyExchangeError(err: unknown): SsoFailure {
 }
 
 function renderSsoErrorScreen(failure: SsoFailure): void {
+  dismissBootPreloader()
   const root = document.getElementById('app')
   if (!root) {
     return
@@ -185,6 +188,7 @@ async function bootstrap() {
   app.use(router)
   await router.isReady()
   app.mount('#app')
+  dismissBootPreloader()
 }
 
 void bootstrap()

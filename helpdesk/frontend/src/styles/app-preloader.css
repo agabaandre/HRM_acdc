@@ -1,0 +1,119 @@
+/* Boot loader (index.html) + in-app route transitions */
+.hd-boot-loader,
+.hd-route-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 249, 250, 0.98);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+html.helpdesk-theme-dark .hd-route-loader {
+  background: rgba(15, 23, 42, 0.98);
+}
+
+.hd-boot-loader--out,
+.hd-route-loader--out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hd-boot-loader__inner,
+.hd-route-loader__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  text-align: center;
+}
+
+.hd-boot-loader__spinner,
+.hd-route-loader__spinner {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.hd-boot-loader__spinner {
+  border-radius: 50%;
+  border: 3px solid rgba(13, 122, 58, 0.14);
+  border-top-color: #0d7a3a;
+  animation: hd-preloader-spin 0.75s linear infinite;
+}
+
+.hd-route-loader__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(13, 122, 58, 0.12);
+  border-top-color: #0d7a3a;
+  animation: hd-preloader-spin 0.72s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.hd-route-loader__spinner::after {
+  content: '';
+  position: absolute;
+  inset: 0.72rem;
+  border-radius: 50%;
+  background: #0d7a3a;
+  opacity: 0.85;
+  animation: hd-preloader-pulse 1.4s ease-in-out infinite;
+}
+
+html.helpdesk-theme-dark .hd-route-loader__ring {
+  border-color: rgba(74, 222, 128, 0.16);
+  border-top-color: #4ade80;
+}
+
+html.helpdesk-theme-dark .hd-route-loader__spinner::after {
+  background: #4ade80;
+}
+
+.hd-boot-loader__label,
+.hd-route-loader__label {
+  margin: 0;
+  font-family: Arial, Roboto, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0d7a3a;
+}
+
+html.helpdesk-theme-dark .hd-route-loader__label {
+  color: #4ade80;
+}
+
+/* Hide app chrome while boot or route loader is active — avoids flicker of stale content */
+body.hd-app-loading {
+  overflow: hidden;
+}
+
+body.hd-app-loading #app {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes hd-preloader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes hd-preloader-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

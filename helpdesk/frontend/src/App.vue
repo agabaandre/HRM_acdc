@@ -5,6 +5,7 @@ import CbpTopHeader from './components/layout/CbpTopHeader.vue'
 import CbpThemeSwitch from './components/layout/CbpThemeSwitch.vue'
 import CbpPrimaryNav from './components/layout/CbpPrimaryNav.vue'
 import CbpPageFooter from './components/layout/CbpPageFooter.vue'
+import CbpRoutePreloader from './components/common/CbpRoutePreloader.vue'
 import { useAuthStore } from './stores/auth'
 import { ref } from 'vue'
 
@@ -40,6 +41,7 @@ if (stored === 'light' || stored === 'dark') {
 
 <template>
   <UApp>
+    <CbpRoutePreloader />
     <div v-if="showChrome" class="cbp-wrapper">
     <CbpTopHeader
       :user-name="displayName"

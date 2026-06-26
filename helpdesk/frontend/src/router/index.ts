@@ -25,6 +25,7 @@ import { getStoredToken } from '../lib/api'
 import { redirectToStaffPortalHome, staffPortalHomeUrl } from '../lib/sso'
 import { parseSettingsSection } from '../settings/settingsSections'
 import { useAuthStore } from '../stores/auth'
+import { finishRoutePreloader, startRoutePreloader } from '../lib/appPreloader'
 
 const STAFF_ROLES = new Set(['agent', 'supervisor', 'admin', 'auditor'])
 
@@ -130,7 +131,11 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
+  if (to.path !== from.path) {
+    startRoutePreloader()
+  }
+
   if (to.meta.public) {
     return true
   }
@@ -194,6 +199,14 @@ router.beforeEach(async (to) => {
       }
     }
   }
+})
+
+router.afterEach(() => {
+  finishRoutePreloader()
+})
+
+router.onError(() => {
+  finishRoutePreloader()
 })
 
 export default router
