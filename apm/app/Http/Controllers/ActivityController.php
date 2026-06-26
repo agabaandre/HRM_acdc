@@ -2620,6 +2620,9 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'fundType',
             'activityApprovalTrails.staff',
             'matrix.matrixApprovalTrails.staff',
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff',
+            'approvalTrails.workflowDefinition',
             'responsiblePerson',
             'staff',
             'activity_budget.fundcode.fundType',
@@ -2693,6 +2696,13 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         // Get activity approval trails with staff details and workflow definition
         $activityApprovals = $activity->activityApprovalTrails()->with(['staff', 'oicStaff', 'workflowDefinition'])->get();
 
+        $approvalTrails = $activity->approvalTrails()
+            ->with(['staff', 'oicStaff', 'workflowDefinition'])
+            ->where('is_archived', 0)
+            ->orderBy('approval_order')
+            ->orderByDesc('created_at')
+            ->get();
+
         // Generate PDF using the comprehensive data
         //$print=true;
         $print=false;
@@ -2710,6 +2720,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'attachments' => $attachments,
             'matrix_approval_trails' => $matrixApprovals,
             'activity_approval_trails' => $activityApprovals,
+            'approval_trails' => $approvalTrails,
             'staff' => $activity->staff,
             'workflow_info' => $workflowInfo,
             'organized_workflow_steps' => $organizedWorkflowSteps

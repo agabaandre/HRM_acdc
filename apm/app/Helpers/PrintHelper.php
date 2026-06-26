@@ -1049,24 +1049,13 @@ class PrintHelper
     public static function fetchApproversFromTrails($modelId, $modelType, $divisionId = null, $workflowId = null)
     {
         $approvers = [];
-        
-        // Fetch approval trails for the model with staff and OIC staff
-        $query = \App\Models\ApprovalTrail::where('model_id', $modelId)
-            ->where('model_type', $modelType)
-            ->where('is_archived', 0)
-            ->with(['staff', 'oicStaff']);
-            
-        // Add workflow_id filter if provided to avoid mixing up approvers from different workflows
-        if ($workflowId) {
-            $query->where('forward_workflow_id', $workflowId);
+
+        $approvalTrails = self::approvedApprovalTrailsForModel($modelId, $modelType, $workflowId);
+
+        // Converted single memos can carry matrix-era trails under a different workflow id.
+        if ($approvalTrails->isEmpty() && $workflowId) {
+            $approvalTrails = self::approvedApprovalTrailsForModel($modelId, $modelType, null);
         }
-        
-        $approvalTrails = $query->orderBy('approval_order')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->filter(function ($trail) {
-                return strtolower((string) ($trail->action ?? '')) === 'approved';
-            });
 
         // Group by approval order, taking only the most recent approved row for each order
         $processedOrders = [];
@@ -1150,6 +1139,31 @@ class PrintHelper
     }
 
     /**
+     * @return \Illuminate\Support\Collection<int, \App\Models\ApprovalTrail>
+     */
+    private static function approvedApprovalTrailsForModel($modelId, $modelType, $workflowId = null)
+    {
+        $query = \App\Models\ApprovalTrail::query()
+            ->where('model_id', $modelId)
+            ->where('model_type', $modelType)
+            ->where('is_archived', 0)
+            ->with(['staff', 'oicStaff']);
+
+        if ($workflowId) {
+            $query->where('forward_workflow_id', $workflowId);
+        }
+
+        return $query->orderBy('approval_order')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->filter(function ($trail) {
+                $action = strtolower((string) ($trail->action ?? ''));
+
+                return in_array($action, ['approved', 'passed'], true);
+            });
+    }
+
+    /**
      * Organize workflow steps by memo_print_section for dynamic memo rendering
      * This is a reusable helper for all memo print templates
      */
@@ -1219,9 +1233,22 @@ class PrintHelper
             'others' => []
         ];
 
-        if ($workflowId) {
-            // Get workflow definitions with category filtering
-            $workflowDefinitions = self::getWorkflowDefinitionsForMemo($workflowId, $divisionCategory);
+        $workflowIds = array_values(array_filter(array_unique(array_merge(
+            $workflowId ? [(int) $workflowId] : [],
+            self::workflowIdsFromFetchedApprovers($matrixId, $modelType)
+        ))));
+
+        if ($workflowIds !== []) {
+            $workflowDefinitions = collect();
+            foreach ($workflowIds as $id) {
+                $workflowDefinitions = $workflowDefinitions->merge(
+                    self::getWorkflowDefinitionsForMemo($id, $divisionCategory)
+                );
+            }
+            $workflowDefinitions = $workflowDefinitions
+                ->unique(fn ($definition) => (int) $definition->workflow_id.'|'.(int) $definition->approval_order)
+                ->sortBy('approval_order')
+                ->values();
 
             // First, collect all approvers by section
             $sectionApprovers = [];
@@ -1275,6 +1302,65 @@ class PrintHelper
                     return ($a['approval_order'] ?? 0) <=> ($b['approval_order'] ?? 0);
                 });
                 $organizedApprovers[$section] = $approvers;
+            }
+        }
+
+        if (
+            empty($organizedApprovers['to'])
+            && empty($organizedApprovers['through'])
+            && empty($organizedApprovers['from'])
+            && $approvers !== []
+        ) {
+            $organizedApprovers = self::organizeFetchedApproversWithoutDefinitions($approvers);
+        }
+
+        return $organizedApprovers;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function workflowIdsFromFetchedApprovers($modelId, $modelType): array
+    {
+        return \App\Models\ApprovalTrail::query()
+            ->where('model_id', $modelId)
+            ->where('model_type', $modelType)
+            ->where('is_archived', 0)
+            ->whereNotNull('forward_workflow_id')
+            ->distinct()
+            ->pluck('forward_workflow_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Last-resort section mapping when workflow definitions do not line up with stored trails.
+     *
+     * @param  array<int|string, list<array<string, mixed>>>  $approvers
+     * @return array{to: list<array<string, mixed>>, through: list<array<string, mixed>>, from: list<array<string, mixed>>, others: list<array<string, mixed>>}
+     */
+    private static function organizeFetchedApproversWithoutDefinitions(array $approvers): array
+    {
+        $organizedApprovers = [
+            'to' => [],
+            'through' => [],
+            'from' => [],
+            'others' => [],
+        ];
+
+        foreach ($approvers as $order => $rows) {
+            $section = match (true) {
+                (int) $order === 11 => 'to',
+                in_array((int) $order, [7, 8, 9, 10], true) => 'through',
+                (int) $order === 1, $order === 'division_head' => 'from',
+                default => 'through',
+            };
+
+            foreach ($rows as $row) {
+                $row['approval_order'] = is_numeric($order) ? (int) $order : $order;
+                $organizedApprovers[$section][] = $row;
             }
         }
 

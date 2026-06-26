@@ -272,11 +272,13 @@
     }
 
     // Organize approvers by section using activity approval trails for single memos
+    $singleMemoWorkflowId = $activity->forward_workflow_id ?? $matrix->forward_workflow_id ?? null;
+    $pdfApprovalTrails = $approval_trails ?? $activity->approvalTrails ?? collect();
     $organizedApprovers = PrintHelper::organizeApproversBySection(
         $activity->id ?? null,
         'App\Models\Activity',
         $matrix->division_id ?? null,
-        $matrix->forward_workflow_id ?? null,
+        $singleMemoWorkflowId,
         $divisionCategory
     );
 
@@ -338,7 +340,7 @@
                     if ($order === 'division_head') {
                         $order = 1; // Use level 1 for division head
                     }
-                    renderSignature($approver, $order, $activity->approvalTrails, $activity); 
+                    renderSignature($approver, $order, $pdfApprovalTrails, $activity); 
                     ?>
       </td>
                 <?php if ($section === $sectionOrder[0] && $index === 0): // Only output the Date/FileNo cell once ?>
@@ -638,7 +640,7 @@
     </table>
 <?php
     // Get financial approvers dynamically based on workflow definition
-    $financialApprovers = PrintHelper::getFinancialApprovers($activity->approvalTrails, $matrix->forward_workflow_id ?? 1);
+    $financialApprovers = PrintHelper::getFinancialApprovers($pdfApprovalTrails, $singleMemoWorkflowId ?? 1);
     
     // Extract specific approvers for easier access
     $sfoApproval = $financialApprovers['Finance Officer'] ?? null;
