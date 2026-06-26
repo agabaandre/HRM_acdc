@@ -7,6 +7,7 @@ use App\Mail\TicketResolutionMail;
 use App\Models\HelpdeskKbArticle;
 use App\Models\HelpdeskTicket;
 use App\Services\HtmlSanitizer;
+use App\Services\RichTextDataUriExternalizer;
 use App\Services\TicketFirstResponseService;
 use App\Services\TicketHistoryLogger;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,15 @@ class TicketResolutionController extends Controller
     public function submit(Request $request, HelpdeskTicket $ticket, TicketHistoryLogger $logger, TicketFirstResponseService $firstResponse): JsonResponse
     {
         $this->authorize('submitResolution', $ticket);
+
+        // Externalize pasted base64 images before the 65k HTML ceiling is applied.
+        $request->merge([
+            'resolution_summary' => RichTextDataUriExternalizer::externalize(
+                $request->input('resolution_summary'),
+                ticket: $ticket,
+                user: $request->user(),
+            ),
+        ]);
 
         // 65000 chars matches the `description` ceiling and gives ample room for
         // HTML markup (Quill stores formatting + embedded image URLs).

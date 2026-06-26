@@ -502,3 +502,53 @@ export function removeAttachmentImagesFromHtml(html: string, attachmentId: numbe
   })
   return doc.body.innerHTML
 }
+
+const DATA_URI_IMAGE_SRC_RE = /^data:image\/(png|jpe?g|gif|webp);base64,/i
+
+/** True when HTML still contains Quill-pasted base64 image embeds. */
+export function htmlContainsDataUriImages(html: string): boolean {
+  if (!html) {
+    return false
+  }
+  if (DATA_URI_IMAGE_SRC_RE.test(html)) {
+    return true
+  }
+  return collectDataUriImagesFromHtml(html).length > 0
+}
+
+/** data:image/...;base64,... values from img src attributes. */
+export function collectDataUriImagesFromHtml(html: string): string[] {
+  if (!html || !isHtmlContent(html)) {
+    return []
+  }
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  return Array.from(doc.querySelectorAll('img[src]'))
+    .map((img) => img.getAttribute('src') ?? '')
+    .filter((src) => DATA_URI_IMAGE_SRC_RE.test(src))
+}
+
+/** Decode a data URI into a File for upload. */
+export function dataUriToFile(dataUri: string, index = 0): File | null {
+  const match = dataUri.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i)
+  if (!match?.[1] || !match[2]) {
+    return null
+  }
+  try {
+    const binary = atob(match[2])
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    const mime = match[1].toLowerCase()
+    const ext = mime.includes('jpeg') || mime.includes('jpg')
+      ? 'jpg'
+      : mime.includes('gif')
+        ? 'gif'
+        : mime.includes('webp')
+          ? 'webp'
+          : 'png'
+    return new File([bytes], `pasted-image-${index}.${ext}`, { type: mime })
+  } catch {
+    return null
+  }
+}

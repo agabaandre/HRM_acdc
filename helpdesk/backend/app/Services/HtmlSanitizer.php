@@ -20,7 +20,8 @@ use DOMXPath;
  *  - Parse with DOMDocument (UTF-8).
  *  - Walk the tree; drop any element that isn't in the tag allow-list.
  *  - For surviving elements, drop any attribute not in the per-tag allow-list.
- *  - Normalise href/src to safe schemes (http, https, mailto, data:image/* for images).
+ *  - Normalise href/src to safe schemes (http, https, mailto). Inline images must
+ *    be uploaded URLs — data: URIs are stripped (see RichTextDataUriExternalizer).
  *  - Strip every `on*` event attribute and any `javascript:`/`vbscript:` URI.
  */
 class HtmlSanitizer
@@ -255,11 +256,6 @@ class HtmlSanitizer
         if ($v === '') {
             return false;
         }
-        // Inline base64 images are fine — but only for image/* MIMEs.
-        if (preg_match('#^data:image/(png|jpe?g|gif|webp);base64,#i', $v)) {
-            return true;
-        }
-
         return self::isSafeHref($value);
     }
 

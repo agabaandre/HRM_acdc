@@ -16,7 +16,7 @@ import {
 } from '../lib/canChangeTicketCategory'
 import { formatDateTime, formatDateTimeLong } from '../lib/formatDateTime'
 import { notifyError } from '../lib/notify'
-import { hasRichTextContent, isAttachmentEmbeddedInHtml, isHtmlContent, removeAttachmentImagesFromHtml } from '../lib/richText'
+import { hasRichTextContent, htmlContainsDataUriImages, isAttachmentEmbeddedInHtml, isHtmlContent, removeAttachmentImagesFromHtml } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
 
 interface AssigneeBrief {
@@ -80,6 +80,7 @@ const posting = ref(false)
 const resolutionNotes = ref('')
 const resolving = ref(false)
 const inlineImageBusy = ref(false)
+const resolutionEditorRef = ref<InstanceType<typeof CbpRichTextEditor> | null>(null)
 const showResolveModal = ref(false)
 const publishToKb = ref(false)
 const kbSubject = ref('')
@@ -340,10 +341,19 @@ async function onCommentSubmit(event: FormSubmitEvent<typeof commentForm>) {
 
 async function confirmSubmitResolution() {
   const id = ticketId.value
-  const summary = resolutionNotes.value
-  if (!id || !hasRichTextContent(summary)) {
+  if (!id || !hasRichTextContent(resolutionNotes.value)) {
     resolveModalErr.value =
       'Please describe what was fixed in the resolution editor above before closing this ticket.'
+    return
+  }
+  if (inlineImageBusy.value) {
+    resolveModalErr.value = 'An image is still uploading. Wait a moment and try again.'
+    return
+  }
+  await resolutionEditorRef.value?.ensureImagesUploaded()
+  const summary = resolutionNotes.value
+  if (htmlContainsDataUriImages(summary)) {
+    resolveModalErr.value = 'An image is still uploading. Wait a moment and try again.'
     return
   }
   if (publishToKb.value && !kbSubject.value.trim()) {
@@ -567,6 +577,7 @@ watch(canReopenWithComment, (can) => {
           Describe what was fixed. Use the toolbar to format text, add lists, paste screenshots, embed video, or attach links. The requester is emailed; if confirmation is enabled in settings they must click the link to close the ticket.
         </p>
         <CbpRichTextEditor
+          ref="resolutionEditorRef"
           v-model="resolutionNotes"
           variant="full"
           :ticket-id="ticket.id"

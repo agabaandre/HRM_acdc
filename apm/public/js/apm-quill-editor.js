@@ -22,6 +22,150 @@
         return meta ? meta.getAttribute('content') : '';
     }
 
+    var DATA_URI_IMAGE_RE = /^data:image\/(png|jpe?g|gif|webp);base64,/i;
+    var pendingImageUploads = 0;
+    var dataUriReplaceTimers = new WeakMap();
+
+    function htmlContainsDataUriImages(html) {
+        if (!html) {
+            return false;
+        }
+        if (DATA_URI_IMAGE_RE.test(html)) {
+            return true;
+        }
+        return collectDataUriImagesFromHtml(html).length > 0;
+    }
+
+    function collectDataUriImagesFromHtml(html) {
+        if (!html || html.indexOf('<') === -1) {
+            return [];
+        }
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var out = [];
+        doc.querySelectorAll('img[src]').forEach(function (img) {
+            var src = img.getAttribute('src') || '';
+            if (DATA_URI_IMAGE_RE.test(src)) {
+                out.push(src);
+            }
+        });
+        return out;
+    }
+
+    function dataUriToFile(dataUri, index) {
+        var match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(dataUri || '');
+        if (!match) {
+            return null;
+        }
+        try {
+            var binary = atob(match[2]);
+            var bytes = new Uint8Array(binary.length);
+            for (var i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            var mime = match[1].toLowerCase();
+            var ext = mime.indexOf('jpeg') !== -1 || mime.indexOf('jpg') !== -1
+                ? 'jpg'
+                : mime.indexOf('gif') !== -1
+                    ? 'gif'
+                    : mime.indexOf('webp') !== -1
+                        ? 'webp'
+                        : 'png';
+            return new File([bytes], 'pasted-image-' + (index || 0) + '.' + ext, { type: mime });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function syncEntryHtml(entry) {
+        if (!entry || !entry.quill || !entry.hidden) {
+            return;
+        }
+        normalizeArialContent(entry.quill.root);
+        entry.hidden.value = entry.quill.root.innerHTML;
+    }
+
+    function replaceDataUriImagesInEditor(quill, entry) {
+        if (!quill || !quill.root) {
+            return Promise.resolve();
+        }
+        var imgs = Array.prototype.slice.call(
+            quill.root.querySelectorAll('img[src^="data:image"]')
+        );
+        if (!imgs.length) {
+            return Promise.resolve();
+        }
+        var chain = Promise.resolve();
+        imgs.forEach(function (img, index) {
+            chain = chain.then(function () {
+                if (!img.isConnected) {
+                    return;
+                }
+                var dataUri = img.getAttribute('src') || '';
+                var file = dataUriToFile(dataUri, index);
+                if (!file) {
+                    img.remove();
+                    return;
+                }
+                return uploadImageFile(file, quill, {
+                    trackPending: false,
+                    replaceImg: img,
+                    entry: entry,
+                }).catch(function () {
+                    if (img.isConnected) {
+                        img.remove();
+                    }
+                });
+            });
+        });
+        return chain.then(function () {
+            syncEntryHtml(entry);
+        });
+    }
+
+    function scheduleDataUriReplacement(quill, entry) {
+        if (!quill || !entry) {
+            return;
+        }
+        var existing = dataUriReplaceTimers.get(quill);
+        if (existing) {
+            clearTimeout(existing);
+        }
+        dataUriReplaceTimers.set(
+            quill,
+            window.setTimeout(function () {
+                dataUriReplaceTimers.delete(quill);
+                replaceDataUriImagesInEditor(quill, entry).catch(function (err) {
+                    console.error('APM Quill data URI replacement failed:', err);
+                });
+            }, 200)
+        );
+    }
+
+    function ensureAllImagesUploaded(root) {
+        var scope = root || document;
+        var promises = [];
+        scope.querySelectorAll('.apm-quill-wrap[data-apm-quill-bound="1"]').forEach(function (wrap) {
+            var entry = registry.get(wrap);
+            if (entry && entry.quill) {
+                promises.push(replaceDataUriImagesInEditor(entry.quill, entry));
+            }
+        });
+        return Promise.all(promises);
+    }
+
+    function formHasPendingImages(form) {
+        if (pendingImageUploads > 0) {
+            return true;
+        }
+        var pending = false;
+        form.querySelectorAll('textarea.apm-quill-source').forEach(function (ta) {
+            if (htmlContainsDataUriImages(ta.value)) {
+                pending = true;
+            }
+        });
+        return pending;
+    }
+
     function registerFormats() {
         if (fontsRegistered || typeof Quill === 'undefined') {
             return;
@@ -105,7 +249,12 @@
         return mode === 'simple' ? simpleToolbar() : fullToolbar();
     }
 
-    function uploadImageFile(file, quill) {
+    function uploadImageFile(file, quill, options) {
+        options = options || {};
+        var trackPending = options.trackPending !== false;
+        if (trackPending) {
+            pendingImageUploads += 1;
+        }
         var fd = new FormData();
         fd.append('file', file);
         var token = csrfToken();
@@ -132,6 +281,12 @@
                 if (!url) {
                     throw new Error('Upload response missing URL');
                 }
+                if (options.replaceImg && options.replaceImg.isConnected) {
+                    options.replaceImg.setAttribute('src', url);
+                    prepareInsertedImage(quill);
+                    syncEntryHtml(options.entry);
+                    return;
+                }
                 var range = quill.getSelection(true);
                 var index = range ? range.index : quill.getLength();
                 quill.insertEmbed(index, 'image', url, 'user');
@@ -139,6 +294,11 @@
                 window.setTimeout(function () {
                     prepareInsertedImage(quill, index);
                 }, 0);
+            })
+            .finally(function () {
+                if (trackPending) {
+                    pendingImageUploads = Math.max(0, pendingImageUploads - 1);
+                }
             });
     }
 
@@ -674,6 +834,49 @@
         });
     }
 
+    function bindImagePaste(editorEl, quill, disabled) {
+        if (disabled) {
+            return;
+        }
+        editorEl.addEventListener(
+            'paste',
+            function (ev) {
+                var clipboard = ev.clipboardData;
+                if (!clipboard) {
+                    return;
+                }
+                var items = clipboard.items ? Array.prototype.slice.call(clipboard.items) : [];
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].kind === 'file' && items[i].type.indexOf('image/') === 0) {
+                        ev.preventDefault();
+                        ev.stopImmediatePropagation();
+                        var file = items[i].getAsFile();
+                        if (file) {
+                            uploadImageFile(file, quill).catch(function (err) {
+                                console.error('APM Quill image paste failed:', err);
+                            });
+                        }
+                        return;
+                    }
+                }
+                var html = clipboard.getData('text/html');
+                if (html && /data:image\//i.test(html)) {
+                    ev.preventDefault();
+                    ev.stopImmediatePropagation();
+                    collectDataUriImagesFromHtml(html).forEach(function (dataUri, index) {
+                        var file = dataUriToFile(dataUri, index);
+                        if (file) {
+                            uploadImageFile(file, quill).catch(function (err) {
+                                console.error('APM Quill HTML image paste failed:', err);
+                            });
+                        }
+                    });
+                }
+            },
+            true
+        );
+    }
+
     function bindQuill(wrap, options) {
         if (!wrap || wrap.dataset.apmQuillBound === '1' || typeof Quill === 'undefined') {
             return registry.get(wrap) || null;
@@ -705,6 +908,9 @@
             quill = new Quill(editorEl, {
                 theme: 'snow',
                 modules: {
+                    clipboard: {
+                        matchVisual: false,
+                    },
                     toolbar: {
                         container: toolbarItems(toolbarMode),
                         handlers: Object.assign(
@@ -719,6 +925,7 @@
                 },
             });
             bindImageDrop(editorEl, quill, false);
+            bindImagePaste(editorEl, quill, false);
             bindImageResize(quill, wrap);
             bindTableEditor(quill, wrap);
             configureArialFontPicker(wrap, quill);
@@ -743,7 +950,11 @@
                 normalizeArialContent(quill.root);
                 hidden.value = quill.root.innerHTML;
                 markQuillInvalid(entry, false);
+                scheduleDataUriReplacement(quill, entry);
             });
+            if (htmlContainsDataUriImages(quill.root.innerHTML)) {
+                scheduleDataUriReplacement(quill, entry);
+            }
         }
 
         return entry;
@@ -918,6 +1129,45 @@
                 ) {
                     return;
                 }
+                if (form.dataset.apmQuillResubmit === '1') {
+                    delete form.dataset.apmQuillResubmit;
+                    syncAll(form);
+                    var invalid = validateRequired(form);
+                    if (invalid) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        focusQuillEntry(invalid);
+                        if (typeof window.show_notification === 'function') {
+                            window.show_notification('Please complete all required rich-text fields.', 'warning');
+                        }
+                    }
+                    return;
+                }
+                if (formHasPendingImages(form)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    ensureAllImagesUploaded(form).then(function () {
+                        syncAll(form);
+                        if (formHasPendingImages(form)) {
+                            if (typeof window.show_notification === 'function') {
+                                window.show_notification('An image is still uploading. Wait a moment and try again.', 'warning');
+                            }
+                            return;
+                        }
+                        form.dataset.apmQuillResubmit = '1';
+                        if (typeof form.requestSubmit === 'function') {
+                            form.requestSubmit();
+                        } else {
+                            form.submit();
+                        }
+                    }).catch(function (err) {
+                        console.error('APM Quill image upload before submit failed:', err);
+                        if (typeof window.show_notification === 'function') {
+                            window.show_notification('Image upload failed. Try again or remove the image.', 'warning');
+                        }
+                    });
+                    return;
+                }
                 syncAll(form);
                 var invalid = validateRequired(form);
                 if (invalid) {
@@ -951,6 +1201,7 @@
         validateRequired: validateRequired,
         clearInvalidStates: clearQuillInvalidStates,
         destroyAll: destroyAll,
+        ensureAllImagesUploaded: ensureAllImagesUploaded,
         boot: boot,
     };
 

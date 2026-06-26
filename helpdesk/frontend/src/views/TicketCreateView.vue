@@ -8,7 +8,7 @@ import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { PRIORITY_ITEMS, type SelectNumberItem, type TicketPriority } from '../lib/helpdeskForm'
 import { notifyError, notifyWarning } from '../lib/notify'
-import { hasRichTextContent } from '../lib/richText'
+import { hasRichTextContent, htmlContainsDataUriImages } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
 
 interface StaffRow {
@@ -32,6 +32,8 @@ const catsErr = ref<string | null>(null)
 const catsLoading = ref(true)
 const refErr = ref<string | null>(null)
 const busy = ref(false)
+const inlineImageBusy = ref(false)
+const descriptionEditorRef = ref<InstanceType<typeof CbpRichTextEditor> | null>(null)
 /** Stable per visit so retries / double-clicks do not create duplicate tickets. */
 const ticketCreateIdempotencyKey = ref(
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -122,7 +124,8 @@ const canSubmit = computed(
     && descriptionReady.value
     && (form.category_id ?? 0) > 0
     && !catsLoading.value
-    && cats.value.length > 0,
+    && cats.value.length > 0
+    && !inlineImageBusy.value,
 )
 
 const categoryItems = computed((): SelectNumberItem[] =>
@@ -295,6 +298,15 @@ async function submit() {
   if (busy.value) {
     return
   }
+  if (inlineImageBusy.value) {
+    notifyWarning('An image is still uploading. Wait a moment and try again.')
+    return
+  }
+  await descriptionEditorRef.value?.ensureImagesUploaded()
+  if (htmlContainsDataUriImages(form.description)) {
+    notifyWarning('An image is still uploading. Wait a moment and try again.')
+    return
+  }
   busy.value = true
   try {
     const body: Record<string, unknown> = {
@@ -412,8 +424,10 @@ async function submit() {
 
         <UFormField label="Description" name="description" required class="full hd-rich-field">
           <CbpRichTextEditor
+            ref="descriptionEditorRef"
             v-model="form.description"
             :disabled="busy"
+            @uploading="inlineImageBusy = $event"
             placeholder="Describe what happened (required). Paste a screenshot of the error with ⌘V / Ctrl+V — include when it started and your device."
           />
           <template #hint>

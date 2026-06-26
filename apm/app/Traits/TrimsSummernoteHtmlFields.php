@@ -2,10 +2,12 @@
 
 namespace App\Traits;
 
-use Illuminate\Support\Str;
+use App\Helpers\PrintHelper;
+use App\Support\RichTextDataUriExternalizer;
 
 /**
  * Trims leading/trailing whitespace and invisible characters from Summernote HTML fields on save.
+ * Also externalizes pasted base64 images to uploaded file URLs.
  *
  * @see \App\Helpers\PrintHelper::trimRichTextInput()
  */
@@ -26,12 +28,14 @@ trait TrimsSummernoteHtmlFields
         static::saving(function ($model) {
             foreach ($model->summernoteHtmlFieldsToTrim() as $attr) {
                 $val = $model->getAttribute($attr);
-                if (!is_string($val) || $val === '') {
+                if (! is_string($val) || $val === '') {
                     continue;
                 }
-                $trimmed = Str::trim($val);
-                if ($trimmed !== $val) {
-                    $model->setAttribute($attr, $trimmed);
+                $prepared = PrintHelper::trimRichTextInput(
+                    RichTextDataUriExternalizer::externalize($val)
+                );
+                if ($prepared !== $val) {
+                    $model->setAttribute($attr, $prepared);
                 }
             }
         });

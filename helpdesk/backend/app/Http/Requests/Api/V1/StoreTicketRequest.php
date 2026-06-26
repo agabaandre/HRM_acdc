@@ -5,6 +5,7 @@ namespace App\Http\Requests\Api\V1;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
 use App\Services\HtmlSanitizer;
+use App\Services\RichTextDataUriExternalizer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -40,6 +41,21 @@ class StoreTicketRequest extends FormRequest
                 'min:1',
             ],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('description') || ! is_string($this->input('description'))) {
+            return;
+        }
+
+        $this->merge([
+            'description' => RichTextDataUriExternalizer::externalize(
+                $this->input('description'),
+                ticket: null,
+                user: $this->user(),
+            ),
+        ]);
     }
 
     public function withValidator(Validator $validator): void

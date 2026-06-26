@@ -5,6 +5,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
 import {
   buildQuillOptions,
+  collectDataUriImagesFromHtml,
+  dataUriToFile,
   DEFAULT_RICH_TEXT_MIN_ROWS,
   diffRemovedImageUrls,
   editorMinHeightPx,
@@ -56,6 +58,8 @@ const inlineImageBusy = ref(false)
 const imageHint = ref<string | null>(null)
 const lastHtml = ref(props.modelValue)
 const pendingDeleteKeys = new Set<string>()
+let dataUriReplaceTimer: ReturnType<typeof setTimeout> | null = null
+let replacingDataUris = false
 
 onMounted(async () => {
   await patchQuillExternalLinks()
@@ -160,11 +164,14 @@ function queueRemovedImages(previousHtml: string, nextHtml: string): void {
   }
 }
 
-async function uploadInlineImage(file: File): Promise<string | null> {
+async function uploadInlineImage(file: File, options: { trackBusy?: boolean } = {}): Promise<string | null> {
+  const trackBusy = options.trackBusy !== false
   if (!validateImageFile(file)) {
     return null
   }
-  inlineImageBusy.value = true
+  if (trackBusy) {
+    inlineImageBusy.value = true
+  }
   try {
     const fd = new FormData()
     fd.append('image', file)
@@ -179,7 +186,9 @@ async function uploadInlineImage(file: File): Promise<string | null> {
     imageHint.value = 'Image upload failed. Try a smaller file or a different format.'
     return null
   } finally {
-    inlineImageBusy.value = false
+    if (trackBusy) {
+      inlineImageBusy.value = false
+    }
   }
 }
 
@@ -212,30 +221,113 @@ function onContentUpdate(value: string) {
   queueRemovedImages(lastHtml.value, value)
   lastHtml.value = value
   emit('update:modelValue', value)
+  scheduleDataUriReplacement()
+}
+
+async function replaceDataUriImagesInEditor(): Promise<void> {
+  if (!props.enableImages || replacingDataUris) {
+    return
+  }
+  const quill = getQuill()
+  if (!quill?.root) {
+    return
+  }
+  const imgs = Array.from(
+    quill.root.querySelectorAll('img[src^="data:image"]'),
+  ) as HTMLImageElement[]
+  if (!imgs.length) {
+    return
+  }
+
+  replacingDataUris = true
+  inlineImageBusy.value = true
+  try {
+    for (let i = 0; i < imgs.length; i += 1) {
+      const img = imgs[i]
+      if (!img?.isConnected) {
+        continue
+      }
+      const dataUri = img.getAttribute('src') ?? ''
+      const file = dataUriToFile(dataUri, i)
+      if (!file) {
+        img.remove()
+        continue
+      }
+      const url = await uploadInlineImage(file, { trackBusy: false })
+      if (url) {
+        img.setAttribute('src', url)
+        const prepared = prepareQuillInsertedImage(quill)
+        const select = imageResize.value?.selectImage
+        if (prepared && select) {
+          selectQuillImageWhenReady(prepared, select)
+        }
+      } else {
+        img.remove()
+      }
+    }
+    syncEditorHtml()
+  } finally {
+    replacingDataUris = false
+    inlineImageBusy.value = false
+  }
+}
+
+function scheduleDataUriReplacement(): void {
+  if (!props.enableImages) {
+    return
+  }
+  if (dataUriReplaceTimer) {
+    clearTimeout(dataUriReplaceTimer)
+  }
+  dataUriReplaceTimer = setTimeout(() => {
+    dataUriReplaceTimer = null
+    void replaceDataUriImagesInEditor()
+  }, 200)
+}
+
+async function uploadClipboardImage(file: File): Promise<void> {
+  const url = await uploadInlineImage(file)
+  if (url) {
+    insertImageAtCursor(url)
+  }
 }
 
 function setupPasteAndDrop(quill: any): void {
   const root = quill.root as HTMLElement
-  root.addEventListener('paste', async (ev: ClipboardEvent) => {
-    const items = ev.clipboardData?.items
-    if (!items) {
-      return
-    }
-    for (const it of Array.from(items)) {
-      if (it.kind === 'file' && it.type.startsWith('image/')) {
-        ev.preventDefault()
-        ev.stopPropagation()
-        const file = it.getAsFile()
-        if (file) {
-          const url = await uploadInlineImage(file)
-          if (url) {
-            insertImageAtCursor(url)
-          }
-        }
+  root.addEventListener(
+    'paste',
+    async (ev: ClipboardEvent) => {
+      const clipboard = ev.clipboardData
+      if (!clipboard) {
         return
       }
-    }
-  })
+
+      for (const it of Array.from(clipboard.items)) {
+        if (it.kind === 'file' && it.type.startsWith('image/')) {
+          ev.preventDefault()
+          ev.stopImmediatePropagation()
+          const file = it.getAsFile()
+          if (file) {
+            await uploadClipboardImage(file)
+          }
+          return
+        }
+      }
+
+      const html = clipboard.getData('text/html')
+      if (html && /data:image\//i.test(html)) {
+        ev.preventDefault()
+        ev.stopImmediatePropagation()
+        for (const dataUri of collectDataUriImagesFromHtml(html)) {
+          const file = dataUriToFile(dataUri)
+          if (file) {
+            await uploadClipboardImage(file)
+          }
+        }
+      }
+    },
+    true,
+  )
   root.addEventListener('drop', async (ev: DragEvent) => {
     if (!ev.dataTransfer?.files?.length) {
       return
@@ -277,6 +369,10 @@ function onReady(quill: unknown) {
   }
   emit('ready', quill)
 }
+
+defineExpose({
+  ensureImagesUploaded: () => replaceDataUriImagesInEditor(),
+})
 </script>
 
 <template>

@@ -12,6 +12,7 @@ use App\Models\WorkflowDefinition;
 use App\Services\OtherMemoApproverNotifier;
 use App\Support\ApprovedMemoReferenceResolver;
 use App\Support\OtherMemoCc;
+use App\Support\RichTextDataUriExternalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -745,7 +746,10 @@ class OtherMemoController extends Controller
                 'number' => $raw === '' ? null : (float) $raw,
                 'email' => $raw === '' ? null : (string) $raw,
                 'date' => $raw === '' ? null : (string) $raw,
-                'text_summernote', 'textarea' => (string) $raw,
+                'text_summernote' => \App\Helpers\PrintHelper::trimRichTextInput(
+                    RichTextDataUriExternalizer::externalize((string) $raw)
+                ),
+                'textarea' => (string) $raw,
                 default => is_array($raw) ? $raw : (string) $raw,
             };
         }
