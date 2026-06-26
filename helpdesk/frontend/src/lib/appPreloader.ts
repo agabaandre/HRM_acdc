@@ -3,7 +3,7 @@ import { ref } from 'vue'
 export const routePreloaderVisible = ref(false)
 
 /** Minimum time the preloader stays visible, even on fast loads. */
-export const PRELOADER_MIN_MS = 3000
+export const PRELOADER_MIN_MS = 2000
 
 const bootShownAt = Date.now()
 let routePending = 0
