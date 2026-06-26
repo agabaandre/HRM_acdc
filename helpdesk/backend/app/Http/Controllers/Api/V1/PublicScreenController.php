@@ -281,9 +281,15 @@ class PublicScreenController extends Controller
             return [];
         }
 
+        $directory->ensureStaffCacheWarm();
+        $metaByStaff = $directory->dutyStationMetaFromTickets();
+
         $buckets = [];
         foreach ($staffIds as $staffId) {
-            $name = $directory->dutyStationLabelForStaffId($staffId > 0 ? $staffId : null);
+            $name = $directory->dutyStationLabelForStaffIdWithMeta(
+                $staffId > 0 ? $staffId : null,
+                $metaByStaff,
+            );
             $buckets[$name] ??= [
                 'name' => $name,
                 'open' => 0,

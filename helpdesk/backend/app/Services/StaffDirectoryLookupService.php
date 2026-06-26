@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskTicket;
 use App\Support\StaffShareNormalizer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -24,6 +25,8 @@ class StaffDirectoryLookupService
         if ($staffId < 1) {
             return null;
         }
+
+        $this->ensureStaffCacheWarm();
 
         $limit = (int) config('helpdesk.staff_api.staff_fetch_limit', 5000);
         $cacheKey = 'helpdesk_reference_staff_v1_'.$limit;
@@ -85,11 +88,13 @@ class StaffDirectoryLookupService
             return $this->dutyStationMapCache;
         }
 
+        $this->ensureStaffCacheWarm();
+
         $limit = (int) config('helpdesk.staff_api.staff_fetch_limit', 5000);
         $cacheKey = 'helpdesk_reference_staff_v1_'.$limit;
         $staffRows = Cache::get($cacheKey);
         if (! is_array($staffRows)) {
-            return [];
+            return $this->dutyStationMapCache = [];
         }
 
         $map = [];
@@ -109,6 +114,36 @@ class StaffDirectoryLookupService
     }
 
     /**
+     * Latest non-empty requester_duty_station stored on tickets (new tickets persist this on create).
+     *
+     * @return array<int, string>
+     */
+    public function dutyStationMetaFromTickets(): array
+    {
+        $out = [];
+        HelpdeskTicket::query()
+            ->where('requester_staff_id', '>', 0)
+            ->whereNotNull('meta')
+            ->orderByDesc('id')
+            ->select(['requester_staff_id', 'meta'])
+            ->chunk(500, function ($rows) use (&$out) {
+                foreach ($rows as $ticket) {
+                    $staffId = (int) $ticket->requester_staff_id;
+                    if ($staffId < 1 || isset($out[$staffId])) {
+                        continue;
+                    }
+                    $meta = is_array($ticket->meta) ? $ticket->meta : [];
+                    $station = trim((string) ($meta['requester_duty_station'] ?? ''));
+                    if ($station !== '') {
+                        $out[$staffId] = $station;
+                    }
+                }
+            });
+
+        return $out;
+    }
+
+    /**
      * Display label for a requester's duty station (never null).
      */
     public function dutyStationLabelForStaffId(?int $staffId): string
@@ -118,6 +153,45 @@ class StaffDirectoryLookupService
         }
 
         return $this->dutyStationForStaffId($staffId) ?? 'Unspecified';
+    }
+
+    /**
+     * Resolve duty station for screen/reports: ticket meta, then staff directory, then profile.
+     */
+    public function dutyStationLabelForStaffIdWithMeta(?int $staffId, array $metaByStaff): string
+    {
+        if ($staffId !== null && $staffId > 0) {
+            $fromMeta = trim((string) ($metaByStaff[$staffId] ?? ''));
+            if ($fromMeta !== '') {
+                return $fromMeta;
+            }
+        }
+
+        return $this->dutyStationLabelForStaffId($staffId);
+    }
+
+    /**
+     * Populate staff reference cache on demand (e.g. public screen before directory sync was run).
+     */
+    public function ensureStaffCacheWarm(): void
+    {
+        $limit = (int) config('helpdesk.staff_api.staff_fetch_limit', 5000);
+        $cacheKey = 'helpdesk_reference_staff_v1_'.$limit;
+        $existing = Cache::get($cacheKey);
+        if (is_array($existing) && $existing !== []) {
+            return;
+        }
+
+        $client = app(StaffPortalReferenceClient::class);
+        if (! $client->isConfigured()) {
+            return;
+        }
+
+        try {
+            app(ReferenceDataSyncService::class)->warmCaches($client);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**

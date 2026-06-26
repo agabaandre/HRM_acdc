@@ -157,6 +157,11 @@ class TicketController extends Controller
             ? 'medium'
             : ($request->validated('priority') ?? 'medium');
 
+        $requesterDutyStation = $directoryLookup->dutyStationForStaffId($requesterStaffId);
+        $ticketMeta = $requesterDutyStation !== null && $requesterDutyStation !== ''
+            ? ['requester_duty_station' => $requesterDutyStation]
+            : null;
+
         $ticket = HelpdeskTicket::query()->create([
             'created_by_user_id' => $user->id,
             'ticket_number' => $numbers->next(),
@@ -172,11 +177,11 @@ class TicketController extends Controller
             'requester_email' => $requesterEmail,
             'directorate_id' => $ticketDirectorateId,
             'division_id' => $ticketDivisionId,
+            'meta' => $ticketMeta,
         ]);
 
         if ($isEndUser) {
-            $station = $directoryLookup->dutyStationForStaffId($requesterStaffId);
-            AssignEndUserTicket::dispatchAfterResponse($ticket->id, $station);
+            AssignEndUserTicket::dispatchAfterResponse($ticket->id, $requesterDutyStation);
         } else {
             $ticket->assigned_user_id = $user->id;
             $ticket->save();

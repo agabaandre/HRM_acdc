@@ -225,6 +225,34 @@ class PublicScreenApiTest extends TestCase
         $response->assertJsonPath('data.by_duty_station.0.closed_this_week', 1);
     }
 
+    public function test_screen_uses_requester_duty_station_from_ticket_meta(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009930',
+            'category_id' => $cat->id,
+            'subject' => 'Closed Accra',
+            'description' => 'Fixed',
+            'priority' => 'low',
+            'status' => 'closed',
+            'source' => 'web',
+            'requester_staff_id' => 99601,
+            'requester_name' => 'Accra Staff',
+            'requester_email' => 'accra@example.org',
+            'resolved_at' => now(),
+            'closed_at' => now(),
+            'meta' => ['requester_duty_station' => 'Accra'],
+        ]);
+
+        $response = $this->getJson('/api/v1/public/screen');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.by_duty_station.0.name', 'Accra');
+        $response->assertJsonPath('data.by_duty_station.0.closed_this_week', 1);
+    }
+
     public function test_screen_lists_agent_closures_for_current_month(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);

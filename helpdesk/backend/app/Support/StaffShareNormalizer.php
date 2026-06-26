@@ -101,7 +101,7 @@ final class StaffShareNormalizer
         if ($name === '') {
             $name = 'Staff '.$id;
         }
-        $duty = $r['duty_station_name'] ?? $r['duty_station'] ?? null;
+        $duty = $r['duty_station_name'] ?? $r['duty_station'] ?? $r['region_name'] ?? $r['physical_location'] ?? null;
         $dutyStr = $duty !== null && $duty !== '' ? trim((string) $duty) : null;
 
         return [
