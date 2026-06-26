@@ -16,6 +16,7 @@ class RequesterTicketFollowUpService
     public function __construct(
         private readonly TicketCommentNotifier $notifier,
         private readonly TicketHistoryLogger $logger,
+        private readonly TicketFirstResponseService $firstResponse,
     ) {}
 
     public function isClosedStatus(string $status): bool
@@ -42,6 +43,8 @@ class RequesterTicketFollowUpService
             'is_internal' => $isInternal,
             'body' => $body,
         ]);
+
+        $this->firstResponse->recordFromComment($ticket, $profile, $isInternal);
 
         $ticketReopened = false;
         if (

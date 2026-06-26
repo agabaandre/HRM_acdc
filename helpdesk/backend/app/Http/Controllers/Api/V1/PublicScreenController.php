@@ -7,6 +7,7 @@ use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
+use App\Services\TicketFirstResponseService;
 use App\Support\StaffPhotoUrl;
 use Illuminate\Http\JsonResponse;
 
@@ -26,7 +27,7 @@ class PublicScreenController extends Controller
     /** Inclusive set including the "waiting on requester" hand-off state. */
     private const PENDING_STATUSES = ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'];
 
-    public function __invoke(): JsonResponse
+    public function __invoke(TicketFirstResponseService $firstResponse): JsonResponse
     {
         $now = now();
         $startOfToday = $now->copy()->startOfDay();
@@ -38,7 +39,7 @@ class PublicScreenController extends Controller
             'data' => [
                 'generated_at' => $now->toIso8601String(),
                 'volumes' => $this->volumes($now, $startOfToday, $endOfToday),
-                'wait' => $this->waitMetrics($now),
+                'wait' => $this->waitMetrics($now, $firstResponse),
                 'sla' => $this->slaMetrics($sevenDaysAgo, $now),
                 'by_priority' => $this->byPriority(),
                 'by_category' => $this->byCategory(),
@@ -103,16 +104,12 @@ class PublicScreenController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function waitMetrics(\DateTimeInterface $now): array
+    private function waitMetrics(\DateTimeInterface $now, TicketFirstResponseService $firstResponse): array
     {
         // Average first-response minutes for tickets that received their first
         // response in the last 24h (smoothed; ignores ancient outliers).
         $oneDayAgo = (new \DateTimeImmutable($now->format(\DateTimeInterface::ATOM)))->modify('-1 day');
-        $avg = HelpdeskTicket::query()
-            ->whereNotNull('first_response_at')
-            ->where('first_response_at', '>=', $oneDayAgo->format('Y-m-d H:i:s'))
-            ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, created_at, first_response_at)) AS avg_min')
-            ->value('avg_min');
+        $avg = $firstResponse->averageFirstResponseMinutesSince($oneDayAgo);
 
         $oldest = HelpdeskTicket::query()
             ->whereIn('status', self::ACTIVE_STATUSES)

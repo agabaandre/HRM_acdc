@@ -7,6 +7,7 @@ use App\Mail\TicketResolutionMail;
 use App\Models\HelpdeskKbArticle;
 use App\Models\HelpdeskTicket;
 use App\Services\HtmlSanitizer;
+use App\Services\TicketFirstResponseService;
 use App\Services\TicketHistoryLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class TicketResolutionController extends Controller
 {
-    public function submit(Request $request, HelpdeskTicket $ticket, TicketHistoryLogger $logger): JsonResponse
+    public function submit(Request $request, HelpdeskTicket $ticket, TicketHistoryLogger $logger, TicketFirstResponseService $firstResponse): JsonResponse
     {
         $this->authorize('submitResolution', $ticket);
 
@@ -44,6 +45,8 @@ class TicketResolutionController extends Controller
         $ticket->resolved_by_user_id = $request->user()->id;
         $ticket->resolution_confirm_token = null;
         $ticket->resolution_confirmed_at = null;
+
+        $firstResponse->markIfEmpty($ticket, $now);
 
         $ticket->save();
 
