@@ -100,7 +100,13 @@
                 <label for="activity_request_remarks" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i>Request for Approval  <span class="text-danger">*</span>
                 </label>
-                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control summernote" rows="3" required>{{ old('activity_request_remarks', $activity->activity_request_remarks ?? '') }}</textarea>
+                <x-apm-rich-editor
+                    name="activity_request_remarks"
+                    id="activity_request_remarks"
+                    :value="old('activity_request_remarks', $activity->activity_request_remarks ?? '')"
+                    required
+                    min-height="200px"
+                />
             </div>
 
             
@@ -279,19 +285,13 @@ $(document).ready(function () {
             return;
         }
         
+        if (typeof window.ApmQuillEditor !== 'undefined') {
+            window.ApmQuillEditor.syncAll(this);
+        }
+
         // Disable submit button and show loading state
         submitBtn.prop('disabled', true)
             .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Saving...');
-        
-        // Sync Summernote editors (Background/Context, Request for Approval) to textareas so full content is submitted without loss
-        $('textarea.summernote').each(function() {
-            var $ta = $(this);
-            try {
-                if ($ta.summernote('code') !== undefined) {
-                    $ta.val($ta.summernote('code'));
-                }
-            } catch (e) {}
-        });
         
         // Create FormData object to handle file uploads
         const formData = new FormData(this);

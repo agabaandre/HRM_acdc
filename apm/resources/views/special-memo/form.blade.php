@@ -36,7 +36,13 @@
                 <label for="background" class="form-label fw-semibold">
                     <i class="fas fa-align-left me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                 </label>
-                <textarea name="background" id="background" class="form-control summernote" rows="3" required>{{ old('background', $specialMemo->background ?? '') }}</textarea>
+                <x-apm-rich-editor
+                    name="background"
+                    id="background"
+                    :value="old('background', $specialMemo->background ?? '')"
+                    required
+                    min-height="200px"
+                />
             </div>
             <div class="col-md-6">
                 <label for="responsible_person_id" class="form-label fw-semibold">
@@ -185,7 +191,13 @@
                 <label for="justification" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i> Supporting Reasons for the Special Memo <span class="text-danger">*</span>
                 </label>
-                <textarea name="justification" id="justification" class="form-control summernote" rows="6" required>{{ old('justification', $specialMemo->justification ?? '') }}</textarea>
+                <x-apm-rich-editor
+                    name="justification"
+                    id="justification"
+                    :value="old('justification', $specialMemo->justification ?? '')"
+                    required
+                    min-height="260px"
+                />
             </div>
            
             <div class="mt-5">

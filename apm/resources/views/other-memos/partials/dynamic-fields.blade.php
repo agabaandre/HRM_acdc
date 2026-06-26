@@ -32,7 +32,13 @@
             </div>
         @else
             @if ($type === 'text_summernote')
-                <textarea name="payload[{{ $k }}]" id="payload_{{ $k }}" class="form-control summernote" rows="4" @if ($req) required @endif>{{ old('payload.' . $k, $val) }}</textarea>
+                <x-apm-rich-editor
+                    :name="'payload['.$k.']'"
+                    :id="'payload_'.$k"
+                    :value="old('payload.' . $k, $val)"
+                    :required="$req"
+                    min-height="220px"
+                />
             @elseif($type === 'textarea')
                 <textarea name="payload[{{ $k }}]" class="form-control" rows="3" @if ($req) required @endif>{{ old('payload.' . $k, $val) }}</textarea>
             @elseif($type === 'number')

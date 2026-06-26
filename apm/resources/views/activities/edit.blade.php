@@ -139,7 +139,13 @@
                 <label for="activity_request_remarks" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i>Request for Approval  <span class="text-danger">*</span>
                 </label>
-                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control summernote" rows="3" required>{{ old('activity_request_remarks', $activity->activity_request_remarks ?? '') }}</textarea>
+                <x-apm-rich-editor
+                    name="activity_request_remarks"
+                    id="activity_request_remarks"
+                    :value="old('activity_request_remarks', $activity->activity_request_remarks ?? '')"
+                    required
+                    min-height="200px"
+                />
             </div>
 
                 <!-- Attachments Section -->
@@ -300,15 +306,9 @@ $(document).ready(function () {
     validateActivityTitleField();
 
     $('#activityForm').on('submit', function (e) {
-        // Sync Summernote editors to textareas so full content is submitted without loss
-        $('textarea.summernote').each(function() {
-            var $ta = $(this);
-            try {
-                if ($ta.summernote('code') !== undefined) {
-                    $ta.val($ta.summernote('code'));
-                }
-            } catch (err) {}
-        });
+        if (typeof window.ApmQuillEditor !== 'undefined') {
+            window.ApmQuillEditor.syncAll(this);
+        }
         if (!validateActivityTitleField()) {
             e.preventDefault();
             $activityTitleInput.focus();

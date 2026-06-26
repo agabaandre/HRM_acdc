@@ -9,6 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="no">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="apm-image-upload-url" content="{{ route('image.upload') }}">
     <meta name="user-logged-in" content="{{ !empty(session('user')) ? 'true' : 'false' }}">
     <meta name="api-base-url" content="{{ url('/api') }}">
     <meta name="base-url" content="{{ session('user.base_url', env('BASE_URL', 'http://localhost/staff')) }}">
@@ -450,6 +451,9 @@
                 } catch (e2) {}
             });
             try {
+                if (typeof window.ApmQuillEditor !== 'undefined') {
+                    window.ApmQuillEditor.destroyAll(document);
+                }
                 jQuery('#memo-type-preview-host textarea.memo-type-sn').each(function () {
                     var $t = jQuery(this);
                     if ($t.summernote && $t.next('.note-editor').length) {

@@ -172,7 +172,13 @@
                     <label for="activity_request_remarks" class="form-label fw-semibold">
                         <i class="fas fa-comment-dots me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
                     </label>
-                    <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control summernote" rows="3" required>{{ old('activity_request_remarks', $specialMemo->activity_request_remarks ?? '') }}</textarea>
+                    <x-apm-rich-editor
+                        name="activity_request_remarks"
+                        id="activity_request_remarks"
+                        :value="old('activity_request_remarks', $specialMemo->activity_request_remarks ?? '')"
+                        required
+                        min-height="200px"
+                    />
                 </div>
                 <!-- Attachments Section -->
                 <div class="mt-5">

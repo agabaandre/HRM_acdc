@@ -86,7 +86,13 @@
                     <label for="activity_request_remarks" class="form-label fw-semibold">
                         <i class="fas fa-comment-dots me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
                     </label>
-                    <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control summernote" rows="3" required>{{ old('activity_request_remarks', $specialMemo->activity_request_remarks ?? '') }}</textarea>
+                    <x-apm-rich-editor
+                        name="activity_request_remarks"
+                        id="activity_request_remarks"
+                        :value="old('activity_request_remarks', $specialMemo->activity_request_remarks ?? '')"
+                        required
+                        min-height="200px"
+                    />
                 </div>
                 <!-- Attachments Section -->
                 <div class="mt-5">
@@ -203,13 +209,8 @@ $(document).ready(function () {
         var originalText = submitBtn.length ? submitBtn.html() : '';
         var loadingText = '<i class="bx bx-loader-alt bx-spin me-1"></i> Processing...';
         if (submitBtn.length) submitBtn.prop('disabled', true).html(loadingText);
-        if (typeof $ !== 'undefined' && $('.summernote').length && $.fn.summernote) {
-            try {
-                $('#activityForm .summernote').each(function() {
-                    var $el = $(this);
-                    if ($el.data('summernote')) $el.val($el.summernote('code'));
-                });
-            } catch (err) {}
+        if (typeof window.ApmQuillEditor !== 'undefined') {
+            window.ApmQuillEditor.syncAll(this);
         }
         var formData = new FormData(this);
         $.ajax({

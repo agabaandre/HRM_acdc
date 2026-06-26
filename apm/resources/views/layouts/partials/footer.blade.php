@@ -106,6 +106,8 @@
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script src="{{ asset('js/apm-quill-editor.js') }}?v=1"></script>
 
 <script src="{{ asset('assets/plugins/smart-wizard/js/jquery.smartWizard.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -484,9 +486,13 @@
   };
 
   $(document).ready(function () {
+    if (typeof window.ApmQuillEditor !== 'undefined') {
+      window.ApmQuillEditor.boot();
+    }
+
     $('.summernote').each(function () {
       var $el = $(this);
-      if ($el.next('.note-editor').length) {
+      if ($el.next('.note-editor').length || $el.attr('data-apm-quill-upgraded') === '1' || $el.closest('.apm-quill-wrap').length) {
         return;
       }
       $el.summernote(window.apmSummernoteOptions());

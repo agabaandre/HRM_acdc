@@ -143,6 +143,7 @@
 
     /* Summernote editor + rendered other-memo rich text: tables */
     .note-editable table,
+    .apm-quill-editor .ql-editor table,
     .rich-text-content table,
     .html-content table {
         max-width: 100%;
@@ -151,6 +152,8 @@
     }
     .note-editable table td,
     .note-editable table th,
+    .apm-quill-editor .ql-editor table td,
+    .apm-quill-editor .ql-editor table th,
     .rich-text-content table td,
     .rich-text-content table th,
     .html-content table td,
@@ -158,6 +161,37 @@
         border: 1px solid #dee2e6;
         padding: 0.35rem 0.5rem;
         vertical-align: top;
+    }
+
+    /* Shared Quill rich editor (memos, activities, other memo types) */
+    .apm-quill-wrap .apm-quill-editor .ql-editor {
+        min-height: 180px;
+        font-family: Arial, Calibri, Tahoma, Verdana, "Times New Roman", "Courier New", sans-serif;
+        font-size: 12pt;
+        line-height: 1.35;
+    }
+    .apm-quill-wrap .apm-quill-editor .ql-toolbar {
+        flex-wrap: wrap;
+        border-top-left-radius: 0.375rem;
+        border-top-right-radius: 0.375rem;
+        background: #f8f9fa;
+    }
+    .apm-quill-wrap .apm-quill-editor .ql-container {
+        border-bottom-left-radius: 0.375rem;
+        border-bottom-right-radius: 0.375rem;
+    }
+    .apm-quill-wrap.is-invalid .apm-quill-editor {
+        border-color: #dc3545 !important;
+    }
+    fieldset:disabled .apm-quill-wrap .ql-toolbar {
+        display: none;
+    }
+    fieldset:disabled .apm-quill-wrap .apm-quill-editor {
+        border-color: #dee2e6 !important;
+        background: #f8f9fa !important;
+    }
+    fieldset:disabled .apm-quill-wrap .ql-editor {
+        cursor: default;
     }
 
     .modal.fade .modal-dialog.modal-bottom {

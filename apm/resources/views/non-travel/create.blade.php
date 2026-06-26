@@ -140,9 +140,14 @@
                                 <label for="background" class="form-label fw-semibold">
                                     <i class="bx bx-info-circle me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                                 </label>
-                                <textarea name="background" id="background" 
-                                          class="form-control summernote @error('background') is-invalid @enderror" 
-                                          rows="3" required>{{ old('background') }}</textarea>
+                                <x-apm-rich-editor
+                                    name="background"
+                                    id="background"
+                                    :value="old('background')"
+                                    required
+                                    min-height="200px"
+                                    :invalid="$errors->has('background')"
+                                />
                                 @error('background')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -160,8 +165,12 @@
                                 <label for="justification" class="form-label fw-semibold">
                                     <i class="bx bx-info me-1 text-success"></i> Justification
                                 </label>
-                                <textarea name="justification" id="justification" 
-                                          class="form-control summernote" rows="2">{{ old('justification') }}</textarea>
+                                <x-apm-rich-editor
+                                    name="justification"
+                                    id="justification"
+                                    :value="old('justification')"
+                                    min-height="180px"
+                                />
                             </div>
                         </div>
                     </div>
@@ -229,9 +238,14 @@
                                 <label for="activity_request_remarks" class="form-label fw-semibold">
                                     <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
                                 </label>
-                                <textarea name="activity_request_remarks" id="activity_request_remarks" 
-                                          class="form-control summernote @error('approval') is-invalid @enderror" 
-                                          rows="2" required>{{ old('activity_request_remarks') }}</textarea>
+                                <x-apm-rich-editor
+                                    name="activity_request_remarks"
+                                    id="activity_request_remarks"
+                                    :value="old('activity_request_remarks')"
+                                    required
+                                    min-height="180px"
+                                    :invalid="$errors->has('activity_request_remarks') || $errors->has('approval')"
+                                />
                                 @error('activity_request_remarks')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -660,6 +674,10 @@
         // AJAX form submission
         $('#nonTravelForm').on('submit', function(e) {
             e.preventDefault();
+
+            if (typeof window.ApmQuillEditor !== 'undefined') {
+                window.ApmQuillEditor.syncAll(this);
+            }
 
             // Block submit if Title of Activity exceeds 200 characters
             if (!validateTitleField()) {

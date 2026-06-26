@@ -239,7 +239,9 @@
         var host = document.getElementById('memo-dynamic-fields');
         if (!host) return;
 
-        if (typeof jQuery !== 'undefined') {
+        if (typeof window.ApmQuillEditor !== 'undefined') {
+            window.ApmQuillEditor.destroyAll(host);
+        } else if (typeof jQuery !== 'undefined') {
             jQuery(host).find('textarea.summernote').each(function () {
                 var $t = jQuery(this);
                 if ($t.next('.note-editor').length && typeof $t.summernote === 'function') {
@@ -271,8 +273,8 @@
             if (f.field_type === 'text_summernote') {
                 inp = document.createElement('textarea');
                 inp.name = name;
-                inp.className = 'form-control summernote';
-                inp.rows = 4;
+                inp.id = 'payload_' + k;
+                inp.className = 'form-control apm-rich-editor';
                 if (f.required) inp.required = true;
             } else if (f.field_type === 'textarea') {
                 inp = document.createElement('textarea');
@@ -312,7 +314,9 @@
             host.appendChild(wrap);
         });
 
-        if (typeof jQuery !== 'undefined' && typeof window.apmSummernoteOptions === 'function') {
+        if (typeof window.ApmQuillEditor !== 'undefined') {
+            window.ApmQuillEditor.initAll(host);
+        } else if (typeof jQuery !== 'undefined' && typeof window.apmSummernoteOptions === 'function') {
             jQuery(host).find('textarea.summernote').each(function () {
                 var $ta = jQuery(this);
                 if (!$ta.next('.note-editor').length) {
@@ -593,6 +597,10 @@
         if (!form || form.dataset.apmSummernoteSubmitBound === '1') return;
         form.dataset.apmSummernoteSubmitBound = '1';
         form.addEventListener('submit', function () {
+            if (typeof window.ApmQuillEditor !== 'undefined') {
+                window.ApmQuillEditor.syncAll(form);
+                return;
+            }
             if (typeof jQuery === 'undefined') return;
             jQuery('#memo-dynamic-fields textarea.summernote').each(function () {
                 var $t = jQuery(this);

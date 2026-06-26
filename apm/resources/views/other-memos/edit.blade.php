@@ -120,7 +120,11 @@
 
 <script>
 (function() {
-    function syncSummernote() {
+    function syncRichEditors() {
+        if (typeof window.ApmQuillEditor !== 'undefined') {
+            window.ApmQuillEditor.syncAll(form);
+            return;
+        }
         if (typeof jQuery === 'undefined') return;
         jQuery('textarea.summernote').each(function() {
             var $t = jQuery(this);
@@ -131,7 +135,7 @@
     }
     var form = document.getElementById('other-memo-edit-form');
     var methodInput = document.getElementById('other-memo-form-method');
-    form?.addEventListener('submit', syncSummernote);
+    form?.addEventListener('submit', syncRichEditors);
     document.getElementById('other-memo-save-draft')?.addEventListener('click', function() {
         if (methodInput) methodInput.disabled = false;
     });
@@ -140,7 +144,7 @@
             e.preventDefault();
             return;
         }
-        syncSummernote();
+        syncRichEditors();
         if (methodInput) methodInput.disabled = true;
     });
 
