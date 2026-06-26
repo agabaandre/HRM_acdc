@@ -197,14 +197,15 @@ export function setupQuillImageResize(
     return
   }
 
-  const container = wrap.querySelector('.cbp-quill-editor') as HTMLElement | null
-  if (!container) {
+  const container = wrap.querySelector('.cbp-quill-editor')
+  if (!(container instanceof HTMLElement)) {
     return
   }
+  const editorEl = container
 
   wrap.dataset.cbpImageResizeBound = '1'
   const root = quill.root
-  container.style.position = 'relative'
+  editorEl.style.position = 'relative'
 
   const overlay = document.createElement('div')
   overlay.className = 'cbp-quill-image-overlay is-hidden'
@@ -217,7 +218,7 @@ export function setupQuillImageResize(
     + '</div>'
     + '<div class="cbp-quill-image-frame"></div>'
     + '<span class="cbp-quill-image-handle" title="Drag to resize"></span>'
-  container.appendChild(overlay)
+  editorEl.appendChild(overlay)
 
   const frame = overlay.querySelector('.cbp-quill-image-frame') as HTMLElement
   const handle = overlay.querySelector('.cbp-quill-image-handle') as HTMLElement
@@ -236,7 +237,7 @@ export function setupQuillImageResize(
   }
 
   function editorWidth(): number {
-    return root.clientWidth || container.clientWidth || 1
+    return root.clientWidth || editorEl.clientWidth || 1
   }
 
   function setImageWidthPercent(img: HTMLImageElement, percent: number): void {
@@ -253,9 +254,9 @@ export function setupQuillImageResize(
       return
     }
     const imgRect = img.getBoundingClientRect()
-    const boxRect = container.getBoundingClientRect()
-    const top = imgRect.top - boxRect.top + container.scrollTop
-    const left = imgRect.left - boxRect.left + container.scrollLeft
+    const boxRect = editorEl.getBoundingClientRect()
+    const top = imgRect.top - boxRect.top + editorEl.scrollTop
+    const left = imgRect.left - boxRect.left + editorEl.scrollLeft
     overlay.classList.remove('is-hidden')
     overlay.style.top = `${top}px`
     overlay.style.left = `${left}px`
