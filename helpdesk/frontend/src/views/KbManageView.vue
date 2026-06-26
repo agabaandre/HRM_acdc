@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import KbArticleEditModal, { type KbArticleEditForm } from '../components/kb/KbArticleEditModal.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
@@ -8,6 +8,7 @@ import { api } from '../lib/api'
 import { notifyError, notifySuccess } from "../lib/notify"
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { fieldError, type SelectNumberItem } from '../lib/helpdeskForm'
+import { rowIndex } from '../lib/ticketTableMeta'
 import { hasRichTextContent } from '../lib/richText'
 import { stripHtml } from '../lib/stripHtml'
 
@@ -34,6 +35,8 @@ const rows = ref<KbArticleRow[]>([])
 const busy = ref<number | null>(null)
 const filterCat = ref<number | 0>(0)
 const search = ref('')
+const KB_PER_PAGE = 20
+const page = ref(1)
 
 const showCreateForm = ref(false)
 const editOpen = ref(false)
@@ -109,6 +112,24 @@ const filtered = computed<KbArticleRow[]>(() => {
     }
     return true
   })
+})
+
+const lastPage = computed(() => Math.max(1, Math.ceil(filtered.value.length / KB_PER_PAGE)))
+
+const paginated = computed(() => {
+  const start = (page.value - 1) * KB_PER_PAGE
+  return filtered.value.slice(start, start + KB_PER_PAGE)
+})
+
+const hasPrev = computed(() => page.value > 1)
+const hasNext = computed(() => page.value < lastPage.value)
+
+function rowCounter(idx: number): number {
+  return rowIndex(page.value, KB_PER_PAGE, idx)
+}
+
+watch([filterCat, search], () => {
+  page.value = 1
 })
 
 function formatUpdated(row: KbArticleRow): string {
@@ -246,7 +267,8 @@ onMounted(() => {
         <div class="list-head-title">
           <h2 id="list-heading">Articles</h2>
           <p class="table-count" role="status">
-            Showing <strong>{{ filtered.length }}</strong> of <strong>{{ rows.length }}</strong> articles
+            Showing <strong>{{ paginated.length }}</strong> of <strong>{{ filtered.length }}</strong> articles
+            <template v-if="filtered.length > KB_PER_PAGE"> · page {{ page }} of {{ lastPage }}</template>
           </p>
         </div>
         <div class="list-head-actions">
@@ -346,11 +368,11 @@ onMounted(() => {
             </thead>
             <tbody>
               <tr
-                v-for="(r, idx) in filtered"
+                v-for="(r, idx) in paginated"
                 :key="r.id"
                 :class="{ 'row-inactive': !r.is_active }"
               >
-                <td class="col-idx">{{ idx + 1 }}</td>
+                <td class="col-idx">{{ rowCounter(idx) }}</td>
                 <td class="col-cat">{{ r.category?.name ?? '—' }}</td>
                 <td class="col-q">
                   <span class="q-text" :title="r.question">{{ r.question }}</span>
@@ -381,6 +403,11 @@ onMounted(() => {
             </tbody>
           </table>
         </div>
+      </div>
+      <div v-if="filtered.length > KB_PER_PAGE" class="pager">
+        <button type="button" :disabled="!hasPrev" @click="page -= 1">Previous</button>
+        <span>Page {{ page }} of {{ lastPage }}</span>
+        <button type="button" :disabled="!hasNext" @click="page += 1">Next</button>
       </div>
     </section>
 
@@ -571,5 +598,25 @@ tbody tr.row-inactive td {
 }
 .muted {
   color: #64748b;
+}
+.pager {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  align-items: center;
+}
+.pager button {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 4px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pager button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

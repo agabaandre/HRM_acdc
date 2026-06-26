@@ -269,6 +269,30 @@ class HtmlSanitizer
         );
     }
 
+    /**
+     * Convert stored rich-text HTML to plain text (e.g. Excel export).
+     */
+    public static function toPlainText(?string $html): ?string
+    {
+        if ($html === null) {
+            return null;
+        }
+
+        $trimmed = trim($html);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $text = preg_replace('/<\s*br\s*\/?>/i', "\n", $trimmed) ?? $trimmed;
+        $text = preg_replace('/<\/(p|div|li|tr|h[1-6])>/i', "\n", $text) ?? $text;
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/[ \t\x{00A0}]+/u', ' ', $text) ?? $text;
+        $text = preg_replace('/\n{3,}/', "\n\n", $text) ?? $text;
+
+        return trim($text);
+    }
+
     private static function sanitizeStyle(string $value): string
     {
         $kept = [];

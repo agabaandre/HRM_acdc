@@ -11,7 +11,7 @@ import {
   rowIndex,
   statusMeta,
 } from '../lib/ticketTableMeta'
-import { PER_PAGE_ITEMS, normalizePageSize, type PageSize } from '../lib/helpdeskForm'
+import { PER_PAGE_ITEMS, normalizePageSize, type PageSize, type SelectNumberItem } from '../lib/helpdeskForm'
 
 import { useAuthStore } from '../stores/auth'
 
@@ -48,8 +48,19 @@ const adminRecent = ref<ReportTicket[]>([])
 const adminPage = ref(1)
 const adminLastPage = ref(1)
 const adminTotal = ref(0)
-const adminSearchState = reactive<{ q: string; perPage: PageSize }>({ q: '', perPage: 20 })
+const adminSearchState = reactive<{
+  q: string
+  perPage: PageSize
+  agentIds: number[]
+  dateFrom: string
+  dateTo: string
+}>({ q: '', perPage: 20, agentIds: [], dateFrom: '', dateTo: '' })
 const adminLoading = ref(false)
+const adminAgents = ref<{ id: number; name: string; email: string }[]>([])
+
+const adminAgentItems = computed((): SelectNumberItem[] =>
+  adminAgents.value.map((a) => ({ label: `${a.name} (${a.email})`, value: a.id })),
+)
 
 const isAdmin = computed(
   () => !!auth.me?.profile?.is_helpdesk_admin || auth.me?.profile?.role === 'admin',
@@ -95,15 +106,22 @@ async function loadMine() {
   }
 }
 
+function adminReportParams() {
+  return {
+    q: adminSearchState.q.trim() || undefined,
+    page: adminPage.value,
+    per_page: adminSearchState.perPage,
+    agent_ids: adminSearchState.agentIds.length ? adminSearchState.agentIds : undefined,
+    date_from: adminSearchState.dateFrom || undefined,
+    date_to: adminSearchState.dateTo || undefined,
+  }
+}
+
 async function loadAdmin() {
   adminLoading.value = true
   try {
     const { data } = await api.get('/api/v1/reports/admin-summary', {
-      params: {
-        q: adminSearchState.q.trim() || undefined,
-        page: adminPage.value,
-        per_page: adminSearchState.perPage,
-      },
+      params: adminReportParams(),
     })
     adminCounts.value = data.data.counts
     const recent = (data.data.recent ?? {}) as Partial<PaginatedTickets>
@@ -151,6 +169,9 @@ function adminSearch() {
 }
 function adminClear() {
   adminSearchState.q = ''
+  adminSearchState.agentIds = []
+  adminSearchState.dateFrom = ''
+  adminSearchState.dateTo = ''
   adminPage.value = 1
   loadAdmin()
 }
@@ -165,10 +186,27 @@ watch(() => adminSearchState.perPage, () => {
   loadAdmin()
 })
 
+watch(
+  () => [adminSearchState.agentIds, adminSearchState.dateFrom, adminSearchState.dateTo] as const,
+  () => {
+    adminPage.value = 1
+    loadAdmin()
+  },
+)
+
 async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
   try {
+    const params: Record<string, unknown> = { scope }
+    if (scope === 'all' && tab.value === 'admin') {
+      Object.assign(params, {
+        q: adminSearchState.q.trim() || undefined,
+        agent_ids: adminSearchState.agentIds.length ? adminSearchState.agentIds : undefined,
+        date_from: adminSearchState.dateFrom || undefined,
+        date_to: adminSearchState.dateTo || undefined,
+      })
+    }
     const res = await api.get('/api/v1/reports/export', {
-      params: { scope },
+      params,
       responseType: 'blob',
     })
     const blob = new Blob([res.data], {
@@ -188,6 +226,12 @@ async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
 onMounted(async () => {
   if (isAdmin.value) {
     tab.value = 'admin'
+    try {
+      const { data } = await api.get('/api/v1/admin/agents')
+      adminAgents.value = Array.isArray(data.data) ? data.data : []
+    } catch {
+      adminAgents.value = []
+    }
   } else {
     tab.value = 'mine'
   }
@@ -385,6 +429,21 @@ onMounted(async () => {
           <UButton type="submit" color="primary">Search</UButton>
           <UButton type="button" color="neutral" variant="outline" @click="adminClear">Clear</UButton>
         </UForm>
+        <UFormField label="Agents" name="agentIds" class="meta meta--agents">
+          <USelect
+            v-model="adminSearchState.agentIds"
+            multiple
+            :items="adminAgentItems"
+            placeholder="All agents"
+            class="w-full admin-agent-select"
+          />
+        </UFormField>
+        <UFormField label="From" name="dateFrom" class="meta meta--date">
+          <UInput v-model="adminSearchState.dateFrom" type="date" class="w-full" />
+        </UFormField>
+        <UFormField label="To" name="dateTo" class="meta meta--date">
+          <UInput v-model="adminSearchState.dateTo" type="date" class="w-full" />
+        </UFormField>
         <UFormField label="Per page" name="perPage" class="meta">
           <USelect v-model="adminSearchState.perPage" :items="PER_PAGE_ITEMS" class="w-full" />
         </UFormField>
@@ -596,6 +655,16 @@ h2 {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+.meta--agents {
+  min-width: 12rem;
+  max-width: 18rem;
+}
+.meta--date {
+  min-width: 9rem;
+}
+.admin-agent-select {
+  min-width: 12rem;
 }
 .meta label {
   display: flex;

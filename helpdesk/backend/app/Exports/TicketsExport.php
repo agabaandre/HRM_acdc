@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\HelpdeskTicket;
+use App\Services\HtmlSanitizer;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -28,6 +29,7 @@ class TicketsExport implements FromCollection, WithHeadings, WithMapping
         return [
             $row->ticket_number,
             $row->subject,
+            HtmlSanitizer::toPlainText($row->description),
             $row->category?->name,
             $row->status,
             $row->priority,
@@ -35,7 +37,7 @@ class TicketsExport implements FromCollection, WithHeadings, WithMapping
             $row->requester_email,
             $row->assignee?->name,
             optional($row->resolved_at)?->toIso8601String(),
-            $row->resolution_summary,
+            HtmlSanitizer::toPlainText($row->resolution_summary),
         ];
     }
 
@@ -44,6 +46,7 @@ class TicketsExport implements FromCollection, WithHeadings, WithMapping
         return [
             'Ticket #',
             'Subject',
+            'Description',
             'Category',
             'Status',
             'Priority',

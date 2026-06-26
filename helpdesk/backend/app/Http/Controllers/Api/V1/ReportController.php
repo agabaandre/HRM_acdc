@@ -182,6 +182,7 @@ class ReportController extends Controller
                 ->with(['category', 'assignee'])
                 ->orderByDesc('id');
             $this->applyTicketSearch($recentQuery, $qTerm);
+            $this->applyReportFilters($recentQuery, $request);
             $recent = $recentQuery->paginate($perPage);
 
             return [
@@ -216,6 +217,10 @@ class ReportController extends Controller
             $q->where('assigned_user_id', $user->id);
         }
 
+        $qTerm = trim((string) $request->query('q', ''));
+        $this->applyTicketSearch($q, $qTerm);
+        $this->applyReportFilters($q, $request);
+
         $rows = $q->orderByDesc('id')->limit(5000)->get();
         $filename = 'helpdesk-tickets-'.now()->format('Y-m-d-His').'.xlsx';
 
@@ -243,5 +248,27 @@ class ReportController extends Controller
                         ->orWhere('email', 'like', $like);
                 });
         });
+    }
+
+    private function applyReportFilters(Builder $query, Request $request): void
+    {
+        $agentIds = array_values(array_filter(array_map(
+            static fn ($id) => (int) $id,
+            (array) $request->query('agent_ids', []),
+        ), static fn (int $id) => $id > 0));
+
+        if ($agentIds !== []) {
+            $query->whereIn('assigned_user_id', $agentIds);
+        }
+
+        $dateFrom = trim((string) $request->query('date_from', ''));
+        if ($dateFrom !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
+            $query->where('created_at', '>=', $dateFrom.' 00:00:00');
+        }
+
+        $dateTo = trim((string) $request->query('date_to', ''));
+        if ($dateTo !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+            $query->where('created_at', '<=', $dateTo.' 23:59:59');
+        }
     }
 }
