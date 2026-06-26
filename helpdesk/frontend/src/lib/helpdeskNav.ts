@@ -6,6 +6,7 @@ export const HELP_DESK_NAV_ICONS = {
   newRequest: 'bx bx-plus-circle',
   agentDesk: 'bx bx-desktop',
   knowledgeBase: 'bx bx-book-open',
+  guide: 'bx bx-book-reader',
   reports: 'bx bx-bar-chart-alt-2',
   settings: 'bx bx-cog',
 } as const

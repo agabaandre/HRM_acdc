@@ -158,6 +158,11 @@ onMounted(() => {
           <strong>New request</strong>
           <span>Log an incident or service request for an IT agent.</span>
         </RouterLink>
+        <RouterLink class="hd-quick-tile" to="/guide">
+          <i class="bx bx-book-reader" aria-hidden="true" />
+          <strong>User guide</strong>
+          <span>Four quick slides on signing in, logging tickets, and follow-up.</span>
+        </RouterLink>
       </div>
     </template>
 

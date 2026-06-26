@@ -141,6 +141,197 @@ export function setupQuillAutoGrow(quill: { root: HTMLElement; on: (e: string, f
   grow()
 }
 
+type QuillEditorLike = {
+  root: HTMLElement
+  getSelection: (focus?: boolean) => { index: number } | null
+  getLength: () => number
+  getLeaf: (index: number) => [{ domNode?: Node } | null, number]
+  insertEmbed: (index: number, type: string, value: string, source?: string) => void
+  setSelection: (index: number, length?: number, source?: string) => void
+  on: (event: string, fn: () => void) => void
+}
+
+/** Default width for newly inserted inline images (matches APM memo editor). */
+export function prepareQuillInsertedImage(quill: QuillEditorLike, index?: number): void {
+  const img = findQuillImageAtIndex(quill, index)
+  if (!img) {
+    return
+  }
+  img.style.maxWidth = '100%'
+  img.style.height = 'auto'
+  if (!img.style.width) {
+    img.style.width = '50%'
+  }
+  img.classList.add('cbp-quill-image')
+}
+
+function findQuillImageAtIndex(quill: QuillEditorLike, index?: number): HTMLImageElement | null {
+  if (index !== undefined) {
+    const leaf = quill.getLeaf(index)[0]
+    const node = leaf?.domNode
+    if (node instanceof HTMLImageElement) {
+      return node
+    }
+  }
+  const imgs = quill.root.querySelectorAll('img')
+  const last = imgs[imgs.length - 1]
+  return last instanceof HTMLImageElement ? last : null
+}
+
+/**
+ * Click-to-select image sizing (25–100% presets + drag handle), like APM special memo editor.
+ */
+export function setupQuillImageResize(quill: QuillEditorLike, wrap: HTMLElement): void {
+  if (wrap.dataset.cbpImageResizeBound === '1') {
+    return
+  }
+  wrap.dataset.cbpImageResizeBound = '1'
+
+  const root = quill.root
+  const editorShell = wrap.querySelector('.cbp-rich-text__editor') as HTMLElement | null
+  const container = editorShell ?? wrap
+  container.style.position = 'relative'
+
+  const overlay = document.createElement('div')
+  overlay.className = 'cbp-quill-image-overlay cbp-quill-image-overlay--hidden'
+  overlay.innerHTML =
+    '<div class="cbp-quill-image-toolbar" role="toolbar" aria-label="Image size">'
+    + '<button type="button" data-cbp-img-size="25">25%</button>'
+    + '<button type="button" data-cbp-img-size="50">50%</button>'
+    + '<button type="button" data-cbp-img-size="75">75%</button>'
+    + '<button type="button" data-cbp-img-size="100">100%</button>'
+    + '</div>'
+    + '<div class="cbp-quill-image-frame"></div>'
+    + '<span class="cbp-quill-image-handle" title="Drag to resize"></span>'
+  container.appendChild(overlay)
+
+  const frame = overlay.querySelector('.cbp-quill-image-frame') as HTMLElement
+  const handle = overlay.querySelector('.cbp-quill-image-handle') as HTMLElement
+  const toolbar = overlay.querySelector('.cbp-quill-image-toolbar') as HTMLElement
+  let activeImg: HTMLImageElement | null = null
+  let drag: { startX: number; startWidth: number } | null = null
+
+  function clearSelection(): void {
+    activeImg = null
+    overlay.classList.add('cbp-quill-image-overlay--hidden')
+    drag = null
+  }
+
+  function editorWidth(): number {
+    return root.clientWidth || container.clientWidth || 1
+  }
+
+  function setImageWidthPercent(img: HTMLImageElement, percent: number): void {
+    const pct = Math.max(10, Math.min(100, percent))
+    img.style.width = `${pct}%`
+    img.style.maxWidth = '100%'
+    img.style.height = 'auto'
+    positionOverlay(img)
+  }
+
+  function positionOverlay(img: HTMLImageElement): void {
+    const imgRect = img.getBoundingClientRect()
+    const boxRect = container.getBoundingClientRect()
+    const top = imgRect.top - boxRect.top + container.scrollTop
+    const left = imgRect.left - boxRect.left + container.scrollLeft
+    overlay.classList.remove('cbp-quill-image-overlay--hidden')
+    overlay.style.top = `${top}px`
+    overlay.style.left = `${left}px`
+    overlay.style.width = `${imgRect.width}px`
+    overlay.style.height = `${imgRect.height}px`
+    frame.style.width = '100%'
+    frame.style.height = '100%'
+  }
+
+  function selectImage(img: HTMLImageElement): void {
+    activeImg = img
+    img.classList.add('cbp-quill-image')
+    positionOverlay(img)
+  }
+
+  toolbar.addEventListener('mousedown', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  })
+
+  toolbar.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('[data-cbp-img-size]') as HTMLElement | null
+    if (!btn || !activeImg) {
+      return
+    }
+    e.preventDefault()
+    e.stopPropagation()
+    setImageWidthPercent(activeImg, Number.parseInt(btn.getAttribute('data-cbp-img-size') ?? '50', 10))
+  })
+
+  handle.addEventListener('mousedown', (e) => {
+    if (!activeImg) {
+      return
+    }
+    e.preventDefault()
+    e.stopPropagation()
+    drag = {
+      startX: e.clientX,
+      startWidth: activeImg.getBoundingClientRect().width,
+    }
+  })
+
+  const onMouseMove = (e: MouseEvent): void => {
+    if (!drag || !activeImg) {
+      return
+    }
+    const delta = e.clientX - drag.startX
+    const nextWidth = Math.max(40, drag.startWidth + delta)
+    const percent = Math.round((nextWidth / editorWidth()) * 100)
+    setImageWidthPercent(activeImg, percent)
+  }
+
+  const onMouseUp = (): void => {
+    drag = null
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+
+  root.addEventListener('click', (e) => {
+    const target = e.target
+    if (target instanceof HTMLImageElement && root.contains(target)) {
+      e.preventDefault()
+      selectImage(target)
+      return
+    }
+    if (!overlay.contains(target as Node)) {
+      clearSelection()
+    }
+  })
+
+  quill.on('text-change', () => {
+    if (activeImg && !root.contains(activeImg)) {
+      clearSelection()
+    } else if (activeImg) {
+      positionOverlay(activeImg)
+    }
+  })
+
+  window.addEventListener('resize', () => {
+    if (activeImg) {
+      positionOverlay(activeImg)
+    }
+  })
+
+  root.querySelectorAll('img').forEach((node) => {
+    if (node instanceof HTMLImageElement) {
+      node.classList.add('cbp-quill-image')
+      if (!node.style.maxWidth) {
+        node.style.maxWidth = '100%'
+      }
+      if (!node.style.height) {
+        node.style.height = 'auto'
+      }
+    }
+  })
+}
+
 const ATTACHMENT_IMAGE_RE = /\/api\/v1\/attachments\/(\d+)\/file/i
 const RICH_TEXT_IMAGE_RE = /\/storage\/helpdesk\/rich-text\/|helpdesk\/rich-text\//i
 

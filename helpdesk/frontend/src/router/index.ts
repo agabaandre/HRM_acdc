@@ -20,6 +20,7 @@ import ReportsView from '../views/ReportsView.vue'
 import ConfirmResolutionView from '../views/ConfirmResolutionView.vue'
 import KbManageView from '../views/KbManageView.vue'
 import ScreenDashboardView from '../views/ScreenDashboardView.vue'
+import UserGuideView from '../views/UserGuideView.vue'
 import { getStoredToken } from '../lib/api'
 import { redirectToStaffPortalHome, staffPortalHomeUrl } from '../lib/sso'
 import { parseSettingsSection } from '../settings/settingsSections'
@@ -31,6 +32,7 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'home', component: HomeView },
+    { path: '/guide', name: 'user-guide', component: UserGuideView, meta: { public: true } },
     { path: '/ask', name: 'ask-helpdesk', component: AskHelpdeskView, meta: { requiresAuth: true } },
     {
       path: '/tickets/confirm-resolution',

@@ -11,7 +11,9 @@ import {
   isManagedInlineImageUrl,
   attachmentIdFromImageUrl,
   patchQuillExternalLinks,
+  prepareQuillInsertedImage,
   setupQuillAutoGrow,
+  setupQuillImageResize,
   type RichTextVariant,
 } from '../../lib/richText'
 
@@ -45,6 +47,7 @@ const emit = defineEmits<{
 }>()
 
 const editorRef = ref<InstanceType<typeof QuillEditor> | null>(null)
+const wrapRef = ref<HTMLElement | null>(null)
 const editorReady = ref(false)
 const inlineImageBusy = ref(false)
 const imageHint = ref<string | null>(null)
@@ -96,6 +99,9 @@ function insertImageAtCursor(url: string): void {
   const index = sel ? sel.index : quill.getLength()
   quill.insertEmbed(index, 'image', url, 'user')
   quill.setSelection(index + 1, 0, 'silent')
+  window.setTimeout(() => {
+    prepareQuillInsertedImage(quill, index)
+  }, 0)
 }
 
 function validateImageFile(file: File): boolean {
@@ -245,8 +251,9 @@ function setupPasteAndDrop(quill: any): void {
 function onReady(quill: unknown) {
   const q = quill as { root: HTMLElement; on: (e: string, fn: () => void) => void }
   setupQuillAutoGrow(q, editorMinPx.value)
-  if (props.enableImages) {
+  if (props.enableImages && wrapRef.value) {
     setupPasteAndDrop(q)
+    setupQuillImageResize(q as Parameters<typeof setupQuillImageResize>[0], wrapRef.value)
   }
   emit('ready', quill)
 }
@@ -254,6 +261,7 @@ function onReady(quill: unknown) {
 
 <template>
   <div
+    ref="wrapRef"
     class="cbp-rich-text"
     :class="{ 'cbp-rich-text--busy': inlineImageBusy }"
     :style="editorStyle"
@@ -334,13 +342,66 @@ function onReady(quill: unknown) {
   overflow-y: visible;
   padding: 0.75rem 1rem;
 }
+.cbp-rich-text__editor :deep(.ql-editor img.cbp-quill-image),
 .cbp-rich-text__editor :deep(.ql-editor img) {
   max-width: 100%;
   height: auto;
   border-radius: 4px;
   margin: 0.35rem 0;
+  cursor: pointer;
 }
-.cbp-rich-text__editor :deep(.ql-editor.ql-blank::before) {
+.cbp-rich-text__editor :deep(.cbp-quill-image-overlay) {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+}
+.cbp-rich-text__editor :deep(.cbp-quill-image-overlay--hidden) {
+  display: none;
+}
+.cbp-rich-text__editor :deep(.cbp-quill-image-toolbar) {
+  position: absolute;
+  top: -34px;
+  left: 0;
+  display: flex;
+  gap: 4px;
+  pointer-events: auto;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+.cbp-rich-text__editor :deep(.cbp-quill-image-toolbar button) {
+  border: 0;
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cbp-rich-text__editor :deep(.cbp-quill-image-toolbar button:hover) {
+  background: #e8f7ee;
+  color: #0d7a3a;
+}
+.cbp-rich-text__editor :deep(.cbp-quill-image-frame) {
+  border: 2px solid #119a48;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.cbp-rich-text__editor :deep(.cbp-quill-image-handle) {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: #119a48;
+  border: 2px solid #fff;
+  border-radius: 2px;
+  cursor: se-resize;
+  pointer-events: auto;
+}
   font-style: normal;
   color: #94a3b8;
 }
