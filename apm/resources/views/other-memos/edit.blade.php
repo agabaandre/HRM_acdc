@@ -123,15 +123,7 @@
     function syncRichEditors() {
         if (typeof window.ApmQuillEditor !== 'undefined') {
             window.ApmQuillEditor.syncAll(form);
-            return;
         }
-        if (typeof jQuery === 'undefined') return;
-        jQuery('textarea.summernote').each(function() {
-            var $t = jQuery(this);
-            if ($t.summernote && $t.next('.note-editor').length) {
-                $t.val($t.summernote('code'));
-            }
-        });
     }
     var form = document.getElementById('other-memo-edit-form');
     var methodInput = document.getElementById('other-memo-form-method');

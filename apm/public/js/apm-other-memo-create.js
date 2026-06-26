@@ -223,7 +223,7 @@
         if (typeof window.apmToggleOtherMemoReferencedCard === 'function') {
             setTimeout(window.apmToggleOtherMemoReferencedCard, 0);
         }
-        bindSummernoteSubmitOnce();
+        bindRichEditorSubmitOnce();
         bindAttachmentDelegatesOnce();
     }
 
@@ -235,20 +235,32 @@
         return populateMemoTypeSelect(rows, sel);
     }
 
+    function destroyRichEditorsIn(host) {
+        if (typeof window.ApmQuillEditor !== 'undefined') {
+            window.ApmQuillEditor.destroyAll(host);
+        }
+    }
+
+    function initRichEditorsIn(host) {
+        if (typeof window.ApmQuillEditor !== 'undefined') {
+            window.ApmQuillEditor.initAll(host);
+            return;
+        }
+        var tries = 0;
+        (function poll() {
+            if (typeof window.ApmQuillEditor !== 'undefined') {
+                window.ApmQuillEditor.initAll(host);
+            } else if (tries++ < 80) {
+                setTimeout(poll, 50);
+            }
+        })();
+    }
+
     function renderFields(schema) {
         var host = document.getElementById('memo-dynamic-fields');
         if (!host) return;
 
-        if (typeof window.ApmQuillEditor !== 'undefined') {
-            window.ApmQuillEditor.destroyAll(host);
-        } else if (typeof jQuery !== 'undefined') {
-            jQuery(host).find('textarea.summernote').each(function () {
-                var $t = jQuery(this);
-                if ($t.next('.note-editor').length && typeof $t.summernote === 'function') {
-                    try { $t.summernote('destroy'); } catch (e) {}
-                }
-            });
-        }
+        destroyRichEditorsIn(host);
 
         host.innerHTML = '';
 
@@ -314,20 +326,7 @@
             host.appendChild(wrap);
         });
 
-        if (typeof window.ApmQuillEditor !== 'undefined') {
-            window.ApmQuillEditor.initAll(host);
-        } else if (typeof jQuery !== 'undefined' && typeof window.apmSummernoteOptions === 'function') {
-            jQuery(host).find('textarea.summernote').each(function () {
-                var $ta = jQuery(this);
-                if (!$ta.next('.note-editor').length) {
-                    $ta.summernote(window.apmSummernoteOptions({
-                        height: 260,
-                        minHeight: 200,
-                        placeholder: 'Type here…'
-                    }));
-                }
-            });
-        }
+        initRichEditorsIn(host);
     }
 
     function applyMemoTypeSelection(slug, typeDef) {
@@ -592,22 +591,14 @@
         runWhenSelect2Ready(initMemoTypeSelect2);
     }
 
-    function bindSummernoteSubmitOnce() {
+    function bindRichEditorSubmitOnce() {
         var form = document.getElementById('other-memo-create-form');
-        if (!form || form.dataset.apmSummernoteSubmitBound === '1') return;
-        form.dataset.apmSummernoteSubmitBound = '1';
+        if (!form || form.dataset.apmRichEditorSubmitBound === '1') return;
+        form.dataset.apmRichEditorSubmitBound = '1';
         form.addEventListener('submit', function () {
             if (typeof window.ApmQuillEditor !== 'undefined') {
                 window.ApmQuillEditor.syncAll(form);
-                return;
             }
-            if (typeof jQuery === 'undefined') return;
-            jQuery('#memo-dynamic-fields textarea.summernote').each(function () {
-                var $t = jQuery(this);
-                if ($t.summernote && $t.next('.note-editor').length) {
-                    $t.val($t.summernote('code'));
-                }
-            });
         });
     }
 

@@ -36,6 +36,30 @@
                 '<svg viewbox="0 0 18 18"><rect class="ql-stroke" height="12" width="12" x="3" y="3"></rect>'
                 + '<line class="ql-stroke" x1="3" x2="15" y1="9" y2="9"></line>'
                 + '<line class="ql-stroke" x1="9" x2="9" y1="3" y2="15"></line></svg>';
+            icons['apm-table-insert'] = icons.table;
+            icons['apm-table-row-below'] =
+                '<svg viewbox="0 0 18 18"><rect class="ql-stroke" height="10" width="12" x="3" y="3"></rect>'
+                + '<line class="ql-stroke" x1="8" x2="10" y1="15" y2="15"></line>'
+                + '<line class="ql-stroke" x1="9" x2="9" y1="13" y2="15"></line></svg>';
+            icons['apm-table-row-above'] =
+                '<svg viewbox="0 0 18 18"><line class="ql-stroke" x1="8" x2="10" y1="3" y2="3"></line>'
+                + '<line class="ql-stroke" x1="9" x2="9" y1="3" y2="5"></line>'
+                + '<rect class="ql-stroke" height="10" width="12" x="3" y="5"></rect></svg>';
+            icons['apm-table-col-after'] =
+                '<svg viewbox="0 0 18 18"><rect class="ql-stroke" height="12" width="10" x="3" y="3"></rect>'
+                + '<line class="ql-stroke" x1="15" x2="15" y1="8" y2="10"></line>'
+                + '<line class="ql-stroke" x1="13" x2="15" y1="9" y2="9"></line></svg>';
+            icons['apm-table-col-before'] =
+                '<svg viewbox="0 0 18 18"><rect class="ql-stroke" height="12" width="10" x="5" y="3"></rect>'
+                + '<line class="ql-stroke" x1="3" x2="3" y1="8" y2="10"></line>'
+                + '<line class="ql-stroke" x1="3" x2="5" y1="9" y2="9"></line></svg>';
+            icons['apm-table-del-row'] =
+                '<svg viewbox="0 0 18 18"><rect class="ql-stroke" height="12" width="12" x="3" y="3"></rect>'
+                + '<line class="ql-stroke" x1="5" x2="13" y1="9" y2="9"></line></svg>';
+            icons['apm-table-del-table'] =
+                '<svg viewbox="0 0 18 18"><rect class="ql-stroke" height="12" width="12" x="3" y="3"></rect>'
+                + '<line class="ql-stroke" x1="5" x2="13" y1="5" y2="13"></line>'
+                + '<line class="ql-stroke" x1="13" x2="5" y1="5" y2="13"></line></svg>';
         } catch (e) {
             /* optional formats */
         }
@@ -54,7 +78,16 @@
             [{ indent: '-1' }, { indent: '+1' }],
             [{ align: [] }],
             ['blockquote', 'code-block'],
-            ['link', 'image', 'video', 'table'],
+            ['link', 'image', 'video'],
+            [
+                'apm-table-insert',
+                'apm-table-row-below',
+                'apm-table-row-above',
+                'apm-table-col-before',
+                'apm-table-col-after',
+                'apm-table-del-row',
+                'apm-table-del-table',
+            ],
             ['clean'],
         ];
     }
@@ -160,6 +193,7 @@
                 img.style.height = 'auto';
             }
         });
+        styleAllTables(root);
     }
 
     function bindImageResize(quill, wrap) {
@@ -319,16 +353,272 @@
         input.click();
     }
 
-    function insertBasicTable(quill) {
+    var TOOLBAR_TITLES = {
+        'ql-font': 'Font (Arial)',
+        'ql-size': 'Font size',
+        'ql-header': 'Paragraph style',
+        'ql-bold': 'Bold',
+        'ql-italic': 'Italic',
+        'ql-underline': 'Underline',
+        'ql-strike': 'Strikethrough',
+        'ql-script': 'Subscript / superscript',
+        'ql-color': 'Text color',
+        'ql-background': 'Highlight color',
+        'ql-list': 'Lists',
+        'ql-indent': 'Indent',
+        'ql-align': 'Alignment',
+        'ql-blockquote': 'Block quote',
+        'ql-code-block': 'Code block',
+        'ql-link': 'Insert link',
+        'ql-image': 'Insert image',
+        'ql-video': 'Insert video',
+        'ql-clean': 'Clear formatting',
+        'ql-apm-table-insert': 'Insert table (3×3)',
+        'ql-apm-table-row-below': 'Add row below',
+        'ql-apm-table-row-above': 'Add row above',
+        'ql-apm-table-col-before': 'Add column left',
+        'ql-apm-table-col-after': 'Add column right',
+        'ql-apm-table-del-row': 'Delete current row',
+        'ql-apm-table-del-table': 'Delete table',
+    };
+
+    function styleTableElement(table) {
+        if (!table || table.tagName !== 'TABLE') {
+            return;
+        }
+        table.classList.add('apm-quill-table');
+        table.style.borderCollapse = 'collapse';
+        table.style.width = '100%';
+        table.style.margin = '8px 0';
+        Array.from(table.querySelectorAll('td, th')).forEach(function (cell) {
+            cell.style.border = '1px solid #4a5568';
+            cell.style.padding = '6px 8px';
+            cell.style.verticalAlign = 'top';
+            cell.style.minWidth = '48px';
+        });
+    }
+
+    function styleAllTables(root) {
+        if (!root) {
+            return;
+        }
+        root.querySelectorAll('table').forEach(styleTableElement);
+    }
+
+    function getActiveTableCell(quill) {
+        var sel = window.getSelection();
+        if (!sel || !sel.anchorNode || !quill || !quill.root) {
+            return null;
+        }
+        var node = sel.anchorNode;
+        if (node.nodeType === 3) {
+            node = node.parentNode;
+        }
+        if (!node || !node.closest) {
+            return null;
+        }
+        var cell = node.closest('td, th');
+        if (!cell || !quill.root.contains(cell)) {
+            return null;
+        }
+        return cell;
+    }
+
+    function requireTableCell(quill) {
+        var cell = getActiveTableCell(quill);
+        if (!cell) {
+            window.alert('Click inside a table cell first, then use the table buttons.');
+        }
+        return cell;
+    }
+
+    function addTableRow(cell, position) {
+        var row = cell.parentNode;
+        var table = row.closest('table');
+        if (!table) {
+            return;
+        }
+        var colCount = row.cells.length;
+        var newRow = document.createElement('tr');
+        for (var i = 0; i < colCount; i++) {
+            var td = document.createElement('td');
+            td.innerHTML = '<br>';
+            newRow.appendChild(td);
+        }
+        if (position === 'above') {
+            row.parentNode.insertBefore(newRow, row);
+        } else {
+            row.parentNode.insertBefore(newRow, row.nextSibling);
+        }
+        styleTableElement(table);
+    }
+
+    function addTableColumn(cell, position) {
+        var table = cell.closest('table');
+        if (!table) {
+            return;
+        }
+        var insertAt = position === 'before' ? cell.cellIndex : cell.cellIndex + 1;
+        Array.from(table.rows).forEach(function (row) {
+            var td = document.createElement(row.parentNode && row.parentNode.tagName === 'THEAD' ? 'th' : 'td');
+            td.innerHTML = '<br>';
+            if (insertAt >= row.cells.length) {
+                row.appendChild(td);
+            } else {
+                row.insertBefore(td, row.cells[insertAt]);
+            }
+        });
+        styleTableElement(table);
+    }
+
+    function deleteTableRow(cell) {
+        var row = cell.parentNode;
+        var table = row.closest('table');
+        if (!table) {
+            return;
+        }
+        if (table.rows.length <= 1) {
+            table.remove();
+            return;
+        }
+        row.remove();
+        styleTableElement(table);
+    }
+
+    function deleteTableElement(cell) {
+        var table = cell.closest('table');
+        if (table) {
+            table.remove();
+        }
+    }
+
+    function insertTable(quill, rows, cols) {
+        rows = rows || 3;
+        cols = cols || 3;
+        var body = '';
+        for (var r = 0; r < rows; r++) {
+            body += '<tr>';
+            for (var c = 0; c < cols; c++) {
+                body += '<td><br></td>';
+            }
+            body += '</tr>';
+        }
+        var html = '<table class="apm-quill-table"><tbody>' + body + '</tbody></table><p><br></p>';
         var range = quill.getSelection(true);
         var index = range ? range.index : quill.getLength();
-        var html =
-            '<table class="table table-bordered table-sm"><tbody>'
-            + '<tr><td><br></td><td><br></td><td><br></td></tr>'
-            + '<tr><td><br></td><td><br></td><td><br></td></tr>'
-            + '<tr><td><br></td><td><br></td><td><br></td></tr>'
-            + '</tbody></table><p><br></p>';
         quill.clipboard.dangerouslyPasteHTML(index, html);
+        window.setTimeout(function () {
+            styleAllTables(quill.root);
+        }, 0);
+    }
+
+    function tableToolbarHandlers(getQuill) {
+        return {
+            'apm-table-insert': function () {
+                insertTable(getQuill(), 3, 3);
+            },
+            'apm-table-row-below': function () {
+                var cell = requireTableCell(getQuill());
+                if (cell) {
+                    addTableRow(cell, 'below');
+                }
+            },
+            'apm-table-row-above': function () {
+                var cell = requireTableCell(getQuill());
+                if (cell) {
+                    addTableRow(cell, 'above');
+                }
+            },
+            'apm-table-col-before': function () {
+                var cell = requireTableCell(getQuill());
+                if (cell) {
+                    addTableColumn(cell, 'before');
+                }
+            },
+            'apm-table-col-after': function () {
+                var cell = requireTableCell(getQuill());
+                if (cell) {
+                    addTableColumn(cell, 'after');
+                }
+            },
+            'apm-table-del-row': function () {
+                var cell = requireTableCell(getQuill());
+                if (cell) {
+                    deleteTableRow(cell);
+                }
+            },
+            'apm-table-del-table': function () {
+                var cell = requireTableCell(getQuill());
+                if (cell) {
+                    deleteTableElement(cell);
+                }
+            },
+        };
+    }
+
+    function applyToolbarTooltips(wrap) {
+        if (!wrap) {
+            return;
+        }
+        wrap.querySelectorAll('.ql-toolbar .ql-picker').forEach(function (picker) {
+            var key = Array.from(picker.classList).find(function (cls) {
+                return TOOLBAR_TITLES[cls];
+            });
+            if (!key) {
+                return;
+            }
+            var title = TOOLBAR_TITLES[key];
+            picker.setAttribute('title', title);
+            var label = picker.querySelector('.ql-picker-label');
+            if (label) {
+                label.setAttribute('title', title);
+                label.setAttribute('aria-label', title);
+            }
+        });
+        wrap.querySelectorAll('.ql-toolbar button').forEach(function (btn) {
+            Array.from(btn.classList).forEach(function (cls) {
+                if (!TOOLBAR_TITLES[cls]) {
+                    return;
+                }
+                btn.setAttribute('title', TOOLBAR_TITLES[cls]);
+                btn.setAttribute('aria-label', TOOLBAR_TITLES[cls]);
+            });
+        });
+    }
+
+    function bindTableEditor(quill, wrap) {
+        if (!quill || !wrap || wrap.dataset.apmTableEditorBound === '1') {
+            return;
+        }
+        wrap.dataset.apmTableEditorBound = '1';
+        var root = quill.root;
+        var activeCell = null;
+
+        function clearActiveCell() {
+            if (activeCell) {
+                activeCell.classList.remove('apm-quill-table-active');
+                activeCell = null;
+            }
+        }
+
+        root.addEventListener('click', function (e) {
+            var target = e.target;
+            if (!target || !target.closest) {
+                return;
+            }
+            var cell = target.closest('td, th');
+            if (cell && root.contains(cell)) {
+                clearActiveCell();
+                activeCell = cell;
+                cell.classList.add('apm-quill-table-active');
+                return;
+            }
+            clearActiveCell();
+        });
+
+        quill.on('text-change', function () {
+            styleAllTables(root);
+        });
     }
 
     function sourceHtml(el) {
@@ -407,25 +697,30 @@
             quill = new Quill(editorEl, { theme: 'snow', modules: { toolbar: false } });
             quill.enable(false);
         } else {
+            var tableHandlers = tableToolbarHandlers(function () {
+                return quill;
+            });
             quill = new Quill(editorEl, {
                 theme: 'snow',
                 modules: {
                     toolbar: {
                         container: toolbarItems(toolbarMode),
-                        handlers: {
-                            image: function () {
-                                pickAndUploadImage(quill);
+                        handlers: Object.assign(
+                            {
+                                image: function () {
+                                    pickAndUploadImage(quill);
+                                },
                             },
-                            table: function () {
-                                insertBasicTable(quill);
-                            },
-                        },
+                            tableHandlers
+                        ),
                     },
                 },
             });
             bindImageDrop(editorEl, quill, false);
             bindImageResize(quill, wrap);
+            bindTableEditor(quill, wrap);
             configureArialFontPicker(wrap, quill);
+            applyToolbarTooltips(wrap);
         }
 
         var html = sourceHtml(hidden);

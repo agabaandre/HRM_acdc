@@ -107,7 +107,7 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
-<script src="{{ asset('js/apm-quill-editor.js') }}?v=3"></script>
+<script src="{{ asset('js/apm-quill-editor.js') }}?v=4"></script>
 
 <script src="{{ asset('assets/plugins/smart-wizard/js/jquery.smartWizard.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

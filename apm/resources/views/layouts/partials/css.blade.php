@@ -162,6 +162,25 @@
         padding: 0.35rem 0.5rem;
         vertical-align: top;
     }
+    .apm-quill-wrap .apm-quill-editor .ql-editor table,
+    .apm-quill-wrap .apm-quill-editor .ql-editor table.apm-quill-table {
+        width: 100%;
+        border: 1px solid #4a5568;
+    }
+    .apm-quill-wrap .apm-quill-editor .ql-editor table td,
+    .apm-quill-wrap .apm-quill-editor .ql-editor table th {
+        border: 1px solid #4a5568 !important;
+        padding: 6px 8px;
+        min-width: 48px;
+    }
+    .apm-quill-wrap .apm-quill-editor .ql-editor .apm-quill-table-active {
+        background-color: rgba(25, 135, 84, 0.08);
+        box-shadow: inset 0 0 0 2px #198754;
+    }
+    .apm-quill-wrap .ql-toolbar button[title],
+    .apm-quill-wrap .ql-toolbar .ql-picker[title] {
+        cursor: help;
+    }
 
     /* Shared Quill rich editor (memos, activities, other memo types) */
     .apm-quill-wrap .apm-quill-editor .ql-editor {
