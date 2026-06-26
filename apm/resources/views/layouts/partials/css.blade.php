@@ -166,9 +166,63 @@
     /* Shared Quill rich editor (memos, activities, other memo types) */
     .apm-quill-wrap .apm-quill-editor .ql-editor {
         min-height: 180px;
-        font-family: Arial, Calibri, Tahoma, Verdana, "Times New Roman", "Courier New", sans-serif;
+        font-family: Arial, Helvetica, sans-serif !important;
         font-size: 12pt;
         line-height: 1.35;
+    }
+    .apm-quill-wrap .apm-quill-editor .ql-editor *:not(img):not(code):not(pre) {
+        font-family: Arial, Helvetica, sans-serif !important;
+    }
+    .apm-quill-wrap .apm-quill-editor .ql-editor img.apm-quill-image,
+    .apm-quill-wrap .apm-quill-editor .ql-editor img {
+        max-width: 100%;
+        height: auto;
+        cursor: pointer;
+    }
+    .apm-quill-wrap .apm-quill-editor {
+        position: relative;
+    }
+    .apm-quill-wrap .apm-quill-image-overlay {
+        position: absolute;
+        z-index: 20;
+        pointer-events: none;
+    }
+    .apm-quill-wrap .apm-quill-image-overlay .apm-quill-image-toolbar {
+        position: absolute;
+        top: -34px;
+        left: 0;
+        display: flex;
+        gap: 4px;
+        pointer-events: auto;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 2px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    .apm-quill-wrap .apm-quill-image-overlay .apm-quill-image-toolbar .btn {
+        padding: 0.1rem 0.45rem;
+        font-size: 0.75rem;
+    }
+    .apm-quill-wrap .apm-quill-image-overlay .apm-quill-image-frame {
+        border: 2px solid #198754;
+        box-sizing: border-box;
+        pointer-events: none;
+    }
+    .apm-quill-wrap .apm-quill-image-overlay .apm-quill-image-handle {
+        position: absolute;
+        right: -6px;
+        bottom: -6px;
+        width: 12px;
+        height: 12px;
+        background: #198754;
+        border: 2px solid #fff;
+        border-radius: 2px;
+        cursor: se-resize;
+        pointer-events: auto;
+    }
+    .apm-quill-wrap .apm-quill-editor .ql-toolbar .ql-font {
+        display: none !important;
     }
     .apm-quill-wrap .apm-quill-editor .ql-toolbar {
         flex-wrap: wrap;

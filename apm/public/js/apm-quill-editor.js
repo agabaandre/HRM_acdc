@@ -22,23 +22,11 @@
         return meta ? meta.getAttribute('content') : '';
     }
 
-    function registerFonts() {
+    function registerFormats() {
         if (fontsRegistered || typeof Quill === 'undefined') {
             return;
         }
         try {
-            var Font = Quill.import('formats/font');
-            Font.whitelist = [
-                'arial',
-                'calibri',
-                'courier-new',
-                'georgia',
-                'tahoma',
-                'times-new-roman',
-                'verdana',
-            ];
-            Quill.register(Font, true);
-
             var icons = Quill.import('ui/icons');
             icons.table =
                 '<svg viewbox="0 0 18 18"><rect class="ql-stroke" height="12" width="12" x="3" y="3"></rect>'
@@ -53,7 +41,6 @@
     function fullToolbar() {
         return [
             [{ header: [1, 2, 3, 4, 5, 6, false] }],
-            [{ font: ['arial', 'calibri', 'courier-new', 'georgia', 'tahoma', 'times-new-roman', 'verdana'] }],
             [{ size: ['small', false, 'large', 'huge'] }],
             ['bold', 'italic', 'underline', 'strike'],
             [{ script: 'sub' }, { script: 'super' }],
@@ -111,7 +98,204 @@
                 var index = range ? range.index : quill.getLength();
                 quill.insertEmbed(index, 'image', url, 'user');
                 quill.setSelection(index + 1);
+                window.setTimeout(function () {
+                    prepareInsertedImage(quill, index);
+                }, 0);
             });
+    }
+
+    function prepareInsertedImage(quill, index) {
+        var img = findImageAtIndex(quill, index);
+        if (!img) {
+            return;
+        }
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        if (!img.style.width) {
+            img.style.width = '50%';
+        }
+        img.classList.add('apm-quill-image');
+    }
+
+    function findImageAtIndex(quill, index) {
+        var node = quill.getLeaf(index)[0];
+        if (node && node.domNode && node.domNode.tagName === 'IMG') {
+            return node.domNode;
+        }
+        var imgs = quill.root.querySelectorAll('img');
+        return imgs.length ? imgs[imgs.length - 1] : null;
+    }
+
+    function normalizeArialContent(root) {
+        if (!root) {
+            return;
+        }
+        root.style.fontFamily = 'Arial, Helvetica, sans-serif';
+        root.querySelectorAll('*').forEach(function (el) {
+            if (el.tagName === 'IMG') {
+                return;
+            }
+            if (el.classList) {
+                el.classList.forEach(function (cls) {
+                    if (cls.indexOf('ql-font-') === 0) {
+                        el.classList.remove(cls);
+                    }
+                });
+            }
+            if (el.style && el.style.fontFamily) {
+                el.style.fontFamily = 'Arial, Helvetica, sans-serif';
+            }
+        });
+        root.querySelectorAll('img').forEach(function (img) {
+            img.classList.add('apm-quill-image');
+            if (!img.style.maxWidth) {
+                img.style.maxWidth = '100%';
+            }
+            if (!img.style.height) {
+                img.style.height = 'auto';
+            }
+        });
+    }
+
+    function bindImageResize(quill, wrap) {
+        if (!quill || !wrap || wrap.dataset.apmImageResizeBound === '1') {
+            return;
+        }
+        wrap.dataset.apmImageResizeBound = '1';
+
+        var root = quill.root;
+        var container = wrap.querySelector('.apm-quill-editor');
+        if (!container) {
+            return;
+        }
+
+        var overlay = document.createElement('div');
+        overlay.className = 'apm-quill-image-overlay d-none';
+        overlay.innerHTML =
+            '<div class="apm-quill-image-toolbar" role="toolbar" aria-label="Image size">'
+            + '<button type="button" class="btn btn-sm btn-light" data-apm-img-size="25">25%</button>'
+            + '<button type="button" class="btn btn-sm btn-light" data-apm-img-size="50">50%</button>'
+            + '<button type="button" class="btn btn-sm btn-light" data-apm-img-size="75">75%</button>'
+            + '<button type="button" class="btn btn-sm btn-light" data-apm-img-size="100">100%</button>'
+            + '</div>'
+            + '<div class="apm-quill-image-frame"></div>'
+            + '<span class="apm-quill-image-handle" title="Drag to resize"></span>';
+        container.style.position = 'relative';
+        container.appendChild(overlay);
+
+        var frame = overlay.querySelector('.apm-quill-image-frame');
+        var handle = overlay.querySelector('.apm-quill-image-handle');
+        var toolbar = overlay.querySelector('.apm-quill-image-toolbar');
+        var activeImg = null;
+        var drag = null;
+
+        function clearSelection() {
+            activeImg = null;
+            overlay.classList.add('d-none');
+            drag = null;
+        }
+
+        function editorWidth() {
+            return root.clientWidth || container.clientWidth || 1;
+        }
+
+        function setImageWidthPercent(img, percent) {
+            var pct = Math.max(10, Math.min(100, percent));
+            img.style.width = pct + '%';
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            positionOverlay(img);
+        }
+
+        function positionOverlay(img) {
+            if (!img || !container || !frame) {
+                return;
+            }
+            var imgRect = img.getBoundingClientRect();
+            var boxRect = container.getBoundingClientRect();
+            var top = imgRect.top - boxRect.top + container.scrollTop;
+            var left = imgRect.left - boxRect.left + container.scrollLeft;
+            overlay.classList.remove('d-none');
+            overlay.style.top = top + 'px';
+            overlay.style.left = left + 'px';
+            overlay.style.width = imgRect.width + 'px';
+            overlay.style.height = imgRect.height + 'px';
+            frame.style.width = '100%';
+            frame.style.height = '100%';
+        }
+
+        function selectImage(img) {
+            activeImg = img;
+            img.classList.add('apm-quill-image');
+            positionOverlay(img);
+        }
+
+        toolbar.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        toolbar.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-apm-img-size]');
+            if (!btn || !activeImg) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            setImageWidthPercent(activeImg, parseInt(btn.getAttribute('data-apm-img-size'), 10));
+        });
+
+        handle.addEventListener('mousedown', function (e) {
+            if (!activeImg) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            drag = {
+                startX: e.clientX,
+                startWidth: activeImg.getBoundingClientRect().width,
+            };
+        });
+
+        document.addEventListener('mousemove', function (e) {
+            if (!drag || !activeImg) {
+                return;
+            }
+            var delta = e.clientX - drag.startX;
+            var nextWidth = Math.max(40, drag.startWidth + delta);
+            var percent = Math.round((nextWidth / editorWidth()) * 100);
+            setImageWidthPercent(activeImg, percent);
+        });
+
+        document.addEventListener('mouseup', function () {
+            drag = null;
+        });
+
+        root.addEventListener('click', function (e) {
+            var target = e.target;
+            if (target && target.tagName === 'IMG' && root.contains(target)) {
+                e.preventDefault();
+                selectImage(target);
+                return;
+            }
+            if (!overlay.contains(target)) {
+                clearSelection();
+            }
+        });
+
+        quill.on('text-change', function () {
+            if (activeImg && !root.contains(activeImg)) {
+                clearSelection();
+            } else if (activeImg) {
+                positionOverlay(activeImg);
+            }
+        });
+
+        window.addEventListener('resize', function () {
+            if (activeImg) {
+                positionOverlay(activeImg);
+            }
+        });
     }
 
     function pickAndUploadImage(quill) {
@@ -185,7 +369,7 @@
             return registry.get(wrap) || null;
         }
 
-        registerFonts();
+        registerFormats();
 
         var editorEl = wrap.querySelector('.apm-quill-editor');
         var hidden = wrap.querySelector('textarea.apm-quill-source');
@@ -220,12 +404,16 @@
                 },
             });
             bindImageDrop(editorEl, quill, false);
+            bindImageResize(quill, wrap);
         }
 
         var html = sourceHtml(hidden);
         if (html) {
             quill.root.innerHTML = html;
-            hidden.value = html;
+            normalizeArialContent(quill.root);
+            hidden.value = quill.root.innerHTML;
+        } else {
+            normalizeArialContent(quill.root);
         }
 
         wrap.dataset.apmQuillBound = '1';
@@ -273,6 +461,7 @@
         scope.querySelectorAll('.apm-quill-wrap[data-apm-quill-bound="1"]').forEach(function (wrap) {
             var entry = registry.get(wrap);
             if (entry && entry.quill && entry.hidden) {
+                normalizeArialContent(entry.quill.root);
                 entry.hidden.value = entry.quill.root.innerHTML;
             }
         });
@@ -282,7 +471,7 @@
         if (typeof Quill === 'undefined') {
             return;
         }
-        registerFonts();
+        registerFormats();
         var scope = root || document;
 
         scope.querySelectorAll('.apm-quill-wrap:not([data-apm-quill-bound])').forEach(function (wrap) {
