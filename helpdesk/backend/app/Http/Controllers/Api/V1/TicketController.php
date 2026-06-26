@@ -218,6 +218,10 @@ class TicketController extends Controller
             unset($data['status'], $data['assigned_user_id'], $data['category_id'], $data['priority']);
         }
 
+        if (array_key_exists('category_id', $data)) {
+            $this->authorize('changeCategory', $ticket);
+        }
+
         if (array_key_exists('description', $data)) {
             $data['description'] = HtmlSanitizer::sanitize($data['description']);
         }

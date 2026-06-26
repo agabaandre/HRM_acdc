@@ -17,6 +17,8 @@ export interface MeProfile {
   work_mode_updated_at?: string | null
   can_manage_kb?: boolean
   can_reassign_tickets?: boolean
+  can_delete_request_attachments?: boolean
+  can_change_ticket_category?: boolean
 }
 
 export interface MeUser {

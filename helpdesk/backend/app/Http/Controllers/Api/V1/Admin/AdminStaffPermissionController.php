@@ -41,6 +41,8 @@ class AdminStaffPermissionController extends Controller
             'grant_supervisor_access' => ['sometimes', 'boolean'],
             'can_manage_kb' => ['sometimes', 'boolean'],
             'can_reassign_tickets' => ['sometimes', 'boolean'],
+            'can_delete_request_attachments' => ['sometimes', 'boolean'],
+            'can_change_ticket_category' => ['sometimes', 'boolean'],
         ]);
 
         $profile = $user->helpdeskProfile;
@@ -71,6 +73,8 @@ class AdminStaffPermissionController extends Controller
             'grant_supervisor_access',
             'can_manage_kb',
             'can_reassign_tickets',
+            'can_delete_request_attachments',
+            'can_change_ticket_category',
         ] as $key) {
             if (array_key_exists($key, $validated)) {
                 $profile->{$key} = (bool) $validated[$key];
@@ -96,6 +100,8 @@ class AdminStaffPermissionController extends Controller
             'grant_supervisor_access' => (bool) ($p?->grant_supervisor_access),
             'can_manage_kb' => (bool) ($p?->can_manage_kb),
             'can_reassign_tickets' => (bool) ($p?->can_reassign_tickets),
+            'can_delete_request_attachments' => (bool) ($p?->can_delete_request_attachments),
+            'can_change_ticket_category' => (bool) ($p?->can_change_ticket_category),
         ];
     }
 }

@@ -111,6 +111,7 @@ class TicketRequesterCommentTest extends TestCase
 
         $ticket->refresh();
         $this->assertSame('closed', $ticket->status);
+    }
 
     public function test_reopen_endpoint_with_body_sends_single_comment_email_when_enabled(): void
     {

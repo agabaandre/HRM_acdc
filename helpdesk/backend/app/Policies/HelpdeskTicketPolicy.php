@@ -133,6 +133,40 @@ class HelpdeskTicketPolicy
         return $this->view($user, $ticket);
     }
 
+    /**
+     * Remove a file uploaded with the original request (not inline editor images).
+     */
+    public function deleteRequestAttachment(User $user, HelpdeskTicket $ticket): bool
+    {
+        if (! $this->view($user, $ticket)) {
+            return false;
+        }
+
+        $p = $user->helpdeskProfile;
+        if (! $p || in_array($ticket->status, ['closed', 'resolved'], true)) {
+            return false;
+        }
+
+        return $p->canDeleteRequestAttachments();
+    }
+
+    /**
+     * Change issue category while the ticket remains open.
+     */
+    public function changeCategory(User $user, HelpdeskTicket $ticket): bool
+    {
+        if (! $this->view($user, $ticket)) {
+            return false;
+        }
+
+        $p = $user->helpdeskProfile;
+        if (! $p || in_array($ticket->status, ['closed', 'resolved'], true)) {
+            return false;
+        }
+
+        return $p->canChangeTicketCategory();
+    }
+
     public function submitResolution(User $user, HelpdeskTicket $ticket): bool
     {
         if (in_array($ticket->status, ['closed', 'resolved', 'awaiting_requester_confirmation'], true)) {

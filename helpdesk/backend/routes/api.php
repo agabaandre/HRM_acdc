@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskCategoryController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSupportGroupController;
 use App\Http\Controllers\Api\V1\Admin\AdminKbArticleController;
+use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSlaRuleController;
 use App\Http\Controllers\Api\V1\Admin\AdminReferenceSyncController;
 use App\Http\Controllers\Api\V1\Admin\AdminStaffPermissionController;
 use App\Http\Controllers\Api\V1\Admin\HelpdeskSettingsController;
@@ -82,6 +83,7 @@ Route::prefix('v1')->group(function () {
         Route::get('tickets/{ticket}/comments', [TicketCommentController::class, 'index']);
         Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store']);
         Route::post('tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store']);
+        Route::delete('tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'destroy']);
         Route::post('tickets/{ticket}/inline-images', [TicketInlineImageController::class, 'store']);
         Route::delete('tickets/{ticket}/inline-images/{attachment}', [TicketInlineImageController::class, 'destroy']);
         Route::post('tickets/{ticket}/submit-resolution', [TicketResolutionController::class, 'submit']);

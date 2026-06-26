@@ -32,6 +32,8 @@ interface AgentRow {
   staff_id: number | null
   can_manage_kb: boolean
   can_reassign_tickets: boolean
+  can_delete_request_attachments: boolean
+  can_change_ticket_category: boolean
   grant_helpdesk_admin: boolean
   grant_supervisor_access: boolean
   categories: Cat[]
@@ -51,6 +53,8 @@ interface StaffPermissionRow {
   grant_supervisor_access: boolean
   can_manage_kb: boolean
   can_reassign_tickets: boolean
+  can_delete_request_attachments: boolean
+  can_change_ticket_category: boolean
 }
 
 interface CandidateRow {
@@ -83,6 +87,8 @@ const selection = ref<Record<number, number[]>>({})
 const groupSelection = ref<Record<number, number[]>>({})
 const kbToggle = ref<Record<number, boolean>>({})
 const reassignToggle = ref<Record<number, boolean>>({})
+const deleteAttachmentToggle = ref<Record<number, boolean>>({})
+const changeCategoryToggle = ref<Record<number, boolean>>({})
 const adminToggle = ref<Record<number, boolean>>({})
 const supervisorToggle = ref<Record<number, boolean>>({})
 const staffPermissions = ref<StaffPermissionRow[]>([])
@@ -90,6 +96,8 @@ const staffPermAdmin = ref<Record<number, boolean>>({})
 const staffPermSupervisor = ref<Record<number, boolean>>({})
 const staffPermKb = ref<Record<number, boolean>>({})
 const staffPermReassign = ref<Record<number, boolean>>({})
+const staffPermDeleteAttachment = ref<Record<number, boolean>>({})
+const staffPermChangeCategory = ref<Record<number, boolean>>({})
 const pickerOpen = ref(false)
 const candidates = ref<CandidateRow[]>([])
 const candidatesLoading = ref(false)
@@ -158,6 +166,8 @@ async function loadAgents() {
   const grp: Record<number, number[]> = {}
   const kb: Record<number, boolean> = {}
   const reassign: Record<number, boolean> = {}
+  const deleteAttachment: Record<number, boolean> = {}
+  const changeCategory: Record<number, boolean> = {}
   const admin: Record<number, boolean> = {}
   const supervisor: Record<number, boolean> = {}
   for (const a of list) {
@@ -165,6 +175,8 @@ async function loadAgents() {
     grp[a.id] = (a.support_groups ?? []).map((g) => g.id)
     kb[a.id] = !!a.can_manage_kb
     reassign[a.id] = !!a.can_reassign_tickets
+    deleteAttachment[a.id] = !!a.can_delete_request_attachments
+    changeCategory[a.id] = !!a.can_change_ticket_category
     admin[a.id] = !!a.grant_helpdesk_admin
     supervisor[a.id] = !!a.grant_supervisor_access
   }
@@ -172,6 +184,8 @@ async function loadAgents() {
   groupSelection.value = grp
   kbToggle.value = kb
   reassignToggle.value = reassign
+  deleteAttachmentToggle.value = deleteAttachment
+  changeCategoryToggle.value = changeCategory
   adminToggle.value = admin
   supervisorToggle.value = supervisor
 }
@@ -184,16 +198,22 @@ async function loadStaffPermissions() {
   const supervisor: Record<number, boolean> = {}
   const kb: Record<number, boolean> = {}
   const reassign: Record<number, boolean> = {}
+  const deleteAttachment: Record<number, boolean> = {}
+  const changeCategory: Record<number, boolean> = {}
   for (const row of list) {
     admin[row.id] = !!row.grant_helpdesk_admin
     supervisor[row.id] = !!row.grant_supervisor_access
     kb[row.id] = !!row.can_manage_kb
     reassign[row.id] = !!row.can_reassign_tickets
+    deleteAttachment[row.id] = !!row.can_delete_request_attachments
+    changeCategory[row.id] = !!row.can_change_ticket_category
   }
   staffPermAdmin.value = admin
   staffPermSupervisor.value = supervisor
   staffPermKb.value = kb
   staffPermReassign.value = reassign
+  staffPermDeleteAttachment.value = deleteAttachment
+  staffPermChangeCategory.value = changeCategory
 }
 
 async function loadAll() {
@@ -302,6 +322,8 @@ async function saveStaffPermissions(userId: number) {
       grant_supervisor_access: !!staffPermSupervisor.value[userId],
       can_manage_kb: !!staffPermKb.value[userId],
       can_reassign_tickets: !!staffPermReassign.value[userId],
+      can_delete_request_attachments: !!staffPermDeleteAttachment.value[userId],
+      can_change_ticket_category: !!staffPermChangeCategory.value[userId],
     })
     notifySuccess(`Saved permission overrides for user #${userId}`)
     await loadStaffPermissions()
@@ -329,6 +351,8 @@ async function saveAgent(userId: number) {
       support_group_ids: (groupSelection.value[userId] ?? []).map((id) => Number(id)),
       can_manage_kb: !!kbToggle.value[userId],
       can_reassign_tickets: !!reassignToggle.value[userId],
+      can_delete_request_attachments: !!deleteAttachmentToggle.value[userId],
+      can_change_ticket_category: !!changeCategoryToggle.value[userId],
       grant_helpdesk_admin: !!adminToggle.value[userId],
       grant_supervisor_access: !!supervisorToggle.value[userId],
     })
@@ -710,6 +734,8 @@ onMounted(() => {
               <UCheckbox v-model="supervisorToggle[a.id]" label="Supervisor access" class="perm-toggle" />
               <UCheckbox v-model="kbToggle[a.id]" label="Manage FAQs" class="perm-toggle" />
               <UCheckbox v-model="reassignToggle[a.id]" label="Reassign tickets" class="perm-toggle" />
+              <UCheckbox v-model="deleteAttachmentToggle[a.id]" label="Delete request attachments" class="perm-toggle" />
+              <UCheckbox v-model="changeCategoryToggle[a.id]" label="Change ticket category" class="perm-toggle" />
             </div>
           </div>
 
@@ -746,6 +772,8 @@ onMounted(() => {
               <UCheckbox v-model="staffPermSupervisor[row.id]" label="Supervisor" class="perm-toggle" />
               <UCheckbox v-model="staffPermKb[row.id]" label="Manage FAQs" class="perm-toggle" />
               <UCheckbox v-model="staffPermReassign[row.id]" label="Reassign" class="perm-toggle" />
+              <UCheckbox v-model="staffPermDeleteAttachment[row.id]" label="Delete attachments" class="perm-toggle" />
+              <UCheckbox v-model="staffPermChangeCategory[row.id]" label="Change category" class="perm-toggle" />
             </td>
             <td><UButton type="button" color="primary" size="xs" @click="saveStaffPermissions(row.id)">Save</UButton></td>
           </tr>

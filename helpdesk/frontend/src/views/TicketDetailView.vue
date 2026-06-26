@@ -10,6 +10,8 @@ import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { fieldError, type SelectNumberItem } from '../lib/helpdeskForm'
 import {
   canChangeTicketCategory,
+  canDeleteRequestAttachments,
+  ticketStatusAllowsAttachmentDelete,
   ticketStatusAllowsCategoryChange,
 } from '../lib/canChangeTicketCategory'
 import { formatDateTime, formatDateTimeLong } from '../lib/formatDateTime'
@@ -83,6 +85,7 @@ const kbSubject = ref('')
 const resolveModalErr = ref<string | null>(null)
 const cats = ref<{ id: number; name: string }[]>([])
 const categoryUpdating = ref(false)
+const deletingAttachmentId = ref<number | null>(null)
 
 const canEditCategory = computed(() => {
   const t = ticket.value
@@ -90,6 +93,14 @@ const canEditCategory = computed(() => {
     return false
   }
   return canChangeTicketCategory(auth.me?.profile) && ticketStatusAllowsCategoryChange(t.status)
+})
+
+const canDeleteAttachments = computed(() => {
+  const t = ticket.value
+  if (!t) {
+    return false
+  }
+  return canDeleteRequestAttachments(auth.me?.profile) && ticketStatusAllowsAttachmentDelete(t.status)
 })
 
 const categoryItems = computed((): SelectNumberItem[] =>
@@ -239,6 +250,31 @@ async function updateTicketCategory(categoryId: number | undefined) {
     notifyError(apiErrorMessage(e, 'Could not update category'))
   } finally {
     categoryUpdating.value = false
+  }
+}
+
+async function deleteRequestAttachment(attachment: TicketAttachment) {
+  const t = ticket.value
+  if (!t || !canDeleteAttachments.value || deletingAttachmentId.value != null) {
+    return
+  }
+  const label = attachment.original_name || 'this file'
+  if (!window.confirm(`Remove ${label} from this request? This cannot be undone.`)) {
+    return
+  }
+  deletingAttachmentId.value = attachment.id
+  try {
+    await api.delete(`/api/v1/tickets/${t.id}/attachments/${attachment.id}`)
+    if (ticket.value?.attachments) {
+      ticket.value.attachments = ticket.value.attachments.filter((a) => a.id !== attachment.id)
+    }
+    if (previewAttachment.value?.id === attachment.id) {
+      closeImagePreview()
+    }
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Could not remove attachment'))
+  } finally {
+    deletingAttachmentId.value = null
   }
 }
 
@@ -414,32 +450,44 @@ watch(canReopenWithComment, (can) => {
         <h3 class="h3">Request attachments</h3>
         <ul class="attach-list">
           <li v-for="a in requestAttachments" :key="a.id" class="attach-item">
-            <button
-              v-if="isImageAttachment(a)"
-              type="button"
-              class="attach-link attach-link--image"
-              :title="`Preview ${a.original_name}`"
-              @click="openImagePreview(a)"
-            >
-              <img
-                class="attach-thumb"
-                :src="a.url"
-                :alt="a.original_name"
-                loading="lazy"
-              />
-              <span class="attach-name">{{ a.original_name }}</span>
-            </button>
-            <a
-              v-else
-              class="attach-link"
-              :href="a.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              :title="a.original_name"
-            >
-              <span class="attach-file-icon" aria-hidden="true">📄</span>
-              <span class="attach-name">{{ a.original_name }}</span>
-            </a>
+            <div class="attach-row">
+              <button
+                v-if="isImageAttachment(a)"
+                type="button"
+                class="attach-link attach-link--image"
+                :title="`Preview ${a.original_name}`"
+                @click="openImagePreview(a)"
+              >
+                <img
+                  class="attach-thumb"
+                  :src="a.url"
+                  :alt="a.original_name"
+                  loading="lazy"
+                />
+                <span class="attach-name">{{ a.original_name }}</span>
+              </button>
+              <a
+                v-else
+                class="attach-link"
+                :href="a.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                :title="a.original_name"
+              >
+                <span class="attach-file-icon" aria-hidden="true">📄</span>
+                <span class="attach-name">{{ a.original_name }}</span>
+              </a>
+              <button
+                v-if="canDeleteAttachments"
+                type="button"
+                class="attach-delete"
+                :disabled="deletingAttachmentId === a.id"
+                :title="`Remove ${a.original_name}`"
+                @click="deleteRequestAttachment(a)"
+              >
+                {{ deletingAttachmentId === a.id ? 'Removing…' : 'Remove' }}
+              </button>
+            </div>
           </li>
         </ul>
       </section>
@@ -926,6 +974,30 @@ watch(canReopenWithComment, (can) => {
 }
 .attach-item {
   margin: 0;
+}
+.attach-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+.attach-delete {
+  border: 1px solid #fecaca;
+  background: #fff;
+  color: #b91c1c;
+  border-radius: 4px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.attach-delete:hover:not(:disabled) {
+  background: #fef2f2;
+}
+.attach-delete:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 .attach-link {
   display: flex;

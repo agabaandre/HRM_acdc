@@ -37,6 +37,8 @@ class HelpdeskProfile extends Model
         'is_designated_agent',
         'can_manage_kb',
         'can_reassign_tickets',
+        'can_delete_request_attachments',
+        'can_change_ticket_category',
         'grant_helpdesk_admin',
         'grant_supervisor_access',
         'directorate_id',
@@ -54,6 +56,8 @@ class HelpdeskProfile extends Model
             'work_mode_updated_at' => 'datetime',
             'can_manage_kb' => 'boolean',
             'can_reassign_tickets' => 'boolean',
+            'can_delete_request_attachments' => 'boolean',
+            'can_change_ticket_category' => 'boolean',
             'grant_helpdesk_admin' => 'boolean',
             'grant_supervisor_access' => 'boolean',
             'is_designated_agent' => 'boolean',
@@ -181,5 +185,31 @@ class HelpdeskProfile extends Model
         }
 
         return (bool) $this->can_reassign_tickets;
+    }
+
+    /**
+     * True when this profile may remove request attachments on open tickets — admins
+     * always, other roles only when explicitly granted via Settings → Agents.
+     */
+    public function canDeleteRequestAttachments(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->can_delete_request_attachments;
+    }
+
+    /**
+     * True when this profile may change ticket category on open tickets — admins
+     * always, other roles only when explicitly granted via Settings → Agents.
+     */
+    public function canChangeTicketCategory(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->can_change_ticket_category;
     }
 }

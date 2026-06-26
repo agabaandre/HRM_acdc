@@ -36,6 +36,8 @@ class MeResource extends JsonResource
                 'work_mode_updated_at' => $p->work_mode_updated_at?->toIso8601String(),
                 'can_manage_kb' => $p->canManageKnowledgeBase(),
                 'can_reassign_tickets' => $p->canReassignTickets(),
+                'can_delete_request_attachments' => $p->canDeleteRequestAttachments(),
+                'can_change_ticket_category' => $p->canChangeTicketCategory(),
             ] : null,
         ];
     }
