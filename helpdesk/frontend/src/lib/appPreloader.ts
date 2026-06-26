@@ -8,14 +8,14 @@ export const PRELOADER_MIN_MS = 3000
 const bootShownAt = Date.now()
 let routePending = 0
 let routeShownAt = 0
-let routeHideTimer: ReturnType<typeof setTimeout> | null = null
+let routeHideTimer: number | null = null
 
 function scheduleAfterMinDisplay(shownAt: number, fn: () => void): void {
   const wait = Math.max(0, PRELOADER_MIN_MS - (Date.now() - shownAt))
   routeHideTimer = window.setTimeout(fn, wait)
 }
 
-export function dismissBootPreloader(): void {
+export function dismissBootPreloader(_options?: { immediate?: boolean }): void {
   const el = document.getElementById('helpdesk-boot-loader')
   if (el) {
     el.classList.add('hd-boot-loader--out')
