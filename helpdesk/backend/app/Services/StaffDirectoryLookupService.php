@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Cache;
  */
 class StaffDirectoryLookupService
 {
+    /** @var array<int, string>|null */
+    private ?array $dutyStationMapCache = null;
+
     /**
      * @return array{name:string,work_email:string,division_id:?int,directorate_id:?int,duty_station_name:?string}|null
      */
@@ -62,15 +65,59 @@ class StaffDirectoryLookupService
             return null;
         }
 
-        $resolved = $this->resolveByStaffId($staffId);
-        if ($resolved !== null && ($resolved['duty_station_name'] ?? '') !== '') {
-            return trim((string) $resolved['duty_station_name']);
+        $fromDirectory = $this->dutyStationMapByStaffId()[$staffId] ?? null;
+        if ($fromDirectory !== null && $fromDirectory !== '') {
+            return $fromDirectory;
         }
 
         $p = HelpdeskProfile::query()->where('staff_id', $staffId)->first();
         $ds = $p?->duty_station ? trim((string) $p->duty_station) : '';
 
         return $ds !== '' ? $ds : null;
+    }
+
+    /**
+     * @return array<int, string> staff_id => duty station name
+     */
+    public function dutyStationMapByStaffId(): array
+    {
+        if ($this->dutyStationMapCache !== null) {
+            return $this->dutyStationMapCache;
+        }
+
+        $limit = (int) config('helpdesk.staff_api.staff_fetch_limit', 5000);
+        $cacheKey = 'helpdesk_reference_staff_v1_'.$limit;
+        $staffRows = Cache::get($cacheKey);
+        if (! is_array($staffRows)) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($staffRows as $raw) {
+            if (! is_array($raw)) {
+                continue;
+            }
+            $row = StaffShareNormalizer::staff($raw);
+            $id = (int) ($row['id'] ?? 0);
+            $name = $row['duty_station_name'] ?? null;
+            if ($id > 0 && is_string($name) && trim($name) !== '') {
+                $map[$id] = trim($name);
+            }
+        }
+
+        return $this->dutyStationMapCache = $map;
+    }
+
+    /**
+     * Display label for a requester's duty station (never null).
+     */
+    public function dutyStationLabelForStaffId(?int $staffId): string
+    {
+        if ($staffId === null || $staffId < 1) {
+            return 'Unspecified';
+        }
+
+        return $this->dutyStationForStaffId($staffId) ?? 'Unspecified';
     }
 
     /**

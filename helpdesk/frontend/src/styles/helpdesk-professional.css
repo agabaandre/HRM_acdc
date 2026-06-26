@@ -229,7 +229,7 @@ html.helpdesk-theme-dark .hd-btn--outline {
 }
 
 /* Knowledge base preview on home */
-.hd-kb-card :deep([data-slot="header"]) {
+.hd-kb-card [data-slot="header"] {
   padding-bottom: 0.35rem;
 }
 
@@ -917,8 +917,8 @@ html.helpdesk-theme-dark .hd-btn--outline {
   min-width: 0;
 }
 
-.hd-ask-compose-field :deep(.u-form-field),
-.hd-ask-compose-field :deep([data-slot="root"]) {
+.hd-ask-compose-field .u-form-field,
+.hd-ask-compose-field [data-slot="root"] {
   width: 100%;
 }
 

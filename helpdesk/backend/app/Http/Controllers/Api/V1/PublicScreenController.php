@@ -7,6 +7,7 @@ use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
+use App\Services\StaffDirectoryLookupService;
 use App\Services\TicketFirstResponseService;
 use App\Support\StaffPhotoUrl;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +28,7 @@ class PublicScreenController extends Controller
     /** Inclusive set including the "waiting on requester" hand-off state. */
     private const PENDING_STATUSES = ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'];
 
-    public function __invoke(TicketFirstResponseService $firstResponse): JsonResponse
+    public function __invoke(TicketFirstResponseService $firstResponse, StaffDirectoryLookupService $directory): JsonResponse
     {
         $now = now();
         $startOfToday = $now->copy()->startOfDay();
@@ -45,7 +46,7 @@ class PublicScreenController extends Controller
                 'sla' => $this->slaMetrics($sevenDaysAgo, $now),
                 'by_priority' => $this->byPriority(),
                 'by_category' => $this->byCategory(),
-                'by_duty_station' => $this->byDutyStation($now, $startOfWeek),
+                'by_duty_station' => $this->byDutyStation($now, $startOfWeek, $directory),
                 'closures_by_agent_month' => $this->closuresByAgentThisMonth($startOfMonth, $now),
                 'workload' => $this->workload(),
                 'trend' => $this->trend30Days($thirtyDaysAgo, $now),
@@ -236,67 +237,72 @@ class PublicScreenController extends Controller
     }
 
     /**
-     * Duty station label derived from the requester's helpdesk profile.
-     */
-    private function dutyStationLabelSql(): string
-    {
-        return "COALESCE(NULLIF(TRIM(helpdesk_profiles.duty_station), ''), 'Unspecified')";
-    }
-
-    /**
      * Open, closed-this-week, and SLA-overdue tickets grouped by requester duty station.
+     * Duty station comes from the staff directory (requester's contract station), with
+     * helpdesk profile sync as fallback.
      *
      * @return list<array<string, mixed>>
      */
-    private function byDutyStation(\DateTimeInterface $now, \DateTimeInterface $startOfWeek): array
-    {
-        $labelSql = $this->dutyStationLabelSql();
+    private function byDutyStation(
+        \DateTimeInterface $now,
+        \DateTimeInterface $startOfWeek,
+        StaffDirectoryLookupService $directory,
+    ): array {
+        $openByStaff = HelpdeskTicket::query()
+            ->whereIn('status', self::PENDING_STATUSES)
+            ->selectRaw('requester_staff_id, COUNT(*) AS c')
+            ->groupBy('requester_staff_id')
+            ->pluck('c', 'requester_staff_id');
 
-        $open = HelpdeskTicket::query()
-            ->whereIn('helpdesk_tickets.status', self::PENDING_STATUSES)
-            ->leftJoin('helpdesk_profiles', 'helpdesk_profiles.staff_id', '=', 'helpdesk_tickets.requester_staff_id')
-            ->selectRaw("{$labelSql} AS station_name, COUNT(*) AS c")
-            ->groupByRaw($labelSql)
-            ->pluck('c', 'station_name');
-
-        $closedThisWeek = HelpdeskTicket::query()
-            ->leftJoin('helpdesk_profiles', 'helpdesk_profiles.staff_id', '=', 'helpdesk_tickets.requester_staff_id')
-            ->whereRaw('COALESCE(helpdesk_tickets.resolved_at, helpdesk_tickets.closed_at) BETWEEN ? AND ?', [
+        $closedThisWeekByStaff = HelpdeskTicket::query()
+            ->whereRaw('COALESCE(resolved_at, closed_at) BETWEEN ? AND ?', [
                 $startOfWeek->format('Y-m-d H:i:s'),
                 $now->format('Y-m-d H:i:s'),
             ])
-            ->selectRaw("{$labelSql} AS station_name, COUNT(*) AS c")
-            ->groupByRaw($labelSql)
-            ->pluck('c', 'station_name');
+            ->selectRaw('requester_staff_id, COUNT(*) AS c')
+            ->groupBy('requester_staff_id')
+            ->pluck('c', 'requester_staff_id');
 
-        $overtime = HelpdeskTicket::query()
-            ->whereIn('helpdesk_tickets.status', self::PENDING_STATUSES)
-            ->whereNotNull('helpdesk_tickets.sla_resolution_due_at')
-            ->where('helpdesk_tickets.sla_resolution_due_at', '<', $now)
-            ->leftJoin('helpdesk_profiles', 'helpdesk_profiles.staff_id', '=', 'helpdesk_tickets.requester_staff_id')
-            ->selectRaw("{$labelSql} AS station_name, COUNT(*) AS c")
-            ->groupByRaw($labelSql)
-            ->pluck('c', 'station_name');
+        $overtimeByStaff = HelpdeskTicket::query()
+            ->whereIn('status', self::PENDING_STATUSES)
+            ->whereNotNull('sla_resolution_due_at')
+            ->where('sla_resolution_due_at', '<', $now)
+            ->selectRaw('requester_staff_id, COUNT(*) AS c')
+            ->groupBy('requester_staff_id')
+            ->pluck('c', 'requester_staff_id');
 
-        $stationNames = collect([$open, $closedThisWeek, $overtime])
+        $staffIds = collect([$openByStaff, $closedThisWeekByStaff, $overtimeByStaff])
             ->flatMap(fn ($rows) => $rows->keys())
+            ->map(fn ($id) => $id === null ? 0 : (int) $id)
             ->unique()
             ->values();
 
-        if ($stationNames->isEmpty()) {
+        if ($staffIds->isEmpty()) {
             return [];
         }
 
-        $out = [];
-        foreach ($stationNames as $name) {
-            $out[] = [
-                'name' => (string) $name,
-                'open' => (int) ($open[$name] ?? 0),
-                'closed_this_week' => (int) ($closedThisWeek[$name] ?? 0),
-                'overtime' => (int) ($overtime[$name] ?? 0),
+        $buckets = [];
+        foreach ($staffIds as $staffId) {
+            $name = $directory->dutyStationLabelForStaffId($staffId > 0 ? $staffId : null);
+            $buckets[$name] ??= [
+                'name' => $name,
+                'open' => 0,
+                'closed_this_week' => 0,
+                'overtime' => 0,
             ];
+
+            if ($staffId > 0) {
+                $buckets[$name]['open'] += (int) ($openByStaff[$staffId] ?? 0);
+                $buckets[$name]['closed_this_week'] += (int) ($closedThisWeekByStaff[$staffId] ?? 0);
+                $buckets[$name]['overtime'] += (int) ($overtimeByStaff[$staffId] ?? 0);
+            } else {
+                $buckets[$name]['open'] += (int) ($openByStaff[null] ?? $openByStaff[''] ?? 0);
+                $buckets[$name]['closed_this_week'] += (int) ($closedThisWeekByStaff[null] ?? $closedThisWeekByStaff[''] ?? 0);
+                $buckets[$name]['overtime'] += (int) ($overtimeByStaff[null] ?? $overtimeByStaff[''] ?? 0);
+            }
         }
 
+        $out = array_values($buckets);
         usort($out, function (array $a, array $b): int {
             return [$b['open'], $b['closed_this_week'], $b['overtime'], $a['name']]
                 <=> [$a['open'], $a['closed_this_week'], $a['overtime'], $b['name']];

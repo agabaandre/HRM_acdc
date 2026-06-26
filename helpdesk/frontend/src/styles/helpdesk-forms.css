@@ -58,7 +58,7 @@
   min-width: 14rem;
 }
 
-.hd-rich-field :deep(.cbp-rich-text) {
+.hd-rich-field .cbp-rich-text {
   width: 100%;
 }
 

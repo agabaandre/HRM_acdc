@@ -138,11 +138,6 @@ const trendMaxValue = computed(() => {
   return max
 })
 
-const maxWorkload = computed(() => {
-  const w = data.value?.workload ?? []
-  return w.reduce((acc, r) => Math.max(acc, r.open), 0) || 1
-})
-
 const maxCategory = computed(() => {
   const c = data.value?.by_category ?? []
   return c.reduce((acc, r) => Math.max(acc, r.open), 0) || 1
@@ -155,6 +150,17 @@ const agentClosuresTicker = computed(() => {
 })
 const agentClosuresDuration = computed(() => {
   const count = agentClosures.value.length
+  if (count < 1) return '0s'
+  return `${Math.max(28, count * 4)}s`
+})
+
+const agentOpenTickets = computed(() => data.value?.workload ?? [])
+const agentOpenTicketsTicker = computed(() => {
+  const rows = agentOpenTickets.value
+  return rows.length > 0 ? [...rows, ...rows] : []
+})
+const agentOpenTicketsDuration = computed(() => {
+  const count = agentOpenTickets.value.length
   if (count < 1) return '0s'
   return `${Math.max(28, count * 4)}s`
 })
@@ -319,25 +325,6 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <!-- Workload -->
-      <section class="card workload-card">
-        <header class="card-head">
-          <h2>Agent workload</h2>
-          <span class="card-sub">Top {{ data.workload.length }} by open tickets</span>
-        </header>
-        <ul v-if="data.workload.length" class="workload-list">
-          <li v-for="a in data.workload" :key="a.id" class="workload-row">
-            <CbpAvatar :name="a.name" :image-url="a.avatar_url ?? null" size="sm" />
-            <span class="workload-name">{{ a.name }}</span>
-            <span class="workload-bar">
-              <span class="workload-fill" :style="{ width: ((a.open / maxWorkload) * 100) + '%' }" />
-            </span>
-            <span class="workload-count">{{ a.open }}</span>
-          </li>
-        </ul>
-        <p v-else class="muted">No assigned workload right now.</p>
-      </section>
-
       <!-- Category breakdown -->
       <section class="card category-card">
         <header class="card-head">
@@ -391,7 +378,7 @@ onUnmounted(() => {
         <p v-else class="muted">No ticket activity by duty station.</p>
       </section>
 
-      <!-- Agent closures ticker (this month) -->
+      <!-- Agent closures + open tickets tickers -->
       <section class="card closures-card">
         <header class="card-head">
           <h2>Tickets closed by agent</h2>
@@ -404,7 +391,7 @@ onUnmounted(() => {
           >
             <article
               v-for="(agent, index) in agentClosuresTicker"
-              :key="`${agent.id}-${index}`"
+              :key="`closed-${agent.id}-${index}`"
               class="ticker-card"
             >
               <CbpAvatar :name="agent.name" :image-url="agent.avatar_url ?? null" size="sm" />
@@ -416,6 +403,32 @@ onUnmounted(() => {
           </div>
         </div>
         <p v-else class="muted">No agent closures recorded this month yet.</p>
+      </section>
+
+      <section class="card open-tickets-card">
+        <header class="card-head">
+          <h2>Staff with open tickets</h2>
+          <span class="card-sub">Assigned now · {{ agentOpenTickets.length }} agents</span>
+        </header>
+        <div v-if="agentOpenTickets.length" class="ticker-viewport" aria-hidden="true">
+          <div
+            class="ticker-track"
+            :style="{ animationDuration: agentOpenTicketsDuration }"
+          >
+            <article
+              v-for="(agent, index) in agentOpenTicketsTicker"
+              :key="`open-${agent.id}-${index}`"
+              class="ticker-card"
+            >
+              <CbpAvatar :name="agent.name" :image-url="agent.avatar_url ?? null" size="sm" />
+              <div class="ticker-meta">
+                <p class="ticker-name">{{ agent.name }}</p>
+                <p class="ticker-count">{{ agent.open }} open</p>
+              </div>
+            </article>
+          </div>
+        </div>
+        <p v-else class="muted">No assigned open tickets right now.</p>
       </section>
 
       <!-- 30-day trend -->
@@ -637,8 +650,8 @@ body.screen-mode #app {
   grid-template-areas:
     'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
     'wait wait duty duty duty duty category category priority priority priority priority'
-    'closures closures closures closures closures closures closures closures closures closures closures closures'
-    'workload workload workload workload workload workload trend trend trend trend trend trend';
+    'closures closures closures closures closures closures closures open open open open open open'
+    'trend trend trend trend trend trend trend trend trend trend trend trend';
   gap: 0.9rem;
   min-height: 0;
 }
@@ -646,9 +659,9 @@ body.screen-mode #app {
 .wait-card { grid-area: wait; }
 .duty-card { grid-area: duty; }
 .priority-card { grid-area: priority; }
-.workload-card { grid-area: workload; }
 .category-card { grid-area: category; }
 .closures-card { grid-area: closures; }
+.open-tickets-card { grid-area: open; }
 .trend-card { grid-area: trend; }
 
 /* KPI tiles */
@@ -980,8 +993,9 @@ body.screen-mode #app {
 .screen.theme-light .duty-pill.closed { color: #15803d; }
 .screen.theme-light .duty-pill.overtime.hot { color: #b91c1c; }
 
-/* Agent closures ticker */
-.closures-card {
+/* Agent closures + open tickets tickers */
+.closures-card,
+.open-tickets-card {
   min-height: 5.5rem;
 }
 .ticker-viewport {
@@ -1125,7 +1139,8 @@ body.screen-mode #app {
       'wait wait wait wait wait wait duty duty duty duty duty duty'
       'category category category category category category priority priority priority priority priority priority'
       'closures closures closures closures closures closures closures closures closures closures closures closures'
-      'workload workload workload workload workload workload trend trend trend trend trend trend';
+      'open open open open open open open open open open open open'
+      'trend trend trend trend trend trend trend trend trend trend trend trend';
   }
   .kpis { grid-template-columns: repeat(3, 1fr); }
 }

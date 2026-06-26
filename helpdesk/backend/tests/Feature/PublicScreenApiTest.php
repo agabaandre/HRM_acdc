@@ -182,6 +182,49 @@ class PublicScreenApiTest extends TestCase
         $response->assertJsonPath('data.by_duty_station.1.overtime', 1);
     }
 
+    public function test_screen_uses_staff_directory_duty_station_when_profile_field_empty(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $this->seedHelpdeskStaffDirectoryCache(99501, dutyStationName: 'Nairobi');
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009920',
+            'category_id' => $cat->id,
+            'subject' => 'Network Nairobi',
+            'description' => 'Offline',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 99501,
+            'requester_name' => 'Nairobi Staff',
+            'requester_email' => 'nairobi@example.org',
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009921',
+            'category_id' => $cat->id,
+            'subject' => 'Closed Nairobi',
+            'description' => 'Fixed',
+            'priority' => 'low',
+            'status' => 'closed',
+            'source' => 'web',
+            'requester_staff_id' => 99501,
+            'requester_name' => 'Nairobi Staff',
+            'requester_email' => 'nairobi@example.org',
+            'resolved_at' => now(),
+            'closed_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/public/screen');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.by_duty_station.0.name', 'Nairobi');
+        $response->assertJsonPath('data.by_duty_station.0.open', 1);
+        $response->assertJsonPath('data.by_duty_station.0.closed_this_week', 1);
+    }
+
     public function test_screen_lists_agent_closures_for_current_month(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);
