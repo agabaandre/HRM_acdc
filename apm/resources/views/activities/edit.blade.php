@@ -507,13 +507,7 @@ $(document).ready(function () {
     }
 
     function updateTotalParticipants() {
-        let internalCount = 0;
-
-        $('#participantsTableBody tr').each(function () {
-            if (!$(this).find('td').hasClass('text-muted')) {
-                internalCount++;
-            }
-        });
+        const internalCount = $('#participantsTableBody tr[data-participant-id]').not('.participant-days-warning-row').length;
 
         // Show "No participants selected yet" message if no participants
         if (internalCount === 0) {

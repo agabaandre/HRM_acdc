@@ -55,7 +55,13 @@
                 <label for="background" class="form-label fw-semibold">
                     <i class="fas fa-align-left me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                 </label>
-                <textarea name="background" id="background" class="form-control summernote" rows="3" required>{{ old('background', $activity->background ?? '') }}</textarea>
+                <x-apm-rich-editor
+                    name="background"
+                    id="background"
+                    :value="old('background', $activity->background ?? '')"
+                    required
+                    min-height="220px"
+                />
             </div>
 
             <div class="col-md-6">

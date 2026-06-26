@@ -287,7 +287,7 @@
                 inp.name = name;
                 inp.id = 'payload_' + k;
                 inp.className = 'form-control apm-rich-editor';
-                if (f.required) inp.required = true;
+                if (f.required) inp.setAttribute('data-apm-quill-required', '1');
             } else if (f.field_type === 'textarea') {
                 inp = document.createElement('textarea');
                 inp.name = name;

@@ -453,13 +453,7 @@ $(document).ready(function () {
         return $('#date_from').val() && $('#date_to').val();
     }
     function updateTotalParticipants() {
-    let internalCount = 0;
-
-    $('#participantsTableBody tr').each(function () {
-        if (!$(this).find('td').hasClass('text-muted')) {
-            internalCount++;
-        }
-    });
+    const internalCount = $('#participantsTableBody tr[data-participant-id]').not('.participant-days-warning-row').length;
 
     const externalCount = parseInt($('#total_external_participants').val()) || 0;
     const total = internalCount + externalCount;
@@ -760,6 +754,7 @@ $(document).ready(function () {
         dateFormat: 'Y-m-d'
     });
     setTimeout(function() { checkParticipantDaysWarnings(); }, 100);
+    updateTotalParticipants();
 }
 
 

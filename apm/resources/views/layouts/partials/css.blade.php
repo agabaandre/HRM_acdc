@@ -181,6 +181,9 @@
     .apm-quill-wrap .ql-toolbar .ql-picker[title] {
         cursor: help;
     }
+    .apm-quill-wrap.is-invalid .apm-quill-editor {
+        border-color: #dc3545 !important;
+    }
 
     /* Shared Quill rich editor (memos, activities, other memo types) */
     .apm-quill-wrap .apm-quill-editor .ql-editor {

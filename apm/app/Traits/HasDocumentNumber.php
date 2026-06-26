@@ -19,8 +19,8 @@ trait HasDocumentNumber
                 
                 // Only assign document numbers to models that should have them
                 if ($documentType !== null) {
-                    // Dispatch job to assign document number asynchronously
-                    AssignDocumentNumberJob::dispatch($model);
+                    // Assign synchronously so create/update requests do not depend on queue tables.
+                    AssignDocumentNumberJob::dispatchSync($model);
                 }
             }
         });

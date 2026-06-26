@@ -687,6 +687,8 @@
             return null;
         }
 
+        adoptRequiredFromHidden(wrap, hidden);
+
         var toolbarMode = wrap.dataset.apmQuillToolbar || (options && options.toolbar) || 'full';
         var disabled = wrap.dataset.apmQuillDisabled !== undefined || (options && options.disabled === true);
         var minHeight = wrap.dataset.apmQuillMinHeight || (options && options.minHeight) || '200px';
@@ -735,6 +737,15 @@
         wrap.dataset.apmQuillBound = '1';
         var entry = { quill: quill, hidden: hidden, wrap: wrap };
         registry.set(wrap, entry);
+
+        if (!disabled && quill) {
+            quill.on('text-change', function () {
+                normalizeArialContent(quill.root);
+                hidden.value = quill.root.innerHTML;
+                markQuillInvalid(entry, false);
+            });
+        }
+
         return entry;
     }
 
@@ -755,6 +766,9 @@
         } else if (options && options.minHeight) {
             wrap.dataset.apmQuillMinHeight = options.minHeight;
         }
+        if (textarea.required || textarea.hasAttribute('required') || textarea.dataset.apmQuillRequired === '1') {
+            wrap.dataset.apmQuillRequired = '1';
+        }
 
         var editor = document.createElement('div');
         editor.className = 'apm-quill-editor border rounded bg-white';
@@ -763,6 +777,7 @@
         textarea.classList.add('apm-quill-source', 'd-none');
         textarea.classList.remove('summernote');
         textarea.dataset.apmQuillUpgraded = '1';
+        textarea.removeAttribute('required');
 
         var parent = textarea.parentNode;
         parent.insertBefore(wrap, textarea);
@@ -770,6 +785,79 @@
         wrap.appendChild(textarea);
 
         return bindQuill(wrap, options || {});
+    }
+
+    function quillContentEmpty(quill) {
+        if (!quill || !quill.root) {
+            return true;
+        }
+        var text = (quill.getText() || '').replace(/\u00a0/g, ' ').trim();
+        if (text) {
+            return false;
+        }
+        var html = (quill.root.innerHTML || '').trim();
+        return !html || html === '<p><br></p>' || html === '<p></p>';
+    }
+
+    function markQuillInvalid(entry, invalid) {
+        if (!entry || !entry.wrap) {
+            return;
+        }
+        entry.wrap.classList.toggle('is-invalid', !!invalid);
+    }
+
+    function clearQuillInvalidStates(root) {
+        var scope = root || document;
+        scope.querySelectorAll('.apm-quill-wrap.is-invalid').forEach(function (wrap) {
+            wrap.classList.remove('is-invalid');
+        });
+    }
+
+    function validateRequired(root) {
+        var scope = root || document;
+        var firstInvalid = null;
+        scope.querySelectorAll('.apm-quill-wrap[data-apm-quill-required]').forEach(function (wrap) {
+            var entry = registry.get(wrap);
+            if (!entry || !entry.quill) {
+                return;
+            }
+            normalizeArialContent(entry.quill.root);
+            if (entry.hidden) {
+                entry.hidden.value = entry.quill.root.innerHTML;
+            }
+            var empty = quillContentEmpty(entry.quill);
+            markQuillInvalid(entry, empty);
+            if (empty && !firstInvalid) {
+                firstInvalid = entry;
+            }
+        });
+        return firstInvalid;
+    }
+
+    function focusQuillEntry(entry) {
+        if (!entry || !entry.quill) {
+            return;
+        }
+        try {
+            entry.quill.focus();
+        } catch (e) {
+            if (entry.quill.root && entry.quill.root.focus) {
+                entry.quill.root.focus();
+            }
+        }
+        if (entry.wrap && entry.wrap.scrollIntoView) {
+            entry.wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function adoptRequiredFromHidden(wrap, hidden) {
+        if (!wrap || !hidden) {
+            return;
+        }
+        if (hidden.required || hidden.hasAttribute('required')) {
+            wrap.dataset.apmQuillRequired = '1';
+            hidden.removeAttribute('required');
+        }
     }
 
     function syncAll(root) {
@@ -824,11 +912,21 @@
                     return;
                 }
                 if (
-                    form.querySelector(
+                    !form.querySelector(
                         '.apm-quill-wrap, textarea.apm-rich-editor, textarea.apm-quill-source, textarea[data-apm-quill-upgraded]'
                     )
                 ) {
-                    syncAll(form);
+                    return;
+                }
+                syncAll(form);
+                var invalid = validateRequired(form);
+                if (invalid) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    focusQuillEntry(invalid);
+                    if (typeof window.show_notification === 'function') {
+                        window.show_notification('Please complete all required rich-text fields.', 'warning');
+                    }
                 }
             },
             true
@@ -850,6 +948,8 @@
         upgradeTextarea: upgradeTextarea,
         initAll: initAll,
         syncAll: syncAll,
+        validateRequired: validateRequired,
+        clearInvalidStates: clearQuillInvalidStates,
         destroyAll: destroyAll,
         boot: boot,
     };

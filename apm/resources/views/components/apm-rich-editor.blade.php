@@ -23,6 +23,7 @@
 ])
     data-apm-quill-toolbar="{{ $toolbar }}"
     data-apm-quill-min-height="{{ $minHeight }}"
+    @if ($required) data-apm-quill-required @endif
     @if ($disabled) data-apm-quill-disabled @endif
 >
     <div id="{{ $editorId }}" class="apm-quill-editor border rounded bg-white" style="min-height: {{ $minHeight }}"></div>
@@ -30,7 +31,6 @@
         class="d-none apm-quill-source"
         name="{{ $name }}"
         id="{{ $sourceId }}"
-        @if ($required) required @endif
         @if ($placeholder !== '') placeholder="{{ $placeholder }}" @endif
     >{{ $value }}</textarea>
 </div>
