@@ -100,6 +100,127 @@ class PublicScreenApiTest extends TestCase
         $response->assertJsonPath('data.volumes.closed_today', 1);
     }
 
+    public function test_screen_groups_open_tickets_by_requester_duty_station(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $addisUser = $this->helpdeskUser(99301);
+        HelpdeskProfile::query()->where('user_id', $addisUser->id)->update([
+            'duty_station' => 'Addis Ababa',
+        ]);
+
+        $joburgUser = $this->helpdeskUser(99302);
+        HelpdeskProfile::query()->where('user_id', $joburgUser->id)->update([
+            'duty_station' => 'Johannesburg',
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009903',
+            'category_id' => $cat->id,
+            'subject' => 'VPN Addis',
+            'description' => 'Cannot connect',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 99301,
+            'requester_name' => $addisUser->name,
+            'requester_email' => $addisUser->email,
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009904',
+            'category_id' => $cat->id,
+            'subject' => 'Laptop Addis',
+            'description' => 'Slow device',
+            'priority' => 'low',
+            'status' => 'in_progress',
+            'source' => 'web',
+            'requester_staff_id' => 99301,
+            'requester_name' => $addisUser->name,
+            'requester_email' => $addisUser->email,
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009905',
+            'category_id' => $cat->id,
+            'subject' => 'Email Joburg',
+            'description' => 'Mailbox full',
+            'priority' => 'high',
+            'status' => 'pending',
+            'source' => 'web',
+            'requester_staff_id' => 99302,
+            'requester_name' => $joburgUser->name,
+            'requester_email' => $joburgUser->email,
+            'sla_resolution_due_at' => now()->subDay(),
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009906',
+            'category_id' => $cat->id,
+            'subject' => 'Closed Addis',
+            'description' => 'Fixed',
+            'priority' => 'low',
+            'status' => 'closed',
+            'source' => 'web',
+            'requester_staff_id' => 99301,
+            'requester_name' => $addisUser->name,
+            'requester_email' => $addisUser->email,
+            'resolved_at' => now(),
+            'closed_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/public/screen');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.by_duty_station.0.name', 'Addis Ababa');
+        $response->assertJsonPath('data.by_duty_station.0.open', 2);
+        $response->assertJsonPath('data.by_duty_station.0.closed_this_week', 1);
+        $response->assertJsonPath('data.by_duty_station.0.overtime', 0);
+        $response->assertJsonPath('data.by_duty_station.1.name', 'Johannesburg');
+        $response->assertJsonPath('data.by_duty_station.1.open', 1);
+        $response->assertJsonPath('data.by_duty_station.1.overtime', 1);
+    }
+
+    public function test_screen_lists_agent_closures_for_current_month(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $agentA = $this->helpdeskUser(99401, HelpdeskProfile::ROLE_AGENT);
+        $agentB = $this->helpdeskUser(99402, HelpdeskProfile::ROLE_AGENT);
+
+        foreach ([
+            ['HD-2026-009910', $agentA->id],
+            ['HD-2026-009911', $agentA->id],
+            ['HD-2026-009912', $agentB->id],
+        ] as [$number, $resolverId]) {
+            HelpdeskTicket::query()->create([
+                'ticket_number' => $number,
+                'category_id' => $cat->id,
+                'subject' => 'Resolved ticket',
+                'description' => 'Done',
+                'priority' => 'low',
+                'status' => 'closed',
+                'source' => 'web',
+                'requester_staff_id' => 99499,
+                'requester_name' => 'Requester',
+                'requester_email' => 'req@example.org',
+                'resolved_by_user_id' => $resolverId,
+                'resolved_at' => now(),
+                'closed_at' => now(),
+            ]);
+        }
+
+        $response = $this->getJson('/api/v1/public/screen');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.closures_by_agent_month.0.name', $agentA->name);
+        $response->assertJsonPath('data.closures_by_agent_month.0.closed', 2);
+        $response->assertJsonPath('data.closures_by_agent_month.1.name', $agentB->name);
+        $response->assertJsonPath('data.closures_by_agent_month.1.closed', 1);
+    }
+
     public function test_agent_public_comment_sets_first_response_at(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);

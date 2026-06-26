@@ -34,6 +34,18 @@ interface CategoryRow {
   name: string
   open: number
 }
+interface DutyStationRow {
+  name: string
+  open: number
+  closed_this_week: number
+  overtime: number
+}
+interface AgentClosureRow {
+  id: number
+  name: string
+  avatar_url?: string | null
+  closed: number
+}
 interface WorkloadRow {
   id: number
   name: string
@@ -52,6 +64,8 @@ interface ScreenData {
   sla: Sla
   by_priority: { urgent: number; high: number; medium: number; low: number }
   by_category: CategoryRow[]
+  by_duty_station: DutyStationRow[]
+  closures_by_agent_month: AgentClosureRow[]
   workload: WorkloadRow[]
   trend: TrendDay[]
   csat: { avg_score: number | null; responses: number; note?: string }
@@ -132,6 +146,17 @@ const maxWorkload = computed(() => {
 const maxCategory = computed(() => {
   const c = data.value?.by_category ?? []
   return c.reduce((acc, r) => Math.max(acc, r.open), 0) || 1
+})
+
+const agentClosures = computed(() => data.value?.closures_by_agent_month ?? [])
+const agentClosuresTicker = computed(() => {
+  const rows = agentClosures.value
+  return rows.length > 0 ? [...rows, ...rows] : []
+})
+const agentClosuresDuration = computed(() => {
+  const count = agentClosures.value.length
+  if (count < 1) return '0s'
+  return `${Math.max(28, count * 4)}s`
 })
 
 const lastUpdatedLabel = computed(() => {
@@ -329,6 +354,68 @@ onUnmounted(() => {
           </li>
         </ul>
         <p v-else class="muted">No open tickets across categories.</p>
+      </section>
+
+      <!-- Duty station breakdown -->
+      <section class="card duty-card">
+        <header class="card-head">
+          <h2>Tickets by duty station</h2>
+          <span class="card-sub">Open · closed this week · overtime</span>
+        </header>
+        <div v-if="data.by_duty_station.length" class="duty-table-wrap">
+          <table class="duty-table">
+            <thead>
+              <tr>
+                <th>Duty station</th>
+                <th class="num">Open</th>
+                <th class="num">Closed (wk)</th>
+                <th class="num">Overtime</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, index) in data.by_duty_station" :key="`${row.name}-${index}`">
+                <td class="duty-name">{{ row.name }}</td>
+                <td class="num">
+                  <span class="duty-pill open">{{ row.open }}</span>
+                </td>
+                <td class="num">
+                  <span class="duty-pill closed">{{ row.closed_this_week }}</span>
+                </td>
+                <td class="num">
+                  <span class="duty-pill overtime" :class="{ hot: row.overtime > 0 }">{{ row.overtime }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-else class="muted">No ticket activity by duty station.</p>
+      </section>
+
+      <!-- Agent closures ticker (this month) -->
+      <section class="card closures-card">
+        <header class="card-head">
+          <h2>Tickets closed by agent</h2>
+          <span class="card-sub">This month · {{ agentClosures.length }} agents</span>
+        </header>
+        <div v-if="agentClosures.length" class="ticker-viewport" aria-hidden="true">
+          <div
+            class="ticker-track"
+            :style="{ animationDuration: agentClosuresDuration }"
+          >
+            <article
+              v-for="(agent, index) in agentClosuresTicker"
+              :key="`${agent.id}-${index}`"
+              class="ticker-card"
+            >
+              <CbpAvatar :name="agent.name" :image-url="agent.avatar_url ?? null" size="sm" />
+              <div class="ticker-meta">
+                <p class="ticker-name">{{ agent.name }}</p>
+                <p class="ticker-count">{{ agent.closed }} closed</p>
+              </div>
+            </article>
+          </div>
+        </div>
+        <p v-else class="muted">No agent closures recorded this month yet.</p>
       </section>
 
       <!-- 30-day trend -->
@@ -549,16 +636,19 @@ body.screen-mode #app {
   grid-auto-rows: minmax(120px, auto);
   grid-template-areas:
     'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
-    'wait wait wait wait category category category priority priority priority priority priority'
+    'wait wait duty duty duty duty category category priority priority priority priority'
+    'closures closures closures closures closures closures closures closures closures closures closures closures'
     'workload workload workload workload workload workload trend trend trend trend trend trend';
   gap: 0.9rem;
   min-height: 0;
 }
 .kpis { grid-area: kpis; }
 .wait-card { grid-area: wait; }
+.duty-card { grid-area: duty; }
 .priority-card { grid-area: priority; }
 .workload-card { grid-area: workload; }
 .category-card { grid-area: category; }
+.closures-card { grid-area: closures; }
 .trend-card { grid-area: trend; }
 
 /* KPI tiles */
@@ -822,6 +912,130 @@ body.screen-mode #app {
   border-radius: 999px;
   transition: width 0.6s ease;
 }
+.duty-fill {
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+/* Duty station table */
+.duty-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.duty-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.duty-table th,
+.duty-table td {
+  padding: 0.42rem 0.35rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+.duty-table th {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  font-weight: 700;
+}
+.duty-table th.num,
+.duty-table td.num {
+  text-align: right;
+  width: 4.5rem;
+}
+.duty-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 10rem;
+}
+.duty-pill {
+  display: inline-block;
+  min-width: 1.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.duty-pill.open {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+}
+.duty-pill.closed {
+  background: rgba(22, 163, 74, 0.18);
+  color: #86efac;
+}
+.duty-pill.overtime {
+  background: rgba(100, 116, 139, 0.2);
+  color: var(--ink-muted);
+}
+.duty-pill.overtime.hot {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+.screen.theme-light .duty-pill.open { color: #1d4ed8; }
+.screen.theme-light .duty-pill.closed { color: #15803d; }
+.screen.theme-light .duty-pill.overtime.hot { color: #b91c1c; }
+
+/* Agent closures ticker */
+.closures-card {
+  min-height: 5.5rem;
+}
+.ticker-viewport {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.ticker-track {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  width: max-content;
+  animation-name: ticker-ltr;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes ticker-ltr {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+.ticker-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 0 0 auto;
+  min-width: 220px;
+  padding: 0.55rem 0.85rem;
+  border-radius: 4px;
+  border: 1px solid var(--tile-border);
+  background: rgba(15, 23, 42, 0.45);
+}
+.screen.theme-light .ticker-card {
+  background: #f8fafc;
+}
+.ticker-meta {
+  min-width: 0;
+}
+.ticker-name {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ticker-count {
+  margin: 0.15rem 0 0;
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .cat-count {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -908,8 +1122,9 @@ body.screen-mode #app {
   .screen-grid {
     grid-template-areas:
       'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
-      'wait wait wait wait wait wait category category category category category category'
-      'priority priority priority priority priority priority priority priority priority priority priority priority'
+      'wait wait wait wait wait wait duty duty duty duty duty duty'
+      'category category category category category category priority priority priority priority priority priority'
+      'closures closures closures closures closures closures closures closures closures closures closures closures'
       'workload workload workload workload workload workload trend trend trend trend trend trend';
   }
   .kpis { grid-template-columns: repeat(3, 1fr); }

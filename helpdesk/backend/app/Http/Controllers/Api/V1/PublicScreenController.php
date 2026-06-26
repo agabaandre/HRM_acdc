@@ -32,6 +32,8 @@ class PublicScreenController extends Controller
         $now = now();
         $startOfToday = $now->copy()->startOfDay();
         $endOfToday = $now->copy()->endOfDay();
+        $startOfWeek = $now->copy()->startOfWeek();
+        $startOfMonth = $now->copy()->startOfMonth();
         $sevenDaysAgo = $now->copy()->subDays(7)->startOfDay();
         $thirtyDaysAgo = $now->copy()->subDays(30)->startOfDay();
 
@@ -43,6 +45,8 @@ class PublicScreenController extends Controller
                 'sla' => $this->slaMetrics($sevenDaysAgo, $now),
                 'by_priority' => $this->byPriority(),
                 'by_category' => $this->byCategory(),
+                'by_duty_station' => $this->byDutyStation($now, $startOfWeek),
+                'closures_by_agent_month' => $this->closuresByAgentThisMonth($startOfMonth, $now),
                 'workload' => $this->workload(),
                 'trend' => $this->trend30Days($thirtyDaysAgo, $now),
                 'csat' => [
@@ -229,6 +233,121 @@ class PublicScreenController extends Controller
         usort($out, fn ($a, $b) => $b['open'] <=> $a['open']);
 
         return array_slice($out, 0, 8);
+    }
+
+    /**
+     * Duty station label derived from the requester's helpdesk profile.
+     */
+    private function dutyStationLabelSql(): string
+    {
+        return "COALESCE(NULLIF(TRIM(helpdesk_profiles.duty_station), ''), 'Unspecified')";
+    }
+
+    /**
+     * Open, closed-this-week, and SLA-overdue tickets grouped by requester duty station.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function byDutyStation(\DateTimeInterface $now, \DateTimeInterface $startOfWeek): array
+    {
+        $labelSql = $this->dutyStationLabelSql();
+
+        $open = HelpdeskTicket::query()
+            ->whereIn('helpdesk_tickets.status', self::PENDING_STATUSES)
+            ->leftJoin('helpdesk_profiles', 'helpdesk_profiles.staff_id', '=', 'helpdesk_tickets.requester_staff_id')
+            ->selectRaw("{$labelSql} AS station_name, COUNT(*) AS c")
+            ->groupByRaw($labelSql)
+            ->pluck('c', 'station_name');
+
+        $closedThisWeek = HelpdeskTicket::query()
+            ->leftJoin('helpdesk_profiles', 'helpdesk_profiles.staff_id', '=', 'helpdesk_tickets.requester_staff_id')
+            ->whereRaw('COALESCE(helpdesk_tickets.resolved_at, helpdesk_tickets.closed_at) BETWEEN ? AND ?', [
+                $startOfWeek->format('Y-m-d H:i:s'),
+                $now->format('Y-m-d H:i:s'),
+            ])
+            ->selectRaw("{$labelSql} AS station_name, COUNT(*) AS c")
+            ->groupByRaw($labelSql)
+            ->pluck('c', 'station_name');
+
+        $overtime = HelpdeskTicket::query()
+            ->whereIn('helpdesk_tickets.status', self::PENDING_STATUSES)
+            ->whereNotNull('helpdesk_tickets.sla_resolution_due_at')
+            ->where('helpdesk_tickets.sla_resolution_due_at', '<', $now)
+            ->leftJoin('helpdesk_profiles', 'helpdesk_profiles.staff_id', '=', 'helpdesk_tickets.requester_staff_id')
+            ->selectRaw("{$labelSql} AS station_name, COUNT(*) AS c")
+            ->groupByRaw($labelSql)
+            ->pluck('c', 'station_name');
+
+        $stationNames = collect([$open, $closedThisWeek, $overtime])
+            ->flatMap(fn ($rows) => $rows->keys())
+            ->unique()
+            ->values();
+
+        if ($stationNames->isEmpty()) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($stationNames as $name) {
+            $out[] = [
+                'name' => (string) $name,
+                'open' => (int) ($open[$name] ?? 0),
+                'closed_this_week' => (int) ($closedThisWeek[$name] ?? 0),
+                'overtime' => (int) ($overtime[$name] ?? 0),
+            ];
+        }
+
+        usort($out, function (array $a, array $b): int {
+            return [$b['open'], $b['closed_this_week'], $b['overtime'], $a['name']]
+                <=> [$a['open'], $a['closed_this_week'], $a['overtime'], $b['name']];
+        });
+
+        return array_slice($out, 0, 12);
+    }
+
+    /**
+     * Tickets closed/resolved this calendar month, grouped by resolving agent.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function closuresByAgentThisMonth(\DateTimeInterface $startOfMonth, \DateTimeInterface $now): array
+    {
+        $loads = HelpdeskTicket::query()
+            ->whereRaw('COALESCE(resolved_at, closed_at) BETWEEN ? AND ?', [
+                $startOfMonth->format('Y-m-d H:i:s'),
+                $now->format('Y-m-d H:i:s'),
+            ])
+            ->whereNotNull('resolved_by_user_id')
+            ->selectRaw('resolved_by_user_id, COUNT(*) AS c')
+            ->groupBy('resolved_by_user_id')
+            ->pluck('c', 'resolved_by_user_id');
+
+        if ($loads->isEmpty()) {
+            return [];
+        }
+
+        $users = User::query()
+            ->whereIn('id', $loads->keys()->all())
+            ->whereHas('helpdeskProfile', fn ($q) => $q->whereIn('role', [
+                HelpdeskProfile::ROLE_AGENT,
+                HelpdeskProfile::ROLE_SUPERVISOR,
+                HelpdeskProfile::ROLE_ADMIN,
+            ]))
+            ->get(['id', 'name', 'photo']);
+
+        $out = [];
+        foreach ($users as $u) {
+            $out[] = [
+                'id' => $u->id,
+                'name' => $u->name,
+                'avatar_url' => StaffPhotoUrl::forUser($u),
+                'closed' => (int) ($loads[$u->id] ?? 0),
+            ];
+        }
+
+        usort($out, fn ($a, $b) => [$b['closed'], $a['name']] <=> [$a['closed'], $b['name']]);
+
+        return $out;
     }
 
     /**
