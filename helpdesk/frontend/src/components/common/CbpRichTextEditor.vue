@@ -311,7 +311,7 @@ function onReady(quill: unknown) {
     <p v-else-if="enableImages" class="cbp-rich-text__tip muted">
       <strong>Screenshots help us fix issues faster.</strong>
       Paste one with ⌘V / Ctrl+V, drag it here, or use the image button in the toolbar (max 10 MB).
-      After inserting, click the image to resize (defaults to 25%).
+      After inserting, click the image and drag a corner to resize (starts at 25%).
     </p>
   </div>
 </template>

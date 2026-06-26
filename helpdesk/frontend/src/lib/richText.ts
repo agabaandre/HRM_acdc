@@ -166,6 +166,9 @@ export function prepareQuillInsertedImage(
   }
   img.style.maxWidth = '100%'
   img.style.height = 'auto'
+  img.style.display = 'block'
+  img.removeAttribute('width')
+  img.removeAttribute('height')
   img.style.width = `${widthPercent}%`
   img.classList.add('cbp-quill-image')
   return img
@@ -207,9 +210,26 @@ export interface QuillImageResizeHandle {
   selectImage: (img: HTMLImageElement) => void
 }
 
+type Corner = 'nw' | 'ne' | 'sw' | 'se'
+
+type CornerDrag = {
+  corner: Corner
+  startX: number
+  startY: number
+  startWidth: number
+}
+
+function imageOffsetInRoot(img: HTMLImageElement, root: HTMLElement): { top: number; left: number } {
+  const imgRect = img.getBoundingClientRect()
+  const rootRect = root.getBoundingClientRect()
+  return {
+    top: imgRect.top - rootRect.top + root.scrollTop,
+    left: imgRect.left - rootRect.left + root.scrollLeft,
+  }
+}
+
 /**
- * Click-to-select image sizing (25–100% presets + drag handle).
- * Ported from APM `apm-quill-editor.js` → bindImageResize().
+ * Click-to-select image sizing with corner drag handles (aspect ratio preserved).
  */
 export function setupQuillImageResize(
   quill: QuillEditorLike,
@@ -220,36 +240,28 @@ export function setupQuillImageResize(
     return null
   }
 
-  const containerCandidate = quill.container instanceof HTMLElement
-    ? quill.container
-    : wrap.querySelector('.ql-container')
-  if (!(containerCandidate instanceof HTMLElement)) {
+  const root = quill.root
+  if (!(root instanceof HTMLElement)) {
     return null
   }
-  const editorEl = containerCandidate
 
   wrap.dataset.cbpImageResizeBound = '1'
-  const root = quill.root
-  editorEl.style.position = 'relative'
+  root.style.position = 'relative'
 
   const overlay = document.createElement('div')
   overlay.className = 'cbp-quill-image-overlay is-hidden'
   overlay.innerHTML =
-    '<div class="cbp-quill-image-toolbar" role="toolbar" aria-label="Image size">'
-    + '<button type="button" class="cbp-quill-image-btn" data-cbp-img-size="25">25%</button>'
-    + '<button type="button" class="cbp-quill-image-btn" data-cbp-img-size="50">50%</button>'
-    + '<button type="button" class="cbp-quill-image-btn" data-cbp-img-size="75">75%</button>'
-    + '<button type="button" class="cbp-quill-image-btn" data-cbp-img-size="100">100%</button>'
-    + '</div>'
-    + '<div class="cbp-quill-image-frame"></div>'
-    + '<span class="cbp-quill-image-handle" title="Drag to resize"></span>'
-  editorEl.appendChild(overlay)
+    '<div class="cbp-quill-image-frame"></div>'
+    + '<span class="cbp-quill-image-handle cbp-quill-image-handle--nw" data-corner="nw" title="Resize"></span>'
+    + '<span class="cbp-quill-image-handle cbp-quill-image-handle--ne" data-corner="ne" title="Resize"></span>'
+    + '<span class="cbp-quill-image-handle cbp-quill-image-handle--sw" data-corner="sw" title="Resize"></span>'
+    + '<span class="cbp-quill-image-handle cbp-quill-image-handle--se" data-corner="se" title="Resize"></span>'
+  root.appendChild(overlay)
 
   const frame = overlay.querySelector('.cbp-quill-image-frame') as HTMLElement
-  const handle = overlay.querySelector('.cbp-quill-image-handle') as HTMLElement
-  const toolbar = overlay.querySelector('.cbp-quill-image-toolbar') as HTMLElement
   let activeImg: HTMLImageElement | null = null
-  let drag: { startX: number; startWidth: number } | null = null
+  let drag: CornerDrag | null = null
+  let resizeObserver: ResizeObserver | null = null
 
   function notifyChange(): void {
     options.onHtmlChange?.()
@@ -259,68 +271,82 @@ export function setupQuillImageResize(
     activeImg = null
     overlay.classList.add('is-hidden')
     drag = null
+    resizeObserver?.disconnect()
+    resizeObserver = null
   }
 
   function editorWidth(): number {
-    return root.clientWidth || editorEl.clientWidth || 1
+    return root.clientWidth || 1
   }
 
   function setImageWidthPercent(img: HTMLImageElement, percent: number): void {
     const pct = Math.max(10, Math.min(100, percent))
+    img.removeAttribute('width')
+    img.removeAttribute('height')
     img.style.width = `${pct}%`
     img.style.maxWidth = '100%'
     img.style.height = 'auto'
+    img.style.display = 'block'
     positionOverlay(img)
     notifyChange()
   }
 
   function positionOverlay(img: HTMLImageElement): void {
-    if (!img || !frame) {
+    if (!frame) {
       return
     }
-    const imgRect = img.getBoundingClientRect()
-    const boxRect = editorEl.getBoundingClientRect()
-    const top = imgRect.top - boxRect.top + editorEl.scrollTop
-    const left = imgRect.left - boxRect.left + editorEl.scrollLeft
+    const { top, left } = imageOffsetInRoot(img, root)
+    const width = img.offsetWidth
+    const height = img.offsetHeight
+    if (width <= 0 || height <= 0) {
+      return
+    }
     overlay.classList.remove('is-hidden')
     overlay.style.top = `${top}px`
     overlay.style.left = `${left}px`
-    overlay.style.width = `${imgRect.width}px`
-    overlay.style.height = `${imgRect.height}px`
+    overlay.style.width = `${width}px`
+    overlay.style.height = `${height}px`
     frame.style.width = '100%'
     frame.style.height = '100%'
   }
 
   function selectImage(img: HTMLImageElement): void {
+    resizeObserver?.disconnect()
     activeImg = img
     img.classList.add('cbp-quill-image')
+    img.removeAttribute('width')
+    img.removeAttribute('height')
+    if (!img.style.width) {
+      img.style.width = `${DEFAULT_QUILL_IMAGE_WIDTH_PERCENT}%`
+    }
+    img.style.maxWidth = '100%'
+    img.style.height = 'auto'
+    img.style.display = 'block'
     positionOverlay(img)
+    resizeObserver = new ResizeObserver(() => {
+      if (activeImg) {
+        positionOverlay(activeImg)
+      }
+    })
+    resizeObserver.observe(img)
   }
 
-  toolbar.addEventListener('mousedown', (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-  })
-
-  toolbar.addEventListener('click', (e) => {
-    const btn = (e.target as HTMLElement).closest('[data-cbp-img-size]') as HTMLElement | null
-    if (!btn || !activeImg) {
+  overlay.addEventListener('mousedown', (e) => {
+    const handle = (e.target as HTMLElement).closest('[data-corner]') as HTMLElement | null
+    if (!handle || !activeImg) {
       return
     }
-    e.preventDefault()
-    e.stopPropagation()
-    setImageWidthPercent(activeImg, Number.parseInt(btn.getAttribute('data-cbp-img-size') ?? '25', 10))
-  })
-
-  handle.addEventListener('mousedown', (e) => {
-    if (!activeImg) {
+    const corner = handle.getAttribute('data-corner') as Corner | null
+    if (!corner) {
       return
     }
     e.preventDefault()
     e.stopPropagation()
     drag = {
+      corner,
       startX: e.clientX,
-      startWidth: activeImg.getBoundingClientRect().width,
+      startY: e.clientY,
+      startWidth: activeImg.offsetWidth,
     }
   })
 
@@ -328,8 +354,14 @@ export function setupQuillImageResize(
     if (!drag || !activeImg) {
       return
     }
-    const delta = e.clientX - drag.startX
-    const nextWidth = Math.max(40, drag.startWidth + delta)
+    const deltaX = e.clientX - drag.startX
+    let nextWidth = drag.startWidth
+    if (drag.corner === 'se' || drag.corner === 'ne') {
+      nextWidth = drag.startWidth + deltaX
+    } else {
+      nextWidth = drag.startWidth - deltaX
+    }
+    nextWidth = Math.max(40, Math.min(editorWidth(), nextWidth))
     const percent = Math.round((nextWidth / editorWidth()) * 100)
     setImageWidthPercent(activeImg, percent)
   })
@@ -350,6 +382,12 @@ export function setupQuillImageResize(
     }
   })
 
+  root.addEventListener('scroll', () => {
+    if (activeImg) {
+      positionOverlay(activeImg)
+    }
+  })
+
   quill.on('text-change', () => {
     if (activeImg && !root.contains(activeImg)) {
       clearSelection()
@@ -367,12 +405,15 @@ export function setupQuillImageResize(
   root.querySelectorAll('img').forEach((node) => {
     if (node instanceof HTMLImageElement) {
       node.classList.add('cbp-quill-image')
+      node.removeAttribute('width')
+      node.removeAttribute('height')
       if (!node.style.maxWidth) {
         node.style.maxWidth = '100%'
       }
       if (!node.style.height) {
         node.style.height = 'auto'
       }
+      node.style.display = 'block'
     }
   })
 
