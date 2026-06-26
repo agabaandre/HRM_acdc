@@ -141,8 +141,12 @@ export function setupQuillAutoGrow(quill: { root: HTMLElement; on: (e: string, f
   grow()
 }
 
+/** Default width for newly inserted inline images (matches APM memo editor). */
+export const DEFAULT_QUILL_IMAGE_WIDTH_PERCENT = 25
+
 type QuillEditorLike = {
   root: HTMLElement
+  container?: HTMLElement
   getSelection: (focus?: boolean) => { index: number } | null
   getLength: () => number
   getLeaf: (index: number) => [{ domNode?: Node } | null, number]
@@ -151,19 +155,34 @@ type QuillEditorLike = {
   on: (event: string, fn: () => void) => void
 }
 
-/** Default width for newly inserted inline images (matches APM memo editor). */
-export function prepareQuillInsertedImage(quill: QuillEditorLike, index?: number): HTMLImageElement | null {
+export function prepareQuillInsertedImage(
+  quill: QuillEditorLike,
+  index?: number,
+  widthPercent: number = DEFAULT_QUILL_IMAGE_WIDTH_PERCENT,
+): HTMLImageElement | null {
   const img = findQuillImageAtIndex(quill, index)
   if (!img) {
     return null
   }
   img.style.maxWidth = '100%'
   img.style.height = 'auto'
-  if (!img.style.width) {
-    img.style.width = '50%'
-  }
+  img.style.width = `${widthPercent}%`
   img.classList.add('cbp-quill-image')
   return img
+}
+
+/** Select an image for resize once it has layout dimensions (after load). */
+export function selectQuillImageWhenReady(img: HTMLImageElement, onSelect: (img: HTMLImageElement) => void): void {
+  const run = () => {
+    window.requestAnimationFrame(() => {
+      onSelect(img)
+    })
+  }
+  if (img.complete && img.naturalWidth > 0) {
+    run()
+    return
+  }
+  img.addEventListener('load', run, { once: true })
 }
 
 function findQuillImageAtIndex(quill: QuillEditorLike, index?: number): HTMLImageElement | null {
@@ -184,6 +203,10 @@ export interface QuillImageResizeOptions {
   onHtmlChange?: () => void
 }
 
+export interface QuillImageResizeHandle {
+  selectImage: (img: HTMLImageElement) => void
+}
+
 /**
  * Click-to-select image sizing (25–100% presets + drag handle).
  * Ported from APM `apm-quill-editor.js` → bindImageResize().
@@ -192,16 +215,18 @@ export function setupQuillImageResize(
   quill: QuillEditorLike,
   wrap: HTMLElement,
   options: QuillImageResizeOptions = {},
-): void {
+): QuillImageResizeHandle | null {
   if (!quill || !wrap || wrap.dataset.cbpImageResizeBound === '1') {
-    return
+    return null
   }
 
-  const container = wrap.querySelector('.cbp-quill-editor')
-  if (!(container instanceof HTMLElement)) {
-    return
+  const containerCandidate = quill.container instanceof HTMLElement
+    ? quill.container
+    : wrap.querySelector('.ql-container')
+  if (!(containerCandidate instanceof HTMLElement)) {
+    return null
   }
-  const editorEl = container
+  const editorEl = containerCandidate
 
   wrap.dataset.cbpImageResizeBound = '1'
   const root = quill.root
@@ -284,7 +309,7 @@ export function setupQuillImageResize(
     }
     e.preventDefault()
     e.stopPropagation()
-    setImageWidthPercent(activeImg, Number.parseInt(btn.getAttribute('data-cbp-img-size') ?? '50', 10))
+    setImageWidthPercent(activeImg, Number.parseInt(btn.getAttribute('data-cbp-img-size') ?? '25', 10))
   })
 
   handle.addEventListener('mousedown', (e) => {
@@ -350,6 +375,8 @@ export function setupQuillImageResize(
       }
     }
   })
+
+  return { selectImage }
 }
 
 const ATTACHMENT_IMAGE_RE = /\/api\/v1\/attachments\/(\d+)\/file/i

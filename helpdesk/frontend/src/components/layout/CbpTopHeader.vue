@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import CbpAvatar from '../common/CbpAvatar.vue'
 import { fetchCbpModules, type CbpNavPayload } from '../../lib/cbpModules'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
@@ -14,6 +14,7 @@ defineProps<{
 }>()
 
 const auth = useAuthStore()
+const route = useRoute()
 
 const base = computed(() => staffPortalBaseUrl())
 const profileUrl = computed(() => staffPortalProfileUrl())
@@ -212,6 +213,16 @@ function onLogoError(e: Event) {
           <span class="cbp-topbar-dd-caret" aria-hidden="true">▼</span>
         </button>
         <div class="cbp-topbar-dd-panel cbp-topbar-user-panel" role="menu">
+          <RouterLink
+            to="/guide"
+            class="cbp-topbar-dd-item"
+            :class="{ 'is-active': route.path === '/guide' }"
+            role="menuitem"
+            @click="closeMenus"
+          >
+            <span class="cbp-topbar-dd-item-label">User guide</span>
+            <span class="cbp-topbar-dd-item-sub">How to use Helpdesk</span>
+          </RouterLink>
           <a :href="profileUrl" class="cbp-topbar-dd-item" role="menuitem" @click="closeMenus">
             <span class="cbp-topbar-dd-item-label">Profile</span>
             <span class="cbp-topbar-dd-item-sub">Staff portal account</span>

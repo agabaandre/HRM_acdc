@@ -66,8 +66,10 @@
  * Quill image resize — ported from APM apm-quill-editor.js + css.blade.php.
  * Overlay DOM is created in richText.ts; styles must be global (not scoped).
  */
-.cbp-quill-wrap .cbp-quill-editor {
+.cbp-quill-wrap .cbp-quill-editor,
+.cbp-quill-wrap .ql-container {
   position: relative;
+  overflow: visible;
 }
 
 .cbp-quill-wrap .cbp-quill-editor .ql-editor img.cbp-quill-image,
@@ -90,8 +92,9 @@
 
 .cbp-quill-wrap .cbp-quill-image-toolbar {
   position: absolute;
-  top: -34px;
-  left: 0;
+  top: 2px;
+  left: 2px;
+  z-index: 1;
   display: flex;
   gap: 4px;
   pointer-events: auto;

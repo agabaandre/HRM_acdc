@@ -12,8 +12,10 @@ import {
   attachmentIdFromImageUrl,
   patchQuillExternalLinks,
   prepareQuillInsertedImage,
+  selectQuillImageWhenReady,
   setupQuillAutoGrow,
   setupQuillImageResize,
+  type QuillImageResizeHandle,
   type RichTextVariant,
 } from '../../lib/richText'
 
@@ -48,6 +50,7 @@ const emit = defineEmits<{
 
 const editorRef = ref<InstanceType<typeof QuillEditor> | null>(null)
 const wrapRef = ref<HTMLElement | null>(null)
+const imageResize = ref<QuillImageResizeHandle | null>(null)
 const editorReady = ref(false)
 const inlineImageBusy = ref(false)
 const imageHint = ref<string | null>(null)
@@ -101,8 +104,9 @@ function insertImageAtCursor(url: string): void {
   quill.setSelection(index + 1, 0, 'silent')
   window.setTimeout(() => {
     const img = prepareQuillInsertedImage(quill, index)
-    if (img) {
-      img.click()
+    const select = imageResize.value?.selectImage
+    if (img && select) {
+      selectQuillImageWhenReady(img, select)
     }
   }, 0)
 }
@@ -267,7 +271,7 @@ function onReady(quill: unknown) {
   setupQuillAutoGrow(q, editorMinPx.value)
   if (props.enableImages && wrapRef.value) {
     setupPasteAndDrop(q)
-    setupQuillImageResize(q as Parameters<typeof setupQuillImageResize>[0], wrapRef.value, {
+    imageResize.value = setupQuillImageResize(q as Parameters<typeof setupQuillImageResize>[0], wrapRef.value, {
       onHtmlChange: syncEditorHtml,
     })
   }
@@ -307,7 +311,7 @@ function onReady(quill: unknown) {
     <p v-else-if="enableImages" class="cbp-rich-text__tip muted">
       <strong>Screenshots help us fix issues faster.</strong>
       Paste one with ⌘V / Ctrl+V, drag it here, or use the image button in the toolbar (max 10 MB).
-      After inserting, click the image to resize (25%–100%).
+      After inserting, click the image to resize (defaults to 25%).
     </p>
   </div>
 </template>

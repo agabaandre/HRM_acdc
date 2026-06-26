@@ -89,10 +89,6 @@ const settingsAreaActive = computed(() => route.path.startsWith('/settings'))
             <i :class="HELP_DESK_NAV_ICONS.newRequest" class="cbp-nav-link-icon" aria-hidden="true" />
             <span>New request</span>
           </RouterLink>
-          <RouterLink to="/guide" class="cbp-nav-link" @click="closeAll">
-            <i :class="HELP_DESK_NAV_ICONS.guide" class="cbp-nav-link-icon" aria-hidden="true" />
-            <span>User guide</span>
-          </RouterLink>
           <RouterLink v-if="showDesk" to="/desk/agent" class="cbp-nav-link" @click="closeAll">
             <i :class="HELP_DESK_NAV_ICONS.agentDesk" class="cbp-nav-link-icon" aria-hidden="true" />
             <span>Agent desk</span>

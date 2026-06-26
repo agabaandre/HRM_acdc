@@ -5,8 +5,7 @@
 html.helpdesk-theme-light {
   --cbp-topbar: #119a48;
   --cbp-topbar-border: rgba(17, 154, 72, 0.2);
-  --cbp-nav-bg: #0d7a3a;
-  --cbp-nav-bg-accent: #119a48;
+  --cbp-nav-bg: #2c3e50;
   --cbp-nav-border: rgba(17, 154, 72, 0.2);
   --cbp-nav-hover: rgba(17, 154, 72, 0.2);
   --cbp-nav-text: rgba(255, 255, 255, 0.8);
@@ -29,8 +28,7 @@ html.helpdesk-theme-light {
 html.helpdesk-theme-dark {
   --cbp-topbar: #119a48;
   --cbp-topbar-border: rgba(34, 197, 94, 0.35);
-  --cbp-nav-bg: #064e28;
-  --cbp-nav-bg-accent: #119a48;
+  --cbp-nav-bg: #212529;
   --cbp-nav-border: rgba(148, 163, 184, 0.2);
   --cbp-nav-hover: rgba(34, 197, 94, 0.2);
   --cbp-nav-text: rgba(226, 232, 240, 0.84);
@@ -424,7 +422,7 @@ html.helpdesk-theme-dark {
   right: 0;
   z-index: 1000;
   height: 44px;
-  background: linear-gradient(90deg, var(--cbp-nav-bg) 0%, var(--cbp-nav-bg-accent, #119a48) 100%);
+  background: var(--cbp-nav-bg);
   border-bottom: 1px solid var(--cbp-nav-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
