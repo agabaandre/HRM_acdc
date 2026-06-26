@@ -71,6 +71,35 @@ class PublicScreenApiTest extends TestCase
         $response->assertJsonPath('data.wait.window_label', 'last 24h');
     }
 
+    public function test_resolved_today_counts_agent_closed_tickets(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $now = now();
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009902',
+            'category_id' => $cat->id,
+            'subject' => 'Closed by agent',
+            'description' => 'Fixed',
+            'priority' => 'low',
+            'status' => 'closed',
+            'source' => 'web',
+            'requester_staff_id' => 99201,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'resolved_at' => $now,
+            'closed_at' => $now,
+        ]);
+
+        $response = $this->getJson('/api/v1/public/screen');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.volumes.resolved_today', 1);
+        $response->assertJsonPath('data.volumes.closed_today', 1);
+    }
+
     public function test_agent_public_comment_sets_first_response_at(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);
