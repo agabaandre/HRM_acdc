@@ -136,26 +136,26 @@
                 <small class="text-muted" id="auditTableRange">Loading…</small>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
+                    <div class="table-responsive">
                     <table class="table table-hover mb-0 audit-logs-table w-100" id="auditLogsTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th>ID</th>
-                                <th>Action</th>
-                                <th>Entity</th>
-                                <th>Table</th>
-                                <th>Causer</th>
-                                <th>Division & Duty Station</th>
-                                <th>Source</th>
-                                <th>Suspicious</th>
-                                <th>Date/Time</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Action</th>
+                                    <th>Entity</th>
+                                    <th>Table</th>
+                                    <th>Causer</th>
+                                    <th>Division & Duty Station</th>
+                                    <th>Source</th>
+                                    <th>Suspicious</th>
+                                    <th>Date/Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
                         <tbody></tbody>
-                    </table>
-                </div>
-            </div>
+                        </table>
+                    </div>
+                                </div>
         </div>
     </div>
 </div>
@@ -1227,24 +1227,24 @@ document.getElementById('auditLogModal').addEventListener('show.bs.modal', funct
     } else {
         suspiciousElement.innerHTML = '<span class="badge bg-success"><i class="bx bx-shield-check"></i> No</span>';
     }
-
+    
     document.getElementById('modal-log-suspicious-reasons').textContent = row.suspicious_reasons || 'None';
-
+    
     const logAction = row.action || '-';
     const actionBadge = document.getElementById('modal-log-action');
     actionBadge.textContent = logAction;
     actionBadge.className = 'badge ' + (logAction === 'created' ? 'bg-success' : (logAction === 'updated' ? 'bg-warning' : 'bg-danger'));
-
+    
     if (row.created_at) {
         const createdDate = new Date(row.created_at);
-        document.getElementById('modal-log-created').innerHTML =
-            createdDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) +
+        document.getElementById('modal-log-created').innerHTML = 
+            createdDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + 
             ' ' + createdDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) +
             '<br><small class="text-muted">(' + getRelativeTime(createdDate) + ')</small>';
     } else {
         document.getElementById('modal-log-created').textContent = '-';
     }
-
+    
     const dataChangesSection = document.getElementById('data-changes-section');
     const hasOldValues = formatAuditJsonBlock(row.old_values) !== null;
     const hasNewValues = formatAuditJsonBlock(row.new_values) !== null;
@@ -1255,7 +1255,7 @@ document.getElementById('auditLogModal').addEventListener('show.bs.modal', funct
     } else {
         dataChangesSection.style.display = 'none';
     }
-
+    
     const metadataSection = document.getElementById('metadata-section');
     if (formatAuditJsonBlock(row.metadata) !== null) {
         metadataSection.style.display = 'block';
