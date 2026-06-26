@@ -3,11 +3,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpBadgeStrip from '../components/common/CbpBadgeStrip.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
+import HomeAgentKanban from '../components/home/HomeAgentKanban.vue'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { staffPortalHomeUrl } from '../lib/sso'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { notifyError } from '../lib/notify'
+import { isAgentDeskUser } from '../lib/isAgentDeskUser'
+import { HELP_DESK_NAV_ICONS } from '../lib/helpdeskNav'
 
 const HOME_FAQ_LIMIT = 5
 
@@ -62,6 +65,22 @@ const quickActions: QuickAction[] = [
 
 const auth = useAuthStore()
 const portalHref = computed(() => staffPortalHomeUrl())
+
+const isAgentHome = computed(() => isAgentDeskUser(auth.me?.profile))
+
+const homeLede = computed(() => {
+  if (isAgentHome.value) {
+    return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Use the board below to triage your queue, then browse FAQs or log requests from the shortcuts.'
+  }
+  return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Ask our AI assistant for guided troubleshooting, browse FAQs below, or log a new request for the service desk team.'
+})
+
+const agentShortcuts = [
+  { to: '/ask', icon: HELP_DESK_NAV_ICONS.ask, label: 'Ask Helpdesk' },
+  { to: '/tickets', icon: HELP_DESK_NAV_ICONS.tickets, label: 'All tickets' },
+  { to: '/desk/agent', icon: HELP_DESK_NAV_ICONS.agentDesk, label: 'Agent desk' },
+  { to: '/guide', icon: HELP_DESK_NAV_ICONS.guide, label: 'User guide' },
+]
 
 const canManageKb = computed(() => {
   const role = auth.me?.profile?.role ?? ''
@@ -156,7 +175,7 @@ onMounted(() => {
     <CbpBadgeStrip product="ITSM" />
     <CbpPageHeading title="IT Service Desk">
       <template #lede>
-        Log and track incidents and requests for Africa CDC. Arrive from the Staff portal home with the same secure session as Finance and APM.
+        <span class="hd-home-lede">{{ homeLede }}</span>
       </template>
     </CbpPageHeading>
 
@@ -169,23 +188,25 @@ onMounted(() => {
     </UCard>
 
     <template v-else>
-      <section class="hd-hero hd-home-hero" aria-label="Quick start">
-        <div>
-          <p class="hd-hero-eyebrow">Africa CDC · IT Service Desk</p>
-          <h2 class="hd-hero-title">Get support faster</h2>
-          <p class="hd-hero-text">
-            Ask our AI assistant for guided troubleshooting, browse FAQs, or log a request for the service desk team.
-          </p>
-        </div>
-        <div class="hd-hero-actions">
-          <RouterLink class="hd-btn hd-btn--white" to="/ask">
-            <i class="bx bx-bot" aria-hidden="true" /> Ask Helpdesk
-          </RouterLink>
-          <RouterLink class="hd-btn hd-btn--ghost-light" to="/tickets/new">New request</RouterLink>
-        </div>
-      </section>
+      <HomeAgentKanban v-if="isAgentHome" />
 
-      <div class="hd-quick-grid" role="navigation" aria-label="Helpdesk shortcuts">
+      <nav
+        v-if="isAgentHome"
+        class="hd-shortcut-row"
+        aria-label="Helpdesk shortcuts"
+      >
+        <RouterLink
+          v-for="s in agentShortcuts"
+          :key="s.to"
+          :to="s.to"
+          class="hd-shortcut-chip"
+        >
+          <i :class="s.icon" aria-hidden="true" />
+          {{ s.label }}
+        </RouterLink>
+      </nav>
+
+      <div v-else class="hd-quick-grid" role="navigation" aria-label="Helpdesk shortcuts">
         <UCard
           v-for="action in quickActions"
           :key="action.to"
