@@ -139,19 +139,124 @@ html.helpdesk-theme-dark .hd-btn--outline {
   border-color: rgba(134, 239, 172, 0.35);
 }
 
-/* Quick action tiles */
-.hd-quick-grid {
-  display: grid;
-  gap: 0.85rem;
-  margin-bottom: 1.25rem;
+/* Home overview */
+.hd-home {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-@media (min-width: 640px) {
+.hd-home-hero {
+  margin-bottom: 0;
+}
+
+/* Quick action tiles — two per row */
+.hd-quick-grid {
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 0;
+}
+
+@media (min-width: 560px) {
   .hd-quick-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
+.hd-action-card {
+  height: 100%;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.hd-action-card:hover {
+  transform: translateY(-2px);
+}
+
+.hd-action-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  text-decoration: none;
+  color: inherit;
+  min-height: 100%;
+}
+
+.hd-action-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--hd-radius-sm);
+  background: linear-gradient(145deg, rgba(17, 154, 72, 0.14) 0%, rgba(13, 122, 58, 0.08) 100%);
+  color: #0d7a3a;
+  font-size: 1.35rem;
+}
+
+.hd-action-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.hd-action-title {
+  display: block;
+  margin: 0 0 0.25rem;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--cbp-card-text);
+  line-height: 1.3;
+}
+
+.hd-action-desc {
+  display: block;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--hd-muted);
+  line-height: 1.45;
+}
+
+.hd-action-chevron {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  transition: transform 0.14s ease, color 0.14s ease;
+}
+
+.hd-action-card:hover .hd-action-chevron {
+  color: #119a48;
+  transform: translateX(2px);
+}
+
+/* Knowledge base preview on home */
+.hd-kb-card :deep([data-slot="header"]) {
+  padding-bottom: 0.35rem;
+}
+
+.hd-kb-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--hd-border);
+  font-size: 0.85rem;
+  color: var(--hd-muted);
+}
+
+.hd-kb-more-link {
+  font-weight: 700;
+  color: #0d7a3a;
+  text-decoration: none;
+}
+
+.hd-kb-more-link:hover {
+  text-decoration: underline;
+}
+
+/* Legacy tile class — kept for other views */
 .hd-quick-tile {
   display: flex;
   flex-direction: column;

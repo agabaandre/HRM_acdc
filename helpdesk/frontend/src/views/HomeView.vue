@@ -9,6 +9,8 @@ import { staffPortalHomeUrl } from '../lib/sso'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { notifyError } from '../lib/notify'
 
+const HOME_FAQ_LIMIT = 5
+
 interface KbCategoryRef {
   id: number
   name: string
@@ -24,6 +26,40 @@ interface KbArticle {
   updated_at?: string | null
 }
 
+interface QuickAction {
+  to: string
+  icon: string
+  title: string
+  description: string
+}
+
+const quickActions: QuickAction[] = [
+  {
+    to: '/ask',
+    icon: 'bx-bot',
+    title: 'Ask Helpdesk',
+    description: 'AI-guided answers and step-by-step fixes from our knowledge base.',
+  },
+  {
+    to: '/tickets',
+    icon: 'bx-support',
+    title: 'My tickets',
+    description: 'Track open requests, replies, and resolution status.',
+  },
+  {
+    to: '/tickets/new',
+    icon: 'bx-plus-circle',
+    title: 'New request',
+    description: 'Log an incident or service request for an IT agent.',
+  },
+  {
+    to: '/guide',
+    icon: 'bx-book-reader',
+    title: 'User guide',
+    description: 'Four quick slides on signing in, logging tickets, and follow-up.',
+  },
+]
+
 const auth = useAuthStore()
 const portalHref = computed(() => staffPortalHomeUrl())
 
@@ -34,6 +70,7 @@ const canManageKb = computed(() => {
 
 const search = ref('')
 const articles = ref<KbArticle[]>([])
+const totalArticleCount = ref(0)
 const loading = ref(false)
 const expanded = ref<Set<number>>(new Set())
 
@@ -42,6 +79,7 @@ let searchTimer: number | undefined
 async function loadArticles(query = ''): Promise<void> {
   if (!auth.isAuthenticated) {
     articles.value = []
+    totalArticleCount.value = 0
     return
   }
   loading.value = true
@@ -50,27 +88,32 @@ async function loadArticles(query = ''): Promise<void> {
     if (query.trim() !== '') {
       params.q = query.trim()
     }
-    const { data } = await api.get<{ data: KbArticle[] }>('/api/v1/kb/articles', { params })
+    const { data } = await api.get<{ data: KbArticle[]; meta?: { count?: number } }>('/api/v1/kb/articles', { params })
     articles.value = Array.isArray(data.data) ? data.data : []
+    totalArticleCount.value = typeof data.meta?.count === 'number' ? data.meta.count : articles.value.length
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Could not load knowledge base.'))
     articles.value = []
+    totalArticleCount.value = 0
   } finally {
     loading.value = false
   }
 }
 
-const grouped = computed<Array<{ id: number; name: string; rows: KbArticle[] }>>(() => {
-  const groups = new Map<number, { id: number; name: string; rows: KbArticle[] }>()
-  for (const a of articles.value) {
-    const cid = a.category?.id ?? 0
-    const cname = a.category?.name ?? 'Uncategorised'
-    if (!groups.has(cid)) {
-      groups.set(cid, { id: cid, name: cname, rows: [] })
-    }
-    groups.get(cid)!.rows.push(a)
+const previewArticles = computed(() => articles.value.slice(0, HOME_FAQ_LIMIT))
+
+const hasMoreFaqs = computed(() => totalArticleCount.value > HOME_FAQ_LIMIT)
+
+const faqSummaryLabel = computed(() => {
+  const shown = previewArticles.value.length
+  const total = totalArticleCount.value
+  if (total === 0 || shown === 0) {
+    return ''
   }
-  return [...groups.values()].sort((g1, g2) => g1.name.localeCompare(g2.name))
+  if (shown >= total) {
+    return `${total} question${total === 1 ? '' : 's'}`
+  }
+  return `Showing ${shown} of ${total}`
 })
 
 function toggle(id: number): void {
@@ -109,7 +152,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="hd-home">
     <CbpBadgeStrip product="ITSM" />
     <CbpPageHeading title="IT Service Desk">
       <template #lede>
@@ -117,16 +160,16 @@ onMounted(() => {
       </template>
     </CbpPageHeading>
 
-    <div v-if="!auth.isAuthenticated" class="cbp-card gate">
+    <UCard v-if="!auth.isAuthenticated" class="gate">
       <p class="gate-title">No active session in this app</p>
       <p class="gate-text">
         Open the Staff portal, sign in there, then choose <strong>IT Service Desk (Helpdesk)</strong> from your home dashboard.
       </p>
-      <a class="hd-btn hd-btn--primary" :href="portalHref">Go to Staff portal home</a>
-    </div>
+      <UButton :href="portalHref" color="primary" size="md">Go to Staff portal home</UButton>
+    </UCard>
 
     <template v-else>
-      <section class="hd-hero" aria-label="Quick start">
+      <section class="hd-hero hd-home-hero" aria-label="Quick start">
         <div>
           <p class="hd-hero-eyebrow">Africa CDC · IT Service Desk</p>
           <h2 class="hd-hero-title">Get support faster</h2>
@@ -142,41 +185,40 @@ onMounted(() => {
         </div>
       </section>
 
-      <div class="hd-quick-grid">
-        <RouterLink class="hd-quick-tile" to="/ask">
-          <i class="bx bx-bot" aria-hidden="true" />
-          <strong>Ask Helpdesk</strong>
-          <span>AI-guided answers and step-by-step fixes from our knowledge base.</span>
-        </RouterLink>
-        <RouterLink class="hd-quick-tile" to="/tickets">
-          <i class="bx bx-support" aria-hidden="true" />
-          <strong>My tickets</strong>
-          <span>Track open requests, replies, and resolution status.</span>
-        </RouterLink>
-        <RouterLink class="hd-quick-tile" to="/tickets/new">
-          <i class="bx bx-plus-circle" aria-hidden="true" />
-          <strong>New request</strong>
-          <span>Log an incident or service request for an IT agent.</span>
-        </RouterLink>
-        <RouterLink class="hd-quick-tile" to="/guide">
-          <i class="bx bx-book-reader" aria-hidden="true" />
-          <strong>User guide</strong>
-          <span>Four quick slides on signing in, logging tickets, and follow-up.</span>
-        </RouterLink>
+      <div class="hd-quick-grid" role="navigation" aria-label="Helpdesk shortcuts">
+        <UCard
+          v-for="action in quickActions"
+          :key="action.to"
+          class="hd-action-card"
+          :ui="{ body: 'p-4 sm:p-5' }"
+        >
+          <RouterLink :to="action.to" class="hd-action-link">
+            <span class="hd-action-icon" aria-hidden="true">
+              <i :class="['bx', action.icon]" />
+            </span>
+            <span class="hd-action-body">
+              <strong class="hd-action-title">{{ action.title }}</strong>
+              <span class="hd-action-desc">{{ action.description }}</span>
+            </span>
+            <i class="bx bx-chevron-right hd-action-chevron" aria-hidden="true" />
+          </RouterLink>
+        </UCard>
       </div>
     </template>
 
-    <section v-if="auth.isAuthenticated" class="cbp-card kb-card" aria-labelledby="kb-heading">
-      <header class="kb-header">
-        <div>
-          <p class="panel-title">Knowledge base</p>
-          <h2 id="kb-heading" class="kb-title">Frequently asked questions</h2>
-          <p class="kb-lede">Browse answers by category, or search across every article below.</p>
+    <UCard v-if="auth.isAuthenticated" class="hd-kb-card" aria-labelledby="kb-heading">
+      <template #header>
+        <div class="kb-header">
+          <div>
+            <p class="panel-title">Knowledge base</p>
+            <h2 id="kb-heading" class="kb-title">Top questions</h2>
+            <p class="kb-lede">A short preview of common answers. Search below or use Ask Helpdesk for guided help.</p>
+          </div>
+          <RouterLink v-if="canManageKb" class="kb-manage-link" to="/knowledge-base/manage">
+            Manage articles →
+          </RouterLink>
         </div>
-        <RouterLink v-if="canManageKb" class="kb-manage-link" to="/knowledge-base/manage">
-          Manage articles →
-        </RouterLink>
-      </header>
+      </template>
 
       <UFormField name="kbSearch" class="kb-search">
         <UInput
@@ -207,29 +249,34 @@ onMounted(() => {
         or <RouterLink to="/tickets/new">log a new request</RouterLink>.
       </p>
 
-      <div v-else class="kb-groups">
-        <section v-for="g in grouped" :key="g.id" class="kb-group">
-          <h3 class="kb-group-title">{{ g.name }}<span class="kb-group-count">({{ g.rows.length }})</span></h3>
-          <ul class="kb-list">
-            <li v-for="a in g.rows" :key="a.id" class="kb-item" :class="{ 'is-open': isExpanded(a.id) }">
-              <button
-                type="button"
-                class="kb-item-toggle"
-                :aria-expanded="isExpanded(a.id)"
-                @click="toggle(a.id)"
-              >
-                <span class="kb-question">{{ a.question }}</span>
-                <span class="kb-caret" aria-hidden="true">{{ isExpanded(a.id) ? '−' : '+' }}</span>
-              </button>
-              <div v-if="isExpanded(a.id)" class="kb-answer">
-                <div v-if="isHtml(a.answer)" class="kb-answer-body rich-text-content" v-html="a.answer"></div>
-                <p v-else class="kb-answer-body kb-answer-plain">{{ a.answer }}</p>
-              </div>
-            </li>
-          </ul>
-        </section>
-      </div>
-    </section>
+      <ul v-else class="kb-list">
+        <li v-for="a in previewArticles" :key="a.id" class="kb-item" :class="{ 'is-open': isExpanded(a.id) }">
+          <button
+            type="button"
+            class="kb-item-toggle"
+            :aria-expanded="isExpanded(a.id)"
+            @click="toggle(a.id)"
+          >
+            <span class="kb-question-wrap">
+              <span v-if="a.category?.name" class="kb-category-pill">{{ a.category.name }}</span>
+              <span class="kb-question">{{ a.question }}</span>
+            </span>
+            <span class="kb-caret" aria-hidden="true">{{ isExpanded(a.id) ? '−' : '+' }}</span>
+          </button>
+          <div v-if="isExpanded(a.id)" class="kb-answer">
+            <div v-if="isHtml(a.answer)" class="kb-answer-body rich-text-content" v-html="a.answer"></div>
+            <p v-else class="kb-answer-body kb-answer-plain">{{ a.answer }}</p>
+          </div>
+        </li>
+      </ul>
+
+      <footer v-if="previewArticles.length > 0" class="hd-kb-foot">
+        <span v-if="faqSummaryLabel">{{ faqSummaryLabel }}</span>
+        <RouterLink v-if="hasMoreFaqs || search.trim() !== ''" class="hd-kb-more-link" to="/ask">
+          {{ hasMoreFaqs ? 'Ask Helpdesk for more answers →' : 'Open Ask Helpdesk →' }}
+        </RouterLink>
+      </footer>
+    </UCard>
   </div>
 </template>
 
@@ -258,16 +305,12 @@ onMounted(() => {
   color: #6c757d;
 }
 
-.kb-card {
-  margin-top: 0;
-}
 .kb-header {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 1rem;
 }
 .kb-title {
   margin: 0;
@@ -279,6 +322,7 @@ onMounted(() => {
   margin: 0.35rem 0 0;
   color: #5c6c7c;
   font-size: 0.92rem;
+  max-width: 40rem;
 }
 .kb-manage-link {
   font-weight: 700;
@@ -294,31 +338,13 @@ onMounted(() => {
 }
 .kb-search {
   display: block;
-  margin: 0.25rem 0 1rem;
+  margin: 0 0 1rem;
 }
 .kb-status,
 .kb-empty {
   margin: 0.5rem 0;
   color: #5c6c7c;
   font-size: 0.92rem;
-}
-.kb-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-}
-.kb-group-title {
-  margin: 0 0 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #0d7a3a;
-}
-.kb-group-count {
-  margin-left: 0.4rem;
-  color: #94a3b8;
-  font-weight: 600;
 }
 .kb-list {
   list-style: none;
@@ -342,7 +368,7 @@ onMounted(() => {
 .kb-item-toggle {
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem 0.95rem;
@@ -358,12 +384,33 @@ onMounted(() => {
 .kb-item-toggle:hover {
   background: #f8fafc;
 }
+.kb-question-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.kb-category-pill {
+  align-self: flex-start;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0d7a3a;
+  background: rgba(17, 154, 72, 0.1);
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+}
+.kb-question {
+  line-height: 1.4;
+}
 .kb-caret {
   font-size: 1.25rem;
   color: #119a48;
   font-weight: 700;
   width: 1.25rem;
   text-align: center;
+  flex-shrink: 0;
 }
 .kb-answer {
   padding: 0 0.95rem 0.95rem;
