@@ -63,21 +63,32 @@
 }
 
 /*
- * Quill image resize overlay — created in richText.ts (not in Vue template).
- * Must be global: scoped styles do not apply to dynamically inserted nodes.
+ * Quill image resize — ported from APM apm-quill-editor.js + css.blade.php.
+ * Overlay DOM is created in richText.ts; styles must be global (not scoped).
  */
-.cbp-rich-text .cbp-quill-image-overlay {
+.cbp-quill-wrap .cbp-quill-editor {
+  position: relative;
+}
+
+.cbp-quill-wrap .cbp-quill-editor .ql-editor img.cbp-quill-image,
+.cbp-quill-wrap .cbp-quill-editor .ql-editor img {
+  max-width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+.cbp-quill-wrap .cbp-quill-image-overlay {
   position: absolute;
-  z-index: 30;
+  z-index: 20;
   pointer-events: none;
   box-sizing: border-box;
 }
 
-.cbp-rich-text .cbp-quill-image-overlay--hidden {
+.cbp-quill-wrap .cbp-quill-image-overlay.is-hidden {
   display: none !important;
 }
 
-.cbp-rich-text .cbp-quill-image-toolbar {
+.cbp-quill-wrap .cbp-quill-image-toolbar {
   position: absolute;
   top: -34px;
   left: 0;
@@ -85,17 +96,17 @@
   gap: 4px;
   pointer-events: auto;
   background: #fff;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
   padding: 2px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.cbp-rich-text .cbp-quill-image-toolbar button {
+.cbp-quill-wrap .cbp-quill-image-btn {
   border: 0;
   background: #f8fafc;
   color: #0f172a;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   padding: 0.1rem 0.45rem;
   font-size: 0.75rem;
   font-weight: 600;
@@ -103,12 +114,12 @@
   line-height: 1.4;
 }
 
-.cbp-rich-text .cbp-quill-image-toolbar button:hover {
+.cbp-quill-wrap .cbp-quill-image-btn:hover {
   background: #e8f7ee;
   color: #0d7a3a;
 }
 
-.cbp-rich-text .cbp-quill-image-frame {
+.cbp-quill-wrap .cbp-quill-image-frame {
   border: 2px solid #119a48;
   box-sizing: border-box;
   pointer-events: none;
@@ -116,7 +127,7 @@
   height: 100%;
 }
 
-.cbp-rich-text .cbp-quill-image-handle {
+.cbp-quill-wrap .cbp-quill-image-handle {
   position: absolute;
   right: -6px;
   bottom: -6px;
@@ -127,9 +138,4 @@
   border-radius: 2px;
   cursor: se-resize;
   pointer-events: auto;
-}
-
-.cbp-rich-text .ql-editor img.cbp-quill-image,
-.cbp-rich-text .ql-editor img {
-  cursor: pointer;
 }

@@ -100,7 +100,10 @@ function insertImageAtCursor(url: string): void {
   quill.insertEmbed(index, 'image', url, 'user')
   quill.setSelection(index + 1, 0, 'silent')
   window.setTimeout(() => {
-    prepareQuillInsertedImage(quill, index)
+    const img = prepareQuillInsertedImage(quill, index)
+    if (img) {
+      img.click()
+    }
   }, 0)
 }
 
@@ -248,12 +251,25 @@ function setupPasteAndDrop(quill: any): void {
   })
 }
 
+function syncEditorHtml(): void {
+  const quill = getQuill()
+  if (!quill?.root) {
+    return
+  }
+  const html = quill.root.innerHTML as string
+  queueRemovedImages(lastHtml.value, html)
+  lastHtml.value = html
+  emit('update:modelValue', html)
+}
+
 function onReady(quill: unknown) {
   const q = quill as { root: HTMLElement; on: (e: string, fn: () => void) => void }
   setupQuillAutoGrow(q, editorMinPx.value)
   if (props.enableImages && wrapRef.value) {
     setupPasteAndDrop(q)
-    setupQuillImageResize(q as Parameters<typeof setupQuillImageResize>[0], wrapRef.value)
+    setupQuillImageResize(q as Parameters<typeof setupQuillImageResize>[0], wrapRef.value, {
+      onHtmlChange: syncEditorHtml,
+    })
   }
   emit('ready', quill)
 }
@@ -262,7 +278,7 @@ function onReady(quill: unknown) {
 <template>
   <div
     ref="wrapRef"
-    class="cbp-rich-text"
+    class="cbp-rich-text cbp-quill-wrap"
     :class="{ 'cbp-rich-text--busy': inlineImageBusy }"
     :style="editorStyle"
   >
@@ -272,7 +288,7 @@ function onReady(quill: unknown) {
       :content="modelValue"
       content-type="html"
       theme="snow"
-      class="cbp-rich-text__editor"
+      class="cbp-quill-editor cbp-rich-text__editor"
       :options="quillOptions"
       :read-only="disabled"
       @update:content="onContentUpdate"
@@ -307,6 +323,7 @@ function onReady(quill: unknown) {
   background: #fff;
   border-radius: 4px;
   border: 1px solid #cbd5e1;
+  position: relative;
 }
 .cbp-rich-text__editor--loading {
   display: flex;

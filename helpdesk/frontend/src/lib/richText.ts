@@ -152,10 +152,10 @@ type QuillEditorLike = {
 }
 
 /** Default width for newly inserted inline images (matches APM memo editor). */
-export function prepareQuillInsertedImage(quill: QuillEditorLike, index?: number): void {
+export function prepareQuillInsertedImage(quill: QuillEditorLike, index?: number): HTMLImageElement | null {
   const img = findQuillImageAtIndex(quill, index)
   if (!img) {
-    return
+    return null
   }
   img.style.maxWidth = '100%'
   img.style.height = 'auto'
@@ -163,6 +163,7 @@ export function prepareQuillInsertedImage(quill: QuillEditorLike, index?: number
     img.style.width = '50%'
   }
   img.classList.add('cbp-quill-image')
+  return img
 }
 
 function findQuillImageAtIndex(quill: QuillEditorLike, index?: number): HTMLImageElement | null {
@@ -178,29 +179,41 @@ function findQuillImageAtIndex(quill: QuillEditorLike, index?: number): HTMLImag
   return last instanceof HTMLImageElement ? last : null
 }
 
+export interface QuillImageResizeOptions {
+  /** Called after width changes so v-model receives inline styles. */
+  onHtmlChange?: () => void
+}
+
 /**
- * Click-to-select image sizing (25–100% presets + drag handle), like APM special memo editor.
+ * Click-to-select image sizing (25–100% presets + drag handle).
+ * Ported from APM `apm-quill-editor.js` → bindImageResize().
  */
-export function setupQuillImageResize(quill: QuillEditorLike, wrap: HTMLElement): void {
-  if (wrap.dataset.cbpImageResizeBound === '1') {
+export function setupQuillImageResize(
+  quill: QuillEditorLike,
+  wrap: HTMLElement,
+  options: QuillImageResizeOptions = {},
+): void {
+  if (!quill || !wrap || wrap.dataset.cbpImageResizeBound === '1') {
     return
   }
-  wrap.dataset.cbpImageResizeBound = '1'
 
+  const container = wrap.querySelector('.cbp-quill-editor') as HTMLElement | null
+  if (!container) {
+    return
+  }
+
+  wrap.dataset.cbpImageResizeBound = '1'
   const root = quill.root
-  wrap.style.position = 'relative'
-  const container = wrap
+  container.style.position = 'relative'
 
   const overlay = document.createElement('div')
-  overlay.className = 'cbp-quill-image-overlay cbp-quill-image-overlay--hidden'
-  overlay.setAttribute('aria-hidden', 'true')
-  overlay.style.display = 'none'
+  overlay.className = 'cbp-quill-image-overlay is-hidden'
   overlay.innerHTML =
     '<div class="cbp-quill-image-toolbar" role="toolbar" aria-label="Image size">'
-    + '<button type="button" data-cbp-img-size="25">25%</button>'
-    + '<button type="button" data-cbp-img-size="50">50%</button>'
-    + '<button type="button" data-cbp-img-size="75">75%</button>'
-    + '<button type="button" data-cbp-img-size="100">100%</button>'
+    + '<button type="button" class="cbp-quill-image-btn" data-cbp-img-size="25">25%</button>'
+    + '<button type="button" class="cbp-quill-image-btn" data-cbp-img-size="50">50%</button>'
+    + '<button type="button" class="cbp-quill-image-btn" data-cbp-img-size="75">75%</button>'
+    + '<button type="button" class="cbp-quill-image-btn" data-cbp-img-size="100">100%</button>'
     + '</div>'
     + '<div class="cbp-quill-image-frame"></div>'
     + '<span class="cbp-quill-image-handle" title="Drag to resize"></span>'
@@ -212,11 +225,13 @@ export function setupQuillImageResize(quill: QuillEditorLike, wrap: HTMLElement)
   let activeImg: HTMLImageElement | null = null
   let drag: { startX: number; startWidth: number } | null = null
 
+  function notifyChange(): void {
+    options.onHtmlChange?.()
+  }
+
   function clearSelection(): void {
     activeImg = null
-    overlay.classList.add('cbp-quill-image-overlay--hidden')
-    overlay.style.display = 'none'
-    overlay.setAttribute('aria-hidden', 'true')
+    overlay.classList.add('is-hidden')
     drag = null
   }
 
@@ -230,16 +245,18 @@ export function setupQuillImageResize(quill: QuillEditorLike, wrap: HTMLElement)
     img.style.maxWidth = '100%'
     img.style.height = 'auto'
     positionOverlay(img)
+    notifyChange()
   }
 
   function positionOverlay(img: HTMLImageElement): void {
+    if (!img || !frame) {
+      return
+    }
     const imgRect = img.getBoundingClientRect()
     const boxRect = container.getBoundingClientRect()
     const top = imgRect.top - boxRect.top + container.scrollTop
     const left = imgRect.left - boxRect.left + container.scrollLeft
-    overlay.classList.remove('cbp-quill-image-overlay--hidden')
-    overlay.style.display = 'block'
-    overlay.setAttribute('aria-hidden', 'false')
+    overlay.classList.remove('is-hidden')
     overlay.style.top = `${top}px`
     overlay.style.left = `${left}px`
     overlay.style.width = `${imgRect.width}px`
@@ -281,7 +298,7 @@ export function setupQuillImageResize(quill: QuillEditorLike, wrap: HTMLElement)
     }
   })
 
-  const onMouseMove = (e: MouseEvent): void => {
+  document.addEventListener('mousemove', (e: MouseEvent) => {
     if (!drag || !activeImg) {
       return
     }
@@ -289,14 +306,11 @@ export function setupQuillImageResize(quill: QuillEditorLike, wrap: HTMLElement)
     const nextWidth = Math.max(40, drag.startWidth + delta)
     const percent = Math.round((nextWidth / editorWidth()) * 100)
     setImageWidthPercent(activeImg, percent)
-  }
+  })
 
-  const onMouseUp = (): void => {
+  document.addEventListener('mouseup', () => {
     drag = null
-  }
-
-  document.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseup', onMouseUp)
+  })
 
   root.addEventListener('click', (e) => {
     const target = e.target
