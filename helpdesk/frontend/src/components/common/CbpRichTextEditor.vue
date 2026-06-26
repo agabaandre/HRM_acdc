@@ -289,7 +289,9 @@ function onReady(quill: unknown) {
     <p v-if="inlineImageBusy" class="cbp-rich-text__status" role="status">Uploading image…</p>
     <p v-else-if="imageHint" class="cbp-rich-text__hint" role="alert">{{ imageHint }}</p>
     <p v-else-if="enableImages" class="cbp-rich-text__tip muted">
-      Paste screenshots (⌘V / Ctrl+V), drag images here, or use the image button. JPEG, PNG, GIF, WebP · max 10 MB.
+      <strong>Screenshots help us fix issues faster.</strong>
+      Paste one with ⌘V / Ctrl+V, drag it here, or use the image button in the toolbar (max 10 MB).
+      After inserting, click the image to resize (25%–100%).
     </p>
   </div>
 </template>
@@ -348,59 +350,6 @@ function onReady(quill: unknown) {
   height: auto;
   border-radius: 4px;
   margin: 0.35rem 0;
-  cursor: pointer;
-}
-.cbp-rich-text__editor :deep(.cbp-quill-image-overlay) {
-  position: absolute;
-  z-index: 20;
-  pointer-events: none;
-}
-.cbp-rich-text__editor :deep(.cbp-quill-image-overlay--hidden) {
-  display: none;
-}
-.cbp-rich-text__editor :deep(.cbp-quill-image-toolbar) {
-  position: absolute;
-  top: -34px;
-  left: 0;
-  display: flex;
-  gap: 4px;
-  pointer-events: auto;
-  background: #fff;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 2px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
-}
-.cbp-rich-text__editor :deep(.cbp-quill-image-toolbar button) {
-  border: 0;
-  background: #f8fafc;
-  color: #0f172a;
-  border-radius: 4px;
-  padding: 0.1rem 0.45rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.cbp-rich-text__editor :deep(.cbp-quill-image-toolbar button:hover) {
-  background: #e8f7ee;
-  color: #0d7a3a;
-}
-.cbp-rich-text__editor :deep(.cbp-quill-image-frame) {
-  border: 2px solid #119a48;
-  box-sizing: border-box;
-  pointer-events: none;
-}
-.cbp-rich-text__editor :deep(.cbp-quill-image-handle) {
-  position: absolute;
-  right: -6px;
-  bottom: -6px;
-  width: 12px;
-  height: 12px;
-  background: #119a48;
-  border: 2px solid #fff;
-  border-radius: 2px;
-  cursor: se-resize;
-  pointer-events: auto;
 }
 .cbp-rich-text__editor :deep(.ql-editor.ql-blank::before) {
   font-style: normal;
@@ -426,5 +375,9 @@ function onReady(quill: unknown) {
 }
 .cbp-rich-text__tip.muted {
   color: #64748b;
+}
+.cbp-rich-text__tip strong {
+  color: #0d7a3a;
+  font-weight: 600;
 }
 </style>

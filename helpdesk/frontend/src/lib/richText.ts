@@ -188,12 +188,13 @@ export function setupQuillImageResize(quill: QuillEditorLike, wrap: HTMLElement)
   wrap.dataset.cbpImageResizeBound = '1'
 
   const root = quill.root
-  const editorShell = wrap.querySelector('.cbp-rich-text__editor') as HTMLElement | null
-  const container = editorShell ?? wrap
-  container.style.position = 'relative'
+  wrap.style.position = 'relative'
+  const container = wrap
 
   const overlay = document.createElement('div')
   overlay.className = 'cbp-quill-image-overlay cbp-quill-image-overlay--hidden'
+  overlay.setAttribute('aria-hidden', 'true')
+  overlay.style.display = 'none'
   overlay.innerHTML =
     '<div class="cbp-quill-image-toolbar" role="toolbar" aria-label="Image size">'
     + '<button type="button" data-cbp-img-size="25">25%</button>'
@@ -214,6 +215,8 @@ export function setupQuillImageResize(quill: QuillEditorLike, wrap: HTMLElement)
   function clearSelection(): void {
     activeImg = null
     overlay.classList.add('cbp-quill-image-overlay--hidden')
+    overlay.style.display = 'none'
+    overlay.setAttribute('aria-hidden', 'true')
     drag = null
   }
 
@@ -235,6 +238,8 @@ export function setupQuillImageResize(quill: QuillEditorLike, wrap: HTMLElement)
     const top = imgRect.top - boxRect.top + container.scrollTop
     const left = imgRect.left - boxRect.left + container.scrollLeft
     overlay.classList.remove('cbp-quill-image-overlay--hidden')
+    overlay.style.display = 'block'
+    overlay.setAttribute('aria-hidden', 'false')
     overlay.style.top = `${top}px`
     overlay.style.left = `${left}px`
     overlay.style.width = `${imgRect.width}px`

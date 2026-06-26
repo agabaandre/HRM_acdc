@@ -24,10 +24,10 @@ const slides = [
     steps: [
       { title: 'Click New request', text: 'Available from the home hero or the Tickets page.' },
       { title: 'Choose a category', text: 'Pick the issue type (email, hardware, access, etc.). You must select one.' },
-      { title: 'Describe the problem', text: 'Include what happened, when it started, error messages, and your device or location. Paste or drag screenshots up to 10 MB.' },
+      { title: 'Describe the problem & add a screenshot', text: 'Explain what happened, when it started, and your device. Paste a screenshot of the error (⌘V / Ctrl+V) or drag it into the description box — up to 10 MB. Click the image to resize.' },
       { title: 'Submit', text: 'By default the ticket is for you. Use “another staff member” only when logging on someone else’s behalf.' },
     ],
-    tip: 'Try Ask Helpdesk first for instant answers from the knowledge base.',
+    tip: 'A screenshot saves back-and-forth email. Try Ask Helpdesk first if you only need a quick FAQ answer.',
   },
   {
     num: 3,

@@ -61,3 +61,75 @@
 .hd-rich-field :deep(.cbp-rich-text) {
   width: 100%;
 }
+
+/*
+ * Quill image resize overlay — created in richText.ts (not in Vue template).
+ * Must be global: scoped styles do not apply to dynamically inserted nodes.
+ */
+.cbp-rich-text .cbp-quill-image-overlay {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.cbp-rich-text .cbp-quill-image-overlay--hidden {
+  display: none !important;
+}
+
+.cbp-rich-text .cbp-quill-image-toolbar {
+  position: absolute;
+  top: -34px;
+  left: 0;
+  display: flex;
+  gap: 4px;
+  pointer-events: auto;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.cbp-rich-text .cbp-quill-image-toolbar button {
+  border: 0;
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.cbp-rich-text .cbp-quill-image-toolbar button:hover {
+  background: #e8f7ee;
+  color: #0d7a3a;
+}
+
+.cbp-rich-text .cbp-quill-image-frame {
+  border: 2px solid #119a48;
+  box-sizing: border-box;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+}
+
+.cbp-rich-text .cbp-quill-image-handle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: #119a48;
+  border: 2px solid #fff;
+  border-radius: 2px;
+  cursor: se-resize;
+  pointer-events: auto;
+}
+
+.cbp-rich-text .ql-editor img.cbp-quill-image,
+.cbp-rich-text .ql-editor img {
+  cursor: pointer;
+}

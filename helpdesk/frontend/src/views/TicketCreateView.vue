@@ -414,10 +414,10 @@ async function submit() {
           <CbpRichTextEditor
             v-model="form.description"
             :disabled="busy"
-            placeholder="Describe the issue (required). Add text, screenshots, and other details in the editor…"
+            placeholder="Describe what happened (required). Paste a screenshot of the error with ⌘V / Ctrl+V — include when it started and your device."
           />
           <template #hint>
-            <span v-if="!descriptionReady" class="desc-hint muted">A description is required before you can submit.</span>
+            <span v-if="!descriptionReady" class="desc-hint muted">A description is required. A screenshot of the issue helps agents resolve it faster.</span>
           </template>
         </UFormField>
 
