@@ -101,6 +101,16 @@ const settingsAreaActive = computed(() => route.path.startsWith('/settings'))
             <i :class="HELP_DESK_NAV_ICONS.reports" class="cbp-nav-link-icon" aria-hidden="true" />
             <span>Reports</span>
           </RouterLink>
+          <RouterLink
+            to="/screen"
+            class="cbp-nav-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            @click="closeAll"
+          >
+            <i :class="HELP_DESK_NAV_ICONS.screen" class="cbp-nav-link-icon" aria-hidden="true" />
+            <span>Live screen</span>
+          </RouterLink>
 
           <div v-if="isAdmin" class="cbp-nav-item-dropdown" :class="{ 'is-open': settingsOpen }">
             <button

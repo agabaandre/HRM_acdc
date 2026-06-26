@@ -8,6 +8,7 @@ export const HELP_DESK_NAV_ICONS = {
   knowledgeBase: 'bx bx-book-open',
   guide: 'bx bx-book-reader',
   reports: 'bx bx-bar-chart-alt-2',
+  screen: 'bx bx-tv',
   settings: 'bx bx-cog',
 } as const
 

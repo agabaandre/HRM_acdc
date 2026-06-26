@@ -59,7 +59,6 @@ if (stored === 'light' || stored === 'dark') {
       <CbpPrimaryNav />
       <div class="cbp-page-wrapper">
         <div class="cbp-page-content hd-content-frame" :class="contentLoadingClass">
-          <CbpRoutePreloader />
           <div class="hd-content-frame__body">
             <RouterView />
           </div>
@@ -68,10 +67,10 @@ if (stored === 'light' || stored === 'dark') {
       <CbpPageFooter />
     </div>
     <div v-else class="hd-content-frame hd-content-frame--full" :class="contentLoadingClass">
-      <CbpRoutePreloader />
       <div class="hd-content-frame__body">
         <RouterView />
       </div>
     </div>
+    <CbpRoutePreloader />
   </UApp>
 </template>
