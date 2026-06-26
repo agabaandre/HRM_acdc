@@ -24,7 +24,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const cats = ref<{ id: number; name: string }[]>([])
 const form = reactive({
-  category_id: 0 as number,
+  category_id: undefined as number | undefined,
   description: '',
   priority: 'medium' as TicketPriority,
 })
@@ -120,7 +120,7 @@ const canSubmit = computed(
   () =>
     staffRequesterReady.value
     && descriptionReady.value
-    && form.category_id > 0
+    && (form.category_id ?? 0) > 0
     && !catsLoading.value
     && cats.value.length > 0,
 )
@@ -131,7 +131,7 @@ const categoryItems = computed((): SelectNumberItem[] =>
 
 function validateCreateForm(_state: typeof form): FormError[] {
   const errors: FormError[] = []
-  if (!_state.category_id) {
+  if (!_state.category_id || _state.category_id < 1) {
     errors.push({ name: 'category_id', message: 'Choose a category' })
   }
   if (!hasRichTextContent(_state.description)) {
@@ -345,6 +345,7 @@ async function submit() {
             :disabled="busy || catsLoading || cats.length === 0"
             :placeholder="catsLoading ? 'Loading categories…' : cats.length === 0 ? 'No categories available' : 'Select category'"
             class="w-full"
+            value-key="value"
           />
         </UFormField>
 

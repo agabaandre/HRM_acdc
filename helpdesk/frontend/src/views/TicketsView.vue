@@ -9,7 +9,11 @@ import TicketReassignModal, {
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { canReassignTickets, ticketStatusAllowsReassign } from '../lib/canReassignTickets'
-import { PER_PAGE_ITEMS, type PageSize } from '../lib/helpdeskForm'
+import {
+  canChangeTicketCategory,
+  ticketStatusAllowsCategoryChange,
+} from '../lib/canChangeTicketCategory'
+import { PER_PAGE_ITEMS, type PageSize, type SelectNumberItem } from '../lib/helpdeskForm'
 import { notifyError } from '../lib/notify'
 import { useAuthStore } from '../stores/auth'
 import {
@@ -26,6 +30,11 @@ interface AssigneeBrief {
   avatar_url?: string | null
 }
 
+interface TicketCategoryBrief {
+  id: number
+  name: string
+}
+
 interface TicketRow {
   id: number
   ticket_number: string
@@ -33,6 +42,7 @@ interface TicketRow {
   status: string
   priority: string
   requester_name?: string | null
+  category?: TicketCategoryBrief | null
   assignee?: AssigneeBrief | null
 }
 
@@ -56,8 +66,17 @@ const total = ref(0)
 const lastPage = ref(1)
 const page = ref(1)
 const reassignTicket = ref<ReassignTicketRef | null>(null)
+const cats = ref<{ id: number; name: string }[]>([])
+const categoryUpdatingId = ref<number | null>(null)
 
 const canReassign = computed(() => canReassignTickets(auth.me?.profile))
+const canEditCategory = computed(() => canChangeTicketCategory(auth.me?.profile))
+
+const categoryItems = computed((): SelectNumberItem[] =>
+  cats.value.map((c) => ({ label: c.name, value: c.id })),
+)
+
+const tableColspan = computed(() => (canReassign.value ? 9 : 8))
 
 const hasPrev = computed(() => page.value > 1)
 const hasNext = computed(() => page.value < lastPage.value)
@@ -71,6 +90,41 @@ function counterFor(idx: number): number {
 
 function canReassignRow(row: TicketRow): boolean {
   return canReassign.value && ticketStatusAllowsReassign(row.status)
+}
+
+function canEditCategoryRow(row: TicketRow): boolean {
+  return canEditCategory.value && ticketStatusAllowsCategoryChange(row.status)
+}
+
+async function loadCategories() {
+  if (!canEditCategory.value) {
+    return
+  }
+  try {
+    const { data } = await api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories')
+    cats.value = Array.isArray(data.data) ? data.data : []
+  } catch {
+    cats.value = []
+  }
+}
+
+async function updateTicketCategory(row: TicketRow, categoryId: number | undefined) {
+  if (!categoryId || categoryId === row.category?.id || categoryUpdatingId.value != null) {
+    return
+  }
+  categoryUpdatingId.value = row.id
+  try {
+    const { data } = await api.patch(`/api/v1/tickets/${row.id}`, { category_id: categoryId })
+    const updated = data.data as TicketRow
+    const idx = rows.value.findIndex((r) => r.id === row.id)
+    if (idx >= 0) {
+      rows.value[idx] = { ...rows.value[idx], category: updated.category ?? null }
+    }
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Could not update category'))
+  } finally {
+    categoryUpdatingId.value = null
+  }
 }
 
 function openReassign(row: TicketRow): void {
@@ -122,7 +176,10 @@ watch(() => searchState.perPage, () => {
   load()
 })
 
-onMounted(load)
+onMounted(async () => {
+  await loadCategories()
+  await load()
+})
 </script>
 
 <template>
@@ -164,6 +221,7 @@ onMounted(load)
               <th class="col-subj" scope="col">Subject</th>
               <th class="col-req" scope="col">Requester</th>
               <th class="col-assignee" scope="col">Assigned to</th>
+              <th class="col-cat" scope="col">Category</th>
               <th class="col-status" scope="col">Status</th>
               <th class="col-priority" scope="col">Priority</th>
               <th v-if="canReassign" class="col-action" scope="col">Actions</th>
@@ -171,7 +229,7 @@ onMounted(load)
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td :colspan="canReassign ? 8 : 7" class="cell-loading">Loading…</td>
+              <td :colspan="tableColspan" class="cell-loading">Loading…</td>
             </tr>
             <template v-else>
             <tr v-for="(t, idx) in rows" :key="t.id">
@@ -196,6 +254,20 @@ onMounted(load)
                   <span class="row-person-name">{{ t.assignee.name }}</span>
                 </div>
                 <span v-else class="cell-empty">—</span>
+              </td>
+              <td class="col-cat">
+                <USelect
+                  v-if="canEditCategoryRow(t)"
+                  :model-value="t.category?.id"
+                  :items="categoryItems"
+                  :disabled="categoryUpdatingId === t.id || categoryItems.length === 0"
+                  placeholder="Select category"
+                  size="sm"
+                  class="w-full category-select"
+                  value-key="value"
+                  @update:model-value="updateTicketCategory(t, $event as number | undefined)"
+                />
+                <span v-else class="cell-cat-name">{{ t.category?.name || '—' }}</span>
               </td>
               <td class="col-status">
                 <span
@@ -228,7 +300,7 @@ onMounted(load)
               </td>
             </tr>
             <tr v-if="rows.length === 0">
-              <td :colspan="canReassign ? 8 : 7" class="cell-empty-msg">
+              <td :colspan="tableColspan" class="cell-empty-msg">
                 No tickets yet — create one from <RouterLink to="/tickets/new">New ticket</RouterLink>.
               </td>
             </tr>
@@ -332,6 +404,17 @@ onMounted(load)
 .col-action {
   text-align: right;
   white-space: nowrap;
+}
+.col-cat {
+  min-width: 9rem;
+  max-width: 12rem;
+}
+.cell-cat-name {
+  font-size: 0.82rem;
+  color: #334155;
+}
+.category-select {
+  min-width: 8.5rem;
 }
 .reassign-btn {
   padding: 0.25rem 0.45rem;

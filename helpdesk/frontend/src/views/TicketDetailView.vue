@@ -7,7 +7,11 @@ import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import type { FormError, FormSubmitEvent } from '@nuxt/ui'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
-import { fieldError } from '../lib/helpdeskForm'
+import { fieldError, type SelectNumberItem } from '../lib/helpdeskForm'
+import {
+  canChangeTicketCategory,
+  ticketStatusAllowsCategoryChange,
+} from '../lib/canChangeTicketCategory'
 import { formatDateTime, formatDateTimeLong } from '../lib/formatDateTime'
 import { notifyError } from '../lib/notify'
 import { hasRichTextContent, isHtmlContent } from '../lib/richText'
@@ -77,6 +81,20 @@ const showResolveModal = ref(false)
 const publishToKb = ref(false)
 const kbSubject = ref('')
 const resolveModalErr = ref<string | null>(null)
+const cats = ref<{ id: number; name: string }[]>([])
+const categoryUpdating = ref(false)
+
+const canEditCategory = computed(() => {
+  const t = ticket.value
+  if (!t) {
+    return false
+  }
+  return canChangeTicketCategory(auth.me?.profile) && ticketStatusAllowsCategoryChange(t.status)
+})
+
+const categoryItems = computed((): SelectNumberItem[] =>
+  cats.value.map((c) => ({ label: c.name, value: c.id })),
+)
 
 const isHtmlDescription = computed(() => isHtmlContent(ticket.value?.description))
 const isHtmlResolution = computed(() => isHtmlContent(ticket.value?.resolution_summary ?? null))
@@ -196,6 +214,34 @@ function onResolveModalKeydown(ev: KeyboardEvent) {
   }
 }
 
+async function loadCategories() {
+  if (!canChangeTicketCategory(auth.me?.profile)) {
+    return
+  }
+  try {
+    const { data } = await api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories')
+    cats.value = Array.isArray(data.data) ? data.data : []
+  } catch {
+    cats.value = []
+  }
+}
+
+async function updateTicketCategory(categoryId: number | undefined) {
+  const t = ticket.value
+  if (!t || !categoryId || categoryId === t.category?.id || categoryUpdating.value) {
+    return
+  }
+  categoryUpdating.value = true
+  try {
+    const { data } = await api.patch(`/api/v1/tickets/${t.id}`, { category_id: categoryId })
+    ticket.value = data.data as TicketDetail
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Could not update category'))
+  } finally {
+    categoryUpdating.value = false
+  }
+}
+
 async function loadAll() {
   const id = ticketId.value
   if (!id) {
@@ -279,6 +325,7 @@ function onDocumentKeydown(ev: KeyboardEvent) {
 }
 
 onMounted(() => {
+  void loadCategories()
   loadAll()
   document.addEventListener('keydown', onDocumentKeydown)
 })
@@ -339,6 +386,22 @@ watch(canReopenWithComment, (can) => {
                 >Onsite</span>
               </strong>
               <span v-if="ticket.assignee.email" class="pemail">{{ ticket.assignee.email }}</span>
+            </div>
+          </div>
+          <div v-if="ticket.category || canEditCategory" class="person-card person-card--category">
+            <div class="person-meta person-meta--full">
+              <span class="plabel">Category</span>
+              <USelect
+                v-if="canEditCategory"
+                :model-value="ticket.category?.id"
+                :items="categoryItems"
+                :disabled="categoryUpdating || categoryItems.length === 0"
+                placeholder="Select category"
+                class="w-full category-select"
+                value-key="value"
+                @update:model-value="updateTicketCategory($event as number | undefined)"
+              />
+              <strong v-else class="pname">{{ ticket.category?.name || '—' }}</strong>
             </div>
           </div>
         </section>
@@ -794,6 +857,15 @@ watch(canReopenWithComment, (can) => {
   border-radius: 4px;
   background: #f8fafc;
   min-width: min(100%, 16rem);
+}
+.person-card--category {
+  align-items: stretch;
+}
+.person-meta--full {
+  width: 100%;
+}
+.person-meta .category-select {
+  margin-top: 0.2rem;
 }
 .person-meta {
   display: flex;
