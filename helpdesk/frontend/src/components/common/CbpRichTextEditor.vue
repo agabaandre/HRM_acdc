@@ -402,6 +402,7 @@ function onReady(quill: unknown) {
   cursor: se-resize;
   pointer-events: auto;
 }
+.cbp-rich-text__editor :deep(.ql-editor.ql-blank::before) {
   font-style: normal;
   color: #94a3b8;
 }
