@@ -120,6 +120,7 @@ const canSubmit = computed(
   () =>
     staffRequesterReady.value
     && descriptionReady.value
+    && form.category_id > 0
     && !catsLoading.value
     && cats.value.length > 0,
 )
@@ -152,9 +153,6 @@ async function loadCats() {
   try {
     const { data } = await api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories')
     cats.value = Array.isArray(data.data) ? data.data : []
-    if (cats.value.length && !form.category_id) {
-      form.category_id = cats.value[0].id
-    }
     if (cats.value.length === 0) {
       catsErr.value =
         'No issue categories are configured yet. An administrator can add them under Settings → Issue categories, or run the database seeder on the API server.'
