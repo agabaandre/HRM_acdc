@@ -8,7 +8,7 @@
         body {
             font-size: 14px;
             font-family: "freesans", arial, sans-serif;
-            background: #f6f8fb;
+            background: #FFFFFF;
             margin: 40px;
             line-height: 1.8;
             font-style: normal;

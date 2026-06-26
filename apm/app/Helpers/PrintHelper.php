@@ -2357,7 +2357,7 @@ class PrintHelper
 
         self::beginAttachmentsAppendixLayout($mpdf);
 
-        $indexHtml = '<div style="page-break-before: always;">'
+        $indexHtml = '<div>'
             . '<p class="section-label" style="color:#006633;font-weight:bold;font-size:14px;margin:0 0 12px;">'
             . htmlspecialchars($appendixTitle, ENT_QUOTES, 'UTF-8')
             . '</p>'
@@ -2920,9 +2920,11 @@ class PrintHelper
 
     /**
      * Strip memo branding header/footer and tighten margins for appendix pages only.
+     * Start a new page before clearing footers so single-page memos keep QR/footer on page 1.
      */
     private static function beginAttachmentsAppendixLayout(\Mpdf\Mpdf $mpdf): void
     {
+        $mpdf->AddPage();
         $mpdf->SetHTMLHeader('');
         $mpdf->SetHTMLFooter('');
         $mpdf->SetHeader('');
