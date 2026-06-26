@@ -306,43 +306,6 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <!-- Priority matrix -->
-      <section class="card priority-card">
-        <header class="card-head">
-          <h2>Priority matrix</h2>
-          <span class="card-sub">{{ totalPriorities }} active</span>
-        </header>
-        <div class="priority-grid">
-          <article v-for="p in priorityBars" :key="p.key" class="priority-cell" :style="{ '--p-color': p.color }">
-            <div class="priority-cell-head">
-              <span class="priority-name">{{ p.label }}</span>
-              <span class="priority-count">{{ p.count }}</span>
-            </div>
-            <div class="priority-track">
-              <span class="priority-fill" :style="{ width: p.pct + '%' }" />
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <!-- Category breakdown -->
-      <section class="card category-card">
-        <header class="card-head">
-          <h2>Open by category</h2>
-          <span class="card-sub">Top {{ data.by_category.length }}</span>
-        </header>
-        <ul v-if="data.by_category.length" class="category-list">
-          <li v-for="c in data.by_category" :key="c.id" class="cat-row">
-            <span class="cat-name">{{ c.name }}</span>
-            <span class="cat-bar">
-              <span class="cat-fill" :style="{ width: ((c.open / maxCategory) * 100) + '%' }" />
-            </span>
-            <span class="cat-count">{{ c.open }}</span>
-          </li>
-        </ul>
-        <p v-else class="muted">No open tickets across categories.</p>
-      </section>
-
       <!-- Duty station breakdown -->
       <section class="card duty-card">
         <header class="card-head">
@@ -376,6 +339,43 @@ onUnmounted(() => {
           </table>
         </div>
         <p v-else class="muted">No ticket activity by duty station.</p>
+      </section>
+
+      <!-- Category breakdown -->
+      <section class="card category-card">
+        <header class="card-head">
+          <h2>Open by category</h2>
+          <span class="card-sub">Top {{ data.by_category.length }}</span>
+        </header>
+        <ul v-if="data.by_category.length" class="category-list">
+          <li v-for="c in data.by_category" :key="c.id" class="cat-row">
+            <span class="cat-name">{{ c.name }}</span>
+            <span class="cat-bar">
+              <span class="cat-fill" :style="{ width: ((c.open / maxCategory) * 100) + '%' }" />
+            </span>
+            <span class="cat-count">{{ c.open }}</span>
+          </li>
+        </ul>
+        <p v-else class="muted">No open tickets across categories.</p>
+      </section>
+
+      <!-- Priority matrix -->
+      <section class="card priority-card">
+        <header class="card-head">
+          <h2>Priority matrix</h2>
+          <span class="card-sub">{{ totalPriorities }} active</span>
+        </header>
+        <div class="priority-grid">
+          <article v-for="p in priorityBars" :key="p.key" class="priority-cell" :style="{ '--p-color': p.color }">
+            <div class="priority-cell-head">
+              <span class="priority-name">{{ p.label }}</span>
+              <span class="priority-count">{{ p.count }}</span>
+            </div>
+            <div class="priority-track">
+              <span class="priority-fill" :style="{ width: p.pct + '%' }" />
+            </div>
+          </article>
+        </div>
       </section>
 
       <!-- Agent closures + open tickets tickers -->
@@ -650,7 +650,7 @@ body.screen-mode #app {
   grid-template-areas:
     'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
     'wait wait duty duty duty duty category category priority priority priority priority'
-    'closures closures closures closures closures closures closures open open open open open open'
+    'closures closures closures closures closures closures closures open open open open open'
     'trend trend trend trend trend trend trend trend trend trend trend trend';
   gap: 0.9rem;
   min-height: 0;
