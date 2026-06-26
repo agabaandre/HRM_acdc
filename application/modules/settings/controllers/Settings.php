@@ -782,6 +782,10 @@ public function force_generate_short_names() {
 				'label' => 'Mark due contracts',
 				'route' => 'jobs/jobs/mark_due_contracts',
 			],
+			'audit_extended_contracts' => [
+				'label' => 'Audit extended contracts',
+				'route' => 'jobs/jobs/audit_extended_contracts',
+			],
 			'cron_register' => [
 				'label' => 'Cron register (bundle)',
 				'route' => 'jobs/jobs/cron_register',
@@ -845,6 +849,10 @@ public function force_generate_short_names() {
 				'label' => 'Mark due contracts',
 				'help' => 'Updates contract due status.',
 			],
+			'audit_extended_contracts' => [
+				'label' => 'Audit extended contracts',
+				'help' => 'Clears stale due/expired reminders after contracts are extended.',
+			],
 			'performance_notifications' => [
 				'label' => 'Performance notifications (PPA / Mid / End)',
 				'help' => 'Queues supervisor reminder emails for PPA, midterm, and endterm.',
@@ -855,7 +863,7 @@ public function force_generate_short_names() {
 			],
 			'cron_register' => [
 				'label' => 'Cron register bundle',
-				'help' => 'Legacy bundle (birthday, accounts, contracts).',
+				'help' => 'Legacy bundle (manage accounts only; birthday and contracts use dedicated schedules).',
 			],
 			'user_logs_prune_get_access' => [
 				'label' => 'Prune user_logs GET access',

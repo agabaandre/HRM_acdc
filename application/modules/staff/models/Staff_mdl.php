@@ -935,6 +935,8 @@ class Staff_mdl extends CI_Model
 				$sid = (string) $this->input->post('staff_id');
 				log_staff_profile_contract_audit('contract_create', 'staff_contracts', (string) $lastid, $sid, array(), $snap);
 			}
+			$this->load->helper('contract_status');
+			sync_staff_contract_status_after_save((int) $lastid, (int) $this->input->post('staff_id'));
 			return $lastid;
 		}
 		$error = $this->db->error();
@@ -1059,6 +1061,8 @@ class Staff_mdl extends CI_Model
 			$ppa['supervisor_id'] = isset($data['first_supervisor']) ? $data['first_supervisor'] : null;
 			$ppa['staff_id'] = $sid;
 			$this->update_ppa_details($ppa);
+			$this->load->helper('contract_status');
+			sync_staff_contract_status_after_save($cid, $sid);
 		}
 		return $query;
 	}
@@ -1212,17 +1216,15 @@ class Staff_mdl extends CI_Model
 	
 public function getBirthdays($days)
 {
-    // Get the current date and the date for 30 days from now
+    $days = (int) $days;
+    $currentDate = date('Y-m-d');
+    $nextDays = date('Y-m-d', strtotime($currentDate . " +{$days} days"));
 
- // Assuming it returns an integer
-
-   
-   $currentDate = date('Y-m-d');
-   $nextDays = date('Y-m-d', strtotime($currentDate . "+$days days")); 
-	
-	
-;
-	
+    $latestContractSubquery = $this->db
+        ->select('MAX(staff_contract_id)')
+        ->from('staff_contracts')
+        ->group_by('staff_id')
+        ->get_compiled_select();
 
     $this->db->select('
         sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id, 
@@ -1235,11 +1237,9 @@ public function getBirthdays($days)
         s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.SAPNO, s.photo,
         s.private_email, s.physical_location
     ');
-    
+
     $this->db->from('staff s');
-    
-    // Joins with explicit aliasing
-    $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+    $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'inner');
 	$this->db->join('funders f','f.funder_id = sc.funder_id','left');
     $this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
     $this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
@@ -1251,21 +1251,13 @@ public function getBirthdays($days)
     $this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
     $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
 
-    // Filter by active contracts
-    $this->db->where_in('st.status_id', [1, 2,7]);
+    $this->db->where("sc.staff_contract_id IN ($latestContractSubquery)", null, false);
+    $this->db->where_in('sc.status_id', [1, 2, 7]);
+    $this->db->where('s.date_of_birth IS NOT NULL', null, false);
+    $this->db->where('s.date_of_birth !=', '0000-00-00');
+    $this->db->where("DATE_FORMAT(s.date_of_birth, '%m-%d') BETWEEN DATE_FORMAT(".$this->db->escape($currentDate).", '%m-%d') AND DATE_FORMAT(".$this->db->escape($nextDays).", '%m-%d')", null, false);
 
-    // Filter for employees with birthdays in the next 30 days
-    $this->db->where("DATE_FORMAT(s.date_of_birth, '%m-%d') BETWEEN DATE_FORMAT('$currentDate', '%m-%d') AND DATE_FORMAT('$nextDays', '%m-%d')");
-
-    // Ensure only the latest contract per employee
-    $this->db->order_by('sc.staff_id', 'ASC'); 
-    $this->db->order_by('sc.staff_contract_id', 'DESC'); 
-    $this->db->group_by('sc.staff_id'); 
-	// Group by staff_id to get only one contract per employee
-
-    $query = $this->db->get()->result();
-	//echo $this->db->last_query(); exit;
-    return ($query);
+    return $this->db->get()->result();
 }
 
 	/**

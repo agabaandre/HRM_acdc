@@ -176,8 +176,10 @@ function golobal_log_email($trigger, $email, $message, $subject, $staff, $end_da
 }
 function delete_email_notification($id)
         {
-            $ci =& get_instance(); 
+            $ci =& get_instance();
             $ci->db->where('entry_id', $id);
+            // Keep successfully sent rows so daily jobs cannot re-queue the same greeting.
+            $ci->db->where('status !=', 1);
             $ci->db->delete('email_notifications');
 }
 

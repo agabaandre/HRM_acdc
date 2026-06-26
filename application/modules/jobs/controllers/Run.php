@@ -87,6 +87,11 @@ class Run extends MX_Controller
             Modules::run('jobs/jobs/mark_due_contracts');
         }
 
+        if ($this->tick_match_clock($s['audit_extended_contracts'] ?? false, $hour, $minute, $dow)) {
+            echo "  → audit_extended_contracts\n";
+            Modules::run('jobs/jobs/audit_extended_contracts');
+        }
+
         if ($this->tick_match_clock($s['staff_birthday'] ?? false, $hour, $minute, $dow)) {
             echo "  → staff_birthday (queue)\n";
             Modules::run('jobs/jobs/staff_birthday');

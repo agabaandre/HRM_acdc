@@ -170,9 +170,6 @@ public function mark_due_contracts() {
         $data['date2'] = $end_date;
         $data['remaining_days'] = $dateDiff;
 
-        // Update the flag for the staff member (ensure LIMIT is correct for your use-case)
-        $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id");
-
         if ($dateDiff > 0 && $dateDiff <= 90) {
             //due contracts
             $data['subject'] = "Contract Due for Renewal Notice";
@@ -185,6 +182,7 @@ public function mark_due_contracts() {
             $entry_id = $staff_id.'-DU-'.date('Y-m-d');
             golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,md5($entry_id));
             $this->db->query("UPDATE staff_contracts SET status_id = 2 WHERE staff_contract_id = $staff_contract_id");
+            $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id");
         } elseif ($dateDiff <= 0) {
             //expired
             $data['subject'] = "Expired Contract Notice";
@@ -197,56 +195,85 @@ public function mark_due_contracts() {
             $entry_id = $staff_id.'-EX-'.date('Y-m-d');
             golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,md5($entry_id));
             $this->db->query("UPDATE staff_contracts SET status_id = 3 WHERE staff_contract_id = $staff_contract_id");
+            $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id");
         } elseif ($dateDiff >90) {
             $this->db->query("UPDATE staff_contracts SET status_id = 1 WHERE staff_contract_id = $staff_contract_id");
+            $this->db->query("UPDATE staff SET flag = 0 WHERE staff_id = $staff_id");
         }
     }
+}
+
+public function audit_extended_contracts() {
+    $this->load->helper('contract_status');
+    $stats = audit_extended_contracts();
+    echo json_encode([
+        'msg' => sprintf(
+            'Extended contract audit: %d contract(s) resynced, %d flag(s) cleared, %d notification set(s) cleared.',
+            $stats['fixed_contracts'],
+            $stats['cleared_flags'],
+            $stats['cleared_notifications']
+        ),
+        'type' => 'info',
+        'stats' => $stats,
+    ]);
 }
 
          
 public function staff_birthday() {
     $todays = $this->staff_mdl->getBirthdays(0);
+    $today = new DateTime('today');
+    $todayStr = $today->format('Y-m-d');
+    $queued = 0;
+    $skipped = 0;
 
     foreach ($todays as $row) {
-        // Try to create a DateTime object from the staff member's date_of_birth.
         try {
             $dob = new DateTime($row->date_of_birth);
         } catch (Exception $e) {
-            // Skip if the date_of_birth is not valid.
             continue;
         }
 
-        // Get today's date as a DateTime object.
-        $today = new DateTime();
-        // Calculate the age.
         $age = $today->diff($dob)->y;
-
-        // Check if the staff member is 18 years or older.
-        if ($age >= 18) {
-            $data['subject'] = "AFRICA CDC Birthday Greetings";
-            $data['email_to'] = $row->work_email.';'.settings()->email;
-            $data['name'] = staff_name($row->staff_id);
-            $staff_id = $row->staff_id;
-            $data['date_2'] = $today->format('Y-m-d');
-            // Load the view and return its output as a string.
-            $data['body'] = $this->load->view('staff_bd', $data, true);
-            $dispatch = date('Y-m-d H:i:s');
-            $entry_id = $staff_id.'-BD-'.date('Y-m-d');
-            golobal_log_email('system',$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,md5($entry_id));
+        if ($age < 18) {
+            continue;
         }
+
+        $workEmail = trim((string) ($row->work_email ?? ''));
+        if ($workEmail === '' || strpos($workEmail, '@') === false) {
+            continue;
+        }
+
+        $staff_id = (int) $row->staff_id;
+        $entry_id = md5($staff_id.'-BD-'.$todayStr);
+        if ($this->db->where('entry_id', $entry_id)->count_all_results('email_notifications') > 0) {
+            $skipped++;
+            continue;
+        }
+
+        $data['subject'] = "AFRICA CDC Birthday Greetings";
+        $data['email_to'] = $workEmail.';'.settings()->email;
+        $data['name'] = staff_name($staff_id);
+        $data['date_2'] = $todayStr;
+        $data['body'] = $this->load->view('staff_bd', $data, true);
+        $dispatch = date('Y-m-d H:i:s');
+        golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'], $dispatch, $entry_id);
+        $queued++;
     }
+
+    echo json_encode([
+        'msg' => "Birthday greetings queued: {$queued}, skipped (already queued/sent): {$skipped}.",
+        'type' => 'info',
+        'queued' => $queued,
+        'skipped' => $skipped,
+    ]);
 }
 
 //cron register runs once a day
 public function cron_register(){
 
-    //run everyday at 23:00
-    $this->staff_birthday();
+    // Birthday and contract-due jobs have dedicated schedules in jobs/run/tick.
     //run everyday at 23:10
     $this->manage_accounts();
-    //run everyday at 23:30
-    $this->mark_due_contracts();
-
 
 }
 
@@ -270,8 +297,9 @@ public function cron_register(){
         $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
 
         $today = date('Y-m-d');
-        // Only select emails scheduled for today, not already sent, and not test emails
-        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch LIKE '$today%' AND status != '1' AND email_to NOT LIKE 'xx%'")->result();
+        // Only select emails scheduled for today, not already sent, and not test emails.
+        // Birthday greetings are dispatched by send_instant_mails only.
+        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch LIKE '$today%' AND status != '1' AND email_to NOT LIKE 'xx%' AND subject NOT LIKE '%Birthday%'")->result();
 
         $counter = 0;
 
@@ -295,9 +323,7 @@ public function cron_register(){
 
                 if ($sending) {
                     echo "Message sent to " . $to . "\n";
-                    $today_check = date("Y-m-d");
-                    $status = ($today_check == $next_run) ? 1 : 0;
-                    $this->db->query("UPDATE `email_notifications` SET `status` = '$status', next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
+                    $this->markNotificationDispatched($id, $subject, $message->end_date);
                     // Clean up old sent notifications
                     $this->db->query("DELETE FROM email_notifications WHERE next_dispatch < DATE_SUB(NOW(), INTERVAL 1 WEEK) AND status = '1'");
                 } else {
@@ -363,10 +389,7 @@ public function cron_register(){
                 $sending = push_email($to, $subject, $body, $id, $next_run);
                 if ($sending) {
                     echo "Message sent to " . $to . "\n";
-                    $today = date("Y-m-d");
-
-                    $status = ($today == $next_run) ? 1 : 0;
-                    $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
+                    $this->markNotificationDispatched($id, $subject, $message->end_date);
                     $this->db->query("DELETE FROM email_notifications WHERE next_dispatch < DATE_SUB(NOW(), INTERVAL 1 WEEK) AND status = '1'");
                 } else {
                     echo "Failed to send message to " . $to . "\n";
@@ -418,6 +441,31 @@ public function cron_register(){
         
         // Fallback: if no threshold is found, schedule for the contract end date.
         return $contractEnd;
+    }
+
+    private function isBirthdayNotification($subject)
+    {
+        return stripos((string) $subject, 'Birthday') !== false;
+    }
+
+    private function markNotificationDispatched($id, $subject, $endDate)
+    {
+        $id = (int) $id;
+        if ($this->isBirthdayNotification($subject)) {
+            $this->db->where('id', $id)->update('email_notifications', [
+                'status' => '1',
+                'next_dispatch' => date('Y-m-d H:i:s'),
+            ]);
+
+            return;
+        }
+
+        $nextRun = $this->getNextRunDate($endDate)->format('Y-m-d');
+        $status = (date('Y-m-d') === $nextRun) ? '1' : '0';
+        $this->db->where('id', $id)->update('email_notifications', [
+            'status' => $status,
+            'next_dispatch' => $nextRun,
+        ]);
     }
 
    public function get_ms_token()

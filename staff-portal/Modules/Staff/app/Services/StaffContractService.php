@@ -215,7 +215,9 @@ class StaffContractService
             DB::table('staff_contracts')->where('staff_contract_id', $id)->update(['file_name' => $stored]);
         }
 
-        $this->markEmailEnabledIfActive($staffId, (int) $payload['status_id']);
+        $this->syncContractStatusFromEndDate($id, $staffId);
+        $statusId = (int) DB::table('staff_contracts')->where('staff_contract_id', $id)->value('status_id');
+        $this->markEmailEnabledIfActive($staffId, $statusId);
 
         return $id;
     }
@@ -267,7 +269,9 @@ class StaffContractService
 
         if ($ok) {
             $this->syncPpaSupervisor($staffId, (int) ($form['first_supervisor'] ?? 0));
-            $this->markEmailEnabledIfActive($staffId, (int) $payload['status_id']);
+            $this->syncContractStatusFromEndDate($contractId, $staffId);
+            $statusId = (int) DB::table('staff_contracts')->where('staff_contract_id', $contractId)->value('status_id');
+            $this->markEmailEnabledIfActive($staffId, $statusId);
         }
 
         return $ok;
@@ -339,5 +343,71 @@ class StaffContractService
                 'supervisor_id' => $supervisorId,
                 'updated_at' => now(),
             ]);
+    }
+
+    public function syncContractStatusFromEndDate(int $contractId, int $staffId): void
+    {
+        $row = DB::table('staff_contracts')
+            ->where('staff_contract_id', $contractId)
+            ->where('staff_id', $staffId)
+            ->first();
+
+        if (! $row) {
+            return;
+        }
+
+        $currentStatus = (int) $row->status_id;
+        $computedStatus = $this->statusIdFromEndDate((string) $row->end_date);
+
+        if (in_array($currentStatus, [1, 2, 3], true) && $currentStatus !== $computedStatus) {
+            DB::table('staff_contracts')
+                ->where('staff_contract_id', $contractId)
+                ->update(['status_id' => $computedStatus]);
+            $currentStatus = $computedStatus;
+        }
+
+        $latestId = (int) DB::table('staff_contracts')
+            ->where('staff_id', $staffId)
+            ->orderByDesc('staff_contract_id')
+            ->value('staff_contract_id');
+
+        if ($latestId === $contractId) {
+            DB::table('staff')->where('staff_id', $staffId)->update([
+                'flag' => in_array($currentStatus, [2, 3], true) ? 1 : 0,
+            ]);
+        }
+
+        if ($computedStatus === 1) {
+            $this->clearContractReminderNotifications($staffId);
+        }
+    }
+
+    private function statusIdFromEndDate(string $endDate): int
+    {
+        if ($endDate === '' || $endDate === '0000-00-00') {
+            return 3;
+        }
+
+        $days = (int) now()->startOfDay()->diffInDays(\Illuminate\Support\Carbon::parse($endDate)->startOfDay(), false);
+
+        if ($days <= 0) {
+            return 3;
+        }
+        if ($days <= 90) {
+            return 2;
+        }
+
+        return 1;
+    }
+
+    private function clearContractReminderNotifications(int $staffId): void
+    {
+        DB::table('email_notifications')
+            ->where('staff_id', $staffId)
+            ->whereIn('subject', [
+                'Contract Due for Renewal Notice',
+                'Expired Contract Notice',
+            ])
+            ->delete();
     }
 }
