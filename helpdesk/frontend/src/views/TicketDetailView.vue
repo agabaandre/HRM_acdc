@@ -16,7 +16,7 @@ import {
 } from '../lib/canChangeTicketCategory'
 import { formatDateTime, formatDateTimeLong } from '../lib/formatDateTime'
 import { notifyError } from '../lib/notify'
-import { hasRichTextContent, isHtmlContent } from '../lib/richText'
+import { hasRichTextContent, isAttachmentEmbeddedInHtml, isHtmlContent, removeAttachmentImagesFromHtml } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
 
 interface AssigneeBrief {
@@ -32,6 +32,7 @@ interface TicketAttachment {
   url: string
   original_name: string
   mime_type?: string | null
+  is_inline?: boolean
 }
 
 interface TicketCategory {
@@ -110,10 +111,16 @@ const categoryItems = computed((): SelectNumberItem[] =>
 const isHtmlDescription = computed(() => isHtmlContent(ticket.value?.description))
 const isHtmlResolution = computed(() => isHtmlContent(ticket.value?.resolution_summary ?? null))
 
-/** Files uploaded with the request (excludes inline editor images under …/inline/). */
+/** Files uploaded with the request (excludes inline editor images embedded in the description). */
 const requestAttachments = computed(() => {
   const list = ticket.value?.attachments ?? []
-  return list.filter((a) => !a.url.includes('/inline/'))
+  const description = ticket.value?.description ?? ''
+  return list.filter((a) => {
+    if (!a.is_inline) {
+      return true
+    }
+    return !isAttachmentEmbeddedInHtml(description, a.id)
+  })
 })
 
 function isImageAttachment(a: TicketAttachment): boolean {
@@ -267,6 +274,15 @@ async function deleteRequestAttachment(attachment: TicketAttachment) {
     await api.delete(`/api/v1/tickets/${t.id}/attachments/${attachment.id}`)
     if (ticket.value?.attachments) {
       ticket.value.attachments = ticket.value.attachments.filter((a) => a.id !== attachment.id)
+    }
+    if (
+      attachment.is_inline
+      && ticket.value
+      && isAttachmentEmbeddedInHtml(ticket.value.description, attachment.id)
+    ) {
+      const nextDescription = removeAttachmentImagesFromHtml(ticket.value.description, attachment.id)
+      const { data } = await api.patch(`/api/v1/tickets/${t.id}`, { description: nextDescription })
+      ticket.value = data.data as TicketDetail
     }
     if (previewAttachment.value?.id === attachment.id) {
       closeImagePreview()

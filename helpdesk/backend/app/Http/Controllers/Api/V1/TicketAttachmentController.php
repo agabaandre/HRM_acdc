@@ -52,10 +52,6 @@ class TicketAttachmentController extends Controller
             abort(404);
         }
 
-        if (str_contains($attachment->path, '/inline/')) {
-            abort(422, 'Only request attachments can be removed here. Use the editor to remove inline images.');
-        }
-
         Storage::disk($attachment->disk)->delete($attachment->path);
         $attachment->delete();
 

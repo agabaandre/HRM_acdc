@@ -28,4 +28,12 @@ class HelpdeskTicketAttachment extends Model
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
+
+    /**
+     * True when uploaded via the rich-text editor (stored under …/inline/).
+     */
+    public function isInlineImage(): bool
+    {
+        return str_contains((string) $this->path, '/inline/');
+    }
 }

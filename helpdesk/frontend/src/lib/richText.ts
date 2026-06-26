@@ -480,3 +480,25 @@ export function attachmentIdFromImageUrl(url: string): number | null {
     return Number.isFinite(id) && id > 0 ? id : null
   }
 }
+
+/** True when the attachment id appears as an embedded image in HTML. */
+export function isAttachmentEmbeddedInHtml(html: string, attachmentId: number): boolean {
+  return extractImageUrlsFromHtml(html).some(
+    (url) => attachmentIdFromImageUrl(url) === attachmentId,
+  )
+}
+
+/** Remove img tags that reference a signed ticket attachment id. */
+export function removeAttachmentImagesFromHtml(html: string, attachmentId: number): string {
+  if (!html || !isHtmlContent(html)) {
+    return html
+  }
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  doc.querySelectorAll('img[src]').forEach((img) => {
+    const src = img.getAttribute('src') ?? ''
+    if (attachmentIdFromImageUrl(src) === attachmentId) {
+      img.remove()
+    }
+  })
+  return doc.body.innerHTML
+}

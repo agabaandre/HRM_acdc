@@ -25,6 +25,7 @@ class TicketResource extends JsonResource
                     'url' => HelpdeskAttachmentUrl::forAttachment($a),
                     'original_name' => $a->original_name,
                     'mime_type' => $a->mime_type,
+                    'is_inline' => $a->isInlineImage(),
                 ];
             }
         }

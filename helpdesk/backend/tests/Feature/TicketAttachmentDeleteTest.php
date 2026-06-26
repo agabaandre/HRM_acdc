@@ -76,6 +76,22 @@ class TicketAttachmentDeleteTest extends TestCase
         ]);
     }
 
+    private function inlineAttachment(HelpdeskTicket $ticket, User $uploader): HelpdeskTicketAttachment
+    {
+        $path = 'helpdesk/'.$ticket->id.'/inline/martha1.png';
+        Storage::disk('public')->put($path, 'png');
+
+        return HelpdeskTicketAttachment::query()->create([
+            'ticket_id' => $ticket->id,
+            'disk' => 'public',
+            'path' => $path,
+            'original_name' => 'martha1.png',
+            'size_bytes' => 3,
+            'mime_type' => 'image/png',
+            'uploaded_by' => $uploader->id,
+        ]);
+    }
+
     public function test_admin_can_delete_request_attachment_on_open_ticket(): void
     {
         Storage::fake('public');
@@ -91,6 +107,39 @@ class TicketAttachmentDeleteTest extends TestCase
 
         Storage::disk('public')->assertMissing($attachment->path);
         $this->assertDatabaseMissing('helpdesk_ticket_attachments', ['id' => $attachment->id]);
+    }
+
+    public function test_admin_can_delete_inline_attachment_via_request_attachment_endpoint(): void
+    {
+        Storage::fake('public');
+        $this->seed(HelpdeskCategorySeeder::class);
+        $admin = $this->admin();
+        $ticket = $this->ticket($admin);
+        $attachment = $this->inlineAttachment($ticket, $admin);
+
+        Sanctum::actingAs($admin);
+        $this->deleteJson('/api/v1/tickets/'.$ticket->id.'/attachments/'.$attachment->id)
+            ->assertOk()
+            ->assertJsonPath('data.deleted', true);
+
+        Storage::disk('public')->assertMissing($attachment->path);
+        $this->assertDatabaseMissing('helpdesk_ticket_attachments', ['id' => $attachment->id]);
+    }
+
+    public function test_ticket_resource_marks_inline_attachments(): void
+    {
+        Storage::fake('public');
+        $this->seed(HelpdeskCategorySeeder::class);
+        $admin = $this->admin();
+        $ticket = $this->ticket($admin);
+        $this->requestAttachment($ticket, $admin);
+        $this->inlineAttachment($ticket, $admin);
+
+        Sanctum::actingAs($admin);
+        $this->getJson('/api/v1/tickets/'.$ticket->id)
+            ->assertOk()
+            ->assertJsonPath('data.attachments.0.is_inline', false)
+            ->assertJsonPath('data.attachments.1.is_inline', true);
     }
 
     public function test_agent_with_permission_can_delete_request_attachment(): void
