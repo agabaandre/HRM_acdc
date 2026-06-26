@@ -27,6 +27,10 @@
             return;
         }
         try {
+            var Font = Quill.import('formats/font');
+            Font.whitelist = ['arial'];
+            Quill.register(Font, true);
+
             var icons = Quill.import('ui/icons');
             icons.table =
                 '<svg viewbox="0 0 18 18"><rect class="ql-stroke" height="12" width="12" x="3" y="3"></rect>'
@@ -40,8 +44,9 @@
 
     function fullToolbar() {
         return [
-            [{ header: [1, 2, 3, 4, 5, 6, false] }],
+            [{ font: ['arial'] }],
             [{ size: ['small', false, 'large', 'huge'] }],
+            [{ header: [1, 2, 3, 4, 5, 6, false] }],
             ['bold', 'italic', 'underline', 'strike'],
             [{ script: 'sub' }, { script: 'super' }],
             [{ color: [] }, { background: [] }],
@@ -344,6 +349,21 @@
         return !!legacyRoot;
     }
 
+    function configureArialFontPicker(wrap, quill) {
+        var fontPicker = wrap.querySelector('.ql-font');
+        if (fontPicker) {
+            var label = fontPicker.querySelector('.ql-picker-label');
+            if (label) {
+                label.setAttribute('data-value', 'arial');
+            }
+        }
+        try {
+            quill.format('font', 'arial', Quill.sources.SILENT);
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
     function bindImageDrop(editorEl, quill, disabled) {
         if (disabled) {
             return;
@@ -405,6 +425,7 @@
             });
             bindImageDrop(editorEl, quill, false);
             bindImageResize(quill, wrap);
+            configureArialFontPicker(wrap, quill);
         }
 
         var html = sourceHtml(hidden);
