@@ -16,7 +16,7 @@ import { useAuthStore } from './stores/auth'
 import { persistStaffSsoToken } from './lib/cbpSystems'
 import { loadLobiboxAssets } from './lib/notify'
 import { getStoredToken } from './lib/api'
-import { dismissBootPreloader } from './lib/appPreloader'
+import { dismissBootPreloader, showInitialContentPreloader } from './lib/appPreloader'
 import { getStaffSsoTokenFromUrl, redirectToStaffPortalHome, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
 
 type SsoFailure = {
@@ -104,7 +104,7 @@ function classifyExchangeError(err: unknown): SsoFailure {
 }
 
 function renderSsoErrorScreen(failure: SsoFailure): void {
-  dismissBootPreloader()
+  dismissBootPreloader({ immediate: true })
   const root = document.getElementById('app')
   if (!root) {
     return
@@ -189,6 +189,7 @@ async function bootstrap() {
   await router.isReady()
   app.mount('#app')
   dismissBootPreloader()
+  showInitialContentPreloader()
 }
 
 void bootstrap()

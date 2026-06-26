@@ -2,37 +2,39 @@ import { ref } from 'vue'
 
 export const routePreloaderVisible = ref(false)
 
-const ROUTE_MIN_MS = 180
+/** Minimum time the preloader stays visible, even on fast loads. */
+export const PRELOADER_MIN_MS = 3000
+
+const bootShownAt = Date.now()
 let routePending = 0
 let routeShownAt = 0
 let routeHideTimer: ReturnType<typeof setTimeout> | null = null
 
-export function dismissBootPreloader(): void {
-  const el = document.getElementById('helpdesk-boot-loader')
-  if (!el) {
-    document.body.classList.remove('hd-app-loading')
-    return
-  }
-
-  el.classList.add('hd-boot-loader--out')
-  const remove = () => {
-    el.remove()
-    document.body.classList.remove('hd-app-loading')
-  }
-  el.addEventListener('transitionend', remove, { once: true })
-  window.setTimeout(remove, 450)
+function scheduleAfterMinDisplay(shownAt: number, fn: () => void): void {
+  const wait = Math.max(0, PRELOADER_MIN_MS - (Date.now() - shownAt))
+  routeHideTimer = window.setTimeout(fn, wait)
 }
 
-export function startRoutePreloader(): void {
+export function dismissBootPreloader(): void {
+  const el = document.getElementById('helpdesk-boot-loader')
+  if (el) {
+    el.classList.add('hd-boot-loader--out')
+    const remove = () => el.remove()
+    el.addEventListener('transitionend', remove, { once: true })
+    window.setTimeout(remove, 450)
+  }
+  document.body.classList.remove('hd-app-loading')
+}
+
+export function startRoutePreloader(shownAt?: number): void {
   routePending += 1
   if (routeHideTimer) {
     clearTimeout(routeHideTimer)
     routeHideTimer = null
   }
   if (!routePreloaderVisible.value) {
-    routeShownAt = Date.now()
+    routeShownAt = shownAt ?? Date.now()
     routePreloaderVisible.value = true
-    document.body.classList.add('hd-app-loading')
   }
 }
 
@@ -42,12 +44,14 @@ export function finishRoutePreloader(): void {
     return
   }
 
-  const elapsed = Date.now() - routeShownAt
-  const wait = Math.max(0, ROUTE_MIN_MS - elapsed)
-
-  routeHideTimer = setTimeout(() => {
+  scheduleAfterMinDisplay(routeShownAt, () => {
     routePreloaderVisible.value = false
-    document.body.classList.remove('hd-app-loading')
     routeHideTimer = null
-  }, wait)
+  })
+}
+
+/** First paint after boot: show content-frame loader for any remaining minimum time. */
+export function showInitialContentPreloader(): void {
+  startRoutePreloader(bootShownAt)
+  finishRoutePreloader()
 }

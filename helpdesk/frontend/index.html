@@ -49,9 +49,8 @@
         border-top-color: #0d7a3a;
         animation: hd-preloader-spin 0.75s linear infinite;
       }
-      body.hd-app-loading #app {
-        opacity: 0;
-        pointer-events: none;
+      body.hd-app-loading {
+        overflow: hidden;
       }
       #helpdesk-boot-loader .hd-boot-loader__label {
         margin: 0;
@@ -61,9 +60,6 @@
         letter-spacing: 0.14em;
         text-transform: uppercase;
         color: #0d7a3a;
-      }
-      body.hd-app-loading {
-        overflow: hidden;
       }
       @media (prefers-color-scheme: dark) {
         #helpdesk-boot-loader {

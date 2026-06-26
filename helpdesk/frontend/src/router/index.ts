@@ -132,7 +132,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from) => {
-  if (to.path !== from.path) {
+  if (to.path !== from.path && from.matched.length > 0) {
     startRoutePreloader()
   }
 

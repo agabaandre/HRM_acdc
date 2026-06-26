@@ -3,25 +3,23 @@ import { routePreloaderVisible } from '../../lib/appPreloader'
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="hd-route-fade">
-      <div
-        v-if="routePreloaderVisible"
-        class="hd-route-loader"
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-        aria-label="Loading page"
-      >
-        <div class="hd-route-loader__inner">
-          <div class="hd-route-loader__spinner" aria-hidden="true">
-            <span class="hd-route-loader__ring" />
-          </div>
-          <p class="hd-route-loader__label">IT Service Desk</p>
+  <Transition name="hd-route-fade">
+    <div
+      v-if="routePreloaderVisible"
+      class="hd-route-loader"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="Loading page"
+    >
+      <div class="hd-route-loader__inner">
+        <div class="hd-route-loader__spinner" aria-hidden="true">
+          <span class="hd-route-loader__ring" />
         </div>
+        <p class="hd-route-loader__label">IT Service Desk</p>
       </div>
-    </Transition>
-  </Teleport>
+    </div>
+  </Transition>
 </template>
 
 <style scoped>

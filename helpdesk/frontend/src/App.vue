@@ -6,6 +6,7 @@ import CbpThemeSwitch from './components/layout/CbpThemeSwitch.vue'
 import CbpPrimaryNav from './components/layout/CbpPrimaryNav.vue'
 import CbpPageFooter from './components/layout/CbpPageFooter.vue'
 import CbpRoutePreloader from './components/common/CbpRoutePreloader.vue'
+import { routePreloaderVisible } from './lib/appPreloader'
 import { useAuthStore } from './stores/auth'
 import { ref } from 'vue'
 
@@ -19,6 +20,10 @@ const displayName = computed(() => (auth.isAuthenticated ? auth.me?.name ?? 'Sta
 // Routes (e.g. /screen) opt out of the standard portal chrome by setting
 // meta.chrome === false. Default is "chrome on".
 const showChrome = computed(() => route.meta.chrome !== false)
+
+const contentLoadingClass = computed(() =>
+  routePreloaderVisible.value ? 'hd-content-loading' : '',
+)
 
 function applyTheme(next: 'dark' | 'light') {
   theme.value = next
@@ -41,25 +46,32 @@ if (stored === 'light' || stored === 'dark') {
 
 <template>
   <UApp>
-    <CbpRoutePreloader />
     <div v-if="showChrome" class="cbp-wrapper">
-    <CbpTopHeader
-      :user-name="displayName"
-      :avatar-url="auth.isAuthenticated ? (auth.me?.avatar_url ?? null) : null"
-      :theme="theme"
-    >
-      <template v-if="auth.isAuthenticated" #extra>
-        <CbpThemeSwitch :theme="theme" @update:theme="onThemeChange" />
-      </template>
-    </CbpTopHeader>
-    <CbpPrimaryNav />
-    <div class="cbp-page-wrapper">
-      <div class="cbp-page-content">
+      <CbpTopHeader
+        :user-name="displayName"
+        :avatar-url="auth.isAuthenticated ? (auth.me?.avatar_url ?? null) : null"
+        :theme="theme"
+      >
+        <template v-if="auth.isAuthenticated" #extra>
+          <CbpThemeSwitch :theme="theme" @update:theme="onThemeChange" />
+        </template>
+      </CbpTopHeader>
+      <CbpPrimaryNav />
+      <div class="cbp-page-wrapper">
+        <div class="cbp-page-content hd-content-frame" :class="contentLoadingClass">
+          <CbpRoutePreloader />
+          <div class="hd-content-frame__body">
+            <RouterView />
+          </div>
+        </div>
+      </div>
+      <CbpPageFooter />
+    </div>
+    <div v-else class="hd-content-frame hd-content-frame--full" :class="contentLoadingClass">
+      <CbpRoutePreloader />
+      <div class="hd-content-frame__body">
         <RouterView />
       </div>
     </div>
-    <CbpPageFooter />
-    </div>
-    <RouterView v-else />
   </UApp>
 </template>
