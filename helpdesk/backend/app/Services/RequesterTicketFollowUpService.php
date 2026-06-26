@@ -70,6 +70,10 @@ class RequesterTicketFollowUpService
             );
         }
 
+        if (! $isInternal && $profile->role !== HelpdeskProfile::ROLE_USER) {
+            $this->notifier->notifyRequesterOnStaffComment($ticket, $comment, $requester);
+        }
+
         return [
             'comment' => $comment,
             'ticket_reopened' => $ticketReopened,

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\TicketRequesterCommentMail;
+use App\Mail\TicketStaffReplyMail;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskTicketComment;
@@ -44,6 +45,40 @@ class TicketCommentNotifier
                 'ticket_id' => $ticket->id,
                 'comment_id' => $comment->id,
                 'assignee_user_id' => $assignee->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Email the requester when a helpdesk agent posts a public (non-internal) reply.
+     */
+    public function notifyRequesterOnStaffComment(
+        HelpdeskTicket $ticket,
+        HelpdeskTicketComment $comment,
+        User $agent,
+    ): void {
+        $email = trim((string) $ticket->requester_email);
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $frontend = rtrim((string) config('helpdesk.frontend_url', 'http://localhost:5174'), '/');
+        $ticketUrl = $frontend.'/tickets/'.$ticket->id;
+
+        try {
+            Mail::to($email)->send(new TicketStaffReplyMail(
+                $ticket->fresh(['category']),
+                $comment,
+                $agent,
+                $ticketUrl,
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('helpdesk.staff_reply_mail_failed', [
+                'ticket_id' => $ticket->id,
+                'comment_id' => $comment->id,
+                'agent_user_id' => $agent->id,
+                'requester_email' => $email,
                 'message' => $e->getMessage(),
             ]);
         }
