@@ -85,6 +85,7 @@ const consecutiveErrors = ref(0)
 const isStale = ref(false)
 const clock = ref(new Date())
 const theme = ref<'dark' | 'light'>('dark')
+const isBrowserFullscreen = ref(false)
 let pollTimer: number | undefined
 let clockTimer: number | undefined
 let staleTimer: number | undefined
@@ -224,21 +225,54 @@ function setTheme(next: 'dark' | 'light'): void {
   applyTheme()
 }
 
+function syncFullscreenState(): void {
+  const doc = document as Document & { webkitFullscreenElement?: Element | null }
+  isBrowserFullscreen.value = !!(document.fullscreenElement ?? doc.webkitFullscreenElement)
+}
+
+async function toggleFullscreen(): Promise<void> {
+  try {
+    const docEl = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void
+    }
+    const doc = document as Document & {
+      webkitExitFullscreen?: () => Promise<void> | void
+      webkitFullscreenElement?: Element | null
+    }
+    const isFs = !!(document.fullscreenElement ?? doc.webkitFullscreenElement)
+    if (!isFs) {
+      if (docEl.requestFullscreen) await docEl.requestFullscreen()
+      else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen()
+    } else if (document.exitFullscreen) await document.exitFullscreen()
+    else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen()
+  } catch {
+    // User gesture denied or unsupported — ignore.
+  }
+}
+
+function onFullscreenChange(): void {
+  syncFullscreenState()
+}
+
 onMounted(() => {
   initTheme()
   applyTheme()
+  syncFullscreenState()
+  document.addEventListener('fullscreenchange', onFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange)
   void fetchScreen()
   pollTimer = window.setInterval(fetchScreen, REFRESH_INTERVAL_MS)
   clockTimer = window.setInterval(() => {
     clock.value = new Date()
   }, 1000)
   staleTimer = window.setInterval(checkStaleness, 5000)
-  // Hide page scrollbars while on this view
   document.documentElement.classList.add('screen-mode')
   document.body.classList.add('screen-mode')
 })
 
 onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
+  document.removeEventListener('webkitfullscreenchange', onFullscreenChange)
   if (pollTimer) window.clearInterval(pollTimer)
   if (clockTimer) window.clearInterval(clockTimer)
   if (staleTimer) window.clearInterval(staleTimer)
@@ -248,27 +282,42 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="screen" :class="`theme-${theme}`">
-    <!-- Top bar -->
+  <div
+    class="screen"
+    :class="[`theme-${theme}`, { 'is-browser-fullscreen': isBrowserFullscreen }]"
+  >
+    <!-- Top bar (facility TV layout: brand · live · clock · toolbar) -->
     <header class="screen-bar">
       <div class="screen-brand">
         <span class="brand-dot" />
-        <div>
+        <div class="screen-brand-text">
           <p class="brand-title">Africa CDC · IT Service Desk</p>
           <p class="brand-sub">Live operations dashboard</p>
         </div>
+      </div>
+      <div class="screen-live-pill" aria-hidden="true">
+        <span class="live-dot" :class="{ stale: isStale || consecutiveErrors > 1 }" />
+        {{ isStale ? 'Reconnecting' : 'Live' }}
       </div>
       <div class="screen-clock">
         <p class="clock-time">{{ clockTime }}</p>
         <p class="clock-date">{{ clockDate }}</p>
       </div>
-      <div class="screen-status">
+      <div class="screen-toolbar">
         <div class="theme-switch" role="group" aria-label="Dashboard theme">
-          <button type="button" class="theme-btn" :class="{ active: theme === 'dark' }" @click="setTheme('dark')">Dark</button>
-          <button type="button" class="theme-btn" :class="{ active: theme === 'light' }" @click="setTheme('light')">Light</button>
+          <button type="button" class="screen-toolbar-btn" :class="{ active: theme === 'dark' }" @click="setTheme('dark')">Dark</button>
+          <button type="button" class="screen-toolbar-btn" :class="{ active: theme === 'light' }" @click="setTheme('light')">Light</button>
         </div>
-        <span class="status-dot" :class="{ live: !isStale && consecutiveErrors === 0, stale: isStale || consecutiveErrors > 1 }" />
-        <span class="status-label">{{ isStale ? 'Reconnecting' : 'Live' }} · {{ lastUpdatedLabel }}</span>
+        <button
+          type="button"
+          class="screen-toolbar-btn screen-toolbar-btn--icon"
+          :title="isBrowserFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
+          :aria-label="isBrowserFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+          @click="toggleFullscreen"
+        >
+          <i :class="isBrowserFullscreen ? 'bx bx-exit-fullscreen' : 'bx bx-fullscreen'" aria-hidden="true" />
+        </button>
+        <span class="status-label">{{ lastUpdatedLabel }}</span>
       </div>
     </header>
 
@@ -554,33 +603,35 @@ onUnmounted(() => {
 </template>
 
 <style>
-/* Global page mode — hide scrollbars, lock height for kiosk display. */
+/* Screen route — scrollable like facility TV; fullscreen uses browser API. */
 html.screen-mode,
 body.screen-mode {
-  background: #0b1220;
   margin: 0;
-  height: 100%;
-  overflow: hidden;
+  padding: 0;
+  min-height: 100%;
+  min-height: 100dvh;
+  background: #0b1220;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
-@media (max-width: 768px) {
-  html.screen-mode,
-  body.screen-mode {
-    height: auto;
-    min-height: 100%;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-}
+
 html.screen-mode #app,
-body.screen-mode #app {
-  height: 100%;
+html.screen-mode #app > div {
+  min-height: 100%;
+  height: auto !important;
+  overflow: visible !important;
 }
-@media (max-width: 768px) {
-  html.screen-mode #app,
-  body.screen-mode #app {
-    height: auto;
-    min-height: 100%;
-  }
+
+html.screen-mode .hd-content-frame--full,
+html.screen-mode .hd-content-frame--full .hd-content-frame__body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto !important;
+  overflow: visible !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: none !important;
 }
 </style>
 
@@ -595,10 +646,11 @@ body.screen-mode #app {
   --warn: #f59e0b;
   --bad: #ef4444;
 
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(22, 163, 74, 0.12), transparent 60%),
     radial-gradient(1000px 500px at -10% 110%, rgba(59, 130, 246, 0.10), transparent 60%),
@@ -607,23 +659,23 @@ body.screen-mode #app {
   display: flex;
   flex-direction: column;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  padding: 1.25rem 1.5rem 0.65rem;
-  gap: 1.1rem;
+  padding: clamp(0.75rem, 2vw, 1.5rem) clamp(0.85rem, 2.5vw, 1.5rem) clamp(0.65rem, 1.5vw, 1rem);
+  padding-left: max(clamp(0.85rem, 2.5vw, 1.5rem), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(0.85rem, 2.5vw, 1.5rem), env(safe-area-inset-right, 0px));
+  padding-bottom: max(clamp(0.65rem, 1.5vw, 1rem), env(safe-area-inset-bottom, 0px));
+  gap: clamp(0.65rem, 1.5vw, 1.1rem);
+  overflow-x: hidden;
+}
+
+/* Browser fullscreen (expand icon) — fill display like facility TV */
+.screen.is-browser-fullscreen {
+  min-height: 100%;
+  height: 100%;
   overflow: hidden;
 }
-@media (max-width: 768px) {
-  .screen {
-    position: relative;
-    inset: auto;
-    width: 100%;
-    min-width: 0;
-    height: auto;
-    min-height: 100vh;
-    min-height: 100dvh;
-    overflow: visible;
-    padding: 0.85rem 0.85rem 1rem;
-    gap: 0.75rem;
-  }
+.screen.is-browser-fullscreen .screen-grid {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .screen.theme-light {
   --tile-bg: #ffffff;
@@ -662,21 +714,29 @@ body.screen-mode #app {
   background: rgba(15, 23, 42, 0.12);
 }
 
-/* Top bar */
+/* Top bar — facility TV style flex + wrap */
 .screen-bar {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--tile-border);
 }
 .screen-brand {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.75rem;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.screen-brand-text {
+  min-width: 0;
 }
 .brand-dot {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
   border-radius: 999px;
   background: #16a34a;
   box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.22), 0 0 22px rgba(22, 163, 74, 0.55);
@@ -688,22 +748,54 @@ body.screen-mode #app {
 }
 .brand-title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
   font-weight: 800;
   letter-spacing: 0.02em;
+  line-height: 1.2;
 }
 .brand-sub {
-  margin: 0;
-  font-size: 0.82rem;
+  margin: 0.15rem 0 0;
+  font-size: clamp(0.72rem, 1.6vw, 0.88rem);
   color: var(--ink-muted);
+}
+.screen-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.15);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+.live-dot.stale {
+  background: var(--warn);
+  animation: none;
+}
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(22, 163, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
 }
 .screen-clock {
   text-align: center;
+  flex-shrink: 0;
 }
 .clock-time {
   margin: 0;
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 2rem;
+  font-size: clamp(1.25rem, 2.5vw, 2rem);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #fff;
@@ -711,65 +803,75 @@ body.screen-mode #app {
 }
 .clock-date {
   margin: 0.25rem 0 0;
-  font-size: 0.82rem;
+  font-size: clamp(0.68rem, 1.4vw, 0.82rem);
   color: var(--ink-muted);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.screen-status {
+.screen-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  font-size: 0.82rem;
+  gap: 0.45rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 .theme-switch {
   display: inline-flex;
   border: 1px solid var(--tile-border);
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 2px;
-  margin-right: 0.4rem;
   background: rgba(15, 23, 42, 0.26);
 }
-.theme-btn {
+.theme-switch .screen-toolbar-btn {
   border: 0;
   background: transparent;
-  color: var(--ink-muted);
-  border-radius: 999px;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  cursor: pointer;
+  padding: 0.25rem 0.55rem;
 }
-.theme-btn.active {
+.theme-switch .screen-toolbar-btn.active {
   background: #16a34a;
+  border-color: #16a34a;
   color: #fff;
 }
-.theme-btn:not(.active):hover {
+.screen-toolbar-btn {
+  border: 1px solid var(--tile-border);
+  background: var(--tile-bg);
+  color: var(--ink-muted);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.screen-toolbar-btn:hover {
+  border-color: var(--accent);
   color: var(--ink);
 }
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #475569;
-}
-.status-dot.live {
+.screen-toolbar-btn.active {
   background: #16a34a;
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.22);
+  border-color: #16a34a;
+  color: #fff;
 }
-.status-dot.stale {
-  background: #f59e0b;
+.screen-toolbar-btn--icon {
+  padding: 0.35rem 0.55rem;
+  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.status-label {
+  white-space: nowrap;
 }
 
 /* Grid layout */
 .screen-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  grid-auto-rows: minmax(120px, auto);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, auto);
   grid-template-areas:
     'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
     'pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline'
@@ -777,7 +879,7 @@ body.screen-mode #app {
     'closures closures closures closures closures inprogress inprogress inprogress inprogress inprogress inprogress'
     'open open open open open open open open open open open open'
     'trend trend trend trend trend trend trend trend trend trend trend trend';
-  gap: 0.9rem;
+  gap: clamp(0.55rem, 1.2vw, 0.9rem);
   min-height: 0;
 }
 .kpis { grid-area: kpis; }
@@ -795,16 +897,10 @@ body.screen-mode #app {
 .kpis {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.9rem;
+  gap: clamp(0.55rem, 1.2vw, 0.9rem);
 }
 @media (max-width: 1200px) {
   .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-@media (max-width: 768px) {
-  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
-}
-@media (max-width: 380px) {
-  .kpis { grid-template-columns: 1fr; }
 }
 .kpi {
   background: var(--tile-bg);
@@ -849,7 +945,7 @@ body.screen-mode #app {
 }
 .kpi-value {
   margin: 0.35rem 0 0.25rem;
-  font-size: 2.65rem;
+  font-size: clamp(1.75rem, 4vw, 2.65rem);
   font-weight: 800;
   color: #fff;
   line-height: 1;
@@ -1348,8 +1444,8 @@ body.screen-mode #app {
   .kpi-value { font-size: 4rem; }
 }
 
-/* Stack a bit on smaller monitors / portrait setups */
-@media (max-width: 1200px) {
+/* Stack on smaller screens (facility TV breakpoints) */
+@media (max-width: 1100px) {
   .screen-grid {
     grid-template-areas:
       'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
@@ -1361,33 +1457,37 @@ body.screen-mode #app {
       'open open open open open open open open open open open open'
       'trend trend trend trend trend trend trend trend trend trend trend trend';
   }
+  .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (max-width: 768px) {
   .screen-bar {
-    grid-template-columns: 1fr;
-    gap: 0.65rem;
+    justify-content: center;
     text-align: center;
   }
   .screen-brand {
+    flex: 1 1 100%;
     justify-content: center;
   }
-  .screen-status {
+  .screen-toolbar {
+    margin-left: 0;
+    width: 100%;
     justify-content: center;
-    flex-wrap: wrap;
   }
-  .clock-time {
-    font-size: 1.55rem;
+  .screen-clock {
+    width: 100%;
+    order: 3;
   }
-  .clock-date {
-    font-size: 0.72rem;
+  .screen-live-pill {
+    order: 2;
   }
-  .brand-title {
-    font-size: 1rem;
-  }
-  .brand-sub {
-    font-size: 0.75rem;
-  }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { padding: 0.75rem 0.85rem; }
+  .card { padding: 0.8rem 0.9rem; }
+  .status-label { font-size: 0.7rem; }
+}
+
+@media (max-width: 640px) {
   .screen-grid {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -1401,47 +1501,26 @@ body.screen-mode #app {
       'open'
       'closures'
       'trend';
-    gap: 0.65rem;
   }
-  .kpi {
-    padding: 0.75rem 0.85rem;
-  }
-  .kpi-value {
-    font-size: 2rem;
-  }
-  .card {
-    padding: 0.8rem 0.9rem;
-  }
-  .wait-row {
-    grid-template-columns: 1fr;
-  }
-  .priority-grid {
-    grid-template-columns: 1fr;
-  }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wait-row { grid-template-columns: 1fr; }
+  .priority-grid { grid-template-columns: 1fr; }
+  .status-legend { grid-template-columns: 1fr 1fr; }
   .duty-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  .duty-table {
-    min-width: 320px;
-  }
-  .duty-name {
-    max-width: none;
-  }
-  .ticker-card {
-    min-width: 180px;
-  }
+  .duty-table { min-width: 300px; }
   .trend-bars {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     min-width: 0;
   }
-  .trend-col {
-    min-width: 8px;
-  }
-  .theme-btn {
-    padding: 0.35rem 0.65rem;
-    font-size: 0.78rem;
-  }
+  .ticker-card { min-width: 160px; }
+}
+
+@media (max-width: 380px) {
+  .kpis { grid-template-columns: 1fr; }
+  .status-legend { grid-template-columns: 1fr; }
 }
 </style>
