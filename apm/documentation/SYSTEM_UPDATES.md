@@ -4,6 +4,49 @@ This document lists notable features, improvements, and changes to the APM (Appr
 
 ---
 
+## Budget execution dashboard (2026-06-02)
+
+### Summary
+
+- New **Budget execution** dashboard under Reports: quarterly and annual views by division.
+- **Initiated** = approved matrix activities, single memos, special memos, and non-travel memos with budget.
+- **Executed** = approved Service Request + ARF amounts linked to each initiative.
+- **100% executed** when SR/ARF totals reach the initiative’s approved budget.
+- Access: all divisions (admin / permission 88), directorate directors (their divisions), staff (own division).
+
+### Documentation
+
+- User guide: **[USER_GUIDE.md](./USER_GUIDE.md#budget-execution-dashboard)**
+
+### Routes
+
+- `GET /budget-execution` — dashboard UI
+- `GET /budget-execution/data` — JSON API
+
+---
+
+## Fund code working balance (2026-06-02)
+
+### Summary
+
+- **Working balance** on budget forms: `approved budget − committed spend` (draft, pending, and approved documents).
+- Real-time checks on **matrix activities**, **special memos**, **non-travel memos**, and **change requests** (increases only).
+- Fund code dropdown shows available balance; red **Budget exceeded!** warning and disabled submit when over limit.
+- Balances refresh automatically (~15s) while the form is open; server-side validation on save.
+- Redis-backed cache when `CACHE_STORE=redis` (version-busted on budget writes).
+
+### Documentation
+
+- User guide: **[USER_GUIDE.md](./USER_GUIDE.md#fund-codes-and-working-budget-balance)**
+
+### Deploy
+
+- Deploy APM application code and `public/js/apm-working-balance.js`.
+- Ensure fund codes have **Approved budget** set (**Fund Codes → Edit**).
+- Recommended: `CACHE_STORE=redis` in production `.env`.
+
+---
+
 ## Supplementary service requests (2026-05-20)
 
 ### Summary

@@ -303,7 +303,7 @@
 
             <!-- Reports -->
             <li class="nav-item">
-                <a class="nav-link {{ Request::is('reports*') ? 'active' : '' }}"
+                <a class="nav-link {{ Request::is('reports*') || Request::is('budget-execution*') ? 'active' : '' }}"
                     href="{{ route('reports.index') }}" wire:navigate>
                     <div class="parent-icon"><i class="fas fa-chart-bar"></i></div>
                     <div class="menu-title">Reports</div>

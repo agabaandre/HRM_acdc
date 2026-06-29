@@ -533,6 +533,9 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::get('reports/staff-quarterly-travel/export/pdf', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'exportPdf'])->name('reports.staff-quarterly-travel.export.pdf');
     Route::get('reports/staff-quarterly-travel/breakdown/{staffId}', [App\Http\Controllers\StaffQuarterlyTravelReportController::class, 'activityBreakdown'])->name('reports.staff-quarterly-travel.breakdown');
 
+    Route::get('budget-execution', [App\Http\Controllers\BudgetExecutionDashboardController::class, 'index'])->name('budget-execution.index');
+    Route::get('budget-execution/data', [App\Http\Controllers\BudgetExecutionDashboardController::class, 'data'])->name('budget-execution.data');
+
     // Generic Approval Routes
     Route::post('/approve/{model}/{id}', [GenericApprovalController::class, 'updateStatus'])->name('generic.approve');
     Route::post('/submit-for-approval/{model}/{id}', [GenericApprovalController::class, 'submitForApproval'])->name('generic.submit');

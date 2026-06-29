@@ -5,15 +5,17 @@ Welcome to the APM (Approvals Management) User Guide. This guide will help you c
 ## Table of Contents
 
 1. [Creating a Matrix](#creating-a-matrix)
-2. [Creating a Special Memo](#creating-a-special-memo)
-3. [Creating a Single Memo](#creating-a-single-memo)
-4. [Creating a Non-Travel Memo](#creating-a-non-travel-memo)
-5. [Creating a Change Request](#creating-a-change-request)
-6. [Creating a Service Request](#creating-a-service-request)
-7. [Supplementary service requests](#supplementary-service-requests)
-8. [Creating an ARF Request](#creating-an-arf-request)
-9. [Reports](#reports)
-10. [Managing Your Documents](#managing-your-documents)
+2. [Fund codes and working budget balance](#fund-codes-and-working-budget-balance)
+3. [Creating a Special Memo](#creating-a-special-memo)
+4. [Creating a Single Memo](#creating-a-single-memo)
+5. [Creating a Non-Travel Memo](#creating-a-non-travel-memo)
+6. [Creating a Change Request](#creating-a-change-request)
+7. [Creating a Service Request](#creating-a-service-request)
+8. [Supplementary service requests](#supplementary-service-requests)
+9. [Creating an ARF Request](#creating-an-arf-request)
+10. [Reports](#reports)
+11. [Budget execution dashboard](#budget-execution-dashboard)
+12. [Managing Your Documents](#managing-your-documents)
 
 ---
 
@@ -55,6 +57,8 @@ A Matrix is a planning document that outlines activities and budgets for a speci
    
    ![Screenshot: Adding Activities](APM)
 
+   When adding budget lines, stay within the **working balance** shown for each fund code. See [Fund codes and working budget balance](#fund-codes-and-working-budget-balance).
+
 5. **Submit for Approval**
    - Review all information
    - Click **"Submit"** or **"Save and Submit"** button
@@ -67,6 +71,95 @@ A Matrix is a planning document that outlines activities and budgets for a speci
 - Matrices can be saved as drafts before submission
 - Once submitted, you cannot edit until it's returned or approved
 - You can view the approval status in the "My Matrices" section
+
+---
+
+## Fund codes and working budget balance
+
+APM prevents overspending by checking each **fund code** against a **working balance** while you enter or edit a budget. This applies when you create or edit:
+
+- **Matrix activities** (including from **Matrices → Activities → Create**)
+- **Special memos**
+- **Non-travel memos**
+- **Change requests** (budget increases only)
+
+### Approved budget (admin setup)
+
+Finance or system administrators maintain fund codes under **Fund Codes** (e.g. edit a code to set **Approved budget**). That value is the ceiling for the fund code for the period.
+
+- **Approved budget** — the official allocation (set on the fund code edit screen).
+- **Uploaded budget** — used only if approved budget is not set.
+- **Budget balance** — legacy SAP/upload field; used as a fallback if neither approved nor uploaded budget is set.
+
+If you are unsure which fund code to use or what the approved amount is, contact your division finance focal point before submitting.
+
+### How working balance is calculated
+
+**Working balance** is what you can still spend on a fund code:
+
+```
+Working balance = Approved budget − Committed spend
+```
+
+**Committed spend** includes budget lines from documents that are still using funds, in these statuses:
+
+| Status | Counted toward committed spend? |
+|--------|----------------------------------|
+| Draft | Yes |
+| Pending approval | Yes |
+| Approved | Yes |
+| Returned / rejected | No (unless still in draft on resubmit) |
+
+Committed spend is summed across:
+
+- Matrix **activities** (budget line items on the activity)
+- **Special memos**
+- **Non-travel memos**
+- **Change requests** that are draft, pending, or submitted (the change request amount replaces the parent memo’s budget while the CR is active, so the same money is not counted twice)
+
+**External source** fund type (fund type ID 3) is exempt from balance checks.
+
+### What you see on budget forms
+
+1. **Fund code dropdown**  
+   Each option shows the fund code, funder, and **available working balance** (e.g. `CODE | Funder | $72,764.00`).
+
+2. **Subtotal per fund code**  
+   As you add rows (description, units, days, unit cost), the subtotal updates. If the subtotal **exceeds** the available balance, you will see:
+   - Subtotal shown in **red**
+   - A warning: **“Budget exceeded! Available: $…”**
+   - **Submit** disabled until the budget is within the limit
+
+3. **Live updates**  
+   Balances refresh automatically about every **15 seconds** while the form is open, so if a colleague submits another memo against the same fund code, your available amount updates without reloading the page.
+
+### Rules by document type
+
+| Document type | When balance is checked | What is compared |
+|---------------|-------------------------|------------------|
+| Matrix activity (create/edit) | On save and in the form | Total budget per fund code vs working balance |
+| Special memo (create/edit) | On save and in the form | Total budget per fund code vs working balance |
+| Non-travel memo (create/edit) | On save and in the form (draft and submit) | Total budget per fund code vs working balance |
+| Change request | On save and in the form | **Only the increase** over the original approved memo budget |
+
+**Change requests:** If you are only reducing budget or leaving it unchanged, no extra balance is required. If you **add** new line items or increase amounts, only that **additional** amount must fit within the working balance.
+
+**Editing an existing activity:** The system treats your current activity’s budget as already allocated, so the available amount shown includes your existing lines when you edit the same document.
+
+### If submit is blocked
+
+1. Reduce line items, units, days, or unit costs so the **subtotal** is at or below **Available**.
+2. Remove a fund code from the request and use another code with sufficient balance (if appropriate).
+3. Wait a moment for balances to refresh if someone else just released budget (e.g. returned a draft).
+4. Ask finance to confirm **Approved budget** on the fund code or to resolve data issues.
+
+The server also enforces the same rules on save; you cannot bypass the warning by submitting outside the normal form.
+
+### For administrators
+
+- Set **Approved budget** on each fund code (**Fund Codes → Edit**).
+- Use **Fund code transactions** (where available) to audit debits and credits against `budget_balance`.
+- Working balance cache is updated whenever budgets are saved or fund codes change; production should use **Redis** for the cache store (`CACHE_STORE=redis`) so all users see consistent figures.
 
 ---
 
@@ -114,7 +207,7 @@ Special Memos are used for special travel requests and activities.
 ### Important Notes
 
 - Special memos require detailed justification
-- Budget breakdown must be accurate and complete
+- Budget breakdown must be accurate and complete; totals cannot exceed the **working balance** for each fund code (see [Fund codes and working budget balance](#fund-codes-and-working-budget-balance))
 - Supporting documents strengthen your request
 
 ---
@@ -194,7 +287,7 @@ When an approver marks an activity as "not passed" during matrix review:
 
 - **Single Memos can only be added to approved or pending matrices** - Draft or returned matrices use regular activities
 - **Single Memos have their own approval workflow** - They don't affect the matrix approval status
-- **Budget should align with matrix allocations** - Ensure budget fits within matrix budget
+- **Budget should align with matrix allocations** - Ensure budget fits within the fund code **working balance** (see [Fund codes and working budget balance](#fund-codes-and-working-budget-balance))
 - **One matrix can have multiple single memos** - You can add as many as needed
 - **Single Memos can be created from returned activities** - When an activity is "not passed", it becomes a single memo
 - **Single Memos are tracked separately** - They appear in a separate "Single Memos" tab on the matrix page
@@ -247,6 +340,7 @@ Non-Travel Memos are for activities that don't involve travel.
 - Non-travel memos don't require travel-related information
 - Focus on local expenses and logistics
 - Categories help classify the type of activity
+- Budget is checked against **working balance** on both **Save draft** and **Submit** (see [Fund codes and working budget balance](#fund-codes-and-working-budget-balance))
 
 ---
 
@@ -322,6 +416,7 @@ Change Requests (also called Addendums) are used to modify **previously approved
 
 - **Change Requests can ONLY be created for approved documents**
 - **Strong justification is required** - Change requests without proper justification may be rejected
+- **Budget increases** must fit within the fund code **working balance**; decreases do not require extra balance (see [Fund codes and working budget balance](#fund-codes-and-working-budget-balance))
 - **Original document remains visible** - The original approved document stays unchanged until the change request is approved
 - **Changes must be approved** - All changes go through the approval workflow before taking effect
 - **Multiple change requests** - You can create multiple change requests for the same document
@@ -549,6 +644,47 @@ The Reports section lets you view and export summary data on matrices, memos, an
 
 ---
 
+## Budget execution dashboard
+
+The **Budget execution** dashboard shows how much of your division’s approved APM budget has been **executed** through Service Requests (intramural) and ARFs (extramural).
+
+**Open:** **Reports → Budget execution** (or **APM → Reports → Budget execution**).
+
+### What it measures
+
+| Term | Meaning |
+|------|---------|
+| **Initiative** | An approved matrix activity, single memo, special memo, or non-travel memo with a budget |
+| **Approved budget** | Total budget on that initiative |
+| **Executed** | Sum of **approved** Service Request `new_total_budget` and **approved** ARF `requested_amount` linked to the initiative |
+| **Execution %** | Executed ÷ approved budget (capped at 100% per initiative) |
+| **100% executed** | SR/ARF totals reach the full approved budget |
+
+Data is based on activities and memos **initiated and approved in APM** only.
+
+### Quarterly vs annual
+
+- **Quarterly** — matrix activities use the matrix **year and quarter**; special and non-travel memos use activity/memo dates.
+- **Annual** — all four quarters in the selected year.
+
+### Who can see what
+
+| Role | View |
+|------|------|
+| System admin / cross-division access (permission 88) | All divisions |
+| Directorate or division **director** | Divisions under their oversight |
+| Other staff | Their own **division only** |
+
+Use the **Division** filter when you can see more than one division.
+
+### Reading the dashboard
+
+1. **Summary cards** — initiative count, how many have an SR/ARF, how many are 100% executed, overall execution %.
+2. **By division** — rolled-up budget and execution per division.
+3. **Initiative detail** — each memo/activity with budget, executed amount, % and status (Not started / Partial / 100% executed).
+
+---
+
 ## Managing Your Documents
 
 ### Viewing Your Documents
@@ -631,7 +767,7 @@ The Reports section lets you view and export summary data on matrices, memos, an
 
 4. **Review Before Submitting**
    - Double-check all information
-   - Ensure budgets are accurate
+   - Ensure budgets are accurate and within each fund code’s **working balance**
    - Verify dates and locations
 
 5. **Respond Promptly to Returns**
@@ -652,6 +788,6 @@ The Reports section lets you view and export summary data on matrices, memos, an
 
 ---
 
-**Last Updated**: December 2024  
-**Version**: 1.0.0
+**Last Updated**: June 2026  
+**Version**: 1.2.0
 
