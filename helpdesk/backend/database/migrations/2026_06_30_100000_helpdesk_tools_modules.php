@@ -113,29 +113,55 @@ return new class extends Migration
         if (! Schema::hasTable('helpdesk_software_request_team_members')) {
         Schema::create('helpdesk_software_request_team_members', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('software_request_id')->constrained('helpdesk_software_requests')->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('software_request_id');
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->unsignedBigInteger('staff_id')->nullable();
             $table->string('member_name');
             $table->string('member_email')->nullable();
             $table->string('role', 64)->default('member');
             $table->timestamps();
             $table->unique(['software_request_id', 'member_email', 'role'], 'hd_sw_team_unique');
+            $table->foreign('software_request_id', 'hd_sw_team_req_fk')
+                ->references('id')->on('helpdesk_software_requests')->cascadeOnDelete();
+            $table->foreign('user_id', 'hd_sw_team_user_fk')
+                ->references('id')->on('users')->nullOnDelete();
         });
         }
 
         if (! Schema::hasTable('helpdesk_software_request_approvals')) {
         Schema::create('helpdesk_software_request_approvals', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('software_request_id')->constrained('helpdesk_software_requests')->cascadeOnDelete();
-            $table->foreignId('approver_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('software_request_id');
+            $table->unsignedBigInteger('approver_user_id')->nullable();
             $table->string('approver_name')->nullable();
             $table->string('approval_role', 64);
             $table->string('decision', 32)->nullable();
             $table->text('notes')->nullable();
             $table->timestamp('decided_at')->nullable();
             $table->timestamps();
+            $table->foreign('software_request_id', 'hd_sw_appr_req_fk')
+                ->references('id')->on('helpdesk_software_requests')->cascadeOnDelete();
+            $table->foreign('approver_user_id', 'hd_sw_appr_user_fk')
+                ->references('id')->on('users')->nullOnDelete();
         });
+        }
+
+        if (Schema::hasTable('helpdesk_software_request_team_members') && ! $this->foreignKeyExists('helpdesk_software_request_team_members', 'hd_sw_team_req_fk')) {
+            Schema::table('helpdesk_software_request_team_members', function (Blueprint $table) {
+                $table->foreign('software_request_id', 'hd_sw_team_req_fk')
+                    ->references('id')->on('helpdesk_software_requests')->cascadeOnDelete();
+                $table->foreign('user_id', 'hd_sw_team_user_fk')
+                    ->references('id')->on('users')->nullOnDelete();
+            });
+        }
+
+        if (Schema::hasTable('helpdesk_software_request_approvals') && ! $this->foreignKeyExists('helpdesk_software_request_approvals', 'hd_sw_appr_req_fk')) {
+            Schema::table('helpdesk_software_request_approvals', function (Blueprint $table) {
+                $table->foreign('software_request_id', 'hd_sw_appr_req_fk')
+                    ->references('id')->on('helpdesk_software_requests')->cascadeOnDelete();
+                $table->foreign('approver_user_id', 'hd_sw_appr_user_fk')
+                    ->references('id')->on('users')->nullOnDelete();
+            });
         }
 
         if (Schema::hasTable('helpdesk_it_asset_categories') && DB::table('helpdesk_it_asset_categories')->count() === 0) {
@@ -159,6 +185,18 @@ return new class extends Migration
             ]));
         }
         }
+    }
+
+    private function foreignKeyExists(string $table, string $constraintName): bool
+    {
+        $database = Schema::getConnection()->getDatabaseName();
+
+        return DB::table('information_schema.TABLE_CONSTRAINTS')
+            ->where('TABLE_SCHEMA', $database)
+            ->where('TABLE_NAME', $table)
+            ->where('CONSTRAINT_NAME', $constraintName)
+            ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+            ->exists();
     }
 
     public function down(): void
