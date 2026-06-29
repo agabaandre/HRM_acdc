@@ -175,6 +175,7 @@ class PublicScreenApiTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.by_duty_station.0.name', 'Addis Ababa');
         $response->assertJsonPath('data.by_duty_station.0.open', 2);
+        $response->assertJsonPath('data.volumes.in_progress', 1);
         $response->assertJsonPath('data.by_duty_station.0.closed_this_week', 1);
         $response->assertJsonPath('data.by_duty_station.0.overtime', 0);
         $response->assertJsonPath('data.by_duty_station.1.name', 'Johannesburg');
@@ -290,6 +291,65 @@ class PublicScreenApiTest extends TestCase
         $response->assertJsonPath('data.closures_by_agent_month.0.closed', 2);
         $response->assertJsonPath('data.closures_by_agent_month.1.name', $agentB->name);
         $response->assertJsonPath('data.closures_by_agent_month.1.closed', 1);
+    }
+
+    public function test_screen_lists_in_progress_workload_by_agent(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $agentA = $this->helpdeskUser(99701, HelpdeskProfile::ROLE_AGENT);
+        $agentB = $this->helpdeskUser(99702, HelpdeskProfile::ROLE_AGENT);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009940',
+            'category_id' => $cat->id,
+            'subject' => 'VPN',
+            'description' => 'Slow',
+            'priority' => 'medium',
+            'status' => 'in_progress',
+            'source' => 'web',
+            'requester_staff_id' => 99799,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $agentA->id,
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009941',
+            'category_id' => $cat->id,
+            'subject' => 'Laptop',
+            'description' => 'Broken',
+            'priority' => 'high',
+            'status' => 'in_progress',
+            'source' => 'web',
+            'requester_staff_id' => 99799,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $agentA->id,
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009942',
+            'category_id' => $cat->id,
+            'subject' => 'Email',
+            'description' => 'Sync',
+            'priority' => 'low',
+            'status' => 'in_progress',
+            'source' => 'web',
+            'requester_staff_id' => 99799,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $agentB->id,
+        ]);
+
+        $response = $this->getJson('/api/v1/public/screen');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.in_progress_workload.0.name', $agentA->name);
+        $response->assertJsonPath('data.in_progress_workload.0.in_progress', 2);
+        $response->assertJsonPath('data.in_progress_workload.1.name', $agentB->name);
+        $response->assertJsonPath('data.in_progress_workload.1.in_progress', 1);
     }
 
     public function test_agent_public_comment_sets_first_response_at(): void

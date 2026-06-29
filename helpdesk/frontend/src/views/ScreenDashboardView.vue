@@ -51,6 +51,13 @@ interface WorkloadRow {
   name: string
   avatar_url?: string | null
   open: number
+  in_progress?: number
+}
+interface InProgressRow {
+  id: number
+  name: string
+  avatar_url?: string | null
+  in_progress: number
 }
 interface TrendDay {
   day: string
@@ -67,6 +74,7 @@ interface ScreenData {
   by_duty_station: DutyStationRow[]
   closures_by_agent_month: AgentClosureRow[]
   workload: WorkloadRow[]
+  in_progress_workload: InProgressRow[]
   trend: TrendDay[]
   csat: { avg_score: number | null; responses: number; note?: string }
 }
@@ -165,6 +173,30 @@ const agentOpenTicketsDuration = computed(() => {
   return `${Math.max(28, count * 4)}s`
 })
 
+const inProgressAgents = computed(() => data.value?.in_progress_workload ?? [])
+const inProgressAgentsTicker = computed(() => {
+  const rows = inProgressAgents.value
+  return rows.length > 0 ? [...rows, ...rows] : []
+})
+const inProgressAgentsDuration = computed(() => {
+  const count = inProgressAgents.value.length
+  if (count < 1) return '0s'
+  return `${Math.max(28, count * 4)}s`
+})
+
+const statusPipeline = computed(() => {
+  const v = data.value?.volumes
+  if (!v) return []
+  const items = [
+    { key: 'open', label: 'Open', count: v.open, color: '#2563eb' },
+    { key: 'pending', label: 'Pending', count: v.pending, color: '#4f46e5' },
+    { key: 'in_progress', label: 'In progress', count: v.in_progress, color: '#7c3aed' },
+    { key: 'awaiting', label: 'Awaiting confirm', count: v.awaiting_confirm, color: '#b45309' },
+  ]
+  const total = items.reduce((sum, item) => sum + item.count, 0) || 1
+  return items.map((item) => ({ ...item, pct: (item.count / total) * 100 }))
+})
+
 const lastUpdatedLabel = computed(() => {
   if (!lastFetchedAt.value) return 'syncing…'
   const ageSec = Math.round((Date.now() - lastFetchedAt.value) / 1000)
@@ -249,8 +281,14 @@ onUnmounted(() => {
           <p class="kpi-sub">
             <span>{{ data.volumes.open }} open</span>
             <span class="dot">·</span>
-            <span>{{ data.volumes.in_progress }} in progress</span>
+            <span>{{ data.volumes.pending }} pending</span>
           </p>
+        </article>
+
+        <article class="kpi kpi-inprogress" :class="{ pulse: data.volumes.in_progress > 0 }">
+          <p class="kpi-label">In progress</p>
+          <p class="kpi-value">{{ data.volumes.in_progress }}</p>
+          <p class="kpi-sub">Being worked now</p>
         </article>
 
         <article class="kpi kpi-unassigned" :class="{ alert: data.volumes.unassigned > 0 }">
@@ -282,6 +320,32 @@ onUnmounted(() => {
           <p class="kpi-value">{{ data.volumes.resolved_today }}</p>
           <p class="kpi-sub">{{ data.volumes.closed_today }} closed</p>
         </article>
+      </section>
+
+      <!-- Queue status pipeline -->
+      <section class="card status-pipeline-card">
+        <header class="card-head">
+          <h2>Queue breakdown</h2>
+          <span class="card-sub">{{ data.volumes.total_active }} active</span>
+        </header>
+        <div class="status-pipeline">
+          <div class="status-pipeline-bar" role="img" :aria-label="`Queue: ${statusPipeline.map((s) => `${s.count} ${s.label}`).join(', ')}`">
+            <span
+              v-for="seg in statusPipeline"
+              :key="seg.key"
+              class="status-seg"
+              :style="{ width: seg.pct + '%', background: seg.color }"
+              :title="`${seg.label}: ${seg.count}`"
+            />
+          </div>
+          <ul class="status-legend">
+            <li v-for="seg in statusPipeline" :key="seg.key" class="status-legend-item">
+              <span class="status-swatch" :style="{ background: seg.color }" />
+              <span class="status-legend-label">{{ seg.label }}</span>
+              <strong class="status-legend-count">{{ seg.count }}</strong>
+            </li>
+          </ul>
+        </div>
       </section>
 
       <!-- Wait times -->
@@ -378,7 +442,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <!-- Agent closures + open tickets tickers -->
+      <!-- Agent closures + in-progress + open tickets tickers -->
       <section class="card closures-card">
         <header class="card-head">
           <h2>Tickets closed by agent</h2>
@@ -405,10 +469,36 @@ onUnmounted(() => {
         <p v-else class="muted">No agent closures recorded this month yet.</p>
       </section>
 
+      <section class="card in-progress-card">
+        <header class="card-head">
+          <h2>Tickets in progress</h2>
+          <span class="card-sub">{{ data.volumes.in_progress }} active · {{ inProgressAgents.length }} agents</span>
+        </header>
+        <div v-if="inProgressAgents.length" class="ticker-viewport" aria-hidden="true">
+          <div
+            class="ticker-track"
+            :style="{ animationDuration: inProgressAgentsDuration }"
+          >
+            <article
+              v-for="(agent, index) in inProgressAgentsTicker"
+              :key="`progress-${agent.id}-${index}`"
+              class="ticker-card ticker-card--progress"
+            >
+              <CbpAvatar :name="agent.name" :image-url="agent.avatar_url ?? null" size="sm" />
+              <div class="ticker-meta">
+                <p class="ticker-name">{{ agent.name }}</p>
+                <p class="ticker-count">{{ agent.in_progress }} in progress</p>
+              </div>
+            </article>
+          </div>
+        </div>
+        <p v-else class="muted">No tickets in progress right now.</p>
+      </section>
+
       <section class="card open-tickets-card">
         <header class="card-head">
-          <h2>Staff with open tickets</h2>
-          <span class="card-sub">Assigned now · {{ agentOpenTickets.length }} agents</span>
+          <h2>Agent workload</h2>
+          <span class="card-sub">All active assigned · {{ agentOpenTickets.length }} agents</span>
         </header>
         <div v-if="agentOpenTickets.length" class="ticker-viewport" aria-hidden="true">
           <div
@@ -423,7 +513,10 @@ onUnmounted(() => {
               <CbpAvatar :name="agent.name" :image-url="agent.avatar_url ?? null" size="sm" />
               <div class="ticker-meta">
                 <p class="ticker-name">{{ agent.name }}</p>
-                <p class="ticker-count">{{ agent.open }} open</p>
+                <p class="ticker-count">
+                  {{ agent.open }} active
+                  <span v-if="(agent.in_progress ?? 0) > 0" class="ticker-sub"> · {{ agent.in_progress }} in progress</span>
+                </p>
               </div>
             </article>
           </div>
@@ -469,9 +562,25 @@ body.screen-mode {
   height: 100%;
   overflow: hidden;
 }
+@media (max-width: 768px) {
+  html.screen-mode,
+  body.screen-mode {
+    height: auto;
+    min-height: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
 html.screen-mode #app,
 body.screen-mode #app {
   height: 100%;
+}
+@media (max-width: 768px) {
+  html.screen-mode #app,
+  body.screen-mode #app {
+    height: auto;
+    min-height: 100%;
+  }
 }
 </style>
 
@@ -501,6 +610,20 @@ body.screen-mode #app {
   padding: 1.25rem 1.5rem 0.65rem;
   gap: 1.1rem;
   overflow: hidden;
+}
+@media (max-width: 768px) {
+  .screen {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+    padding: 0.85rem 0.85rem 1rem;
+    gap: 0.75rem;
+  }
 }
 .screen.theme-light {
   --tile-bg: #ffffff;
@@ -649,26 +772,39 @@ body.screen-mode #app {
   grid-auto-rows: minmax(120px, auto);
   grid-template-areas:
     'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
+    'pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline'
     'wait wait duty duty duty duty category category priority priority priority priority'
-    'closures closures closures closures closures closures closures open open open open open'
+    'closures closures closures closures closures inprogress inprogress inprogress inprogress inprogress inprogress'
+    'open open open open open open open open open open open open'
     'trend trend trend trend trend trend trend trend trend trend trend trend';
   gap: 0.9rem;
   min-height: 0;
 }
 .kpis { grid-area: kpis; }
+.status-pipeline-card { grid-area: pipeline; }
 .wait-card { grid-area: wait; }
 .duty-card { grid-area: duty; }
 .priority-card { grid-area: priority; }
 .category-card { grid-area: category; }
 .closures-card { grid-area: closures; }
+.in-progress-card { grid-area: inprogress; }
 .open-tickets-card { grid-area: open; }
 .trend-card { grid-area: trend; }
 
 /* KPI tiles */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.9rem;
+}
+@media (max-width: 1200px) {
+  .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 768px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
+}
+@media (max-width: 380px) {
+  .kpis { grid-template-columns: 1fr; }
 }
 .kpi {
   background: var(--tile-bg);
@@ -689,6 +825,14 @@ body.screen-mode #app {
   background: var(--kpi-accent, #475569);
 }
 .kpi-open { --kpi-accent: #3b82f6; }
+.kpi-inprogress { --kpi-accent: #7c3aed; }
+.kpi-inprogress.pulse .kpi-value {
+  animation: inprogress-pulse 2.2s ease-in-out infinite;
+}
+@keyframes inprogress-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
 .kpi-unassigned { --kpi-accent: #f59e0b; }
 .kpi-awaiting { --kpi-accent: #a855f7; }
 .kpi-response { --kpi-accent: #0ea5e9; }
@@ -721,6 +865,63 @@ body.screen-mode #app {
   flex-wrap: wrap;
 }
 .kpi-sub .dot { color: #475569; }
+
+/* Queue status pipeline */
+.status-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.status-pipeline-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.12);
+}
+.status-seg {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  transition: width 0.6s ease;
+}
+.status-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+@media (max-width: 640px) {
+  .status-legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.status-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  min-width: 0;
+}
+.status-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.status-legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status-legend-count {
+  margin-left: auto;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
 
 /* Cards */
 .card {
@@ -995,8 +1196,24 @@ body.screen-mode #app {
 
 /* Agent closures + open tickets tickers */
 .closures-card,
+.in-progress-card,
 .open-tickets-card {
   min-height: 5.5rem;
+}
+.ticker-card--progress {
+  border-color: rgba(124, 58, 237, 0.35);
+  background: rgba(124, 58, 237, 0.12);
+}
+.screen.theme-light .ticker-card--progress {
+  background: #f5f3ff;
+  border-color: rgba(124, 58, 237, 0.25);
+}
+.ticker-sub {
+  color: #a78bfa;
+  font-weight: 600;
+}
+.screen.theme-light .ticker-sub {
+  color: #6d28d9;
 }
 .ticker-viewport {
   position: relative;
@@ -1136,12 +1353,95 @@ body.screen-mode #app {
   .screen-grid {
     grid-template-areas:
       'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
+      'pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline'
       'wait wait wait wait wait wait duty duty duty duty duty duty'
       'category category category category category category priority priority priority priority priority priority'
       'closures closures closures closures closures closures closures closures closures closures closures closures'
+      'inprogress inprogress inprogress inprogress inprogress inprogress inprogress inprogress inprogress inprogress inprogress inprogress'
       'open open open open open open open open open open open open'
       'trend trend trend trend trend trend trend trend trend trend trend trend';
   }
-  .kpis { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .screen-bar {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    text-align: center;
+  }
+  .screen-brand {
+    justify-content: center;
+  }
+  .screen-status {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .clock-time {
+    font-size: 1.55rem;
+  }
+  .clock-date {
+    font-size: 0.72rem;
+  }
+  .brand-title {
+    font-size: 1rem;
+  }
+  .brand-sub {
+    font-size: 0.75rem;
+  }
+  .screen-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'kpis'
+      'pipeline'
+      'wait'
+      'duty'
+      'category'
+      'priority'
+      'inprogress'
+      'open'
+      'closures'
+      'trend';
+    gap: 0.65rem;
+  }
+  .kpi {
+    padding: 0.75rem 0.85rem;
+  }
+  .kpi-value {
+    font-size: 2rem;
+  }
+  .card {
+    padding: 0.8rem 0.9rem;
+  }
+  .wait-row {
+    grid-template-columns: 1fr;
+  }
+  .priority-grid {
+    grid-template-columns: 1fr;
+  }
+  .duty-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .duty-table {
+    min-width: 320px;
+  }
+  .duty-name {
+    max-width: none;
+  }
+  .ticker-card {
+    min-width: 180px;
+  }
+  .trend-bars {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    min-width: 0;
+  }
+  .trend-col {
+    min-width: 8px;
+  }
+  .theme-btn {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+  }
 }
 </style>

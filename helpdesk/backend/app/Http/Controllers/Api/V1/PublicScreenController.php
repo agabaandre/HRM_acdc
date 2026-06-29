@@ -49,6 +49,7 @@ class PublicScreenController extends Controller
                 'by_duty_station' => $this->byDutyStation($now, $startOfWeek, $directory),
                 'closures_by_agent_month' => $this->closuresByAgentThisMonth($startOfMonth, $now),
                 'workload' => $this->workload(),
+                'in_progress_workload' => $this->inProgressWorkload(),
                 'trend' => $this->trend30Days($thirtyDaysAgo, $now),
                 'csat' => [
                     'avg_score' => null,
@@ -374,6 +375,13 @@ class PublicScreenController extends Controller
             ->groupBy('assigned_user_id')
             ->pluck('c', 'assigned_user_id');
 
+        $inProgressLoads = HelpdeskTicket::query()
+            ->where('status', 'in_progress')
+            ->whereNotNull('assigned_user_id')
+            ->selectRaw('assigned_user_id, COUNT(*) AS c')
+            ->groupBy('assigned_user_id')
+            ->pluck('c', 'assigned_user_id');
+
         if ($loads->isEmpty()) {
             return [];
         }
@@ -395,6 +403,7 @@ class PublicScreenController extends Controller
                 'name' => $u->name,
                 'avatar_url' => StaffPhotoUrl::forUser($u),
                 'open' => (int) ($loads[$u->id] ?? 0),
+                'in_progress' => (int) ($inProgressLoads[$u->id] ?? 0),
                 'work_mode' => $u->helpdeskProfile?->work_mode,
             ];
         }
@@ -402,6 +411,48 @@ class PublicScreenController extends Controller
         usort($out, fn ($a, $b) => $b['open'] <=> $a['open']);
 
         return array_slice($out, 0, 8);
+    }
+
+    /**
+     * Agents currently working tickets (status = in_progress only).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function inProgressWorkload(): array
+    {
+        $loads = HelpdeskTicket::query()
+            ->where('status', 'in_progress')
+            ->whereNotNull('assigned_user_id')
+            ->selectRaw('assigned_user_id, COUNT(*) AS c')
+            ->groupBy('assigned_user_id')
+            ->pluck('c', 'assigned_user_id');
+
+        if ($loads->isEmpty()) {
+            return [];
+        }
+
+        $users = User::query()
+            ->whereIn('id', $loads->keys()->all())
+            ->whereHas('helpdeskProfile', fn ($q) => $q->whereIn('role', [
+                HelpdeskProfile::ROLE_AGENT,
+                HelpdeskProfile::ROLE_SUPERVISOR,
+                HelpdeskProfile::ROLE_ADMIN,
+            ]))
+            ->get(['id', 'name', 'photo']);
+
+        $out = [];
+        foreach ($users as $u) {
+            $out[] = [
+                'id' => $u->id,
+                'name' => $u->name,
+                'avatar_url' => StaffPhotoUrl::forUser($u),
+                'in_progress' => (int) ($loads[$u->id] ?? 0),
+            ];
+        }
+
+        usort($out, fn ($a, $b) => [$b['in_progress'], $a['name']] <=> [$a['in_progress'], $b['name']]);
+
+        return array_slice($out, 0, 12);
     }
 
     /**

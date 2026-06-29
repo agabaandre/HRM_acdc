@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\TicketAssignmentNotifier;
 use App\Services\TicketHistoryLogger;
 use App\Services\TicketReadCache;
+use App\Services\TicketStatusNotifier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,6 +34,7 @@ class HelpdeskTicket extends Model
                 ]);
             }
             app(TicketAssignmentNotifier::class)->notifyIfAssigneeChanged($ticket);
+            app(TicketStatusNotifier::class)->notifyIfMovedToInProgress($ticket);
         });
 
         static::created(fn () => TicketReadCache::bust(['tickets', 'reports']));
