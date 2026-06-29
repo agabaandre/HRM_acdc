@@ -8,8 +8,8 @@
 <div class="d-flex gap-2">
     <a wire:navigate href="{{ route('request-arf.pending-approvals') }}" class="btn btn-warning shadow-sm">
         <i class="bx bx-time me-1"></i> Pending Approvals
-        @if(get_pending_arf_count(user_session('staff_id')) > 0)
-            <span class="badge bg-danger ms-1">{{ get_pending_arf_count(user_session('staff_id')) }}</span>
+        @if(($pendingArfCount ?? 0) > 0)
+            <span class="badge bg-danger ms-1">{{ $pendingArfCount }}</span>
         @endif
     </a>
 </div>

@@ -51,8 +51,7 @@ class RequestARFController extends Controller
         $mySubmittedArfsQuery = RequestARF::with([
             'staff',
             'division',
-            'source',
-            'forwardWorkflow.workflowDefinitions.approvers.staff'
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
         ])
             ->where('staff_id', $currentStaffId);
 
@@ -87,8 +86,7 @@ class RequestARFController extends Controller
         $myDivisionArfsQuery = RequestARF::with([
             'staff',
             'division',
-            'source',
-            'forwardWorkflow.workflowDefinitions.approvers.staff'
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
         ])
             ->orderByDesc('created_at');
         if ($currentDivisionId) {
@@ -126,8 +124,7 @@ class RequestARFController extends Controller
             $allArfsQuery = RequestARF::with([
                 'staff',
                 'division',
-                'source',
-                'forwardWorkflow.workflowDefinitions.approvers.staff'
+                'forwardWorkflow.workflowDefinitions.approvers.staff',
             ])
                 ->orderByDesc('created_at');
 
@@ -193,7 +190,18 @@ class RequestARFController extends Controller
             ]);
         }
 
-        return view('request-arf.index', compact('mySubmittedArfs', 'myDivisionArfs', 'allArfs', 'divisions', 'staff', 'years', 'selectedYear'));
+        $pendingArfCount = get_pending_arf_count((int) $currentStaffId);
+
+        return view('request-arf.index', compact(
+            'mySubmittedArfs',
+            'myDivisionArfs',
+            'allArfs',
+            'divisions',
+            'staff',
+            'years',
+            'selectedYear',
+            'pendingArfCount',
+        ));
     }
 
     /**

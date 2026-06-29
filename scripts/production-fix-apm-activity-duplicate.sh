@@ -48,7 +48,12 @@ REMOVED=0
 
 while IFS= read -r f; do
   [[ -z "$f" ]] || [[ ! -f "$f" ]] && continue
-  if ! rg -q '^class Activity\b' "$f" 2>/dev/null; then
+  if command -v rg >/dev/null 2>&1; then
+    has_class=$(rg -q '^class Activity\b' "$f" 2>/dev/null && echo yes || echo no)
+  else
+    has_class=$(grep -q '^class Activity[[:space:]]' "$f" 2>/dev/null && echo yes || echo no)
+  fi
+  if [[ "$has_class" != "yes" ]]; then
     continue
   fi
   REAL="$(php -r "echo realpath('$f');")"
@@ -119,7 +124,11 @@ echo "    # or: sudo systemctl restart php-fpm"
 echo "    # cPanel: MultiPHP Manager → restart PHP-FPM for the domain"
 echo
 echo "==> If still failing after FPM restart, run diagnostics and paste output:"
-echo "    rg -n '^class Activity\\b' $APM_ROOT --glob '*.php'"
+if command -v rg >/dev/null 2>&1; then
+  echo "    rg -n '^class Activity\\b' $APM_ROOT --glob '*.php'"
+else
+  echo "    grep -rn '^class Activity' $APM_ROOT/app --include='*.php'"
+fi
 echo "    ls -la $APM_ROOT/app/Models/ | grep -i activity"
 echo "    md5sum $CANONICAL"
 echo "    git show HEAD:apm/app/Models/Activity.php | md5sum"
