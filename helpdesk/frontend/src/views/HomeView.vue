@@ -224,20 +224,23 @@ onMounted(() => {
       </div>
     </template>
 
-    <UCard v-if="auth.isAuthenticated" class="hd-kb-card" aria-labelledby="kb-heading">
-      <template #header>
-        <div class="kb-header">
-          <div>
-            <p class="panel-title">Knowledge base</p>
-            <h2 id="kb-heading" class="kb-title">Top questions</h2>
-            <p class="kb-lede">A short preview of common answers. Search below or use Ask Helpdesk for guided help.</p>
-          </div>
+    <v-card v-if="auth.isAuthenticated" class="hd-kb-card" variant="outlined" aria-labelledby="kb-heading">
+      <v-card-item class="kb-header">
+        <div>
+          <p class="panel-title">Knowledge base</p>
+          <h2 id="kb-heading" class="kb-title">Top questions</h2>
+          <p class="kb-lede">A short preview of common answers. Search below or use Ask Helpdesk for guided help.</p>
+        </div>
+        <template #append>
           <RouterLink v-if="canManageKb" class="kb-manage-link" to="/knowledge-base/manage">
             Manage articles →
           </RouterLink>
-        </div>
-      </template>
+        </template>
+      </v-card-item>
 
+      <v-divider />
+
+      <v-card-text>
       <UFormField name="kbSearch" class="kb-search">
         <UInput
           v-model="search"
@@ -250,7 +253,14 @@ onMounted(() => {
         />
       </UFormField>
 
-      <p v-if="loading" class="kb-status" role="status">Loading articles…</p>
+      <div v-if="loading" class="kb-skeleton" role="status" aria-busy="true" aria-label="Loading articles">
+        <v-skeleton-loader
+          v-for="n in 5"
+          :key="n"
+          type="list-item-two-line"
+          class="kb-skeleton-item"
+        />
+      </div>
       <p v-else-if="articles.length === 0 && search.trim() === ''" class="kb-empty">
         No articles yet.
         <template v-if="canManageKb">
@@ -294,7 +304,8 @@ onMounted(() => {
           {{ hasMoreFaqs ? 'Ask Helpdesk for more answers →' : 'Open Ask Helpdesk →' }}
         </RouterLink>
       </footer>
-    </UCard>
+      </v-card-text>
+    </v-card>
   </div>
 </template>
 
@@ -323,12 +334,16 @@ onMounted(() => {
   color: #6c757d;
 }
 
+.kb-header.v-card-item {
+  align-items: flex-end;
+}
 .kb-header {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: space-between;
   align-items: flex-end;
+  width: 100%;
 }
 .kb-title {
   margin: 0;
@@ -358,7 +373,14 @@ onMounted(() => {
   display: block;
   margin: 0 0 1rem;
 }
-.kb-status,
+.kb-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.kb-skeleton-item :deep(.v-skeleton-loader__bone) {
+  border-radius: 4px;
+}
 .kb-empty {
   margin: 0.5rem 0;
   color: #5c6c7c;

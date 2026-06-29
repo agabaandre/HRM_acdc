@@ -379,7 +379,7 @@ onMounted(() => {
         </template>
 
         <template #item.question="{ item }">
-          <span class="hd-dt-truncate" :title="item.question">{{ item.question }}</span>
+          <span class="hd-dt-wrap">{{ item.question }}</span>
         </template>
 
         <template #item.answer_preview="{ item }">

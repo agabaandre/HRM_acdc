@@ -113,10 +113,10 @@ function clearChat(): void {
   form.question = ''
 }
 
-function confidenceClass(level?: string): string {
-  if (level === 'high') return 'hd-confidence--high'
-  if (level === 'low') return 'hd-confidence--low'
-  return 'hd-confidence--medium'
+function confidenceColor(level?: string): string {
+  if (level === 'high') return 'success'
+  if (level === 'low') return 'default'
+  return 'warning'
 }
 
 function onComposeKeydown(event: KeyboardEvent): void {
@@ -140,57 +140,56 @@ function onComposeKeydown(event: KeyboardEvent): void {
     </CbpPageHeading>
 
     <div class="hd-ask-layout">
-      <section class="hd-ask-panel" aria-label="Ask Helpdesk conversation">
-        <header class="hd-ask-header">
-          <div class="hd-ask-header-main">
-            <span class="hd-ask-header-icon" aria-hidden="true">
-              <i class="bx bx-bot" />
-            </span>
-            <div>
-              <h2 class="hd-ask-header-title">Helpdesk assistant</h2>
-              <p class="hd-ask-header-sub">
-                {{ messages.length ? `${messages.length} message${messages.length === 1 ? '' : 's'}` : 'Knowledge-base powered answers' }}
-              </p>
-            </div>
-          </div>
-          <UButton
-            v-if="messages.length > 0"
-            type="button"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            icon="i-lucide-trash-2"
-            :disabled="sending"
-            @click="clearChat"
-          >
-            Clear chat
-          </UButton>
-        </header>
+      <v-card class="hd-ask-panel" variant="outlined" aria-label="Ask Helpdesk conversation">
+        <v-card-item class="hd-ask-header">
+          <template #prepend>
+            <v-avatar rounded="lg" color="primary" variant="tonal" size="40">
+              <v-icon icon="mdi-robot" size="22" />
+            </v-avatar>
+          </template>
+          <v-card-title class="hd-ask-header-title">Helpdesk assistant</v-card-title>
+          <v-card-subtitle class="hd-ask-header-sub">
+            {{ messages.length ? `${messages.length} message${messages.length === 1 ? '' : 's'}` : 'Knowledge-base powered answers' }}
+          </v-card-subtitle>
+          <template #append>
+            <v-btn
+              v-if="messages.length > 0"
+              variant="text"
+              size="small"
+              prepend-icon="mdi-delete-outline"
+              :disabled="sending"
+              @click="clearChat"
+            >
+              Clear chat
+            </v-btn>
+          </template>
+        </v-card-item>
+
+        <v-divider />
 
         <div ref="messagesEl" class="hd-ask-messages">
           <div v-if="messages.length === 0" class="hd-ask-empty">
-            <div class="hd-ask-empty-icon" aria-hidden="true">
-              <i class="bx bx-message-dots" />
-            </div>
+            <v-avatar rounded="lg" color="primary" variant="tonal" size="56" class="hd-ask-empty-icon">
+              <v-icon icon="mdi-message-text-outline" size="28" />
+            </v-avatar>
             <h3>How can we help?</h3>
             <p>
               Ask about access, email, VPN, printers, software, or devices. Pick a suggested prompt on the right,
               or type your question below.
             </p>
             <div class="hd-ask-empty-prompts">
-              <UButton
+              <v-chip
                 v-for="p in starterPrompts.slice(0, 2)"
                 :key="p"
-                type="button"
-                color="neutral"
-                variant="soft"
-                size="sm"
+                variant="tonal"
+                color="primary"
+                size="small"
                 class="hd-ask-empty-chip"
                 :disabled="sending"
                 @click="usePrompt(p)"
               >
                 {{ p }}
-              </UButton>
+              </v-chip>
             </div>
           </div>
 
@@ -200,11 +199,21 @@ function onComposeKeydown(event: KeyboardEvent): void {
             class="hd-chat-row"
             :class="m.role === 'user' ? 'hd-chat-row--user' : 'hd-chat-row--agent'"
           >
-            <span class="hd-chat-avatar" aria-hidden="true">
-              <i :class="m.role === 'user' ? 'bx bx-user' : 'bx bx-bot'" />
-            </span>
+            <v-avatar
+              size="32"
+              :color="m.role === 'user' ? 'primary' : 'primary'"
+              :variant="m.role === 'user' ? 'flat' : 'tonal'"
+            >
+              <v-icon :icon="m.role === 'user' ? 'mdi-account' : 'mdi-robot'" size="18" />
+            </v-avatar>
 
-            <article class="hd-bubble" :class="m.role === 'user' ? 'hd-bubble--user' : 'hd-bubble--agent'">
+            <v-sheet
+              class="hd-bubble"
+              :class="m.role === 'user' ? 'hd-bubble--user' : 'hd-bubble--agent'"
+              :color="m.role === 'user' ? 'primary' : undefined"
+              :variant="m.role === 'user' ? 'flat' : 'outlined'"
+              rounded="lg"
+            >
               <span class="hd-bubble-label">{{ m.role === 'user' ? 'You' : 'Helpdesk assistant' }}</span>
               <p class="hd-bubble-text">{{ m.text }}</p>
 
@@ -213,44 +222,53 @@ function onComposeKeydown(event: KeyboardEvent): void {
               </ol>
 
               <div v-if="m.role === 'agent'" class="hd-ask-meta">
-                <span v-if="m.confidence" class="hd-confidence" :class="confidenceClass(m.confidence)">
+                <v-chip
+                  v-if="m.confidence"
+                  size="x-small"
+                  :color="confidenceColor(m.confidence)"
+                  variant="tonal"
+                  class="hd-confidence-chip"
+                >
                   {{ m.confidence }} confidence
-                </span>
+                </v-chip>
+
                 <template v-if="m.relatedArticles && m.relatedArticles.length">
                   <p class="hd-ask-meta-label">Related FAQs</p>
-                  <RouterLink
-                    v-for="a in m.relatedArticles"
-                    :key="a.id"
-                    class="hd-related-link"
-                    to="/"
-                  >
-                    <i class="bx bx-link-external" aria-hidden="true" />
-                    {{ a.question }}
-                  </RouterLink>
+                  <v-list density="compact" class="hd-ask-related-list" bg-color="transparent">
+                    <v-list-item
+                      v-for="a in m.relatedArticles"
+                      :key="a.id"
+                      :to="'/'"
+                      prepend-icon="mdi-book-open-page-variant"
+                      rounded="sm"
+                    >
+                      <v-list-item-title>{{ a.question }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
                 </template>
+
                 <p v-if="m.suggestTicket" class="hd-ask-ticket-hint">
                   Still stuck?
                   <RouterLink to="/tickets/new">Log a new request</RouterLink>
                   for an agent.
                 </p>
               </div>
-            </article>
+            </v-sheet>
           </div>
 
-          <div v-if="sending" class="hd-chat-row hd-chat-row--agent" role="status" aria-live="polite">
-            <span class="hd-chat-avatar" aria-hidden="true">
-              <i class="bx bx-bot" />
-            </span>
-            <div class="hd-typing">
-              <span class="hd-typing-dot" />
-              <span class="hd-typing-dot" />
-              <span class="hd-typing-dot" />
-              <span class="hd-typing-label">Assistant is thinking…</span>
-            </div>
+          <div v-if="sending" class="hd-chat-row hd-chat-row--agent" role="status" aria-live="polite" aria-label="Assistant is thinking">
+            <v-avatar size="32" color="primary" variant="tonal">
+              <v-icon icon="mdi-robot" size="18" />
+            </v-avatar>
+            <v-sheet class="hd-bubble hd-bubble--agent hd-bubble--loading" variant="outlined" rounded="lg">
+              <v-skeleton-loader type="sentences" />
+            </v-sheet>
           </div>
         </div>
 
-        <footer class="hd-ask-compose">
+        <v-divider />
+
+        <v-card-text class="hd-ask-compose">
           <UForm
             :state="form"
             :validate="validateAsk"
@@ -270,61 +288,68 @@ function onComposeKeydown(event: KeyboardEvent): void {
             </UFormField>
             <div class="hd-ask-compose-actions">
               <span class="hd-ask-compose-hint">Enter to send · Shift+Enter for new line</span>
-              <UButton
+              <v-btn
                 type="submit"
                 color="primary"
-                size="md"
-                icon="i-lucide-send"
+                prepend-icon="mdi-send"
                 :loading="sending"
                 :disabled="form.question.trim().length < 8"
               >
                 Ask
-              </UButton>
+              </v-btn>
             </div>
           </UForm>
-        </footer>
-      </section>
+        </v-card-text>
+      </v-card>
 
       <aside class="hd-ask-side" aria-label="Ask Helpdesk tips">
-        <div class="hd-side-card">
-          <h3>Suggested prompts</h3>
-          <UButton
-            v-for="p in starterPrompts"
-            :key="p"
-            type="button"
-            color="neutral"
-            variant="outline"
-            size="sm"
-            class="hd-prompt-chip hd-v-btn--auto"
-            :disabled="sending"
-            @click="usePrompt(p)"
-          >
-            {{ p }}
-          </UButton>
-        </div>
-        <div class="hd-side-card">
-          <h3>Before you ask</h3>
-          <p>Include what you were doing, any error message, and whether others are affected. Do not share passwords.</p>
-        </div>
-        <div class="hd-side-card">
-          <h3>Need a person?</h3>
-          <p>
+        <v-card variant="outlined" class="hd-side-card">
+          <v-card-title class="hd-side-card-title">Suggested prompts</v-card-title>
+          <v-card-text class="hd-side-card-body">
+            <v-btn
+              v-for="p in starterPrompts"
+              :key="p"
+              variant="outlined"
+              size="small"
+              block
+              class="hd-prompt-btn"
+              :disabled="sending"
+              @click="usePrompt(p)"
+            >
+              {{ p }}
+            </v-btn>
+          </v-card-text>
+        </v-card>
+
+        <v-card variant="outlined" class="hd-side-card">
+          <v-card-title class="hd-side-card-title">Before you ask</v-card-title>
+          <v-card-text class="hd-side-card-body">
+            Include what you were doing, any error message, and whether others are affected. Do not share passwords.
+          </v-card-text>
+        </v-card>
+
+        <v-card variant="outlined" class="hd-side-card">
+          <v-card-title class="hd-side-card-title">Need a person?</v-card-title>
+          <v-card-text class="hd-side-card-body">
             <RouterLink to="/tickets/new">Open a new request</RouterLink>
             and an agent will follow up during business hours.
-          </p>
-        </div>
+          </v-card-text>
+        </v-card>
       </aside>
     </div>
   </div>
 </template>
 
 <style scoped>
-.hd-prompt-chip {
-  width: 100%;
+.hd-prompt-btn {
   justify-content: flex-start;
   text-align: left;
   white-space: normal;
   height: auto;
+  min-height: 2.25rem;
   margin-bottom: 0.35rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
 }
 </style>

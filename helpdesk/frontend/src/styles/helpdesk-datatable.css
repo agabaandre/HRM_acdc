@@ -104,6 +104,15 @@
   max-width: 100%;
 }
 
+.hd-dt-wrap {
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  max-width: 100%;
+}
+
 .hd-dt-truncate--muted {
   color: #64748b;
   font-size: 0.8rem;
