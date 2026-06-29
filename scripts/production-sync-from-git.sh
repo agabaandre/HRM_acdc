@@ -32,7 +32,8 @@ fi
 echo "==> APM: refresh autoload + clear caches"
 if [[ -f apm/artisan ]]; then
   (cd apm && composer dump-autoload -o 2>/dev/null || true)
-  (cd apm && php artisan view:clear && php artisan cache:clear && php artisan config:clear)
+  (cd apm && php artisan optimize:clear 2>/dev/null || true)
+  (cd apm && php artisan route:clear && php artisan view:clear && php artisan cache:clear && php artisan config:clear)
 fi
 
 echo "==> Staff portal: clear caches"

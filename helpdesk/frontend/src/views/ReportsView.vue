@@ -58,9 +58,20 @@ const adminSearchState = reactive<{
 const adminLoading = ref(false)
 const adminAgents = ref<{ id: number; name: string; email: string }[]>([])
 
+const adminFilterCount = computed(() => {
+  let n = 0
+  if (adminSearchState.q.trim()) n += 1
+  if (adminSearchState.agentIds.length) n += 1
+  if (adminSearchState.dateFrom) n += 1
+  if (adminSearchState.dateTo) n += 1
+  return n
+})
+
 const adminAgentItems = computed((): SelectNumberItem[] =>
-  adminAgents.value.map((a) => ({ label: `${a.name} (${a.email})`, value: a.id })),
+  adminAgents.value.map((a) => ({ label: a.name, value: a.id })),
 )
+
+const myFilterCount = computed(() => (mySearchState.q.trim() ? 1 : 0))
 
 const isAdmin = computed(
   () => !!auth.me?.profile?.is_helpdesk_admin || auth.me?.profile?.role === 'admin',
@@ -186,14 +197,6 @@ watch(() => adminSearchState.perPage, () => {
   loadAdmin()
 })
 
-watch(
-  () => [adminSearchState.agentIds, adminSearchState.dateFrom, adminSearchState.dateTo] as const,
-  () => {
-    adminPage.value = 1
-    loadAdmin()
-  },
-)
-
 async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
   try {
     const params: Record<string, unknown> = { scope }
@@ -243,9 +246,27 @@ onMounted(async () => {
   <div>
     <CbpPageHeading title="Reports" back-to="/" back-label="← Overview" />
     <div class="cbp-card">
-      <div v-if="isAdmin" class="tabs">
-        <button type="button" :class="{ on: tab === 'admin' }" @click="switchTab('admin')">Admin overview</button>
-        <button type="button" :class="{ on: tab === 'mine' }" @click="switchTab('mine')">My issues</button>
+      <div v-if="isAdmin" class="report-tabs" role="tablist" aria-label="Report views">
+        <button
+          type="button"
+          role="tab"
+          class="report-tab"
+          :class="{ 'report-tab--on': tab === 'admin' }"
+          :aria-selected="tab === 'admin'"
+          @click="switchTab('admin')"
+        >
+          Admin overview
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="report-tab"
+          :class="{ 'report-tab--on': tab === 'mine' }"
+          :aria-selected="tab === 'mine'"
+          @click="switchTab('mine')"
+        >
+          My issues
+        </button>
       </div>
 
       <template v-if="tab === 'mine' && myStats">
@@ -275,28 +296,44 @@ onMounted(async () => {
           <small class="tile-sub">Completed tickets</small>
         </article>
       </div>
-      <div class="toolbar">
-        <UForm :state="mySearchState" class="hd-search-form searchbar" @submit="mySearch">
-          <UFormField name="q" class="hd-form-toolbar-grow">
+      <details class="hd-filter-panel">
+        <summary class="hd-filter-panel__toggle">
+          <span class="hd-filter-panel__toggle-label">
+            <i class="bx bx-filter-alt" aria-hidden="true" />
+            Search &amp; filters
+          </span>
+          <span v-if="myFilterCount" class="hd-filter-panel__badge">{{ myFilterCount }} active</span>
+        </summary>
+        <UForm :state="mySearchState" class="hd-form hd-filter-panel__body" @submit="mySearch">
+          <UFormField label="Search" name="q" class="full">
             <UInput
               v-model="mySearchState.q"
               type="search"
               icon="i-lucide-search"
-              placeholder="Search my tickets by #, subject, status, assignee…"
+              placeholder="Ticket #, subject, status, assignee…"
               aria-label="Search my tickets"
               class="w-full"
+              size="lg"
             />
           </UFormField>
-          <UButton type="submit" color="primary">Search</UButton>
-          <UButton type="button" color="neutral" variant="outline" @click="myClear">Clear</UButton>
+          <div class="hd-form hd-form--grid hd-form--grid-2 full">
+            <UFormField label="Rows per page" name="perPage">
+              <USelect v-model="mySearchState.perPage" :items="PER_PAGE_ITEMS" class="w-full" size="lg" />
+            </UFormField>
+          </div>
+          <div class="hd-form-actions full">
+            <UButton type="submit" color="primary" size="lg" block>Apply filters</UButton>
+            <UButton type="button" color="neutral" variant="outline" size="lg" block @click="myClear">
+              Clear
+            </UButton>
+          </div>
         </UForm>
-        <UFormField label="Per page" name="perPage" class="meta">
-          <USelect v-model="mySearchState.perPage" :items="PER_PAGE_ITEMS" class="w-full" />
-        </UFormField>
+      </details>
+      <div class="report-tools">
+        <UButton type="button" color="primary" size="lg" block class="report-tools__btn" @click="downloadExcel('mine')">
+          Export my issues (Excel)
+        </UButton>
       </div>
-      <p class="tools">
-        <UButton type="button" color="primary" @click="downloadExcel('mine')">Export my issues (Excel)</UButton>
-      </p>
       <h2>My tickets &amp; assignees</h2>
       <div class="table-wrap">
         <p class="table-count" role="status">
@@ -361,9 +398,27 @@ onMounted(async () => {
         </div>
       </div>
       <div class="pager">
-        <button type="button" :disabled="!myHasPrev || myLoading" @click="myPage -= 1; loadMine()">Previous</button>
-        <span>Page {{ myPage }} of {{ myLastPage }}</span>
-        <button type="button" :disabled="!myHasNext || myLoading" @click="myPage += 1; loadMine()">Next</button>
+        <UButton
+          type="button"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          :disabled="!myHasPrev || myLoading"
+          @click="myPage -= 1; loadMine()"
+        >
+          Previous
+        </UButton>
+        <span class="pager__label">Page {{ myPage }} of {{ myLastPage }}</span>
+        <UButton
+          type="button"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          :disabled="!myHasNext || myLoading"
+          @click="myPage += 1; loadMine()"
+        >
+          Next
+        </UButton>
       </div>
     </template>
 
@@ -410,44 +465,73 @@ onMounted(async () => {
           <small class="tile-sub">Finalized after confirmation</small>
         </article>
       </div>
-      <p class="tools">
-        <UButton type="button" color="primary" @click="downloadExcel('all')">Export all tickets (Excel)</UButton>
-        <UButton type="button" color="neutral" variant="outline" @click="downloadExcel('assigned')">Export my assigned (Excel)</UButton>
-      </p>
-      <div class="toolbar">
-        <UForm :state="adminSearchState" class="hd-search-form searchbar" @submit="adminSearch">
-          <UFormField name="q" class="hd-form-toolbar-grow">
+      <div class="report-tools">
+        <UButton type="button" color="primary" size="lg" block class="report-tools__btn" @click="downloadExcel('all')">
+          Export all tickets (Excel)
+        </UButton>
+        <UButton
+          type="button"
+          color="neutral"
+          variant="outline"
+          size="lg"
+          block
+          class="report-tools__btn"
+          @click="downloadExcel('assigned')"
+        >
+          Export my assigned (Excel)
+        </UButton>
+      </div>
+      <details class="hd-filter-panel">
+        <summary class="hd-filter-panel__toggle">
+          <span class="hd-filter-panel__toggle-label">
+            <i class="bx bx-filter-alt" aria-hidden="true" />
+            Search &amp; filters
+          </span>
+          <span v-if="adminFilterCount" class="hd-filter-panel__badge">{{ adminFilterCount }} active</span>
+        </summary>
+        <UForm :state="adminSearchState" class="hd-form hd-filter-panel__body" @submit="adminSearch">
+          <UFormField label="Search" name="q" class="full">
             <UInput
               v-model="adminSearchState.q"
               type="search"
               icon="i-lucide-search"
-              placeholder="Search recent activity by #, subject, requester, assignee…"
+              placeholder="Ticket #, subject, requester, assignee…"
               aria-label="Search admin recent activity"
               class="w-full"
+              size="lg"
             />
           </UFormField>
-          <UButton type="submit" color="primary">Search</UButton>
-          <UButton type="button" color="neutral" variant="outline" @click="adminClear">Clear</UButton>
+          <UFormField label="Agents" name="agentIds" class="full">
+            <USelectMenu
+              v-model="adminSearchState.agentIds"
+              :items="adminAgentItems"
+              value-key="value"
+              multiple
+              searchable
+              placeholder="All agents"
+              class="w-full"
+              size="lg"
+            />
+          </UFormField>
+          <div class="hd-form hd-form--grid hd-form--grid-2 full">
+            <UFormField label="From date" name="dateFrom">
+              <UInput v-model="adminSearchState.dateFrom" type="date" class="w-full" size="lg" />
+            </UFormField>
+            <UFormField label="To date" name="dateTo">
+              <UInput v-model="adminSearchState.dateTo" type="date" class="w-full" size="lg" />
+            </UFormField>
+            <UFormField label="Rows per page" name="perPage">
+              <USelect v-model="adminSearchState.perPage" :items="PER_PAGE_ITEMS" class="w-full" size="lg" />
+            </UFormField>
+          </div>
+          <div class="hd-form-actions full">
+            <UButton type="submit" color="primary" size="lg" block>Apply filters</UButton>
+            <UButton type="button" color="neutral" variant="outline" size="lg" block @click="adminClear">
+              Clear all
+            </UButton>
+          </div>
         </UForm>
-        <UFormField label="Agents" name="agentIds" class="meta meta--agents">
-          <USelect
-            v-model="adminSearchState.agentIds"
-            multiple
-            :items="adminAgentItems"
-            placeholder="All agents"
-            class="w-full admin-agent-select"
-          />
-        </UFormField>
-        <UFormField label="From" name="dateFrom" class="meta meta--date">
-          <UInput v-model="adminSearchState.dateFrom" type="date" class="w-full" />
-        </UFormField>
-        <UFormField label="To" name="dateTo" class="meta meta--date">
-          <UInput v-model="adminSearchState.dateTo" type="date" class="w-full" />
-        </UFormField>
-        <UFormField label="Per page" name="perPage" class="meta">
-          <USelect v-model="adminSearchState.perPage" :items="PER_PAGE_ITEMS" class="w-full" />
-        </UFormField>
-      </div>
+      </details>
       <h2>Recent activity</h2>
       <div class="table-wrap">
         <p class="table-count" role="status">
@@ -512,9 +596,27 @@ onMounted(async () => {
         </div>
       </div>
       <div class="pager">
-        <button type="button" :disabled="!adminHasPrev || adminLoading" @click="adminPage -= 1; loadAdmin()">Previous</button>
-        <span>Page {{ adminPage }} of {{ adminLastPage }}</span>
-        <button type="button" :disabled="!adminHasNext || adminLoading" @click="adminPage += 1; loadAdmin()">Next</button>
+        <UButton
+          type="button"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          :disabled="!adminHasPrev || adminLoading"
+          @click="adminPage -= 1; loadAdmin()"
+        >
+          Previous
+        </UButton>
+        <span class="pager__label">Page {{ adminPage }} of {{ adminLastPage }}</span>
+        <UButton
+          type="button"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          :disabled="!adminHasNext || adminLoading"
+          @click="adminPage += 1; loadAdmin()"
+        >
+          Next
+        </UButton>
       </div>
     </template>
     <p v-else class="muted">Loading…</p>
@@ -523,29 +625,37 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.tabs {
-  display: flex;
+.report-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
+
+.report-tab {
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.report-tab--on {
+  background: #e8f5ee;
+  border-color: #119a48;
+  color: #065f2c;
+}
+
 h2 {
   font-size: 1.05rem;
   margin: 1rem 0 0.5rem;
   color: #2c3e50;
 }
-.tabs button {
-  padding: 0.4rem 0.85rem;
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  cursor: pointer;
-  font-weight: 600;
-}
-.tabs button.on {
-  background: #e8f5ee;
-  border-color: #119a48;
-  color: #065f2c;
-}
+
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -627,70 +737,26 @@ h2 {
   --tile-accent: #64748b;
   --tile-soft: #e2e8f0;
 }
-.tools {
-  margin: 1rem 0;
-}
-.toolbar {
+
+.report-tools {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0.75rem 0;
-  flex-wrap: wrap;
-}
-.searchbar {
-  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  flex: 1;
-  min-width: min(36rem, 100%);
+  margin: 0 0 1rem;
 }
-.searchbar input {
-  flex: 1;
-  min-width: 14rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 0.45rem 0.65rem;
+
+@media (min-width: 640px) {
+  .report-tools {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .report-tools__btn {
+    width: auto;
+    flex: 0 1 auto;
+  }
 }
-.meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.meta--agents {
-  min-width: 12rem;
-  max-width: 18rem;
-}
-.meta--date {
-  min-width: 9rem;
-}
-.admin-agent-select {
-  min-width: 12rem;
-}
-.meta label {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: #475569;
-  font-size: 0.88rem;
-}
-.meta select {
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
-}
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  border: none;
-  background: #119a48;
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
-  margin-right: 0.5rem;
-}
-.btn.secondary {
-  background: #334155;
-}
+
 .table-wrap {
   margin-bottom: 0.5rem;
 }
@@ -704,21 +770,28 @@ h2 {
 .pager {
   margin-top: 0.75rem;
   display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
   align-items: center;
 }
-.pager button {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #334155;
-  border-radius: 4px;
-  padding: 0.35rem 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
+
+@media (min-width: 640px) {
+  .pager {
+    justify-content: flex-end;
+  }
 }
-.pager button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+
+.pager__label {
+  font-size: 0.88rem;
+  color: #475569;
+  text-align: center;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .pager__label {
+    width: auto;
+  }
 }
 </style>

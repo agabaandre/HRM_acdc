@@ -32,6 +32,13 @@
   align-items: center;
 }
 
+@media (max-width: 639px) {
+  .hd-form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .hd-form-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -56,6 +63,100 @@
 .hd-search-form .u-form-field {
   flex: 1;
   min-width: 14rem;
+}
+
+/* Collapsible filter panel — mobile-friendly reports / list views */
+.hd-filter-panel {
+  margin: 0 0 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+html.helpdesk-theme-dark .hd-filter-panel {
+  border-color: rgba(148, 163, 184, 0.25);
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+}
+
+.hd-filter-panel__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #0f172a;
+  list-style: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hd-filter-panel__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.hd-filter-panel__toggle::after {
+  content: '▾';
+  color: #64748b;
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.hd-filter-panel[open] .hd-filter-panel__toggle::after {
+  transform: rotate(180deg);
+}
+
+html.helpdesk-theme-dark .hd-filter-panel__toggle {
+  color: #e2e8f0;
+}
+
+.hd-filter-panel__toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.hd-filter-panel__badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #e8f5ee;
+  color: #065f2c;
+}
+
+.hd-filter-panel__body {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+html.helpdesk-theme-dark .hd-filter-panel__body {
+  border-top-color: rgba(148, 163, 184, 0.2);
+}
+
+@media (min-width: 768px) {
+  .hd-filter-panel__toggle {
+    display: none;
+  }
+
+  .hd-filter-panel__body {
+    padding: 1rem;
+    border-top: none;
+  }
+
+  .hd-filter-panel:not([open]) .hd-filter-panel__body {
+    display: block;
+  }
+}
+
+@media (max-width: 767px) {
+  .hd-filter-panel:not([open]) .hd-filter-panel__body {
+    display: none;
+  }
 }
 
 .hd-rich-field .cbp-rich-text {
