@@ -481,10 +481,18 @@ class BudgetExecutionService
             $divisionId = (int) $summary['division_id'];
             $items = $grouped->get($divisionId, collect())->sortBy('title')->values()->all();
             $fundCodeRollup = $this->rollupFundCodes($items);
+            $totalWorkingBalance = round(collect($fundCodeRollup)->sum('working_balance'), 2);
 
             return array_merge($summary, [
                 'initiatives' => $items,
                 'fund_codes' => $fundCodeRollup,
+                'fund_code_count' => count($fundCodeRollup),
+                'remaining_budget' => round(max(0, (float) $summary['planned_budget'] - (float) $summary['executed_budget']), 2),
+                'total_working_balance' => $totalWorkingBalance,
+                'not_started_count' => (int) $summary['not_started_count'],
+                'partial_count' => (int) $summary['partial_count'],
+                'sr_count' => (int) $summary['sr_count'],
+                'arf_count' => (int) $summary['arf_count'],
             ]);
         })->values()->all();
     }
@@ -549,15 +557,22 @@ class BudgetExecutionService
                 $planned = round($group->sum('planned_budget'), 2);
                 $executed = round($group->sum('executed_budget'), 2);
                 $pct = $planned > 0 ? round(min(100, ($executed / $planned) * 100), 1) : 0.0;
+                $fullyExecuted = $group->where('fully_executed', true)->count();
+                $withSrOrArf = $group->where('has_sr_or_arf', true)->count();
 
                 return [
                     'division_id' => (int) $divisionId,
                     'division_name' => (string) ($group->first()['division_name'] ?? 'Unknown'),
                     'initiative_count' => $group->count(),
-                    'with_sr_or_arf' => $group->where('has_sr_or_arf', true)->count(),
-                    'fully_executed_count' => $group->where('fully_executed', true)->count(),
+                    'with_sr_or_arf' => $withSrOrArf,
+                    'fully_executed_count' => $fullyExecuted,
+                    'not_started_count' => $group->count() - $withSrOrArf,
+                    'partial_count' => max(0, $withSrOrArf - $fullyExecuted),
+                    'sr_count' => (int) $group->sum('sr_count'),
+                    'arf_count' => (int) $group->sum('arf_count'),
                     'planned_budget' => $planned,
                     'executed_budget' => $executed,
+                    'remaining_budget' => round(max(0, $planned - $executed), 2),
                     'execution_pct' => $pct,
                 ];
             })
@@ -575,13 +590,21 @@ class BudgetExecutionService
         $planned = round($initiatives->sum('planned_budget'), 2);
         $executed = round($initiatives->sum('executed_budget'), 2);
         $pct = $planned > 0 ? round(min(100, ($executed / $planned) * 100), 1) : 0.0;
+        $withSrOrArf = $initiatives->where('has_sr_or_arf', true)->count();
+        $fullyExecuted = $initiatives->where('fully_executed', true)->count();
 
         return [
             'initiative_count' => $initiatives->count(),
-            'with_sr_or_arf' => $initiatives->where('has_sr_or_arf', true)->count(),
-            'fully_executed_count' => $initiatives->where('fully_executed', true)->count(),
+            'division_count' => $initiatives->pluck('division_id')->unique()->count(),
+            'with_sr_or_arf' => $withSrOrArf,
+            'fully_executed_count' => $fullyExecuted,
+            'not_started_count' => $initiatives->count() - $withSrOrArf,
+            'partial_count' => max(0, $withSrOrArf - $fullyExecuted),
+            'sr_count' => (int) $initiatives->sum('sr_count'),
+            'arf_count' => (int) $initiatives->sum('arf_count'),
             'planned_budget' => $planned,
             'executed_budget' => $executed,
+            'remaining_budget' => round(max(0, $planned - $executed), 2),
             'execution_pct' => $pct,
         ];
     }

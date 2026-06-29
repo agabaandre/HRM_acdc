@@ -28,6 +28,8 @@ This document lists notable features, improvements, and changes to the APM (Appr
 - Fixed data API 500: removed invalid `division_name` column from matrix eager load.
 - Data endpoint now uses dedicated Redis page cache scope with retry / `nocache` support on the UI.
 - UI: division-first layout (loop all matching divisions), wrapped titles, fund-code balances per initiative, Excel/PDF export.
+- **Pagination:** 10 divisions per page with prev/next controls; summary KPIs cover all filtered data.
+- Division cards show **budget remaining**, **fund working balance**, execution ring, and status chips (100% / partial / not started).
 - Admins default to **All divisions** in the filter.
 
 ---

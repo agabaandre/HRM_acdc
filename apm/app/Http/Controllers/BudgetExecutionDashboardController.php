@@ -18,6 +18,8 @@ class BudgetExecutionDashboardController extends Controller
 {
     use CachesApmPageResponses;
 
+    private const DIVISIONS_PER_PAGE = 10;
+
     public function index(): View
     {
         $scope = BudgetExecutionScope::resolve();
@@ -57,22 +59,27 @@ class BudgetExecutionDashboardController extends Controller
     {
         try {
             [$divisionIds, $year, $quarter, $periodMode, $scope] = $this->resolveFilters($request);
+            $page = max(1, (int) $request->input('page', 1));
             $cacheKeyParts = $this->apmCacheKeyFromRequest($request, ['year', 'quarter', 'period_mode', 'division_id'], [
                 '_access' => $scope['access'],
                 '_allowed_divisions' => implode(',', $scope['allowed_division_ids'] ?? []),
             ]);
 
-            return $this->apmCachedJson('budget_execution', $request, $cacheKeyParts, function () use (
-                $divisionIds,
-                $year,
-                $quarter,
-                $periodMode,
-                $scope
-            ) {
+            if ($request->boolean('nocache')) {
                 $payload = $this->buildPayload($divisionIds, $year, $quarter, $periodMode, $scope);
+            } else {
+                $payload = \App\Services\ApmPageCache::remember('budget_execution', $cacheKeyParts, function () use (
+                    $divisionIds,
+                    $year,
+                    $quarter,
+                    $periodMode,
+                    $scope
+                ) {
+                    return $this->buildPayload($divisionIds, $year, $quarter, $periodMode, $scope);
+                });
+            }
 
-                return response()->json($payload);
-            });
+            return response()->json($this->applyDivisionPagination($payload, $page));
         } catch (Throwable $e) {
             return $this->jsonError($e, $request);
         }
@@ -189,6 +196,7 @@ class BudgetExecutionDashboardController extends Controller
             'quarter' => 'nullable|string|in:Q1,Q2,Q3,Q4',
             'period_mode' => 'nullable|string|in:quarterly,annual',
             'division_id' => 'nullable|integer|exists:divisions,id',
+            'page' => 'nullable|integer|min:1',
         ]);
 
         $scope = BudgetExecutionScope::resolve();
@@ -232,6 +240,33 @@ class BudgetExecutionDashboardController extends Controller
             'is_director' => $scope['is_director'],
         ];
         $payload['cached_at'] = now()->toIso8601String();
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function applyDivisionPagination(array $payload, int $page): array
+    {
+        $allDivisions = $payload['divisions'] ?? [];
+        $total = count($allDivisions);
+        $perPage = self::DIVISIONS_PER_PAGE;
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = min(max(1, $page), $lastPage);
+        $offset = ($page - 1) * $perPage;
+
+        $payload['divisions'] = array_slice($allDivisions, $offset, $perPage);
+        unset($payload['initiatives']);
+        $payload['pagination'] = [
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'last_page' => $lastPage,
+            'from' => $total > 0 ? $offset + 1 : 0,
+            'to' => min($offset + $perPage, $total),
+        ];
 
         return $payload;
     }
