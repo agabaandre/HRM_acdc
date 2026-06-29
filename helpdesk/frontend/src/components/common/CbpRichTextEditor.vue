@@ -455,10 +455,11 @@ defineExpose({
   font-size: 0.95rem;
 }
 .cbp-rich-text__editor :deep(.ql-editor) {
-  min-height: var(--cbp-rich-editor-min, 160px);
+  min-height: var(--cbp-rich-editor-min, 104px);
+  max-height: 480px;
   height: auto;
   line-height: 1.6;
-  overflow-y: visible;
+  overflow-y: auto;
   padding: 0.75rem 1rem;
 }
 .cbp-rich-text__editor :deep(.ql-editor img.cbp-quill-image),

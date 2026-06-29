@@ -28,7 +28,7 @@ cd "$ROOT"
 source "$ROOT/scripts/lib/paths.sh"
 staff_paths_resolve_from_module "$ROOT"
 
-SETUP_ENV="$ROOT/setup.env"
+SETUP_ENV="${HELPDESK_SETUP_ENV:-$ROOT/setup.env}"
 BACKEND="$ROOT/backend"
 FRONTEND="$ROOT/frontend"
 
@@ -76,6 +76,11 @@ fi
 
 export HELPDESK_SETUP_ENV="$SETUP_ENV"
 dotenv_load_file "$SETUP_ENV"
+
+# Prefer a working PHP binary over a stale setup.env path (e.g. /usr/bin/php on macOS Homebrew).
+if [[ -n "${PHP_BIN:-}" && ! -x "$PHP_BIN" ]]; then
+    PHP_BIN="$(command -v php 2>/dev/null || true)"
+fi
 
 # Production deploy always runs as production (overrides APP_ENV=local in setup.env).
 APP_ENV=production

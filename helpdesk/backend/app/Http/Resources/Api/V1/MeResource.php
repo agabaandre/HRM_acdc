@@ -38,6 +38,12 @@ class MeResource extends JsonResource
                 'can_reassign_tickets' => $p->canReassignTickets(),
                 'can_delete_request_attachments' => $p->canDeleteRequestAttachments(),
                 'can_change_ticket_category' => $p->canChangeTicketCategory(),
+                'can_manage_it_assets' => $p->canManageItAssets(),
+                'can_manage_licenses' => $p->canManageLicenses(),
+                'can_submit_software_requests' => $p->canSubmitSoftwareRequests(),
+                'can_approve_software_requests' => $p->canApproveSoftwareRequests(),
+                'can_manage_software_requests' => $p->canManageSoftwareRequests(),
+                'has_tools_access' => $p->hasAnyToolsAccess(),
             ] : null,
         ];
     }

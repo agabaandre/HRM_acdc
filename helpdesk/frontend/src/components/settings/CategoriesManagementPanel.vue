@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import type { FormError, FormSubmitEvent } from '@nuxt/ui'
+import type { FormError, FormSubmitEvent } from '../../types/form'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import { fieldError } from '../../lib/helpdeskForm'

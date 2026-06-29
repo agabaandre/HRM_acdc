@@ -5,7 +5,7 @@ import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
-import type { FormError, FormSubmitEvent } from '@nuxt/ui'
+import type { FormError, FormSubmitEvent } from '../types/form'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { fieldError, type SelectNumberItem } from '../lib/helpdeskForm'
 import {

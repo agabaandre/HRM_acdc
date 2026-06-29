@@ -21,6 +21,12 @@ import ConfirmResolutionView from '../views/ConfirmResolutionView.vue'
 import KbManageView from '../views/KbManageView.vue'
 import ScreenDashboardView from '../views/ScreenDashboardView.vue'
 import UserGuideView from '../views/UserGuideView.vue'
+import ToolsLayoutView from '../views/tools/ToolsLayoutView.vue'
+import ItAssetsView from '../views/tools/ItAssetsView.vue'
+import LicensesView from '../views/tools/LicensesView.vue'
+import SoftwareRequestsView from '../views/tools/SoftwareRequestsView.vue'
+import { profileHasToolsPermission } from '../lib/toolsPermissions'
+import type { ToolsPermissionKey } from '../lib/toolsNav'
 import { getStoredToken } from '../lib/api'
 import { redirectToStaffPortalHome, staffPortalHomeUrl } from '../lib/sso'
 import { parseSettingsSection } from '../settings/settingsSections'
@@ -128,6 +134,32 @@ const router = createRouter({
       component: ScreenDashboardView,
       meta: { public: true, chrome: false },
     },
+    {
+      path: '/tools',
+      component: ToolsLayoutView,
+      meta: { requiresAuth: true },
+      redirect: '/tools/software-requests',
+      children: [
+        {
+          path: 'it-assets',
+          name: 'tools-it-assets',
+          component: ItAssetsView,
+          meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_it_assets' as ToolsPermissionKey },
+        },
+        {
+          path: 'licenses',
+          name: 'tools-licenses',
+          component: LicensesView,
+          meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_licenses' as ToolsPermissionKey },
+        },
+        {
+          path: 'software-requests',
+          name: 'tools-software-requests',
+          component: SoftwareRequestsView,
+          meta: { requiresAuth: true, requiresSoftwareRequests: true },
+        },
+      ],
+    },
   ],
 })
 
@@ -167,7 +199,13 @@ router.beforeEach(async (to, from) => {
     }
   }
 
-  if (to.meta.requiresAdmin || to.meta.requiresStaff || to.meta.requiresKbManager) {
+  if (
+    to.meta.requiresAdmin ||
+    to.meta.requiresStaff ||
+    to.meta.requiresKbManager ||
+    to.meta.requiresToolsPermission ||
+    to.meta.requiresSoftwareRequests
+  ) {
     const pinia = getActivePinia()
     if (!pinia) {
       return { name: 'home' }
@@ -195,6 +233,23 @@ router.beforeEach(async (to, from) => {
       const canKb =
         isHelpdeskAdmin || !!auth.me?.profile?.can_manage_kb
       if (!canKb) {
+        return { name: 'home' }
+      }
+    }
+    if (to.meta.requiresToolsPermission) {
+      const key = to.meta.requiresToolsPermission as ToolsPermissionKey
+      if (!profileHasToolsPermission(auth.me?.profile, key)) {
+        return { name: 'home' }
+      }
+    }
+    if (to.meta.requiresSoftwareRequests) {
+      const p = auth.me?.profile
+      const allowed =
+        isHelpdeskAdmin ||
+        !!p?.can_submit_software_requests ||
+        !!p?.can_approve_software_requests ||
+        !!p?.can_manage_software_requests
+      if (!allowed) {
         return { name: 'home' }
       }
     }

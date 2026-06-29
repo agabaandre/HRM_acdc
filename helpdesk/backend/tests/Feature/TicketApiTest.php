@@ -97,6 +97,35 @@ class TicketApiTest extends TestCase
         $this->assertSame('colleague@example.org', $res->json('data.requester_email'));
     }
 
+    public function test_ticket_list_supports_sort_direction(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $user = $this->actingHelpdeskUser(77711);
+        Sanctum::actingAs($user);
+
+        $firstId = (int) $this->postJson('/api/v1/tickets', [
+            'category_id' => $cat->id,
+            'description' => 'First ticket',
+        ])->json('data.id');
+
+        $secondId = (int) $this->postJson('/api/v1/tickets', [
+            'category_id' => $cat->id,
+            'description' => 'Second ticket',
+        ])->json('data.id');
+
+        $desc = $this->getJson('/api/v1/tickets?sort_by=id&sort_dir=desc');
+        $desc->assertOk();
+        $descIds = array_map('intval', array_column($desc->json('data'), 'id'));
+        $this->assertSame([$secondId, $firstId], array_slice($descIds, 0, 2));
+
+        $asc = $this->getJson('/api/v1/tickets?sort_by=id&sort_dir=asc');
+        $asc->assertOk();
+        $ascIds = array_map('intval', array_column($asc->json('data'), 'id'));
+        $this->assertSame([$firstId, $secondId], array_slice($ascIds, 0, 2));
+    }
+
     public function test_admin_can_delete_ticket(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);

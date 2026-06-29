@@ -43,6 +43,11 @@ class AdminStaffPermissionController extends Controller
             'can_reassign_tickets' => ['sometimes', 'boolean'],
             'can_delete_request_attachments' => ['sometimes', 'boolean'],
             'can_change_ticket_category' => ['sometimes', 'boolean'],
+            'can_manage_it_assets' => ['sometimes', 'boolean'],
+            'can_manage_licenses' => ['sometimes', 'boolean'],
+            'can_submit_software_requests' => ['sometimes', 'boolean'],
+            'can_approve_software_requests' => ['sometimes', 'boolean'],
+            'can_manage_software_requests' => ['sometimes', 'boolean'],
         ]);
 
         $profile = $user->helpdeskProfile;
@@ -75,6 +80,11 @@ class AdminStaffPermissionController extends Controller
             'can_reassign_tickets',
             'can_delete_request_attachments',
             'can_change_ticket_category',
+            'can_manage_it_assets',
+            'can_manage_licenses',
+            'can_submit_software_requests',
+            'can_approve_software_requests',
+            'can_manage_software_requests',
         ] as $key) {
             if (array_key_exists($key, $validated)) {
                 $profile->{$key} = (bool) $validated[$key];
@@ -102,6 +112,11 @@ class AdminStaffPermissionController extends Controller
             'can_reassign_tickets' => (bool) ($p?->can_reassign_tickets),
             'can_delete_request_attachments' => (bool) ($p?->can_delete_request_attachments),
             'can_change_ticket_category' => (bool) ($p?->can_change_ticket_category),
+            'can_manage_it_assets' => (bool) ($p?->can_manage_it_assets),
+            'can_manage_licenses' => (bool) ($p?->can_manage_licenses),
+            'can_submit_software_requests' => (bool) ($p?->can_submit_software_requests ?? true),
+            'can_approve_software_requests' => (bool) ($p?->can_approve_software_requests),
+            'can_manage_software_requests' => (bool) ($p?->can_manage_software_requests),
         ];
     }
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import type { DataTableHeader } from 'vuetify'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
@@ -11,12 +12,23 @@ import {
   rowIndex,
   statusMeta,
 } from '../lib/ticketTableMeta'
-import { PER_PAGE_ITEMS, normalizePageSize, type PageSize, type SelectNumberItem } from '../lib/helpdeskForm'
+import { normalizePageSize, type PageSize, type SelectNumberItem } from '../lib/helpdeskForm'
 
 import { useAuthStore } from '../stores/auth'
 
+type SortItem = { key: string; order: 'asc' | 'desc' }
+
 const auth = useAuthStore()
 const tab = ref<'mine' | 'admin'>('mine')
+const itemsPerPageOptions = [10, 20, 50, 100] as const
+
+const reportHeaders: DataTableHeader[] = [
+  { title: '#', key: 'row_num', sortable: false, width: '52px', align: 'center' },
+  { title: 'Ticket', key: 'ticket_number', sortable: false, minWidth: '120px' },
+  { title: 'Subject', key: 'subject', sortable: false, minWidth: '200px' },
+  { title: 'Assigned to', key: 'assignee_name', sortable: false, minWidth: '150px' },
+  { title: 'Status', key: 'status', sortable: false, width: '130px' },
+]
 
 /** Ticket rows from report APIs (aligned with ticket API resource fields). */
 interface ReportTicket {
@@ -38,23 +50,24 @@ interface PaginatedTickets {
 const myStats = ref<{ total_received: number; pending: number; resolved: number } | null>(null)
 const myTickets = ref<ReportTicket[]>([])
 const myPage = ref(1)
-const myLastPage = ref(1)
 const myTotal = ref(0)
-const mySearchState = reactive<{ q: string; perPage: PageSize }>({ q: '', perPage: 20 })
+const myItemsPerPage = ref<PageSize>(20)
+const mySortBy = ref<SortItem[]>([{ key: 'id', order: 'desc' }])
+const mySearchState = reactive<{ q: string }>({ q: '' })
 const myLoading = ref(false)
 
 const adminCounts = ref<Record<string, number> | null>(null)
 const adminRecent = ref<ReportTicket[]>([])
 const adminPage = ref(1)
-const adminLastPage = ref(1)
 const adminTotal = ref(0)
+const adminItemsPerPage = ref<PageSize>(20)
+const adminSortBy = ref<SortItem[]>([{ key: 'id', order: 'desc' }])
 const adminSearchState = reactive<{
   q: string
-  perPage: PageSize
   agentIds: number[]
   dateFrom: string
   dateTo: string
-}>({ q: '', perPage: 20, agentIds: [], dateFrom: '', dateTo: '' })
+}>({ q: '', agentIds: [], dateFrom: '', dateTo: '' })
 const adminLoading = ref(false)
 const adminAgents = ref<{ id: number; name: string; email: string }[]>([])
 
@@ -76,23 +89,19 @@ const myFilterCount = computed(() => (mySearchState.q.trim() ? 1 : 0))
 const isAdmin = computed(
   () => !!auth.me?.profile?.is_helpdesk_admin || auth.me?.profile?.role === 'admin',
 )
-const myHasPrev = computed(() => myPage.value > 1)
-const myHasNext = computed(() => myPage.value < myLastPage.value)
-const adminHasPrev = computed(() => adminPage.value > 1)
-const adminHasNext = computed(() => adminPage.value < adminLastPage.value)
 const myTableCountLabel = computed(() =>
-  formatTableCountLabel(myTickets.value.length, myTotal.value, myPage.value, mySearchState.perPage),
+  formatTableCountLabel(myTickets.value.length, myTotal.value, myPage.value, myItemsPerPage.value),
 )
 const adminTableCountLabel = computed(() =>
-  formatTableCountLabel(adminRecent.value.length, adminTotal.value, adminPage.value, adminSearchState.perPage),
+  formatTableCountLabel(adminRecent.value.length, adminTotal.value, adminPage.value, adminItemsPerPage.value),
 )
 
 function myCounter(idx: number): number {
-  return rowIndex(myPage.value, mySearchState.perPage, idx)
+  return rowIndex(myPage.value, myItemsPerPage.value, idx)
 }
 
 function adminCounter(idx: number): number {
-  return rowIndex(adminPage.value, adminSearchState.perPage, idx)
+  return rowIndex(adminPage.value, adminItemsPerPage.value, idx)
 }
 
 async function loadMine() {
@@ -102,15 +111,14 @@ async function loadMine() {
       params: {
         q: mySearchState.q.trim() || undefined,
         page: myPage.value,
-        per_page: mySearchState.perPage,
+        per_page: myItemsPerPage.value,
       },
     })
     myStats.value = data.data.stats
     const tickets = (data.data.tickets ?? {}) as Partial<PaginatedTickets>
     myTickets.value = (tickets.data ?? []) as ReportTicket[]
     myPage.value = Number(tickets.current_page ?? myPage.value)
-    myLastPage.value = Math.max(1, Number(tickets.last_page ?? 1))
-    mySearchState.perPage = normalizePageSize(Number(tickets.per_page ?? mySearchState.perPage))
+    myItemsPerPage.value = normalizePageSize(Number(tickets.per_page ?? myItemsPerPage.value))
     myTotal.value = Number(tickets.total ?? myTickets.value.length)
   } finally {
     myLoading.value = false
@@ -121,7 +129,7 @@ function adminReportParams() {
   return {
     q: adminSearchState.q.trim() || undefined,
     page: adminPage.value,
-    per_page: adminSearchState.perPage,
+    per_page: adminItemsPerPage.value,
     agent_ids: adminSearchState.agentIds.length ? adminSearchState.agentIds : undefined,
     date_from: adminSearchState.dateFrom || undefined,
     date_to: adminSearchState.dateTo || undefined,
@@ -138,8 +146,7 @@ async function loadAdmin() {
     const recent = (data.data.recent ?? {}) as Partial<PaginatedTickets>
     adminRecent.value = (recent.data ?? []) as ReportTicket[]
     adminPage.value = Number(recent.current_page ?? adminPage.value)
-    adminLastPage.value = Math.max(1, Number(recent.last_page ?? 1))
-    adminSearchState.perPage = normalizePageSize(Number(recent.per_page ?? adminSearchState.perPage))
+    adminItemsPerPage.value = normalizePageSize(Number(recent.per_page ?? adminItemsPerPage.value))
     adminTotal.value = Number(recent.total ?? adminRecent.value.length)
   } finally {
     adminLoading.value = false
@@ -187,15 +194,19 @@ function adminClear() {
   loadAdmin()
 }
 
-watch(() => mySearchState.perPage, () => {
-  myPage.value = 1
-  loadMine()
-})
+function onMyUpdateOptions(options: { page: number; itemsPerPage: number; sortBy: SortItem[] }) {
+  myPage.value = options.page
+  myItemsPerPage.value = options.itemsPerPage as PageSize
+  mySortBy.value = options.sortBy
+  void loadMine()
+}
 
-watch(() => adminSearchState.perPage, () => {
-  adminPage.value = 1
-  loadAdmin()
-})
+function onAdminUpdateOptions(options: { page: number; itemsPerPage: number; sortBy: SortItem[] }) {
+  adminPage.value = options.page
+  adminItemsPerPage.value = options.itemsPerPage as PageSize
+  adminSortBy.value = options.sortBy
+  void loadAdmin()
+}
 
 async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
   try {
@@ -313,113 +324,83 @@ onMounted(async () => {
               placeholder="Ticket #, subject, status, assignee…"
               aria-label="Search my tickets"
               class="w-full"
-              size="lg"
             />
           </UFormField>
-          <div class="hd-form hd-form--grid hd-form--grid-2 full">
-            <UFormField label="Rows per page" name="perPage">
-              <USelect v-model="mySearchState.perPage" :items="PER_PAGE_ITEMS" class="w-full" size="lg" />
-            </UFormField>
-          </div>
           <div class="hd-form-actions full">
-            <UButton type="submit" color="primary" size="lg" block>Apply filters</UButton>
-            <UButton type="button" color="neutral" variant="outline" size="lg" block @click="myClear">
+            <UButton type="submit" color="primary">Apply filters</UButton>
+            <UButton type="button" color="neutral" variant="outline" @click="myClear">
               Clear
             </UButton>
           </div>
         </UForm>
       </details>
       <div class="report-tools">
-        <UButton type="button" color="primary" size="lg" block class="report-tools__btn" @click="downloadExcel('mine')">
+        <UButton type="button" color="primary" class="report-tools__btn" @click="downloadExcel('mine')">
           Export my issues (Excel)
         </UButton>
       </div>
       <h2>My tickets &amp; assignees</h2>
-      <div class="table-wrap">
-        <p class="table-count" role="status">
-          Showing <strong>{{ myTableCountLabel }}</strong>
-        </p>
-        <div class="table-scroll">
-          <table class="ticket-table cols-report">
-            <thead>
-              <tr>
-                <th class="col-idx" scope="col">#</th>
-                <th class="col-id" scope="col">Ticket</th>
-                <th class="col-subj" scope="col">Subject</th>
-                <th class="col-assignee" scope="col">Assigned to</th>
-                <th class="col-status" scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="myLoading">
-                <td colspan="5" class="cell-loading">Loading…</td>
-              </tr>
-              <template v-else>
-                <tr v-for="(t, idx) in myTickets" :key="t.id ?? idx">
-                  <td class="col-idx">
-                    <span class="row-counter">{{ myCounter(idx) }}</span>
-                  </td>
-                  <td class="col-id">
-                    <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="ticket-link">
-                      {{ t.ticket_number }}
-                    </RouterLink>
-                    <span v-else class="ticket-link">{{ t.ticket_number }}</span>
-                  </td>
-                  <td class="col-subj">
-                    <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="row-subj-line">
-                      {{ t.subject }}
-                    </RouterLink>
-                    <span v-else class="row-subj-line">{{ t.subject }}</span>
-                  </td>
-                  <td class="col-assignee">
-                    <div v-if="t.assignee" class="row-person">
-                      <CbpAvatar size="sm" :name="t.assignee.name" :image-url="t.assignee.avatar_url ?? null" />
-                      <span class="row-person-name">{{ t.assignee.name }}</span>
-                    </div>
-                    <span v-else class="cell-empty">—</span>
-                  </td>
-                  <td class="col-status">
-                    <span
-                      v-if="t.status"
-                      class="pill"
-                      :style="{ background: statusMeta(t.status).bg, color: statusMeta(t.status).color }"
-                    >
-                      {{ statusMeta(t.status).label }}
-                    </span>
-                    <span v-else class="cell-empty">—</span>
-                  </td>
-                </tr>
-                <tr v-if="myTickets.length === 0">
-                  <td colspan="5" class="cell-empty-msg">No matching tickets.</td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="pager">
-        <UButton
-          type="button"
-          color="neutral"
-          variant="outline"
-          size="sm"
-          :disabled="!myHasPrev || myLoading"
-          @click="myPage -= 1; loadMine()"
+      <v-card class="hd-data-table-card" variant="outlined">
+        <v-card-text class="hd-data-table-card__head">
+          <p class="table-count" role="status">
+            Showing <strong>{{ myTableCountLabel }}</strong>
+          </p>
+        </v-card-text>
+        <v-data-table-server
+          v-model:page="myPage"
+          v-model:items-per-page="myItemsPerPage"
+          v-model:sort-by="mySortBy"
+          class="hd-data-table"
+          :headers="reportHeaders"
+          :items="myTickets"
+          :items-length="myTotal"
+          :items-per-page-options="[...itemsPerPageOptions]"
+          :loading="myLoading"
+          density="compact"
+          hover
+          item-value="id"
+          @update:options="onMyUpdateOptions"
         >
-          Previous
-        </UButton>
-        <span class="pager__label">Page {{ myPage }} of {{ myLastPage }}</span>
-        <UButton
-          type="button"
-          color="neutral"
-          variant="outline"
-          size="sm"
-          :disabled="!myHasNext || myLoading"
-          @click="myPage += 1; loadMine()"
-        >
-          Next
-        </UButton>
-      </div>
+          <template #item.row_num="{ index }">
+            <span class="hd-dt-row-num">{{ myCounter(index) }}</span>
+          </template>
+          <template #item.ticket_number="{ item }">
+            <RouterLink v-if="item.id" :to="`/tickets/${item.id}`" class="hd-dt-ticket-link">
+              {{ item.ticket_number }}
+            </RouterLink>
+            <span v-else class="hd-dt-ticket-link">{{ item.ticket_number }}</span>
+          </template>
+          <template #item.subject="{ item }">
+            <RouterLink v-if="item.id" :to="`/tickets/${item.id}`" class="hd-dt-subject-link">
+              {{ item.subject }}
+            </RouterLink>
+            <span v-else class="hd-dt-subject-link">{{ item.subject }}</span>
+          </template>
+          <template #item.assignee_name="{ item }">
+            <div v-if="item.assignee" class="hd-dt-person">
+              <CbpAvatar size="sm" :name="item.assignee.name" :image-url="item.assignee.avatar_url ?? null" />
+              <span class="hd-dt-person-name">{{ item.assignee.name }}</span>
+            </div>
+            <span v-else class="hd-dt-empty">—</span>
+          </template>
+          <template #item.status="{ item }">
+            <span
+              v-if="item.status"
+              class="hd-dt-pill"
+              :style="{ background: statusMeta(item.status).bg, color: statusMeta(item.status).color }"
+            >
+              {{ statusMeta(item.status).label }}
+            </span>
+            <span v-else class="hd-dt-empty">—</span>
+          </template>
+          <template #no-data>
+            <div class="hd-dt-empty-msg">No matching tickets.</div>
+          </template>
+          <template #loading>
+            <div class="hd-dt-loading">Loading…</div>
+          </template>
+        </v-data-table-server>
+      </v-card>
     </template>
 
     <template v-else-if="tab === 'admin' && adminCounts">
@@ -466,15 +447,13 @@ onMounted(async () => {
         </article>
       </div>
       <div class="report-tools">
-        <UButton type="button" color="primary" size="lg" block class="report-tools__btn" @click="downloadExcel('all')">
+        <UButton type="button" color="primary" class="report-tools__btn" @click="downloadExcel('all')">
           Export all tickets (Excel)
         </UButton>
         <UButton
           type="button"
           color="neutral"
           variant="outline"
-          size="lg"
-          block
           class="report-tools__btn"
           @click="downloadExcel('assigned')"
         >
@@ -498,7 +477,6 @@ onMounted(async () => {
               placeholder="Ticket #, subject, requester, assignee…"
               aria-label="Search admin recent activity"
               class="w-full"
-              size="lg"
             />
           </UFormField>
           <UFormField label="Agents" name="agentIds" class="full">
@@ -510,114 +488,86 @@ onMounted(async () => {
               searchable
               placeholder="All agents"
               class="w-full"
-              size="lg"
             />
           </UFormField>
           <div class="hd-form hd-form--grid hd-form--grid-2 full">
             <UFormField label="From date" name="dateFrom">
-              <UInput v-model="adminSearchState.dateFrom" type="date" class="w-full" size="lg" />
+              <UInput v-model="adminSearchState.dateFrom" type="date" class="w-full" />
             </UFormField>
             <UFormField label="To date" name="dateTo">
-              <UInput v-model="adminSearchState.dateTo" type="date" class="w-full" size="lg" />
-            </UFormField>
-            <UFormField label="Rows per page" name="perPage">
-              <USelect v-model="adminSearchState.perPage" :items="PER_PAGE_ITEMS" class="w-full" size="lg" />
+              <UInput v-model="adminSearchState.dateTo" type="date" class="w-full" />
             </UFormField>
           </div>
           <div class="hd-form-actions full">
-            <UButton type="submit" color="primary" size="lg" block>Apply filters</UButton>
-            <UButton type="button" color="neutral" variant="outline" size="lg" block @click="adminClear">
+            <UButton type="submit" color="primary">Apply filters</UButton>
+            <UButton type="button" color="neutral" variant="outline" @click="adminClear">
               Clear all
             </UButton>
           </div>
         </UForm>
       </details>
       <h2>Recent activity</h2>
-      <div class="table-wrap">
-        <p class="table-count" role="status">
-          Showing <strong>{{ adminTableCountLabel }}</strong>
-        </p>
-        <div class="table-scroll">
-          <table class="ticket-table cols-report">
-            <thead>
-              <tr>
-                <th class="col-idx" scope="col">#</th>
-                <th class="col-id" scope="col">Ticket</th>
-                <th class="col-subj" scope="col">Subject</th>
-                <th class="col-assignee" scope="col">Assigned to</th>
-                <th class="col-status" scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="adminLoading">
-                <td colspan="5" class="cell-loading">Loading…</td>
-              </tr>
-              <template v-else>
-                <tr v-for="(t, idx) in adminRecent" :key="t.id ?? idx">
-                  <td class="col-idx">
-                    <span class="row-counter">{{ adminCounter(idx) }}</span>
-                  </td>
-                  <td class="col-id">
-                    <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="ticket-link">
-                      {{ t.ticket_number }}
-                    </RouterLink>
-                    <span v-else class="ticket-link">{{ t.ticket_number }}</span>
-                  </td>
-                  <td class="col-subj">
-                    <RouterLink v-if="t.id" :to="`/tickets/${t.id}`" class="row-subj-line">
-                      {{ t.subject }}
-                    </RouterLink>
-                    <span v-else class="row-subj-line">{{ t.subject }}</span>
-                  </td>
-                  <td class="col-assignee">
-                    <div v-if="t.assignee" class="row-person">
-                      <CbpAvatar size="sm" :name="t.assignee.name" :image-url="t.assignee.avatar_url ?? null" />
-                      <span class="row-person-name">{{ t.assignee.name }}</span>
-                    </div>
-                    <span v-else class="cell-empty">—</span>
-                  </td>
-                  <td class="col-status">
-                    <span
-                      v-if="t.status"
-                      class="pill"
-                      :style="{ background: statusMeta(t.status).bg, color: statusMeta(t.status).color }"
-                    >
-                      {{ statusMeta(t.status).label }}
-                    </span>
-                    <span v-else class="cell-empty">—</span>
-                  </td>
-                </tr>
-                <tr v-if="adminRecent.length === 0">
-                  <td colspan="5" class="cell-empty-msg">No matching tickets.</td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="pager">
-        <UButton
-          type="button"
-          color="neutral"
-          variant="outline"
-          size="sm"
-          :disabled="!adminHasPrev || adminLoading"
-          @click="adminPage -= 1; loadAdmin()"
+      <v-card class="hd-data-table-card" variant="outlined">
+        <v-card-text class="hd-data-table-card__head">
+          <p class="table-count" role="status">
+            Showing <strong>{{ adminTableCountLabel }}</strong>
+          </p>
+        </v-card-text>
+        <v-data-table-server
+          v-model:page="adminPage"
+          v-model:items-per-page="adminItemsPerPage"
+          v-model:sort-by="adminSortBy"
+          class="hd-data-table"
+          :headers="reportHeaders"
+          :items="adminRecent"
+          :items-length="adminTotal"
+          :items-per-page-options="[...itemsPerPageOptions]"
+          :loading="adminLoading"
+          density="compact"
+          hover
+          item-value="id"
+          @update:options="onAdminUpdateOptions"
         >
-          Previous
-        </UButton>
-        <span class="pager__label">Page {{ adminPage }} of {{ adminLastPage }}</span>
-        <UButton
-          type="button"
-          color="neutral"
-          variant="outline"
-          size="sm"
-          :disabled="!adminHasNext || adminLoading"
-          @click="adminPage += 1; loadAdmin()"
-        >
-          Next
-        </UButton>
-      </div>
+          <template #item.row_num="{ index }">
+            <span class="hd-dt-row-num">{{ adminCounter(index) }}</span>
+          </template>
+          <template #item.ticket_number="{ item }">
+            <RouterLink v-if="item.id" :to="`/tickets/${item.id}`" class="hd-dt-ticket-link">
+              {{ item.ticket_number }}
+            </RouterLink>
+            <span v-else class="hd-dt-ticket-link">{{ item.ticket_number }}</span>
+          </template>
+          <template #item.subject="{ item }">
+            <RouterLink v-if="item.id" :to="`/tickets/${item.id}`" class="hd-dt-subject-link">
+              {{ item.subject }}
+            </RouterLink>
+            <span v-else class="hd-dt-subject-link">{{ item.subject }}</span>
+          </template>
+          <template #item.assignee_name="{ item }">
+            <div v-if="item.assignee" class="hd-dt-person">
+              <CbpAvatar size="sm" :name="item.assignee.name" :image-url="item.assignee.avatar_url ?? null" />
+              <span class="hd-dt-person-name">{{ item.assignee.name }}</span>
+            </div>
+            <span v-else class="hd-dt-empty">—</span>
+          </template>
+          <template #item.status="{ item }">
+            <span
+              v-if="item.status"
+              class="hd-dt-pill"
+              :style="{ background: statusMeta(item.status).bg, color: statusMeta(item.status).color }"
+            >
+              {{ statusMeta(item.status).label }}
+            </span>
+            <span v-else class="hd-dt-empty">—</span>
+          </template>
+          <template #no-data>
+            <div class="hd-dt-empty-msg">No matching tickets.</div>
+          </template>
+          <template #loading>
+            <div class="hd-dt-loading">Loading…</div>
+          </template>
+        </v-data-table-server>
+      </v-card>
     </template>
     <p v-else class="muted">Loading…</p>
     </div>

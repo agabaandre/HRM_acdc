@@ -917,14 +917,12 @@ html.helpdesk-theme-dark .hd-btn--outline {
   min-width: 0;
 }
 
-.hd-ask-compose-field .u-form-field,
-.hd-ask-compose-field [data-slot="root"] {
+.hd-ask-compose-field .hd-v-form-field {
   width: 100%;
 }
 
-.hd-ask-textarea {
-  width: 100% !important;
-  min-height: 3.25rem;
+.hd-ask-textarea .v-field__input {
+  min-height: unset;
 }
 
 .hd-ask-compose-actions {

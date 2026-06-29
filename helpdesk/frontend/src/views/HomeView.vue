@@ -3,7 +3,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpBadgeStrip from '../components/common/CbpBadgeStrip.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
-import HomeAgentKanban from '../components/home/HomeAgentKanban.vue'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { staffPortalHomeUrl } from '../lib/sso'
@@ -70,7 +69,7 @@ const isAgentHome = computed(() => isAgentDeskUser(auth.me?.profile))
 
 const homeLede = computed(() => {
   if (isAgentHome.value) {
-    return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Use the board below to triage your queue, then browse FAQs or log requests from the shortcuts.'
+    return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Use Agent desk for your triage board and queue, browse FAQs below, or log requests from the shortcuts.'
   }
   return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Ask our AI assistant for guided troubleshooting, browse FAQs below, or log a new request for the service desk team.'
 })
@@ -188,8 +187,6 @@ onMounted(() => {
     </UCard>
 
     <template v-else>
-      <HomeAgentKanban v-if="isAgentHome" />
-
       <nav
         v-if="isAgentHome"
         class="hd-shortcut-row"

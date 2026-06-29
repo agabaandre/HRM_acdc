@@ -39,6 +39,11 @@ class HelpdeskProfile extends Model
         'can_reassign_tickets',
         'can_delete_request_attachments',
         'can_change_ticket_category',
+        'can_manage_it_assets',
+        'can_manage_licenses',
+        'can_submit_software_requests',
+        'can_approve_software_requests',
+        'can_manage_software_requests',
         'grant_helpdesk_admin',
         'grant_supervisor_access',
         'directorate_id',
@@ -58,6 +63,11 @@ class HelpdeskProfile extends Model
             'can_reassign_tickets' => 'boolean',
             'can_delete_request_attachments' => 'boolean',
             'can_change_ticket_category' => 'boolean',
+            'can_manage_it_assets' => 'boolean',
+            'can_manage_licenses' => 'boolean',
+            'can_submit_software_requests' => 'boolean',
+            'can_approve_software_requests' => 'boolean',
+            'can_manage_software_requests' => 'boolean',
             'grant_helpdesk_admin' => 'boolean',
             'grant_supervisor_access' => 'boolean',
             'is_designated_agent' => 'boolean',
@@ -211,5 +221,59 @@ class HelpdeskProfile extends Model
         }
 
         return (bool) $this->can_change_ticket_category;
+    }
+
+    public function canManageItAssets(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->can_manage_it_assets;
+    }
+
+    public function canManageLicenses(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->can_manage_licenses;
+    }
+
+    public function canSubmitSoftwareRequests(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return $this->can_submit_software_requests !== false;
+    }
+
+    public function canApproveSoftwareRequests(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->can_approve_software_requests || (bool) $this->can_manage_software_requests;
+    }
+
+    public function canManageSoftwareRequests(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->can_manage_software_requests;
+    }
+
+    public function hasAnyToolsAccess(): bool
+    {
+        return $this->canManageItAssets()
+            || $this->canManageLicenses()
+            || $this->canSubmitSoftwareRequests()
+            || $this->canApproveSoftwareRequests()
+            || $this->canManageSoftwareRequests();
     }
 }

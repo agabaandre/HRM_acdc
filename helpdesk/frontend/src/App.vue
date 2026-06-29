@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
+import { useTheme } from 'vuetify'
 import CbpTopHeader from './components/layout/CbpTopHeader.vue'
 import CbpThemeSwitch from './components/layout/CbpThemeSwitch.vue'
 import CbpPrimaryNav from './components/layout/CbpPrimaryNav.vue'
@@ -8,10 +9,10 @@ import CbpPageFooter from './components/layout/CbpPageFooter.vue'
 import CbpRoutePreloader from './components/common/CbpRoutePreloader.vue'
 import { routePreloaderVisible } from './lib/appPreloader'
 import { useAuthStore } from './stores/auth'
-import { ref } from 'vue'
 
 const auth = useAuthStore()
 const route = useRoute()
+const vuetifyTheme = useTheme()
 const theme = ref<'dark' | 'light'>('light')
 const THEME_KEY = 'helpdesk.theme'
 
@@ -27,6 +28,7 @@ const contentLoadingClass = computed(() =>
 
 function applyTheme(next: 'dark' | 'light') {
   theme.value = next
+  vuetifyTheme.global.name.value = next
   document.documentElement.classList.toggle('helpdesk-theme-dark', next === 'dark')
   document.documentElement.classList.toggle('helpdesk-theme-light', next === 'light')
 }

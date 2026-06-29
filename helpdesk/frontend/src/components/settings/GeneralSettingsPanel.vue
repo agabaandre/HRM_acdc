@@ -293,42 +293,16 @@ function roleLabel(c: CandidateRow): string {
           </div>
         </header>
         <div class="color-grid">
-          <label class="color-field">
-            <span>Primary colour</span>
-            <div class="color-input-row">
-              <input
-                v-model="ctx.form.branding_primary_hex"
-                type="color"
-                class="color-swatch-input"
-                :aria-label="'Primary colour picker'"
-              />
-              <UInput
-                v-model="ctx.form.branding_primary_hex"
-                type="text"
-                pattern="^#[0-9A-Fa-f]{6}$"
-                placeholder="#0d7a3a"
-                class="w-full"
-              />
-            </div>
-          </label>
-          <label class="color-field">
-            <span>Accent gold</span>
-            <div class="color-input-row">
-              <input
-                v-model="ctx.form.branding_secondary_hex"
-                type="color"
-                class="color-swatch-input"
-                :aria-label="'Accent colour picker'"
-              />
-              <UInput
-                v-model="ctx.form.branding_secondary_hex"
-                type="text"
-                pattern="^#[0-9A-Fa-f]{6}$"
-                placeholder="#c9a227"
-                class="w-full"
-              />
-            </div>
-          </label>
+          <UColorInput
+            v-model="ctx.form.branding_primary_hex"
+            label="Primary colour"
+            placeholder="#0d7a3a"
+          />
+          <UColorInput
+            v-model="ctx.form.branding_secondary_hex"
+            label="Accent gold"
+            placeholder="#c9a227"
+          />
         </div>
       </article>
 
@@ -614,32 +588,6 @@ function roleLabel(c: CandidateRow): string {
 .color-grid {
   display: grid;
   gap: 0.75rem;
-}
-.color-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #334155;
-}
-.color-input-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-.color-input-row :deep(.u-input) {
-  flex: 1;
-  min-width: 0;
-}
-.color-swatch-input {
-  width: 2.5rem;
-  height: 2.5rem;
-  padding: 0;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  cursor: pointer;
-  background: transparent;
 }
 .toggle-row {
   display: flex;

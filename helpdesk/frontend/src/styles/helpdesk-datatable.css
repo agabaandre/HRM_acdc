@@ -1,0 +1,126 @@
+/* Shared Vuetify data-table styling (tickets, reports, agent desk). */
+.hd-data-table-card {
+  overflow: hidden;
+}
+
+.hd-data-table-card__head {
+  padding-bottom: 0.25rem !important;
+}
+
+.hd-data-table-card .table-count {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.hd-data-table-card .table-count strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.hd-data-table.v-data-table {
+  background: transparent;
+}
+
+.hd-data-table .v-data-table__th {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  white-space: nowrap;
+}
+
+.hd-data-table .v-data-table__td {
+  font-size: 0.84rem;
+  vertical-align: middle;
+}
+
+.hd-data-table .v-data-table-footer {
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+/* Cell primitives */
+.hd-dt-row-num {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.hd-dt-ticket-link {
+  font-weight: 700;
+  color: #0d7a3a;
+  text-decoration: none;
+}
+
+.hd-dt-ticket-link:hover {
+  text-decoration: underline;
+}
+
+.hd-dt-subject-link {
+  display: block;
+  color: #0f172a;
+  text-decoration: none;
+  line-height: 1.35;
+}
+
+.hd-dt-subject-link:hover {
+  color: #0d7a3a;
+  text-decoration: underline;
+}
+
+.hd-dt-person {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.hd-dt-person-name {
+  font-size: 0.84rem;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hd-dt-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.hd-dt-empty,
+.hd-dt-empty-msg {
+  color: #94a3b8;
+  font-size: 0.84rem;
+}
+
+.hd-dt-empty-msg {
+  padding: 1.25rem 0;
+  text-align: center;
+}
+
+.hd-dt-loading {
+  padding: 1rem 0;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.hd-page-toolbar .hd-v-form__fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hd-page-toolbar .hd-form-toolbar-grow {
+  flex: 1;
+  min-width: min(16rem, 100%);
+}

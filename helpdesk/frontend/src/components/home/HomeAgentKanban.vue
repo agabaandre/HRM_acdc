@@ -8,6 +8,14 @@ import { notifyError, notifySuccess } from '../../lib/notify'
 import { priorityMeta } from '../../lib/ticketTableMeta'
 import { useAuthStore } from '../../stores/auth'
 
+withDefaults(
+  defineProps<{
+    /** Hide “Open full agent desk” when already on the agent dashboard. */
+    embedded?: boolean
+  }>(),
+  { embedded: false },
+)
+
 export interface KanbanTicket {
   id: number
   ticket_number: string
@@ -287,7 +295,7 @@ onMounted(() => {
     </div>
 
     <footer class="hd-kanban-foot">
-      <RouterLink to="/desk/agent" class="hd-kanban-link">Open full agent desk →</RouterLink>
+      <RouterLink v-if="!embedded" to="/desk/agent" class="hd-kanban-link">Open full agent desk →</RouterLink>
       <RouterLink to="/tickets" class="hd-kanban-link">All tickets →</RouterLink>
     </footer>
   </section>

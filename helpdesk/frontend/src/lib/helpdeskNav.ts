@@ -10,6 +10,7 @@ export const HELP_DESK_NAV_ICONS = {
   reports: 'bx bx-bar-chart-alt-2',
   screen: 'bx bx-tv',
   settings: 'bx bx-cog',
+  tools: 'bx bx-wrench',
 } as const
 
 export const SETTINGS_NAV_ICONS: Record<string, string> = {

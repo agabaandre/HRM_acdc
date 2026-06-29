@@ -24,6 +24,11 @@ fi
 
 dotenv_load_file "$SETUP_ENV"
 
+if [[ -n "${PHP_BIN:-}" && ! -x "$PHP_BIN" ]]; then
+    PHP_BIN="$(command -v php 2>/dev/null || true)"
+fi
+export PHP_BIN
+
 ENV_PREEXISTED=0
 [[ -f "$BACKEND_ENV" ]] && ENV_PREEXISTED=1
 [[ -f "$BACKEND_ENV" ]] || cp "$HELPDESK_ROOT/backend/.env.example" "$BACKEND_ENV"

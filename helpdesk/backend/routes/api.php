@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Tools\ItAssetController;
+use App\Http\Controllers\Api\V1\Tools\LicenseController;
+use App\Http\Controllers\Api\V1\Tools\SoftwareRequestController;
 use App\Http\Controllers\Api\V1\Admin\AdminAuditLogController;
 use App\Http\Controllers\Api\V1\Admin\AdminDivisionAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminFaqIngestController;
@@ -121,5 +124,27 @@ Route::prefix('v1')->group(function () {
         Route::put('/admin/sla-rules/{slaRule}', [AdminHelpdeskSlaRuleController::class, 'update']);
         Route::post('/admin/reference-sync', [AdminReferenceSyncController::class, 'store']);
         Route::get('/admin/audit-logs', [AdminAuditLogController::class, 'index']);
+
+        // Tools — IT Assets, Licenses, Software requests
+        Route::get('/tools/it-assets/summary', [ItAssetController::class, 'summary']);
+        Route::get('/tools/it-assets/categories', [ItAssetController::class, 'categories']);
+        Route::post('/tools/it-assets/categories', [ItAssetController::class, 'storeCategory']);
+        Route::get('/tools/it-assets', [ItAssetController::class, 'index']);
+        Route::post('/tools/it-assets', [ItAssetController::class, 'store']);
+        Route::put('/tools/it-assets/{asset}', [ItAssetController::class, 'update']);
+        Route::delete('/tools/it-assets/{asset}', [ItAssetController::class, 'destroy']);
+
+        Route::get('/tools/licenses/summary', [LicenseController::class, 'summary']);
+        Route::get('/tools/licenses', [LicenseController::class, 'index']);
+        Route::post('/tools/licenses', [LicenseController::class, 'store']);
+        Route::put('/tools/licenses/{license}', [LicenseController::class, 'update']);
+        Route::delete('/tools/licenses/{license}', [LicenseController::class, 'destroy']);
+
+        Route::get('/tools/software-requests', [SoftwareRequestController::class, 'index']);
+        Route::post('/tools/software-requests', [SoftwareRequestController::class, 'store']);
+        Route::get('/tools/software-requests/{softwareRequest}', [SoftwareRequestController::class, 'show']);
+        Route::put('/tools/software-requests/{softwareRequest}', [SoftwareRequestController::class, 'update']);
+        Route::post('/tools/software-requests/{softwareRequest}/approve', [SoftwareRequestController::class, 'approve']);
+        Route::post('/tools/software-requests/{softwareRequest}/team', [SoftwareRequestController::class, 'syncTeam']);
     });
 });

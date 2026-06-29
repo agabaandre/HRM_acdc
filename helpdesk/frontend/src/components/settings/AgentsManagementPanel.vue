@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import type { FormError, FormSubmitEvent } from '@nuxt/ui'
+import type { FormError, FormSubmitEvent } from '../../types/form'
 import { RouterLink } from 'vue-router'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
@@ -34,6 +34,11 @@ interface AgentRow {
   can_reassign_tickets: boolean
   can_delete_request_attachments: boolean
   can_change_ticket_category: boolean
+  can_manage_it_assets: boolean
+  can_manage_licenses: boolean
+  can_submit_software_requests: boolean
+  can_approve_software_requests: boolean
+  can_manage_software_requests: boolean
   grant_helpdesk_admin: boolean
   grant_supervisor_access: boolean
   categories: Cat[]
@@ -55,6 +60,11 @@ interface StaffPermissionRow {
   can_reassign_tickets: boolean
   can_delete_request_attachments: boolean
   can_change_ticket_category: boolean
+  can_manage_it_assets: boolean
+  can_manage_licenses: boolean
+  can_submit_software_requests: boolean
+  can_approve_software_requests: boolean
+  can_manage_software_requests: boolean
 }
 
 interface CandidateRow {
@@ -89,6 +99,11 @@ const kbToggle = ref<Record<number, boolean>>({})
 const reassignToggle = ref<Record<number, boolean>>({})
 const deleteAttachmentToggle = ref<Record<number, boolean>>({})
 const changeCategoryToggle = ref<Record<number, boolean>>({})
+const itAssetsToggle = ref<Record<number, boolean>>({})
+const licensesToggle = ref<Record<number, boolean>>({})
+const swSubmitToggle = ref<Record<number, boolean>>({})
+const swApproveToggle = ref<Record<number, boolean>>({})
+const swManageToggle = ref<Record<number, boolean>>({})
 const adminToggle = ref<Record<number, boolean>>({})
 const supervisorToggle = ref<Record<number, boolean>>({})
 const staffPermissions = ref<StaffPermissionRow[]>([])
@@ -98,6 +113,11 @@ const staffPermKb = ref<Record<number, boolean>>({})
 const staffPermReassign = ref<Record<number, boolean>>({})
 const staffPermDeleteAttachment = ref<Record<number, boolean>>({})
 const staffPermChangeCategory = ref<Record<number, boolean>>({})
+const staffPermItAssets = ref<Record<number, boolean>>({})
+const staffPermLicenses = ref<Record<number, boolean>>({})
+const staffPermSwSubmit = ref<Record<number, boolean>>({})
+const staffPermSwApprove = ref<Record<number, boolean>>({})
+const staffPermSwManage = ref<Record<number, boolean>>({})
 const pickerOpen = ref(false)
 const candidates = ref<CandidateRow[]>([])
 const candidatesLoading = ref(false)
@@ -177,6 +197,11 @@ async function loadAgents() {
     reassign[a.id] = !!a.can_reassign_tickets
     deleteAttachment[a.id] = !!a.can_delete_request_attachments
     changeCategory[a.id] = !!a.can_change_ticket_category
+    itAssetsToggle.value[a.id] = !!a.can_manage_it_assets
+    licensesToggle.value[a.id] = !!a.can_manage_licenses
+    swSubmitToggle.value[a.id] = !!a.can_submit_software_requests
+    swApproveToggle.value[a.id] = !!a.can_approve_software_requests
+    swManageToggle.value[a.id] = !!a.can_manage_software_requests
     admin[a.id] = !!a.grant_helpdesk_admin
     supervisor[a.id] = !!a.grant_supervisor_access
   }
@@ -207,6 +232,11 @@ async function loadStaffPermissions() {
     reassign[row.id] = !!row.can_reassign_tickets
     deleteAttachment[row.id] = !!row.can_delete_request_attachments
     changeCategory[row.id] = !!row.can_change_ticket_category
+    staffPermItAssets.value[row.id] = !!row.can_manage_it_assets
+    staffPermLicenses.value[row.id] = !!row.can_manage_licenses
+    staffPermSwSubmit.value[row.id] = !!row.can_submit_software_requests
+    staffPermSwApprove.value[row.id] = !!row.can_approve_software_requests
+    staffPermSwManage.value[row.id] = !!row.can_manage_software_requests
   }
   staffPermAdmin.value = admin
   staffPermSupervisor.value = supervisor
@@ -324,6 +354,11 @@ async function saveStaffPermissions(userId: number) {
       can_reassign_tickets: !!staffPermReassign.value[userId],
       can_delete_request_attachments: !!staffPermDeleteAttachment.value[userId],
       can_change_ticket_category: !!staffPermChangeCategory.value[userId],
+      can_manage_it_assets: !!staffPermItAssets.value[userId],
+      can_manage_licenses: !!staffPermLicenses.value[userId],
+      can_submit_software_requests: !!staffPermSwSubmit.value[userId],
+      can_approve_software_requests: !!staffPermSwApprove.value[userId],
+      can_manage_software_requests: !!staffPermSwManage.value[userId],
     })
     notifySuccess(`Saved permission overrides for user #${userId}`)
     await loadStaffPermissions()
@@ -353,6 +388,11 @@ async function saveAgent(userId: number) {
       can_reassign_tickets: !!reassignToggle.value[userId],
       can_delete_request_attachments: !!deleteAttachmentToggle.value[userId],
       can_change_ticket_category: !!changeCategoryToggle.value[userId],
+      can_manage_it_assets: !!itAssetsToggle.value[userId],
+      can_manage_licenses: !!licensesToggle.value[userId],
+      can_submit_software_requests: !!swSubmitToggle.value[userId],
+      can_approve_software_requests: !!swApproveToggle.value[userId],
+      can_manage_software_requests: !!swManageToggle.value[userId],
       grant_helpdesk_admin: !!adminToggle.value[userId],
       grant_supervisor_access: !!supervisorToggle.value[userId],
     })
@@ -736,6 +776,12 @@ onMounted(() => {
               <UCheckbox v-model="reassignToggle[a.id]" label="Reassign tickets" class="perm-toggle" />
               <UCheckbox v-model="deleteAttachmentToggle[a.id]" label="Delete request attachments" class="perm-toggle" />
               <UCheckbox v-model="changeCategoryToggle[a.id]" label="Change ticket category" class="perm-toggle" />
+              <p class="perm-group-label">Tools</p>
+              <UCheckbox v-model="itAssetsToggle[a.id]" label="Manage IT assets" class="perm-toggle" />
+              <UCheckbox v-model="licensesToggle[a.id]" label="Manage licenses" class="perm-toggle" />
+              <UCheckbox v-model="swSubmitToggle[a.id]" label="Submit software requests" class="perm-toggle" />
+              <UCheckbox v-model="swApproveToggle[a.id]" label="Approve software requests" class="perm-toggle" />
+              <UCheckbox v-model="swManageToggle[a.id]" label="Manage software requests" class="perm-toggle" />
             </div>
           </div>
 
@@ -774,6 +820,11 @@ onMounted(() => {
               <UCheckbox v-model="staffPermReassign[row.id]" label="Reassign" class="perm-toggle" />
               <UCheckbox v-model="staffPermDeleteAttachment[row.id]" label="Delete attachments" class="perm-toggle" />
               <UCheckbox v-model="staffPermChangeCategory[row.id]" label="Change category" class="perm-toggle" />
+              <UCheckbox v-model="staffPermItAssets[row.id]" label="IT assets" class="perm-toggle" />
+              <UCheckbox v-model="staffPermLicenses[row.id]" label="Licenses" class="perm-toggle" />
+              <UCheckbox v-model="staffPermSwSubmit[row.id]" label="SW requests (submit)" class="perm-toggle" />
+              <UCheckbox v-model="staffPermSwApprove[row.id]" label="SW requests (approve)" class="perm-toggle" />
+              <UCheckbox v-model="staffPermSwManage[row.id]" label="SW requests (manage)" class="perm-toggle" />
             </td>
             <td><UButton type="button" color="primary" size="xs" @click="saveStaffPermissions(row.id)">Save</UButton></td>
           </tr>
@@ -865,6 +916,7 @@ onMounted(() => {
 .ghost { padding: 0.4rem 0.85rem; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; color: #334155; font-weight: 600; cursor: pointer; }
 .ghost-sm { padding: 0.32rem 0.7rem; font-size: 0.8rem; }
 .perm-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: #3a4452; margin-bottom: 0.3rem; cursor: pointer; }
+.perm-group-label { margin: 0.5rem 0 0.15rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 0.88rem; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
 .tbl th, .tbl td { text-align: left; padding: 0.6rem 0.55rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
 .tbl th { background: #f8fafc; font-size: 0.74rem; text-transform: uppercase; color: #475569; }

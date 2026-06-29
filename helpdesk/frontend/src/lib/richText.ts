@@ -1,7 +1,7 @@
 export type RichTextVariant = 'standard' | 'full'
 
 /** Default minimum visible editor rows (~line height 1.6 × 15px font). */
-export const DEFAULT_RICH_TEXT_MIN_ROWS = 5
+export const DEFAULT_RICH_TEXT_MIN_ROWS = 3
 
 /** Pixel height for one editor row (used for min-height + auto-grow). */
 export const RICH_TEXT_ROW_PX = 28
@@ -129,8 +129,9 @@ export function buildQuillOptions(params: BuildQuillOptionsParams = {}): Record<
 export function setupQuillAutoGrow(quill: { root: HTMLElement; on: (e: string, fn: () => void) => void }, minPx: number): void {
   const editor = quill.root
   const grow = () => {
+    const isBlank = editor.classList.contains('ql-blank')
     editor.style.height = 'auto'
-    const next = Math.max(minPx, editor.scrollHeight + 2)
+    const next = isBlank ? minPx : Math.max(minPx, editor.scrollHeight + 2)
     editor.style.height = `${next}px`
     const container = editor.closest('.ql-container') as HTMLElement | null
     if (container) {

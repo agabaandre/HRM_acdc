@@ -23,6 +23,9 @@ helpdesk_resolve_staff_api_token_from_apm() {
     local backend_env="$1"
     local staff_root="$2"
     local php_bin="${3:-${PHP_BIN:-php}}"
+    if [[ ! -x "$php_bin" ]]; then
+        php_bin="$(command -v php 2>/dev/null || echo php)"
+    fi
     local apm_dir current token
 
     current="$(dotenv_get "$backend_env" STAFF_API_TOKEN 2>/dev/null || true)"
@@ -76,7 +79,7 @@ helpdesk_inherit_sensitive_from_portal_env() {
         fi
     fi
 
-    helpdesk_resolve_staff_api_token_from_apm "$backend_env" "$staff_root"
+    helpdesk_resolve_staff_api_token_from_apm "$backend_env" "$staff_root" "${PHP_BIN:-php}"
     helpdesk_ensure_app_logo_url "$backend_env"
 }
 

@@ -1,4 +1,4 @@
-import type { FormError } from '@nuxt/ui'
+import type { FormError } from '../types/form'
 
 export type { FormError }
 

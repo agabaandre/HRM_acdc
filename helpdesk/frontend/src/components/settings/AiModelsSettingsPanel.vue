@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { FormSubmitEvent } from '@nuxt/ui'
+import type { FormSubmitEvent } from '../../types/form'
 import { useInjectedHelpdeskAdminSettings } from '../../composables/useHelpdeskAdminSettings'
 import type { AiProviderId } from '../../lib/aiProviderPresets'
 import { applyAiProviderPreset, aiModelPlaceholder, normalizeAiProvider } from '../../lib/aiProviderPresets'

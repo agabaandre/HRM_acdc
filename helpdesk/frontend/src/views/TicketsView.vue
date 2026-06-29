@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import type { DataTableHeader } from 'vuetify'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import TicketReassignModal, {
@@ -9,15 +10,10 @@ import TicketReassignModal, {
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { canReassignTickets, ticketStatusAllowsReassign } from '../lib/canReassignTickets'
-import { PER_PAGE_ITEMS, type PageSize } from '../lib/helpdeskForm'
+import { type PageSize } from '../lib/helpdeskForm'
 import { notifyError } from '../lib/notify'
 import { useAuthStore } from '../stores/auth'
-import {
-  formatTableCountLabel,
-  priorityMeta,
-  rowIndex,
-  statusMeta,
-} from '../lib/ticketTableMeta'
+import { formatTableCountLabel, priorityMeta, statusMeta } from '../lib/ticketTableMeta'
 
 interface AssigneeBrief {
   id: number
@@ -36,37 +32,45 @@ interface TicketRow {
   assignee?: AssigneeBrief | null
 }
 
+type SortItem = { key: string; order: 'asc' | 'desc' }
+
 const auth = useAuthStore()
 const rows = ref<TicketRow[]>([])
 const loading = ref(false)
-const searchState = reactive<{ q: string; perPage: PageSize }>({ q: '', perPage: 20 })
-const q = computed({
-  get: () => searchState.q,
-  set: (v: string) => {
-    searchState.q = v
-  },
-})
-const perPage = computed({
-  get: () => searchState.perPage,
-  set: (v: PageSize) => {
-    searchState.perPage = v
-  },
-})
+const searchState = reactive<{ q: string }>({ q: '' })
+const q = ref('')
 const total = ref(0)
-const lastPage = ref(1)
 const page = ref(1)
+const itemsPerPage = ref<PageSize>(20)
+const sortBy = ref<SortItem[]>([{ key: 'id', order: 'desc' }])
 const reassignTicket = ref<ReassignTicketRef | null>(null)
+
+const itemsPerPageOptions = [10, 20, 50, 100] as const
 
 const canReassign = computed(() => canReassignTickets(auth.me?.profile))
 
-const hasPrev = computed(() => page.value > 1)
-const hasNext = computed(() => page.value < lastPage.value)
 const tableCountLabel = computed(() =>
-  formatTableCountLabel(rows.value.length, total.value, page.value, perPage.value),
+  formatTableCountLabel(rows.value.length, total.value, page.value, itemsPerPage.value),
 )
 
-function counterFor(idx: number): number {
-  return rowIndex(page.value, perPage.value, idx)
+const headers = computed((): DataTableHeader[] => {
+  const cols: DataTableHeader[] = [
+    { title: '#', key: 'row_num', sortable: false, width: '52px', align: 'center' },
+    { title: 'Ticket', key: 'ticket_number', sortable: true, minWidth: '120px' },
+    { title: 'Subject', key: 'subject', sortable: true, minWidth: '200px' },
+    { title: 'Requester', key: 'requester_name', sortable: true, minWidth: '150px' },
+    { title: 'Assigned to', key: 'assignee_name', sortable: true, minWidth: '150px' },
+    { title: 'Status', key: 'status', sortable: true, width: '130px' },
+    { title: 'Priority', key: 'priority', sortable: true, width: '110px' },
+  ]
+  if (canReassign.value) {
+    cols.push({ title: 'Actions', key: 'actions', sortable: false, align: 'end', width: '110px' })
+  }
+  return cols
+})
+
+function rowNumber(index: number): number {
+  return (page.value - 1) * itemsPerPage.value + index + 1
 }
 
 function canReassignRow(row: TicketRow): boolean {
@@ -87,17 +91,19 @@ function closeReassign(): void {
 
 async function load() {
   loading.value = true
+  const sort = sortBy.value[0]
   try {
     const { data } = await api.get('/api/v1/tickets', {
       params: {
         q: q.value.trim() || undefined,
         page: page.value,
-        per_page: perPage.value,
+        per_page: itemsPerPage.value,
+        sort_by: sort?.key && sort.key !== 'row_num' ? sort.key : 'id',
+        sort_dir: sort?.order ?? 'desc',
       },
     })
     rows.value = data.data as TicketRow[]
     total.value = Number(data.meta?.total ?? rows.value.length ?? 0)
-    lastPage.value = Math.max(1, Number(data.meta?.last_page ?? 1))
     page.value = Math.max(1, Number(data.meta?.current_page ?? page.value))
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Failed to load tickets'))
@@ -106,146 +112,144 @@ async function load() {
   }
 }
 
+function onUpdateOptions(options: {
+  page: number
+  itemsPerPage: number
+  sortBy: SortItem[]
+}) {
+  page.value = options.page
+  itemsPerPage.value = options.itemsPerPage as PageSize
+  sortBy.value = options.sortBy.length > 0 ? options.sortBy : [{ key: 'id', order: 'desc' }]
+  void load()
+}
+
 function doSearch() {
+  q.value = searchState.q
   page.value = 1
-  load()
+  void load()
 }
 
 function resetSearch() {
+  searchState.q = ''
   q.value = ''
   page.value = 1
-  load()
+  void load()
 }
-
-watch(() => searchState.perPage, () => {
-  page.value = 1
-  load()
-})
-
-onMounted(load)
 </script>
 
 <template>
   <div>
     <CbpPageHeading title="Tickets" back-to="/" back-label="← Overview" />
-    <div class="tools">
-      <UForm :state="searchState" class="hd-search-form searchbar" @submit="doSearch">
-        <UFormField name="q" class="hd-form-toolbar-grow">
-          <UInput
-            v-model="searchState.q"
-            type="search"
-            icon="i-lucide-search"
-            placeholder="Search by ticket #, subject, requester, assignee, category, status…"
-            aria-label="Search tickets"
-            class="w-full"
+
+    <v-card class="hd-data-table-card hd-page-toolbar" variant="outlined">
+      <v-card-text class="hd-page-toolbar__search">
+        <UForm :state="searchState" class="hd-search-form" @submit="doSearch">
+          <UFormField name="q" class="hd-form-toolbar-grow">
+            <UInput
+              v-model="searchState.q"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Search by ticket #, subject, requester, assignee, category, status…"
+              aria-label="Search tickets"
+              class="w-full"
+            />
+          </UFormField>
+          <UButton type="submit" color="primary">Search</UButton>
+          <UButton type="button" color="neutral" variant="outline" @click="resetSearch">Clear</UButton>
+        </UForm>
+      </v-card-text>
+
+      <v-card-text class="hd-data-table-card__head">
+        <p class="table-count" role="status">
+          Showing <strong>{{ tableCountLabel }}</strong>
+        </p>
+      </v-card-text>
+
+      <v-data-table-server
+        v-model:page="page"
+        v-model:items-per-page="itemsPerPage"
+        v-model:sort-by="sortBy"
+        class="hd-data-table"
+        :headers="headers"
+        :items="rows"
+        :items-length="total"
+        :items-per-page-options="[...itemsPerPageOptions]"
+        :loading="loading"
+        density="compact"
+        hover
+        item-value="id"
+        @update:options="onUpdateOptions"
+      >
+        <template #item.row_num="{ index }">
+          <span class="hd-dt-row-num">{{ rowNumber(index) }}</span>
+        </template>
+
+        <template #item.ticket_number="{ item }">
+          <RouterLink :to="`/tickets/${item.id}`" class="hd-dt-ticket-link">{{ item.ticket_number }}</RouterLink>
+        </template>
+
+        <template #item.subject="{ item }">
+          <RouterLink :to="`/tickets/${item.id}`" class="hd-dt-subject-link">{{ item.subject }}</RouterLink>
+        </template>
+
+        <template #item.requester_name="{ item }">
+          <div class="hd-dt-person">
+            <CbpAvatar size="sm" :name="item.requester_name || 'Requester'" :image-url="null" />
+            <span class="hd-dt-person-name">{{ item.requester_name || '—' }}</span>
+          </div>
+        </template>
+
+        <template #item.assignee_name="{ item }">
+          <div v-if="item.assignee" class="hd-dt-person">
+            <CbpAvatar size="sm" :name="item.assignee.name" :image-url="item.assignee.avatar_url ?? null" />
+            <span class="hd-dt-person-name">{{ item.assignee.name }}</span>
+          </div>
+          <span v-else class="hd-dt-empty">—</span>
+        </template>
+
+        <template #item.status="{ item }">
+          <span
+            class="hd-dt-pill"
+            :style="{ background: statusMeta(item.status).bg, color: statusMeta(item.status).color }"
+          >
+            {{ statusMeta(item.status).label }}
+          </span>
+        </template>
+
+        <template #item.priority="{ item }">
+          <span
+            class="hd-dt-pill"
+            :style="{ background: priorityMeta(item.priority).bg, color: priorityMeta(item.priority).color }"
+          >
+            {{ priorityMeta(item.priority).label }}
+          </span>
+        </template>
+
+        <template v-if="canReassign" #item.actions="{ item }">
+          <UButton
+            v-if="canReassignRow(item)"
+            type="button"
+            color="neutral"
+            variant="outline"
+            size="xs"
+            label="Reassign"
+            title="Reassign this ticket to another agent"
+            @click.stop="openReassign(item)"
           />
-        </UFormField>
-        <UButton type="submit" color="primary">Search</UButton>
-        <UButton type="button" color="neutral" variant="outline" @click="resetSearch">Clear</UButton>
-      </UForm>
-      <UFormField label="Per page" name="perPage" class="meta">
-        <USelect
-          v-model="searchState.perPage"
-          :items="PER_PAGE_ITEMS"
-          class="w-full"
-        />
-      </UFormField>
-    </div>
-    <div class="cbp-card table-section">
-      <p class="table-count" role="status">
-        Showing <strong>{{ tableCountLabel }}</strong>
-      </p>
-      <div class="table-scroll">
-        <table class="ticket-table">
-          <thead>
-            <tr>
-              <th class="col-idx" scope="col">#</th>
-              <th class="col-id" scope="col">Ticket</th>
-              <th class="col-subj" scope="col">Subject</th>
-              <th class="col-req" scope="col">Requester</th>
-              <th class="col-assignee" scope="col">Assigned to</th>
-              <th class="col-status" scope="col">Status</th>
-              <th class="col-priority" scope="col">Priority</th>
-              <th v-if="canReassign" class="col-action" scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="loading">
-              <td :colspan="canReassign ? 8 : 7" class="cell-loading">Loading…</td>
-            </tr>
-            <template v-else>
-            <tr v-for="(t, idx) in rows" :key="t.id">
-              <td class="col-idx">
-                <span class="row-counter">{{ counterFor(idx) }}</span>
-              </td>
-              <td class="col-id">
-                <RouterLink :to="`/tickets/${t.id}`" class="ticket-link">{{ t.ticket_number }}</RouterLink>
-              </td>
-              <td class="col-subj">
-                <RouterLink :to="`/tickets/${t.id}`" class="row-subj-line">{{ t.subject }}</RouterLink>
-              </td>
-              <td class="col-req">
-                <div class="row-person">
-                  <CbpAvatar size="sm" :name="t.requester_name || 'Requester'" :image-url="null" />
-                  <span class="row-person-name">{{ t.requester_name || '—' }}</span>
-                </div>
-              </td>
-              <td class="col-assignee">
-                <div v-if="t.assignee" class="row-person">
-                  <CbpAvatar size="sm" :name="t.assignee.name" :image-url="t.assignee.avatar_url ?? null" />
-                  <span class="row-person-name">{{ t.assignee.name }}</span>
-                </div>
-                <span v-else class="cell-empty">—</span>
-              </td>
-              <td class="col-status">
-                <span
-                  class="pill"
-                  :style="{ background: statusMeta(t.status).bg, color: statusMeta(t.status).color }"
-                >
-                  {{ statusMeta(t.status).label }}
-                </span>
-              </td>
-              <td class="col-priority">
-                <span
-                  class="pill"
-                  :style="{ background: priorityMeta(t.priority).bg, color: priorityMeta(t.priority).color }"
-                >
-                  {{ priorityMeta(t.priority).label }}
-                </span>
-              </td>
-              <td v-if="canReassign" class="col-action">
-                <UButton
-                  v-if="canReassignRow(t)"
-                  type="button"
-                  color="neutral"
-                  variant="outline"
-                  size="xs"
-                  label="Reassign"
-                  title="Reassign this ticket to another agent"
-                  @click.stop="openReassign(t)"
-                />
-                <span v-else class="cell-empty">—</span>
-              </td>
-            </tr>
-            <tr v-if="rows.length === 0">
-              <td :colspan="canReassign ? 8 : 7" class="cell-empty-msg">
-                No tickets yet — create one from <RouterLink to="/tickets/new">New ticket</RouterLink>.
-              </td>
-            </tr>
-            </template>
-          </tbody>
-        </table>
-      </div>
-      <div class="pager">
-        <UButton type="button" color="neutral" variant="outline" size="sm" :disabled="!hasPrev || loading" @click="page -= 1; load()">
-          Previous
-        </UButton>
-        <span>Page {{ page }} of {{ lastPage }}</span>
-        <UButton type="button" color="neutral" variant="outline" size="sm" :disabled="!hasNext || loading" @click="page += 1; load()">
-          Next
-        </UButton>
-      </div>
-    </div>
+          <span v-else class="hd-dt-empty">—</span>
+        </template>
+
+        <template #no-data>
+          <div class="hd-dt-empty-msg">
+            No tickets yet — create one from <RouterLink to="/tickets/new">New ticket</RouterLink>.
+          </div>
+        </template>
+
+        <template #loading>
+          <div class="hd-dt-loading">Loading tickets…</div>
+        </template>
+      </v-data-table-server>
+    </v-card>
 
     <TicketReassignModal
       :ticket="reassignTicket"
@@ -256,98 +260,8 @@ onMounted(load)
 </template>
 
 <style scoped>
-.tools {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
-.searchbar {
-  display: flex;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: min(36rem, 100%);
-}
-.searchbar input {
-  flex: 1;
-  min-width: 14rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 0.45rem 0.65rem;
-}
-.searchbar button {
-  border: 1px solid #119a48;
-  background: #119a48;
-  color: #fff;
-  border-radius: 4px;
-  padding: 0.45rem 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.searchbar button.ghost {
-  border-color: #cbd5e1;
-  background: #fff;
-  color: #334155;
-}
-.meta label {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: #475569;
-  font-size: 0.88rem;
-}
-.meta select {
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
-}
-.table-section {
-  padding: 1rem 1.1rem;
-}
-.err {
-  color: #b91c1c;
-}
-.pager {
-  margin-top: 0.75rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  align-items: center;
-}
-.pager button {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #334155;
-  border-radius: 4px;
-  padding: 0.35rem 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.pager button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.col-action {
-  text-align: right;
-  white-space: nowrap;
-}
-.reassign-btn {
-  padding: 0.25rem 0.45rem;
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #1e293b;
-  font-size: 0.68rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
-}
-.reassign-btn:hover {
-  background: #0d7a3a;
-  border-color: #0d7a3a;
-  color: #fff;
+.hd-page-toolbar__search {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 </style>

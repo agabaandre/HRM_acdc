@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, reactive, ref } from 'vue'
-import type { FormError, FormSubmitEvent } from '@nuxt/ui'
+import type { FormError, FormSubmitEvent } from '../types/form'
 import { RouterLink } from 'vue-router'
 import CbpBadgeStrip from '../components/common/CbpBadgeStrip.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
@@ -295,7 +295,7 @@ function onComposeKeydown(event: KeyboardEvent): void {
             color="neutral"
             variant="outline"
             size="sm"
-            class="hd-prompt-chip"
+            class="hd-prompt-chip hd-v-btn--auto"
             :disabled="sending"
             @click="usePrompt(p)"
           >

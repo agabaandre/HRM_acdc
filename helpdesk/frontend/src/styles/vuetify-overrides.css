@@ -1,0 +1,73 @@
+/* Vuetify + Helpdesk layout integration */
+.w-full {
+  width: 100%;
+}
+
+.hd-v-card {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.v-application {
+  font-family: var(--font-sans, Arial, Roboto, sans-serif);
+}
+
+/* Match button anatomy to compact outlined fields — https://vuetifyjs.com/en/components/buttons/#anatomy */
+.v-application .hd-v-btn.v-btn {
+  height: var(--v-input-control-height, 40px);
+  min-height: var(--v-input-control-height, 40px);
+  padding-inline: 16px;
+  font-size: 0.875rem;
+}
+
+.v-application .hd-v-btn.v-btn--size-small {
+  height: 32px;
+  min-height: 32px;
+  padding-inline: 12px;
+  font-size: 0.8125rem;
+}
+
+.v-application .hd-v-btn.v-btn--size-large,
+.v-application .hd-v-btn.v-btn--size-x-large {
+  height: var(--v-input-control-height, 40px);
+  min-height: var(--v-input-control-height, 40px);
+  padding-inline: 16px;
+  font-size: 0.875rem;
+}
+
+.v-application .hd-v-btn.hd-v-btn--auto {
+  height: auto;
+  min-height: unset;
+}
+
+/* Tighter form fields — https://vuetifyjs.com/en/components/color-inputs/#usage */
+.hd-v-input .v-field,
+.hd-v-select .v-field,
+.hd-v-select-menu .v-field,
+.hd-v-color-input .v-field,
+.hd-v-textarea .v-field {
+  border-radius: 4px;
+}
+
+.hd-v-form-field {
+  width: 100%;
+}
+
+.hd-form .hd-v-form-field,
+.hd-form--grid .hd-v-form-field {
+  margin-bottom: 0;
+}
+
+.hd-form-actions {
+  align-items: center;
+}
+
+.hd-form-toolbar,
+.hd-search-form {
+  align-items: center;
+}
+
+.hd-filter-panel .v-field {
+  background: transparent;
+}
+
+/* Inline form rows: field + button share baseline */

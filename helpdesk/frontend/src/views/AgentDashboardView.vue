@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
+import HomeAgentKanban from '../components/home/HomeAgentKanban.vue'
 import TicketReassignModal, {
   type ReassignTicketRef,
 } from '../components/tickets/TicketReassignModal.vue'
@@ -328,6 +329,8 @@ onUnmounted(() => {
         Your workload at a glance — what's open, what's overdue, and what needs your attention next.
       </template>
     </CbpPageHeading>
+
+    <HomeAgentKanban embedded class="agent-kanban" />
 
     <header class="dash-hello">
       <div>
@@ -664,6 +667,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.agent-kanban {
+  margin-bottom: 0.25rem;
 }
 
 .dash-hello {

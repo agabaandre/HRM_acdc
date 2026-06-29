@@ -19,6 +19,12 @@ export interface MeProfile {
   can_reassign_tickets?: boolean
   can_delete_request_attachments?: boolean
   can_change_ticket_category?: boolean
+  can_manage_it_assets?: boolean
+  can_manage_licenses?: boolean
+  can_submit_software_requests?: boolean
+  can_approve_software_requests?: boolean
+  can_manage_software_requests?: boolean
+  has_tools_access?: boolean
 }
 
 export interface MeUser {

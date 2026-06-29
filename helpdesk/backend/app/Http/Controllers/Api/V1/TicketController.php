@@ -43,8 +43,7 @@ class TicketController extends Controller
             $profile = $user->helpdeskProfile;
             $qTerm = trim((string) $request->query('q', ''));
             $q = HelpdeskTicket::query()
-                ->with(['category', 'assignee.helpdeskProfile', 'assignedGroup', 'attachments'])
-                ->orderByDesc('id');
+                ->with(['category', 'assignee.helpdeskProfile', 'assignedGroup', 'attachments']);
 
             if ($profile && $profile->role === HelpdeskProfile::ROLE_USER && $profile->staff_id) {
                 $uid = $user->id;
@@ -56,6 +55,7 @@ class TicketController extends Controller
             }
 
             $this->applyTicketSearch($q, $qTerm);
+            $this->applyTicketSort($q, $request);
 
             $tickets = $q->paginate(min((int) $request->get('per_page', 20), 100));
 
@@ -490,5 +490,41 @@ class TicketController extends Controller
                         ->orWhere('email', 'like', $like);
                 });
         });
+    }
+
+    private function applyTicketSort(\Illuminate\Database\Eloquent\Builder $query, Request $request): void
+    {
+        $sortBy = (string) $request->query('sort_by', 'id');
+        $sortDir = strtolower((string) $request->query('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $columns = [
+            'id' => 'helpdesk_tickets.id',
+            'ticket_number' => 'helpdesk_tickets.ticket_number',
+            'subject' => 'helpdesk_tickets.subject',
+            'requester_name' => 'helpdesk_tickets.requester_name',
+            'status' => 'helpdesk_tickets.status',
+            'priority' => 'helpdesk_tickets.priority',
+            'created_at' => 'helpdesk_tickets.created_at',
+        ];
+
+        if ($sortBy === 'assignee_name') {
+            $query->orderBy(
+                User::query()
+                    ->select('name')
+                    ->whereColumn('users.id', 'helpdesk_tickets.assigned_user_id')
+                    ->limit(1),
+                $sortDir
+            );
+
+            return;
+        }
+
+        if (! array_key_exists($sortBy, $columns)) {
+            $query->orderByDesc('helpdesk_tickets.id');
+
+            return;
+        }
+
+        $query->orderBy($columns[$sortBy], $sortDir);
     }
 }

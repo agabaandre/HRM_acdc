@@ -41,6 +41,11 @@ class AdminHelpdeskAgentController extends Controller
             'can_reassign_tickets' => (bool) ($u->helpdeskProfile?->can_reassign_tickets),
             'can_delete_request_attachments' => (bool) ($u->helpdeskProfile?->can_delete_request_attachments),
             'can_change_ticket_category' => (bool) ($u->helpdeskProfile?->can_change_ticket_category),
+            'can_manage_it_assets' => (bool) ($u->helpdeskProfile?->can_manage_it_assets),
+            'can_manage_licenses' => (bool) ($u->helpdeskProfile?->can_manage_licenses),
+            'can_submit_software_requests' => (bool) ($u->helpdeskProfile?->can_submit_software_requests ?? true),
+            'can_approve_software_requests' => (bool) ($u->helpdeskProfile?->can_approve_software_requests),
+            'can_manage_software_requests' => (bool) ($u->helpdeskProfile?->can_manage_software_requests),
             'grant_helpdesk_admin' => (bool) ($u->helpdeskProfile?->grant_helpdesk_admin),
             'grant_supervisor_access' => (bool) ($u->helpdeskProfile?->grant_supervisor_access),
             'role' => $u->helpdeskProfile?->role,
@@ -74,6 +79,11 @@ class AdminHelpdeskAgentController extends Controller
             'can_reassign_tickets' => ['sometimes', 'boolean'],
             'can_delete_request_attachments' => ['sometimes', 'boolean'],
             'can_change_ticket_category' => ['sometimes', 'boolean'],
+            'can_manage_it_assets' => ['sometimes', 'boolean'],
+            'can_manage_licenses' => ['sometimes', 'boolean'],
+            'can_submit_software_requests' => ['sometimes', 'boolean'],
+            'can_approve_software_requests' => ['sometimes', 'boolean'],
+            'can_manage_software_requests' => ['sometimes', 'boolean'],
             'grant_helpdesk_admin' => ['sometimes', 'boolean'],
             'grant_supervisor_access' => ['sometimes', 'boolean'],
         ]);
@@ -84,23 +94,22 @@ class AdminHelpdeskAgentController extends Controller
         }
 
         $profile->is_designated_agent = true;
-        if (array_key_exists('can_manage_kb', $validated)) {
-            $profile->can_manage_kb = (bool) $validated['can_manage_kb'];
-        }
-        if (array_key_exists('can_reassign_tickets', $validated)) {
-            $profile->can_reassign_tickets = (bool) $validated['can_reassign_tickets'];
-        }
-        if (array_key_exists('can_delete_request_attachments', $validated)) {
-            $profile->can_delete_request_attachments = (bool) $validated['can_delete_request_attachments'];
-        }
-        if (array_key_exists('can_change_ticket_category', $validated)) {
-            $profile->can_change_ticket_category = (bool) $validated['can_change_ticket_category'];
-        }
-        if (array_key_exists('grant_helpdesk_admin', $validated)) {
-            $profile->grant_helpdesk_admin = (bool) $validated['grant_helpdesk_admin'];
-        }
-        if (array_key_exists('grant_supervisor_access', $validated)) {
-            $profile->grant_supervisor_access = (bool) $validated['grant_supervisor_access'];
+        foreach ([
+            'can_manage_kb',
+            'can_reassign_tickets',
+            'can_delete_request_attachments',
+            'can_change_ticket_category',
+            'can_manage_it_assets',
+            'can_manage_licenses',
+            'can_submit_software_requests',
+            'can_approve_software_requests',
+            'can_manage_software_requests',
+            'grant_helpdesk_admin',
+            'grant_supervisor_access',
+        ] as $key) {
+            if (array_key_exists($key, $validated)) {
+                $profile->{$key} = (bool) $validated[$key];
+            }
         }
         $this->permissions->syncEffectiveRole($profile);
         $profile->save();
@@ -121,6 +130,11 @@ class AdminHelpdeskAgentController extends Controller
                 'can_reassign_tickets' => (bool) ($user->helpdeskProfile?->can_reassign_tickets),
                 'can_delete_request_attachments' => (bool) ($user->helpdeskProfile?->can_delete_request_attachments),
                 'can_change_ticket_category' => (bool) ($user->helpdeskProfile?->can_change_ticket_category),
+                'can_manage_it_assets' => (bool) ($user->helpdeskProfile?->can_manage_it_assets),
+                'can_manage_licenses' => (bool) ($user->helpdeskProfile?->can_manage_licenses),
+                'can_submit_software_requests' => (bool) ($user->helpdeskProfile?->can_submit_software_requests ?? true),
+                'can_approve_software_requests' => (bool) ($user->helpdeskProfile?->can_approve_software_requests),
+                'can_manage_software_requests' => (bool) ($user->helpdeskProfile?->can_manage_software_requests),
                 'grant_helpdesk_admin' => (bool) ($user->helpdeskProfile?->grant_helpdesk_admin),
                 'grant_supervisor_access' => (bool) ($user->helpdeskProfile?->grant_supervisor_access),
                 'role' => $user->helpdeskProfile?->role,
