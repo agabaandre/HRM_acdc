@@ -866,32 +866,33 @@ html.screen-mode .hd-content-frame--full .hd-content-frame__body {
   white-space: nowrap;
 }
 
-/* Grid layout */
+/* Grid layout — every template-areas row MUST have exactly 12 tokens (one per column). */
 .screen-grid {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, auto);
+  grid-auto-rows: auto;
   grid-template-areas:
     'kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis kpis'
     'pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline pipeline'
     'wait wait duty duty duty duty category category priority priority priority priority'
-    'closures closures closures closures closures inprogress inprogress inprogress inprogress inprogress inprogress'
+    'closures closures closures closures closures closures inprogress inprogress inprogress inprogress inprogress inprogress'
     'open open open open open open open open open open open open'
     'trend trend trend trend trend trend trend trend trend trend trend trend';
   gap: clamp(0.55rem, 1.2vw, 0.9rem);
   min-height: 0;
+  width: 100%;
 }
-.kpis { grid-area: kpis; }
-.status-pipeline-card { grid-area: pipeline; }
-.wait-card { grid-area: wait; }
-.duty-card { grid-area: duty; }
-.priority-card { grid-area: priority; }
-.category-card { grid-area: category; }
-.closures-card { grid-area: closures; }
-.in-progress-card { grid-area: inprogress; }
-.open-tickets-card { grid-area: open; }
-.trend-card { grid-area: trend; }
+.kpis { grid-area: kpis; min-width: 0; }
+.status-pipeline-card { grid-area: pipeline; min-width: 0; }
+.wait-card { grid-area: wait; min-width: 0; }
+.duty-card { grid-area: duty; min-width: 0; }
+.priority-card { grid-area: priority; min-width: 0; }
+.category-card { grid-area: category; min-width: 0; }
+.closures-card { grid-area: closures; min-width: 0; }
+.in-progress-card { grid-area: inprogress; min-width: 0; }
+.open-tickets-card { grid-area: open; min-width: 0; }
+.trend-card { grid-area: trend; min-width: 0; }
 
 /* KPI tiles */
 .kpis {
