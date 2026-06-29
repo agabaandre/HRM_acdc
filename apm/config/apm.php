@@ -21,6 +21,7 @@ return [
     'page_cache_ttl_by_scope' => [
         'approver_dashboard' => (int) env('APM_PAGE_CACHE_TTL_APPROVER_DASHBOARD', 120),
         'reports' => (int) env('APM_PAGE_CACHE_TTL_REPORTS', 180),
+        'budget_execution' => (int) env('APM_PAGE_CACHE_TTL_BUDGET_EXECUTION', 300),
         'weekly_briefing' => (int) env('APM_PAGE_CACHE_TTL_WEEKLY_BRIEFING', 120),
         'matrices' => (int) env('APM_PAGE_CACHE_TTL_MATRICES', 120),
         'activities' => (int) env('APM_PAGE_CACHE_TTL_ACTIVITIES', 120),

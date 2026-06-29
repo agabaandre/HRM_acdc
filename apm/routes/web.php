@@ -535,6 +535,8 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
 
     Route::get('budget-execution', [App\Http\Controllers\BudgetExecutionDashboardController::class, 'index'])->name('budget-execution.index');
     Route::get('budget-execution/data', [App\Http\Controllers\BudgetExecutionDashboardController::class, 'data'])->name('budget-execution.data');
+    Route::get('budget-execution/export/excel', [App\Http\Controllers\BudgetExecutionDashboardController::class, 'exportExcel'])->name('budget-execution.export.excel');
+    Route::get('budget-execution/export/pdf', [App\Http\Controllers\BudgetExecutionDashboardController::class, 'exportPdf'])->name('budget-execution.export.pdf');
 
     // Generic Approval Routes
     Route::post('/approve/{model}/{id}', [GenericApprovalController::class, 'updateStatus'])->name('generic.approve');

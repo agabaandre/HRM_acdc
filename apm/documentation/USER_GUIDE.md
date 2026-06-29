@@ -648,7 +648,7 @@ The Reports section lets you view and export summary data on matrices, memos, an
 
 The **Budget execution** dashboard shows how much of your division’s approved APM budget has been **executed** through Service Requests (intramural) and ARFs (extramural).
 
-**Open:** **Reports → Budget execution** (or **APM → Reports → Budget execution**).
+**Open:** **Dashboard → Budget execution**, or **Reports → Budget execution**.
 
 ### What it measures
 
@@ -680,8 +680,11 @@ Use the **Division** filter when you can see more than one division.
 ### Reading the dashboard
 
 1. **Summary cards** — initiative count, how many have an SR/ARF, how many are 100% executed, overall execution %.
-2. **By division** — rolled-up budget and execution per division.
-3. **Initiative detail** — each memo/activity with budget, executed amount, % and status (Not started / Partial / 100% executed).
+2. **By division** — each division is shown as its own card (sorted alphabetically) with a summary bar, division-level fund-code totals, then initiatives underneath.
+3. **Initiative rows** — document, title (wrapped, no horizontal scroll), budget, executed amount, %, status, and **fund codes** with planned / executed / remaining on that initiative plus the fund code **working balance** (system-wide).
+4. **Export** — **Export Excel** (CSV) or **Export PDF** using the current filters.
+
+Administrators (role 10 or permission 88) default to **All divisions** in the division filter.
 
 ---
 

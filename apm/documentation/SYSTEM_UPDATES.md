@@ -8,7 +8,7 @@ This document lists notable features, improvements, and changes to the APM (Appr
 
 ### Summary
 
-- New **Budget execution** dashboard under Reports: quarterly and annual views by division.
+- New **Budget execution** dashboard under **Dashboard → Budget execution** (also linked from Reports): quarterly and annual views by division.
 - **Initiated** = approved matrix activities, single memos, special memos, and non-travel memos with budget.
 - **Executed** = approved Service Request + ARF amounts linked to each initiative.
 - **100% executed** when SR/ARF totals reach the initiative’s approved budget.
@@ -21,7 +21,14 @@ This document lists notable features, improvements, and changes to the APM (Appr
 ### Routes
 
 - `GET /budget-execution` — dashboard UI
-- `GET /budget-execution/data` — JSON API
+- `GET /budget-execution/data` — JSON API (Redis-cached via `ApmPageCache`, scope `budget_execution`, 5 min TTL; busted on SR/ARF/memo writes)
+
+### Fix (2026-06-02)
+
+- Fixed data API 500: removed invalid `division_name` column from matrix eager load.
+- Data endpoint now uses dedicated Redis page cache scope with retry / `nocache` support on the UI.
+- UI: division-first layout (loop all matching divisions), wrapped titles, fund-code balances per initiative, Excel/PDF export.
+- Admins default to **All divisions** in the filter.
 
 ---
 

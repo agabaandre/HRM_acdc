@@ -32,6 +32,7 @@ class ApmPageCacheServiceProvider extends ServiceProvider
         $documentScopes = [
             'approver_dashboard',
             'reports',
+            'budget_execution',
             'matrices',
             'activities',
             'change_requests',

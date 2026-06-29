@@ -105,6 +105,93 @@ class BudgetBreakdownTotal
         };
     }
 
+    /**
+     * @return array<int, float> fund code id => planned total
+     */
+    public static function fundCodeTotalsFromFundCodeBreakdown(mixed $breakdown): array
+    {
+        if (is_string($breakdown)) {
+            $breakdown = json_decode($breakdown, true);
+        }
+        if (! is_array($breakdown)) {
+            return [];
+        }
+
+        $totals = [];
+        foreach ($breakdown as $key => $entries) {
+            if ($key === 'grand_total' || ! is_array($entries)) {
+                continue;
+            }
+            $fundCodeId = (int) $key;
+            if ($fundCodeId <= 0) {
+                continue;
+            }
+            $sum = 0.0;
+            foreach ($entries as $item) {
+                if (! is_array($item) || ! isset($item['unit_cost'], $item['units'])) {
+                    continue;
+                }
+                $unitCost = self::sanitizeNumber($item['unit_cost']);
+                $units = self::sanitizeNumber($item['units']);
+                $days = self::sanitizeNumber($item['days'] ?? 1, 1.0);
+                $sum += $unitCost * $units * $days;
+            }
+            if ($sum > 0) {
+                $totals[$fundCodeId] = round($sum, 2);
+            }
+        }
+
+        return $totals;
+    }
+
+    /**
+     * @return array<int, float> fund code id => planned total
+     */
+    public static function fundCodeTotalsFromNonTravelBreakdown(mixed $breakdown): array
+    {
+        if (is_string($breakdown)) {
+            $breakdown = json_decode($breakdown, true);
+        }
+        if (! is_array($breakdown)) {
+            return [];
+        }
+
+        $totals = [];
+        foreach ($breakdown as $key => $entries) {
+            if ($key === 'grand_total' || ! is_array($entries)) {
+                continue;
+            }
+            $fundCodeId = (int) $key;
+            if ($fundCodeId <= 0) {
+                continue;
+            }
+            $sum = 0.0;
+            foreach ($entries as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $qty = self::sanitizeNumber($item['quantity'] ?? $item['units'] ?? 1, 1.0);
+                $unitCost = self::sanitizeNumber($item['unit_cost'] ?? 0);
+                $sum += $qty * $unitCost;
+            }
+            if ($sum > 0) {
+                $totals[$fundCodeId] = round($sum, 2);
+            }
+        }
+
+        return $totals;
+    }
+
+    /**
+     * @return array<int, float>
+     */
+    public static function fundCodeTotalsFromExecutionBreakdown(mixed $breakdown, bool $nonTravel = false): array
+    {
+        return $nonTravel
+            ? self::fundCodeTotalsFromNonTravelBreakdown($breakdown)
+            : self::fundCodeTotalsFromFundCodeBreakdown($breakdown);
+    }
+
     private static function sanitizeNumber(mixed $value, float $default = 0.0): float
     {
         if ($value === null || $value === '') {

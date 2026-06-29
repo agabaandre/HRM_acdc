@@ -15,6 +15,7 @@ final class ApmPageCache
     public const SCOPES = [
         'approver_dashboard',
         'reports',
+        'budget_execution',
         'weekly_briefing',
         'matrices',
         'activities',

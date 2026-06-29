@@ -138,13 +138,27 @@
     <nav class="navbar navbar-expand-xl w-100">
         <ul class="navbar-nav justify-content-start">
 
-            <!-- Approver Dashboard -->
-            <li class="nav-item">
-                <a class="nav-link {{ Request::is('approver-dashboard*') ? 'active' : '' }}"
-                    href="{{ route('approver-dashboard.index') }}" wire:navigate>
+            <!-- Dashboard -->
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle {{ Request::is('approver-dashboard*') || Request::is('budget-execution*') ? 'active' : '' }}"
+                    href="#" data-bs-toggle="dropdown" aria-expanded="false">
                     <div class="parent-icon"><i class="fas fa-tachometer-alt"></i></div>
                     <div class="menu-title">Dashboard</div>
                 </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item {{ Request::is('approver-dashboard*') ? 'active' : '' }}"
+                            href="{{ route('approver-dashboard.index') }}" wire:navigate>
+                            <i class="fas fa-tachometer-alt me-1"></i> Approver dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('budget-execution*') ? 'active' : '' }}"
+                            href="{{ route('budget-execution.index') }}" wire:navigate>
+                            <i class="fas fa-chart-pie me-1"></i> Budget execution
+                        </a>
+                    </li>
+                </ul>
             </li>
 
             <!-- APMS Home -->
@@ -303,7 +317,7 @@
 
             <!-- Reports -->
             <li class="nav-item">
-                <a class="nav-link {{ Request::is('reports*') || Request::is('budget-execution*') ? 'active' : '' }}"
+                <a class="nav-link {{ Request::is('reports*') ? 'active' : '' }}"
                     href="{{ route('reports.index') }}" wire:navigate>
                     <div class="parent-icon"><i class="fas fa-chart-bar"></i></div>
                     <div class="menu-title">Reports</div>
