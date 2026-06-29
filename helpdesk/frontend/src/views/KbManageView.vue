@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import type { DataTableHeader } from 'vuetify'
 import type { FormError, FormSubmitEvent } from '../types/form'
 import KbArticleEditModal, { type KbArticleEditForm } from '../components/kb/KbArticleEditModal.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
@@ -8,7 +9,7 @@ import { api } from '../lib/api'
 import { notifyError, notifySuccess } from "../lib/notify"
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { fieldError, type SelectNumberItem } from '../lib/helpdeskForm'
-import { rowIndex } from '../lib/ticketTableMeta'
+import { formatTableCountLabel, rowIndex } from '../lib/ticketTableMeta'
 import { hasRichTextContent } from '../lib/richText'
 import { stripHtml } from '../lib/stripHtml'
 
@@ -35,8 +36,9 @@ const rows = ref<KbArticleRow[]>([])
 const busy = ref<number | null>(null)
 const filterCat = ref<number | 0>(0)
 const search = ref('')
-const KB_PER_PAGE = 20
 const page = ref(1)
+const itemsPerPage = ref(20)
+const itemsPerPageOptions = [10, 20, 50, 100] as const
 
 const showCreateForm = ref(false)
 const editOpen = ref(false)
@@ -114,18 +116,29 @@ const filtered = computed<KbArticleRow[]>(() => {
   })
 })
 
-const lastPage = computed(() => Math.max(1, Math.ceil(filtered.value.length / KB_PER_PAGE)))
+const tableCountLabel = computed(() =>
+  formatTableCountLabel(filtered.value.length, filtered.value.length, page.value, itemsPerPage.value),
+)
 
-const paginated = computed(() => {
-  const start = (page.value - 1) * KB_PER_PAGE
-  return filtered.value.slice(start, start + KB_PER_PAGE)
-})
+const kbHeaders = computed((): DataTableHeader[] => [
+  { title: '#', key: 'row_num', sortable: false, width: '52px', align: 'center' },
+  { title: 'Category', key: 'category', sortable: false, minWidth: '120px' },
+  { title: 'Question', key: 'question', sortable: false, minWidth: '180px' },
+  { title: 'Answer preview', key: 'answer_preview', sortable: false, minWidth: '180px' },
+  { title: 'Sort', key: 'sort_order', sortable: false, width: '72px', align: 'center' },
+  { title: 'Status', key: 'status', sortable: false, width: '100px' },
+  { title: 'Last updated', key: 'updated_at', sortable: false, minWidth: '140px' },
+  { title: 'Actions', key: 'actions', sortable: false, align: 'end', width: '150px' },
+])
 
-const hasPrev = computed(() => page.value > 1)
-const hasNext = computed(() => page.value < lastPage.value)
+function rowNumber(index: number): number {
+  return rowIndex(page.value, itemsPerPage.value, index)
+}
 
-function rowCounter(idx: number): number {
-  return rowIndex(page.value, KB_PER_PAGE, idx)
+function kbRowProps(data: { item: KbArticleRow }) {
+  return {
+    class: data.item.is_active ? '' : 'hd-data-table-row--inactive',
+  }
 }
 
 watch([filterCat, search], () => {
@@ -262,16 +275,9 @@ onMounted(() => {
       </template>
     </CbpPageHeading>
 
-    <section class="cbp-card list-card" aria-labelledby="list-heading">
-      <header class="list-head">
-        <div class="list-head-title">
-          <h2 id="list-heading">Articles</h2>
-          <p class="table-count" role="status">
-            Showing <strong>{{ paginated.length }}</strong> of <strong>{{ filtered.length }}</strong> articles
-            <template v-if="filtered.length > KB_PER_PAGE"> · page {{ page }} of {{ lastPage }}</template>
-          </p>
-        </div>
-        <div class="list-head-actions">
+    <v-card class="hd-data-table-card hd-page-toolbar" variant="outlined">
+      <v-card-text class="hd-page-toolbar__search">
+        <div class="hd-v-form__fieldset">
           <UFormField label="Filter by category" name="filterCat" class="kb-toolbar-field kb-toolbar-field--filter">
             <USelect v-model="filterCat" :items="categoryItems" class="w-full" />
           </UFormField>
@@ -297,7 +303,7 @@ onMounted(() => {
             {{ showCreateForm ? 'Hide form' : 'Add FAQ' }}
           </UButton>
         </div>
-      </header>
+      </v-card-text>
 
       <UCard
         v-show="showCreateForm"
@@ -344,72 +350,85 @@ onMounted(() => {
         </UForm>
       </UCard>
 
-      <div class="table-wrap">
-        <div v-if="filtered.length === 0" class="table-empty muted">
+      <v-card-text class="hd-data-table-card__head">
+        <h2 id="list-heading" class="list-heading">Articles</h2>
+        <p v-if="filtered.length" class="table-count" role="status">
+          Showing <strong>{{ tableCountLabel }}</strong>
+        </p>
+      </v-card-text>
+
+      <v-data-table
+        v-if="filtered.length"
+        v-model:page="page"
+        v-model:items-per-page="itemsPerPage"
+        class="hd-data-table"
+        :headers="kbHeaders"
+        :items="filtered"
+        :items-per-page-options="[...itemsPerPageOptions]"
+        density="compact"
+        hover
+        item-value="id"
+        :row-props="kbRowProps"
+      >
+        <template #item.row_num="{ index }">
+          <span class="hd-dt-row-num">{{ rowNumber(index) }}</span>
+        </template>
+
+        <template #item.category="{ item }">
+          {{ item.category?.name ?? '—' }}
+        </template>
+
+        <template #item.question="{ item }">
+          <span class="hd-dt-truncate" :title="item.question">{{ item.question }}</span>
+        </template>
+
+        <template #item.answer_preview="{ item }">
+          <span class="hd-dt-truncate hd-dt-truncate--muted" :title="stripHtml(item.answer, 0)">
+            {{ stripHtml(item.answer) }}
+          </span>
+        </template>
+
+        <template #item.sort_order="{ item }">
+          {{ item.sort_order }}
+        </template>
+
+        <template #item.status="{ item }">
+          <span
+            class="hd-dt-pill"
+            :style="item.is_active
+              ? { background: '#dcfce7', color: '#166534' }
+              : { background: '#f1f5f9', color: '#64748b' }"
+          >
+            {{ item.is_active ? 'Active' : 'Hidden' }}
+          </span>
+        </template>
+
+        <template #item.updated_at="{ item }">
+          <span class="hd-dt-truncate hd-dt-truncate--updated">{{ formatUpdated(item) }}</span>
+        </template>
+
+        <template #item.actions="{ item }">
+          <div class="hd-dt-action-btns">
+            <UButton type="button" color="neutral" variant="outline" size="xs" :disabled="busy === item.id" @click="openEdit(item)">
+              Edit
+            </UButton>
+            <UButton type="button" color="error" variant="soft" size="xs" :disabled="busy === item.id" @click="removeRow(item)">
+              Delete
+            </UButton>
+          </div>
+        </template>
+      </v-data-table>
+
+      <v-card-text v-else>
+        <p class="hd-dt-empty-msg">
           {{
             rows.length === 0
               ? 'No FAQs yet — click Add FAQ to publish the first one.'
               : 'No articles match the current filter.'
           }}
-        </div>
-        <div v-else class="table-scroll">
-          <table class="ticket-table kb-table">
-            <thead>
-              <tr>
-                <th class="col-idx">#</th>
-                <th class="col-cat">Category</th>
-                <th class="col-q">Question</th>
-                <th class="col-preview">Answer preview</th>
-                <th class="col-sort">Sort</th>
-                <th class="col-status">Status</th>
-                <th class="col-updated">Last updated</th>
-                <th class="col-actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(r, idx) in paginated"
-                :key="r.id"
-                :class="{ 'row-inactive': !r.is_active }"
-              >
-                <td class="col-idx">{{ rowCounter(idx) }}</td>
-                <td class="col-cat">{{ r.category?.name ?? '—' }}</td>
-                <td class="col-q">
-                  <span class="q-text" :title="r.question">{{ r.question }}</span>
-                </td>
-                <td class="col-preview">
-                  <span class="preview-text" :title="stripHtml(r.answer, 0)">{{ stripHtml(r.answer) }}</span>
-                </td>
-                <td class="col-sort">{{ r.sort_order }}</td>
-                <td class="col-status">
-                  <span class="status-pill" :class="r.is_active ? 'on' : 'off'">
-                    {{ r.is_active ? 'Active' : 'Hidden' }}
-                  </span>
-                </td>
-                <td class="col-updated">
-                  <span class="updated-text">{{ formatUpdated(r) }}</span>
-                </td>
-                <td class="col-actions">
-                  <div class="action-btns">
-                    <UButton type="button" color="neutral" variant="outline" size="xs" :disabled="busy === r.id" @click="openEdit(r)">
-                      Edit
-                    </UButton>
-                    <UButton type="button" color="error" variant="soft" size="xs" :disabled="busy === r.id" @click="removeRow(r)">
-                      Delete
-                    </UButton>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div v-if="filtered.length > KB_PER_PAGE" class="pager">
-        <button type="button" :disabled="!hasPrev" @click="page -= 1">Previous</button>
-        <span>Page {{ page }} of {{ lastPage }}</span>
-        <button type="button" :disabled="!hasNext" @click="page += 1">Next</button>
-      </div>
-    </section>
+        </p>
+      </v-card-text>
+    </v-card>
 
     <KbArticleEditModal
       :open="editOpen"
@@ -440,41 +459,12 @@ onMounted(() => {
   color: #166534;
   border-radius: 4px;
 }
-.list-card {
-  padding: 1.1rem;
+.hd-data-table-card {
   margin-top: 1rem;
 }
-.list-card h2 {
+.list-heading {
   font-size: 1.05rem;
-  margin: 0;
-}
-.list-head-title {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-}
-.list-head-title .table-count {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #64748b;
-}
-.list-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.85rem 1rem;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 0.85rem;
-}
-.list-head-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  align-items: flex-end;
-  flex: 1;
-  justify-content: flex-end;
-  min-width: min(100%, 28rem);
+  margin: 0 0 0.2rem;
 }
 .kb-toolbar-field {
   margin: 0;
@@ -494,13 +484,6 @@ onMounted(() => {
   align-self: flex-end;
 }
 @media (max-width: 720px) {
-  .list-head {
-    align-items: stretch;
-  }
-  .list-head-actions {
-    width: 100%;
-    justify-content: stretch;
-  }
   .kb-toolbar-field--filter,
   .kb-toolbar-field--search {
     width: 100%;
@@ -512,111 +495,12 @@ onMounted(() => {
   }
 }
 .create-panel {
-  margin: 0.85rem 0 1rem;
+  margin: 0 1rem 0.75rem;
 }
 .create-panel-title {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 700;
   color: #1a1a1a;
-}
-.table-empty {
-  padding: 1.25rem;
-  text-align: center;
-}
-.kb-table .col-idx {
-  width: 3%;
-  text-align: center;
-}
-.kb-table .col-cat {
-  width: 14%;
-}
-.kb-table .col-q {
-  width: 22%;
-}
-.kb-table .col-preview {
-  width: 24%;
-}
-.kb-table .col-sort {
-  width: 6%;
-  text-align: center;
-}
-.kb-table .col-status {
-  width: 9%;
-}
-.kb-table .col-updated {
-  width: 16%;
-}
-.kb-table .col-actions {
-  width: 12%;
-}
-.q-text,
-.preview-text,
-.updated-text {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.875rem;
-  color: #1a1a1a;
-}
-.preview-text {
-  color: #64748b;
-  font-size: 0.8rem;
-}
-.updated-text {
-  font-size: 0.75rem;
-  color: #64748b;
-  white-space: normal;
-  line-height: 1.35;
-}
-tbody tr.row-inactive td {
-  background: #f8fafc;
-  opacity: 0.85;
-}
-.status-pill {
-  display: inline-block;
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.status-pill.on {
-  background: #dcfce7;
-  color: #166534;
-}
-.status-pill.off {
-  background: #f1f5f9;
-  color: #64748b;
-}
-.action-btns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-.muted {
-  color: #64748b;
-}
-.pager {
-  margin-top: 0.75rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  align-items: center;
-}
-.pager button {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #334155;
-  border-radius: 4px;
-  padding: 0.35rem 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-.pager button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

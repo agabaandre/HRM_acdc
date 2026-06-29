@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import type { DataTableHeader } from 'vuetify'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import HomeAgentKanban from '../components/home/HomeAgentKanban.vue'
@@ -59,6 +60,9 @@ const breakdown = ref<Breakdown | null>(null)
 const recent = ref<RecentRow[]>([])
 const generatedAt = ref<string | null>(null)
 const activeFilter = ref<FilterKey>('all')
+const recentPage = ref(1)
+const recentItemsPerPage = ref(10)
+const recentItemsPerPageOptions = [10, 20, 50] as const
 const recentSectionRef = ref<HTMLElement | null>(null)
 const workModeSaving = ref<'remote' | 'onsite' | 'clear' | null>(null)
 
@@ -260,21 +264,51 @@ const filteredRecent = computed<RecentRow[]>(() => {
   }
 })
 
-const tableCountLabel = computed(() => {
-  const total = recent.value.length
-  const shown = filteredRecent.value.length
-  if (shown === total) {
-    return formatTableCountLabel(shown, total, 1, total || 1)
-  }
-  return `${shown} of ${total} ticket${total === 1 ? '' : 's'}`
+const tableCountLabel = computed(() =>
+  formatTableCountLabel(
+    filteredRecent.value.length,
+    filteredRecent.value.length,
+    recentPage.value,
+    recentItemsPerPage.value,
+  ),
+)
+
+watch(activeFilter, () => {
+  recentPage.value = 1
 })
 
 const activeFilterLabel = computed(() => {
   return filterChips.value.find((c) => c.key === activeFilter.value)?.label ?? ''
 })
 
+const recentHeaders = computed((): DataTableHeader[] => {
+  const cols: DataTableHeader[] = [
+    { title: '#', key: 'row_num', sortable: false, width: '52px', align: 'center' },
+    { title: 'Ticket', key: 'ticket_number', sortable: false, minWidth: '120px' },
+    { title: 'Subject', key: 'subject', sortable: false, minWidth: '200px' },
+    { title: 'Requester', key: 'requester_name', sortable: false, minWidth: '140px' },
+    { title: 'Status', key: 'status', sortable: false, width: '130px' },
+    { title: 'Priority', key: 'priority', sortable: false, width: '110px' },
+    { title: 'Activity', key: 'activity', sortable: false, width: '140px' },
+  ]
+  if (canReassign.value) {
+    cols.push({ title: 'Actions', key: 'actions', sortable: false, align: 'end', width: '110px' })
+  }
+  return cols
+})
+
+function recentRowProps(data: { item: RecentRow }) {
+  return {
+    class: isOverdue(data.item) ? 'hd-data-table-row--overdue' : '',
+  }
+}
+
+function onRecentRowClick(_event: Event, row: { item: RecentRow }) {
+  openTicket(row.item.id)
+}
+
 function filteredRowCounter(idx: number): number {
-  return rowIndex(1, filteredRecent.value.length || 1, idx)
+  return rowIndex(recentPage.value, recentItemsPerPage.value, idx)
 }
 
 function relativeTime(iso?: string | null): string {
@@ -532,122 +566,132 @@ onUnmounted(() => {
       </section>
 
       <!-- Recent activity -->
-      <section ref="recentSectionRef" class="cbp-card recent" aria-labelledby="recent-heading">
-        <header class="recent-head">
-          <div>
-            <h2 id="recent-heading">Recent tickets</h2>
-            <p class="recent-sub">Newest 25 tickets assigned to you</p>
-          </div>
-          <RouterLink to="/tickets" class="see-all">See all tickets →</RouterLink>
-        </header>
+      <section ref="recentSectionRef" aria-labelledby="recent-heading">
+        <v-card class="hd-data-table-card" variant="outlined">
+          <v-card-text class="hd-data-table-card__head hd-desk-recent-head">
+            <header class="recent-head">
+              <div>
+                <h2 id="recent-heading">Recent tickets</h2>
+                <p class="recent-sub">Newest 25 tickets assigned to you</p>
+              </div>
+              <RouterLink to="/tickets" class="see-all">See all tickets →</RouterLink>
+            </header>
 
-        <div class="chips" role="tablist" aria-label="Filter recent tickets">
-          <button
-            v-for="c in filterChips"
-            :key="c.key"
-            role="tab"
-            type="button"
-            class="chip"
-            :class="{ 'is-active': activeFilter === c.key, 'chip-warn': c.key === 'overdue' && c.count > 0, 'chip-hot': c.key === 'high' && c.count > 0 }"
-            :aria-selected="activeFilter === c.key"
-            @click="focusFilter(c.key)"
+            <div class="chips" role="tablist" aria-label="Filter recent tickets">
+              <button
+                v-for="c in filterChips"
+                :key="c.key"
+                role="tab"
+                type="button"
+                class="chip"
+                :class="{ 'is-active': activeFilter === c.key, 'chip-warn': c.key === 'overdue' && c.count > 0, 'chip-hot': c.key === 'high' && c.count > 0 }"
+                :aria-selected="activeFilter === c.key"
+                @click="focusFilter(c.key)"
+              >
+                {{ c.label }} <span class="chip-count">{{ c.count }}</span>
+              </button>
+            </div>
+
+            <p v-if="filteredRecent.length" class="table-count" role="status">
+              Showing <strong>{{ tableCountLabel }}</strong>
+              <span v-if="activeFilter !== 'all'" class="table-count-filter"> · filter: {{ activeFilterLabel }}</span>
+            </p>
+          </v-card-text>
+
+          <v-data-table
+            v-if="filteredRecent.length || loading"
+            v-model:page="recentPage"
+            v-model:items-per-page="recentItemsPerPage"
+            class="hd-data-table hd-data-table--clickable"
+            :headers="recentHeaders"
+            :items="filteredRecent"
+            :items-per-page-options="[...recentItemsPerPageOptions]"
+            :loading="loading"
+            density="compact"
+            hover
+            item-value="id"
+            :row-props="recentRowProps"
+            @click:row="onRecentRowClick"
           >
-            {{ c.label }} <span class="chip-count">{{ c.count }}</span>
-          </button>
-        </div>
+            <template #item.row_num="{ index }">
+              <span class="hd-dt-row-num">{{ filteredRowCounter(index) }}</span>
+            </template>
 
-        <div v-if="filteredRecent.length" class="table-wrap">
-          <p class="table-count" role="status">
-            Showing <strong>{{ tableCountLabel }}</strong>
-            <span v-if="activeFilter !== 'all'" class="table-count-filter"> · filter: {{ activeFilterLabel }}</span>
-          </p>
-          <div class="table-scroll">
-            <table class="ticket-table">
-              <thead>
-                <tr>
-                  <th class="col-idx" scope="col">#</th>
-                  <th class="col-id" scope="col">Ticket</th>
-                  <th class="col-subj" scope="col">Subject</th>
-                  <th class="col-req" scope="col">Requester</th>
-                  <th class="col-status" scope="col">Status</th>
-                  <th class="col-priority" scope="col">Priority</th>
-                  <th class="col-time" scope="col">Activity</th>
-                  <th class="col-action" scope="col"><span class="sr-only">Actions</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(r, idx) in filteredRecent"
-                  :key="r.id"
-                  class="ticket-row"
-                  :class="{ 'is-overdue': isOverdue(r) }"
-                  tabindex="0"
-                  role="link"
-                  :aria-label="`Open ticket ${r.ticket_number}`"
-                  @click="openTicket(r.id)"
-                  @keydown.enter="openTicket(r.id)"
+            <template #item.ticket_number="{ item }">
+              <span class="hd-dt-ticket-num">
+                <span class="hd-dt-status-dot" :style="{ background: statusMeta(item.status).color }" aria-hidden="true" />
+                {{ item.ticket_number }}
+              </span>
+            </template>
+
+            <template #item.subject="{ item }">
+              <span class="hd-dt-subject-text">{{ item.subject }}</span>
+              <span v-if="item.category" class="hd-dt-category">{{ item.category.name }}</span>
+            </template>
+
+            <template #item.requester_name="{ item }">
+              <div class="hd-dt-person">
+                <CbpAvatar size="sm" :name="item.requester_name || 'Requester'" :image-url="null" />
+                <span class="hd-dt-person-name">{{ item.requester_name ?? '—' }}</span>
+              </div>
+            </template>
+
+            <template #item.status="{ item }">
+              <span
+                class="hd-dt-pill"
+                :style="{ background: statusMeta(item.status).bg, color: statusMeta(item.status).color }"
+              >
+                {{ statusMeta(item.status).label }}
+              </span>
+            </template>
+
+            <template #item.priority="{ item }">
+              <span
+                class="hd-dt-pill"
+                :style="{ background: priorityMeta(item.priority).bg, color: priorityMeta(item.priority).color }"
+              >
+                {{ priorityMeta(item.priority).label }}
+              </span>
+            </template>
+
+            <template #item.activity="{ item }">
+              <span class="hd-dt-activity">
+                <span>{{ relativeTime(item.created_at) }}</span>
+                <span
+                  v-if="item.sla_resolution_due_at"
+                  class="hd-dt-activity-sla"
+                  :class="{ 'is-overdue': isOverdue(item) }"
                 >
-                  <td class="col-idx">
-                    <span class="row-counter">{{ filteredRowCounter(idx) }}</span>
-                  </td>
-                  <td class="col-id">
-                    <span class="row-num">
-                      <span class="status-dot" :style="{ background: statusMeta(r.status).color }" aria-hidden="true" />
-                      {{ r.ticket_number }}
-                    </span>
-                  </td>
-                  <td class="col-subj">
-                    <span class="row-subj-line">{{ r.subject }}</span>
-                    <span v-if="r.category" class="row-cat">{{ r.category.name }}</span>
-                  </td>
-                  <td class="col-req">
-                    <span class="row-person">
-                      <CbpAvatar size="sm" :name="r.requester_name || 'Requester'" :image-url="null" />
-                      <span class="row-person-name">{{ r.requester_name ?? '—' }}</span>
-                    </span>
-                  </td>
-                  <td class="col-status">
-                    <span class="pill" :style="{ background: statusMeta(r.status).bg, color: statusMeta(r.status).color }">
-                      {{ statusMeta(r.status).label }}
-                    </span>
-                  </td>
-                  <td class="col-priority">
-                    <span class="pill" :style="{ background: priorityMeta(r.priority).bg, color: priorityMeta(r.priority).color }">
-                      {{ priorityMeta(r.priority).label }}
-                    </span>
-                  </td>
-                  <td class="col-time">
-                    <span class="row-time">
-                      <span class="row-time-rel">{{ relativeTime(r.created_at) }}</span>
-                      <span
-                        v-if="r.sla_resolution_due_at"
-                        class="row-time-sla"
-                        :class="{ 'is-overdue': isOverdue(r) }"
-                      >
-                        {{ dueLabel(r.sla_resolution_due_at) }}
-                      </span>
-                    </span>
-                  </td>
-                  <td class="col-action">
-                    <button
-                      v-if="canReassignRow(r)"
-                      type="button"
-                      class="reassign-btn"
-                      title="Reassign this ticket to another agent"
-                      @click.stop="openReassign(r)"
-                    >
-                      Reassign
-                    </button>
-                    <span v-else class="row-arrow" aria-hidden="true">›</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <p v-else class="muted">
-          {{ recent.length === 0 ? 'No tickets assigned to you yet.' : 'No tickets match this filter.' }}
-        </p>
+                  {{ dueLabel(item.sla_resolution_due_at) }}
+                </span>
+              </span>
+            </template>
+
+            <template v-if="canReassign" #item.actions="{ item }">
+              <UButton
+                v-if="canReassignRow(item)"
+                type="button"
+                color="neutral"
+                variant="outline"
+                size="xs"
+                label="Reassign"
+                title="Reassign this ticket to another agent"
+                @click.stop="openReassign(item)"
+              />
+              <span v-else class="hd-dt-empty">›</span>
+            </template>
+
+            <template #loading>
+              <div class="hd-dt-loading">Loading tickets…</div>
+            </template>
+          </v-data-table>
+
+          <v-card-text v-else>
+            <p class="muted">
+              {{ recent.length === 0 ? 'No tickets assigned to you yet.' : 'No tickets match this filter.' }}
+            </p>
+          </v-card-text>
+        </v-card>
       </section>
     </template>
 
@@ -984,9 +1028,12 @@ onUnmounted(() => {
 }
 
 /* Recent */
-.recent {
-  padding: 1rem 1.1rem;
+.hd-desk-recent-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
+
 .recent-head {
   display: flex;
   align-items: flex-end;
@@ -1093,237 +1140,6 @@ onUnmounted(() => {
   white-space: nowrap;
   border: 0;
 }
-.table-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.table-count {
-  margin: 0;
-  font-size: 0.82rem;
-  color: #64748b;
-}
-.table-count strong {
-  color: #0f172a;
-  font-weight: 700;
-}
-.table-count-filter {
-  color: #475569;
-}
-.table-scroll {
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  background: #fff;
-  overflow: hidden;
-}
-.ticket-table {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-.ticket-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #f8fafc;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
-  text-align: left;
-  padding: 0.45rem 0.55rem;
-  border-bottom: 1px solid #e2e8f0;
-  border-right: 1px solid rgba(226, 232, 240, 0.9);
-  white-space: nowrap;
-}
-.ticket-table thead th:last-child {
-  border-right: none;
-}
-.ticket-table tbody td {
-  padding: 0.5rem 0.55rem;
-  vertical-align: top;
-  border-bottom: 1px solid #f1f5f9;
-  border-right: 1px solid rgba(226, 232, 240, 0.65);
-  background: #fff;
-}
-.ticket-table tbody td:last-child {
-  border-right: none;
-}
-.ticket-table tbody tr:last-child td {
-  border-bottom: none;
-}
-.ticket-row {
-  cursor: pointer;
-  transition: background 0.12s ease;
-}
-.ticket-row:hover td {
-  background: #f8fafc;
-}
-.ticket-row:focus-visible td {
-  background: #f0fdf4;
-  outline: none;
-  box-shadow: inset 0 0 0 2px rgba(13, 122, 58, 0.35);
-}
-.ticket-row.is-overdue td:first-child {
-  box-shadow: inset 3px 0 0 #dc2626;
-}
-.ticket-row.is-overdue td {
-  background: #fffbfb;
-}
-.ticket-row.is-overdue:hover td {
-  background: #fef2f2;
-}
-.col-idx {
-  width: 3%;
-  text-align: center;
-}
-.row-counter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.5rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #94a3b8;
-}
-.col-id {
-  width: 10%;
-  white-space: nowrap;
-}
-.col-subj {
-  width: 26%;
-}
-.col-req {
-  width: 15%;
-}
-.col-status {
-  width: 11%;
-  white-space: nowrap;
-}
-.col-priority {
-  width: 10%;
-  white-space: nowrap;
-}
-.col-time {
-  width: 13%;
-  font-size: 0.74rem;
-}
-.col-action {
-  width: 6%;
-  text-align: right;
-  white-space: nowrap;
-}
-.row-num {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: #1f2937;
-  line-height: 1.3;
-  word-break: break-all;
-}
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-.col-subj .row-subj-line {
-  display: block;
-}
-.row-subj-line {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #0f172a;
-  line-height: 1.35;
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-.row-cat {
-  display: inline-block;
-  margin-top: 0.2rem;
-  font-size: 0.68rem;
-  color: #64748b;
-  background: #f1f5f9;
-  border-radius: 999px;
-  padding: 0.05rem 0.45rem;
-  max-width: 100%;
-  line-height: 1.3;
-  white-space: normal;
-  word-break: break-word;
-}
-.row-person {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  min-width: 0;
-}
-.row-person-name {
-  font-size: 0.78rem;
-  color: #334155;
-  line-height: 1.35;
-  white-space: normal;
-  word-break: break-word;
-}
-.pill {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0.15rem 0.4rem;
-  border-radius: 999px;
-  white-space: nowrap;
-  max-width: 100%;
-}
-.row-time {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  font-size: 0.74rem;
-  color: #64748b;
-  line-height: 1.3;
-  white-space: normal;
-  word-break: break-word;
-}
-.row-time-sla.is-overdue {
-  color: #b91c1c;
-  font-weight: 700;
-}
-.row-arrow {
-  font-size: 1.1rem;
-  color: #94a3b8;
-  text-align: center;
-}
-.row-action {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-.reassign-btn {
-  padding: 0.25rem 0.45rem;
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #1e293b;
-  font-size: 0.68rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
-}
-.reassign-btn:hover {
-  background: #0d7a3a;
-  border-color: #0d7a3a;
-  color: #fff;
-}
-
 /* Toast */
 .toast {
   position: fixed;
