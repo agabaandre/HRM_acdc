@@ -27,6 +27,7 @@ use App\Models\FundCodeTransaction;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use App\Services\ConvertMemoToNonTravelMemoService;
+use App\Services\FundCodeWorkingBalanceService;
 use App\Models\ApprovalTrail;
 use InvalidArgumentException;
 use RuntimeException;
@@ -434,6 +435,17 @@ class NonTravelMemoController extends Controller
         $budgetBreakdownJson = json_encode(is_array($budgetBreakdownPayload) ? $budgetBreakdownPayload : []);
         $attachmentsJson = json_encode($attachments);
 
+        if (! empty($budgetBreakdownPayload) && (int) ($data['fund_type_id'] ?? 0) !== 3) {
+            $balanceService = app(FundCodeWorkingBalanceService::class);
+            $budgetErrors = $balanceService->validateTotals(
+                $balanceService->breakdownTotalsPerCode($budgetBreakdownPayload, true, false),
+                (int) ($data['fund_type_id'] ?? 1)
+            );
+            if ($budgetErrors !== []) {
+                return redirect()->back()->withInput()->with(['msg' => $budgetErrors[0], 'type' => 'error']);
+            }
+        }
+
         // Determine status based on action
         $action = $request->input('action', 'draft');
         $isDraft = ($action === 'draft');
@@ -493,6 +505,7 @@ class NonTravelMemoController extends Controller
                 $balanceBefore = (float) ($fundCode->budget_balance ?? 0);
                 $balanceAfter = $balanceBefore - $total;
                 reduce_fund_code_balance($codeId, $total);
+                app(FundCodeWorkingBalanceService::class)->bust($codeId);
                 FundCodeTransaction::create([
                     'fund_code_id' => $codeId,
                     'amount' => $total,

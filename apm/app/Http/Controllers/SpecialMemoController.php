@@ -27,6 +27,7 @@ use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Models\FundCodeTransaction;
 use App\Models\ApprovalTrail;
+use App\Services\FundCodeWorkingBalanceService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -568,6 +569,22 @@ class SpecialMemoController extends Controller
                 'type' => 'error'
             ]);
         }
+
+        if (! empty($budgetItems) && $fundTypeId !== 3) {
+            $balanceService = app(FundCodeWorkingBalanceService::class);
+            $budgetErrors = $balanceService->validateTotals(
+                $balanceService->activityBudgetTotalsPerCode($budgetItems, false),
+                $fundTypeId
+            );
+            if ($budgetErrors !== []) {
+                $errorMessage = $budgetErrors[0];
+                if ($request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 422);
+                }
+
+                return redirect()->back()->withInput()->with(['msg' => $errorMessage, 'type' => 'error']);
+            }
+        }
     
         try {
             DB::beginTransaction();
@@ -701,6 +718,7 @@ class SpecialMemoController extends Controller
                                 
                                 // Reduce fund code balance
                                 $fundCode->decrement('budget_balance', $total);
+                                app(FundCodeWorkingBalanceService::class)->bust((int) $codeId);
                                 
                                 // For special memos, we'll just log the balance change
                                 // FundCodeTransaction requires activity_id, matrix_id, and activity_budget_id

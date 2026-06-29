@@ -27,6 +27,7 @@ use App\Jobs\SendDocumentPdfEmailJob;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Services\ApprovalService;
+use App\Services\FundCodeWorkingBalanceService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -605,6 +606,35 @@ class ChangeRequestController extends Controller
                     }
                 }
 
+                if (! empty($budgetItems) && $fundTypeId !== 3) {
+                    $balanceService = app(FundCodeWorkingBalanceService::class);
+                    $parentBreakdown = is_string($parentMemo->budget_breakdown ?? null)
+                        ? (json_decode($parentMemo->budget_breakdown, true) ?? [])
+                        : ($parentMemo->budget_breakdown ?? []);
+                    $exclude = [];
+                    if ($parentMemo instanceof Activity) {
+                        $exclude['activity_id'] = (int) $parentMemo->id;
+                    } elseif ($parentMemo instanceof SpecialMemo) {
+                        $exclude['special_memo_id'] = (int) $parentMemo->id;
+                    } elseif ($parentMemo instanceof NonTravelMemo) {
+                        $exclude['non_travel_memo_id'] = (int) $parentMemo->id;
+                    }
+                    if ($isUpdate) {
+                        $exclude['change_request_id'] = (int) $changeRequest->id;
+                    }
+                    $budgetErrors = $balanceService->validateChangeRequestIncreases(
+                        is_array($budgetItems) ? $budgetItems : [],
+                        is_array($parentBreakdown) ? $parentBreakdown : [],
+                        $fundTypeId,
+                        $exclude,
+                        $isNonTravelParent,
+                        ! $isNonTravelParent
+                    );
+                    if ($budgetErrors !== []) {
+                        throw ValidationException::withMessages(['budget' => $budgetErrors[0]]);
+                    }
+                }
+
                 // Build internal_participants array
                 $participantStarts = $request->input('participant_start', []);
                 $participantEnds = $request->input('participant_end', []);
@@ -751,6 +781,16 @@ class ChangeRequestController extends Controller
                     $changeRequest = ChangeRequest::create($changeRequestData);
                 Log::info('Change request created', ['change_request' => $changeRequest]);
                 $successMessage = 'Change request created successfully.';
+                }
+
+                if (! empty($budgetItems) && is_array($budgetItems)) {
+                    $fundCodeIds = array_values(array_filter(array_map(
+                        static fn ($k) => is_numeric($k) ? (int) $k : null,
+                        array_keys($budgetItems)
+                    )));
+                    if ($fundCodeIds !== []) {
+                        app(FundCodeWorkingBalanceService::class)->bust($fundCodeIds);
+                    }
                 }
 
                 $redirectUrl = route('change-requests.show', $changeRequest);

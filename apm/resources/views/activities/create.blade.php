@@ -871,9 +871,9 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         budgetCodesSelect.empty();
         if (data.length) {
             data.forEach(code => {
-                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
+                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.working_balance ?? code.budget_balance).toLocaleString()}`;
                 budgetCodesSelect.append(
-                    `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
+                    `<option value="${code.id}" data-balance="${code.working_balance ?? code.budget_balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
                 );
             });
             budgetCodesSelect.prop('disabled', false);
@@ -1077,7 +1077,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         updateAllTotals();
     });
 
-    function updateAllTotals() {
+    window.updateAllTotals = function updateAllTotals() {
         let grand = 0;
         let hasExceededBudget = false;
         const fundTypeId = parseInt($('#fund_type').val()) || 0;
@@ -1208,5 +1208,7 @@ $('#successModal').on('hidden.bs.modal', function () {
 
 
 </script>
+
+@include('partials.apm-working-balance-js')
 
 @endpush

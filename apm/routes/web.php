@@ -138,6 +138,9 @@ Route::middleware([CheckSessionMiddleware::class])->group(function () {
 Route::get('/budget-codes/by-fund-type', [App\Http\Controllers\ActivityController::class, 'getBudgetCodesByFundType'])
     ->name('budget-codes.by-fund-type');
 
+Route::get('/fund-codes/working-balances', [App\Http\Controllers\FundCodeBalanceController::class, 'workingBalances'])
+    ->name('fund-codes.working-balances');
+
 // AJAX route to get fund type for a specific budget code
 Route::get('/budget-codes/get-fund-type', [App\Http\Controllers\ActivityController::class, 'getFundTypeByBudgetCode'])
     ->name('budget-codes.get-fund-type');

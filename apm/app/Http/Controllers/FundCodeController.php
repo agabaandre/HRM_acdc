@@ -266,6 +266,8 @@ class FundCodeController extends Controller
 
         $fundCode->update($validated);
 
+        app(\App\Services\FundCodeWorkingBalanceService::class)->bust((int) $fundCode->id);
+
         return redirect()->route('fund-codes.index')
             ->with('msg', 'Fund Code updated successfully.')
             ->with('type', 'success');

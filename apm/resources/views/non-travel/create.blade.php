@@ -447,9 +447,9 @@
                 budgetCodesSelect.empty();
                 if (data.length) {
                     data.forEach(code => {
-                        const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
+                        const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.working_balance ?? code.budget_balance).toLocaleString()}`;
                         budgetCodesSelect.append(
-                            `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
+                            `<option value="${code.id}" data-balance="${code.working_balance ?? code.budget_balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
                         );
                     });
                     budgetCodesSelect.prop('disabled', false);
@@ -609,19 +609,43 @@
 
         function updateSubtotal($card) {
             let subtotal = 0;
+            const codeId = $card.data('code');
             $card.find('.budget-items tr').each(function() {
                 subtotal += parseFloat($(this).find('.total').text().replace(/,/g, '')) || 0;
             });
-            $card.find('.subtotal').text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            const $subtotalCell = $card.find('.subtotal');
+            $subtotalCell.text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+            const fundTypeId = parseInt($('#fund_type_id, #fund_type').first().val(), 10) || 0;
+            if (window.ApmWorkingBalance && fundTypeId !== 3) {
+                const exceeded = window.ApmWorkingBalance.checkExceededForCard(codeId, subtotal);
+                if (exceeded) {
+                    $subtotalCell.addClass('text-danger fw-bold');
+                    const available = parseFloat($(`#budget_codes option[value="${codeId}"]`).data('balance')) || 0;
+                    window.ApmWorkingBalance.showBudgetWarning($card, available, false);
+                } else {
+                    $subtotalCell.removeClass('text-danger fw-bold');
+                    $card.find('.budget-warning').remove();
+                }
+            }
         }
 
-        function updateGrandTotal() {
+        window.updateGrandTotal = function updateGrandTotal() {
             let grandTotal = 0;
+            let hasExceededBudget = false;
             $('.budget-card').each(function() {
+                updateSubtotal($(this));
                 grandTotal += parseFloat($(this).find('.subtotal').text().replace(/,/g, '')) || 0;
+                if ($(this).find('.budget-warning').length) {
+                    hasExceededBudget = true;
+                }
             });
             $('#grandBudgetTotal').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             $('#grandBudgetTotalInput').val(grandTotal.toFixed(2));
+            const $submit = $('button[type="submit"][name="action"][value="submit"], button[type="submit"].btn-submit-memo').first();
+            if ($submit.length) {
+                $submit.prop('disabled', hasExceededBudget);
+            }
         }
 
         // Attachments handling
@@ -776,4 +800,7 @@
         }
     });
 </script>
+
+@include('partials.apm-working-balance-js')
+
 @endpush

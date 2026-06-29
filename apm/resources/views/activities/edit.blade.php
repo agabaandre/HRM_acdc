@@ -1175,7 +1175,7 @@ $(document).ready(function () {
         updateAllTotals();
     });
 
-    function updateAllTotals() {
+    window.updateAllTotals = function updateAllTotals() {
         let grand = 0;
         let hasExceededBudget = false;
         const fundTypeId = parseInt($('#fund_type').val()) || 0;
@@ -1745,4 +1745,16 @@ $(document).ready(function () {
     initializeWorldBankActivityCodeRequirement();
 });
 </script>
+
+@php
+    $apmBalanceConfig = [
+        'exclude' => array_filter([
+            'exclude_activity_id' => isset($activity) ? (int) $activity->id : null,
+            'exclude_change_request_id' => isset($changeRequestForEdit) ? (int) $changeRequestForEdit->id : null,
+        ]),
+        'changeRequestMode' => (bool) request('change_request'),
+    ];
+@endphp
+@include('partials.apm-working-balance-js', ['apmBalanceConfig' => $apmBalanceConfig])
+
 @endpush

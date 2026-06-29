@@ -27,6 +27,7 @@ use App\Models\FundCodeTransaction;
 use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Services\ApprovalService;
+use App\Services\FundCodeWorkingBalanceService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use function PHPUnit\Framework\isEmpty;
@@ -371,8 +372,17 @@ class ActivityController extends Controller
                 if(count($internalParticipants)>0)
                 $this->storeParticipantSchedules($internalParticipants,$activity);
 
-                if(count($budgetItems)>0)
-                $this->storeBudget($budgetCodes,$budgetItems,$activity);
+                if(count($budgetItems)>0) {
+                    $balanceService = app(FundCodeWorkingBalanceService::class);
+                    $budgetErrors = $balanceService->validateTotals(
+                        $balanceService->activityBudgetTotalsPerCode($budgetItems, true),
+                        (int) $request->input('fund_type', 1)
+                    );
+                    if ($budgetErrors !== []) {
+                        throw new \InvalidArgumentException($budgetErrors[0]);
+                    }
+                    $this->storeBudget($budgetCodes,$budgetItems,$activity);
+                }
     
                 $successMessage = 'Activity created successfully.';
                 $redirectUrl = route('matrices.activities.show', [$matrix, $activity]);
@@ -400,6 +410,13 @@ class ActivityController extends Controller
                         'type' => 'success'
                     ]);
     
+            } catch (\InvalidArgumentException $e) {
+                DB::rollBack();
+                $errorMessage = $e->getMessage();
+                if ($request->ajax()) {
+                    return response()->json(['success' => false, 'msg' => $errorMessage], 422);
+                }
+                return redirect()->back()->withInput()->with(['msg' => $errorMessage, 'type' => 'error']);
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error('Error creating activity', ['exception' => $e]);
@@ -527,6 +544,14 @@ class ActivityController extends Controller
         'division_id' => 'required|exists:divisions,id',
     ]);
 
+    $balanceService = app(FundCodeWorkingBalanceService::class);
+    $exclude = array_filter([
+        'activity_id' => $request->integer('exclude_activity_id') ?: null,
+        'non_travel_memo_id' => $request->integer('exclude_non_travel_memo_id') ?: null,
+        'special_memo_id' => $request->integer('exclude_special_memo_id') ?: null,
+        'change_request_id' => $request->integer('exclude_change_request_id') ?: null,
+    ]);
+
     $budgetCodes = FundCode::with('funder:id,name,show_activity_code,activity_code_label')
         ->where('fund_type_id', $request->fund_type_id)
         ->where('is_active', true)
@@ -535,14 +560,29 @@ class ActivityController extends Controller
                   ->orWhereNull('division_id')
                   ->orWhere('division_id', '');
         })
-        ->get(['id', 'code', 'activity', 'budget_balance', 'funder_id']);
+        ->get(['id', 'code', 'activity', 'budget_balance', 'approved_budget', 'funder_id']);
 
-    $result = $budgetCodes->map(function ($code) {
+    $snapshots = $balanceService->snapshotsFor(
+        $budgetCodes->pluck('id')->map(fn ($id) => (int) $id)->all(),
+        $exclude
+    );
+
+    $result = $budgetCodes->map(function ($code) use ($snapshots) {
+        $snap = $snapshots[(int) $code->id] ?? [
+            'approved_budget' => 0.0,
+            'committed_total' => 0.0,
+            'working_balance' => 0.0,
+        ];
+
         return [
             'id' => $code->id,
             'code' => $code->code,
             'activity' => $code->activity,
-            'budget_balance' => $code->budget_balance,
+            'approved_budget' => $snap['approved_budget'],
+            'committed_total' => $snap['committed_total'],
+            'working_balance' => $snap['working_balance'],
+            'budget_balance' => $snap['working_balance'],
+            'legacy_budget_balance' => $code->budget_balance,
             'funder_id' => $code->funder_id,
             'funder_name' => optional($code->funder)->name,
             'show_activity_code' => (bool) (optional($code->funder)->show_activity_code ?? false),
@@ -1144,6 +1184,37 @@ class ActivityController extends Controller
                 }
 
                 // Always call storeBudget to handle both updates and deletions
+                $balanceService = app(FundCodeWorkingBalanceService::class);
+                $isChangeRequest = $request->boolean('change_request') || $request->input('change_request') === '1';
+                if (! empty($budgetItems)) {
+                    if ($isChangeRequest) {
+                        $parentBreakdown = is_string($activity->budget_breakdown)
+                            ? (json_decode($activity->budget_breakdown, true) ?? [])
+                            : ($activity->budget_breakdown ?? []);
+                        $exclude = ['activity_id' => (int) $activity->id];
+                        $crId = $request->integer('change_request_id');
+                        if ($crId > 0) {
+                            $exclude['change_request_id'] = $crId;
+                        }
+                        $budgetErrors = $balanceService->validateChangeRequestIncreases(
+                            $budgetItems,
+                            is_array($parentBreakdown) ? $parentBreakdown : [],
+                            $fundTypeId,
+                            $exclude,
+                            false,
+                            true
+                        );
+                    } else {
+                        $budgetErrors = $balanceService->validateTotals(
+                            $balanceService->activityBudgetTotalsPerCode($budgetItems, true),
+                            $fundTypeId,
+                            ['activity_id' => (int) $activity->id]
+                        );
+                    }
+                    if ($budgetErrors !== []) {
+                        throw new \InvalidArgumentException($budgetErrors[0]);
+                    }
+                }
                 $this->storeBudget($budgetCodes, $budgetItems, $activity);
 
                 $successMessage = 'Activity updated successfully.';
@@ -1344,6 +1415,7 @@ class ActivityController extends Controller
                                         // Only deduct the adjustment (delta), not the full new total
                                         $fundCodeModel->budget_balance = (float) ($fundCodeModel->budget_balance ?? 0) - $difference;
                                         $fundCodeModel->save();
+                                        app(FundCodeWorkingBalanceService::class)->bust((int) $fundCodeModel->id);
                                         $transaction->update([
                                             'amount' => $total,
                                             'balance_after' => (float) $fundCodeModel->budget_balance,
@@ -1411,6 +1483,7 @@ class ActivityController extends Controller
                     if ($fundCodeToRestore) {
                         $fundCodeToRestore->budget_balance = (float) ($fundCodeToRestore->budget_balance ?? 0) + $amountToRestore;
                         $fundCodeToRestore->save();
+                        app(FundCodeWorkingBalanceService::class)->bust((int) $fundCodeToRestore->id);
                     }
                 }
                 FundCodeTransaction::where('activity_budget_id', $budgetToDelete->id)->delete();
@@ -1425,6 +1498,7 @@ class ActivityController extends Controller
                     if ($fundCodeToRestore) {
                         $fundCodeToRestore->budget_balance = (float) ($fundCodeToRestore->budget_balance ?? 0) + $amountToRestore;
                         $fundCodeToRestore->save();
+                        app(FundCodeWorkingBalanceService::class)->bust((int) $fundCodeToRestore->id);
                     }
                 }
                 FundCodeTransaction::where('activity_budget_id', $budgetToDelete->id)->delete();
@@ -1437,6 +1511,7 @@ class ActivityController extends Controller
     {
         $fundCode->budget_balance = $fundCode->budget_balance - $amount;
         $fundCode->save();
+        app(FundCodeWorkingBalanceService::class)->bust((int) $fundCode->id);
     }
 
     private function store_fund_code_transaction($fundCodeId, $amount, $activity, $activityBudget)

@@ -1763,9 +1763,15 @@ if (! function_exists('reduce_fund_code_balance')) {
     function reduce_fund_code_balance($fundCodeId, $amount)
     {
         if ($fundCodeId && $amount > 0) {
-            return DB::table('fund_codes')
+            $updated = DB::table('fund_codes')
                 ->where('id', $fundCodeId)
                 ->decrement('budget_balance', $amount);
+
+            if ($updated) {
+                app(\App\Services\FundCodeWorkingBalanceService::class)->bust((int) $fundCodeId);
+            }
+
+            return $updated;
         }
 
         return false;

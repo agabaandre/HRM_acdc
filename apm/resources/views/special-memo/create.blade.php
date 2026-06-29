@@ -639,9 +639,9 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         budgetCodesSelect.empty();
         if (data.length) {
             data.forEach(code => {
-                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
+                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.working_balance ?? code.budget_balance).toLocaleString()}`;
                 budgetCodesSelect.append(
-                    `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
+                    `<option value="${code.id}" data-balance="${code.working_balance ?? code.budget_balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
                 );
             });
             budgetCodesSelect.prop('disabled', false);
@@ -801,19 +801,46 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         updateAllTotals();
     });
 
-    function updateAllTotals() {
+    window.updateAllTotals = function updateAllTotals() {
         let grand = 0;
+        let hasExceededBudget = false;
+        const fundTypeId = parseInt($('#fund_type_id, #fund_type').first().val(), 10) || 0;
+
         $('.budget-body').each(function () {
             const code = $(this).data('code');
             let subtotal = 0;
             $(this).find('tr').each(function () {
                 subtotal += parseFloat($(this).find('.total').val()) || 0;
             });
-            $(`.subtotal[data-code="${code}"]`).text(subtotal.toFixed(2));
+
+            const exceeded = fundTypeId !== 3
+                && window.ApmWorkingBalance
+                && window.ApmWorkingBalance.checkExceededForCard(code, subtotal);
+
+            if (exceeded) {
+                hasExceededBudget = true;
+                $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+                    .addClass('text-danger fw-bold');
+                const available = parseFloat($(`#budget_codes option[value="${code}"]`).data('balance')) || 0;
+                window.ApmWorkingBalance.showBudgetWarning($(this).closest('.card'), available, false);
+            } else {
+                $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+                    .removeClass('text-danger fw-bold');
+                $(this).closest('.card').find('.budget-warning').remove();
+            }
+
             grand += subtotal;
         });
-        $('#grandBudgetTotal').text(grand.toFixed(2));
+
+        $('#grandBudgetTotal').text(grand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         $('#grandBudgetTotalInput').val(grand.toFixed(2));
+
+        const submitBtn = $('button[type="submit"]');
+        if (hasExceededBudget) {
+            submitBtn.prop('disabled', true);
+        } else {
+            submitBtn.prop('disabled', false);
+        }
     }
 
 });
@@ -870,5 +897,7 @@ document.addEventListener('livewire:navigate', function () {
 });
 
 </script>
+
+@include('partials.apm-working-balance-js')
 
 @endpush
