@@ -117,4 +117,46 @@ html.helpdesk-theme-dark {
   background: transparent;
 }
 
+/* Modals — solid surface (dialogs may teleport outside .v-application) */
+.hd-v-modal.v-card {
+  background: #ffffff !important;
+  border: 1px solid var(--hd-line) !important;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18) !important;
+  color: #0f172a;
+}
+
+html.helpdesk-theme-dark .hd-v-modal.v-card {
+  background: #1e293b !important;
+  color: #e2e8f0;
+  box-shadow: 0 16px 48px rgba(2, 6, 23, 0.55) !important;
+}
+
+.hd-v-modal .v-card-title,
+.hd-v-modal .v-card-text,
+.hd-v-modal .v-card-actions {
+  background: transparent !important;
+}
+
+.hd-v-dialog .v-overlay__scrim {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+html.helpdesk-theme-dark .hd-v-dialog .v-overlay__scrim {
+  background: rgba(2, 6, 23, 0.65) !important;
+}
+
+/* Checkbox custom labels (e.g. division picker on settings/general) */
+.hd-v-checkbox .v-label {
+  opacity: 1 !important;
+  color: #0f172a !important;
+}
+
+.hd-v-checkbox .v-label * {
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-v-checkbox .v-label {
+  color: #e2e8f0 !important;
+}
+
 /* Inline form rows: field + button share baseline */

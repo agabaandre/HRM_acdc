@@ -302,8 +302,9 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
   padding: 0.25rem;
   max-height: 220px;
   overflow-y: auto;
-  border: 1px solid var(--ui-border, #e2e8f0);
+  border: 1px solid var(--hd-line);
   border-radius: 4px;
+  background: #fff;
 }
 .agent-result {
   display: flex;

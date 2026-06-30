@@ -554,11 +554,11 @@ function roleLabel(c: CandidateRow): string {
   gap: 1rem;
 }
 .settings-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   border-radius: 4px;
   background: #fff;
   padding: 1rem 1.1rem 1.1rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: none;
 }
 .settings-card--agents {
   padding-bottom: 0.5rem;
@@ -595,7 +595,7 @@ function roleLabel(c: CandidateRow): string {
   align-items: flex-start;
   padding: 0.85rem 0.9rem;
   border-radius: 4px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   background: #f8fafc;
 }
 .toggle-copy {
@@ -614,7 +614,7 @@ function roleLabel(c: CandidateRow): string {
 .field-block--agents {
   margin-top: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--hd-line-subtle);
 }
 .actions--sticky {
   position: sticky;
@@ -681,7 +681,7 @@ label {
 }
 input {
   padding: 0.45rem 0.5rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--hd-line);
   border-radius: 4px;
   font-size: 0.95rem;
 }
@@ -709,20 +709,39 @@ input {
 .checks-scroll {
   max-height: 14rem;
   overflow-y: auto;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--hd-line);
   border-radius: 4px;
   padding: 0.35rem 0.5rem;
   background: #fff;
 }
-.check-row {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 0.5rem;
-  font-weight: 500;
-  padding: 0.25rem 0;
-  cursor: pointer;
+
+html.helpdesk-theme-dark .checks-scroll,
+html.helpdesk-theme-dark .settings-card {
+  background: #1e293b;
 }
+.check-row {
+  padding: 0.2rem 0;
+}
+
+.check-row :deep(.hd-v-checkbox) {
+  width: 100%;
+}
+
+.check-row :deep(.v-selection-control) {
+  align-items: flex-start;
+  min-height: unset;
+}
+
+.check-row :deep(.v-label) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+  width: 100%;
+  opacity: 1;
+}
+
 .check-row input[type="checkbox"] {
   margin-top: 0.2rem;
   flex-shrink: 0;
@@ -732,13 +751,13 @@ input {
   min-width: 0;
   font-size: 0.88rem;
   line-height: 1.35;
-  color: #0f172a;
+  color: #0f172a !important;
 }
 .check-row__id {
   flex-shrink: 0;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #64748b;
+  color: #64748b !important;
 }
 .ghost--sm {
   padding: 0.28rem 0.55rem;
@@ -797,7 +816,7 @@ input {
   margin-top: 0.15rem;
   padding: 0.35rem 0.75rem;
   border-radius: 4px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--hd-line);
   background: #fff;
   font-weight: 600;
   font-size: 0.82rem;
@@ -860,7 +879,7 @@ code {
   font-size: 0.78rem;
 }
 .cand-table-wrap {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   border-radius: 4px;
   overflow: auto;
   max-height: 22rem;
@@ -882,7 +901,7 @@ code {
   letter-spacing: 0.04em;
   color: #475569;
   padding: 0.55rem 0.7rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--hd-line);
 }
 .cand-table td {
   padding: 0.55rem 0.7rem;
