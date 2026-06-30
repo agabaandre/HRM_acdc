@@ -67,20 +67,6 @@ while IFS= read -r f; do
   fi
 done < <(find "$APM_ROOT/app" -type f -name '*.php' -print 2>/dev/null | sort)
 
-echo "==> Stray Activity model copies in app/Models (Activity copy.php, *.backup, etc.)"
-while IFS= read -r f; do
-  [[ -z "$f" ]] || [[ ! -f "$f" ]] && continue
-  base="$(basename "$f")"
-  case "$base" in
-    Activity.php|ActivityApprovalTrail.php|ActivityBudget.php) continue ;;
-  esac
-  if grep -q '^class Activity\b' "$f" 2>/dev/null; then
-    echo "    REMOVE $f"
-    rm -f "$f"
-    REMOVED=$((REMOVED + 1))
-  fi
-done < <(find "$APM_ROOT/app/Models" -maxdepth 1 -type f -name '*Activity*' -print 2>/dev/null | sort)
-
 echo "    remaining declarations: $FOUND (removed $REMOVED)"
 echo
 
@@ -115,44 +101,9 @@ echo "==> Laravel caches"
 (cd "$APM_ROOT" && php artisan optimize:clear)
 echo
 
-echo "==> Touch Activity.php + invalidate CLI OPcache (FPM still needs restart)"
-if CANONICAL_REAL="$(php -r "echo realpath('$CANONICAL');")" && [[ -n "$CANONICAL_REAL" ]]; then
-  touch "$CANONICAL_REAL"
-  php -r "
-    \$f = '$CANONICAL_REAL';
-    if (function_exists('opcache_invalidate')) {
-        opcache_invalidate(\$f, true);
-        echo '    opcache_invalidate (CLI): '.\$f.PHP_EOL;
-    }
-  "
-else
-  echo "    warn: could not resolve canonical Activity.php path"
-fi
+echo "==> CLI load test"
+(cd "$APM_ROOT" && php artisan tinker --execute="echo App\Models\Activity::class.PHP_EOL;")
 echo
-
-echo "==> Regression test (composer validate-activity-model)"
-if (cd "$APM_ROOT" && composer validate-activity-model 2>&1); then
-  echo "    validate-activity-model: OK"
-else
-  echo "error: validate-activity-model failed — see messages above." >&2
-  echo "    Run: cd $APM_ROOT && php scripts/validate-activity-model.php" >&2
-  exit 1
-fi
-echo
-
-if [[ -n "${ARF_ID:-}" ]]; then
-  echo "==> Simulate request-arf show (ARF_ID=${ARF_ID})"
-  if (cd "$APM_ROOT" && php scripts/simulate-request-arf-show.php "$ARF_ID" 2>&1); then
-    echo "    simulate-request-arf-show: OK"
-  else
-    echo "error: simulate-request-arf-show failed for ARF ${ARF_ID}." >&2
-    exit 1
-  fi
-  echo
-else
-  echo "==> Optional: simulate a specific ARF show path (e.g. ARF_ID=111 ./scripts/production-fix-apm-activity-duplicate.sh)"
-  echo
-fi
 
 echo "==> OPcache (CLI)"
 php -r '

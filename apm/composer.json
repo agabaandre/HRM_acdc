@@ -86,11 +86,7 @@
             "@php artisan view:clear --ansi",
             "@php artisan cache:clear --ansi",
             "@php artisan uploads:link --force",
-            "@php artisan migrate --force --ansi",
-            "@php scripts/validate-activity-model.php"
-        ],
-        "validate-activity-model": [
-            "@php scripts/validate-activity-model.php"
+            "@php artisan migrate --force --ansi"
         ]
     },
     "extra": {

@@ -699,10 +699,7 @@ if (! function_exists('user_session')) {
      * Build data for "parent-based" disclaimer on ARF and Service Request show/print.
      */
     if (! function_exists('parent_based_disclaimer_data')) {
-        /**
-         * @param  \Illuminate\Database\Eloquent\Model|null  $parentModel  Pre-loaded parent to avoid a second model_type::find()
-         */
-        function parent_based_disclaimer_data($sourceId, $modelType, $currentType, $currentId, $parentModel = null)
+        function parent_based_disclaimer_data($sourceId, $modelType, $currentType, $currentId)
         {
             $empty = [
                 'parent' => null,
@@ -712,14 +709,11 @@ if (! function_exists('user_session')) {
                 'originating_change_request' => null,
                 'approved_changes_list' => [],
             ];
-            if (! $sourceId || ! $modelType) {
+            if (! $sourceId || ! $modelType || ! class_exists($modelType)) {
                 return $empty;
             }
             try {
-                $parent = $parentModel;
-                if ($parent === null && class_exists($modelType)) {
-                    $parent = $modelType::find($sourceId);
-                }
+                $parent = $modelType::find($sourceId);
                 $parentInfo = null;
                 if ($parent) {
                     $docNum = $parent->document_number ?? null;

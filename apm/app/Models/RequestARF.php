@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Support\ArfSourceModelResolver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -222,21 +221,17 @@ class RequestARF extends Model
     }
 
     /**
-     * Get the source model instance (Activity, NonTravelMemo, SpecialMemo, etc.).
+     * Get the source model instance.
      */
     public function getSourceModel()
     {
-        if (! $this->model_type || ! $this->source_id) {
+        if (!$this->model_type || !$this->source_id) {
             return null;
         }
 
         try {
-            if ($this->relationLoaded('source')) {
-                return $this->source;
-            }
-
-            return ArfSourceModelResolver::find($this->model_type, $this->source_id);
-        } catch (\Throwable $e) {
+            return $this->model_type::find($this->source_id);
+        } catch (\Exception $e) {
             return null;
         }
     }
