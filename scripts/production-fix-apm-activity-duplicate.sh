@@ -67,6 +67,20 @@ while IFS= read -r f; do
   fi
 done < <(find "$APM_ROOT/app" -type f -name '*.php' -print 2>/dev/null | sort)
 
+echo "==> Stray Activity model copies in app/Models (Activity copy.php, *.backup, etc.)"
+while IFS= read -r f; do
+  [[ -z "$f" ]] || [[ ! -f "$f" ]] && continue
+  base="$(basename "$f")"
+  case "$base" in
+    Activity.php|ActivityApprovalTrail.php|ActivityBudget.php) continue ;;
+  esac
+  if grep -q '^class Activity\b' "$f" 2>/dev/null; then
+    echo "    REMOVE $f"
+    rm -f "$f"
+    REMOVED=$((REMOVED + 1))
+  fi
+done < <(find "$APM_ROOT/app/Models" -maxdepth 1 -type f -name '*Activity*' -print 2>/dev/null | sort)
+
 echo "    remaining declarations: $FOUND (removed $REMOVED)"
 echo
 
@@ -101,8 +115,8 @@ echo "==> Laravel caches"
 (cd "$APM_ROOT" && php artisan optimize:clear)
 echo
 
-echo "==> CLI load test"
-(cd "$APM_ROOT" && php artisan tinker --execute="echo App\Models\Activity::class.PHP_EOL;")
+echo "==> Regression test (composer validate-activity-model)"
+(cd "$APM_ROOT" && composer validate-activity-model 2>&1 | tail -8)
 echo
 
 echo "==> OPcache (CLI)"

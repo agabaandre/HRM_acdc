@@ -221,17 +221,22 @@ class RequestARF extends Model
     }
 
     /**
-     * Get the source model instance.
+     * Get the source model instance (Activity, NonTravelMemo, SpecialMemo, etc.).
+     * Uses the morph relation so Activity is not loaded twice via dynamic model_type::find().
      */
     public function getSourceModel()
     {
-        if (!$this->model_type || !$this->source_id) {
+        if (! $this->model_type || ! $this->source_id) {
             return null;
         }
 
         try {
-            return $this->model_type::find($this->source_id);
-        } catch (\Exception $e) {
+            if ($this->relationLoaded('source')) {
+                return $this->source;
+            }
+
+            return $this->source()->first();
+        } catch (\Throwable $e) {
             return null;
         }
     }

@@ -835,7 +835,13 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
     {
             Log::info('ARF Show Method Called', ['id' => $request_arf]);
         
-        $requestARF = RequestARF::with(['approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole', 'funder'])->find($request_arf);
+        $requestARF = RequestARF::with([
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff',
+            'approvalTrails.approverRole',
+            'funder',
+            'source',
+        ])->find($request_arf);
         
         if (!$requestARF) {
             Log::error('ARF not found', ['id' => $request_arf]);
@@ -848,9 +854,9 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             'staff_id' => $requestARF->staff_id
         ]);
         
-        // Load essential ARF relationships
-        $requestARF->load(['staff', 'fundType', 'responsiblePerson']);
-        
+        // Load essential ARF relationships (source via morph — same pattern as request-arf index fix)
+        $requestARF->load(['staff', 'fundType', 'responsiblePerson', 'source']);
+
         // Get source data using model_type and source_id
         $sourceModel = null;
         $sourceData = [
@@ -1018,7 +1024,13 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         $disclaimerData = $emptyDisclaimer;
         $originatingChangeRequest = \App\Models\ChangeRequest::where('request_arf_id', $requestARF->id)->first();
         if (function_exists('parent_based_disclaimer_data') && $originatingChangeRequest) {
-            $disclaimerData = parent_based_disclaimer_data($requestARF->source_id, $requestARF->model_type, 'arf', $requestARF->id);
+            $disclaimerData = parent_based_disclaimer_data(
+                $requestARF->source_id,
+                $requestARF->model_type,
+                'arf',
+                $requestARF->id,
+                $sourceModel,
+            );
         }
 
         $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
@@ -1288,8 +1300,8 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
      */
     private function buildRequestArfPdfForOutput(RequestARF $requestARF): array
     {
-        // Load essential ARF relationships
-        $requestARF->load(['staff', 'fundType', 'responsiblePerson', 'funder', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole']);
+        // Load essential ARF relationships (source via morph — same pattern as request-arf index fix)
+        $requestARF->load(['staff', 'fundType', 'responsiblePerson', 'funder', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole', 'source']);
         
         // Get source data using model_type and source_id
         $sourceModel = null;
@@ -1479,7 +1491,13 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         $emptyDisclaimer = ['parent' => null, 'previous_arfs' => collect(), 'previous_service_requests' => collect(), 'previous_change_requests' => collect()];
         $disclaimerData = $emptyDisclaimer;
         if (function_exists('parent_based_disclaimer_data') && \App\Models\ChangeRequest::where('request_arf_id', $requestARF->id)->exists()) {
-            $disclaimerData = parent_based_disclaimer_data($requestARF->source_id, $requestARF->model_type, 'arf', $requestARF->id);
+            $disclaimerData = parent_based_disclaimer_data(
+                $requestARF->source_id,
+                $requestARF->model_type,
+                'arf',
+                $requestARF->id,
+                $sourceModel,
+            );
         }
 
         // Prepare data for PDF

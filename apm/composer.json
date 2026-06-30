@@ -86,7 +86,11 @@
             "@php artisan view:clear --ansi",
             "@php artisan cache:clear --ansi",
             "@php artisan uploads:link --force",
-            "@php artisan migrate --force --ansi"
+            "@php artisan migrate --force --ansi",
+            "@php artisan test --filter=ActivityModelIntegrity"
+        ],
+        "validate-activity-model": [
+            "@php artisan test --filter=ActivityModelIntegrity"
         ]
     },
     "extra": {
