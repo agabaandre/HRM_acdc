@@ -1,6 +1,11 @@
 <?php
 
 use App\Models\Activity;
+use App\Support\ActivityModelIntegrityValidator;
+
+test('activity model integrity validator reports no errors', function () {
+    expect(ActivityModelIntegrityValidator::errors(app_path()))->toBe([]);
+});
 
 test('activity model autoloads exactly once', function () {
     expect(class_exists(Activity::class, false))->toBeTrue()
@@ -8,30 +13,10 @@ test('activity model autoloads exactly once', function () {
 });
 
 test('only one app file declares class Activity', function () {
-    $appRoot = app_path();
-    $canonical = app_path('Models/Activity.php');
-    $declarations = [];
-
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($appRoot, FilesystemIterator::SKIP_DOTS)
-    );
-
-    foreach ($iterator as $file) {
-        if ($file->getExtension() !== 'php') {
-            continue;
-        }
-
-        $path = $file->getPathname();
-        $contents = file_get_contents($path);
-        if ($contents === false || ! preg_match('/^class Activity\b/m', $contents)) {
-            continue;
-        }
-
-        $declarations[] = $path;
-    }
+    $declarations = ActivityModelIntegrityValidator::declarationPaths(app_path());
 
     expect($declarations)->toHaveCount(1)
-        ->and($declarations[0])->toBe(realpath($canonical));
+        ->and($declarations[0])->toBe(realpath(app_path('Models/Activity.php')));
 });
 
 test('canonical Activity.php contains a single class declaration', function () {

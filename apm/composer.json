@@ -87,10 +87,10 @@
             "@php artisan cache:clear --ansi",
             "@php artisan uploads:link --force",
             "@php artisan migrate --force --ansi",
-            "@php artisan test --filter=ActivityModelIntegrity"
+            "@php scripts/validate-activity-model.php"
         ],
         "validate-activity-model": [
-            "@php artisan test --filter=ActivityModelIntegrity"
+            "@php scripts/validate-activity-model.php"
         ]
     },
     "extra": {

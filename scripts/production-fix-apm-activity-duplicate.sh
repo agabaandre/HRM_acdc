@@ -116,7 +116,13 @@ echo "==> Laravel caches"
 echo
 
 echo "==> Regression test (composer validate-activity-model)"
-(cd "$APM_ROOT" && composer validate-activity-model 2>&1 | tail -8)
+if (cd "$APM_ROOT" && composer validate-activity-model 2>&1); then
+  echo "    validate-activity-model: OK"
+else
+  echo "error: validate-activity-model failed — see messages above." >&2
+  echo "    Run: cd $APM_ROOT && php scripts/validate-activity-model.php" >&2
+  exit 1
+fi
 echo
 
 echo "==> OPcache (CLI)"
