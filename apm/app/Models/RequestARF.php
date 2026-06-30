@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ArfSourceModelResolver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -234,16 +235,7 @@ class RequestARF extends Model
                 return $this->source;
             }
 
-            if (! class_exists($this->model_type, false)) {
-                class_exists($this->model_type);
-            }
-
-            /** @var class-string<\Illuminate\Database\Eloquent\Model> $modelClass */
-            $modelClass = $this->model_type;
-
-            return $modelClass::query()
-                ->withoutAppends()
-                ->find($this->source_id);
+            return ArfSourceModelResolver::find($this->model_type, $this->source_id);
         } catch (\Throwable $e) {
             return null;
         }

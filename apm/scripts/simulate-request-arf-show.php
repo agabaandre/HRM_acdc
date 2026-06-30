@@ -61,8 +61,12 @@ try {
 
     $sourceModel = null;
     $step('getSourceModel()', static function () use (&$requestARF, &$sourceModel): void {
+        $rawType = (string) ($requestARF->model_type ?? '');
+        echo "\n    model_type=".json_encode($rawType).' normalized='
+            .json_encode(\App\Support\ArfSourceModelResolver::normalizeModelType($rawType))
+            .' activity_loaded='.(class_exists(\App\Models\Activity::class, false) ? 'yes' : 'no')
+            .' source_id='.$requestARF->source_id.' ';
         $sourceModel = $requestARF->getSourceModel();
-        echo "\n    model_type={$requestARF->model_type} source_id={$requestARF->source_id} ";
     });
 
     if ($sourceModel && $requestARF->model_type === 'App\\Models\\Activity') {
