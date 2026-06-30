@@ -13,6 +13,11 @@ class PurgeOldAgentReportsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public function __construct()
+    {
+        $this->onQueue('helpdesk');
+    }
+
     public function handle(AgentMonthlyReportService $service): void
     {
         $service->purgeExpiredReports();

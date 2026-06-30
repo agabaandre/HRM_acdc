@@ -6,7 +6,7 @@ import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
-import { notifyError, notifySuccess } from '../lib/notify'
+import { notifyError } from '../lib/notify'
 import {
   formatTableCountLabel,
   rowIndex,
@@ -181,7 +181,6 @@ interface MonthlyReportDetail extends MonthlyReportRow {
 const monthlyReports = ref<MonthlyReportRow[]>([])
 const monthlyDetail = ref<MonthlyReportDetail | null>(null)
 const monthlyLoading = ref(false)
-const monthlyGenerating = ref(false)
 const monthlyYear = ref(new Date().getFullYear())
 const monthlyMonth = ref(new Date().getMonth() || 12)
 const monthlyAgentId = ref<number | null>(null)
@@ -222,16 +221,35 @@ function reportFilterParams(state: {
   }
 }
 
+/** Laravel-friendly array query encoding for report filters. */
+function serializeReportQueryParams(params: Record<string, unknown>): string {
+  const parts: string[] = []
+  for (const [key, raw] of Object.entries(params)) {
+    if (raw === undefined || raw === null || raw === '') continue
+    if (Array.isArray(raw)) {
+      if (raw.length === 0) continue
+      for (const item of raw) {
+        parts.push(`${encodeURIComponent(key)}[]=${encodeURIComponent(String(item))}`)
+      }
+      continue
+    }
+    parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(raw))}`)
+  }
+  return parts.join('&')
+}
+
 async function loadMine() {
   myLoading.value = true
   try {
+    const params = {
+      q: mySearchState.q.trim() || undefined,
+      page: myPage.value,
+      per_page: myItemsPerPage.value,
+      ...reportFilterParams(mySearchState),
+    }
     const { data } = await api.get('/api/v1/reports/my-requester', {
-      params: {
-        q: mySearchState.q.trim() || undefined,
-        page: myPage.value,
-        per_page: myItemsPerPage.value,
-        ...reportFilterParams(mySearchState),
-      },
+      params,
+      paramsSerializer: () => serializeReportQueryParams(params),
     })
     myStats.value = data.data.stats
     const tickets = (data.data.tickets ?? {}) as Partial<PaginatedTickets>
@@ -256,8 +274,10 @@ function adminReportParams() {
 async function loadAdmin() {
   adminLoading.value = true
   try {
+    const params = adminReportParams()
     const { data } = await api.get('/api/v1/reports/admin-summary', {
-      params: adminReportParams(),
+      params,
+      paramsSerializer: () => serializeReportQueryParams(params),
     })
     adminCounts.value = data.data.counts
     const recent = (data.data.recent ?? {}) as Partial<PaginatedTickets>
@@ -295,32 +315,6 @@ async function openMonthlyReport(id: number) {
     monthlyDetail.value = data.data as MonthlyReportDetail
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Failed to load monthly report'))
-  }
-}
-
-async function generateMonthlyReport(force = false) {
-  monthlyGenerating.value = true
-  try {
-    const payload: Record<string, unknown> = {
-      year: monthlyYear.value,
-      month: monthlyMonth.value,
-      force,
-    }
-    if (isAdmin.value && monthlyAgentId.value) {
-      payload.user_id = monthlyAgentId.value
-    }
-    const { data } = await api.post('/api/v1/reports/agent-monthly/generate', payload)
-    if (data.data?.queued) {
-      notifySuccess('Report generation queued for all agents.')
-    } else if (data.data?.id) {
-      monthlyDetail.value = data.data as MonthlyReportDetail
-      notifySuccess('Monthly report generated.')
-    }
-    await loadMonthly()
-  } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Failed to generate monthly report'))
-  } finally {
-    monthlyGenerating.value = false
   }
 }
 
@@ -409,6 +403,7 @@ async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
     }
     const res = await api.get('/api/v1/reports/export', {
       params,
+      paramsSerializer: () => serializeReportQueryParams(params),
       responseType: 'blob',
     })
     const blob = new Blob([res.data], {
@@ -503,41 +498,15 @@ onMounted(async () => {
       </div>
 
       <template v-if="tab === 'mine' && myStats">
-      <div class="tiles">
-        <article class="tile tile-total">
-          <header>
-            <span class="tile-icon" aria-hidden="true">📥</span>
-            <span class="l">Total received</span>
-          </header>
-          <span class="n">{{ myStats.total_received }}</span>
-          <small class="tile-sub">All tickets logged for you</small>
-        </article>
-        <article class="tile tile-pending">
-          <header>
-            <span class="tile-icon" aria-hidden="true">⏳</span>
-            <span class="l">Pending resolution</span>
-          </header>
-          <span class="n">{{ myStats.pending }}</span>
-          <small class="tile-sub">Still being worked on</small>
-        </article>
-        <article class="tile tile-resolved">
-          <header>
-            <span class="tile-icon" aria-hidden="true">✅</span>
-            <span class="l">Resolved</span>
-          </header>
-          <span class="n">{{ myStats.resolved }}</span>
-          <small class="tile-sub">Completed tickets</small>
-        </article>
-      </div>
-      <details class="hd-filter-panel">
-        <summary class="hd-filter-panel__toggle">
-          <span class="hd-filter-panel__toggle-label">
+      <section class="reports-filters">
+        <header class="reports-filters__head">
+          <h2 class="reports-filters__title">
             <i class="bx bx-filter-alt" aria-hidden="true" />
-            Search &amp; filters
-          </span>
+            Filters
+          </h2>
           <span v-if="myFilterCount" class="hd-filter-panel__badge">{{ myFilterCount }} active</span>
-        </summary>
-        <UForm :state="mySearchState" class="hd-form hd-filter-panel__body" @submit="mySearch">
+        </header>
+        <UForm :state="mySearchState" class="hd-form hd-filter-panel__body reports-filters__body" @submit="mySearch">
           <UFormField label="Search" name="q" class="full">
             <UInput
               v-model="mySearchState.q"
@@ -575,7 +544,34 @@ onMounted(async () => {
             </UButton>
           </div>
         </UForm>
-      </details>
+      </section>
+
+      <div class="tiles">
+        <article class="tile tile-total">
+          <header>
+            <span class="tile-icon" aria-hidden="true">📥</span>
+            <span class="l">Total received</span>
+          </header>
+          <span class="n">{{ myStats.total_received }}</span>
+          <small class="tile-sub">All tickets logged for you</small>
+        </article>
+        <article class="tile tile-pending">
+          <header>
+            <span class="tile-icon" aria-hidden="true">⏳</span>
+            <span class="l">Pending resolution</span>
+          </header>
+          <span class="n">{{ myStats.pending }}</span>
+          <small class="tile-sub">Still being worked on</small>
+        </article>
+        <article class="tile tile-resolved">
+          <header>
+            <span class="tile-icon" aria-hidden="true">✅</span>
+            <span class="l">Resolved</span>
+          </header>
+          <span class="n">{{ myStats.resolved }}</span>
+          <small class="tile-sub">Completed tickets</small>
+        </article>
+      </div>
       <div class="report-tools">
         <UButton type="button" color="primary" class="report-tools__btn" @click="downloadExcel('mine')">
           Export my issues (Excel)
@@ -646,6 +642,68 @@ onMounted(async () => {
     </template>
 
     <template v-else-if="tab === 'admin' && adminCounts">
+      <section class="reports-filters">
+        <header class="reports-filters__head">
+          <h2 class="reports-filters__title">
+            <i class="bx bx-filter-alt" aria-hidden="true" />
+            Filters
+          </h2>
+          <span v-if="adminFilterCount" class="hd-filter-panel__badge">{{ adminFilterCount }} active</span>
+        </header>
+        <UForm :state="adminSearchState" class="hd-form hd-filter-panel__body reports-filters__body" @submit="adminSearch">
+          <UFormField label="Search" name="q" class="full">
+            <UInput
+              v-model="adminSearchState.q"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Ticket #, subject, requester, assignee…"
+              aria-label="Search admin recent activity"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField label="Agents" name="agentIds" class="full">
+            <USelectMenu
+              v-model="adminSearchState.agentIds"
+              :items="adminAgentItems"
+              value-key="value"
+              multiple
+              searchable
+              placeholder="All agents"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField label="Support groups" name="groupIds" class="full">
+            <USelectMenu v-model="adminSearchState.groupIds" :items="adminGroupItems" value-key="value" multiple searchable placeholder="All groups" class="w-full" />
+          </UFormField>
+          <UFormField label="Category" name="categoryIds" class="full">
+            <USelectMenu v-model="adminSearchState.categoryIds" :items="categoryItems" value-key="value" multiple searchable placeholder="All categories" class="w-full" />
+          </UFormField>
+          <UFormField label="Status" name="statuses" class="full">
+            <USelectMenu v-model="adminSearchState.statuses" :items="statusSelectItems" value-key="value" multiple searchable placeholder="All statuses" class="w-full" />
+          </UFormField>
+          <UFormField label="Priority" name="priorities" class="full">
+            <USelectMenu v-model="adminSearchState.priorities" :items="prioritySelectItems" value-key="value" multiple placeholder="All priorities" class="w-full" />
+          </UFormField>
+          <div class="hd-form hd-form--grid hd-form--grid-2 full">
+            <UFormField label="Date field" name="dateField">
+              <USelect v-model="adminSearchState.dateField" :items="[...dateFieldOptions]" class="w-full" />
+            </UFormField>
+            <UFormField label="From date" name="dateFrom">
+              <UInput v-model="adminSearchState.dateFrom" type="date" class="w-full" />
+            </UFormField>
+            <UFormField label="To date" name="dateTo">
+              <UInput v-model="adminSearchState.dateTo" type="date" class="w-full" />
+            </UFormField>
+          </div>
+          <div class="hd-form-actions full">
+            <UButton type="submit" color="primary">Apply filters</UButton>
+            <UButton type="button" color="neutral" variant="outline" @click="adminClear">
+              Clear all
+            </UButton>
+          </div>
+        </UForm>
+      </section>
+
       <div class="tiles">
         <article class="tile tile-total">
           <header>
@@ -702,67 +760,6 @@ onMounted(async () => {
           Export my assigned (Excel)
         </UButton>
       </div>
-      <details class="hd-filter-panel">
-        <summary class="hd-filter-panel__toggle">
-          <span class="hd-filter-panel__toggle-label">
-            <i class="bx bx-filter-alt" aria-hidden="true" />
-            Search &amp; filters
-          </span>
-          <span v-if="adminFilterCount" class="hd-filter-panel__badge">{{ adminFilterCount }} active</span>
-        </summary>
-        <UForm :state="adminSearchState" class="hd-form hd-filter-panel__body" @submit="adminSearch">
-          <UFormField label="Search" name="q" class="full">
-            <UInput
-              v-model="adminSearchState.q"
-              type="search"
-              icon="i-lucide-search"
-              placeholder="Ticket #, subject, requester, assignee…"
-              aria-label="Search admin recent activity"
-              class="w-full"
-            />
-          </UFormField>
-          <UFormField label="Agents" name="agentIds" class="full">
-            <USelectMenu
-              v-model="adminSearchState.agentIds"
-              :items="adminAgentItems"
-              value-key="value"
-              multiple
-              searchable
-              placeholder="All agents"
-              class="w-full"
-            />
-          </UFormField>
-          <UFormField label="Support groups" name="groupIds" class="full">
-            <USelectMenu v-model="adminSearchState.groupIds" :items="adminGroupItems" value-key="value" multiple searchable placeholder="All groups" class="w-full" />
-          </UFormField>
-          <UFormField label="Category" name="categoryIds" class="full">
-            <USelectMenu v-model="adminSearchState.categoryIds" :items="categoryItems" value-key="value" multiple searchable placeholder="All categories" class="w-full" />
-          </UFormField>
-          <UFormField label="Status" name="statuses" class="full">
-            <USelectMenu v-model="adminSearchState.statuses" :items="statusSelectItems" value-key="value" multiple searchable placeholder="All statuses" class="w-full" />
-          </UFormField>
-          <UFormField label="Priority" name="priorities" class="full">
-            <USelectMenu v-model="adminSearchState.priorities" :items="prioritySelectItems" value-key="value" multiple placeholder="All priorities" class="w-full" />
-          </UFormField>
-          <div class="hd-form hd-form--grid hd-form--grid-2 full">
-            <UFormField label="Date field" name="dateField">
-              <USelect v-model="adminSearchState.dateField" :items="[...dateFieldOptions]" class="w-full" />
-            </UFormField>
-            <UFormField label="From date" name="dateFrom">
-              <UInput v-model="adminSearchState.dateFrom" type="date" class="w-full" />
-            </UFormField>
-            <UFormField label="To date" name="dateTo">
-              <UInput v-model="adminSearchState.dateTo" type="date" class="w-full" />
-            </UFormField>
-          </div>
-          <div class="hd-form-actions full">
-            <UButton type="submit" color="primary">Apply filters</UButton>
-            <UButton type="button" color="neutral" variant="outline" @click="adminClear">
-              Clear all
-            </UButton>
-          </div>
-        </UForm>
-      </details>
       <h2>Recent activity</h2>
       <v-card class="hd-data-table-card" variant="outlined">
         <v-card-text class="hd-data-table-card__head">
@@ -850,13 +847,10 @@ onMounted(async () => {
         </div>
         <div class="report-tools">
           <UButton type="button" color="primary" :loading="monthlyLoading" @click="loadMonthly()">Load reports</UButton>
-          <UButton type="button" color="neutral" variant="outline" :loading="monthlyGenerating" @click="generateMonthlyReport(false)">
-            Generate report
-          </UButton>
-          <UButton v-if="isAdmin" type="button" color="neutral" variant="outline" :loading="monthlyGenerating" @click="generateMonthlyReport(true)">
-            Regenerate (force)
-          </UButton>
         </div>
+        <p class="monthly-hint muted">
+          Reports are generated automatically at month end and emailed to agents. Adjust retention under Settings → General.
+        </p>
       </div>
 
       <div v-if="monthlyLoading" class="muted">Loading monthly reports…</div>
@@ -875,7 +869,7 @@ onMounted(async () => {
             <span class="muted">{{ row.tickets_worked ?? 0 }} worked · {{ row.tickets_resolved ?? 0 }} resolved</span>
           </button>
         </aside>
-        <p v-else class="muted">No saved reports for this period. Generate one to create an AI summary.</p>
+        <p v-else class="muted">No saved reports for this period yet. Reports appear after the scheduled month-end run.</p>
 
         <article v-if="monthlyDetail" class="monthly-detail">
           <header class="monthly-detail-head">
@@ -906,6 +900,43 @@ onMounted(async () => {
 }
 .report-tabs--three {
   grid-template-columns: repeat(3, 1fr);
+}
+
+.reports-filters {
+  margin: 0 0 1rem;
+  border: 1px solid var(--hd-line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.reports-filters__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--hd-line);
+}
+
+.reports-filters__title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.reports-filters__body {
+  padding: 1rem;
+}
+
+.monthly-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
 }
 
 .report-tab {

@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\GenerateMonthlyAgentReportsJob;
 use App\Models\HelpdeskAgentMonthlyReport;
 use App\Models\HelpdeskProfile;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -66,46 +64,6 @@ class AgentMonthlyReportController extends Controller
         $report->load('user:id,name,email');
 
         return response()->json(['data' => $this->serializeDetail($report)]);
-    }
-
-    public function generate(Request $request): JsonResponse
-    {
-        $user = $request->user();
-        $p = $user->helpdeskProfile;
-        abort_unless($p && $this->isStaff($p), 403);
-
-        $validated = $request->validate([
-            'year' => ['required', 'integer', 'min:2020', 'max:2100'],
-            'month' => ['required', 'integer', 'min:1', 'max:12'],
-            'user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'force' => ['nullable', 'boolean'],
-        ]);
-
-        $year = (int) $validated['year'];
-        $month = (int) $validated['month'];
-        $force = (bool) ($validated['force'] ?? false);
-
-        if (! $p->isHelpdeskAdmin()) {
-            $report = app(\App\Services\AgentMonthlyReportService::class)
-                ->generateForAgent($user, $year, $month, $force);
-
-            return response()->json(['data' => $this->serializeDetail($report)]);
-        }
-
-        if (! empty($validated['user_id'])) {
-            $target = User::query()->findOrFail((int) $validated['user_id']);
-            $report = app(\App\Services\AgentMonthlyReportService::class)
-                ->generateForAgent($target, $year, $month, $force);
-
-            return response()->json(['data' => $this->serializeDetail($report)]);
-        }
-
-        GenerateMonthlyAgentReportsJob::dispatch($year, $month, $force);
-
-        return response()->json([
-            'data' => ['queued' => true, 'year' => $year, 'month' => $month],
-            'message' => 'Monthly agent report generation queued for all agents.',
-        ]);
     }
 
     /**

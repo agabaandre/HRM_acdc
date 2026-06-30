@@ -21,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withSchedule(function (Schedule $schedule) {
-        // Previous month: generate on the 1st, email shortly after.
+        // Previous month: generate on the 1st, email shortly after (queued on helpdesk worker).
         $schedule->job(new GenerateMonthlyAgentReportsJob)->monthlyOn(1, '02:00');
         $schedule->job(new EmailMonthlyAgentReportsJob)->monthlyOn(1, '08:00');
         $schedule->job(new PurgeOldAgentReportsJob)->dailyAt('03:15');

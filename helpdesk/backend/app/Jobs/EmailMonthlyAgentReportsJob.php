@@ -21,7 +21,9 @@ class EmailMonthlyAgentReportsJob implements ShouldQueue
     public function __construct(
         public ?int $year = null,
         public ?int $month = null,
-    ) {}
+    ) {
+        $this->onQueue('helpdesk');
+    }
 
     public function handle(): void
     {

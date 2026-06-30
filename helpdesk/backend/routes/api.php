@@ -99,7 +99,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/reports/export', [ReportController::class, 'exportExcel']);
         Route::get('/reports/agent-monthly', [AgentMonthlyReportController::class, 'index']);
         Route::get('/reports/agent-monthly/{report}', [AgentMonthlyReportController::class, 'show']);
-        Route::post('/reports/agent-monthly/generate', [AgentMonthlyReportController::class, 'generate']);
 
         Route::get('/admin/settings', [HelpdeskSettingsController::class, 'show']);
         Route::put('/admin/settings', [HelpdeskSettingsController::class, 'update']);

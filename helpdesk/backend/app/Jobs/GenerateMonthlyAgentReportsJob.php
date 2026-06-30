@@ -20,7 +20,9 @@ class GenerateMonthlyAgentReportsJob implements ShouldQueue
         public ?int $year = null,
         public ?int $month = null,
         public bool $force = false,
-    ) {}
+    ) {
+        $this->onQueue('helpdesk');
+    }
 
     public function handle(AgentMonthlyReportService $service): void
     {
