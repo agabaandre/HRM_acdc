@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 $apmRoot = dirname(__DIR__);
 $appRoot = $apmRoot.'/app';
+$canonical = $appRoot.'/Models/Activity.php';
 
 require $apmRoot.'/vendor/autoload.php';
 
@@ -18,17 +19,40 @@ use App\Support\ActivityModelIntegrityValidator;
 
 $errors = ActivityModelIntegrityValidator::errors($appRoot);
 
+$canonicalReal = realpath($canonical);
+echo 'Canonical Activity.php: '.($canonicalReal ?: $canonical).PHP_EOL;
+
+// Autoload must not double-declare the class.
+for ($i = 0; $i < 2; $i++) {
+    if (! class_exists(\App\Models\Activity::class, $i > 0)) {
+        class_exists(\App\Models\Activity::class);
+    }
+}
+
+// Related model that references Activity (show page loads activity_budget).
+if (! class_exists(\App\Models\ActivityBudget::class, false)) {
+    class_exists(\App\Models\ActivityBudget::class);
+}
+
+$activityIncludes = array_values(array_filter(
+    get_included_files(),
+    static fn (string $path): bool => basename($path) === 'Activity.php'
+));
+
+if (count($activityIncludes) > 1) {
+    $errors[] = 'Activity.php was included more than once: '.implode(', ', $activityIncludes);
+}
+
+if ($canonicalReal && function_exists('opcache_invalidate')) {
+    opcache_invalidate($canonicalReal, true);
+}
+
 if ($errors !== []) {
     fwrite(STDERR, "Activity model integrity check FAILED:\n");
     foreach ($errors as $error) {
         fwrite(STDERR, "  - {$error}\n");
     }
     exit(1);
-}
-
-// Autoload must not double-declare the class.
-if (! class_exists(\App\Models\Activity::class, false)) {
-    class_exists(\App\Models\Activity::class);
 }
 
 echo "Activity model integrity check passed.\n";
