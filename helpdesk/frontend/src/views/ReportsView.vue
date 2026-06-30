@@ -6,7 +6,7 @@ import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
-import { notifyError } from '../lib/notify'
+import { notifyError, notifySuccess } from '../lib/notify'
 import {
   formatTableCountLabel,
   rowIndex,
@@ -19,8 +19,30 @@ import { useAuthStore } from '../stores/auth'
 type SortItem = { key: string; order: 'asc' | 'desc' }
 
 const auth = useAuthStore()
-const tab = ref<'mine' | 'admin'>('mine')
+const tab = ref<'mine' | 'admin' | 'monthly'>('mine')
 const itemsPerPageOptions = [10, 20, 50, 100] as const
+
+const statusOptions = [
+  { label: 'Open', value: 'open' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'In progress', value: 'in_progress' },
+  { label: 'Awaiting confirm', value: 'awaiting_requester_confirmation' },
+  { label: 'Resolved', value: 'resolved' },
+  { label: 'Closed', value: 'closed' },
+] as const
+
+const priorityOptions = [
+  { label: 'Low', value: 'low' },
+  { label: 'Medium', value: 'medium' },
+  { label: 'High', value: 'high' },
+  { label: 'Urgent', value: 'urgent' },
+] as const
+
+const dateFieldOptions = [
+  { label: 'Created', value: 'created_at' },
+  { label: 'Resolved', value: 'resolved_at' },
+  { label: 'Closed', value: 'closed_at' },
+] as const
 
 const reportHeaders: DataTableHeader[] = [
   { title: '#', key: 'row_num', sortable: false, width: '52px', align: 'center' },
@@ -53,7 +75,15 @@ const myPage = ref(1)
 const myTotal = ref(0)
 const myItemsPerPage = ref<PageSize>(20)
 const mySortBy = ref<SortItem[]>([{ key: 'id', order: 'desc' }])
-const mySearchState = reactive<{ q: string }>({ q: '' })
+const mySearchState = reactive<{
+  q: string
+  statuses: string[]
+  categoryIds: number[]
+  priorities: string[]
+  dateField: string
+  dateFrom: string
+  dateTo: string
+}>({ q: '', statuses: [], categoryIds: [], priorities: [], dateField: 'created_at', dateFrom: '', dateTo: '' })
 const myLoading = ref(false)
 
 const adminCounts = ref<Record<string, number> | null>(null)
@@ -65,30 +95,96 @@ const adminSortBy = ref<SortItem[]>([{ key: 'id', order: 'desc' }])
 const adminSearchState = reactive<{
   q: string
   agentIds: number[]
+  groupIds: number[]
+  categoryIds: number[]
+  statuses: string[]
+  priorities: string[]
+  dateField: string
   dateFrom: string
   dateTo: string
-}>({ q: '', agentIds: [], dateFrom: '', dateTo: '' })
+}>({ q: '', agentIds: [], groupIds: [], categoryIds: [], statuses: [], priorities: [], dateField: 'created_at', dateFrom: '', dateTo: '' })
 const adminLoading = ref(false)
 const adminAgents = ref<{ id: number; name: string; email: string }[]>([])
+const adminGroups = ref<{ id: number; name: string }[]>([])
+const categories = ref<{ id: number; name: string }[]>([])
 
 const adminFilterCount = computed(() => {
   let n = 0
   if (adminSearchState.q.trim()) n += 1
   if (adminSearchState.agentIds.length) n += 1
+  if (adminSearchState.groupIds.length) n += 1
+  if (adminSearchState.categoryIds.length) n += 1
+  if (adminSearchState.statuses.length) n += 1
+  if (adminSearchState.priorities.length) n += 1
   if (adminSearchState.dateFrom) n += 1
   if (adminSearchState.dateTo) n += 1
+  if (adminSearchState.dateField !== 'created_at') n += 1
+  return n
+})
+
+const myFilterCount = computed(() => {
+  let n = 0
+  if (mySearchState.q.trim()) n += 1
+  if (mySearchState.statuses.length) n += 1
+  if (mySearchState.categoryIds.length) n += 1
+  if (mySearchState.priorities.length) n += 1
+  if (mySearchState.dateFrom) n += 1
+  if (mySearchState.dateTo) n += 1
+  if (mySearchState.dateField !== 'created_at') n += 1
   return n
 })
 
 const adminAgentItems = computed((): SelectNumberItem[] =>
   adminAgents.value.map((a) => ({ label: a.name, value: a.id })),
 )
-
-const myFilterCount = computed(() => (mySearchState.q.trim() ? 1 : 0))
+const adminGroupItems = computed((): SelectNumberItem[] =>
+  adminGroups.value.map((g) => ({ label: g.name, value: g.id })),
+)
+const categoryItems = computed((): SelectNumberItem[] =>
+  categories.value.map((c) => ({ label: c.name, value: c.id })),
+)
+const statusSelectItems = computed((): SelectNumberItem[] =>
+  statusOptions.map((s) => ({ label: s.label, value: s.value })),
+)
+const prioritySelectItems = computed((): SelectNumberItem[] =>
+  priorityOptions.map((p) => ({ label: p.label, value: p.value })),
+)
 
 const isAdmin = computed(
   () => !!auth.me?.profile?.is_helpdesk_admin || auth.me?.profile?.role === 'admin',
 )
+const isStaff = computed(() => {
+  const role = auth.me?.profile?.role
+  return ['agent', 'supervisor', 'admin', 'auditor'].includes(role ?? '')
+})
+
+interface MonthlyReportRow {
+  id: number
+  user_id: number
+  user_name?: string
+  period_year: number
+  period_month: number
+  period_label: string
+  tickets_worked?: number | null
+  tickets_resolved?: number | null
+  avg_first_response_minutes?: number | null
+  emailed_at?: string | null
+  created_at?: string | null
+}
+
+interface MonthlyReportDetail extends MonthlyReportRow {
+  ai_summary?: string
+  ai_model?: string | null
+  metrics?: Record<string, unknown>
+}
+
+const monthlyReports = ref<MonthlyReportRow[]>([])
+const monthlyDetail = ref<MonthlyReportDetail | null>(null)
+const monthlyLoading = ref(false)
+const monthlyGenerating = ref(false)
+const monthlyYear = ref(new Date().getFullYear())
+const monthlyMonth = ref(new Date().getMonth() || 12)
+const monthlyAgentId = ref<number | null>(null)
 const myTableCountLabel = computed(() =>
   formatTableCountLabel(myTickets.value.length, myTotal.value, myPage.value, myItemsPerPage.value),
 )
@@ -104,6 +200,28 @@ function adminCounter(idx: number): number {
   return rowIndex(adminPage.value, adminItemsPerPage.value, idx)
 }
 
+function reportFilterParams(state: {
+  statuses: string[]
+  categoryIds: number[]
+  priorities: string[]
+  dateField: string
+  dateFrom: string
+  dateTo: string
+  agentIds?: number[]
+  groupIds?: number[]
+}) {
+  return {
+    statuses: state.statuses.length ? state.statuses : undefined,
+    category_ids: state.categoryIds.length ? state.categoryIds : undefined,
+    priorities: state.priorities.length ? state.priorities : undefined,
+    date_field: state.dateField !== 'created_at' ? state.dateField : undefined,
+    date_from: state.dateFrom || undefined,
+    date_to: state.dateTo || undefined,
+    agent_ids: state.agentIds?.length ? state.agentIds : undefined,
+    group_ids: state.groupIds?.length ? state.groupIds : undefined,
+  }
+}
+
 async function loadMine() {
   myLoading.value = true
   try {
@@ -112,6 +230,7 @@ async function loadMine() {
         q: mySearchState.q.trim() || undefined,
         page: myPage.value,
         per_page: myItemsPerPage.value,
+        ...reportFilterParams(mySearchState),
       },
     })
     myStats.value = data.data.stats
@@ -130,9 +249,7 @@ function adminReportParams() {
     q: adminSearchState.q.trim() || undefined,
     page: adminPage.value,
     per_page: adminItemsPerPage.value,
-    agent_ids: adminSearchState.agentIds.length ? adminSearchState.agentIds : undefined,
-    date_from: adminSearchState.dateFrom || undefined,
-    date_to: adminSearchState.dateTo || undefined,
+    ...reportFilterParams(adminSearchState),
   }
 }
 
@@ -153,14 +270,70 @@ async function loadAdmin() {
   }
 }
 
-async function switchTab(next: 'mine' | 'admin') {
+async function loadMonthly() {
+  monthlyLoading.value = true
+  try {
+    const { data } = await api.get('/api/v1/reports/agent-monthly', {
+      params: {
+        year: monthlyYear.value,
+        month: monthlyMonth.value || undefined,
+        user_id: isAdmin.value && monthlyAgentId.value ? monthlyAgentId.value : undefined,
+      },
+    })
+    monthlyReports.value = Array.isArray(data.data) ? data.data : []
+    if (monthlyReports.value.length && !monthlyDetail.value) {
+      await openMonthlyReport(monthlyReports.value[0].id)
+    }
+  } finally {
+    monthlyLoading.value = false
+  }
+}
+
+async function openMonthlyReport(id: number) {
+  try {
+    const { data } = await api.get(`/api/v1/reports/agent-monthly/${id}`)
+    monthlyDetail.value = data.data as MonthlyReportDetail
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Failed to load monthly report'))
+  }
+}
+
+async function generateMonthlyReport(force = false) {
+  monthlyGenerating.value = true
+  try {
+    const payload: Record<string, unknown> = {
+      year: monthlyYear.value,
+      month: monthlyMonth.value,
+      force,
+    }
+    if (isAdmin.value && monthlyAgentId.value) {
+      payload.user_id = monthlyAgentId.value
+    }
+    const { data } = await api.post('/api/v1/reports/agent-monthly/generate', payload)
+    if (data.data?.queued) {
+      notifySuccess('Report generation queued for all agents.')
+    } else if (data.data?.id) {
+      monthlyDetail.value = data.data as MonthlyReportDetail
+      notifySuccess('Monthly report generated.')
+    }
+    await loadMonthly()
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Failed to generate monthly report'))
+  } finally {
+    monthlyGenerating.value = false
+  }
+}
+
+async function switchTab(next: 'mine' | 'admin' | 'monthly') {
   tab.value = next
   await load()
 }
 
 async function load() {
   try {
-    if (tab.value === 'admin' && isAdmin.value) {
+    if (tab.value === 'monthly' && isStaff.value) {
+      await loadMonthly()
+    } else if (tab.value === 'admin' && isAdmin.value) {
       await loadAdmin()
     } else {
       await loadMine()
@@ -169,6 +342,7 @@ async function load() {
     notifyError(apiErrorMessage(e, 'Failed to load report'))
     myLoading.value = false
     adminLoading.value = false
+    monthlyLoading.value = false
   }
 }
 
@@ -178,6 +352,12 @@ function mySearch() {
 }
 function myClear() {
   mySearchState.q = ''
+  mySearchState.statuses = []
+  mySearchState.categoryIds = []
+  mySearchState.priorities = []
+  mySearchState.dateField = 'created_at'
+  mySearchState.dateFrom = ''
+  mySearchState.dateTo = ''
   myPage.value = 1
   loadMine()
 }
@@ -188,6 +368,11 @@ function adminSearch() {
 function adminClear() {
   adminSearchState.q = ''
   adminSearchState.agentIds = []
+  adminSearchState.groupIds = []
+  adminSearchState.categoryIds = []
+  adminSearchState.statuses = []
+  adminSearchState.priorities = []
+  adminSearchState.dateField = 'created_at'
   adminSearchState.dateFrom = ''
   adminSearchState.dateTo = ''
   adminPage.value = 1
@@ -214,9 +399,12 @@ async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
     if (scope === 'all' && tab.value === 'admin') {
       Object.assign(params, {
         q: adminSearchState.q.trim() || undefined,
-        agent_ids: adminSearchState.agentIds.length ? adminSearchState.agentIds : undefined,
-        date_from: adminSearchState.dateFrom || undefined,
-        date_to: adminSearchState.dateTo || undefined,
+        ...reportFilterParams(adminSearchState),
+      })
+    } else if (scope === 'mine') {
+      Object.assign(params, {
+        q: mySearchState.q.trim() || undefined,
+        ...reportFilterParams(mySearchState),
       })
     }
     const res = await api.get('/api/v1/reports/export', {
@@ -238,6 +426,13 @@ async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
 }
 
 onMounted(async () => {
+  try {
+    const { data } = await api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories')
+    categories.value = Array.isArray(data.data) ? data.data : []
+  } catch {
+    categories.value = []
+  }
+
   if (isAdmin.value) {
     tab.value = 'admin'
     try {
@@ -246,6 +441,21 @@ onMounted(async () => {
     } catch {
       adminAgents.value = []
     }
+    try {
+      const { data } = await api.get('/api/v1/admin/support-groups')
+      adminGroups.value = (Array.isArray(data.data) ? data.data : []).map((g: { id: number; name: string }) => ({
+        id: g.id,
+        name: g.name,
+      }))
+    } catch {
+      adminGroups.value = []
+    }
+  } else if (isStaff.value) {
+    tab.value = 'monthly'
+    const prev = new Date()
+    prev.setMonth(prev.getMonth() - 1)
+    monthlyYear.value = prev.getFullYear()
+    monthlyMonth.value = prev.getMonth() + 1
   } else {
     tab.value = 'mine'
   }
@@ -257,8 +467,9 @@ onMounted(async () => {
   <div>
     <CbpPageHeading title="Reports" back-to="/" back-label="← Overview" />
     <div class="cbp-card">
-      <div v-if="isAdmin" class="report-tabs" role="tablist" aria-label="Report views">
+      <div v-if="isAdmin || isStaff" class="report-tabs" :class="{ 'report-tabs--three': isAdmin && isStaff }" role="tablist" aria-label="Report views">
         <button
+          v-if="isAdmin"
           type="button"
           role="tab"
           class="report-tab"
@@ -267,6 +478,17 @@ onMounted(async () => {
           @click="switchTab('admin')"
         >
           Admin overview
+        </button>
+        <button
+          v-if="isStaff"
+          type="button"
+          role="tab"
+          class="report-tab"
+          :class="{ 'report-tab--on': tab === 'monthly' }"
+          :aria-selected="tab === 'monthly'"
+          @click="switchTab('monthly')"
+        >
+          Monthly agent report
         </button>
         <button
           type="button"
@@ -326,6 +548,26 @@ onMounted(async () => {
               class="w-full"
             />
           </UFormField>
+          <UFormField label="Status" name="statuses" class="full">
+            <USelectMenu v-model="mySearchState.statuses" :items="statusSelectItems" value-key="value" multiple searchable placeholder="All statuses" class="w-full" />
+          </UFormField>
+          <UFormField label="Category" name="categoryIds" class="full">
+            <USelectMenu v-model="mySearchState.categoryIds" :items="categoryItems" value-key="value" multiple searchable placeholder="All categories" class="w-full" />
+          </UFormField>
+          <UFormField label="Priority" name="priorities" class="full">
+            <USelectMenu v-model="mySearchState.priorities" :items="prioritySelectItems" value-key="value" multiple placeholder="All priorities" class="w-full" />
+          </UFormField>
+          <div class="hd-form hd-form--grid hd-form--grid-2 full">
+            <UFormField label="Date field" name="dateField">
+              <USelect v-model="mySearchState.dateField" :items="[...dateFieldOptions]" class="w-full" />
+            </UFormField>
+            <UFormField label="From date" name="dateFrom">
+              <UInput v-model="mySearchState.dateFrom" type="date" class="w-full" />
+            </UFormField>
+            <UFormField label="To date" name="dateTo">
+              <UInput v-model="mySearchState.dateTo" type="date" class="w-full" />
+            </UFormField>
+          </div>
           <div class="hd-form-actions full">
             <UButton type="submit" color="primary">Apply filters</UButton>
             <UButton type="button" color="neutral" variant="outline" @click="myClear">
@@ -490,7 +732,22 @@ onMounted(async () => {
               class="w-full"
             />
           </UFormField>
+          <UFormField label="Support groups" name="groupIds" class="full">
+            <USelectMenu v-model="adminSearchState.groupIds" :items="adminGroupItems" value-key="value" multiple searchable placeholder="All groups" class="w-full" />
+          </UFormField>
+          <UFormField label="Category" name="categoryIds" class="full">
+            <USelectMenu v-model="adminSearchState.categoryIds" :items="categoryItems" value-key="value" multiple searchable placeholder="All categories" class="w-full" />
+          </UFormField>
+          <UFormField label="Status" name="statuses" class="full">
+            <USelectMenu v-model="adminSearchState.statuses" :items="statusSelectItems" value-key="value" multiple searchable placeholder="All statuses" class="w-full" />
+          </UFormField>
+          <UFormField label="Priority" name="priorities" class="full">
+            <USelectMenu v-model="adminSearchState.priorities" :items="prioritySelectItems" value-key="value" multiple placeholder="All priorities" class="w-full" />
+          </UFormField>
           <div class="hd-form hd-form--grid hd-form--grid-2 full">
+            <UFormField label="Date field" name="dateField">
+              <USelect v-model="adminSearchState.dateField" :items="[...dateFieldOptions]" class="w-full" />
+            </UFormField>
             <UFormField label="From date" name="dateFrom">
               <UInput v-model="adminSearchState.dateFrom" type="date" class="w-full" />
             </UFormField>
@@ -569,7 +826,73 @@ onMounted(async () => {
         </v-data-table-server>
       </v-card>
     </template>
-    <p v-else class="muted">Loading…</p>
+
+    <template v-else-if="tab === 'monthly' && isStaff">
+      <div class="monthly-toolbar">
+        <div class="hd-form hd-form--grid hd-form--grid-2">
+          <UFormField label="Year" name="monthlyYear">
+            <UInput v-model.number="monthlyYear" type="number" min="2020" max="2100" class="w-full" />
+          </UFormField>
+          <UFormField label="Month" name="monthlyMonth">
+            <UInput v-model.number="monthlyMonth" type="number" min="1" max="12" class="w-full" />
+          </UFormField>
+          <UFormField v-if="isAdmin" label="Agent" name="monthlyAgentId" class="full">
+            <USelectMenu
+              v-model="monthlyAgentId"
+              :items="adminAgentItems"
+              value-key="value"
+              searchable
+              clearable
+              placeholder="All agents"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
+        <div class="report-tools">
+          <UButton type="button" color="primary" :loading="monthlyLoading" @click="loadMonthly()">Load reports</UButton>
+          <UButton type="button" color="neutral" variant="outline" :loading="monthlyGenerating" @click="generateMonthlyReport(false)">
+            Generate report
+          </UButton>
+          <UButton v-if="isAdmin" type="button" color="neutral" variant="outline" :loading="monthlyGenerating" @click="generateMonthlyReport(true)">
+            Regenerate (force)
+          </UButton>
+        </div>
+      </div>
+
+      <div v-if="monthlyLoading" class="muted">Loading monthly reports…</div>
+      <div v-else class="monthly-layout">
+        <aside v-if="monthlyReports.length" class="monthly-list">
+          <button
+            v-for="row in monthlyReports"
+            :key="row.id"
+            type="button"
+            class="monthly-list-item"
+            :class="{ 'monthly-list-item--on': monthlyDetail?.id === row.id }"
+            @click="openMonthlyReport(row.id)"
+          >
+            <strong>{{ row.period_label }}</strong>
+            <span v-if="row.user_name">{{ row.user_name }}</span>
+            <span class="muted">{{ row.tickets_worked ?? 0 }} worked · {{ row.tickets_resolved ?? 0 }} resolved</span>
+          </button>
+        </aside>
+        <p v-else class="muted">No saved reports for this period. Generate one to create an AI summary.</p>
+
+        <article v-if="monthlyDetail" class="monthly-detail">
+          <header class="monthly-detail-head">
+            <h2>{{ monthlyDetail.period_label }} — {{ monthlyDetail.user_name ?? 'Agent' }}</h2>
+            <p class="muted">
+              {{ monthlyDetail.tickets_worked ?? 0 }} tickets worked ·
+              {{ monthlyDetail.tickets_resolved ?? 0 }} resolved ·
+              Avg response: {{ monthlyDetail.avg_first_response_minutes ?? 'n/a' }} min
+              <span v-if="monthlyDetail.emailed_at"> · Emailed {{ new Date(monthlyDetail.emailed_at).toLocaleDateString() }}</span>
+            </p>
+          </header>
+          <div class="monthly-summary">{{ monthlyDetail.ai_summary }}</div>
+        </article>
+      </div>
+    </template>
+
+    <p v-else-if="tab !== 'monthly'" class="muted">Loading…</p>
     </div>
   </div>
 </template>
@@ -580,6 +903,9 @@ onMounted(async () => {
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
   margin-bottom: 1rem;
+}
+.report-tabs--three {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .report-tab {
@@ -737,6 +1063,56 @@ h2 {
   color: #475569;
   text-align: center;
   width: 100%;
+}
+
+.monthly-toolbar {
+  margin-bottom: 1rem;
+}
+.monthly-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .monthly-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.monthly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.monthly-list-item {
+  text-align: left;
+  border: 1px solid var(--hd-line);
+  border-radius: 6px;
+  background: #fff;
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.monthly-list-item--on {
+  border-color: #119a48;
+  background: #f0fdf4;
+}
+.monthly-detail {
+  border: 1px solid var(--hd-line);
+  border-radius: 6px;
+  padding: 1rem;
+  background: #fff;
+}
+.monthly-detail-head h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+.monthly-summary {
+  line-height: 1.55;
+  color: #334155;
+  white-space: pre-wrap;
 }
 
 @media (min-width: 640px) {

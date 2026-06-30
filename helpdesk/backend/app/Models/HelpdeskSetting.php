@@ -72,6 +72,17 @@ class HelpdeskSetting extends Model
 
     public const KEY_TEAMS_MESSAGING_PATH = 'teams_messaging_path';
 
+    /** Lobby screen agent-of-week/month scoring — percentage weights (default 60 / 40). */
+    public const KEY_SCREEN_AGENT_TICKETS_WEIGHT = 'screen_agent_leaderboard_tickets_weight';
+
+    public const KEY_SCREEN_AGENT_RESPONSE_WEIGHT = 'screen_agent_leaderboard_response_weight';
+
+    public const KEY_AGENT_MONTHLY_REPORT_ENABLED = 'agent_monthly_report_enabled';
+
+    public const KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED = 'agent_monthly_report_email_enabled';
+
+    public const KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS = 'agent_monthly_report_retention_months';
+
     public static function getValue(string $key, ?string $default = null): ?string
     {
         $row = static::query()->where('key', $key)->first();
@@ -97,6 +108,45 @@ class HelpdeskSetting extends Model
         $v = static::getValue(self::KEY_REQUESTER_UNSATISFIED_FOLLOW_UP, '1');
 
         return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
+    }
+
+    /**
+     * @return array{tickets: int, response: int}
+     */
+    public static function screenAgentLeaderboardWeights(): array
+    {
+        $tickets = (int) static::getValue(self::KEY_SCREEN_AGENT_TICKETS_WEIGHT, '60');
+        $response = (int) static::getValue(self::KEY_SCREEN_AGENT_RESPONSE_WEIGHT, '40');
+
+        $tickets = max(0, min(100, $tickets));
+        $response = max(0, min(100, $response));
+
+        if ($tickets + $response === 0) {
+            return ['tickets' => 60, 'response' => 40];
+        }
+
+        return ['tickets' => $tickets, 'response' => $response];
+    }
+
+    public static function agentMonthlyReportEnabled(): bool
+    {
+        $v = static::getValue(self::KEY_AGENT_MONTHLY_REPORT_ENABLED, '1');
+
+        return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
+    }
+
+    public static function agentMonthlyReportEmailEnabled(): bool
+    {
+        $v = static::getValue(self::KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED, '1');
+
+        return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
+    }
+
+    public static function agentMonthlyReportRetentionMonths(): int
+    {
+        $v = (int) static::getValue(self::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS, '12');
+
+        return max(1, min(120, $v));
     }
 
     public static function setValue(string $key, ?string $value): void

@@ -7,6 +7,7 @@ use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
+use App\Services\AgentLeaderboardService;
 use App\Services\StaffDirectoryLookupService;
 use App\Services\TicketFirstResponseService;
 use App\Support\StaffPhotoUrl;
@@ -28,8 +29,11 @@ class PublicScreenController extends Controller
     /** Inclusive set including the "waiting on requester" hand-off state. */
     private const PENDING_STATUSES = ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'];
 
-    public function __invoke(TicketFirstResponseService $firstResponse, StaffDirectoryLookupService $directory): JsonResponse
-    {
+    public function __invoke(
+        TicketFirstResponseService $firstResponse,
+        StaffDirectoryLookupService $directory,
+        AgentLeaderboardService $leaderboard,
+    ): JsonResponse {
         $now = now();
         $startOfToday = $now->copy()->startOfDay();
         $endOfToday = $now->copy()->endOfDay();
@@ -51,6 +55,8 @@ class PublicScreenController extends Controller
                 'workload' => $this->workload(),
                 'in_progress_workload' => $this->inProgressWorkload(),
                 'trend' => $this->trend30Days($thirtyDaysAgo, $now),
+                'agent_of_week' => $leaderboard->agentOfWeek($now),
+                'agent_of_month' => $leaderboard->agentOfMonth($now),
                 'csat' => [
                     'avg_score' => null,
                     'responses' => 0,

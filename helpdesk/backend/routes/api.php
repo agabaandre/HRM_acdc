@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\MeWorkModeController;
 use App\Http\Controllers\Api\V1\PublicScreenController;
 use App\Http\Controllers\Api\V1\PublicTicketResolutionController;
 use App\Http\Controllers\Api\V1\ReferenceDataController;
+use App\Http\Controllers\Api\V1\AgentMonthlyReportController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RichTextImageController;
 use App\Http\Controllers\Api\V1\TicketAttachmentController;
@@ -96,6 +97,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/reports/my-requester', [ReportController::class, 'myRequesterReport']);
         Route::get('/reports/admin-summary', [ReportController::class, 'adminSummary']);
         Route::get('/reports/export', [ReportController::class, 'exportExcel']);
+        Route::get('/reports/agent-monthly', [AgentMonthlyReportController::class, 'index']);
+        Route::get('/reports/agent-monthly/{report}', [AgentMonthlyReportController::class, 'show']);
+        Route::post('/reports/agent-monthly/generate', [AgentMonthlyReportController::class, 'generate']);
 
         Route::get('/admin/settings', [HelpdeskSettingsController::class, 'show']);
         Route::put('/admin/settings', [HelpdeskSettingsController::class, 'update']);

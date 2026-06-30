@@ -54,7 +54,6 @@ class ReportController extends Controller
         $endOfToday = $now->copy()->endOfDay();
         $sevenDaysAgo = $now->copy()->subDays(7)->startOfDay();
 
-        // Cached pending query so we don't repeat the same predicate across counts.
         $pendingBase = (clone $base)->whereIn('status', $pendingStatuses);
 
         $counts = [
@@ -126,22 +125,23 @@ class ReportController extends Controller
 
         $cacheKey = TicketReadCache::key('reports', 'my_requester', (int) $user->id, $request->query());
 
-        $payload = TicketReadCache::remember($cacheKey, function () use ($request, $user, $p) {
+        $payload = TicketReadCache::remember($cacheKey, function () use ($request, $p) {
             $sid = (int) $p->staff_id;
             $qTerm = trim((string) $request->query('q', ''));
-            $q = HelpdeskTicket::query()
+            $base = HelpdeskTicket::query()
                 ->with(['category', 'assignee', 'resolvedBy'])
                 ->where('requester_staff_id', $sid);
 
-            $this->applyTicketSearch($q, $qTerm);
+            $this->applyTicketSearch($base, $qTerm);
+            $this->applyReportFilters($base, $request);
 
             $stats = [
-                'total_received' => (clone $q)->count(),
-                'pending' => (clone $q)->whereIn('status', ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'])->count(),
-                'resolved' => (clone $q)->where('status', 'resolved')->count(),
+                'total_received' => (clone $base)->count(),
+                'pending' => (clone $base)->whereIn('status', ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'])->count(),
+                'resolved' => (clone $base)->where('status', 'resolved')->count(),
             ];
 
-            $tickets = (clone $q)->orderByDesc('id')->paginate(min((int) $request->get('per_page', 20), 100));
+            $tickets = (clone $base)->orderByDesc('id')->paginate(min((int) $request->get('per_page', 20), 100));
 
             return [
                 'stats' => $stats,
@@ -170,12 +170,16 @@ class ReportController extends Controller
             $qTerm = trim((string) $request->query('q', ''));
             $perPage = min((int) $request->query('per_page', 20), 100);
 
+            $countsBase = HelpdeskTicket::query();
+            $this->applyReportFilters($countsBase, $request);
+            $this->applyTicketSearch($countsBase, $qTerm);
+
             $counts = [
-                'total' => HelpdeskTicket::query()->count(),
-                'open' => HelpdeskTicket::query()->whereIn('status', ['open', 'pending', 'in_progress'])->count(),
-                'awaiting_requester_confirmation' => HelpdeskTicket::query()->where('status', 'awaiting_requester_confirmation')->count(),
-                'resolved' => HelpdeskTicket::query()->where('status', 'resolved')->count(),
-                'closed' => HelpdeskTicket::query()->where('status', 'closed')->count(),
+                'total' => (clone $countsBase)->count(),
+                'open' => (clone $countsBase)->whereIn('status', ['open', 'pending', 'in_progress'])->count(),
+                'awaiting_requester_confirmation' => (clone $countsBase)->where('status', 'awaiting_requester_confirmation')->count(),
+                'resolved' => (clone $countsBase)->where('status', 'resolved')->count(),
+                'closed' => (clone $countsBase)->where('status', 'closed')->count(),
             ];
 
             $recentQuery = HelpdeskTicket::query()
@@ -261,14 +265,55 @@ class ReportController extends Controller
             $query->whereIn('assigned_user_id', $agentIds);
         }
 
+        $groupIds = array_values(array_filter(array_map(
+            static fn ($id) => (int) $id,
+            (array) $request->query('group_ids', []),
+        ), static fn (int $id) => $id > 0));
+
+        if ($groupIds !== []) {
+            $query->whereIn('assigned_group_id', $groupIds);
+        }
+
+        $categoryIds = array_values(array_filter(array_map(
+            static fn ($id) => (int) $id,
+            (array) $request->query('category_ids', []),
+        ), static fn (int $id) => $id > 0));
+
+        if ($categoryIds !== []) {
+            $query->whereIn('category_id', $categoryIds);
+        }
+
+        $statuses = array_values(array_filter(array_map(
+            static fn ($s) => trim((string) $s),
+            (array) $request->query('statuses', []),
+        )));
+
+        if ($statuses !== []) {
+            $query->whereIn('status', $statuses);
+        }
+
+        $priorities = array_values(array_filter(array_map(
+            static fn ($s) => trim((string) $s),
+            (array) $request->query('priorities', []),
+        )));
+
+        if ($priorities !== []) {
+            $query->whereIn('priority', $priorities);
+        }
+
+        $dateField = trim((string) $request->query('date_field', 'created_at'));
+        if (! in_array($dateField, ['created_at', 'resolved_at', 'closed_at'], true)) {
+            $dateField = 'created_at';
+        }
+
         $dateFrom = trim((string) $request->query('date_from', ''));
         if ($dateFrom !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
-            $query->where('created_at', '>=', $dateFrom.' 00:00:00');
+            $query->where($dateField, '>=', $dateFrom.' 00:00:00');
         }
 
         $dateTo = trim((string) $request->query('date_to', ''));
         if ($dateTo !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
-            $query->where('created_at', '<=', $dateTo.' 23:59:59');
+            $query->where($dateField, '<=', $dateTo.' 23:59:59');
         }
     }
 }

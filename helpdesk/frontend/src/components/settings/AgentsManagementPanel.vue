@@ -85,7 +85,7 @@ const activeTab = ref<SettingsTab>('groups')
 const cats = ref<Cat[]>([])
 const groups = ref<SupportGroupRow[]>([])
 const agents = ref<AgentRow[]>([])
-const groupDraft = reactive<Record<number, { category_ids: number[]; member_user_ids: number[]; is_active: boolean }>>({})
+const groupDraft = reactive<Record<number, { name: string; description: string; category_ids: number[]; member_user_ids: number[]; is_active: boolean }>>({})
 const newGroupForm = reactive({
   open: false,
   name: '',
@@ -160,9 +160,11 @@ async function loadCats() {
 }
 
 function hydrateGroupDrafts(list: SupportGroupRow[]) {
-  const draft: Record<number, { category_ids: number[]; member_user_ids: number[]; is_active: boolean }> = {}
+  const draft: Record<number, { name: string; description: string; category_ids: number[]; member_user_ids: number[]; is_active: boolean }> = {}
   for (const g of list) {
     draft[g.id] = {
+      name: g.name,
+      description: g.description ?? '',
       category_ids: (g.categories ?? []).map((c) => c.id),
       member_user_ids: (g.members ?? []).map((m) => m.id),
       is_active: g.is_active,
@@ -278,8 +280,8 @@ async function saveGroup(group: SupportGroupRow) {
   savingGroupId.value = group.id
   try {
     await api.put(`/api/v1/admin/support-groups/${group.id}`, {
-      name: group.name,
-      description: group.description,
+      name: draft.name.trim() || group.name,
+      description: draft.description.trim() || null,
       sort_order: group.sort_order,
       is_active: draft.is_active,
       category_ids: draft.category_ids.map((id) => Number(id)),
@@ -596,9 +598,13 @@ onMounted(() => {
       <div v-if="groups.length" class="group-grid">
         <article v-for="g in groups" :key="g.id" class="card group-card">
           <header class="group-card-head">
-            <div>
-              <h3>{{ g.name }}</h3>
-              <p v-if="g.description" class="group-desc">{{ g.description }}</p>
+            <div class="group-card-title-block">
+              <UFormField v-if="groupDraft[g.id]" label="Group name" :name="`group-name-${g.id}`" class="group-name-field">
+                <UInput v-model="groupDraft[g.id].name" type="text" class="w-full" />
+              </UFormField>
+              <UFormField v-if="groupDraft[g.id]" label="Description" :name="`group-desc-${g.id}`" class="group-desc-field">
+                <UTextarea v-model="groupDraft[g.id].description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
+              </UFormField>
               <div class="badges">
                 <span v-if="g.is_system" class="badge badge-system">Default</span>
                 <span class="badge" :class="groupDraft[g.id]?.is_active ? 'badge-on' : 'badge-off'">

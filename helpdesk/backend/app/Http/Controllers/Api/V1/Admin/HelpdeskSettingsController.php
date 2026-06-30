@@ -38,6 +38,11 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::KEY_TEAMS_MESSAGING_PATH,
             HelpdeskSetting::KEY_FAQ_SOURCES_JSON,
             HelpdeskSetting::KEY_FAQ_INGEST_LAST_RESULT,
+            HelpdeskSetting::KEY_SCREEN_AGENT_TICKETS_WEIGHT,
+            HelpdeskSetting::KEY_SCREEN_AGENT_RESPONSE_WEIGHT,
+            HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_ENABLED,
+            HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED,
+            HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS,
         ];
 
         $data = [];
@@ -51,6 +56,9 @@ class HelpdeskSettingsController extends Controller
         $data[HelpdeskSetting::KEY_REQUESTER_UNSATISFIED_FOLLOW_UP] = (($data[HelpdeskSetting::KEY_REQUESTER_UNSATISFIED_FOLLOW_UP] ?? '1') === '1');
         $data[HelpdeskSetting::KEY_WHATSAPP_ENABLED] = (($data[HelpdeskSetting::KEY_WHATSAPP_ENABLED] ?? '0') === '1');
         $data[HelpdeskSetting::KEY_TEAMS_ENABLED] = (($data[HelpdeskSetting::KEY_TEAMS_ENABLED] ?? '0') === '1');
+        $data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_ENABLED] = (($data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_ENABLED] ?? '1') === '1');
+        $data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED] = (($data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED] ?? '1') === '1');
+        $data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS] = (int) ($data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS] ?? 12);
 
         $rawKey = HelpdeskSetting::getValue(HelpdeskSetting::KEY_AI_API_KEY);
         $data[HelpdeskSetting::KEY_AI_API_KEY] = '';
@@ -108,6 +116,11 @@ class HelpdeskSettingsController extends Controller
             'teams_messaging_path' => ['nullable', 'string', 'max:191'],
             'teams_app_password' => ['nullable', 'string', 'max:8192'],
             'faq_sources_json' => ['nullable', 'string', 'max:65535'],
+            'screen_agent_leaderboard_tickets_weight' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'screen_agent_leaderboard_response_weight' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'agent_monthly_report_enabled' => ['nullable', 'boolean'],
+            'agent_monthly_report_email_enabled' => ['nullable', 'boolean'],
+            'agent_monthly_report_retention_months' => ['nullable', 'integer', 'min:1', 'max:120'],
         ]);
 
         $map = [
@@ -123,6 +136,8 @@ class HelpdeskSettingsController extends Controller
             'teams_app_id' => HelpdeskSetting::KEY_TEAMS_APP_ID,
             'teams_tenant_id' => HelpdeskSetting::KEY_TEAMS_TENANT_ID,
             'teams_messaging_path' => HelpdeskSetting::KEY_TEAMS_MESSAGING_PATH,
+            'screen_agent_leaderboard_tickets_weight' => HelpdeskSetting::KEY_SCREEN_AGENT_TICKETS_WEIGHT,
+            'screen_agent_leaderboard_response_weight' => HelpdeskSetting::KEY_SCREEN_AGENT_RESPONSE_WEIGHT,
         ];
 
         foreach ($map as $reqKey => $dbKey) {
@@ -164,6 +179,27 @@ class HelpdeskSettingsController extends Controller
 
         if (array_key_exists('teams_enabled', $validated) && $validated['teams_enabled'] !== null) {
             HelpdeskSetting::setValue(HelpdeskSetting::KEY_TEAMS_ENABLED, $validated['teams_enabled'] ? '1' : '0');
+        }
+
+        if (array_key_exists('agent_monthly_report_enabled', $validated) && $validated['agent_monthly_report_enabled'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_ENABLED,
+                $validated['agent_monthly_report_enabled'] ? '1' : '0'
+            );
+        }
+
+        if (array_key_exists('agent_monthly_report_email_enabled', $validated) && $validated['agent_monthly_report_email_enabled'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED,
+                $validated['agent_monthly_report_email_enabled'] ? '1' : '0'
+            );
+        }
+
+        if (array_key_exists('agent_monthly_report_retention_months', $validated) && $validated['agent_monthly_report_retention_months'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS,
+                (string) $validated['agent_monthly_report_retention_months']
+            );
         }
 
         if (array_key_exists('ai_api_key', $validated)) {

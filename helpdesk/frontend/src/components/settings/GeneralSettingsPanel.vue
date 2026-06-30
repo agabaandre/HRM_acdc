@@ -164,6 +164,11 @@ async function saveGeneral() {
       default_agent_division_ids: ctx.form.default_agent_division_ids.trim() || null,
       require_resolution_confirmation: ctx.form.require_resolution_confirmation,
       requester_unsatisfied_follow_up_enabled: ctx.form.requester_unsatisfied_follow_up_enabled,
+      screen_agent_leaderboard_tickets_weight: ctx.form.screen_agent_leaderboard_tickets_weight,
+      screen_agent_leaderboard_response_weight: ctx.form.screen_agent_leaderboard_response_weight,
+      agent_monthly_report_enabled: ctx.form.agent_monthly_report_enabled,
+      agent_monthly_report_email_enabled: ctx.form.agent_monthly_report_email_enabled,
+      agent_monthly_report_retention_months: ctx.form.agent_monthly_report_retention_months,
     },
     "General settings saved.",
   )
@@ -278,7 +283,7 @@ function roleLabel(c: CandidateRow): string {
       <div>
         <h2 id="general-heading">General settings</h2>
         <p class="hero-lede">
-          Branding, requester follow-up on closed tickets, and how staff become Helpdesk agents.
+          Branding, lobby screen recognition, requester follow-up on closed tickets, and how staff become Helpdesk agents.
         </p>
       </div>
     </header>
@@ -326,6 +331,79 @@ function roleLabel(c: CandidateRow): string {
             </span>
           </span>
         </div>
+      </article>
+
+      <article class="settings-card settings-card--screen">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true">📺</span>
+          <div>
+            <h3>Lobby screen — agent recognition</h3>
+            <p class="card-lede">
+              Weights for <strong>Agent of the week</strong> and <strong>Agent of the month</strong> on the
+              <a href="/staff/helpdesk/screen" target="_blank" rel="noopener">TV / lobby dashboard</a>.
+              Scoring blends tickets worked (first response or resolution in the period) with average first-response time.
+            </p>
+          </div>
+        </header>
+        <div class="weight-grid">
+          <UFormField label="Tickets worked weight (%)" name="screen_agent_leaderboard_tickets_weight">
+            <UInput
+              v-model.number="ctx.form.screen_agent_leaderboard_tickets_weight"
+              type="number"
+              min="0"
+              max="100"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField label="Avg response time weight (%)" name="screen_agent_leaderboard_response_weight">
+            <UInput
+              v-model.number="ctx.form.screen_agent_leaderboard_response_weight"
+              type="number"
+              min="0"
+              max="100"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
+        <p class="hint-tight">
+          Faster average response scores higher. Defaults: 60% volume, 40% response. Weights are normalized if they do not sum to 100.
+        </p>
+      </article>
+
+      <article class="settings-card settings-card--monthly-reports">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true">📊</span>
+          <div>
+            <h3>Monthly agent reports</h3>
+            <p class="card-lede">
+              AI-synthesized performance summaries generated at month end, emailed to agents, and stored on the server.
+            </p>
+          </div>
+        </header>
+        <div class="toggle-row">
+          <USwitch v-model="ctx.form.agent_monthly_report_enabled" />
+          <span class="toggle-copy">
+            <strong>Enable monthly agent reports</strong>
+            <span class="toggle-hint">When enabled, reports are generated on the 1st for the previous month.</span>
+          </span>
+        </div>
+        <div class="toggle-row">
+          <USwitch v-model="ctx.form.agent_monthly_report_email_enabled" />
+          <span class="toggle-copy">
+            <strong>Email reports to agents</strong>
+            <span class="toggle-hint">Sends each agent their report after generation.</span>
+          </span>
+        </div>
+        <UFormField label="Retention (months)" name="agent_monthly_report_retention_months" class="retention-field">
+          <UInput
+            v-model.number="ctx.form.agent_monthly_report_retention_months"
+            type="number"
+            min="1"
+            max="120"
+            class="w-full"
+          />
+        </UFormField>
+        <p class="hint-tight">Archived HTML copies are purged after this period (default 12 months).</p>
       </article>
     </div>
 
@@ -588,6 +666,15 @@ function roleLabel(c: CandidateRow): string {
 .color-grid {
   display: grid;
   gap: 0.75rem;
+}
+.weight-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+.retention-field {
+  max-width: 12rem;
+  margin-top: 0.75rem;
 }
 .toggle-row {
   display: flex;

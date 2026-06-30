@@ -382,4 +382,83 @@ class PublicScreenApiTest extends TestCase
         $ticket->refresh();
         $this->assertNotNull($ticket->first_response_at);
     }
+
+    public function test_screen_includes_agent_of_week_and_month(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $fastAgent = $this->helpdeskUser(99501, HelpdeskProfile::ROLE_AGENT);
+        $slowAgent = $this->helpdeskUser(99502, HelpdeskProfile::ROLE_AGENT);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009920',
+            'category_id' => $cat->id,
+            'subject' => 'Fast',
+            'description' => 'Quick',
+            'priority' => 'low',
+            'status' => 'resolved',
+            'source' => 'web',
+            'requester_staff_id' => 99599,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $fastAgent->id,
+            'resolved_by_user_id' => $fastAgent->id,
+            'first_response_at' => now()->subMinutes(5),
+            'resolved_at' => now(),
+            'created_at' => now()->subMinutes(10),
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009921',
+            'category_id' => $cat->id,
+            'subject' => 'Slow',
+            'description' => 'Later',
+            'priority' => 'low',
+            'status' => 'resolved',
+            'source' => 'web',
+            'requester_staff_id' => 99599,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $slowAgent->id,
+            'resolved_by_user_id' => $slowAgent->id,
+            'first_response_at' => now()->subMinutes(50),
+            'resolved_at' => now(),
+            'created_at' => now()->subMinutes(60),
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009922',
+            'category_id' => $cat->id,
+            'subject' => 'Extra',
+            'description' => 'More volume',
+            'priority' => 'low',
+            'status' => 'resolved',
+            'source' => 'web',
+            'requester_staff_id' => 99599,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $slowAgent->id,
+            'resolved_by_user_id' => $slowAgent->id,
+            'first_response_at' => now()->subMinutes(40),
+            'resolved_at' => now(),
+            'created_at' => now()->subMinutes(45),
+        ]);
+
+        $response = $this->getJson('/api/v1/public/screen');
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'data' => [
+                'agent_of_week' => ['period_label', 'weights', 'agent'],
+                'agent_of_month' => ['period_label', 'weights', 'agent'],
+            ],
+        ]);
+        $response->assertJsonPath('data.agent_of_week.weights.tickets', 60);
+        $response->assertJsonPath('data.agent_of_week.weights.response', 40);
+        // Slow agent has more tickets; fast agent has better response — with 60/40 weighting volume wins.
+        $response->assertJsonPath('data.agent_of_week.agent.name', $slowAgent->name);
+        $response->assertJsonPath('data.agent_of_week.agent.tickets_worked', 2);
+        $response->assertJsonPath('data.agent_of_month.agent.name', $slowAgent->name);
+    }
 }

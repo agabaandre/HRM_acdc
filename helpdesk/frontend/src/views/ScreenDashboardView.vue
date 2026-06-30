@@ -64,6 +64,19 @@ interface TrendDay {
   created: number
   resolved: number
 }
+interface AgentLeaderboardAgent {
+  id: number
+  name: string
+  avatar_url?: string | null
+  tickets_worked: number
+  avg_response_minutes: number | null
+  score: number
+}
+interface AgentLeaderboard {
+  period_label: string
+  weights: { tickets: number; response: number }
+  agent: AgentLeaderboardAgent | null
+}
 interface ScreenData {
   generated_at: string
   volumes: Volumes
@@ -76,6 +89,8 @@ interface ScreenData {
   workload: WorkloadRow[]
   in_progress_workload: InProgressRow[]
   trend: TrendDay[]
+  agent_of_week: AgentLeaderboard
+  agent_of_month: AgentLeaderboard
   csat: { avg_score: number | null; responses: number; note?: string }
 }
 
@@ -340,16 +355,42 @@ onUnmounted(() => {
           <p class="kpi-sub">Being worked now</p>
         </article>
 
-        <article class="kpi kpi-unassigned" :class="{ alert: data.volumes.unassigned > 0 }">
-          <p class="kpi-label">Unassigned</p>
-          <p class="kpi-value">{{ data.volumes.unassigned }}</p>
-          <p class="kpi-sub">Waiting to pick up</p>
+        <article class="kpi kpi-agent-week">
+          <p class="kpi-label">Agent of the week</p>
+          <template v-if="data.agent_of_week?.agent">
+            <div class="kpi-agent-row">
+              <CbpAvatar :name="data.agent_of_week.agent.name" :image-url="data.agent_of_week.agent.avatar_url ?? null" size="lg" />
+              <p class="kpi-value kpi-value--name">{{ data.agent_of_week.agent.name }}</p>
+            </div>
+            <p class="kpi-sub">
+              {{ data.agent_of_week.agent.tickets_worked }} tickets worked
+              <span class="dot">·</span>
+              {{ fmtMinutes(data.agent_of_week.agent.avg_response_minutes) }} avg response
+            </p>
+          </template>
+          <template v-else>
+            <p class="kpi-value">—</p>
+            <p class="kpi-sub">No qualifying activity this week</p>
+          </template>
         </article>
 
-        <article class="kpi kpi-awaiting">
-          <p class="kpi-label">Awaiting confirm</p>
-          <p class="kpi-value">{{ data.volumes.awaiting_confirm }}</p>
-          <p class="kpi-sub">Resolution sent</p>
+        <article class="kpi kpi-agent-month">
+          <p class="kpi-label">Agent of the month</p>
+          <template v-if="data.agent_of_month?.agent">
+            <div class="kpi-agent-row">
+              <CbpAvatar :name="data.agent_of_month.agent.name" :image-url="data.agent_of_month.agent.avatar_url ?? null" size="lg" />
+              <p class="kpi-value kpi-value--name">{{ data.agent_of_month.agent.name }}</p>
+            </div>
+            <p class="kpi-sub">
+              {{ data.agent_of_month.agent.tickets_worked }} tickets worked
+              <span class="dot">·</span>
+              {{ fmtMinutes(data.agent_of_month.agent.avg_response_minutes) }} avg response
+            </p>
+          </template>
+          <template v-else>
+            <p class="kpi-value">—</p>
+            <p class="kpi-sub">No qualifying activity this month</p>
+          </template>
         </article>
 
         <article class="kpi kpi-response">
@@ -932,6 +973,20 @@ html.screen-mode .hd-content-frame--full .hd-content-frame__body {
 }
 .kpi-unassigned { --kpi-accent: #f59e0b; }
 .kpi-awaiting { --kpi-accent: #a855f7; }
+.kpi-agent-week { --kpi-accent: #eab308; }
+.kpi-agent-month { --kpi-accent: #f97316; }
+.kpi-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+.kpi-value--name {
+  font-size: clamp(1.1rem, 2.5vw, 1.55rem) !important;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .kpi-response { --kpi-accent: #0ea5e9; }
 .kpi-unassigned.alert { background: linear-gradient(135deg, #111a2c 0%, #2a1a04 100%); }
 .kpi-new { --kpi-accent: #06b6d4; }

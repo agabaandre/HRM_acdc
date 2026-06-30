@@ -17,6 +17,11 @@ export interface HelpdeskSettingsPayload {
   default_agent_division_ids: string | null
   require_resolution_confirmation: boolean
   requester_unsatisfied_follow_up_enabled: boolean
+  screen_agent_leaderboard_tickets_weight: string | number | null
+  screen_agent_leaderboard_response_weight: string | number | null
+  agent_monthly_report_enabled: boolean
+  agent_monthly_report_email_enabled: boolean
+  agent_monthly_report_retention_months: number
   ai_api_key: string
   ai_api_key_configured: boolean
 }
@@ -33,6 +38,11 @@ export interface HelpdeskAdminSettingsForm {
   default_agent_division_ids: string
   require_resolution_confirmation: boolean
   requester_unsatisfied_follow_up_enabled: boolean
+  screen_agent_leaderboard_tickets_weight: number
+  screen_agent_leaderboard_response_weight: number
+  agent_monthly_report_enabled: boolean
+  agent_monthly_report_email_enabled: boolean
+  agent_monthly_report_retention_months: number
   ai_api_key: string
 }
 
@@ -62,6 +72,11 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
     default_agent_division_ids: '21',
     require_resolution_confirmation: true,
     requester_unsatisfied_follow_up_enabled: true,
+    screen_agent_leaderboard_tickets_weight: 60,
+    screen_agent_leaderboard_response_weight: 40,
+    agent_monthly_report_enabled: true,
+    agent_monthly_report_email_enabled: true,
+    agent_monthly_report_retention_months: 12,
     ai_api_key: '',
   })
 
@@ -80,6 +95,11 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
       form.default_agent_division_ids = d.default_agent_division_ids ?? '21'
       form.require_resolution_confirmation = Boolean(d.require_resolution_confirmation)
       form.requester_unsatisfied_follow_up_enabled = d.requester_unsatisfied_follow_up_enabled !== false
+      form.screen_agent_leaderboard_tickets_weight = Number(d.screen_agent_leaderboard_tickets_weight ?? 60)
+      form.screen_agent_leaderboard_response_weight = Number(d.screen_agent_leaderboard_response_weight ?? 40)
+      form.agent_monthly_report_enabled = d.agent_monthly_report_enabled !== false
+      form.agent_monthly_report_email_enabled = d.agent_monthly_report_email_enabled !== false
+      form.agent_monthly_report_retention_months = Number(d.agent_monthly_report_retention_months ?? 12)
       form.ai_api_key = ''
       keyConfigured.value = Boolean(d.ai_api_key_configured)
     } catch (e: unknown) {

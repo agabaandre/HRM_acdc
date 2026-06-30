@@ -1,9 +1,12 @@
 <?php
 
-use App\Http\Middleware\AssignCorrelationId;
+use App\Jobs\EmailMonthlyAgentReportsJob;
+use App\Jobs\GenerateMonthlyAgentReportsJob;
+use App\Jobs\PurgeOldAgentReportsJob;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Console\Scheduling\Schedule;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,8 +17,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->api(prepend: [
-            AssignCorrelationId::class,
+            \App\Http\Middleware\AssignCorrelationId::class,
         ]);
+    })
+    ->withSchedule(function (Schedule $schedule) {
+        // Previous month: generate on the 1st, email shortly after.
+        $schedule->job(new GenerateMonthlyAgentReportsJob)->monthlyOn(1, '02:00');
+        $schedule->job(new EmailMonthlyAgentReportsJob)->monthlyOn(1, '08:00');
+        $schedule->job(new PurgeOldAgentReportsJob)->dailyAt('03:15');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
