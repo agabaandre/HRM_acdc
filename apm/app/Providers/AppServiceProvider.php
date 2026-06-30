@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\WeeklyBriefingReport;
 use App\Services\CbpPlatformMenuService;
 use App\Services\DivisionWeeklyBriefGate;
+use App\Support\ActivityModelWarmup;
 use App\Support\RuntimeUrl;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
@@ -18,7 +19,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-      
+        $this->app->booting(static function (): void {
+            ActivityModelWarmup::run();
+        });
     }
 
     /**

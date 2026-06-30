@@ -222,7 +222,6 @@ class RequestARF extends Model
 
     /**
      * Get the source model instance (Activity, NonTravelMemo, SpecialMemo, etc.).
-     * Uses the morph relation so Activity is not loaded twice via dynamic model_type::find().
      */
     public function getSourceModel()
     {
@@ -235,7 +234,16 @@ class RequestARF extends Model
                 return $this->source;
             }
 
-            return $this->source()->first();
+            if (! class_exists($this->model_type, false)) {
+                class_exists($this->model_type);
+            }
+
+            /** @var class-string<\Illuminate\Database\Eloquent\Model> $modelClass */
+            $modelClass = $this->model_type;
+
+            return $modelClass::query()
+                ->withoutAppends()
+                ->find($this->source_id);
         } catch (\Throwable $e) {
             return null;
         }

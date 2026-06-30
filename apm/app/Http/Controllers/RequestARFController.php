@@ -840,7 +840,6 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             'approvalTrails.oicStaff',
             'approvalTrails.approverRole',
             'funder',
-            'source',
         ])->find($request_arf);
         
         if (!$requestARF) {
@@ -854,8 +853,8 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             'staff_id' => $requestARF->staff_id
         ]);
         
-        // Load essential ARF relationships (source via morph — same pattern as request-arf index fix)
-        $requestARF->load(['staff', 'fundType', 'responsiblePerson', 'source']);
+        // Load essential ARF relationships (resolve source via getSourceModel — no morph eager load)
+        $requestARF->load(['staff', 'fundType', 'responsiblePerson']);
 
         // Get source data using model_type and source_id
         $sourceModel = null;
@@ -1300,8 +1299,8 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
      */
     private function buildRequestArfPdfForOutput(RequestARF $requestARF): array
     {
-        // Load essential ARF relationships (source via morph — same pattern as request-arf index fix)
-        $requestARF->load(['staff', 'fundType', 'responsiblePerson', 'funder', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole', 'source']);
+        // Load essential ARF relationships (resolve source via getSourceModel — no morph eager load)
+        $requestARF->load(['staff', 'fundType', 'responsiblePerson', 'funder', 'approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole']);
         
         // Get source data using model_type and source_id
         $sourceModel = null;
