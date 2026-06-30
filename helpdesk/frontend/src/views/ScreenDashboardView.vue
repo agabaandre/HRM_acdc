@@ -355,6 +355,24 @@ onUnmounted(() => {
           <p class="kpi-sub">Being worked now</p>
         </article>
 
+        <article class="kpi kpi-response">
+          <p class="kpi-label">Avg response time</p>
+          <p class="kpi-value">{{ fmtMinutes(data.wait.avg_first_response_minutes) }}</p>
+          <p class="kpi-sub">{{ data.wait.window_label }}</p>
+        </article>
+
+        <article class="kpi kpi-new">
+          <p class="kpi-label">New today</p>
+          <p class="kpi-value">{{ data.volumes.created_today }}</p>
+          <p class="kpi-sub">Logged since midnight</p>
+        </article>
+
+        <article class="kpi kpi-resolved">
+          <p class="kpi-label">Resolved today</p>
+          <p class="kpi-value">{{ data.volumes.resolved_today }}</p>
+          <p class="kpi-sub">{{ data.volumes.closed_today }} closed</p>
+        </article>
+
         <article class="kpi kpi-agent-week">
           <p class="kpi-label">Agent of the week</p>
           <template v-if="data.agent_of_week?.agent">
@@ -391,24 +409,6 @@ onUnmounted(() => {
             <p class="kpi-value">—</p>
             <p class="kpi-sub">No qualifying activity this month</p>
           </template>
-        </article>
-
-        <article class="kpi kpi-response">
-          <p class="kpi-label">Avg response time</p>
-          <p class="kpi-value">{{ fmtMinutes(data.wait.avg_first_response_minutes) }}</p>
-          <p class="kpi-sub">{{ data.wait.window_label }}</p>
-        </article>
-
-        <article class="kpi kpi-new">
-          <p class="kpi-label">New today</p>
-          <p class="kpi-value">{{ data.volumes.created_today }}</p>
-          <p class="kpi-sub">Logged since midnight</p>
-        </article>
-
-        <article class="kpi kpi-resolved">
-          <p class="kpi-label">Resolved today</p>
-          <p class="kpi-value">{{ data.volumes.resolved_today }}</p>
-          <p class="kpi-sub">{{ data.volumes.closed_today }} closed</p>
         </article>
       </section>
 
