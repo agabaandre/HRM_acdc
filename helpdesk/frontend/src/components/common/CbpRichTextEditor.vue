@@ -422,7 +422,7 @@ defineExpose({
 .cbp-rich-text__editor {
   background: #fff;
   border-radius: 4px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--hd-line);
   position: relative;
 }
 .cbp-rich-text__editor--loading {
@@ -436,7 +436,7 @@ defineExpose({
 .cbp-rich-text__editor :deep(.ql-toolbar) {
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
-  border-color: #cbd5e1;
+  border-color: var(--hd-line);
   background: #f8fafc;
   display: flex;
   flex-wrap: wrap;
@@ -451,7 +451,7 @@ defineExpose({
   height: auto;
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
-  border-color: #cbd5e1;
+  border-color: var(--hd-line);
   font-size: 0.95rem;
 }
 .cbp-rich-text__editor :deep(.ql-editor) {

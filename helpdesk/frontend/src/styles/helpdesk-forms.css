@@ -68,7 +68,7 @@
 /* Collapsible filter panel — mobile-friendly reports / list views */
 .hd-filter-panel {
   margin: 0 0 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   border-radius: 8px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
@@ -76,7 +76,7 @@
 }
 
 html.helpdesk-theme-dark .hd-filter-panel {
-  border-color: rgba(148, 163, 184, 0.25);
+  border-color: var(--hd-line);
   background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
 }
 
@@ -131,11 +131,11 @@ html.helpdesk-theme-dark .hd-filter-panel__toggle {
 
 .hd-filter-panel__body {
   padding: 0 1rem 1rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--hd-line);
 }
 
 html.helpdesk-theme-dark .hd-filter-panel__body {
-  border-top-color: rgba(148, 163, 184, 0.2);
+  border-top-color: var(--hd-line-subtle);
 }
 
 @media (min-width: 768px) {

@@ -18,6 +18,10 @@ const africaCdcLight = {
     success: '#047857',
     warning: '#d97706',
   },
+  variables: {
+    'border-color': '15, 23, 42',
+    'border-opacity': 0.08,
+  },
 }
 
 const africaCdcDark = {
@@ -32,6 +36,10 @@ const africaCdcDark = {
     info: '#60a5fa',
     success: '#34d399',
     warning: '#fbbf24',
+  },
+  variables: {
+    'border-color': '148, 163, 184',
+    'border-opacity': 0.2,
   },
 }
 
@@ -84,7 +92,8 @@ export default createVuetify({
     },
     VCard: {
       rounded: 'lg',
-      elevation: 1,
+      elevation: 0,
+      variant: 'outlined',
     },
     VDataTable: {
       density: 'compact',

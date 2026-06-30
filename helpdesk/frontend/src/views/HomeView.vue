@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpBadgeStrip from '../components/common/CbpBadgeStrip.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
+import HomeAgentKanban from '../components/home/HomeAgentKanban.vue'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { staffPortalHomeUrl } from '../lib/sso'
@@ -69,7 +70,7 @@ const isAgentHome = computed(() => isAgentDeskUser(auth.me?.profile))
 
 const homeLede = computed(() => {
   if (isAgentHome.value) {
-    return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Use Agent desk for your triage board and queue, browse FAQs below, or log requests from the shortcuts.'
+    return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Triage assigned tickets on your board below, browse FAQs, or use the shortcuts for Ask Helpdesk and the full agent desk.'
   }
   return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Ask our AI assistant for guided troubleshooting, browse FAQs below, or log a new request for the service desk team.'
 })
@@ -203,7 +204,9 @@ onMounted(() => {
         </RouterLink>
       </nav>
 
-      <div v-else class="hd-quick-grid" role="navigation" aria-label="Helpdesk shortcuts">
+      <HomeAgentKanban v-if="isAgentHome" class="hd-home-kanban" />
+
+      <div v-if="!isAgentHome" class="hd-quick-grid" role="navigation" aria-label="Helpdesk shortcuts">
         <UCard
           v-for="action in quickActions"
           :key="action.to"
@@ -310,6 +313,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.hd-home-kanban {
+  margin-bottom: 0.25rem;
+}
 .gate {
   border-left: 4px solid #c9a227;
 }
@@ -395,7 +401,7 @@ onMounted(() => {
   gap: 0.45rem;
 }
 .kb-item {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   border-radius: 4px;
   overflow: hidden;
   background: #fff;
@@ -454,7 +460,7 @@ onMounted(() => {
 }
 .kb-answer {
   padding: 0 0.95rem 0.95rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--hd-line-subtle);
   color: #3a4452;
   font-size: 0.93rem;
   line-height: 1.6;

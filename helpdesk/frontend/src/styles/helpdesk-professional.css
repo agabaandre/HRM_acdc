@@ -10,23 +10,27 @@ html.helpdesk-theme-light {
   --hd-radius-lg: 4px;
   --hd-shadow-soft: 0 4px 20px rgba(15, 23, 42, 0.06);
   --hd-shadow-card: 0 8px 28px rgba(15, 23, 42, 0.08);
-  --hd-border: rgba(15, 23, 42, 0.08);
+  --hd-line: rgba(15, 23, 42, 0.08);
+  --hd-line-subtle: rgba(15, 23, 42, 0.05);
+  --hd-border: var(--hd-line);
   --hd-muted: #5c6c7c;
   --hd-hero-from: #0d7a3a;
   --hd-hero-to: #119a48;
 }
 
 html.helpdesk-theme-dark {
-  --hd-border: rgba(148, 163, 184, 0.2);
+  --hd-line: rgba(148, 163, 184, 0.2);
+  --hd-line-subtle: rgba(148, 163, 184, 0.12);
+  --hd-border: var(--hd-line);
   --hd-muted: #94a3b8;
   --hd-shadow-soft: 0 8px 28px rgba(2, 6, 23, 0.35);
   --hd-shadow-card: 0 12px 36px rgba(2, 6, 23, 0.45);
 }
 
 .cbp-card {
-  border: 1px solid var(--hd-border);
+  border: 1px solid var(--hd-line);
   border-radius: var(--hd-radius-md);
-  box-shadow: var(--hd-shadow-soft);
+  box-shadow: none;
   padding: 1.35rem 1.5rem;
 }
 
@@ -316,7 +320,7 @@ html.helpdesk-theme-dark .hd-btn--outline {
   font-weight: 700;
   color: #475569;
   background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   border-radius: 999px;
   padding: 0.28rem 0.65rem;
 }
@@ -354,7 +358,7 @@ html.helpdesk-theme-dark .hd-btn--outline {
   min-height: 280px;
   max-height: min(62vh, 520px);
   background: rgba(255, 255, 255, 0.85);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   border-radius: var(--hd-radius-md);
   padding: 0.65rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
@@ -412,7 +416,7 @@ html.helpdesk-theme-dark .hd-btn--outline {
 }
 
 .hd-kanban-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   border-radius: var(--hd-radius-sm);
   background: #fff;
   padding: 0.65rem 0.7rem;
@@ -529,7 +533,7 @@ html.helpdesk-theme-dark .hd-btn--outline {
   text-align: center;
   font-size: 0.75rem;
   color: #94a3b8;
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--hd-line);
   border-radius: var(--hd-radius-sm);
 }
 
@@ -881,7 +885,7 @@ html.helpdesk-theme-dark .hd-btn--outline {
   max-height: 120px;
   resize: vertical;
   padding: 0.65rem 0.85rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--hd-line);
   border-radius: var(--hd-radius-sm);
   font-family: inherit;
   font-size: 0.93rem;

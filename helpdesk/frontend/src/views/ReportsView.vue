@@ -585,7 +585,7 @@ onMounted(async () => {
 .report-tab {
   padding: 0.65rem 0.85rem;
   border-radius: 6px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--hd-line);
   background: #fff;
   cursor: pointer;
   font-weight: 600;
@@ -614,7 +614,7 @@ h2 {
 }
 .tile {
   background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   border-radius: 4px;
   padding: 0.85rem 0.9rem 0.8rem;
   position: relative;

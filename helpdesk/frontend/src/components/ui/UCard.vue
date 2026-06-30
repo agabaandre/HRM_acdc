@@ -6,7 +6,7 @@ const props = withDefaults(
     variant?: string
   }>(),
   {
-    variant: 'elevated',
+    variant: 'outline',
   },
 )
 

@@ -3,12 +3,59 @@
   width: 100%;
 }
 
-.hd-v-card {
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+/* Shared border tokens — match hd-data-table-card / v-data-table dividers */
+:root,
+html.helpdesk-theme-light {
+  --hd-line: rgba(15, 23, 42, 0.08);
+  --hd-line-subtle: rgba(15, 23, 42, 0.05);
+  --hd-border: var(--hd-line);
+}
+
+html.helpdesk-theme-dark {
+  --hd-line: rgba(148, 163, 184, 0.2);
+  --hd-line-subtle: rgba(148, 163, 184, 0.12);
+  --hd-border: var(--hd-line);
 }
 
 .v-application {
+  --hd-line: rgba(var(--v-border-color), var(--v-border-opacity));
+  --hd-line-subtle: rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.65));
+  --hd-border: var(--hd-line);
   font-family: var(--font-sans, Arial, Roboto, sans-serif);
+}
+
+/* Outlined surfaces — light borders like data tables */
+.v-application .v-card--variant-outlined,
+.v-application .v-sheet--variant-outlined,
+.v-application .v-list--variant-outlined {
+  border-color: var(--hd-line) !important;
+}
+
+.v-application .v-divider {
+  border-color: var(--hd-line) !important;
+  opacity: 1;
+}
+
+.v-application .v-btn--variant-outlined {
+  border-color: var(--hd-line) !important;
+}
+
+.v-application .v-field--variant-outlined .v-field__outline {
+  color: var(--hd-line) !important;
+}
+
+.v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th,
+.v-application .v-data-table .v-table > .v-table__wrapper > table > tbody > tr > td {
+  border-color: var(--hd-line) !important;
+}
+
+.v-application .v-data-table .v-data-table-footer {
+  border-top-color: var(--hd-line) !important;
+}
+
+.hd-v-card.v-card {
+  border: 1px solid var(--hd-line) !important;
+  box-shadow: none !important;
 }
 
 /* Match button anatomy to compact outlined fields — https://vuetifyjs.com/en/components/buttons/#anatomy */

@@ -1,7 +1,7 @@
 /* Shared Vuetify data-table styling (tickets, reports, agent desk). */
 .hd-data-table-card {
   overflow: hidden;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
+  border: 1px solid var(--hd-line) !important;
   border-radius: 4px;
   box-shadow: none !important;
 }
@@ -41,12 +41,12 @@
 
 .hd-data-table .v-table > .v-table__wrapper > table > thead > tr > th {
   background: #f8fafc;
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-bottom: 1px solid var(--hd-line);
   box-shadow: none;
 }
 
 .hd-data-table .v-table > .v-table__wrapper > table > tbody > tr > td {
-  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.65));
+  border-bottom: 1px solid var(--hd-line-subtle);
 }
 
 .hd-data-table .v-table > .v-table__wrapper > table > tbody > tr:last-child > td {
@@ -68,7 +68,7 @@
 }
 
 .hd-data-table .v-data-table-footer {
-  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-top: 1px solid var(--hd-line);
 }
 
 .hd-data-table .v-data-table__tr {
@@ -266,7 +266,7 @@
 
 .hd-page-toolbar__search {
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-bottom: 1px solid var(--hd-line);
 }
 
 html.helpdesk-theme-dark .hd-data-table .v-table > .v-table__wrapper > table > thead > tr > th {

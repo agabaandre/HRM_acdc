@@ -855,7 +855,7 @@ onUnmounted(() => {
   background: #fff;
   border-radius: 4px;
   padding: 1rem 1.1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--hd-line);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   position: relative;
   overflow: hidden;
@@ -1074,7 +1074,7 @@ onUnmounted(() => {
   gap: 0.45rem;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--hd-line);
   background: #fff;
   color: #475569;
   font-size: 0.82rem;
