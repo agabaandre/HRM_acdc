@@ -41,7 +41,22 @@ html.helpdesk-theme-dark {
 }
 
 .v-application .v-field--variant-outlined .v-field__outline {
-  color: var(--hd-line) !important;
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+.v-application .hd-v-input .v-field--variant-outlined .v-field__outline,
+.v-application .hd-v-select .v-field--variant-outlined .v-field__outline,
+.v-application .hd-v-select-menu .v-field--variant-outlined .v-field__outline,
+.v-application .hd-v-textarea .v-field--variant-outlined .v-field__outline {
+  --v-field-border-width: 1.5px;
+}
+
+.v-application .hd-v-input .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-application .hd-v-select .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-application .hd-v-select-menu .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-application .hd-v-textarea .v-field--variant-outlined.v-field--focused .v-field__outline {
+  color: rgba(17, 154, 72, 0.75) !important;
 }
 
 .v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th,

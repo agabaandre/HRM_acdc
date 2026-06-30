@@ -134,6 +134,7 @@ class ReportController extends Controller
 
             $this->applyTicketSearch($base, $qTerm);
             $this->applyReportFilters($base, $request);
+            $this->applyColumnFilters($base, $request);
 
             $stats = [
                 'total_received' => (clone $base)->count(),
@@ -172,6 +173,7 @@ class ReportController extends Controller
 
             $countsBase = HelpdeskTicket::query();
             $this->applyReportFilters($countsBase, $request);
+            $this->applyColumnFilters($countsBase, $request);
             $this->applyTicketSearch($countsBase, $qTerm);
 
             $counts = [
@@ -187,6 +189,7 @@ class ReportController extends Controller
                 ->orderByDesc('id');
             $this->applyTicketSearch($recentQuery, $qTerm);
             $this->applyReportFilters($recentQuery, $request);
+            $this->applyColumnFilters($recentQuery, $request);
             $recent = $recentQuery->paginate($perPage);
 
             return [
@@ -224,6 +227,7 @@ class ReportController extends Controller
         $qTerm = trim((string) $request->query('q', ''));
         $this->applyTicketSearch($q, $qTerm);
         $this->applyReportFilters($q, $request);
+        $this->applyColumnFilters($q, $request);
 
         $rows = $q->orderByDesc('id')->limit(5000)->get();
         $filename = 'helpdesk-tickets-'.now()->format('Y-m-d-His').'.xlsx';
@@ -252,6 +256,38 @@ class ReportController extends Controller
                         ->orWhere('email', 'like', $like);
                 });
         });
+    }
+
+    private function likeTerm(string $term): string
+    {
+        return '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term).'%';
+    }
+
+    private function applyColumnFilters(Builder $query, Request $request): void
+    {
+        $colTicket = trim((string) $request->query('col_ticket', ''));
+        if ($colTicket !== '') {
+            $query->where('ticket_number', 'like', $this->likeTerm($colTicket));
+        }
+
+        $colSubject = trim((string) $request->query('col_subject', ''));
+        if ($colSubject !== '') {
+            $query->where('subject', 'like', $this->likeTerm($colSubject));
+        }
+
+        $colAssignee = trim((string) $request->query('col_assignee', ''));
+        if ($colAssignee !== '') {
+            $like = $this->likeTerm($colAssignee);
+            $query->whereHas('assignee', function (Builder $a) use ($like) {
+                $a->where('name', 'like', $like)
+                    ->orWhere('email', 'like', $like);
+            });
+        }
+
+        $colStatus = trim((string) $request->query('col_status', ''));
+        if ($colStatus !== '') {
+            $query->where('status', 'like', $this->likeTerm($colStatus));
+        }
     }
 
     private function applyReportFilters(Builder $query, Request $request): void

@@ -75,6 +75,60 @@
   cursor: default;
 }
 
+.hd-dt-col-head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  min-width: 0;
+  padding-top: 0.15rem;
+  padding-bottom: 0.35rem;
+}
+
+.hd-dt-col-head__title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  white-space: nowrap;
+}
+
+.hd-dt-col-filter {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 30px;
+  padding: 0.2rem 0.45rem;
+  border: 1.5px solid #94a3b8;
+  border-radius: 4px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hd-dt-col-filter::placeholder {
+  color: #94a3b8;
+}
+
+.hd-dt-col-filter:hover {
+  border-color: #64748b;
+}
+
+.hd-dt-col-filter:focus {
+  outline: none;
+  border-color: #119a48;
+  box-shadow: 0 0 0 2px rgba(17, 154, 72, 0.15);
+}
+
+html.helpdesk-theme-dark .hd-dt-col-filter {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #e2e8f0;
+}
+
 .hd-data-table.hd-data-table--clickable .v-data-table__tr {
   cursor: pointer;
 }

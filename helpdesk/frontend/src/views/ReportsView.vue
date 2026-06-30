@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import type { DataTableHeader } from 'vuetify'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
+import ReportColumnHeader from '../components/reports/ReportColumnHeader.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { notifyError } from '../lib/notify'
@@ -43,6 +44,17 @@ const dateFieldOptions = [
   { label: 'Resolved', value: 'resolved_at' },
   { label: 'Closed', value: 'closed_at' },
 ] as const
+
+interface ReportColumnFilters {
+  ticket_number: string
+  subject: string
+  assignee_name: string
+  status: string
+}
+
+function emptyColumnFilters(): ReportColumnFilters {
+  return { ticket_number: '', subject: '', assignee_name: '', status: '' }
+}
 
 const reportHeaders: DataTableHeader[] = [
   { title: '#', key: 'row_num', sortable: false, width: '52px', align: 'center' },
@@ -84,6 +96,7 @@ const mySearchState = reactive<{
   dateFrom: string
   dateTo: string
 }>({ q: '', statuses: [], categoryIds: [], priorities: [], dateField: 'created_at', dateFrom: '', dateTo: '' })
+const myColumnFilters = reactive<ReportColumnFilters>(emptyColumnFilters())
 const myLoading = ref(false)
 
 const adminCounts = ref<Record<string, number> | null>(null)
@@ -103,6 +116,7 @@ const adminSearchState = reactive<{
   dateFrom: string
   dateTo: string
 }>({ q: '', agentIds: [], groupIds: [], categoryIds: [], statuses: [], priorities: [], dateField: 'created_at', dateFrom: '', dateTo: '' })
+const adminColumnFilters = reactive<ReportColumnFilters>(emptyColumnFilters())
 const adminLoading = ref(false)
 const adminAgents = ref<{ id: number; name: string; email: string }[]>([])
 const adminGroups = ref<{ id: number; name: string }[]>([])
@@ -119,6 +133,10 @@ const adminFilterCount = computed(() => {
   if (adminSearchState.dateFrom) n += 1
   if (adminSearchState.dateTo) n += 1
   if (adminSearchState.dateField !== 'created_at') n += 1
+  if (adminColumnFilters.ticket_number.trim()) n += 1
+  if (adminColumnFilters.subject.trim()) n += 1
+  if (adminColumnFilters.assignee_name.trim()) n += 1
+  if (adminColumnFilters.status.trim()) n += 1
   return n
 })
 
@@ -131,6 +149,10 @@ const myFilterCount = computed(() => {
   if (mySearchState.dateFrom) n += 1
   if (mySearchState.dateTo) n += 1
   if (mySearchState.dateField !== 'created_at') n += 1
+  if (myColumnFilters.ticket_number.trim()) n += 1
+  if (myColumnFilters.subject.trim()) n += 1
+  if (myColumnFilters.assignee_name.trim()) n += 1
+  if (myColumnFilters.status.trim()) n += 1
   return n
 })
 
@@ -221,6 +243,15 @@ function reportFilterParams(state: {
   }
 }
 
+function columnFilterParams(state: ReportColumnFilters) {
+  return {
+    col_ticket: state.ticket_number.trim() || undefined,
+    col_subject: state.subject.trim() || undefined,
+    col_assignee: state.assignee_name.trim() || undefined,
+    col_status: state.status.trim() || undefined,
+  }
+}
+
 /** Laravel-friendly array query encoding for report filters. */
 function serializeReportQueryParams(params: Record<string, unknown>): string {
   const parts: string[] = []
@@ -246,6 +277,7 @@ async function loadMine() {
       page: myPage.value,
       per_page: myItemsPerPage.value,
       ...reportFilterParams(mySearchState),
+      ...columnFilterParams(myColumnFilters),
     }
     const { data } = await api.get('/api/v1/reports/my-requester', {
       params,
@@ -268,6 +300,7 @@ function adminReportParams() {
     page: adminPage.value,
     per_page: adminItemsPerPage.value,
     ...reportFilterParams(adminSearchState),
+    ...columnFilterParams(adminColumnFilters),
   }
 }
 
@@ -352,6 +385,7 @@ function myClear() {
   mySearchState.dateField = 'created_at'
   mySearchState.dateFrom = ''
   mySearchState.dateTo = ''
+  Object.assign(myColumnFilters, emptyColumnFilters())
   myPage.value = 1
   loadMine()
 }
@@ -369,8 +403,19 @@ function adminClear() {
   adminSearchState.dateField = 'created_at'
   adminSearchState.dateFrom = ''
   adminSearchState.dateTo = ''
+  Object.assign(adminColumnFilters, emptyColumnFilters())
   adminPage.value = 1
   loadAdmin()
+}
+
+function onMyColumnFilter() {
+  myPage.value = 1
+  void loadMine()
+}
+
+function onAdminColumnFilter() {
+  adminPage.value = 1
+  void loadAdmin()
 }
 
 function onMyUpdateOptions(options: { page: number; itemsPerPage: number; sortBy: SortItem[] }) {
@@ -394,11 +439,13 @@ async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
       Object.assign(params, {
         q: adminSearchState.q.trim() || undefined,
         ...reportFilterParams(adminSearchState),
+        ...columnFilterParams(adminColumnFilters),
       })
     } else if (scope === 'mine') {
       Object.assign(params, {
         q: mySearchState.q.trim() || undefined,
         ...reportFilterParams(mySearchState),
+        ...columnFilterParams(myColumnFilters),
       })
     }
     const res = await api.get('/api/v1/reports/export', {
@@ -599,6 +646,42 @@ onMounted(async () => {
           item-value="id"
           @update:options="onMyUpdateOptions"
         >
+          <template #header.ticket_number>
+            <ReportColumnHeader
+              v-model="myColumnFilters.ticket_number"
+              title="Ticket"
+              placeholder="Ticket #…"
+              ariaLabel="Filter by ticket number"
+              @filter="onMyColumnFilter"
+            />
+          </template>
+          <template #header.subject>
+            <ReportColumnHeader
+              v-model="myColumnFilters.subject"
+              title="Subject"
+              placeholder="Subject…"
+              ariaLabel="Filter by subject"
+              @filter="onMyColumnFilter"
+            />
+          </template>
+          <template #header.assignee_name>
+            <ReportColumnHeader
+              v-model="myColumnFilters.assignee_name"
+              title="Assigned to"
+              placeholder="Assignee…"
+              ariaLabel="Filter by assignee"
+              @filter="onMyColumnFilter"
+            />
+          </template>
+          <template #header.status>
+            <ReportColumnHeader
+              v-model="myColumnFilters.status"
+              title="Status"
+              placeholder="Status…"
+              ariaLabel="Filter by status"
+              @filter="onMyColumnFilter"
+            />
+          </template>
           <template #item.row_num="{ index }">
             <span class="hd-dt-row-num">{{ myCounter(index) }}</span>
           </template>
@@ -782,6 +865,42 @@ onMounted(async () => {
           item-value="id"
           @update:options="onAdminUpdateOptions"
         >
+          <template #header.ticket_number>
+            <ReportColumnHeader
+              v-model="adminColumnFilters.ticket_number"
+              title="Ticket"
+              placeholder="Ticket #…"
+              ariaLabel="Filter by ticket number"
+              @filter="onAdminColumnFilter"
+            />
+          </template>
+          <template #header.subject>
+            <ReportColumnHeader
+              v-model="adminColumnFilters.subject"
+              title="Subject"
+              placeholder="Subject…"
+              ariaLabel="Filter by subject"
+              @filter="onAdminColumnFilter"
+            />
+          </template>
+          <template #header.assignee_name>
+            <ReportColumnHeader
+              v-model="adminColumnFilters.assignee_name"
+              title="Assigned to"
+              placeholder="Assignee…"
+              ariaLabel="Filter by assignee"
+              @filter="onAdminColumnFilter"
+            />
+          </template>
+          <template #header.status>
+            <ReportColumnHeader
+              v-model="adminColumnFilters.status"
+              title="Status"
+              placeholder="Status…"
+              ariaLabel="Filter by status"
+              @filter="onAdminColumnFilter"
+            />
+          </template>
           <template #item.row_num="{ index }">
             <span class="hd-dt-row-num">{{ adminCounter(index) }}</span>
           </template>
@@ -932,6 +1051,13 @@ onMounted(async () => {
 
 .reports-filters__body {
   padding: 1rem;
+}
+
+.reports-filters :deep(.hd-v-input .v-field--variant-outlined .v-field__outline),
+.reports-filters :deep(.hd-v-select-menu .v-field--variant-outlined .v-field__outline),
+.reports-filters :deep(.hd-v-select .v-field--variant-outlined .v-field__outline) {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
 }
 
 .monthly-hint {
