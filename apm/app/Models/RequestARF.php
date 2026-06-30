@@ -91,6 +91,24 @@ class RequestARF extends Model
     }
 
     /**
+     * Normalize legacy morph class values (e.g. doubled backslashes from change-request ARF modal).
+     */
+    public function getModelTypeAttribute(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        $value = trim($value, " \t\n\r\0\x0B'\"");
+
+        while (str_contains($value, '\\\\')) {
+            $value = str_replace('\\\\', '\\', $value);
+        }
+
+        return $value;
+    }
+
+    /**
      * Get the staff member associated with the ARF request.
      */
     public function staff(): BelongsTo

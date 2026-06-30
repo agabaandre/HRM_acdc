@@ -2359,6 +2359,12 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $selectedStatus = $request->get('status', '');
         $searchTerm = $request->get('search', '');
         $tab = $request->get('tab', '');
+        $selectedFundTypeId = trim((string) ($request->get('fund_type_id') ?? ''));
+        $fundTypeFilterOptions = [
+            '1' => 'Intramural',
+            '2' => 'Extramural',
+            '3' => 'External Source',
+        ];
         
         // Note: Removed tab-based page reset to allow proper pagination
         
@@ -2370,7 +2376,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         if (\App\Support\ApmListFragment::wants($request)) {
             $fragmentKey = $this->apmCacheKeyFromRequest($request, [
                 'tab', 'page', 'year', 'quarter', 'division_id', 'document_number',
-                'staff_id', 'status', 'search',
+                'staff_id', 'status', 'search', 'fund_type_id',
             ], ['fragment' => $request->get('tab', '')]);
             if (! $request->boolean('nocache')) {
                 $cachedFragment = \App\Services\ApmPageCache::get('activities', $fragmentKey);
@@ -2381,7 +2387,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         } else {
             $pageKey = $this->apmCacheKeyFromRequest($request, [
                 'page', 'tab', 'year', 'quarter', 'division_id', 'document_number',
-                'staff_id', 'status', 'search',
+                'staff_id', 'status', 'search', 'fund_type_id',
             ], ['page' => 'index']);
             if (! $request->boolean('nocache')) {
                 $cachedPage = \App\Services\ApmPageCache::get('activities', $pageKey);
@@ -2417,6 +2423,10 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
 
         if ($selectedStatus !== '') {
             $baseQuery->where('activities.overall_status', $selectedStatus);
+        }
+
+        if ($selectedFundTypeId !== '' && array_key_exists($selectedFundTypeId, $fundTypeFilterOptions)) {
+            $baseQuery->where('activities.fund_type_id', (int) $selectedFundTypeId);
         }
         
         // Debug: Check what matrices are found
@@ -2563,7 +2573,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             $tab = $request->get('tab', '');
             $fragmentKey = $this->apmCacheKeyFromRequest($request, [
                 'tab', 'page', 'year', 'quarter', 'division_id', 'document_number',
-                'staff_id', 'status', 'search',
+                'staff_id', 'status', 'search', 'fund_type_id',
             ], ['fragment' => $tab]);
 
             $html = '';
@@ -2636,6 +2646,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'selectedStaffId',
             'selectedStatus',
             'searchTerm',
+            'fundTypeFilterOptions',
+            'selectedFundTypeId',
             'userDivisionId'
         );
         \App\Services\ApmPageCache::put('activities', $pageKey, $viewData);

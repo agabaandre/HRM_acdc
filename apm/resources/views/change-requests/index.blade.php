@@ -160,6 +160,19 @@
                         @endforeach
                     </select>
                 </div>
+                <div class="col-md-2">
+                    <label for="fund_type_id" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-wallet me-1 text-success"></i> Fund Type
+                    </label>
+                    <select name="fund_type_id" id="fund_type_id" class="form-select" style="width: 100%;">
+                        <option value="">All Fund Types</option>
+                        @foreach($fundTypeFilterOptions ?? [] as $fundTypeId => $fundTypeLabel)
+                            <option value="{{ $fundTypeId }}" {{ (string) request('fund_type_id', $selectedFundTypeId ?? '') === (string) $fundTypeId ? 'selected' : '' }}>
+                                {{ $fundTypeLabel }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
@@ -295,6 +308,7 @@ function initChangeRequestsPage() {
                 { param: 'staff_id', id: 'staff_id' },
                 { param: 'division_id', id: 'division_id' },
                 { param: 'status', id: 'statusFilter' },
+                { param: 'fund_type_id', id: 'fund_type_id' },
                 { param: 'document_number', id: 'document_number' },
                 { param: 'search', id: 'search' }
             ],
@@ -332,6 +346,10 @@ function initChangeRequestsPage() {
     
     if (document.getElementById('memo_type')) {
         document.getElementById('memo_type').addEventListener('change', applyFilters);
+    }
+
+    if (document.getElementById('fund_type_id')) {
+        document.getElementById('fund_type_id').addEventListener('change', applyFilters);
     }
     
     if (document.getElementById('year')) {
@@ -411,6 +429,7 @@ function initChangeRequestsPage() {
         const divisionId = getSelectOrSelect2Value('division_id');
         const status = getSelectOrSelect2Value('statusFilter');
         const memoType = getSelectOrSelect2Value('memo_type');
+        const fundTypeId = document.getElementById('fund_type_id')?.value;
         const search = document.getElementById('search')?.value;
         
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
@@ -427,6 +446,9 @@ function initChangeRequestsPage() {
 
         if (memoType) currentUrl.searchParams.set('memo_type', memoType);
         else currentUrl.searchParams.delete('memo_type');
+
+        if (fundTypeId) currentUrl.searchParams.set('fund_type_id', fundTypeId);
+        else currentUrl.searchParams.delete('fund_type_id');
 
         if (search) currentUrl.searchParams.set('search', search);
         else currentUrl.searchParams.delete('search');

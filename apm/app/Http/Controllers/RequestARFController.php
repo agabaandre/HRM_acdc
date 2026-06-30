@@ -386,6 +386,8 @@ class RequestARFController extends Controller
 
         Log::info('ARF Validation Passed');
 
+        $request->merge(['model_type' => $this->normalizeArfModelType($request->model_type)]);
+
         // Check for duplicate ARF requests for the same source
         $existingArf = RequestARF::where('source_id', $request->source_id)
             ->where('model_type', $request->model_type)
@@ -1887,5 +1889,19 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             ->exists();
 
         return $finalApproved ? 'approved' : $current;
+    }
+
+    /**
+     * Normalize morph class names (fixes doubled backslashes from legacy form values).
+     */
+    private function normalizeArfModelType(string $modelType): string
+    {
+        $modelType = trim($modelType, " \t\n\r\0\x0B'\"");
+
+        while (str_contains($modelType, '\\\\')) {
+            $modelType = str_replace('\\\\', '\\', $modelType);
+        }
+
+        return $modelType;
     }
 }

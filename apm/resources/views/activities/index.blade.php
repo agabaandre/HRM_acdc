@@ -273,6 +273,19 @@
                             <option value="archived" {{ ($selectedStatus ?? request('status')) === 'archived' ? 'selected' : '' }}>Archived</option>
                         </select>
                     </div>
+                    <div class="col-md-2">
+                        <label for="fund_type_id" class="form-label fw-semibold mb-1">
+                            <i class="bx bx-wallet me-1 text-success"></i> Fund Type
+                        </label>
+                        <select name="fund_type_id" id="fund_type_id" class="form-select" style="width: 100%;">
+                            <option value="">All Fund Types</option>
+                            @foreach($fundTypeFilterOptions ?? [] as $fundTypeId => $fundTypeLabel)
+                                <option value="{{ $fundTypeId }}" {{ (string) ($selectedFundTypeId ?? request('fund_type_id', '')) === (string) $fundTypeId ? 'selected' : '' }}>
+                                    {{ $fundTypeLabel }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="col-md-2 d-flex align-items-end">
                         <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
                             <i class="bx bx-search-alt-2 me-1"></i> Filter
@@ -359,6 +372,7 @@ function initActivitiesIndexPage() {
                 { param: 'quarter', id: 'quarter', default: APMFilters.currentQuarter },
                 { param: 'division_id', id: 'division_id' },
                 { param: 'status', id: 'status' },
+                { param: 'fund_type_id', id: 'fund_type_id' },
                 { param: 'document_number', id: 'document_number' },
                 { param: 'search', id: 'search' }
             ],
@@ -396,6 +410,10 @@ function initActivitiesIndexPage() {
 
     if (document.getElementById('status')) {
         document.getElementById('status').addEventListener('change', applyFilters);
+    }
+
+    if (document.getElementById('fund_type_id')) {
+        document.getElementById('fund_type_id').addEventListener('change', applyFilters);
     }
     
     // Document number filter - apply on Enter key or after 1 second delay
@@ -463,6 +481,7 @@ function initActivitiesIndexPage() {
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const status = document.getElementById('status')?.value;
+        const fundTypeId = document.getElementById('fund_type_id')?.value;
         const documentNumber = document.getElementById('document_number')?.value;
         const search = document.getElementById('search')?.value;
         
@@ -472,6 +491,8 @@ function initActivitiesIndexPage() {
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (status) currentUrl.searchParams.set('status', status);
         else currentUrl.searchParams.delete('status');
+        if (fundTypeId) currentUrl.searchParams.set('fund_type_id', fundTypeId);
+        else currentUrl.searchParams.delete('fund_type_id');
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
         if (search) currentUrl.searchParams.set('search', search);
 

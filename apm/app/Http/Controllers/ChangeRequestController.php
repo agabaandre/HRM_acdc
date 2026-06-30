@@ -62,11 +62,17 @@ class ChangeRequestController extends Controller
         $staffId = (int) $request->get('staff_id');
         $memoType = $request->get('memo_type');
         $parentMemoId = $request->get('parent_memo_id');
+        $selectedFundTypeId = trim((string) ($request->get('fund_type_id') ?? ''));
+        $fundTypeFilterOptions = [
+            '1' => 'Intramural',
+            '2' => 'Extramural',
+            '3' => 'External Source',
+        ];
 
         if (\App\Support\ApmListFragment::wants($request)) {
             $fragmentKey = $this->apmCacheKeyFromRequest($request, [
                 'tab', 'page', 'year', 'quarter', 'status', 'document_number', 'staff_id',
-                'memo_type', 'parent_memo_id', 'division_id', 'search',
+                'memo_type', 'parent_memo_id', 'division_id', 'search', 'fund_type_id',
             ], ['fragment' => $request->get('tab', '')]);
             if (! $request->boolean('nocache')) {
                 $cachedFragment = \App\Services\ApmPageCache::get('change_requests', $fragmentKey);
@@ -77,7 +83,7 @@ class ChangeRequestController extends Controller
         } else {
             $pageKey = $this->apmCacheKeyFromRequest($request, [
                 'page', 'tab', 'year', 'quarter', 'status', 'document_number', 'staff_id',
-                'memo_type', 'parent_memo_id', 'division_id', 'search',
+                'memo_type', 'parent_memo_id', 'division_id', 'search', 'fund_type_id',
             ], ['page' => 'index']);
             if (! $request->boolean('nocache')) {
                 $cachedPage = \App\Services\ApmPageCache::get('change_requests', $pageKey);
@@ -135,6 +141,10 @@ class ChangeRequestController extends Controller
         // Filter by search term
         if ($request->filled('search')) {
             $baseQuery->where('activity_title', 'like', '%' . $request->search . '%');
+        }
+
+        if ($selectedFundTypeId !== '' && array_key_exists($selectedFundTypeId, $fundTypeFilterOptions)) {
+            $baseQuery->where('fund_type_id', (int) $selectedFundTypeId);
         }
 
         // Order by most recent first
@@ -231,6 +241,9 @@ class ChangeRequestController extends Controller
                 if ($request->filled('search')) {
                     $baseQuery->where('activity_title', 'like', '%' . $request->search . '%');
                 }
+                if ($selectedFundTypeId !== '' && array_key_exists($selectedFundTypeId, $fundTypeFilterOptions)) {
+                    $baseQuery->where('fund_type_id', (int) $selectedFundTypeId);
+                }
                 $baseQuery->orderBy('created_at', 'desc');
                 $myChangeRequestsQuery = clone $baseQuery;
                 $myChangeRequests = $showAllDueToNoSession
@@ -255,7 +268,7 @@ class ChangeRequestController extends Controller
             }
             $fragmentKey = $this->apmCacheKeyFromRequest($request, [
                 'tab', 'page', 'year', 'quarter', 'status', 'document_number', 'staff_id',
-                'memo_type', 'parent_memo_id', 'division_id', 'search',
+                'memo_type', 'parent_memo_id', 'division_id', 'search', 'fund_type_id',
             ], ['fragment' => $tab]);
 
             $html = '';
@@ -304,6 +317,8 @@ class ChangeRequestController extends Controller
             'selectedQuarter' => $selectedQuarter,
             'selectedStatus' => $status,
             'selectedMemoType' => $memoType,
+            'fundTypeFilterOptions' => $fundTypeFilterOptions,
+            'selectedFundTypeId' => $selectedFundTypeId,
             'userDivisionId' => $userDivisionId,
         ];
         \App\Services\ApmPageCache::put('change_requests', $pageKey, $viewData);
@@ -1113,7 +1128,7 @@ class ChangeRequestController extends Controller
             SpecialMemo::class => 'special_memo',
             default => 'activity',
         };
-        $modelType = str_replace('App\Models\\', 'App\\\\Models\\\\', $modelClass);
+        $modelType = $modelClass;
 
         $budgetBreakdown = is_string($parentMemo->budget_breakdown ?? '')
             ? (json_decode($parentMemo->budget_breakdown, true) ?? [])
