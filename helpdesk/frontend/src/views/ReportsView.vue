@@ -12,7 +12,7 @@ import {
   rowIndex,
   statusMeta,
 } from '../lib/ticketTableMeta'
-import { normalizePageSize, type PageSize, type SelectNumberItem } from '../lib/helpdeskForm'
+import { normalizePageSize, type PageSize, type SelectNumberItem, type SelectStringItem } from '../lib/helpdeskForm'
 
 import { useAuthStore } from '../stores/auth'
 
@@ -143,10 +143,10 @@ const adminGroupItems = computed((): SelectNumberItem[] =>
 const categoryItems = computed((): SelectNumberItem[] =>
   categories.value.map((c) => ({ label: c.name, value: c.id })),
 )
-const statusSelectItems = computed((): SelectNumberItem[] =>
+const statusSelectItems = computed((): SelectStringItem[] =>
   statusOptions.map((s) => ({ label: s.label, value: s.value })),
 )
-const prioritySelectItems = computed((): SelectNumberItem[] =>
+const prioritySelectItems = computed((): SelectStringItem[] =>
   priorityOptions.map((p) => ({ label: p.label, value: p.value })),
 )
 
