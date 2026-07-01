@@ -602,11 +602,8 @@ if (! function_exists('user_session')) {
     if (! function_exists('can_request_arf_for_change_request')) {
         function can_request_arf_for_change_request($changeRequest)
         {
-            $currentUserId = user_session('staff_id')
-                ?? user_session('auth_staff_id')
-                ?? session('user.staff_id')
-                ?? session('user.auth_staff_id');
-            if (! $changeRequest || $currentUserId === null || $currentUserId === '') {
+            $currentUserId = resolved_session_staff_id();
+            if (! $changeRequest || $currentUserId === null) {
                 return false;
             }
             $isResponsible = (string) ($changeRequest->staff_id ?? '') === (string) $currentUserId

@@ -402,14 +402,38 @@ class RequestARFController extends Controller
         $normalizedModelType = $this->normalizeArfModelType((string) $request->model_type);
         $request->merge(['model_type' => $normalizedModelType]);
 
-        // Check for duplicate ARF (align with UI: one pending/approved ARF per source document)
-        $existingArf = RequestARF::where('source_id', $request->source_id)
-            ->where('model_type', $normalizedModelType)
-            ->whereIn('overall_status', ['pending', 'approved'])
-            ->first();
+        $changeRequest = null;
+        if ($request->filled('change_request_id')) {
+            $changeRequest = \App\Models\ChangeRequest::find($request->change_request_id);
+            if (!$changeRequest) {
+                $errorMessage = 'Change request not found.';
+                if ($wantsJson) {
+                    return response()->json(['success' => false, 'msg' => $errorMessage], 422);
+                }
+                return redirect()->back()->with('error', $errorMessage);
+            }
+        }
+
+        // Duplicate check: from change request, only block if THIS CR already has a pending/approved ARF.
+        // Parent memo may already have an ARF — a new CR is allowed to create a separate one.
+        $existingArf = null;
+        if ($changeRequest) {
+            if ($changeRequest->request_arf_id) {
+                $existingArf = RequestARF::where('id', $changeRequest->request_arf_id)
+                    ->whereIn('overall_status', ['pending', 'approved'])
+                    ->first();
+            }
+        } else {
+            $existingArf = RequestARF::where('source_id', $request->source_id)
+                ->where('model_type', $normalizedModelType)
+                ->whereIn('overall_status', ['pending', 'approved'])
+                ->first();
+        }
 
         if ($existingArf) {
-            $errorMessage = 'An ARF request already exists for this ' . str_replace('_', ' ', $request->source_type) . '.';
+            $errorMessage = $changeRequest
+                ? 'An ARF request has already been created for this change request.'
+                : 'An ARF request already exists for this ' . str_replace('_', ' ', $request->source_type) . '.';
             
             if ($wantsJson) {
                 return response()->json([
@@ -439,7 +463,24 @@ class RequestARFController extends Controller
                 return redirect()->back()->with('error', $errorMessage);
             }
 
-            if (!can_request_arf($sourceData)) {
+            if ($changeRequest) {
+                if (!can_request_arf_for_change_request($changeRequest)) {
+                    $errorMessage = 'You are not authorized to create an ARF for this change request.';
+                    Log::warning('ARF creation from change request denied', [
+                        'staff_id' => $staffId,
+                        'change_request_id' => $changeRequest->id,
+                    ]);
+
+                    if ($wantsJson) {
+                        return response()->json([
+                            'success' => false,
+                            'msg' => $errorMessage,
+                        ], 403);
+                    }
+
+                    return redirect()->back()->with('error', $errorMessage);
+                }
+            } elseif (!can_request_arf($sourceData)) {
                 $errorMessage = 'You are not authorized to create an ARF for this document.';
                 Log::warning('ARF creation denied', [
                     'staff_id' => $staffId,
@@ -466,34 +507,31 @@ class RequestARFController extends Controller
             $totalBudget = $request->total_budget;
             $activityTitle = $request->title;
 
-            if ($request->filled('change_request_id')) {
-                $changeRequest = \App\Models\ChangeRequest::find($request->change_request_id);
-                if ($changeRequest) {
-                    if ($changeRequest->budget_breakdown !== null) {
-                        $crBudget = is_string($changeRequest->budget_breakdown)
-                            ? json_decode($changeRequest->budget_breakdown, true)
-                            : $changeRequest->budget_breakdown;
-                        if (is_array($crBudget) && !empty($crBudget)) {
-                            $budgetBreakdown = $crBudget;
-                            if (isset($crBudget['grand_total'])) {
-                                $totalBudget = (float) $crBudget['grand_total'];
-                            }
+            if ($changeRequest) {
+                if ($changeRequest->budget_breakdown !== null) {
+                    $crBudget = is_string($changeRequest->budget_breakdown)
+                        ? json_decode($changeRequest->budget_breakdown, true)
+                        : $changeRequest->budget_breakdown;
+                    if (is_array($crBudget) && !empty($crBudget)) {
+                        $budgetBreakdown = $crBudget;
+                        if (isset($crBudget['grand_total'])) {
+                            $totalBudget = (float) $crBudget['grand_total'];
                         }
                     }
-                    if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
-                        $totalBudget = (float) $changeRequest->available_budget;
+                }
+                if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
+                    $totalBudget = (float) $changeRequest->available_budget;
+                }
+                if ($changeRequest->internal_participants !== null) {
+                    $crParticipants = is_string($changeRequest->internal_participants)
+                        ? json_decode($changeRequest->internal_participants, true)
+                        : $changeRequest->internal_participants;
+                    if (is_array($crParticipants)) {
+                        $internalParticipants = $crParticipants;
                     }
-                    if ($changeRequest->internal_participants !== null) {
-                        $crParticipants = is_string($changeRequest->internal_participants)
-                            ? json_decode($changeRequest->internal_participants, true)
-                            : $changeRequest->internal_participants;
-                        if (is_array($crParticipants)) {
-                            $internalParticipants = $crParticipants;
-                        }
-                    }
-                    if (!empty($changeRequest->activity_title)) {
-                        $activityTitle = $changeRequest->activity_title;
-                    }
+                }
+                if (!empty($changeRequest->activity_title)) {
+                    $activityTitle = $changeRequest->activity_title;
                 }
             }
 
@@ -524,11 +562,8 @@ class RequestARFController extends Controller
 
             // Get responsible person: when creating from change request use CR's responsible person; otherwise from source
             $responsiblePersonId = null;
-            if ($request->filled('change_request_id')) {
-                $changeRequest = \App\Models\ChangeRequest::find($request->change_request_id);
-                if ($changeRequest) {
-                    $responsiblePersonId = $changeRequest->responsible_person_id ?? $changeRequest->staff_id ?? null;
-                }
+            if ($changeRequest) {
+                $responsiblePersonId = $changeRequest->responsible_person_id ?? $changeRequest->staff_id ?? null;
             }
             if ($responsiblePersonId === null) {
                 if ($request->model_type === 'App\\Models\\Activity') {
@@ -542,8 +577,10 @@ class RequestARFController extends Controller
 
             // When creating from change request, use CR's division (and budget/participants/title already set above)
             $divisionId = null;
-            if ($request->filled('change_request_id') && $request->filled('division_id')) {
+            if ($changeRequest && $request->filled('division_id')) {
                 $divisionId = (int) $request->division_id;
+            } elseif ($changeRequest && $changeRequest->division_id) {
+                $divisionId = (int) $changeRequest->division_id;
             }
             if ($divisionId === null) {
                 $divisionId = $this->getDivisionId($sourceData, $request->model_type);
