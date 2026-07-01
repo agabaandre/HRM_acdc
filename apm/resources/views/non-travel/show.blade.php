@@ -264,24 +264,19 @@
                     @endif
                     
                     @php
-                        // Check if ARF already exists for this non-travel memo
-                        $existingArf = \App\Models\RequestARF::where('source_id', $nonTravel->id)
-                            ->whereIn('overall_status', ['pending', 'approved'])
-                            ->where('model_type', 'App\\Models\\NonTravelMemo')
-                            ->first();
+                        $activeArf = \App\Models\RequestARF::activeForSource($nonTravel->id, 'App\\Models\\NonTravelMemo');
                     @endphp
                     
-                    @if($existingArf)
-                        {{-- Show View ARF button if ARF exists --}}
-                        <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                    @if($activeArf)
+                        <a wire:navigate href="{{ route('request-arf.show', $activeArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
                             <i class="bx bx-show"></i>
                             <span>View ARF</span>
                         </a>
-                    @elseif(can_request_arf($nonTravel))
-                        {{-- Show Create ARF button if memo is approved and no ARF exists --}}
+                    @endif
+                    @if(can_request_arf($nonTravel))
                         <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal">
                             <i class="bx bx-file-plus"></i>
-                            <span>Create ARF</span>
+                            <span>{{ $activeArf ? 'Create New ARF' : 'Create ARF' }}</span>
                         </button>
                     @endif
                     
@@ -1100,13 +1095,8 @@
 
         @if(can_request_arf($nonTravel))
             @php
-                $existingArf = \App\Models\RequestARF::where('source_id', $nonTravel->id)
-                    ->whereIn('overall_status', ['pending', 'approved'])
-                    ->where('model_type', 'App\\Models\\NonTravelMemo')
-                    ->first();
+                $activeArf = \App\Models\RequestARF::activeForSource($nonTravel->id, 'App\\Models\\NonTravelMemo');
             @endphp
-            
-            @if(!$existingArf)
             @include('request-arf.components.create-arf-modal', [
             'sourceType' => 'Non-Travel Memo',
             'sourceTitle' => $nonTravel->title,
@@ -1142,18 +1132,9 @@
                 : ($nonTravel->budget_id ?? []))->with('fundType', 'funder', 'partner')->get()->keyBy('id'),
             'defaultTitle' => to_sentence_case('Activity Request - ' . $nonTravel->title),
             'sourceId' => $nonTravel->id,
-            'modelType' => 'App\\Models\\NonTravelMemo'
+            'modelType' => 'App\\Models\\NonTravelMemo',
+            'previousArf' => $activeArf,
         ])
-            @elseif($existingArf)
-            <div class="alert alert-info">
-                <i class="bx bx-info-circle me-2"></i>
-                An ARF request has already been created for this non-travel memo.
-                <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
-                    <i class="bx bx-show me-1"></i>View Activity Request
-                </a>
-            </div>
-            @endif
-            
         @endif
 
 @if($canUpdateNonTravelOwner ?? false)

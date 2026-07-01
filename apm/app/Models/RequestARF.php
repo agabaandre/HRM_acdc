@@ -109,6 +109,41 @@ class RequestARF extends Model
     }
 
     /**
+     * ARFs that are still in play (not superseded, archived, or cancelled).
+     */
+    public function scopeActive($query)
+    {
+        return $query->whereNotIn('overall_status', ['cancelled', 'archived']);
+    }
+
+    /**
+     * Latest active ARF for a parent memo source, if any.
+     */
+    public static function activeForSource(int $sourceId, string $modelType): ?self
+    {
+        return static::query()
+            ->where('source_id', $sourceId)
+            ->where('model_type', $modelType)
+            ->active()
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * Mark this ARF as cancelled (superseded by a newer submission).
+     */
+    public function markCancelled(string $reason = 'Superseded by a new Activity Request'): bool
+    {
+        $this->overall_status = 'cancelled';
+        $saved = $this->save();
+        if ($saved) {
+            $this->saveApprovalTrail($reason, 'cancelled');
+        }
+
+        return $saved;
+    }
+
+    /**
      * Get the staff member associated with the ARF request.
      */
     public function staff(): BelongsTo
@@ -500,6 +535,10 @@ class RequestARF extends Model
                 return 'Approved - All approval levels completed';
             case 'rejected':
                 return 'Rejected - Request has been rejected';
+            case 'cancelled':
+                return 'Cancelled - Superseded by a newer Activity Request';
+            case 'archived':
+                return 'Archived';
             default:
                 return 'Unknown status';
         }

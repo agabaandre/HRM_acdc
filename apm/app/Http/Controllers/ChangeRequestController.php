@@ -983,6 +983,9 @@ class ChangeRequestController extends Controller
         $existingArf = $changeRequest->request_arf_id
             ? RequestArf::find($changeRequest->request_arf_id)
             : null;
+        if ($existingArf && in_array($existingArf->overall_status ?? '', ['cancelled', 'archived'], true)) {
+            $existingArf = null;
+        }
         $existingServiceRequest = $changeRequest->service_request_id
             ? ServiceRequest::find($changeRequest->service_request_id)
             : null;
@@ -1008,12 +1011,15 @@ class ChangeRequestController extends Controller
         $isIntramural = ($fundTypeId === 1);
         $isExtramural = ($fundTypeId === 2);
         // Use resolved linked records (not just FK values) so stale IDs do not hide Create actions.
-        $canCreateArf = $isApproved && $isOwnerOrResponsible && !$existingArf && $isExtramural;
+        $canCreateArf = $isApproved && $isOwnerOrResponsible && $isExtramural;
         $canCreateServices = $isApproved && $isOwnerOrResponsible && !$existingServiceRequest && $isIntramural;
 
         $arfModalData = null;
         if ($canCreateArf && $parentMemo) {
             $arfModalData = $this->buildArfModalDataFromParent($parentMemo, $changeRequest->id, $changeRequest);
+            if ($existingArf) {
+                $arfModalData['previousArf'] = $existingArf;
+            }
         }
 
         $isAdmin = (function_exists('user_session') ? user_session('role') : null) == 10;

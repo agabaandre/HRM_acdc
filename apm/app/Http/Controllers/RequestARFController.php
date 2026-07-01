@@ -402,26 +402,6 @@ class RequestARFController extends Controller
         $normalizedModelType = $this->normalizeArfModelType((string) $request->model_type);
         $request->merge(['model_type' => $normalizedModelType]);
 
-        // Check for duplicate ARF (align with UI: one pending/approved ARF per source document)
-        $existingArf = RequestARF::where('source_id', $request->source_id)
-            ->where('model_type', $normalizedModelType)
-            ->whereIn('overall_status', ['pending', 'approved'])
-            ->first();
-
-        if ($existingArf) {
-            $errorMessage = 'An ARF request already exists for this ' . str_replace('_', ' ', $request->source_type) . '.';
-            
-            if ($wantsJson) {
-                return response()->json([
-                    'success' => false,
-                    'msg' => $errorMessage,
-                    'redirect_url' => route('request-arf.show', $existingArf),
-                ], 422);
-            }
-            
-            return redirect()->back()->with('error', $errorMessage);
-        }
-
         try {
             // Get source data to verify it exists
             $sourceData = $this->getSourceData($request->source_type, $request->source_id);
@@ -456,6 +436,11 @@ class RequestARFController extends Controller
 
                 return redirect()->back()->with('error', $errorMessage);
             }
+
+            $cancelledArfLabels = $this->cancelPreviousArfsForSource(
+                (int) $request->source_id,
+                $normalizedModelType
+            );
 
             // Generate ARF number with proper format
             $arfNumber = $this->generateARFNumber($sourceData, $request->model_type);
@@ -599,6 +584,9 @@ class RequestARFController extends Controller
             ]);
 
             $message = 'ARF request created and submitted for approval successfully! Status: Pending';
+            if (!empty($cancelledArfLabels)) {
+                $message .= ' Previous ARF(s) cancelled: ' . implode(', ', $cancelledArfLabels) . '.';
+            }
 
             // Check if this is an AJAX request
             if ($wantsJson) {
@@ -606,6 +594,7 @@ class RequestARFController extends Controller
                     'success' => true,
                     'msg' => $message,
                     'arf' => $arf,
+                    'cancelled_arfs' => $cancelledArfLabels,
                     'redirect_url' => route('request-arf.show', $arf)
                 ]);
             }
@@ -1921,6 +1910,37 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             ->exists();
 
         return $finalApproved ? 'approved' : $current;
+    }
+
+    /**
+     * Cancel active ARFs for the same source so a new submission can replace them.
+     *
+     * @return list<string> Human-readable labels of cancelled ARFs (numbers / document numbers)
+     */
+    private function cancelPreviousArfsForSource(int $sourceId, string $modelType): array
+    {
+        $previous = RequestARF::query()
+            ->where('source_id', $sourceId)
+            ->where('model_type', $modelType)
+            ->active()
+            ->orderBy('id')
+            ->get();
+
+        $labels = [];
+        foreach ($previous as $arf) {
+            $label = $arf->arf_number ?: ($arf->document_number ?: ('#' . $arf->id));
+            if ($arf->markCancelled('Cancelled — superseded by a new Activity Request submission')) {
+                $labels[] = $label;
+                Log::info('Previous ARF cancelled for new submission', [
+                    'cancelled_arf_id' => $arf->id,
+                    'arf_number' => $label,
+                    'source_id' => $sourceId,
+                    'model_type' => $modelType,
+                ]);
+            }
+        }
+
+        return $labels;
     }
 
     /**

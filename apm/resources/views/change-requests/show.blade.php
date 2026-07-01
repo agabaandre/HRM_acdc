@@ -83,10 +83,11 @@
                         <i class="bx bx-show"></i>
                         <span>View ARF</span>
                     </a>
-                @elseif($canCreateArf)
+                @endif
+                @if($canCreateArf)
                     <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
                         <i class="bx bx-file-plus"></i>
-                        <span>Create ARF</span>
+                        <span>{{ $existingArf ? 'Create New ARF' : 'Create ARF' }}</span>
                     </button>
                 @endif
 
