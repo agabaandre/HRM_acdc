@@ -1098,10 +1098,10 @@
 </div>
 @endif
 
-        @if($nonTravel->fundType && strtolower($nonTravel->fundType->name) === 'extramural' && $nonTravel->overall_status === 'approved')
+        @if(can_request_arf($nonTravel))
             @php
-                // Check if ARF already exists for this non-travel memo
                 $existingArf = \App\Models\RequestARF::where('source_id', $nonTravel->id)
+                    ->whereIn('overall_status', ['pending', 'approved'])
                     ->where('model_type', 'App\\Models\\NonTravelMemo')
                     ->first();
             @endphp
@@ -1144,7 +1144,7 @@
             'sourceId' => $nonTravel->id,
             'modelType' => 'App\\Models\\NonTravelMemo'
         ])
-            @elseif(in_array($existingArf->overall_status, ['pending', 'approved', 'returned']))
+            @elseif($existingArf)
             <div class="alert alert-info">
                 <i class="bx bx-info-circle me-2"></i>
                 An ARF request has already been created for this non-travel memo.

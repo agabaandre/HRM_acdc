@@ -1662,10 +1662,10 @@ $(document).on('click', '.preview-attachment', function() {
 });
 </script>
 
-        @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural' && $matrix->overall_status === 'approved')
+        @if(can_request_arf($activity))
             @php
-                // Check if ARF already exists for this activity
                 $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                    ->whereIn('overall_status', ['pending', 'approved'])
                     ->where('model_type', 'App\\Models\\Activity')
                     ->first();
             @endphp
@@ -1715,7 +1715,7 @@ $(document).on('click', '.preview-attachment', function() {
             'sourceId' => $activity->id,
             'modelType' => 'App\\Models\\Activity'
         ])
-            @elseif(in_array($existingArf->overall_status, ['pending', 'approved', 'returned']))
+            @elseif($existingArf)
             <div class="alert alert-info">
                 <i class="bx bx-info-circle me-2"></i>
                 An ARF request has already been created for this activity.

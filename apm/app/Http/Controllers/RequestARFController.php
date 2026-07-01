@@ -338,25 +338,38 @@ class RequestARFController extends Controller
      */
     public function storeFromModal(Request $request)
     {
-      
+        $wantsJson = $request->ajax() || $request->expectsJson();
 
         // Check if user session is valid
-        $sessionStaffId = user_session('staff_id');
+        $sessionStaffId = resolved_session_staff_id();
         if (!$sessionStaffId) {
             Log::error('No valid staff session found');
-            return redirect()->back()->with('error', 'You must be logged in to create an ARF request.');
+            $message = 'You must be logged in to create an ARF request.';
+            if ($wantsJson) {
+                return response()->json(['success' => false, 'msg' => $message], 401);
+            }
+            return redirect()->back()->with('error', $message);
         }
 
         // Get the staff record to verify it exists
-        $staff = \App\Models\Staff::where('staff_id', $sessionStaffId)->first();
+        $staff = Staff::where('staff_id', $sessionStaffId)->first();
         if (!$staff) {
             Log::error('Staff record not found for staff_id: ' . $sessionStaffId);
-            return redirect()->back()->with('error', 'Staff record not found. Please contact administrator.');
+            $message = 'Staff record not found. Please contact administrator.';
+            if ($wantsJson) {
+                return response()->json(['success' => false, 'msg' => $message], 403);
+            }
+            return redirect()->back()->with('error', $message);
         }
         
-        $staffId = $staff->staff_id; // Use the actual staff_id column
+        $staffId = $staff->staff_id;
 
         Log::info('Starting validation...');
+
+        // Truncate title before validation (hidden field can exceed 255 chars for long memo titles)
+        if ($request->filled('title')) {
+            $request->merge(['title' => mb_substr((string) $request->input('title'), 0, 255)]);
+        }
         
         try {
             $request->validate([
@@ -373,10 +386,10 @@ class RequestARFController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Validation failed', ['errors' => $e->errors()]);
             
-            if ($request->ajax()) {
+            if ($wantsJson) {
                 return response()->json([
                     'success' => false,
-                    'msg' => 'Validation failed',
+                    'msg' => collect($e->errors())->flatten()->first() ?? 'Validation failed',
                     'errors' => $e->errors()
                 ], 422);
             }
@@ -386,21 +399,23 @@ class RequestARFController extends Controller
 
         Log::info('ARF Validation Passed');
 
-        $request->merge(['model_type' => $this->normalizeArfModelType($request->model_type)]);
+        $normalizedModelType = $this->normalizeArfModelType((string) $request->model_type);
+        $request->merge(['model_type' => $normalizedModelType]);
 
-        // Check for duplicate ARF requests for the same source
+        // Check for duplicate ARF (align with UI: one pending/approved ARF per source document)
         $existingArf = RequestARF::where('source_id', $request->source_id)
-            ->where('model_type', $request->model_type)
-            ->where('staff_id', $staffId)
+            ->where('model_type', $normalizedModelType)
+            ->whereIn('overall_status', ['pending', 'approved'])
             ->first();
 
         if ($existingArf) {
             $errorMessage = 'An ARF request already exists for this ' . str_replace('_', ' ', $request->source_type) . '.';
             
-            if ($request->ajax()) {
+            if ($wantsJson) {
                 return response()->json([
                     'success' => false,
-                    'msg' => $errorMessage
+                    'msg' => $errorMessage,
+                    'redirect_url' => route('request-arf.show', $existingArf),
                 ], 422);
             }
             
@@ -414,13 +429,31 @@ class RequestARFController extends Controller
             if (!$sourceData) {
                 $errorMessage = 'Source data not found.';
                 
-                if ($request->ajax()) {
+                if ($wantsJson) {
                     return response()->json([
                         'success' => false,
                         'msg' => $errorMessage
                     ], 422);
                 }
                 
+                return redirect()->back()->with('error', $errorMessage);
+            }
+
+            if (!can_request_arf($sourceData)) {
+                $errorMessage = 'You are not authorized to create an ARF for this document.';
+                Log::warning('ARF creation denied', [
+                    'staff_id' => $staffId,
+                    'source_type' => $request->source_type,
+                    'source_id' => $request->source_id,
+                ]);
+
+                if ($wantsJson) {
+                    return response()->json([
+                        'success' => false,
+                        'msg' => $errorMessage,
+                    ], 403);
+                }
+
                 return redirect()->back()->with('error', $errorMessage);
             }
 
@@ -568,7 +601,7 @@ class RequestARFController extends Controller
             $message = 'ARF request created and submitted for approval successfully! Status: Pending';
 
             // Check if this is an AJAX request
-            if ($request->ajax()) {
+            if ($wantsJson) {
                 return response()->json([
                     'success' => true,
                     'msg' => $message,
@@ -588,8 +621,7 @@ class RequestARFController extends Controller
             
             $errorMessage = 'An error occurred while creating the ARF request: ' . $e->getMessage();
             
-            // Check if this is an AJAX request
-            if ($request->ajax()) {
+            if ($wantsJson) {
                 return response()->json([
                     'success' => false,
                     'msg' => $errorMessage
@@ -607,11 +639,11 @@ class RequestARFController extends Controller
     {
         switch ($sourceType) {
             case 'activity':
-                return \App\Models\Activity::with(['matrix.division', 'staff.division'])->find($sourceId);
+                return \App\Models\Activity::with(['matrix.division', 'staff.division', 'fundType'])->find($sourceId);
             case 'non_travel':
-                return \App\Models\NonTravelMemo::with(['division', 'staff.division'])->find($sourceId);
+                return \App\Models\NonTravelMemo::with(['division', 'staff.division', 'fundType'])->find($sourceId);
             case 'special_memo':
-                return \App\Models\SpecialMemo::with(['division', 'staff.division'])->find($sourceId);
+                return \App\Models\SpecialMemo::with(['division', 'staff.division', 'fundType'])->find($sourceId);
             default:
                 return null;
         }

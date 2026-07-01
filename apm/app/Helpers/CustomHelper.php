@@ -33,6 +33,23 @@ if (! function_exists('user_session')) {
             return $key == null ? $user : data_get($user, $key, $default);
         }
 
+        /**
+         * Resolve the current user's staff_id from session (same fallbacks as memo action checks).
+         */
+        function resolved_session_staff_id(): ?int
+        {
+            $id = user_session('staff_id')
+                ?? user_session('auth_staff_id')
+                ?? data_get(session('user', []), 'staff_id')
+                ?? data_get(session('user', []), 'auth_staff_id');
+
+            if ($id === null || $id === '') {
+                return null;
+            }
+
+            return (int) $id;
+        }
+
         function isfocal_person()
         {
             $user = session('user');
@@ -502,15 +519,10 @@ if (! function_exists('user_session')) {
          */
         function can_request_memo_action($memo, $type)
         {
-            $currentUserId = user_session('staff_id')
-                ?? user_session('auth_staff_id')
-                ?? session('user.staff_id')
-                ?? session('user.auth_staff_id');
-            if ($currentUserId === null || $currentUserId === '') {
+            $currentUserId = resolved_session_staff_id();
+            if ($currentUserId === null) {
                 return false;
             }
-
-            //  dd($type,$memo);
 
             // Check if this is a single memo
             $isSingleMemo = isset($memo->is_single_memo) && $memo->is_single_memo;
@@ -518,6 +530,23 @@ if (! function_exists('user_session')) {
             // Creator OR responsible person can request ARF/Services.
             $isAuthorized = (string) ($memo->staff_id ?? '') === (string) $currentUserId
                 || (string) ($memo->responsible_person_id ?? '') === (string) $currentUserId;
+
+            // ARF: division focal person, head of division, or admin assistant may also create on behalf of the division.
+            if (! $isAuthorized && $type === 'arf') {
+                $division = null;
+                if (isset($memo->matrix) && $memo->matrix?->division) {
+                    $division = $memo->matrix->division;
+                } elseif (isset($memo->division)) {
+                    $division = $memo->division;
+                }
+                if ($division) {
+                    $focalId = (int) ($division->focal_person ?? 0);
+                    $headId = (int) (effective_division_head_staff_id($division) ?? 0);
+                    $assistantId = (int) ($division->admin_assistant ?? 0);
+                    $isAuthorized = in_array($currentUserId, array_filter([$focalId, $headId, $assistantId]), true);
+                }
+            }
+
             if (! $isAuthorized) {
                 return false;
             }

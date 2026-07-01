@@ -420,7 +420,7 @@
                         @endphp
                         <input type="hidden" name="source_type" value="{{ $sourceTypeValue }}">
                         <input type="hidden" name="source_id" value="{{ $sourceId ?? '' }}">
-                        <input type="hidden" name="title" value="{{ $defaultTitle ?? 'Activity Request' }}">
+                        <input type="hidden" name="title" value="{{ Str::limit($defaultTitle ?? 'Activity Request', 255, '') }}">
                         <input type="hidden" name="total_budget" value="{{ $totalBudget ?? '0.00' }}">
                         <input type="hidden" name="fund_type_id" value="{{ $fundTypeId ?? '' }}">
                         <input type="hidden" name="model_type" value="{{ $modelType ?? 'App\\Models\\Activity' }}">
@@ -499,12 +499,20 @@ $(document).ready(function() {
                 let errorMessage = 'An error occurred while creating the ARF request.';
                 
                 if (xhr.status === 422) {
-                    // Validation errors
-                    const errors = xhr.responseJSON.errors;
+                    const response = xhr.responseJSON || {};
+                    const errors = response.errors;
                     if (errors) {
-                        // Show first error message as notification
-                        const firstError = Object.values(errors)[0][0];
-                        show_notification(firstError, 'error');
+                        errorMessage = Object.values(errors)[0][0];
+                    } else if (response.msg) {
+                        errorMessage = response.msg;
+                    }
+                    if (response.redirect_url) {
+                        show_notification(errorMessage, 'error');
+                        setTimeout(function() {
+                            window.location.href = response.redirect_url;
+                        }, 2000);
+                        submitBtn.prop('disabled', false).html(originalBtnText);
+                        return;
                     }
                 } else if (xhr.responseJSON && xhr.responseJSON.msg) {
                     errorMessage = xhr.responseJSON.msg;

@@ -1710,10 +1710,10 @@
 @endif
 
 
-        @if($specialMemo->fund_type_id == 2 && $specialMemo->overall_status == 'approved')
+        @if(can_request_arf($specialMemo))
             @php
-                // Check if ARF already exists for this special memo
                 $existingArf = \App\Models\RequestARF::where('source_id', $specialMemo->id)
+                    ->whereIn('overall_status', ['pending', 'approved'])
                     ->where('model_type', 'App\\Models\\SpecialMemo')
                     ->first();
             @endphp
@@ -1766,9 +1766,8 @@
             'sourceId' => $specialMemo->id,
             'modelType' => 'App\\Models\\SpecialMemo'
         ])
-
         
-        @elseif(in_array($existingArf->overall_status, ['pending', 'approved', 'returned']))
+        @elseif($existingArf)
             <div class="alert alert-info">
                 <i class="bx bx-info-circle me-2"></i>
                 An ARF request has already been created for this special memo.
