@@ -594,19 +594,24 @@
                         {{-- ARF Request Button --}}
                         @if(can_request_arf($activity))
                             @php
-                                $activeArf = \App\Models\RequestARF::activeForSource($activity->id, 'App\\Models\\Activity');
+                                // Check if ARF already exists for this activity
+                                $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                                    ->whereIn('overall_status', ['pending', 'approved'])
+                                    ->where('model_type', 'App\\Models\\Activity')
+                                    ->first();
                             @endphp
                             
-                            @if($activeArf)
-                                <a wire:navigate href="{{ route('request-arf.show', $activeArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
+                            @if(!$existingArf)
+                                <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal" style="flex-shrink: 0;">
+                                    <i class="bx bx-file-plus"></i>
+                                    <span>Create ARF</span>
+                                </button>
+                            @else
+                                <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                                     <i class="bx bx-show"></i>
                                     <span>View ARF</span>
                                 </a>
                             @endif
-                            <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal" style="flex-shrink: 0;">
-                                <i class="bx bx-file-plus"></i>
-                                <span>{{ $activeArf ? 'Create New ARF' : 'Create ARF' }}</span>
-                            </button>
                         @endif
 
                         {{-- Service Request Button --}}
@@ -1779,10 +1784,15 @@
     </div>
     @endif
 
-    @if(can_request_arf($activity))
+    @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural' && $activity->matrix && $activity->matrix->overall_status === 'approved')
         @php
-            $activeArf = \App\Models\RequestARF::activeForSource($activity->id, 'App\\Models\\Activity');
+            // Check if ARF already exists for this activity
+            $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                ->where('model_type', 'App\\Models\\Activity')
+                ->first();
         @endphp
+        
+        @if(!$existingArf)
         @include('request-arf.components.create-arf-modal', [
         'sourceType' => 'Activity',
         'sourceTitle' => $activity->activity_title,
@@ -1825,9 +1835,18 @@
             : ($activity->budget_id ?? []))->with('fundType', 'funder', 'partner')->get()->keyBy('id'),
         'defaultTitle' => 'ARF Request - ' . $activity->activity_title,
         'sourceId' => $activity->id,
-        'modelType' => 'App\\Models\\Activity',
-        'previousArf' => $activeArf,
+        'modelType' => 'App\\Models\\Activity'
     ])
+        @elseif(in_array($existingArf->overall_status, ['pending', 'approved', 'returned']))
+        <div class="alert alert-info">
+            <i class="bx bx-info-circle me-2"></i>
+            An ARF request has already been created for this activity.
+            <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
+                <i class="bx bx-show me-1"></i>View ARF Request
+            </a>
+        </div>
+        @endif
+        
     @endif
 
 <!-- Admin Update Creator/Responsible Person Modal -->

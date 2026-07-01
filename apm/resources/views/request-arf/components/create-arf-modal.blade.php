@@ -154,15 +154,6 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4" style="flex: 1; overflow-y: auto;">
-                @if(!empty($previousArf))
-                <div class="alert alert-warning mb-4">
-                    <i class="bx bx-info-circle me-2"></i>
-                    <strong>Previous Activity Request found.</strong>
-                    Submitting will create a new ARF and cancel the existing one
-                    (<a wire:navigate href="{{ route('request-arf.show', $previousArf) }}">{{ $previousArf->arf_number ?? $previousArf->document_number ?? '#'.$previousArf->id }}</a>,
-                    status: {{ ucfirst($previousArf->overall_status ?? 'unknown') }}).
-                </div>
-                @endif
                 <!-- Source Details Section -->
                 <div class="mb-4">
                     <div class="section-header">
@@ -481,7 +472,8 @@ $(document).ready(function() {
             contentType: false,
             success: function(response) {
                 if (response.success) {
-                    const message = response.msg || 'ARF request submitted for final approval successfully! Status: Pending';
+                    // Show success notification
+                    const message = 'ARF request submitted for final approval successfully! Status: Pending';
                     
                     show_notification(message, 'success');
                     

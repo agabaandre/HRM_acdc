@@ -565,19 +565,23 @@
                     @endif
                   
                     @php
-                        $activeArfTop = \App\Models\RequestARF::activeForSource($specialMemo->id, 'App\\Models\\SpecialMemo');
+                        // Check if ARF already exists for this special memo
+                        $existingArfTop = \App\Models\RequestARF::where('source_id', $specialMemo->id)
+                            ->where('model_type', 'App\\Models\\SpecialMemo')
+                            ->first();
                     @endphp
                     
-                    @if($activeArfTop)
-                        <a wire:navigate href="{{ route('request-arf.show', $activeArfTop) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
+                    @if($existingArfTop)
+                        {{-- Show View ARF button if ARF exists --}}
+                        <a wire:navigate href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="bx bx-show"></i>
                             <span>View Activity Request</span>
                         </a>
-                    @endif
-                    @if(can_request_arf($specialMemo))
+                    @elseif(can_request_arf($specialMemo))
+                        {{-- Show Create ARF button if memo is approved and no ARF exists --}}
                         <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal" style="flex-shrink: 0;">
                             <i class="bx bx-file-plus"></i>
-                            <span>{{ $activeArfTop ? 'Create New Activity Request' : 'Create Activity Request' }}</span>
+                            <span>Create Activity Request</span>
                         </button>
                     @endif
                     
@@ -1708,8 +1712,13 @@
 
         @if(can_request_arf($specialMemo))
             @php
-                $activeArf = \App\Models\RequestARF::activeForSource($specialMemo->id, 'App\\Models\\SpecialMemo');
+                $existingArf = \App\Models\RequestARF::where('source_id', $specialMemo->id)
+                    ->whereIn('overall_status', ['pending', 'approved'])
+                    ->where('model_type', 'App\\Models\\SpecialMemo')
+                    ->first();
             @endphp
+            
+            @if(!$existingArf)
             @include('request-arf.components.create-arf-modal', [
             'sourceType' => 'Special Memo',
             'sourceTitle' => $specialMemo->activity_title,
@@ -1755,9 +1764,19 @@
             })(),
             'defaultTitle' => to_sentence_case('Activity Request - ' . $specialMemo->title),
             'sourceId' => $specialMemo->id,
-            'modelType' => 'App\\Models\\SpecialMemo',
-            'previousArf' => $activeArf,
+            'modelType' => 'App\\Models\\SpecialMemo'
         ])
+        
+        @elseif($existingArf)
+            <div class="alert alert-info">
+                <i class="bx bx-info-circle me-2"></i>
+                An ARF request has already been created for this special memo.
+                <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
+                    <i class="bx bx-show me-1"></i>View Activity Request
+                </a>
+            </div>
+            @endif
+            
         @endif
         
 <!-- Admin Update Creator/Responsible Person Modal -->

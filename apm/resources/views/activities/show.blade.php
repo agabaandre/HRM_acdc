@@ -531,19 +531,24 @@
                     @endif
                     
                     @php
-                        $activeArf = \App\Models\RequestARF::activeForSource($activity->id, 'App\\Models\\Activity');
+                        // Check if ARF already exists for this activity
+                        $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                            ->whereIn('overall_status', ['pending', 'approved'])
+                            ->where('model_type', 'App\\Models\\Activity')
+                            ->first();
                     @endphp
                     
-                    @if($activeArf)
-                        <a wire:navigate href="{{ route('request-arf.show', $activeArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
+                    @if($existingArf)
+                        {{-- Show View ARF button if ARF exists --}}
+                        <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="flex-shrink: 0;">
                             <i class="bx bx-show"></i>
                             <span>View ARF</span>
                         </a>
-                    @endif
-                    @if(can_request_arf($activity))
+                    @elseif(can_request_arf($activity))
+                        {{-- Show Create ARF button if memo is approved and no ARF exists --}}
                         <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal" style="flex-shrink: 0;">
                             <i class="bx bx-file-plus"></i>
-                            <span>{{ $activeArf ? 'Create New ARF' : 'Create ARF' }}</span>
+                            <span>Create ARF</span>
                         </button>
                     @endif
                          
@@ -1659,8 +1664,13 @@ $(document).on('click', '.preview-attachment', function() {
 
         @if(can_request_arf($activity))
             @php
-                $activeArf = \App\Models\RequestARF::activeForSource($activity->id, 'App\\Models\\Activity');
+                $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                    ->whereIn('overall_status', ['pending', 'approved'])
+                    ->where('model_type', 'App\\Models\\Activity')
+                    ->first();
             @endphp
+            
+            @if(!$existingArf)
             @include('request-arf.components.create-arf-modal', [
             'sourceType' => 'Activity',
             'sourceTitle' => $activity->activity_title,
@@ -1703,9 +1713,18 @@ $(document).on('click', '.preview-attachment', function() {
                 : ($activity->budget_id ?? []))->with('fundType', 'funder', 'partner')->get()->keyBy('id'),
             'defaultTitle' => to_sentence_case('Activity Request - ' . $activity->activity_title),
             'sourceId' => $activity->id,
-            'modelType' => 'App\\Models\\Activity',
-            'previousArf' => $activeArf,
+            'modelType' => 'App\\Models\\Activity'
         ])
+            @elseif($existingArf)
+            <div class="alert alert-info">
+                <i class="bx bx-info-circle me-2"></i>
+                An ARF request has already been created for this activity.
+                <a wire:navigate href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
+                    <i class="bx bx-show me-1"></i>View Activity Request
+                </a>
+            </div>
+            @endif
+            
         @endif
         
 @endpush
