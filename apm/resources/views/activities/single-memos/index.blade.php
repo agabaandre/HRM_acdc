@@ -5,14 +5,64 @@
 @section('header', 'Single Memos')
 
 @section('header-actions')
-    @if(!empty($canCreateSingleMemo) && !empty($createSingleMemoMatrix))
-        <a href="{{ route('matrices.activities.create', $createSingleMemoMatrix) }}" class="btn btn-success btn-sm shadow-sm">
+    @if(!empty($showCreateSingleMemoInstructions))
+        <button type="button" class="btn btn-success btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#createSingleMemoInstructionsModal">
             <i class="bx bx-plus-circle me-1"></i> Create new
-        </a>
+        </button>
     @endif
 @endsection
 
 @section('content')
+@if(!empty($showCreateSingleMemoInstructions))
+<div class="modal fade" id="createSingleMemoInstructionsModal" tabindex="-1" aria-labelledby="createSingleMemoInstructionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createSingleMemoInstructionsModalLabel">
+                    <i class="bx bx-info-circle me-2 text-success"></i> How to create a single memo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Single memos must be created from the correct <strong>quarterly matrix</strong>, not from this list. Creating on the wrong matrix causes approval and budget issues.</p>
+                <ol class="mb-3 ps-3">
+                    <li class="mb-2">Go to <strong>Quarterly Travel Matrices</strong> and open your division's matrix for the <strong>current quarter</strong> (<strong>{{ $currentQuarterLabel ?? '' }}</strong>).</li>
+                    <li class="mb-2">On that matrix page, click <strong>Add Single Memo</strong>.</li>
+                    <li class="mb-0">Complete the activity form and submit it for approval.</li>
+                </ol>
+                <div class="alert alert-warning mb-0 small">
+                    <i class="bx bx-error-circle me-1"></i>
+                    Do not create single memos on matrices from past or future quarters. Only the <strong>current quarter</strong> matrix is allowed.
+                </div>
+                @if(!empty($currentQuarterMatrix) && in_array($currentQuarterMatrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true))
+                    <p class="mt-3 mb-0 small text-muted">
+                        Your division's {{ $currentQuarterLabel }} matrix is available and accepts single memos.
+                    </p>
+                @elseif(!empty($currentQuarterMatrix))
+                    <p class="mt-3 mb-0 small text-muted">
+                        Your division's {{ $currentQuarterLabel }} matrix exists but is not yet in a status that accepts single memos (pending, approved, returned, or on hold).
+                    </p>
+                @else
+                    <p class="mt-3 mb-0 small text-muted">
+                        No matrix was found for your division in {{ $currentQuarterLabel }}. Contact your focal person or administrator if you need one created.
+                    </p>
+                @endif
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <a href="{{ route('matrices.index', ['year' => $apmCurrentYear ?? now()->year, 'quarter' => $apmCurrentQuarter ?? ('Q' . now()->quarter)]) }}" class="btn btn-primary btn-sm">
+                    <i class="bx bx-grid-alt me-1"></i> Go to Matrices
+                </a>
+                @if(!empty($currentQuarterMatrix) && in_array($currentQuarterMatrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true))
+                    <a href="{{ route('matrices.show', $currentQuarterMatrix) }}" class="btn btn-success btn-sm">
+                        <i class="bx bx-link-external me-1"></i> Open current quarter matrix
+                    </a>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 <style>
     .table-title-cell {
         max-width: 270px;

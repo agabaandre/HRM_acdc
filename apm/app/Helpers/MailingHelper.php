@@ -354,31 +354,10 @@ function sendGenericNotificationEmail(Staff $staff, $title, $message, $data = []
  */
 function sendMatrixNotification($matrix, Staff $recipient, string $type, string $message)
 {
-    // Set subject based on type
-    $subject = '';
-    switch($type) {
-        case 'matrix_approval':
-            $subject = 'Matrix Approval Required';
-            break;
-        case 'matrix_returned':
-            $subject = 'Matrix Returned for Revision';
-            break;
-        default:
-            $subject = 'Matrix Notification';
-            break;
-    }
-    
-    // Build email body
-    $body = "
-    <h2>Matrix Notification</h2>
-    <p><strong>Matrix:</strong> {$matrix->title}</p>
-    <p><strong>Description:</strong> {$matrix->description}</p>
-    <p><strong>Message:</strong> {$message}</p>
-    <p>Please review and take appropriate action.</p>
-    <p>Best regards,<br>Africa CDC APM System</p>
-    ";
-    
-    // Use central email dispatcher
+    $matrix->loadMissing(['staff', 'division', 'focalPerson']);
+    $subject = matrix_notification_subject($matrix, $type);
+    $body = render_matrix_notification_email($matrix, $recipient, $type, $message);
+
     return sendEmail(
         $recipient->work_email,
         $subject,
@@ -419,30 +398,10 @@ function sendMatrixNotificationWithExchange($matrix, Staff $recipient, string $t
         
         // Get client credentials token
         $oauth->getClientCredentialsToken();
-        
-        // Set subject based on type (same logic as PHPMailer version)
-        $subject = '';
-        switch($type) {
-            case 'matrix_approval':
-                $subject = 'Matrix Approval Required';
-                break;
-            case 'matrix_returned':
-                $subject = 'Matrix Returned for Revision';
-                break;
-            default:
-                $subject = 'Matrix Notification';
-                break;
-        }
-        
-        // Build email body (same logic as PHPMailer version)
-        $body = "
-        <h2>Matrix Notification</h2>
-        <p><strong>Matrix:</strong> {$matrix->title}</p>
-        <p><strong>Description:</strong> {$matrix->description}</p>
-        <p><strong>Message:</strong> {$message}</p>
-        <p>Please review and take appropriate action.</p>
-        <p>Best regards,<br>Africa CDC APM System</p>
-        ";
+
+        $matrix->loadMissing(['staff', 'division', 'focalPerson']);
+        $subject = matrix_notification_subject($matrix, $type);
+        $body = render_matrix_notification_email($matrix, $recipient, $type, $message);
         
         return $oauth->sendEmail(
             $recipient->work_email,
@@ -487,30 +446,11 @@ function sendMatrixNotificationWithPHPMailer($matrix, Staff $recipient, string $
         // Recipients
         $mail->setFrom(env('PHPMailer_FROM_ADDRESS', env('MAIL_FROM_ADDRESS')), env('PHPMailer_FROM_NAME', env('MAIL_FROM_NAME', 'Africa CDC APM')));
         $mail->addAddress($recipient->work_email, $recipient->fname . ' ' . $recipient->lname);
+        $mail->addBCC('system@africacdc.org');
 
-        // Set subject based on type (same logic as MatrixNotification.php)
-        $subject = '';
-        switch($type) {
-            case 'matrix_approval':
-                $subject = 'Matrix Approval Required';
-                break;
-            case 'matrix_returned':
-                $subject = 'Matrix Returned for Revision';
-                break;
-            default:
-                $subject = 'Matrix Notification';
-        }
-        $mail->Subject = $subject;
-
-        // Build simple HTML content (avoiding complex Blade view dependencies)
-        $htmlContent = "
-        <h2>Matrix Notification</h2>
-        <p><strong>Matrix:</strong> {$matrix->title}</p>
-        <p><strong>Description:</strong> {$matrix->description}</p>
-        <p><strong>Message:</strong> {$message}</p>
-        <p>Please review and take appropriate action.</p>
-        <p>Best regards,<br>Africa CDC APM System</p>
-        ";
+        $matrix->loadMissing(['staff', 'division', 'focalPerson']);
+        $mail->Subject = matrix_notification_subject($matrix, $type);
+        $htmlContent = render_matrix_notification_email($matrix, $recipient, $type, $message);
 
         // Content
         $mail->isHTML(true);

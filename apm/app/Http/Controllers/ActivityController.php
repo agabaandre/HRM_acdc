@@ -111,6 +111,9 @@ class ActivityController extends Controller
             if ($sid === 0 || $userDivisionId === 0 || $userDivisionId !== (int) $matrix->division_id) {
                 abort(403, 'Only staff from this matrix division can add single memos for this matrix.');
             }
+            if (! matrix_is_current_quarter($matrix)) {
+                abort(403, 'Single memos can only be created on the current quarter matrix ('.current_apm_quarter().' '.current_apm_year().'). Open Matrices and select the correct matrix.');
+            }
         }
       
         // Request Types
@@ -198,6 +201,13 @@ class ActivityController extends Controller
                             ], 403);
                         }
                         abort(403, 'Only staff from this matrix division can add single memos for this matrix.');
+                    }
+                    if (! matrix_is_current_quarter($matrix)) {
+                        $msg = 'Single memos can only be created on the current quarter matrix ('.current_apm_quarter().' '.current_apm_year().'). Open Matrices and select the correct matrix.';
+                        if ($request->ajax()) {
+                            return response()->json(['success' => false, 'msg' => $msg], 422);
+                        }
+                        return redirect()->back()->withInput()->with(['msg' => $msg, 'type' => 'error']);
                     }
                 }
 
@@ -2002,18 +2012,17 @@ class ActivityController extends Controller
         $years = range($currentYear, $minYear);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
 
-        // "Create new" single memo: show for current division matrix in pending/approved/returned/onhold status.
-        $createSingleMemoMatrix = null;
-        $canCreateSingleMemo = false;
-        if ($userDivisionId && $currentStaffId) {
-            $createSingleMemoMatrix = Matrix::query()
+        $apmCurrentYear = current_apm_year();
+        $apmCurrentQuarter = current_apm_quarter();
+        $currentQuarterLabel = $apmCurrentQuarter.' '.$apmCurrentYear;
+        $showCreateSingleMemoInstructions = (bool) ($userDivisionId && $currentStaffId);
+        $currentQuarterMatrix = null;
+        if ($userDivisionId) {
+            $currentQuarterMatrix = Matrix::query()
                 ->where('division_id', $userDivisionId)
-                ->where('year', (int) $selectedYear)
-                ->where('quarter', $selectedQuarter)
+                ->where('year', $apmCurrentYear)
+                ->where('quarter', $apmCurrentQuarter)
                 ->first();
-            if ($createSingleMemoMatrix && in_array($createSingleMemoMatrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true)) {
-                $canCreateSingleMemo = (int) $createSingleMemoMatrix->division_id === (int) $userDivisionId;
-            }
         }
     
         // Handle AJAX requests for tab content only (not initial page load).
@@ -2063,8 +2072,11 @@ class ActivityController extends Controller
             'quarters',
             'selectedYear',
             'selectedQuarter',
-            'createSingleMemoMatrix',
-            'canCreateSingleMemo'
+            'showCreateSingleMemoInstructions',
+            'currentQuarterMatrix',
+            'currentQuarterLabel',
+            'apmCurrentYear',
+            'apmCurrentQuarter'
         ));
     }
 

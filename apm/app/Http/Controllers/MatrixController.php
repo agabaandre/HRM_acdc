@@ -447,9 +447,12 @@ class MatrixController extends Controller
         $approvalService = new \App\Services\ApprovalService();
         $approvalService->updateApprovalOrderMap($matrix);
         
-        $recipients = Staff::where('division_id', $validated['division_id'])->get();
+        $recipients = Staff::active()
+            ->where('division_id', $validated['division_id'])
+            ->whereNotNull('work_email')
+            ->get();
        
-        send_matrix_notification( $matrix,  'created',$recipients);
+        send_matrix_notification($matrix, 'created', $recipients);
 
         return Redirect::route('matrices.index')
                          ->with([

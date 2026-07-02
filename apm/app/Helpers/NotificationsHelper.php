@@ -36,6 +36,101 @@ if (!function_exists('get_matrix_notification_recipient')) {
     }
 }
 
+if (!function_exists('matrix_notification_view_data')) {
+    /**
+     * @return array<string, mixed>
+     */
+    function matrix_notification_view_data($matrix, Staff $recipient, string $type, string $message): array
+    {
+        $matrix->loadMissing(['staff', 'division', 'focalPerson']);
+
+        $divisionName = trim((string) ($matrix->division->division_name ?? $matrix->division->name ?? ''));
+        if ($divisionName === '') {
+            $divisionName = 'N/A';
+        }
+
+        $keyResultAreas = [];
+        $kra = $matrix->key_result_area;
+        if (is_string($kra)) {
+            $decoded = json_decode($kra, true);
+            $kra = is_array($decoded) ? $decoded : [];
+        }
+        if (is_array($kra)) {
+            foreach ($kra as $item) {
+                $desc = is_array($item) ? ($item['description'] ?? '') : (string) $item;
+                $desc = trim($desc);
+                if ($desc !== '') {
+                    $keyResultAreas[] = $desc;
+                }
+            }
+        }
+
+        $createdBy = trim(($matrix->staff->fname ?? '').' '.($matrix->staff->lname ?? ''));
+        $focalPerson = $matrix->focalPerson
+            ? trim($matrix->focalPerson->fname.' '.$matrix->focalPerson->lname)
+            : null;
+
+        return [
+            'resource' => $matrix,
+            'resource_type' => ucfirst(class_basename($matrix)),
+            'recipient' => $recipient,
+            'message' => $message,
+            'type' => $type,
+            'division_name' => $divisionName,
+            'matrix_period' => trim(($matrix->quarter ?? '').' '.($matrix->year ?? '')),
+            'matrix_display_title' => method_exists($matrix, 'listDisplayTitle')
+                ? $matrix->listDisplayTitle()
+                : ('Matrix #'.($matrix->id ?? '')),
+            'created_by_name' => $createdBy !== '' ? $createdBy : 'N/A',
+            'focal_person_name' => $focalPerson,
+            'key_result_areas' => $keyResultAreas,
+            'matrix_url' => $matrix->resource_url,
+        ];
+    }
+}
+
+if (!function_exists('matrix_notification_subject')) {
+    function matrix_notification_subject($matrix, string $type): string
+    {
+        $prefix = env('MAIL_SUBJECT_PREFIX', 'Africa CDC APM').': ';
+        $resource = ucfirst(class_basename($matrix));
+        $divisionName = trim((string) ($matrix->division->division_name ?? $matrix->division->name ?? ''));
+
+        switch ($type) {
+            case 'created':
+                if ($divisionName !== '') {
+                    return $prefix.sprintf(
+                        'New Quarterly Travel Matrix — %s (%s %s)',
+                        $divisionName,
+                        $matrix->quarter ?? '',
+                        $matrix->year ?? ''
+                    );
+                }
+
+                return $prefix.sprintf(
+                    'New Quarterly Travel Matrix (%s %s)',
+                    $matrix->quarter ?? '',
+                    $matrix->year ?? ''
+                );
+            case 'approval':
+            case 'matrix_approval':
+                return $prefix.$resource.' Approval Required';
+            case 'returned':
+            case 'matrix_returned':
+                return $prefix.$resource.' Returned for Revision';
+            default:
+                return $prefix.$resource.' Notification';
+        }
+    }
+}
+
+if (!function_exists('render_matrix_notification_email')) {
+    function render_matrix_notification_email($matrix, Staff $recipient, string $type, string $message): string
+    {
+        return view('emails.matrix-notification', matrix_notification_view_data($matrix, $recipient, $type, $message))->render();
+    }
+}
+
 if (!function_exists('send_matrix_notification')) {
     /**
      * Send a notification to the appropriate staff member for matrix approval
@@ -47,55 +142,71 @@ if (!function_exists('send_matrix_notification')) {
      */
     function send_matrix_notification( $model, $type = 'approval',$recipients = null)
     {
-      
-    
         $recipient = $recipients ? $recipients : get_matrix_notification_recipient($model);
-            
+
         if (!$recipient) {
             return null;
         }
 
-                // Generate message based on type
-            $message = '';
-            $resource = ucfirst(class_basename($model));
-            switch($type) {
-                case 'approval':
-                    $message = sprintf(
-                        '%s #%d requires your approval. Created by %s %s.',
-                        $resource,
-                        $model->id,
-                        $model->staff->fname,
-                        $model->staff->lname
-                    );
-                    break;
-                case 'created':
-                        $message = sprintf(
-                            '%s #%d has been created by %s %s.',
-                            $resource,
-                            $model->id,
-                            $model->staff->fname,
-                            $model->staff->lname
-                        );
-                    break;
-                case 'returned':
-                    $message = sprintf(
-                        '%s #%d has been returned for revision by %s %s.',
-                        $resource,
-                        $model->id,
-                        $model->staff->fname,
-                        $model->staff->lname
-                    );
-                    break;
-                default:
-                    $message = sprintf(
-                        '%s #%d requires your attention.',
-                        $resource,
-                        $model->id
-                    );
-            }
+        $model->loadMissing(['staff', 'division', 'focalPerson']);
 
-            // Dispatch the job to send email in background
-        dispatchMatrixNotificationJob($model, $recipient, $type, $message);
+        $divisionName = trim((string) ($model->division->division_name ?? $model->division->name ?? 'your division'));
+        if ($divisionName === '') {
+            $divisionName = 'your division';
+        }
+
+        $message = '';
+        $resource = ucfirst(class_basename($model));
+        switch($type) {
+            case 'approval':
+                $message = sprintf(
+                    '%s #%d requires your approval. Created by %s %s.',
+                    $resource,
+                    $model->id,
+                    $model->staff->fname,
+                    $model->staff->lname
+                );
+                break;
+            case 'created':
+                $message = sprintf(
+                    'A new quarterly travel matrix for %s (%s %s) has been created by %s %s. Division members are invited to add their planned activities.',
+                    $divisionName,
+                    $model->quarter,
+                    $model->year,
+                    $model->staff->fname,
+                    $model->staff->lname
+                );
+                break;
+            case 'returned':
+                $message = sprintf(
+                    '%s #%d has been returned for revision by %s %s.',
+                    $resource,
+                    $model->id,
+                    $model->staff->fname,
+                    $model->staff->lname
+                );
+                break;
+            default:
+                $message = sprintf(
+                    '%s #%d requires your attention.',
+                    $resource,
+                    $model->id
+                );
+        }
+
+        $recipientsList = ($recipient instanceof Staff || ! is_iterable($recipient))
+            ? collect([$recipient])
+            : collect($recipient);
+
+        $recipientsWithEmail = $recipientsList->filter(function ($staffMember) {
+            return $staffMember instanceof Staff && ! empty($staffMember->work_email);
+        })->values();
+
+        if ($recipientsWithEmail->isEmpty()) {
+            return null;
+        }
+
+        dispatchMatrixNotificationJob($model, $recipientsWithEmail, $type, $message);
 
         return true;
     }

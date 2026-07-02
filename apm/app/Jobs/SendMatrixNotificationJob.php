@@ -42,6 +42,8 @@ class SendMatrixNotificationJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $this->model->loadMissing(['staff', 'division', 'focalPerson']);
+
        if(is_iterable($this->recipient)) {
             foreach($this->recipient as $recipient) {
                 $this->processNotification($recipient);
@@ -59,6 +61,7 @@ class SendMatrixNotificationJob implements ShouldQueue
             Notification::create([
                 'staff_id' => $recipient->staff_id,
                 'model_id' => $this->model->id,
+                'model_type' => get_class($this->model),
                 'message' => $this->message,
                 'type' => $this->type,
                 'is_read' => false
@@ -132,30 +135,10 @@ class SendMatrixNotificationJob implements ShouldQueue
             $mail->setFrom(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME', 'Africa CDC APM'));
             $mail->addAddress($recipient->work_email, $recipient->fname . ' ' . $recipient->lname);
             $mail->addBCC('system@africacdc.org');
-            //system@africacdc.org
-            // Set subject based on type (same logic as MatrixNotification.php)
-            $subject = '';
-            $prefix  = env('MAIL_SUBJECT_PREFIX','Africa CDC APM').": ";
-            switch($this->type) {
-                case 'approval':
-                    $subject = ucfirst(class_basename($this->model)).' Approval Request';
-                    break;
-                case 'returned':
-                    $subject = ucfirst(class_basename($this->model)).' Returned for Revision';
-                    break;
-                default:
-                    $subject = ucfirst(class_basename($this->model)).' Notification';
-            }
 
-            $mail->Subject = $prefix.$subject;
-            // Render the same view template that MatrixNotification uses
-            $htmlContent = View::make('emails.matrix-notification', [
-                'resource' => $this->model,
-                'resource_type' => ucfirst(class_basename($this->model)),
-                'recipient' => $recipient,
-                'message' => $this->message,
-                'type' => $this->type
-            ])->render();
+            $this->model->loadMissing(['staff', 'division', 'focalPerson']);
+            $mail->Subject = matrix_notification_subject($this->model, $this->type);
+            $htmlContent = render_matrix_notification_email($this->model, $recipient, $this->type, $this->message);
 
             // Content
             $mail->isHTML(true);

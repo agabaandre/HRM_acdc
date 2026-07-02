@@ -50,6 +50,26 @@ if (! function_exists('user_session')) {
             return (int) $id;
         }
 
+        function current_apm_year(): int
+        {
+            return (int) now()->year;
+        }
+
+        function current_apm_quarter(): string
+        {
+            return 'Q'.now()->quarter;
+        }
+
+        function matrix_is_current_quarter($matrix): bool
+        {
+            if ($matrix === null) {
+                return false;
+            }
+
+            return (int) ($matrix->year ?? 0) === current_apm_year()
+                && (string) ($matrix->quarter ?? '') === current_apm_quarter();
+        }
+
         function isfocal_person()
         {
             $user = session('user');

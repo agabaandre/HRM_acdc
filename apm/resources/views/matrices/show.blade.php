@@ -6,6 +6,7 @@
     $isMatrixQm = $matrixQmStaffId > 0 && $currentStaffIdForQm === $matrixQmStaffId;
     $currentDivisionId = (int) (user_session('division_id') ?? 0);
     $canDivisionAddSingleMemo = $currentDivisionId > 0 && $currentDivisionId === (int) $matrix->division_id;
+    $matrixIsCurrentQuarter = matrix_is_current_quarter($matrix);
     $isStrictAdmin = user_session('role') == 10;
     $effectiveHodId = effective_division_head_staff_id($matrix->division);
     $isDivisionHod = $effectiveHodId !== null && (int) $effectiveHodId === $currentStaffIdForQm;
@@ -133,7 +134,7 @@
         </a>
         @endif
 
-        @if($canDivisionAddSingleMemo && in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true))
+        @if($canDivisionAddSingleMemo && $matrixIsCurrentQuarter && in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true))
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Single Memo 
         </a>

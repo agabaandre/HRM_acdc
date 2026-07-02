@@ -186,13 +186,18 @@
                 @elseif($type == 'returned')
                     {{ $resource_type }} Returned for Revision
                 @elseif($type == 'created')
-                    {{ $resource->division ? ($resource->division->name ?? $resource->division->division_name ?? 'Matrix') : 'Matrix' }} Notification
+                    New Quarterly Travel Matrix
                 @elseif($type == 'approved' || $type == 'other_memo_approval')
                     {{ $resource_label ?? $resource_type }} — awaiting your approval
                 @else
                     {{ $resource_type }} Notification
                 @endif
             </h1>
+            @if($type == 'created')
+                <p style="margin-top: 8px; font-size: 15px; color: #555555;">
+                    {{ $division_name ?? ($resource->division->division_name ?? 'Division') }} &middot; {{ $matrix_period ?? ($resource->quarter . ' ' . $resource->year) }}
+                </p>
+            @endif
         </div>
 
         <!-- Main Content -->
@@ -200,22 +205,84 @@
             <p>Dear <strong>{{ $recipient->title }} {{ $recipient->fname }} {{ $recipient->lname }}</strong>,</p>
 
             @if($type == 'created')
-                <!-- Special format for created notifications -->
-                <div class="details" style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin-bottom: 30px; border-left: 4px solid #119A48;">
+                @php
+                    $matrixTitle = $matrix_display_title ?? ($resource->listDisplayTitle() ?? ('Matrix #' . $resource->id));
+                    $divisionLabel = $division_name ?? ($resource->division->division_name ?? 'N/A');
+                    $creatorName = $created_by_name ?? (($resource->staff->fname ?? '') . ' ' . ($resource->staff->lname ?? ''));
+                    $focalName = $focal_person_name ?? null;
+                    $kraItems = $key_result_areas ?? [];
+                    if ($kraItems === [] && !empty($resource->key_result_area)) {
+                        $rawKra = $resource->key_result_area;
+                        if (is_string($rawKra)) {
+                            $rawKra = json_decode($rawKra, true);
+                        }
+                        if (is_array($rawKra)) {
+                            foreach ($rawKra as $item) {
+                                $desc = is_array($item) ? ($item['description'] ?? '') : (string) $item;
+                                if (trim($desc) !== '') {
+                                    $kraItems[] = trim($desc);
+                                }
+                            }
+                        }
+                    }
+                @endphp
+                <p>
+                    A new <strong>Quarterly Travel Matrix</strong> has been opened for
+                    <strong>{{ $divisionLabel }}</strong> ({{ $matrix_period ?? ($resource->quarter . ' ' . $resource->year) }}).
+                    You are receiving this email because you are a member of the division.
+                </p>
+
+                <div class="details" style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin-bottom: 24px; border-left: 4px solid #119A48;">
+                    <h2 style="margin-top: 0;">Matrix Details</h2>
                     <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
                         <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Matrix:</span>
-                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $resource->title ?? 'Matrix #' . $resource->id }}</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $matrixTitle }}</span>
                     </div>
-                    @if($resource->description)
                     <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
-                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Description:</span>
-                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $resource->description }}</span>
+                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Division:</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $divisionLabel }}</span>
+                    </div>
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Period:</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $matrix_period ?? ($resource->quarter . ' ' . $resource->year) }}</span>
+                    </div>
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Created by:</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">{{ trim($creatorName) !== '' ? trim($creatorName) : 'N/A' }}</span>
+                    </div>
+                    @if(!empty($focalName))
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Focal person:</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $focalName }}</span>
                     </div>
                     @endif
                     <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: none;">
-                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Message:</span>
-                        <span class="detail-value" style="color: #333333; flex: 1;">{{ $message }}</span>
+                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Status:</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">
+                            <span class="status-pending">{{ ucfirst($resource->overall_status ?? 'draft') }}</span>
+                        </span>
                     </div>
+                </div>
+
+                @if(!empty($kraItems))
+                <div class="details" style="background-color: #ffffff; border-radius: 6px; padding: 20px; margin-bottom: 24px; border: 1px solid #e9ecef;">
+                    <h2 style="margin-top: 0;">Key Result Areas</h2>
+                    <ul style="margin: 0; padding-left: 20px; color: #444444;">
+                        @foreach($kraItems as $kraDescription)
+                            <li style="margin-bottom: 8px;">{{ $kraDescription }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
+
+                <div style="background-color: #e8f5e9; border-radius: 6px; padding: 18px 20px; margin-bottom: 24px; border-left: 4px solid #119A48;">
+                    <p style="margin: 0 0 8px 0; color: #155724; font-weight: 700; font-size: 15px;">
+                        You are invited to contribute
+                    </p>
+                    <p style="margin: 0; color: #2e7d32; font-size: 14px; line-height: 1.6;">
+                        Please log in to APM, open this matrix, and add your planned activities for the quarter.
+                        Coordinate with your division focal person if you need guidance before submission.
+                    </p>
                 </div>
             @elseif($type == 'approved' || $type == 'other_memo_approval')
                 @php
@@ -283,12 +350,20 @@
             </div>
             @endif
 
-            @if($type != 'approved')
+            @if($type == 'created')
+            <p style="margin-top: 20px;">We look forward to your contributions to the division matrix this quarter.</p>
+            @elseif($type != 'approved')
             <p style="margin-top: 20px;">Please review and take appropriate action.</p>
             @endif
 
             <div style="text-align: center; margin-top: 30px;">
-                <a href="{{ $resource->resource_url }}" class="btn">View Details</a>
+                <a href="{{ $matrix_url ?? $resource->resource_url }}" class="btn">
+                    @if($type == 'created')
+                        Open Matrix &amp; Contribute
+                    @else
+                        View Details
+                    @endif
+                </a>
             </div>
 
             <p style="margin-top: 30px; margin-bottom: 0;">
