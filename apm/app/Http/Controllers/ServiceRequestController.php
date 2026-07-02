@@ -2334,7 +2334,7 @@ class ServiceRequestController extends Controller
     {
         $request->validate([
             'action' => 'required|in:approved,rejected,returned',
-            'comment' => 'nullable|string|max:1000',
+            'comment' => 'required_if:action,rejected|nullable|string|max:1000',
         ]);
 
         //(dd($request->all()));

@@ -1194,17 +1194,14 @@
                             </h6>
                         </div>
                 <div class="card-body">
-                                <form action="{{ route('service-requests.update-status', $serviceRequest) }}" method="POST" id="approvalForm">
-                                @csrf
                                 <div class="d-grid gap-2">
                                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approvalModal">
                                         <i class="bx bx-check me-1"></i> Proceed
                                     </button>
-                                    <button type="submit" name="action" value="rejected" class="btn btn-danger">
+                                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectionModal">
                                         <i class="bx bx-x me-1"></i> Rejected
                                     </button>
                                 </div>
-                            </form>
                         </div>
                     </div>
                 @endif
@@ -1272,3 +1269,55 @@
         </div>
     </div>
 </div>
+
+<!-- Rejection Modal -->
+<div class="modal fade" id="rejectionModal" tabindex="-1" aria-labelledby="rejectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">
+                <h5 class="modal-title text-white" id="rejectionModalLabel">
+                    <i class="bx bx-x-circle me-2"></i> Reject Service Request
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('service-requests.update-status', $serviceRequest) }}" method="POST" id="rejectionModalForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-warning mb-3">
+                        <i class="bx bx-info-circle me-1"></i>
+                        Please provide a reason for rejecting this service request. The comment will be recorded in the approval trail.
+                    </div>
+                    <div class="mb-3">
+                        <label for="reject_modal_comment" class="form-label">
+                            <i class="bx bx-message-detail text-danger me-1"></i>Comments <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control @error('comment') is-invalid @enderror" id="reject_modal_comment" name="comment" rows="4" required
+                                  placeholder="Explain why this service request is being rejected...">{{ old('comment') }}</textarea>
+                        @error('comment')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bx bx-x me-1"></i>Cancel
+                    </button>
+                    <button type="submit" name="action" value="rejected" class="btn btn-danger">
+                        <i class="bx bx-x me-1"></i>Reject Service Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if($errors->has('comment') && old('action') === 'rejected')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('rejectionModal');
+    if (el && typeof bootstrap !== 'undefined') {
+        bootstrap.Modal.getOrCreateInstance(el).show();
+    }
+});
+</script>
+@endif
