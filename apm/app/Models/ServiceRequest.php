@@ -230,6 +230,21 @@ class ServiceRequest extends Model
     }
 
     /**
+     * Finance-allocated budget on the parent source memo (live value — not the SR snapshot).
+     */
+    public function parentMemoAllocatedBudget(): ?float
+    {
+        $memo = $this->resolveSourceMemo();
+        if ($memo === null || ! isset($memo->available_budget)) {
+            return null;
+        }
+
+        $value = (float) $memo->available_budget;
+
+        return $value > 0 ? $value : null;
+    }
+
+    /**
      * Whether the given user may start a supplementary SR from this record.
      * Draft/returned parents use the normal creator check; approved (or in-flight) parents
      * allow the SR staff, responsible person, or focal person (same as memo service actions).

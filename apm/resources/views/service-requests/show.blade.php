@@ -280,12 +280,9 @@
                 $displayOriginalTotalBudget = $crMemoTotal;
             }
         }
-        // available_budget is finance allocation (shown separately) — do not replace memo line-item total
-        if ($displayOriginalTotalBudget <= 0 && isset($cr->available_budget) && $cr->available_budget > 0) {
-            $displayOriginalTotalBudget = (float) $cr->available_budget;
-        }
         $displayNewTotalBudget = $serviceRequest->new_total_budget ?? 0;
     }
+    $parentAllocatedBudget = $parentAllocatedBudget ?? $serviceRequest->parentMemoAllocatedBudget();
     $childBalanceCap = $serviceRequest->isChildRequest()
         ? (float) ($serviceRequest->original_total_budget ?? 0)
         : null;
@@ -558,11 +555,11 @@
                                 <p class="h4 mb-0 text-muted">${{ number_format($displayOriginalTotalBudget ?? $serviceRequest->original_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
-                        @if($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget)
+                        @if($parentAllocatedBudget)
                         <div class="col-md-3">
                             <div class="meta-card text-center">
                                 <label class="form-label text-muted small fw-semibold">Allocated Budget (Finance)</label>
-                                <p class="h4 mb-0 text-dark fw-bold">${{ number_format($sourceData->available_budget, 2) }}</p>
+                                <p class="h4 mb-0 text-dark fw-bold">${{ number_format($parentAllocatedBudget, 2) }}</p>
                             </div>
                         </div>
                         @endif
@@ -577,11 +574,10 @@
                                 <label class="form-label text-muted small fw-semibold">Difference</label>
                                 @php
                                     $shownNewTotal = $displayNewTotalBudget ?? $serviceRequest->new_total_budget ?? 0;
-                                    $allocatedBudget = ($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget)
-                                        ? $sourceData->available_budget
-                                        : ($displayOriginalTotalBudget ?? $serviceRequest->original_total_budget ?? 0);
-                                    $difference = $allocatedBudget - $shownNewTotal;
+                                    $allocatedBudget = $parentAllocatedBudget;
+                                    $difference = $allocatedBudget !== null ? $allocatedBudget - $shownNewTotal : null;
                                 @endphp
+                                @if($difference !== null)
                                 <p class="h4 mb-0 {{ $difference >= 0 ? 'text-muted' : 'text-danger' }}">
                                     {{ $difference >= 0 ? '+' : '' }}${{ number_format($difference, 2) }}
                                 </p>
@@ -593,6 +589,10 @@
                                     <small class="text-danger fw-semibold">
                                         <i class="fas fa-exclamation-triangle me-1"></i>Exceeds Allocated Budget
                                     </small>
+                                @endif
+                                @else
+                                <p class="h4 mb-0 text-muted">N/A</p>
+                                <small class="text-muted">No finance allocation on parent memo</small>
                                 @endif
                             </div>
                         </div>

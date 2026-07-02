@@ -268,7 +268,6 @@ class ServiceRequestController extends Controller
                     }
                     $sourceData->activity_title = $changeRequest->activity_title ?? $sourceData->activity_title ?? $sourceData->title ?? null;
                     $sourceData->title = $sourceData->activity_title;
-                    $sourceData->available_budget = $changeRequest->available_budget ?? $originalTotalBudget;
                     if ($changeRequest->division_id !== null && $changeRequest->division_id !== '') {
                         $sourceData->division_id = (int) $changeRequest->division_id;
                         $crDivision = \App\Models\Division::find($sourceData->division_id);
@@ -1085,6 +1084,7 @@ class ServiceRequestController extends Controller
         $canEmailPdf = can_print_memo($serviceRequest) && count($emailPdfRecipientChoices) > 0;
 
         $canCreateChildRequest = $serviceRequest->userCanCreateChildRequest();
+        $parentAllocatedBudget = $serviceRequest->parentMemoAllocatedBudget();
 
         return view('service-requests.show', compact(
             'serviceRequest',
@@ -1097,6 +1097,7 @@ class ServiceRequestController extends Controller
             'emailPdfRecipientChoices',
             'canEmailPdf',
             'canCreateChildRequest',
+            'parentAllocatedBudget',
         ));
     }
 
@@ -2068,9 +2069,6 @@ class ServiceRequestController extends Controller
     {
         if ($changeRequest->budget_breakdown !== null) {
             $sourceData->budget_breakdown = $changeRequest->budget_breakdown;
-        }
-        if ($changeRequest->available_budget !== null && $changeRequest->available_budget > 0) {
-            $sourceData->available_budget = (float) $changeRequest->available_budget;
         }
         if ($changeRequest->budget_id !== null) {
             $crBudgetIds = is_string($changeRequest->budget_id)
