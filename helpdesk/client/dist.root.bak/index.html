@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link id="app-favicon" rel="icon" type="image/png" href="/staff/helpdesk/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <title>Africa CDC · IT Service Desk</title>
+    <style>
+      #helpdesk-boot-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(248, 249, 250, 0.96);
+        transition: opacity 0.35s ease, visibility 0.35s ease;
+      }
+      #helpdesk-boot-loader.hd-boot-loader--out {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      #helpdesk-boot-loader .hd-boot-loader__inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.25rem;
+        text-align: center;
+      }
+      #helpdesk-boot-loader .hd-boot-loader__spinner {
+        position: relative;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 50%;
+        border: 3px solid rgba(13, 122, 58, 0.14);
+        border-top-color: #0d7a3a;
+        animation: hd-preloader-spin 0.75s linear infinite;
+      }
+      body.hd-app-loading {
+        overflow: hidden;
+      }
+      #helpdesk-boot-loader .hd-boot-loader__label {
+        margin: 0;
+        font-family: Arial, Roboto, sans-serif;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #0d7a3a;
+      }
+      @media (prefers-color-scheme: dark) {
+        #helpdesk-boot-loader {
+          background: rgba(15, 23, 42, 0.96);
+        }
+        #helpdesk-boot-loader .hd-boot-loader__spinner {
+          border-color: rgba(74, 222, 128, 0.18);
+          border-top-color: #4ade80;
+        }
+        #helpdesk-boot-loader .hd-boot-loader__label {
+          color: #4ade80;
+        }
+      }
+      @keyframes hd-preloader-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+    <script type="module" crossorigin src="/staff/helpdesk/assets/index-J4C11Wbe.js"></script>
+    <link rel="modulepreload" crossorigin href="/staff/helpdesk/assets/Delta-7iio1T_q.js">
+    <link rel="stylesheet" crossorigin href="/staff/helpdesk/assets/index-DO5f0xrQ.css">
+  </head>
+  <body class="hd-app-loading">
+    <!-- Outside #app so Vite production builds keep the boot loader (Vue mounts into #app only). -->
+    <div id="helpdesk-boot-loader" aria-live="polite" aria-busy="true" role="status">
+      <div class="hd-boot-loader__inner">
+        <div class="hd-boot-loader__spinner" aria-hidden="true"></div>
+        <p class="hd-boot-loader__label">IT Service Desk</p>
+      </div>
+    </div>
+    <div id="app"></div>
+  </body>
+</html>

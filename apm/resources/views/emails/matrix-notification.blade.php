@@ -204,6 +204,13 @@
         <div class="content">
             <p>Dear <strong>{{ $recipient->title }} {{ $recipient->fname }} {{ $recipient->lname }}</strong>,</p>
 
+            @php
+                $rawResourceUrl = $matrix_url ?? ($resource->resource_url ?? route('matrices.show', $resource->id, false));
+                $openMatrixUrl = str_starts_with((string) $rawResourceUrl, 'http')
+                    ? $rawResourceUrl
+                    : url($rawResourceUrl);
+            @endphp
+
             @if($type == 'created')
                 @php
                     $matrixTitle = $matrix_display_title ?? ($resource->listDisplayTitle() ?? ('Matrix #' . $resource->id));
@@ -256,10 +263,16 @@
                         <span class="detail-value" style="color: #333333; flex: 1;">{{ $focalName }}</span>
                     </div>
                     @endif
-                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: none;">
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: 1px solid #e9ecef;">
                         <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Status:</span>
                         <span class="detail-value" style="color: #333333; flex: 1;">
                             <span class="status-pending">{{ ucfirst($resource->overall_status ?? 'draft') }}</span>
+                        </span>
+                    </div>
+                    <div class="detail-item" style="display: flex; padding: 12px 0; border-bottom: none;">
+                        <span class="detail-label" style="font-weight: 600; color: #555555; min-width: 140px;">Open matrix:</span>
+                        <span class="detail-value" style="color: #333333; flex: 1;">
+                            <a href="{{ $openMatrixUrl }}" style="color: #119A48; font-weight: 600; word-break: break-all;">{{ $openMatrixUrl }}</a>
                         </span>
                     </div>
                 </div>
@@ -279,9 +292,12 @@
                     <p style="margin: 0 0 8px 0; color: #155724; font-weight: 700; font-size: 15px;">
                         You are invited to contribute
                     </p>
-                    <p style="margin: 0; color: #2e7d32; font-size: 14px; line-height: 1.6;">
+                    <p style="margin: 0 0 12px 0; color: #2e7d32; font-size: 14px; line-height: 1.6;">
                         Please log in to APM, open this matrix, and add your planned activities for the quarter.
                         Coordinate with your division focal person if you need guidance before submission.
+                    </p>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+                        <a href="{{ $openMatrixUrl }}" style="color: #119A48; font-weight: 700; text-decoration: underline;">Click here to open the matrix in APM</a>
                     </p>
                 </div>
             @elseif($type == 'approved' || $type == 'other_memo_approval')
@@ -357,7 +373,7 @@
             @endif
 
             <div style="text-align: center; margin-top: 30px;">
-                <a href="{{ $matrix_url ?? $resource->resource_url }}" class="btn">
+                <a href="{{ $openMatrixUrl }}" class="btn">
                     @if($type == 'created')
                         Open Matrix &amp; Contribute
                     @else
@@ -365,6 +381,11 @@
                     @endif
                 </a>
             </div>
+            @if($type == 'created')
+            <p style="margin-top: 16px; margin-bottom: 0; text-align: center; font-size: 13px; color: #666666; word-break: break-all;">
+                Or copy this link: <a href="{{ $openMatrixUrl }}" style="color: #119A48;">{{ $openMatrixUrl }}</a>
+            </p>
+            @endif
 
             <p style="margin-top: 30px; margin-bottom: 0;">
                 Best regards,<br>

@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Working balance = approved budget − commitments (draft, pending, approved).
- * Cached in Redis/default store; busted on budget writes.
+ * Working balance = approved budget − commitments (draft, pending, submitted, approved).
+ * Returned, archived, and cancelled records never commit funds.
+ * Cached in Redis/default store; busted on budget writes and status changes.
  */
 class FundCodeWorkingBalanceService
 {
@@ -24,6 +25,9 @@ class FundCodeWorkingBalanceService
 
     /** @var list<string> */
     public const ACTIVE_CHANGE_REQUEST_STATUSES = ['draft', 'pending', 'submitted'];
+
+    /** @var list<string> */
+    public const NON_COMMITTING_STATUSES = ['returned', 'archived', 'cancelled'];
 
     private const CACHE_TTL_SECONDS = 45;
 
@@ -98,6 +102,62 @@ class FundCodeWorkingBalanceService
         }
     }
 
+    public function bustForActivity(int $activityId): void
+    {
+        if ($activityId <= 0) {
+            return;
+        }
+
+        $fundCodes = DB::table('activity_budgets')
+            ->where('activity_id', $activityId)
+            ->pluck('fund_code');
+
+        if ($fundCodes->isEmpty()) {
+            return;
+        }
+
+        $numericIds = $fundCodes->map(fn ($code) => (int) $code)->filter(fn ($id) => $id > 0)->all();
+        $ids = FundCode::query()
+            ->where(function ($q) use ($fundCodes, $numericIds) {
+                $q->whereIn('code', $fundCodes);
+                if ($numericIds !== []) {
+                    $q->orWhereIn('id', $numericIds);
+                }
+            })
+            ->pluck('id')
+            ->all();
+
+        $this->bust($ids);
+    }
+
+    public function bustFromBudgetPayload(mixed $budgetId, mixed $budgetBreakdown): void
+    {
+        $ids = [];
+
+        if (is_string($budgetId)) {
+            $decoded = json_decode($budgetId, true);
+            $budgetId = is_array($decoded) ? $decoded : null;
+        }
+
+        if (is_array($budgetId)) {
+            foreach ($budgetId as $key => $value) {
+                if (is_numeric($key)) {
+                    $ids[] = (int) $key;
+                } elseif (is_numeric($value)) {
+                    $ids[] = (int) $value;
+                }
+            }
+        }
+
+        foreach (array_keys($this->decodeBreakdown($budgetBreakdown)) as $key) {
+            if (is_numeric($key)) {
+                $ids[] = (int) $key;
+            }
+        }
+
+        $this->bust(array_values(array_unique(array_filter($ids))));
+    }
+
     public function resolveApprovedBudget(FundCode $fundCode): float
     {
         $approved = $this->parseMoney($fundCode->approved_budget);
@@ -142,7 +202,8 @@ class FundCodeWorkingBalanceService
     private function activeChangeRequests(array $exclude): array
     {
         $query = ChangeRequest::query()
-            ->whereIn('overall_status', self::ACTIVE_CHANGE_REQUEST_STATUSES);
+            ->whereIn('overall_status', self::ACTIVE_CHANGE_REQUEST_STATUSES)
+            ->whereNotIn('overall_status', self::NON_COMMITTING_STATUSES);
 
         if (! empty($exclude['change_request_id'])) {
             $query->where('id', '!=', (int) $exclude['change_request_id']);
@@ -172,6 +233,7 @@ class FundCodeWorkingBalanceService
         $query = DB::table('activity_budgets')
             ->join('activities', 'activities.id', '=', 'activity_budgets.activity_id')
             ->whereIn('activities.overall_status', self::COMMITTED_ACTIVITY_STATUSES)
+            ->whereNotIn('activities.overall_status', self::NON_COMMITTING_STATUSES)
             ->where(function ($q) use ($fundCode) {
                 $q->where('activity_budgets.fund_code', (string) $fundCode->id)
                     ->orWhere('activity_budgets.fund_code', (string) $fundCode->code);
@@ -200,7 +262,8 @@ class FundCodeWorkingBalanceService
     private function committedFromNonTravelMemos(int $fundCodeId, array $exclude, array $activeCrs): float
     {
         $query = NonTravelMemo::query()
-            ->whereIn('overall_status', self::COMMITTED_MEMO_STATUSES);
+            ->whereIn('overall_status', self::COMMITTED_MEMO_STATUSES)
+            ->whereNotIn('overall_status', self::NON_COMMITTING_STATUSES);
 
         if (! empty($exclude['non_travel_memo_id'])) {
             $query->where('id', '!=', (int) $exclude['non_travel_memo_id']);
@@ -225,7 +288,8 @@ class FundCodeWorkingBalanceService
     private function committedFromSpecialMemos(int $fundCodeId, array $exclude, array $activeCrs): float
     {
         $query = SpecialMemo::query()
-            ->whereIn('overall_status', self::COMMITTED_MEMO_STATUSES);
+            ->whereIn('overall_status', self::COMMITTED_MEMO_STATUSES)
+            ->whereNotIn('overall_status', self::NON_COMMITTING_STATUSES);
 
         if (! empty($exclude['special_memo_id'])) {
             $query->where('id', '!=', (int) $exclude['special_memo_id']);

@@ -4,10 +4,12 @@
   "version": "0.1.0",
   "description": "Root scripts mirroring finance/ — orchestrate Laravel API + Vue SPA",
   "scripts": {
-    "install:all": "cd backend && composer install && cd ../frontend && npm install --cache ./.npm-cache --legacy-peer-deps",
+    "install:all": "cd backend && composer install && cd ../frontend && npm install --cache ./.npm-cache --legacy-peer-deps && cd ../client && npm install --cache ./.npm-cache --legacy-peer-deps",
     "dev:api": "cd backend && composer run dev",
     "dev:web": "cd frontend && npm run dev",
-    "dev:all": "npx concurrently -c \"#119a48,#0d7a3a\" \"npm run dev:api\" \"npm run dev:web\" --names=api,web",
+    "dev:client": "cd client && npm run dev",
+    "dev:all": "npx concurrently -c \"#119a48,#0d7a3a,#065f2c\" \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:client\" --names=api,web,client",
+    "build:client": "cd client && npm run build",
     "docs:screenshots": "node scripts/capture-documentation-screenshots.mjs"
   },
   "devDependencies": {

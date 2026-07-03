@@ -2182,6 +2182,10 @@ class NonTravelMemoController extends Controller
         $nonTravel->previous_overall_status = $this->determineStatusBeforeArchive($nonTravel);
         $nonTravel->overall_status = 'archived';
         $nonTravel->save();
+        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
+            $nonTravel->budget_id,
+            $nonTravel->budget_breakdown
+        );
 
         return redirect()->back()
             ->with('success', 'Non-travel memo archived successfully.');
@@ -2214,6 +2218,10 @@ class NonTravelMemoController extends Controller
         $nonTravel->overall_status = $nonTravel->previous_overall_status ?: 'returned';
         $nonTravel->previous_overall_status = null;
         $nonTravel->save();
+        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
+            $nonTravel->budget_id,
+            $nonTravel->budget_breakdown
+        );
 
         return redirect()->route('non-travel.show', $nonTravel)
             ->with('success', 'Non-travel memo unarchived successfully.');

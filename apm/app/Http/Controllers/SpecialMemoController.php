@@ -2389,6 +2389,10 @@ class SpecialMemoController extends Controller
         $specialMemo->previous_overall_status = $this->determineStatusBeforeArchive($specialMemo);
         $specialMemo->overall_status = 'archived';
         $specialMemo->save();
+        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
+            $specialMemo->budget_id,
+            $specialMemo->budget_breakdown
+        );
 
         return redirect()->back()
             ->with('success', 'Special memo archived successfully.');
@@ -2421,6 +2425,10 @@ class SpecialMemoController extends Controller
         $specialMemo->overall_status = $specialMemo->previous_overall_status ?: 'returned';
         $specialMemo->previous_overall_status = null;
         $specialMemo->save();
+        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
+            $specialMemo->budget_id,
+            $specialMemo->budget_breakdown
+        );
 
         return redirect()->route('special-memo.show', $specialMemo)
             ->with('success', 'Special memo unarchived successfully.');

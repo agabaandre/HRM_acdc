@@ -1,0 +1,49 @@
+<script setup lang="ts" generic="T = Record<string, unknown>">
+import { provide, ref } from 'vue'
+import type { FormError, FormSubmitEvent } from '../../types/form'
+import { formErrorsKey } from './formContext'
+
+const props = withDefaults(
+  defineProps<{
+    state: T
+    validate?: (state: T) => FormError[]
+    disabled?: boolean
+  }>(),
+  {
+    disabled: false,
+  },
+)
+
+const emit = defineEmits<{
+  submit: [event: FormSubmitEvent<T>]
+}>()
+
+const errors = ref<FormError[]>([])
+provide(formErrorsKey, errors)
+
+function onSubmit() {
+  if (props.disabled) return
+  errors.value = props.validate ? props.validate(props.state) : []
+  if (errors.value.length === 0) {
+    emit('submit', { data: props.state })
+  }
+}
+</script>
+
+<template>
+  <v-form class="hd-v-form" @submit.prevent="onSubmit">
+    <fieldset class="hd-v-form__fieldset" :disabled="disabled">
+      <slot />
+    </fieldset>
+  </v-form>
+</template>
+
+<style scoped>
+.hd-v-form__fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  width: 100%;
+}
+</style>

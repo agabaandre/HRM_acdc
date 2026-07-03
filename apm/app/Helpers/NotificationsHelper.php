@@ -84,7 +84,7 @@ if (!function_exists('matrix_notification_view_data')) {
             'created_by_name' => $createdBy !== '' ? $createdBy : 'N/A',
             'focal_person_name' => $focalPerson,
             'key_result_areas' => $keyResultAreas,
-            'matrix_url' => $matrix->resource_url,
+            'matrix_url' => url(route('matrices.show', $matrix->id, false)),
         ];
     }
 }

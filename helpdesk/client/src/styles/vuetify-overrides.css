@@ -1,0 +1,177 @@
+/* Vuetify + Helpdesk layout integration */
+.w-full {
+  width: 100%;
+}
+
+/* Shared border tokens — match hd-data-table-card / v-data-table dividers */
+:root,
+html.helpdesk-theme-light {
+  --hd-line: rgba(15, 23, 42, 0.08);
+  --hd-line-subtle: rgba(15, 23, 42, 0.05);
+  --hd-border: var(--hd-line);
+}
+
+html.helpdesk-theme-dark {
+  --hd-line: rgba(148, 163, 184, 0.2);
+  --hd-line-subtle: rgba(148, 163, 184, 0.12);
+  --hd-border: var(--hd-line);
+}
+
+.v-application {
+  --hd-line: rgba(var(--v-border-color), var(--v-border-opacity));
+  --hd-line-subtle: rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.65));
+  --hd-border: var(--hd-line);
+  font-family: var(--font-sans, Arial, Roboto, sans-serif);
+}
+
+/* Outlined surfaces — light borders like data tables */
+.v-application .v-card--variant-outlined,
+.v-application .v-sheet--variant-outlined,
+.v-application .v-list--variant-outlined {
+  border-color: var(--hd-line) !important;
+}
+
+.v-application .v-divider {
+  border-color: var(--hd-line) !important;
+  opacity: 1;
+}
+
+.v-application .v-btn--variant-outlined {
+  border-color: var(--hd-line) !important;
+}
+
+.v-application .v-field--variant-outlined .v-field__outline {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+.v-application .hd-v-input .v-field--variant-outlined .v-field__outline,
+.v-application .hd-v-select .v-field--variant-outlined .v-field__outline,
+.v-application .hd-v-select-menu .v-field--variant-outlined .v-field__outline,
+.v-application .hd-v-textarea .v-field--variant-outlined .v-field__outline {
+  --v-field-border-width: 1.5px;
+}
+
+.v-application .hd-v-input .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-application .hd-v-select .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-application .hd-v-select-menu .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-application .hd-v-textarea .v-field--variant-outlined.v-field--focused .v-field__outline {
+  color: rgba(17, 154, 72, 0.75) !important;
+}
+
+.v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th,
+.v-application .v-data-table .v-table > .v-table__wrapper > table > tbody > tr > td {
+  border-color: var(--hd-line) !important;
+}
+
+.v-application .v-data-table .v-data-table-footer {
+  border-top-color: var(--hd-line) !important;
+}
+
+.hd-v-card.v-card {
+  border: 1px solid var(--hd-line) !important;
+  box-shadow: none !important;
+}
+
+/* Match button anatomy to compact outlined fields — https://vuetifyjs.com/en/components/buttons/#anatomy */
+.v-application .hd-v-btn.v-btn {
+  height: var(--v-input-control-height, 40px);
+  min-height: var(--v-input-control-height, 40px);
+  padding-inline: 16px;
+  font-size: 0.875rem;
+}
+
+.v-application .hd-v-btn.v-btn--size-small {
+  height: 32px;
+  min-height: 32px;
+  padding-inline: 12px;
+  font-size: 0.8125rem;
+}
+
+.v-application .hd-v-btn.v-btn--size-large,
+.v-application .hd-v-btn.v-btn--size-x-large {
+  height: var(--v-input-control-height, 40px);
+  min-height: var(--v-input-control-height, 40px);
+  padding-inline: 16px;
+  font-size: 0.875rem;
+}
+
+.v-application .hd-v-btn.hd-v-btn--auto {
+  height: auto;
+  min-height: unset;
+}
+
+/* Tighter form fields — https://vuetifyjs.com/en/components/color-inputs/#usage */
+.hd-v-input .v-field,
+.hd-v-select .v-field,
+.hd-v-select-menu .v-field,
+.hd-v-color-input .v-field,
+.hd-v-textarea .v-field {
+  border-radius: 4px;
+}
+
+.hd-v-form-field {
+  width: 100%;
+}
+
+.hd-form .hd-v-form-field,
+.hd-form--grid .hd-v-form-field {
+  margin-bottom: 0;
+}
+
+.hd-form-actions {
+  align-items: center;
+}
+
+.hd-form-toolbar,
+.hd-search-form {
+  align-items: center;
+}
+
+.hd-filter-panel .v-field {
+  background: transparent;
+}
+
+/* Modals — solid surface (dialogs may teleport outside .v-application) */
+.hd-v-modal.v-card {
+  background: #ffffff !important;
+  border: 1px solid var(--hd-line) !important;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18) !important;
+  color: #0f172a;
+}
+
+html.helpdesk-theme-dark .hd-v-modal.v-card {
+  background: #1e293b !important;
+  color: #e2e8f0;
+  box-shadow: 0 16px 48px rgba(2, 6, 23, 0.55) !important;
+}
+
+.hd-v-modal .v-card-title,
+.hd-v-modal .v-card-text,
+.hd-v-modal .v-card-actions {
+  background: transparent !important;
+}
+
+.hd-v-dialog .v-overlay__scrim {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+html.helpdesk-theme-dark .hd-v-dialog .v-overlay__scrim {
+  background: rgba(2, 6, 23, 0.65) !important;
+}
+
+/* Checkbox custom labels (e.g. division picker on settings/general) */
+.hd-v-checkbox .v-label {
+  opacity: 1 !important;
+  color: #0f172a !important;
+}
+
+.hd-v-checkbox .v-label * {
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-v-checkbox .v-label {
+  color: #e2e8f0 !important;
+}
+
+/* Inline form rows: field + button share baseline */

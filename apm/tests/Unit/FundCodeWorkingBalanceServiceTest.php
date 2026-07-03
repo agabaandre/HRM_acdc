@@ -44,4 +44,12 @@ class FundCodeWorkingBalanceServiceTest extends TestCase
         $this->assertSame(20.0, $totals[10]);
         $this->assertSame(15.0, $totals[20]);
     }
+
+    public function test_archived_status_never_commits_funds(): void
+    {
+        $this->assertContains('archived', FundCodeWorkingBalanceService::NON_COMMITTING_STATUSES);
+        $this->assertNotContains('archived', FundCodeWorkingBalanceService::COMMITTED_ACTIVITY_STATUSES);
+        $this->assertNotContains('archived', FundCodeWorkingBalanceService::COMMITTED_MEMO_STATUSES);
+        $this->assertNotContains('archived', FundCodeWorkingBalanceService::ACTIVE_CHANGE_REQUEST_STATUSES);
+    }
 }

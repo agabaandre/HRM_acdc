@@ -1,0 +1,238 @@
+/* Shared Nuxt UI form layout across Helpdesk */
+.hd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hd-form--grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hd-form--grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .hd-form--grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hd-form .full,
+.hd-form--grid .full {
+  grid-column: 1 / -1;
+}
+
+.hd-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media (max-width: 639px) {
+  .hd-form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.hd-form-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.hd-form-toolbar .hd-form-toolbar-grow {
+  flex: 1;
+  min-width: min(28rem, 100%);
+}
+
+.hd-search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.hd-search-form .hd-v-input,
+.hd-search-form .hd-v-form-field {
+  flex: 1;
+  min-width: 14rem;
+}
+
+/* Collapsible filter panel — mobile-friendly reports / list views */
+.hd-filter-panel {
+  margin: 0 0 1rem;
+  border: 1px solid var(--hd-line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+html.helpdesk-theme-dark .hd-filter-panel {
+  border-color: var(--hd-line);
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+}
+
+.hd-filter-panel__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #0f172a;
+  list-style: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hd-filter-panel__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.hd-filter-panel__toggle::after {
+  content: '▾';
+  color: #64748b;
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.hd-filter-panel[open] .hd-filter-panel__toggle::after {
+  transform: rotate(180deg);
+}
+
+html.helpdesk-theme-dark .hd-filter-panel__toggle {
+  color: #e2e8f0;
+}
+
+.hd-filter-panel__toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.hd-filter-panel__badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #e8f5ee;
+  color: #065f2c;
+}
+
+.hd-filter-panel__body {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--hd-line);
+}
+
+html.helpdesk-theme-dark .hd-filter-panel__body {
+  border-top-color: var(--hd-line-subtle);
+}
+
+@media (min-width: 768px) {
+  .hd-filter-panel__toggle {
+    display: none;
+  }
+
+  .hd-filter-panel__body {
+    padding: 1rem;
+    border-top: none;
+  }
+
+  .hd-filter-panel:not([open]) .hd-filter-panel__body {
+    display: block;
+  }
+}
+
+@media (max-width: 767px) {
+  .hd-filter-panel:not([open]) .hd-filter-panel__body {
+    display: none;
+  }
+}
+
+.hd-rich-field .cbp-rich-text {
+  width: 100%;
+  max-width: 100%;
+}
+
+.hd-rich-field .cbp-quill-wrap {
+  max-width: 100%;
+}
+
+/*
+ * Quill image resize — overlay lives inside .ql-editor; styles must be global.
+ */
+.cbp-quill-wrap .ql-editor {
+  position: relative;
+}
+
+.cbp-quill-wrap .ql-editor img.cbp-quill-image,
+.cbp-quill-wrap .ql-editor img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  cursor: pointer;
+}
+
+.cbp-quill-wrap .cbp-quill-image-overlay {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.cbp-quill-wrap .cbp-quill-image-overlay.is-hidden {
+  display: none !important;
+}
+
+.cbp-quill-wrap .cbp-quill-image-frame {
+  border: 2px solid #119a48;
+  box-sizing: border-box;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+}
+
+.cbp-quill-wrap .cbp-quill-image-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #119a48;
+  border: 2px solid #fff;
+  border-radius: 2px;
+  pointer-events: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.cbp-quill-wrap .cbp-quill-image-handle--nw {
+  top: -5px;
+  left: -5px;
+  cursor: nwse-resize;
+}
+
+.cbp-quill-wrap .cbp-quill-image-handle--ne {
+  top: -5px;
+  right: -5px;
+  cursor: nesw-resize;
+}
+
+.cbp-quill-wrap .cbp-quill-image-handle--sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: nesw-resize;
+}
+
+.cbp-quill-wrap .cbp-quill-image-handle--se {
+  bottom: -5px;
+  right: -5px;
+  cursor: nwse-resize;
+}

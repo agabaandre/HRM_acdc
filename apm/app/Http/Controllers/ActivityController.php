@@ -3643,6 +3643,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $activity->previous_overall_status = $this->determineActivityStatusBeforeArchive($activity);
         $activity->overall_status = 'archived';
         $activity->save();
+        app(FundCodeWorkingBalanceService::class)->bustForActivity((int) $activity->id);
 
         return redirect()->back()
             ->with('success', 'Activity archived successfully.');
@@ -3678,6 +3679,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $activity->overall_status = $activity->previous_overall_status ?: 'returned';
         $activity->previous_overall_status = null;
         $activity->save();
+        app(FundCodeWorkingBalanceService::class)->bustForActivity((int) $activity->id);
 
         return redirect()
             ->route('matrices.activities.show', [$matrix, $activity])
@@ -3697,6 +3699,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $activity->previous_overall_status = $this->determineActivityStatusBeforeArchive($activity);
         $activity->overall_status = 'archived';
         $activity->save();
+        app(FundCodeWorkingBalanceService::class)->bustForActivity((int) $activity->id);
 
         return redirect()->back()
             ->with('success', 'Single memo archived successfully.');
@@ -3726,6 +3729,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $activity->overall_status = $activity->previous_overall_status ?: 'returned';
         $activity->previous_overall_status = null;
         $activity->save();
+        app(FundCodeWorkingBalanceService::class)->bustForActivity((int) $activity->id);
 
         return redirect()
             ->route('activities.single-memos.show', $activity)
