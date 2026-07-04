@@ -122,6 +122,26 @@
         border-bottom: 1px solid #eef2f6;
         background: #fff;
     }
+    #matrix-show-app .mx-pass-all-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        line-height: 1.1;
+        padding-top: 0.15rem;
+    }
+    #matrix-show-app .mx-pass-all-label {
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: none;
+        letter-spacing: 0.01em;
+        color: rgba(0, 0, 0, 0.7);
+        white-space: nowrap;
+    }
+    #matrix-show-app .mx-matrix-table thead th:first-child {
+        vertical-align: bottom !important;
+        padding-bottom: 0.35rem !important;
+    }
     #matrix-show-app .mx-doc-chip {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
         font-weight: 700 !important;

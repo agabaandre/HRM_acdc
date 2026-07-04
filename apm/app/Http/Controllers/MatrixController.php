@@ -18,6 +18,7 @@ use App\Models\Staff;
 use App\Models\FundCode;
 use App\Services\ApprovalService;
 use App\Services\FundCodeWorkingBalanceService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
@@ -703,7 +704,8 @@ class MatrixController extends Controller
         $approvableIds = [];
 
         if ($isApprover) {
-            $approvableIds = get_approvable_activities($matrix)->pluck('id')->map(static fn ($id) => (int) $id)->all();
+            $userWorkflowDefinition = $this->getUserWorkflowDefinition($matrix, $userStaffId, $userDivisionId);
+            $approvableIds = $this->resolveApprovableActivityIds($matrix, $userWorkflowDefinition);
             $approvableCount = count($approvableIds);
         }
 
@@ -782,6 +784,7 @@ class MatrixController extends Controller
                 'activitiesAjax' => route('matrices.activities-for-approver', $matrix),
                 'singleMemosAjax' => route('matrices.single-memos-for-approver', $matrix),
                 'divisionStaffAjax' => route('matrices.division-staff-ajax', $matrix),
+                'batchStatusUrl' => route('matrices.activities.batch.status'),
                 'activityShowBase' => url('matrices/'.$matrix->id.'/activities'),
                 'activityCopyBase' => url('matrices/'.$matrix->id.'/activities'),
                 'activityDestroyBase' => url('matrices/'.$matrix->id.'/activities'),
@@ -888,8 +891,8 @@ class MatrixController extends Controller
             return $this->getAllActivities($matrix, $request);
         }
 
-        // Use get_approvable_activities so matrix view shows only what user can approve (respects allowed_funders)
-        $approvableIds = get_approvable_activities($matrix)->pluck('id')->map(static fn ($id) => (int) $id)->all();
+        // Lightweight approvable ID list (avoids loading full activity models + N+1 approval accessors).
+        $approvableIds = $this->resolveApprovableActivityIds($matrix, $userWorkflowDefinition);
         $perPage = (int) $request->get('per_page', 20);
 
         if (empty($approvableIds)) {
@@ -918,13 +921,30 @@ class MatrixController extends Controller
     {
         $activitiesQuery = $matrix->activities()
             ->where('is_single_memo', 0)
+            ->select([
+                'id',
+                'matrix_id',
+                'document_number',
+                'activity_title',
+                'date_from',
+                'date_to',
+                'total_participants',
+                'available_budget',
+                'budget_breakdown',
+                'overall_status',
+                'fund_type_id',
+                'location_id',
+                'responsible_person_id',
+                'is_single_memo',
+            ])
             ->with([
-                'requestType',
-                'fundType',
-                'responsiblePerson',
-                'activity_budget',
-                'activity_budget.fundcode',
-                'activity_budget.fundcode.funder',
+                'matrix:id,approval_level,forward_workflow_id,overall_status',
+                'requestType:id,name',
+                'fundType:id,name',
+                'responsiblePerson:staff_id,fname,lname,job_name,title',
+                'activity_budget:id,activity_id,fund_code',
+                'activity_budget.fundcode:id,code,funder_id',
+                'activity_budget.fundcode.funder:id,name',
             ]);
 
         if ($limitIds !== null) {
@@ -956,12 +976,360 @@ class MatrixController extends Controller
     }
 
     /**
+     * Cached lightweight approvable activity IDs (fund-type / funder rules + matrix can-approve check).
+     *
+     * @return list<int>
+     */
+    private function resolveApprovableActivityIds(Matrix $matrix, $userWorkflowDefinition = null): array
+    {
+        if ($matrix->overall_status === 'approved') {
+            return [];
+        }
+
+        $currentUserId = (int) user_session('staff_id');
+        if ($currentUserId <= 0) {
+            return [];
+        }
+
+        $workflowDefinition = $userWorkflowDefinition ?? get_user_workflow_definition_for_matrix($matrix);
+        if (! $workflowDefinition) {
+            return [];
+        }
+
+        $cacheKey = 'approvable_activity_ids_v1_'.$matrix->id.'_'.$currentUserId.'_'.$matrix->approval_level;
+
+        return Cache::remember($cacheKey, 300, function () use ($matrix, $workflowDefinition): array {
+            if (! $matrix->forward_workflow_id) {
+                return [];
+            }
+
+            $matrix->loadMissing('division:id,category');
+            $matrixWorkflowDef = $this->resolveMatrixWorkflowDefinition($matrix);
+
+            $activities = $matrix->activities()
+                ->where('is_single_memo', 0)
+                ->select(['id', 'fund_type_id', 'budget_breakdown', 'matrix_id', 'is_single_memo'])
+                ->with([
+                    'activity_budget:id,activity_id,fund_code',
+                    'activity_budget.fundcode:id,funder_id',
+                ])
+                ->get();
+
+            if ($activities->isEmpty()) {
+                return [];
+            }
+
+            $activities->each(static fn ($activity) => $activity->setRelation('matrix', $matrix));
+
+            $funderIdsByActivity = $this->resolveActivityFunderIdsByActivityId($activities);
+            $userFundType = $workflowDefinition->fund_type !== null && $workflowDefinition->fund_type !== ''
+                ? (int) $workflowDefinition->fund_type
+                : null;
+            $allowedFunders = $this->normalizeAllowedFunderIds($workflowDefinition->allowed_funders);
+            $userHasRestriction = $userFundType !== null || $allowedFunders !== [];
+
+            $ids = [];
+            foreach ($activities as $activity) {
+                $passesUserRules = true;
+                if ($userHasRestriction) {
+                    $passesUserRules = false;
+                    if ($userFundType !== null && (int) $activity->fund_type_id === $userFundType) {
+                        $passesUserRules = true;
+                    }
+                    if (! $passesUserRules && $allowedFunders !== []) {
+                        $activityFunderIds = $funderIdsByActivity[(int) $activity->id] ?? [];
+                        if ($activityFunderIds !== [] && array_intersect($activityFunderIds, $allowedFunders) !== []) {
+                            $passesUserRules = true;
+                        }
+                    }
+                }
+
+                if ($passesUserRules && $this->activityCanApproveAtMatrixLevel($activity, $matrixWorkflowDef, $funderIdsByActivity[(int) $activity->id] ?? [])) {
+                    $ids[] = (int) $activity->id;
+                }
+            }
+
+            return $ids;
+        });
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Activity>  $activities
+     * @return array<int, list<int>>
+     */
+    private function resolveActivityFunderIdsByActivityId($activities): array
+    {
+        $map = [];
+        $fundCodeIds = [];
+
+        foreach ($activities as $activity) {
+            $activityId = (int) $activity->id;
+            $funderIds = [];
+            foreach ($activity->activity_budget ?? [] as $budget) {
+                $funderId = (int) ($budget->fundcode->funder_id ?? 0);
+                if ($funderId > 0) {
+                    $funderIds[] = $funderId;
+                }
+            }
+
+            if ($funderIds === [] && $activity->budget_breakdown) {
+                $breakdown = is_string($activity->budget_breakdown)
+                    ? json_decode($activity->budget_breakdown, true)
+                    : $activity->budget_breakdown;
+                if (is_array($breakdown)) {
+                    foreach (array_keys($breakdown) as $key) {
+                        if ($key !== 'grand_total' && $key !== 'total' && (int) $key > 0) {
+                            $fundCodeIds[] = (int) $key;
+                        }
+                    }
+                }
+            } else {
+                $map[$activityId] = array_values(array_unique($funderIds));
+            }
+        }
+
+        if ($fundCodeIds !== []) {
+            $funderByFundCodeId = FundCode::query()
+                ->whereIn('id', array_values(array_unique($fundCodeIds)))
+                ->whereNotNull('funder_id')
+                ->pluck('funder_id', 'id');
+
+            foreach ($activities as $activity) {
+                $activityId = (int) $activity->id;
+                if (isset($map[$activityId])) {
+                    continue;
+                }
+                $funderIds = [];
+                $breakdown = is_string($activity->budget_breakdown)
+                    ? json_decode($activity->budget_breakdown, true)
+                    : $activity->budget_breakdown;
+                if (is_array($breakdown)) {
+                    foreach (array_keys($breakdown) as $key) {
+                        if ($key === 'grand_total' || $key === 'total') {
+                            continue;
+                        }
+                        $funderId = (int) ($funderByFundCodeId->get((int) $key) ?? 0);
+                        if ($funderId > 0) {
+                            $funderIds[] = $funderId;
+                        }
+                    }
+                }
+                $map[$activityId] = array_values(array_unique($funderIds));
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function normalizeAllowedFunderIds($allowedFunders): array
+    {
+        if (empty($allowedFunders)) {
+            return [];
+        }
+
+        $decoded = is_string($allowedFunders) ? json_decode($allowedFunders, true) : $allowedFunders;
+
+        return is_array($decoded)
+            ? array_values(array_map('intval', array_filter($decoded)))
+            : [];
+    }
+
+    private function resolveMatrixWorkflowDefinition(Matrix $matrix): ?WorkflowDefinition
+    {
+        return $matrix->workflow_definition;
+    }
+
+    /**
+     * @param  list<int>  $activityFunderIds
+     */
+    private function activityCanApproveAtMatrixLevel($activity, ?WorkflowDefinition $matrixWorkflowDef, array $activityFunderIds = []): bool
+    {
+        if ((int) ($activity->is_single_memo ?? 0) === 1) {
+            return false;
+        }
+
+        $matrix = $activity->matrix;
+        if (! $matrix || ! $matrix->forward_workflow_id) {
+            return false;
+        }
+
+        if (! $matrixWorkflowDef) {
+            return true;
+        }
+
+        $defFundType = $matrixWorkflowDef->fund_type !== null && $matrixWorkflowDef->fund_type !== ''
+            ? (int) $matrixWorkflowDef->fund_type
+            : null;
+        $allowedFunders = $this->normalizeAllowedFunderIds($matrixWorkflowDef->allowed_funders);
+        $hasRestriction = $defFundType !== null || $allowedFunders !== [];
+
+        if (! $hasRestriction) {
+            return true;
+        }
+
+        if ($defFundType !== null && (int) $activity->fund_type_id === $defFundType) {
+            return true;
+        }
+
+        if ($allowedFunders !== []) {
+            if ($activityFunderIds === []) {
+                $activityFunderIds = get_activity_funder_ids($activity);
+            }
+            if ($activityFunderIds !== [] && array_intersect($activityFunderIds, $allowedFunders) !== []) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  list<int>  $activityIds
+     * @return array<int, array{has_passed_at_current_level: bool, my_current_level_action: ?ActivityApprovalTrail}>
+     */
+    private function batchUserActivityApprovalMeta(array $activityIds, int $matrixId, int $approvalLevel, int $userStaffId): array
+    {
+        if ($activityIds === [] || $userStaffId <= 0 || $approvalLevel <= 0) {
+            return [];
+        }
+
+        $rows = ActivityApprovalTrail::query()
+            ->whereIn('activity_id', $activityIds)
+            ->where('matrix_id', $matrixId)
+            ->where('staff_id', $userStaffId)
+            ->where('is_archived', 0)
+            ->orderByDesc('id')
+            ->get(['id', 'activity_id', 'approval_order', 'action', 'created_at', 'updated_at']);
+
+        $meta = [];
+        foreach ($rows as $row) {
+            $activityId = (int) $row->activity_id;
+            if (! isset($meta[$activityId])) {
+                $meta[$activityId] = [
+                    'has_passed_at_current_level' => false,
+                    'my_current_level_action' => null,
+                ];
+            }
+
+            if ((int) $row->approval_order === $approvalLevel) {
+                if ($meta[$activityId]['my_current_level_action'] === null) {
+                    $meta[$activityId]['my_current_level_action'] = $row;
+                }
+                if ($row->action === 'passed') {
+                    $meta[$activityId]['has_passed_at_current_level'] = true;
+                }
+            }
+        }
+
+        return $meta;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatActivityForMatrixApproverJson($activity): array
+    {
+        $fundType = $activity->fundType;
+        $responsible = $activity->responsiblePerson;
+        $locations = collect($activity->locations ?? [])->map(static fn ($loc) => [
+            'id' => (int) $loc->id,
+            'name' => $loc->name ?? null,
+        ])->values()->all();
+
+        $activityBudget = collect($activity->activity_budget ?? [])->map(static function ($budget) {
+            $fundcode = $budget->fundcode ?? null;
+
+            return [
+                'fundcode' => $fundcode ? [
+                    'id' => (int) $fundcode->id,
+                    'code' => $fundcode->code ?? null,
+                    'funder_id' => isset($fundcode->funder_id) ? (int) $fundcode->funder_id : null,
+                    'funder' => $fundcode->funder ? [
+                        'id' => (int) $fundcode->funder->id,
+                        'name' => $fundcode->funder->name ?? null,
+                    ] : null,
+                ] : null,
+            ];
+        })->values()->all();
+
+        $breakdownFundCodes = collect($activity->fund_codes_from_budget_breakdown ?? [])->map(static fn ($fc) => [
+            'id' => (int) $fc->id,
+            'code' => $fc->code ?? null,
+            'funder_id' => isset($fc->funder_id) ? (int) $fc->funder_id : null,
+            'funder' => $fc->funder ? [
+                'id' => (int) $fc->funder->id,
+                'name' => $fc->funder->name ?? null,
+            ] : null,
+        ])->values()->all();
+
+        $fundCodeFromBreakdown = $activity->fund_code_from_budget_breakdown ?? null;
+        $currentAction = $activity->my_current_level_action ?? null;
+
+        return [
+            'id' => (int) $activity->id,
+            'document_number' => $activity->document_number,
+            'activity_title' => $activity->activity_title,
+            'date_from' => $activity->date_from,
+            'date_to' => $activity->date_to,
+            'total_participants' => (int) ($activity->total_participants ?? 0),
+            'available_budget' => $activity->available_budget,
+            'budget_breakdown' => $activity->budget_breakdown,
+            'overall_status' => $activity->overall_status,
+            'fund_type_id' => $activity->fund_type_id,
+            'fund_type' => $fundType ? [
+                'id' => (int) $fundType->id,
+                'name' => $fundType->name ?? null,
+            ] : null,
+            'responsible_person' => $responsible ? [
+                'staff_id' => (int) $responsible->staff_id,
+                'fname' => $responsible->fname ?? null,
+                'lname' => $responsible->lname ?? null,
+                'job_name' => $responsible->job_name ?? null,
+                'title' => $responsible->title ?? null,
+            ] : null,
+            'locations' => $locations,
+            'activity_budget' => $activityBudget,
+            'fund_code_from_budget_breakdown' => $fundCodeFromBreakdown ? [
+                'id' => (int) $fundCodeFromBreakdown->id,
+                'code' => $fundCodeFromBreakdown->code ?? null,
+                'funder_id' => isset($fundCodeFromBreakdown->funder_id) ? (int) $fundCodeFromBreakdown->funder_id : null,
+                'funder' => $fundCodeFromBreakdown->funder ? [
+                    'id' => (int) $fundCodeFromBreakdown->funder->id,
+                    'name' => $fundCodeFromBreakdown->funder->name ?? null,
+                ] : null,
+            ] : null,
+            'fund_codes_from_budget_breakdown' => $breakdownFundCodes,
+            'funder_from_budget_breakdown' => $activity->funder_from_budget_breakdown ? [
+                'id' => (int) $activity->funder_from_budget_breakdown->id,
+                'name' => $activity->funder_from_budget_breakdown->name ?? null,
+            ] : null,
+            'can_approve' => (bool) ($activity->can_approve ?? false),
+            'allow_print' => (bool) ($activity->allow_print ?? false),
+            'user_has_passed' => (bool) ($activity->user_has_passed ?? false),
+            'has_passed_at_current_level' => (bool) ($activity->has_passed_at_current_level ?? false),
+            'my_current_level_action' => $currentAction ? [
+                'action' => $currentAction->action,
+            ] : null,
+        ];
+    }
+
+    /**
      * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator  $activities
      */
     private function hydrateActivitiesPageForApproverJson($activities, $userWorkflowDefinition = null): void
     {
+        $matrix = null;
+        foreach ($activities->items() as $activity) {
+            if ($activity->relationLoaded('matrix') && $activity->matrix) {
+                $matrix = $activity->matrix;
+                break;
+            }
+        }
+
         $allLocationIds = [];
-        $allStaffIds = [];
         $activitiesData = [];
         $budgetFundCodeIds = [];
 
@@ -971,19 +1339,12 @@ class MatrixController extends Controller
                 : json_decode($activity->location_id ?? '[]', true);
             $locationIds = array_values(array_filter((array) ($locationIds ?: []), static fn ($id) => (int) $id > 0));
 
-            $internalRaw = is_string($activity->internal_participants)
-                ? json_decode($activity->internal_participants ?? '[]', true)
-                : ($activity->internal_participants ?? []);
-            $internalParticipantIds = collect((array) $internalRaw)->pluck('staff_id')->filter(static fn ($id) => (int) $id > 0)->map(static fn ($id) => (int) $id)->values()->all();
-
             $activitiesData[] = [
                 'activity' => $activity,
                 'location_ids' => $locationIds,
-                'staff_ids' => $internalParticipantIds,
             ];
 
             $allLocationIds = array_merge($allLocationIds, $locationIds);
-            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds);
 
             if ((!$activity->activity_budget || count($activity->activity_budget) === 0) && $activity->budget_breakdown) {
                 $budgetBreakdown = is_string($activity->budget_breakdown)
@@ -999,17 +1360,29 @@ class MatrixController extends Controller
             }
         }
 
-        $locations = Location::whereIn('id', array_values(array_unique($allLocationIds)))->get()->keyBy('id');
-        $staff = Staff::whereIn('staff_id', array_values(array_unique($allStaffIds)))->get()->keyBy('staff_id');
+        $locations = Location::whereIn('id', array_values(array_unique($allLocationIds)))->get(['id', 'name'])->keyBy('id');
         $fundCodesById = !empty($budgetFundCodeIds)
-            ? \App\Models\FundCode::with('funder')->whereIn('id', array_values(array_unique($budgetFundCodeIds)))->get()->keyBy('id')
+            ? FundCode::with('funder:id,name')->whereIn('id', array_values(array_unique($budgetFundCodeIds)))->get(['id', 'code', 'funder_id'])->keyBy('id')
             : collect();
+
+        $activityIds = collect($activities->items())->pluck('id')->map(static fn ($id) => (int) $id)->all();
+        $approvalMeta = [];
+        if ($userWorkflowDefinition && $activityIds !== [] && $matrix) {
+            $approvalMeta = $this->batchUserActivityApprovalMeta(
+                $activityIds,
+                (int) $matrix->id,
+                (int) $matrix->approval_level,
+                (int) user_session('staff_id')
+            );
+        }
+
+        $matrixWorkflowDef = $matrix ? $this->resolveMatrixWorkflowDefinition($matrix) : null;
+        $pageFunderIdsByActivity = $this->resolveActivityFunderIdsByActivityId(collect($activities->items()));
 
         $processedActivities = collect();
         foreach ($activitiesData as $data) {
             $activity = $data['activity'];
             $activity->locations = $locations->whereIn('id', $data['location_ids'])->values();
-            $activity->internalParticipants = $staff->whereIn('staff_id', $data['staff_ids'])->values();
 
             if ((!$activity->activity_budget || count($activity->activity_budget) === 0) && $activity->budget_breakdown) {
                 $budgetBreakdown = is_string($activity->budget_breakdown)
@@ -1038,12 +1411,19 @@ class MatrixController extends Controller
             }
 
             if ($userWorkflowDefinition) {
-                $activity->can_approve = can_approve_activity($activity);
+                $meta = $approvalMeta[(int) $activity->id] ?? [
+                    'has_passed_at_current_level' => false,
+                    'my_current_level_action' => null,
+                ];
+                $activity->can_approve = $this->activityCanApproveAtMatrixLevel(
+                    $activity,
+                    $matrixWorkflowDef,
+                    $pageFunderIdsByActivity[(int) $activity->id] ?? []
+                );
                 $activity->allow_print = allow_print_activity($activity);
-                $activity->my_last_action = $activity->my_last_action ?? null;
-                $activity->my_current_level_action = $activity->my_current_level_action ?? null;
-                $activity->has_passed_at_current_level = $activity->has_passed_at_current_level ?? false;
-                $activity->user_has_passed = $this->hasUserPassedActivity($activity, $userWorkflowDefinition);
+                $activity->has_passed_at_current_level = $meta['has_passed_at_current_level'];
+                $activity->my_current_level_action = $meta['my_current_level_action'];
+                $activity->user_has_passed = $activity->allow_print || $meta['has_passed_at_current_level'];
             } else {
                 $activity->can_approve = false;
                 $activity->allow_print = false;
@@ -1062,6 +1442,9 @@ class MatrixController extends Controller
      */
     private function activitiesApproverJsonResponse($activities, $userWorkflowDefinition = null)
     {
+        $mapped = $activities->getCollection()->map(fn ($activity) => $this->formatActivityForMatrixApproverJson($activity));
+        $activities->setCollection($mapped);
+
         return response()->json([
             'activities' => $activities,
             'user_workflow_definition' => $userWorkflowDefinition ? [

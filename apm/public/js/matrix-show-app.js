@@ -182,48 +182,8 @@
         setTimeout(() => trigger.remove(), 100);
     }
 
-    function syncApproveSection(selected, permissions) {
-        const ids = selected.map((item) => String(item.id));
-        const titles = selected.map((item) => item.activity_title || '');
-
-        const approveSelectedSection = document.getElementById('approveSelectedSection');
-        const selectedCount = document.getElementById('selectedCount');
-        const selectedActivitiesList = document.getElementById('selectedActivitiesList');
-        const selectedActivityIds = document.getElementById('selectedActivityIds');
-        const rejectSelectedActivitiesList = document.getElementById('rejectSelectedActivitiesList');
-        const rejectSelectedActivityIds = document.getElementById('rejectSelectedActivityIds');
-
-        const updateModalContent = (container, items) => {
-            if (!container) return;
-            container.innerHTML = '';
-            items.forEach((title) => {
-                container.innerHTML += `
-                    <div class="small text-muted">
-                        <i class="bx bx-check-circle text-success me-1"></i>
-                        ${title}
-                    </div>
-                `;
-            });
-        };
-
-        if (ids.length > 0 && !permissions.isLevel5Approver) {
-            if (approveSelectedSection) approveSelectedSection.style.display = 'block';
-            if (selectedCount) selectedCount.textContent = `${ids.length} activities selected`;
-            if (selectedActivityIds) selectedActivityIds.value = ids.join(',');
-            if (rejectSelectedActivityIds) rejectSelectedActivityIds.value = ids.join(',');
-            updateModalContent(selectedActivitiesList, titles);
-            updateModalContent(rejectSelectedActivitiesList, titles);
-        } else {
-            if (approveSelectedSection) approveSelectedSection.style.display = 'none';
-            if (selectedCount) selectedCount.textContent = '0 activities selected';
-            if (selectedActivityIds) selectedActivityIds.value = '';
-            if (rejectSelectedActivityIds) rejectSelectedActivityIds.value = '';
-        }
-    }
-
     window.ApmMatrixShow = {
         formatCurrency,
-        syncApproveSection,
     };
 
     function bootMatrixShow(mountEl, cfg) {
@@ -258,6 +218,8 @@
                 const activitiesLoading = ref(false);
                 const activitySearchStatus = ref('');
                 const selectedActivities = ref([]);
+                const passDialogOpen = ref(false);
+                const batchSubmitting = ref(false);
 
                 const singleMemoSearch = ref(defaults.singleMemosSearch || '');
                 const singleMemoDocument = ref(defaults.singleMemosDocumentNumber || '');
@@ -297,7 +259,13 @@
                         { title: 'Actions', key: 'actions', sortable: false, width: 150, align: 'center' },
                     ];
                     if (permissions.canShowCheckbox) {
-                        return [{ title: '', key: 'data-table-select', sortable: false, width: 48 }, ...base];
+                        return [{
+                            title: 'Pass all',
+                            key: 'data-table-select',
+                            sortable: false,
+                            width: 72,
+                            align: 'center',
+                        }, ...base];
                     }
                     return base;
                 });
@@ -359,8 +327,60 @@
                     return `${start}-${end}`;
                 });
 
+                const selectedActivityRows = computed(() => {
+                    const selected = selectedActivities.value || [];
+                    if (!selected.length) return [];
+
+                    if (typeof selected[0] === 'object' && selected[0] !== null) {
+                        return selected;
+                    }
+
+                    const idSet = new Set(selected.map((id) => Number(id)));
+                    return activities.value.filter((activity) => idSet.has(Number(activity.id)));
+                });
+
+                const selectedActivityCount = computed(() => selectedActivityRows.value.length);
+
+                const showApproveBar = computed(() => (
+                    selectedActivityCount.value > 0 && !permissions.isLevel5Approver
+                ));
+
                 function notify(text, color = 'error') {
                     snackbar.value = { show: true, text, color };
+                }
+
+                function submitBatchStatus(action) {
+                    const rows = selectedActivityRows.value;
+                    if (!rows.length || batchSubmitting.value) return;
+
+                    const url = routes.batchStatusUrl;
+                    if (!url) {
+                        notify('Batch approval URL is not configured.', 'error');
+                        return;
+                    }
+
+                    batchSubmitting.value = true;
+
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = url;
+                    form.style.display = 'none';
+
+                    const addField = (name, value) => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = name;
+                        input.value = value;
+                        form.appendChild(input);
+                    };
+
+                    addField('_token', cfg.csrf || '');
+                    addField('matrix_id', String(cfg.matrixId));
+                    addField('action', action);
+                    addField('activity_ids[]', rows.map((row) => String(row.id)).join(','));
+
+                    document.body.appendChild(form);
+                    form.submit();
                 }
 
                 function mapActivityRow(activity, index) {
@@ -673,9 +693,6 @@
                     singleMemoPage.value = 1;
                     if (singleMemosLoaded.value) loadSingleMemos();
                 });
-                watch(selectedActivities, (items) => {
-                    syncApproveSection(items, permissions);
-                }, { deep: true });
 
                 watch(activitySearch, () => {
                     clearTimeout(activitySearchTimer);
@@ -757,6 +774,12 @@
                     activitiesLoading,
                     activitySearchStatus,
                     selectedActivities,
+                    selectedActivityRows,
+                    selectedActivityCount,
+                    showApproveBar,
+                    passDialogOpen,
+                    batchSubmitting,
+                    submitBatchStatus,
                     activityHeaders,
                     activitySummaryText,
                     activityShowingRange,
@@ -857,7 +880,12 @@
         {{ activitySearchStatus }}
       </v-alert>
 
-      <div class="mx-table-meta px-4 py-2">{{ activityShowingRange }}</div>
+      <div class="mx-table-meta px-4 py-2">
+        <span>{{ activityShowingRange }}</span>
+        <span v-if="permissions.canShowCheckbox" class="ms-2 text-caption text-medium-emphasis">
+          Use <strong>Pass all</strong> or row checkboxes to select activities for bulk approval.
+        </span>
+      </div>
 
       <v-data-table
         v-model="selectedActivities"
@@ -872,6 +900,20 @@
         class="apm-list-table mx-matrix-table"
         density="comfortable"
       >
+        <template #header.data-table-select="{ allSelected, someSelected, selectAll }">
+          <div class="mx-pass-all-header">
+            <v-checkbox-btn
+              :model-value="allSelected"
+              :indeterminate="someSelected && !allSelected"
+              color="success"
+              density="compact"
+              hide-details
+              aria-label="Pass all activities on this page"
+              @update:model-value="selectAll"
+            />
+            <span class="mx-pass-all-label">Pass all</span>
+          </div>
+        </template>
         <template #item.document_number="{ item }">
           <v-chip color="primary" variant="flat" class="mx-doc-chip" label>{{ item.document_number || 'N/A' }}</v-chip>
         </template>
@@ -955,6 +997,7 @@
       <v-alert v-if="permissions.showApprovalGuidelines" type="info" variant="tonal" class="ma-4" border="start">
         <div class="font-weight-bold mb-2">Approval guidelines</div>
         <ul class="ps-4 mb-0 text-body-2">
+          <li v-if="permissions.canShowCheckbox" class="mb-1">Use the <strong>Pass all</strong> checkbox in the table header (or individual row checkboxes) to select activities, then click <strong>Pass Selected Activities</strong>.</li>
           <li class="mb-1"><strong>Return entire matrix</strong> when <strong>more than 50%</strong> of the activities have an issue.</li>
           <li class="mb-1"><strong>Do not</strong> return every activity as a single memo.</li>
           <li>When <strong>around 30% or fewer</strong> activities have issues, pass the rest and return only problematic ones as single memos.</li>
@@ -967,17 +1010,58 @@
       </v-alert>
     </v-card>
 
-    <div class="p-4 border-top bg-light rounded-lg mb-0" id="approveSelectedSection" style="display: none;">
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div class="d-flex align-items-center">
-          <i class="bx bx-check-circle text-success me-2 fs-4"></i>
-          <span class="text-muted fw-semibold" id="selectedCount">0 activities selected</span>
+    <v-card v-if="showApproveBar" class="mx-section-card elevation-2 mt-0 mb-4">
+      <v-card-actions class="px-4 py-4 d-flex flex-wrap align-center justify-space-between gap-3">
+        <div class="d-flex align-center gap-2 text-body-1 text-medium-emphasis">
+          <v-icon icon="mdi-check-circle" color="success" size="large" />
+          <span class="font-weight-medium">{{ selectedActivityCount }} {{ selectedActivityCount === 1 ? 'activity' : 'activities' }} selected</span>
         </div>
-        <button type="button" class="btn btn-success btn-lg shadow-sm" id="approveSelectedBtn" data-bs-toggle="modal" data-bs-target="#approveSelectedModal">
-          <i class="bx bx-check me-2"></i> Pass Selected Activities
-        </button>
-      </div>
-    </div>
+        <v-btn color="success" variant="flat" size="large" prepend-icon="mdi-check" @click="passDialogOpen = true">
+          Pass Selected Activities
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+
+    <v-dialog v-model="passDialogOpen" max-width="560" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center bg-success text-white py-4 px-4">
+          <v-icon icon="mdi-check" class="me-2" />
+          Pass Selected Activities
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" color="white" :disabled="batchSubmitting" @click="passDialogOpen = false" />
+        </v-card-title>
+        <v-card-text class="pt-4">
+          <p class="mb-3">Are you sure you want to pass the selected activities?</p>
+          <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+            <strong>Note:</strong> This action will mark all selected activities as passed.
+          </v-alert>
+          <v-list v-if="selectedActivityRows.length" density="compact" class="py-0">
+            <v-list-item
+              v-for="item in selectedActivityRows"
+              :key="item.id"
+              class="px-0"
+            >
+              <template #prepend>
+                <v-icon icon="mdi-check-circle" color="success" size="small" />
+              </template>
+              <v-list-item-title class="text-body-2 font-weight-medium">
+                {{ item.activity_title || 'Untitled activity' }}
+              </v-list-item-title>
+              <v-list-item-subtitle v-if="item.document_number" class="text-caption">
+                Document #{{ item.document_number }}
+              </v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-spacer />
+          <v-btn variant="outlined" prepend-icon="mdi-close" :disabled="batchSubmitting" @click="passDialogOpen = false">Cancel</v-btn>
+          <v-btn color="success" variant="flat" prepend-icon="mdi-check" :loading="batchSubmitting" @click="submitBatchStatus('passed')">
+            Yes, Pass Activities
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <div v-if="cfg.approvedSingleMemosCount > 0" ref="singleMemosCardRef" class="mt-4">
     <v-card class="mx-section-card elevation-2">
