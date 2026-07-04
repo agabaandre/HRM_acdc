@@ -1,0 +1,98 @@
+/**
+ * Shared Vuetify styling for APM list/show pages:
+ * bold table headers + polished tab navigation.
+ */
+[data-apm-vuetify-page] .v-application__wrap {
+    min-height: 0 !important;
+}
+
+/* ── Table headers ── */
+[data-apm-vuetify-page] .apm-list-table thead th,
+[data-apm-vuetify-page] .mx-matrix-table thead th,
+[data-apm-vuetify-page] .al-table thead th,
+[data-apm-vuetify-page] .sm-list-table thead th,
+[data-apm-vuetify-page] .arf-list-table thead th,
+[data-apm-vuetify-page] .om-list-table thead th,
+[data-apm-vuetify-page] .ai-list-table thead th,
+[data-apm-vuetify-page] .v-data-table thead th,
+[data-apm-vuetify-page] .v-data-table .v-data-table__th {
+    background: #f1f5f9 !important;
+    color: rgba(15, 23, 42, 0.88) !important;
+    font-weight: 700 !important;
+    font-size: 0.72rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.045em !important;
+    border-bottom: 2px solid rgba(17, 154, 72, 0.18) !important;
+    white-space: nowrap;
+}
+
+[data-apm-vuetify-page] .v-data-table-header__content,
+[data-apm-vuetify-page] .v-data-table .v-data-table-header__content {
+    font-weight: 700 !important;
+    letter-spacing: 0.045em;
+}
+
+[data-apm-vuetify-page] .apm-list-table tbody td,
+[data-apm-vuetify-page] .mx-matrix-table tbody td,
+[data-apm-vuetify-page] .al-table tbody td,
+[data-apm-vuetify-page] .v-data-table tbody td {
+    color: rgba(0, 0, 0, 0.87) !important;
+    vertical-align: middle !important;
+}
+
+[data-apm-vuetify-page] .v-data-table .v-data-table-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* ── Tab navigation ── */
+[data-apm-vuetify-page] .v-tabs.apm-vuetify-tabs,
+[data-apm-vuetify-page] .v-tabs {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: inset 0 -1px 0 rgba(17, 154, 72, 0.06);
+}
+
+[data-apm-vuetify-page] .v-tabs .v-tab {
+    font-weight: 700 !important;
+    font-size: 0.8125rem !important;
+    letter-spacing: 0.02em;
+    text-transform: none !important;
+    min-height: 50px !important;
+    opacity: 0.72;
+    color: rgba(15, 23, 42, 0.78) !important;
+    transition: background-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+    border-radius: 10px 10px 0 0;
+    margin: 0 1px;
+}
+
+[data-apm-vuetify-page] .v-tabs .v-tab .v-btn__content,
+[data-apm-vuetify-page] .v-tabs .v-tab .v-tab__content {
+    font-weight: 700 !important;
+}
+
+[data-apm-vuetify-page] .v-tabs .v-tab:hover:not(.v-tab--selected) {
+    opacity: 0.92;
+    background: rgba(17, 154, 72, 0.07);
+    color: rgba(15, 107, 52, 0.92) !important;
+}
+
+[data-apm-vuetify-page] .v-tabs .v-tab.v-tab--selected {
+    opacity: 1 !important;
+    color: #0f6b34 !important;
+    background: rgba(17, 154, 72, 0.1);
+}
+
+[data-apm-vuetify-page] .v-tabs .v-tab__slider {
+    height: 3px !important;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(90deg, #119a48 0%, #0d7a3a 100%) !important;
+    box-shadow: 0 1px 4px rgba(17, 154, 72, 0.35);
+}
+
+[data-apm-vuetify-page] .v-tabs .v-icon {
+    opacity: 0.9;
+}
+
+[data-apm-vuetify-page] .v-tabs .v-tab.v-tab--selected .v-icon {
+    color: #119a48 !important;
+}

@@ -16,8 +16,8 @@
     #non-travel-index-app .nt-vuetify-app { background: transparent !important; }
     #non-travel-index-app .v-application__wrap { min-height: 0 !important; }
     #non-travel-index-app .apm-list-table thead th {
-        background: #f8fafc !important;
-        color: rgba(0, 0, 0, 0.7) !important;
+        background: #f1f5f9 !important;
+        color: rgba(15, 23, 42, 0.88) !important;
         font-weight: 700 !important;
         font-size: 0.75rem !important;
         text-transform: uppercase;

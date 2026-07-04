@@ -804,7 +804,7 @@ class MatrixController extends Controller
                 'singleMemosDocumentNumber' => request('single_memo_document_number', ''),
             ],
         ];
-    }
+     }
 
     /**
      * Attach locations + internal participants to single memo rows (batch queries; same pattern as activities AJAX).
@@ -921,7 +921,7 @@ class MatrixController extends Controller
     private function buildMatrixActivitiesListQuery(Matrix $matrix, Request $request, ?array $limitIds = null)
     {
         $activitiesQuery = $matrix->activities()
-            ->where('is_single_memo', 0)
+                ->where('is_single_memo', 0)
             ->select([
                 'id',
                 'matrix_id',
@@ -1384,12 +1384,12 @@ class MatrixController extends Controller
         foreach ($activitiesData as $data) {
             $activity = $data['activity'];
             $activity->locations = $locations->whereIn('id', $data['location_ids'])->values();
-
+            
             if ((!$activity->activity_budget || count($activity->activity_budget) === 0) && $activity->budget_breakdown) {
-                $budgetBreakdown = is_string($activity->budget_breakdown)
-                    ? json_decode($activity->budget_breakdown, true)
-                    : $activity->budget_breakdown;
-                if (is_array($budgetBreakdown)) {
+                    $budgetBreakdown = is_string($activity->budget_breakdown) 
+                        ? json_decode($activity->budget_breakdown, true) 
+                        : $activity->budget_breakdown;
+                    if (is_array($budgetBreakdown)) {
                     $breakdownFundCodes = [];
                     foreach (array_keys($budgetBreakdown) as $key) {
                         if ($key === 'grand_total' || $key === 'total') {
@@ -1401,10 +1401,10 @@ class MatrixController extends Controller
                         }
                         $breakdownFundCodes[] = $fundCode;
                         if (! isset($activity->funder_from_budget_breakdown) && $fundCode->funder) {
-                            $activity->funder_from_budget_breakdown = $fundCode->funder;
-                            $activity->fund_code_from_budget_breakdown = $fundCode;
+                                $activity->funder_from_budget_breakdown = $fundCode->funder;
+                                $activity->fund_code_from_budget_breakdown = $fundCode;
+                            }
                         }
-                    }
                     if ($breakdownFundCodes !== []) {
                         $activity->fund_codes_from_budget_breakdown = $breakdownFundCodes;
                     }
@@ -1421,7 +1421,7 @@ class MatrixController extends Controller
                     $matrixWorkflowDef,
                     $pageFunderIdsByActivity[(int) $activity->id] ?? []
                 );
-                $activity->allow_print = allow_print_activity($activity);
+            $activity->allow_print = allow_print_activity($activity);
                 $activity->has_passed_at_current_level = $meta['has_passed_at_current_level'];
                 $activity->my_current_level_action = $meta['my_current_level_action'];
                 $activity->user_has_passed = $activity->allow_print || $meta['has_passed_at_current_level'];
@@ -1431,7 +1431,7 @@ class MatrixController extends Controller
                 $activity->my_last_action = null;
                 $activity->user_has_passed = false;
             }
-
+            
             $processedActivities->push($activity);
         }
 
@@ -1993,13 +1993,13 @@ class MatrixController extends Controller
     {
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
-
+        
         if (! $userStaffId) {
             return $this->getAllSingleMemos($matrix, $request);
         }
 
         $userWorkflowDefinition = $this->getUserWorkflowDefinition($matrix, $userStaffId, $userDivisionId);
-
+        
         if (! $userWorkflowDefinition) {
             return $this->getAllSingleMemos($matrix, $request);
         }

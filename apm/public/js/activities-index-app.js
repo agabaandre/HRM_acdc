@@ -353,7 +353,7 @@
     </v-card>
 
     <v-card>
-      <v-tabs v-model="activeTab" color="primary" grow>
+      <v-tabs v-model="activeTab" color="primary" grow class="apm-vuetify-tabs">
         <v-tab v-if="cfg.canViewAllActivities" value="all-activities">
           <v-icon start icon="mdi-view-list" />
           All activities

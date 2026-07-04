@@ -248,7 +248,7 @@
     </v-card>
 
     <v-card elevation="1">
-      <v-tabs :model-value="tab" @update:model-value="switchTab" color="primary" class="px-2">
+      <v-tabs :model-value="tab" @update:model-value="switchTab" color="primary" class="apm-vuetify-tabs px-2">
         <v-tab value="this_week">This reporting week</v-tab>
         <v-tab value="all">All reports</v-tab>
       </v-tabs>

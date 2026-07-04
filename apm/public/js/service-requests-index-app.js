@@ -284,7 +284,7 @@
     </v-card>
 
     <v-card>
-      <v-tabs v-model="activeTab" color="primary" grow>
+      <v-tabs v-model="activeTab" color="primary" grow class="apm-vuetify-tabs">
         <v-tab value="mySubmitted">
           <v-icon start icon="mdi-file-document" />
           My submitted

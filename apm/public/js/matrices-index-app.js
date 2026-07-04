@@ -301,7 +301,7 @@
     </v-card>
 
     <v-card>
-      <v-tabs v-model="activeTab" color="primary" grow>
+      <v-tabs v-model="activeTab" color="primary" grow class="apm-vuetify-tabs">
         <v-tab v-if="showMyDivisionTab" value="myDivision">
           <v-icon start icon="mdi-home" />
           My division
