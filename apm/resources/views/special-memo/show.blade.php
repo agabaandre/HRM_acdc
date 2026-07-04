@@ -747,24 +747,9 @@
                 }
             }
             
-            // If no grand_total found, calculate from items with proper days logic
+            // If no grand_total found, calculate from line items (unit_cost × units × days).
             if ($totalBudget == 0 && !empty($budgetByFundCode)) {
-                foreach ($budgetByFundCode as $fundCodeId => $items) {
-                    foreach ($items as $item) {
-                        if (isset($item['unit_cost']) && isset($item['units'])) {
-                            $unitCost = floatval($item['unit_cost']);
-                            $units = floatval($item['units']);
-                            $days = floatval($item['days'] ?? 1);
-                            
-                            // Use days when greater than 1, otherwise just unit_cost * units
-                            if ($days > 1) {
-                                $totalBudget += $unitCost * $units * $days;
-                            } else {
-                                $totalBudget += $unitCost * $units;
-                            }
-                        }
-                    }
-                }
+                $totalBudget = \App\Support\BudgetBreakdownTotal::fromFundCodeBreakdown($budget);
             }
             
             // Debug logging
@@ -1171,15 +1156,9 @@
                                             @foreach ($items as $item)
                                                 @php
                                                     $unitCost = floatval($item['unit_cost'] ?? 0);
-                                                    $units = floatval($item['units'] ?? 0);
+                                                    $units = floatval($item['units'] ?? $item['quantity'] ?? 1);
                                                     $days = floatval($item['days'] ?? 1);
-
-                                                    // Use days when greater than 1, otherwise just unit_cost * units
-                                                    if ($days > 1) {
-                                                        $total = $unitCost * $units * $days;
-                                                    } else {
-                                                        $total = $unitCost * $units;
-                                                    }
+                                                    $total = $unitCost * $units * $days;
 
                                                     $groupTotal += $total;
                                                     $grandTotal += $total;

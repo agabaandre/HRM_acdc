@@ -2,6 +2,20 @@
 
 use App\Support\BudgetBreakdownTotal;
 
+it('returns per-fund-code total with days multiplier', function () {
+    $breakdown = [
+        '277' => [
+            ['unit_cost' => 100, 'units' => 2, 'days' => 3],
+        ],
+        '99' => [
+            ['unit_cost' => 50, 'units' => 1, 'days' => 1],
+        ],
+    ];
+
+    expect(BudgetBreakdownTotal::forFundCode($breakdown, 277, false))->toBe(600.0)
+        ->and(BudgetBreakdownTotal::memoGrandTotal($breakdown, false))->toBe(650.0);
+});
+
 it('sums fund-code line items and ignores stale grand_total', function () {
     $breakdown = [
         '12' => [

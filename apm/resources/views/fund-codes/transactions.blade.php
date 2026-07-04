@@ -139,7 +139,8 @@
                                     <th>Memo</th>
                                     <th>Doc #</th>
                                     <th>Status</th>
-                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">This Fund Code</th>
+                                    <th class="text-end">Memo Total</th>
                                     <th>Last Updated</th>
                                     <th class="text-center">Action</th>
                                 </tr>
@@ -156,6 +157,14 @@
                                         <td><code class="small">{{ $line['document_number'] ?? '—' }}</code></td>
                                         <td><span class="badge {{ $statusBadge($line['status']) }}">{{ ucfirst($line['status']) }}</span></td>
                                         <td class="text-end fw-bold text-danger">${{ number_format($line['amount'], 2) }}</td>
+                                        <td class="text-end text-muted small">
+                                            @if(!empty($line['memo_grand_total']) && abs($line['memo_grand_total'] - $line['amount']) > 0.01)
+                                                ${{ number_format($line['memo_grand_total'], 2) }}
+                                                <div class="text-muted">all codes</div>
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
                                         <td>
                                             @if($line['updated_at'])
                                                 <span class="small">{{ \Carbon\Carbon::parse($line['updated_at'])->format('M d, Y H:i') }}</span>
@@ -218,7 +227,7 @@
                                     <th>Type</th>
                                     <th>Memo</th>
                                     <th>Status</th>
-                                    <th class="text-end">Would-be Amount</th>
+                                    <th class="text-end">Would-be (this code)</th>
                                     <th>Skip Reason</th>
                                     <th class="text-center">Action</th>
                                 </tr>

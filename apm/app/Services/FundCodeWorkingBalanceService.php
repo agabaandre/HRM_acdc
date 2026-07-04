@@ -8,6 +8,7 @@ use App\Models\FundCode;
 use App\Models\Matrix;
 use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
+use App\Support\BudgetBreakdownTotal;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -601,32 +602,7 @@ class FundCodeWorkingBalanceService
      */
     public function sumBreakdownForFundCode(array $breakdown, int $fundCodeId, bool $useQuantity = false, bool $useDays = false): float
     {
-        $sum = 0.0;
-        foreach ($breakdown as $codeKey => $items) {
-            if (! is_numeric($codeKey) || (int) $codeKey !== $fundCodeId || ! is_array($items)) {
-                continue;
-            }
-            foreach ($items as $item) {
-                if (! is_array($item) && ! is_object($item)) {
-                    continue;
-                }
-                $row = (array) $item;
-                $unitCost = (float) ($row['unit_cost'] ?? 0);
-                if ($useDays) {
-                    $units = (float) ($row['units'] ?? $row['quantity'] ?? $row['qty'] ?? 1);
-                    $days = (float) ($row['days'] ?? 1);
-                    $sum += $unitCost * $units * $days;
-                } elseif ($useQuantity) {
-                    $qty = (float) ($row['quantity'] ?? $row['qty'] ?? $row['units'] ?? 1);
-                    $sum += $qty * $unitCost;
-                } else {
-                    $units = (float) ($row['units'] ?? $row['quantity'] ?? $row['qty'] ?? 1);
-                    $sum += $units * $unitCost;
-                }
-            }
-        }
-
-        return round($sum, 2);
+        return BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, $useQuantity);
     }
 
     /**

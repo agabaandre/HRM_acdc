@@ -12,6 +12,28 @@ namespace App\Support;
 class BudgetBreakdownTotal
 {
     /**
+     * Planned total for a single fund code within a breakdown (matches memo show views).
+     */
+    public static function forFundCode(mixed $breakdown, int $fundCodeId, bool $nonTravel = false): float
+    {
+        $totals = $nonTravel
+            ? self::fundCodeTotalsFromNonTravelBreakdown($breakdown)
+            : self::fundCodeTotalsFromFundCodeBreakdown($breakdown);
+
+        return $totals[$fundCodeId] ?? 0.0;
+    }
+
+    /**
+     * Full memo total across all fund codes (matches memo grand total on show views).
+     */
+    public static function memoGrandTotal(mixed $breakdown, bool $nonTravel = false): float
+    {
+        return $nonTravel
+            ? self::fromNonTravelBreakdown($breakdown)
+            : self::fromFundCodeBreakdown($breakdown);
+    }
+
+    /**
      * Fund-code keyed breakdown (activity, matrix activity, special memo).
      * Matches resources/views/activities/show.blade.php.
      */
@@ -33,11 +55,14 @@ class BudgetBreakdownTotal
                 continue;
             }
             foreach ($entries as $item) {
-                if (! is_array($item) || ! isset($item['unit_cost'], $item['units'])) {
+                if (! is_array($item)) {
                     continue;
                 }
-                $unitCost = self::sanitizeNumber($item['unit_cost']);
-                $units = self::sanitizeNumber($item['units']);
+                $unitCost = self::sanitizeNumber($item['unit_cost'] ?? 0);
+                if ($unitCost == 0.0) {
+                    continue;
+                }
+                $units = self::sanitizeNumber($item['units'] ?? $item['quantity'] ?? $item['qty'] ?? 1, 1.0);
                 $days = self::sanitizeNumber($item['days'] ?? 1, 1.0);
                 $total += $unitCost * $units * $days;
             }
@@ -128,11 +153,14 @@ class BudgetBreakdownTotal
             }
             $sum = 0.0;
             foreach ($entries as $item) {
-                if (! is_array($item) || ! isset($item['unit_cost'], $item['units'])) {
+                if (! is_array($item)) {
                     continue;
                 }
-                $unitCost = self::sanitizeNumber($item['unit_cost']);
-                $units = self::sanitizeNumber($item['units']);
+                $unitCost = self::sanitizeNumber($item['unit_cost'] ?? 0);
+                if ($unitCost == 0.0) {
+                    continue;
+                }
+                $units = self::sanitizeNumber($item['units'] ?? $item['quantity'] ?? $item['qty'] ?? 1, 1.0);
                 $days = self::sanitizeNumber($item['days'] ?? 1, 1.0);
                 $sum += $unitCost * $units * $days;
             }

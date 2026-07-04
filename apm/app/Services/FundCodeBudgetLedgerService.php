@@ -7,6 +7,7 @@ use App\Models\ChangeRequest;
 use App\Models\FundCode;
 use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
+use App\Support\BudgetBreakdownTotal;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -127,10 +128,11 @@ class FundCodeBudgetLedgerService
         $fundCodeId = (int) $fundCode->id;
         $rows = DB::table('activity_budgets')
             ->join('activities', 'activities.id', '=', 'activity_budgets.activity_id')
-            ->join('matrices', 'matrices.id', '=', 'activities.matrix_id')
+            ->leftJoin('matrices', 'matrices.id', '=', 'activities.matrix_id')
             ->where(function ($q) use ($fundCode) {
                 $q->where('activity_budgets.fund_code', (string) $fundCode->id)
-                    ->orWhere('activity_budgets.fund_code', (string) $fundCode->code);
+                    ->orWhere('activity_budgets.fund_code', (string) $fundCode->code)
+                    ->orWhereRaw('UPPER(TRIM(activity_budgets.fund_code)) = UPPER(?)', [(string) $fundCode->code]);
             })
             ->get([
                 'activities.id as activity_id',
@@ -164,6 +166,11 @@ class FundCodeBudgetLedgerService
         }
 
         $lines = [];
+        $activityIds = array_keys($grouped);
+        $activityBreakdowns = $activityIds !== []
+            ? Activity::query()->whereIn('id', $activityIds)->pluck('budget_breakdown', 'id')
+            : collect();
+
         foreach ($grouped as $item) {
             $amount = round($item['amount'], 2);
             if ($amount <= 0) {
@@ -180,6 +187,11 @@ class FundCodeBudgetLedgerService
                 'activity'
             );
 
+            $rawBreakdown = $activityBreakdowns[(int) $item['activity_id']] ?? null;
+            $memoGrandTotal = $rawBreakdown
+                ? BudgetBreakdownTotal::memoGrandTotal($this->decodeBreakdown($rawBreakdown), false)
+                : null;
+
             $lines[] = $this->makeLine(
                 type: $type,
                 id: (int) $item['activity_id'],
@@ -192,6 +204,7 @@ class FundCodeBudgetLedgerService
                 skipReason: $skipReason,
                 updatedAt: $item['updated_at'],
                 matrixId: (int) $item['matrix_id'],
+                memoGrandTotal: $memoGrandTotal,
             );
         }
 
@@ -240,7 +253,7 @@ class FundCodeBudgetLedgerService
         $lines = [];
         foreach ($activities as $activity) {
             $breakdown = $this->decodeBreakdown($activity->budget_breakdown);
-            $amount = $this->balanceService->sumBreakdownForFundCode($breakdown, $fundCodeId, false, true);
+            $amount = BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, false);
             if ($amount <= 0) {
                 continue;
             }
@@ -268,6 +281,7 @@ class FundCodeBudgetLedgerService
                 skipReason: $skipReason,
                 updatedAt: $activity->updated_at,
                 matrixId: (int) $activity->matrix_id,
+                memoGrandTotal: BudgetBreakdownTotal::memoGrandTotal($breakdown, false),
             );
         }
 
@@ -332,7 +346,8 @@ class FundCodeBudgetLedgerService
         $lines = [];
         foreach ($models as $model) {
             $breakdown = $this->decodeBreakdown($model->budget_breakdown);
-            $amount = $this->balanceService->sumBreakdownForFundCode($breakdown, $fundCodeId, $useQuantity, false);
+            $nonTravel = $type === 'non_travel';
+            $amount = BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, $nonTravel);
             if ($amount <= 0) {
                 continue;
             }
@@ -356,6 +371,7 @@ class FundCodeBudgetLedgerService
                 skipCode: $skipCode,
                 skipReason: $skipReason,
                 updatedAt: $model->updated_at,
+                memoGrandTotal: BudgetBreakdownTotal::memoGrandTotal($breakdown, $nonTravel),
             );
         }
 
@@ -391,8 +407,8 @@ class FundCodeBudgetLedgerService
         $lines = [];
         foreach ($models as $cr) {
             $breakdown = $this->decodeBreakdown($cr->budget_breakdown);
-            $useQuantity = $cr->non_travel_memo_id !== null;
-            $amount = $this->balanceService->sumBreakdownForFundCode($breakdown, $fundCodeId, $useQuantity, false);
+            $nonTravel = $cr->non_travel_memo_id !== null;
+            $amount = BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, $nonTravel);
             if ($amount <= 0) {
                 continue;
             }
@@ -414,6 +430,7 @@ class FundCodeBudgetLedgerService
                 skipCode: $skipCode,
                 skipReason: $skipReason,
                 updatedAt: $cr->updated_at,
+                memoGrandTotal: BudgetBreakdownTotal::memoGrandTotal($breakdown, $nonTravel),
             );
         }
 
@@ -626,6 +643,7 @@ class FundCodeBudgetLedgerService
         ?string $skipReason,
         mixed $updatedAt,
         ?int $matrixId = null,
+        ?float $memoGrandTotal = null,
     ): array {
         $updated = $updatedAt instanceof Carbon
             ? $updatedAt->toIso8601String()
@@ -639,6 +657,7 @@ class FundCodeBudgetLedgerService
             'document_number' => $documentNumber,
             'status' => strtolower($status),
             'amount' => round($amount, 2),
+            'memo_grand_total' => $memoGrandTotal !== null ? round($memoGrandTotal, 2) : null,
             'committed' => $committed,
             'skip_code' => $skipCode,
             'skip_reason' => $skipReason,
