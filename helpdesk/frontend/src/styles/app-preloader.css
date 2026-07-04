@@ -45,8 +45,8 @@
 }
 
 :root {
-  /* Top bar (52px) + primary nav (44px) — matches .cbp-page-wrapper margin-top */
-  --hd-chrome-top: 96px;
+  /* Top bar (60px) + primary nav (60px) — matches APM chrome and .cbp-page-wrapper margin-top */
+  --hd-chrome-top: 120px;
   /* Approx footer block so loader does not cover it */
   --hd-chrome-footer: 4.5rem;
 }

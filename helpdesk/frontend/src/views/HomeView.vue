@@ -70,9 +70,9 @@ const isAgentHome = computed(() => isAgentDeskUser(auth.me?.profile))
 
 const homeLede = computed(() => {
   if (isAgentHome.value) {
-    return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Triage assigned tickets on your board below, browse FAQs, or use the shortcuts for Ask Helpdesk and the full agent desk.'
+    return 'Log and track incidents and requests for Africa CDC. Triage assigned tickets on your board below, browse FAQs, or use the shortcuts for Ask Helpdesk and the full agent desk.'
   }
-  return 'Log and track incidents and requests for Africa CDC — same secure Staff portal session as Finance and APM. Ask our AI assistant for guided troubleshooting, browse FAQs below, or log a new request for the service desk team.'
+  return 'Log and track incidents and requests for Africa CDC. Ask our AI assistant for guided troubleshooting, browse FAQs below, or log a new request for the service desk team.'
 })
 
 const agentShortcuts = [
@@ -91,7 +91,7 @@ const search = ref('')
 const articles = ref<KbArticle[]>([])
 const totalArticleCount = ref(0)
 const loading = ref(false)
-const expanded = ref<Set<number>>(new Set())
+const expandedPanel = ref<number | undefined>(undefined)
 
 let searchTimer: number | undefined
 
@@ -135,20 +135,6 @@ const faqSummaryLabel = computed(() => {
   return `Showing ${shown} of ${total}`
 })
 
-function toggle(id: number): void {
-  const next = new Set(expanded.value)
-  if (next.has(id)) {
-    next.delete(id)
-  } else {
-    next.add(id)
-  }
-  expanded.value = next
-}
-
-function isExpanded(id: number): boolean {
-  return expanded.value.has(id)
-}
-
 function isHtml(value: string): boolean {
   return /<[a-z][\s\S]*>/i.test(value)
 }
@@ -172,48 +158,55 @@ onMounted(() => {
 
 <template>
   <div class="hd-home">
-    <CbpBadgeStrip product="ITSM" />
-    <CbpPageHeading title="IT Service Desk">
-      <template #lede>
-        <span class="hd-home-lede">{{ homeLede }}</span>
-      </template>
-    </CbpPageHeading>
+    <v-card class="hd-home-hero" variant="flat" rounded="lg">
+      <v-card-text class="pa-0">
+        <CbpBadgeStrip product="ITSM" />
+        <CbpPageHeading title="IT Service Desk">
+          <template #lede>
+            <span class="hd-home-lede">{{ homeLede }}</span>
+          </template>
+        </CbpPageHeading>
+      </v-card-text>
+    </v-card>
 
-    <UCard v-if="!auth.isAuthenticated" class="gate">
-      <p class="gate-title">No active session in this app</p>
-      <p class="gate-text">
-        Open the Staff portal, sign in there, then choose <strong>IT Service Desk (Helpdesk)</strong> from your home dashboard.
-      </p>
-      <UButton :href="portalHref" color="primary" size="md">Go to Staff portal home</UButton>
-    </UCard>
+    <v-card v-if="!auth.isAuthenticated" class="gate" variant="outlined" rounded="lg">
+      <v-card-text>
+        <p class="gate-title">No active session in this app</p>
+        <p class="gate-text">
+          Open the Staff portal, sign in there, then choose <strong>IT Service Desk (Helpdesk)</strong> from your home dashboard.
+        </p>
+        <v-btn :href="portalHref" color="primary" variant="flat" size="large">Go to Staff portal home</v-btn>
+      </v-card-text>
+    </v-card>
 
     <template v-else>
-      <nav
-        v-if="isAgentHome"
-        class="hd-shortcut-row"
-        aria-label="Helpdesk shortcuts"
-      >
-        <RouterLink
+      <div v-if="isAgentHome" class="hd-shortcut-row" role="navigation" aria-label="Helpdesk shortcuts">
+        <v-btn
           v-for="s in agentShortcuts"
           :key="s.to"
           :to="s.to"
-          class="hd-shortcut-chip"
+          variant="outlined"
+          color="primary"
+          size="small"
+          class="hd-shortcut-btn"
         >
-          <i :class="s.icon" aria-hidden="true" />
+          <i :class="s.icon" aria-hidden="true" class="me-1" />
           {{ s.label }}
-        </RouterLink>
-      </nav>
+        </v-btn>
+      </div>
 
       <HomeAgentKanban v-if="isAgentHome" class="hd-home-kanban" />
 
       <div v-if="!isAgentHome" class="hd-quick-grid" role="navigation" aria-label="Helpdesk shortcuts">
-        <UCard
+        <v-card
           v-for="action in quickActions"
           :key="action.to"
           class="hd-action-card"
-          :ui="{ body: 'p-4 sm:p-5' }"
+          variant="outlined"
+          rounded="lg"
+          hover
         >
-          <RouterLink :to="action.to" class="hd-action-link">
+          <RouterLink :to="action.to" class="hd-action-link pa-4 pa-sm-5">
             <span class="hd-action-icon" aria-hidden="true">
               <i :class="['bx', action.icon]" />
             </span>
@@ -221,9 +214,9 @@ onMounted(() => {
               <strong class="hd-action-title">{{ action.title }}</strong>
               <span class="hd-action-desc">{{ action.description }}</span>
             </span>
-            <i class="bx bx-chevron-right hd-action-chevron" aria-hidden="true" />
+            <v-icon icon="mdi-chevron-right" class="hd-action-chevron" size="small" color="primary" />
           </RouterLink>
-        </UCard>
+        </v-card>
       </div>
     </template>
 
@@ -244,17 +237,19 @@ onMounted(() => {
       <v-divider />
 
       <v-card-text>
-      <UFormField name="kbSearch" class="kb-search">
-        <UInput
-          v-model="search"
-          type="search"
-          icon="i-lucide-search"
-          placeholder="Search FAQs — try “password reset”, “VPN”, “printer”…"
-          autocomplete="off"
-          aria-label="Search the knowledge base"
-          class="w-full"
-        />
-      </UFormField>
+      <v-text-field
+        v-model="search"
+        label="Search FAQs"
+        placeholder="Try “password reset”, “VPN”, “printer”…"
+        prepend-inner-icon="mdi-magnify"
+        clearable
+        density="comfortable"
+        variant="outlined"
+        hide-details
+        class="kb-search mb-4"
+        autocomplete="off"
+        aria-label="Search the knowledge base"
+      />
 
       <div v-if="loading" class="kb-skeleton" role="status" aria-busy="true" aria-label="Loading articles">
         <v-skeleton-loader
@@ -280,26 +275,41 @@ onMounted(() => {
         or <RouterLink to="/tickets/new">log a new request</RouterLink>.
       </p>
 
-      <ul v-else class="kb-list">
-        <li v-for="a in previewArticles" :key="a.id" class="kb-item" :class="{ 'is-open': isExpanded(a.id) }">
-          <button
-            type="button"
-            class="kb-item-toggle"
-            :aria-expanded="isExpanded(a.id)"
-            @click="toggle(a.id)"
-          >
+      <v-expansion-panels
+        v-else
+        v-model="expandedPanel"
+        variant="accordion"
+        class="kb-panels"
+        elevation="0"
+      >
+        <v-expansion-panel
+          v-for="a in previewArticles"
+          :key="a.id"
+          :value="a.id"
+          rounded="lg"
+          elevation="0"
+        >
+          <v-expansion-panel-title class="kb-panel-title">
             <span class="kb-question-wrap">
-              <span v-if="a.category?.name" class="kb-category-pill">{{ a.category.name }}</span>
+              <v-chip
+                v-if="a.category?.name"
+                size="x-small"
+                color="primary"
+                variant="tonal"
+                class="kb-category-chip mb-1"
+                label
+              >
+                {{ a.category.name }}
+              </v-chip>
               <span class="kb-question">{{ a.question }}</span>
             </span>
-            <span class="kb-caret" aria-hidden="true">{{ isExpanded(a.id) ? '−' : '+' }}</span>
-          </button>
-          <div v-if="isExpanded(a.id)" class="kb-answer">
+          </v-expansion-panel-title>
+          <v-expansion-panel-text class="kb-panel-text">
             <div v-if="isHtml(a.answer)" class="kb-answer-body rich-text-content" v-html="a.answer"></div>
             <p v-else class="kb-answer-body kb-answer-plain">{{ a.answer }}</p>
-          </div>
-        </li>
-      </ul>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
 
       <footer v-if="previewArticles.length > 0" class="hd-kb-foot">
         <span v-if="faqSummaryLabel">{{ faqSummaryLabel }}</span>
@@ -316,8 +326,49 @@ onMounted(() => {
 .hd-home-kanban {
   margin-bottom: 0.25rem;
 }
+.hd-shortcut-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.hd-shortcut-btn {
+  text-transform: none;
+  letter-spacing: normal;
+}
+.kb-panels {
+  background: transparent !important;
+}
+.kb-panels :deep(.v-expansion-panel) {
+  border: 1px solid var(--hd-line);
+  margin-bottom: 0.45rem;
+  background: #fff;
+}
+.kb-panels :deep(.v-expansion-panel--active) {
+  border-color: rgba(17, 154, 72, 0.4);
+}
+.kb-panel-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.kb-category-chip {
+  align-self: flex-start;
+}
+.kb-panel-text {
+  color: #3a4452;
+  font-size: 0.93rem;
+  line-height: 1.6;
+}
 .gate {
   border-left: 4px solid #c9a227;
+}
+.gate .v-card-text {
+  padding-top: 1.25rem !important;
+  padding-bottom: 1.25rem !important;
+}
+.hd-home-hero {
+  background: transparent !important;
+  box-shadow: none !important;
 }
 .gate-title {
   margin: 0 0 0.5rem;
@@ -392,78 +443,14 @@ onMounted(() => {
   color: #5c6c7c;
   font-size: 0.92rem;
 }
-.kb-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-.kb-item {
-  border: 1px solid var(--hd-line);
-  border-radius: 4px;
-  overflow: hidden;
-  background: #fff;
-  transition: border-color 0.15s ease;
-}
-.kb-item.is-open {
-  border-color: rgba(17, 154, 72, 0.4);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
-}
-.kb-item-toggle {
-  width: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.75rem 0.95rem;
-  background: transparent;
-  border: 0;
-  text-align: left;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: inherit;
-  color: #1f2933;
-  cursor: pointer;
-}
-.kb-item-toggle:hover {
-  background: #f8fafc;
-}
 .kb-question-wrap {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   min-width: 0;
 }
-.kb-category-pill {
-  align-self: flex-start;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #0d7a3a;
-  background: rgba(17, 154, 72, 0.1);
-  padding: 0.12rem 0.45rem;
-  border-radius: 999px;
-}
 .kb-question {
   line-height: 1.4;
-}
-.kb-caret {
-  font-size: 1.25rem;
-  color: #119a48;
-  font-weight: 700;
-  width: 1.25rem;
-  text-align: center;
-  flex-shrink: 0;
-}
-.kb-answer {
-  padding: 0 0.95rem 0.95rem;
-  border-top: 1px solid var(--hd-line-subtle);
-  color: #3a4452;
-  font-size: 0.93rem;
-  line-height: 1.6;
 }
 .kb-answer-body :deep(p) {
   margin: 0.5rem 0;

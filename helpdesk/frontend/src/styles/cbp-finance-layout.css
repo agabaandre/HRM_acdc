@@ -59,7 +59,7 @@ html.helpdesk-theme-dark {
   top: 0;
   left: 0;
   right: 0;
-  height: 52px;
+  height: 60px;
   background: linear-gradient(90deg, var(--cbp-topbar) 0%, #0d7a3a 100%);
   color: #fff;
   border-bottom: 1px solid var(--cbp-topbar-border);
@@ -68,7 +68,7 @@ html.helpdesk-theme-dark {
 }
 
 .cbp-topbar-inner {
-  height: 52px;
+  height: 60px;
   display: flex;
   align-items: center;
   padding: 0 8px 0 12px;
@@ -84,7 +84,7 @@ html.helpdesk-theme-dark {
 .cbp-topbar-logo {
   display: flex;
   align-items: center;
-  height: 52px;
+  height: 60px;
   padding-right: 16px;
   margin-right: 8px;
   border-right: 1px solid rgba(255, 255, 255, 0.2);
@@ -414,14 +414,14 @@ html.helpdesk-theme-dark {
 }
 
 .cbp-primary-nav {
-  --bs-body-font-size: 0.84rem;
+  --bs-body-font-size: 0.75rem;
   --bs-body-font-weight: var(--hd-nav-font-weight, 500);
   position: fixed;
-  top: 52px;
+  top: 60px;
   left: 0;
   right: 0;
   z-index: 1000;
-  height: 44px;
+  height: 60px;
   background: var(--cbp-nav-bg);
   border-bottom: 1px solid var(--cbp-nav-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -514,10 +514,10 @@ html.helpdesk-theme-dark {
 
 .cbp-nav-link {
   color: var(--cbp-nav-text) !important;
-  font-size: var(--bs-body-font-size, 0.84rem);
+  font-size: var(--bs-body-font-size, 0.75rem);
   font-weight: var(--bs-body-font-weight, var(--hd-nav-font-weight, 500));
   text-decoration: none !important;
-  padding: 0.35rem 0.65rem;
+  padding: 0.55rem 1rem;
   border-radius: 4px;
   display: inline-flex;
   align-items: center;
@@ -644,7 +644,7 @@ html.helpdesk-theme-dark {
 
 .cbp-page-wrapper {
   flex: 1;
-  margin-top: 96px;
+  margin-top: 120px;
   margin-bottom: 24px;
   padding: 0 4px 24px;
 }
