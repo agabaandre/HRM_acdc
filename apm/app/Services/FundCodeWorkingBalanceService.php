@@ -106,6 +106,25 @@ class FundCodeWorkingBalanceService
         return $out;
     }
 
+    /**
+     * @param  array<string, int|null>  $exclude
+     * @return array{
+     *   activity_ids: list<int>,
+     *   special_memo_ids: list<int>,
+     *   non_travel_memo_ids: list<int>,
+     *   by_id: array<int, ChangeRequest>
+     * }
+     */
+    public function getActiveChangeRequests(array $exclude = []): array
+    {
+        return $this->activeChangeRequests($exclude);
+    }
+
+    public function cacheVersion(int $fundCodeId): string
+    {
+        return $this->version($fundCodeId);
+    }
+
     public function bust(int|array $fundCodeIds): void
     {
         try {

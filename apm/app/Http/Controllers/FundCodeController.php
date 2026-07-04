@@ -335,8 +335,10 @@ class FundCodeController extends Controller
         }
 
         $fundCodeTransactions = $query->orderBy('created_at', 'desc')->paginate(15);
-        
-        return view('fund-codes.transactions', compact('fundCodeTransactions', 'fundCode'));
+
+        $ledger = app(\App\Services\FundCodeBudgetLedgerService::class)->ledger((int) $fundCode->id);
+
+        return view('fund-codes.transactions', compact('fundCodeTransactions', 'fundCode', 'ledger'));
     }
 
     private function exportTransactions($transactions, $fundCode)

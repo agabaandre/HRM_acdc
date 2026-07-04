@@ -14,7 +14,7 @@
         <i class="bx bx-edit"></i> Edit
     </a>
     <a wire:navigate href="{{ route('fund-codes.transactions', $fundCode) }}" class="btn btn-primary">
-        <i class="bx bx-history"></i> View Transactions
+        <i class="bx bx-wallet"></i> Budget & Transactions
     </a>
 </div>
 @endsection
