@@ -1243,18 +1243,9 @@ $(document).ready(function () {
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
                     .addClass('text-danger fw-bold');
                 
-                // Show warning message
                 const card = $(this).closest('.card');
-                let warningDiv = card.find('.budget-warning');
-                if (warningDiv.length === 0) {
-                    const warningMessage = isChangeRequest 
-                        ? `New items exceed available budget! Available: $${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : `Budget exceeded! Available: $${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    warningDiv = $(`<div class="alert alert-danger mt-2 budget-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        ${warningMessage}
-                    </div>`);
-                    card.find('.card-body').append(warningDiv);
+                if (window.ApmWorkingBalance) {
+                    window.ApmWorkingBalance.showBudgetWarning(card, availableBalance, isChangeRequest);
                 }
             } else {
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
@@ -1270,24 +1261,6 @@ $(document).ready(function () {
         
         $('#grandBudgetTotal').text(grand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         $('#grandBudgetTotalInput').val(grand.toFixed(2));
-        
-        // Update submit button state
-        const submitBtn = $('button[type="submit"]');
-        if (hasExceededBudget) {
-            submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
-                .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
-        } else {
-            if (isChangeRequest) {
-                submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
-                    .html(changeRequestReturnedForEdit
-                        ? '<i class="bx bx-save me-1"></i> Update'
-                        : '<i class="bx bx-save me-1"></i> Save as Draft');
-            } else {
-                const buttonText = fundTypeId === 3 ? 'Update Activity (External Source)' : 'Update Activity';
-                submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
-                    .html('<i class="bx bx-check-circle me-1"></i> ' + buttonText);
-            }
-        }
     }
 
 

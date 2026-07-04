@@ -447,9 +447,10 @@
                 budgetCodesSelect.empty();
                 if (data.length) {
                     data.forEach(code => {
-                        const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.working_balance ?? code.budget_balance).toLocaleString()}`;
+                        const balance = parseFloat(code.budget_balance ?? 0);
+                        const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${balance.toLocaleString()}`;
                         budgetCodesSelect.append(
-                            `<option value="${code.id}" data-balance="${code.working_balance ?? code.budget_balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
+                            `<option value="${code.id}" data-balance="${balance}" data-initial-balance="${balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
                         );
                     });
                     budgetCodesSelect.prop('disabled', false);
@@ -503,14 +504,15 @@
             selected.each(function() {
                 const codeId = $(this).val();
                 const label = $(this).text();
-                const balance = $(this).data('balance');
+                const balance = parseFloat($(this).data('balance')) || 0;
+                $(this).data('initial-balance', balance);
 
                 const cardHtml = `
                     <div class="card mt-4 budget-card" data-code="${codeId}">
                         <div class="card-header bg-light">
                             <h6 class="fw-semibold">
                                 Budget for: ${label}
-                                <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                                <span class="float-end text-muted">Balance: $<span class="fund-code-remaining-balance text-success">${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                             </h6>
                         </div>
                         <div class="card-body">
@@ -618,10 +620,11 @@
 
             const fundTypeId = parseInt($('#fund_type_id, #fund_type').first().val(), 10) || 0;
             if (window.ApmWorkingBalance && fundTypeId !== 3) {
+                window.ApmWorkingBalance.updateCardRemainingBalance(codeId, subtotal);
                 const exceeded = window.ApmWorkingBalance.checkExceededForCard(codeId, subtotal);
                 if (exceeded) {
                     $subtotalCell.addClass('text-danger fw-bold');
-                    const available = parseFloat($(`#budget_codes option[value="${codeId}"]`).data('balance')) || 0;
+                    const available = window.ApmWorkingBalance.fundCodeBaseBalance(codeId);
                     window.ApmWorkingBalance.showBudgetWarning($card, available, false);
                 } else {
                     $subtotalCell.removeClass('text-danger fw-bold');
@@ -632,20 +635,12 @@
 
         window.updateGrandTotal = function updateGrandTotal() {
             let grandTotal = 0;
-            let hasExceededBudget = false;
             $('.budget-card').each(function() {
                 updateSubtotal($(this));
                 grandTotal += parseFloat($(this).find('.subtotal').text().replace(/,/g, '')) || 0;
-                if ($(this).find('.budget-warning').length) {
-                    hasExceededBudget = true;
-                }
             });
             $('#grandBudgetTotal').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             $('#grandBudgetTotalInput').val(grandTotal.toFixed(2));
-            const $submit = $('button[type="submit"][name="action"][value="submit"], button[type="submit"].btn-submit-memo').first();
-            if ($submit.length) {
-                $submit.prop('disabled', hasExceededBudget);
-            }
         }
 
         // Attachments handling

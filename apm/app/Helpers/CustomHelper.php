@@ -1824,6 +1824,32 @@ if (! function_exists('reduce_fund_code_balance')) {
     }
 }
 
+if (! function_exists('credit_fund_code_balance')) {
+    /**
+     * Restore the budget_balance in the fund_codes table by a given amount.
+     *
+     * @param  int  $fundCodeId
+     * @param  float  $amount
+     * @return bool
+     */
+    function credit_fund_code_balance($fundCodeId, $amount)
+    {
+        if ($fundCodeId && $amount > 0) {
+            $updated = DB::table('fund_codes')
+                ->where('id', $fundCodeId)
+                ->increment('budget_balance', $amount);
+
+            if ($updated) {
+                app(\App\Services\FundCodeWorkingBalanceService::class)->bust((int) $fundCodeId);
+            }
+
+            return $updated;
+        }
+
+        return false;
+    }
+}
+
 if (! function_exists('isDivisionApprover')) {
     /**
      * Check if the current user is assigned as an approver for division-specific workflow definitions.

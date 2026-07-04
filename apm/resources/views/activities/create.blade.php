@@ -871,9 +871,10 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         budgetCodesSelect.empty();
         if (data.length) {
             data.forEach(code => {
-                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.working_balance ?? code.budget_balance).toLocaleString()}`;
+                const balance = parseFloat(code.budget_balance ?? 0);
+                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${balance.toLocaleString()}`;
                 budgetCodesSelect.append(
-                    `<option value="${code.id}" data-balance="${code.working_balance ?? code.budget_balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
+                    `<option value="${code.id}" data-balance="${balance}" data-initial-balance="${balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
                 );
             });
             budgetCodesSelect.prop('disabled', false);
@@ -951,8 +952,9 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     selected.each(function () {
         const codeId = $(this).val();
         const label = $(this).text();
-        const balance = $(this).data('balance');
-        
+        const balance = parseFloat($(this).data('balance')) || 0;
+        $(this).data('initial-balance', balance);
+
         // Check if card already exists for this code
         if (existingCodeIds.includes(codeId)) {
             return; // Skip creating duplicate card
@@ -968,7 +970,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
                     <h6 class="fw-semibold mb-0">
                         <span class="badge bg-primary me-2">${budgetCode}</span>
                         <span class="float-end text-muted">
-                            Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            Balance: $<span class="fund-code-remaining-balance text-success">${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </span>
                     </h6>
                 </div>
@@ -1079,7 +1081,6 @@ $(document).on('change', '.participant-start, .participant-end', function () {
 
     window.updateAllTotals = function updateAllTotals() {
         let grand = 0;
-        let hasExceededBudget = false;
         const fundTypeId = parseInt($('#fund_type').val()) || 0;
         
         $('.budget-body').each(function () {
@@ -1088,32 +1089,26 @@ $(document).on('change', '.participant-start, .participant-end', function () {
             $(this).find('tr').each(function () {
                 subtotal += parseFloat($(this).find('.total').val()) || 0;
             });
+
+            if (window.ApmWorkingBalance) {
+                window.ApmWorkingBalance.updateCardRemainingBalance(code, subtotal);
+            }
+
+            const exceeded = fundTypeId !== 3
+                && window.ApmWorkingBalance
+                && window.ApmWorkingBalance.checkExceededForCard(code, subtotal);
             
-            // Get the budget balance for this code
-            const balanceElement = $(`#budget_codes option[value="${code}"]`);
-            const budgetBalance = parseFloat(balanceElement.data('balance')) || 0;
-            
-            // Check if subtotal exceeds budget balance (skip for external source)
-            if (subtotal > budgetBalance && fundTypeId !== 3) {
-                hasExceededBudget = true;
+            if (exceeded) {
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
                     .addClass('text-danger fw-bold');
                 
-                // Show warning message
                 const card = $(this).closest('.card');
-                let warningDiv = card.find('.budget-warning');
-                if (warningDiv.length === 0) {
-                    warningDiv = $(`<div class="alert alert-danger mt-2 budget-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Budget exceeded! Available: $${budgetBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>`);
-                    card.find('.card-body').append(warningDiv);
-                }
+                const budgetBalance = window.ApmWorkingBalance.fundCodeBaseBalance(code);
+                window.ApmWorkingBalance.showBudgetWarning(card, budgetBalance, false);
             } else {
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
                     .removeClass('text-danger fw-bold');
                 
-                // Remove warning if exists
                 const card = $(this).closest('.card');
                 card.find('.budget-warning').remove();
             }
@@ -1123,17 +1118,6 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         
         $('#grandBudgetTotal').text(grand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         $('#grandBudgetTotalInput').val(grand.toFixed(2));
-        
-        // Update submit button state
-        const submitBtn = $('button[type="submit"]');
-        if (hasExceededBudget) {
-            submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
-                .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
-        } else {
-            const buttonText = fundTypeId === 3 ? 'Save Activity (External Source)' : 'Save Activity';
-            submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
-                .html('<i class="bx bx-check-circle me-1"></i> ' + buttonText);
-        }
     }
 
     // Initial check

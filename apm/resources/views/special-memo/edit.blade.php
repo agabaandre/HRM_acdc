@@ -1390,18 +1390,9 @@ $(document).ready(function () {
                 hasExceededBudget = true;
                 $(`.subtotal[data-code="${code}"]`).addClass('text-danger fw-bold');
                 
-                // Show warning message
                 const card = $(this).closest('.card');
-                let warningDiv = card.find('.budget-warning');
-                if (warningDiv.length === 0) {
-                    const warningMessage = isChangeRequest 
-                        ? `New items exceed available budget! Available: $${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : `Budget exceeded! Available: $${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    warningDiv = $(`<div class="alert alert-danger mt-2 budget-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        ${warningMessage}
-                    </div>`);
-                    card.find('.card-body').append(warningDiv);
+                if (window.ApmWorkingBalance) {
+                    window.ApmWorkingBalance.showBudgetWarning(card, availableBalance, isChangeRequest);
                 }
             } else {
                 $(`.subtotal[data-code="${code}"]`).removeClass('text-danger fw-bold');
@@ -1416,22 +1407,7 @@ $(document).ready(function () {
         
         $('#grandBudgetTotal').text(grand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         $('#grandBudgetTotalInput').val(grand.toFixed(2));
-        
-        // Update submit button state
-        const submitBtn = $('button[type="submit"]');
-        if (hasExceededBudget) {
-            submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
-                .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
-        } else {
-            submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success');
-            if (isChangeRequest) {
-                submitBtn.html(changeRequestReturnedForEdit
-                    ? '<i class="bx bx-save me-1"></i> Update'
-                    : '<i class="bx bx-save me-1"></i> Save as Draft');
-            } else {
-                submitBtn.html('<i class="bx bx-save me-1"></i> Update Special Memo');
-            }
-        }
+    }
     }
 
     // Initial select2 for budget codes (replaced when fund type loads options)

@@ -570,22 +570,6 @@ class SpecialMemoController extends Controller
             ]);
         }
 
-        if (! empty($budgetItems) && $fundTypeId !== 3) {
-            $balanceService = app(FundCodeWorkingBalanceService::class);
-            $budgetErrors = $balanceService->validateTotals(
-                $balanceService->activityBudgetTotalsPerCode($budgetItems, false),
-                $fundTypeId
-            );
-            if ($budgetErrors !== []) {
-                $errorMessage = $budgetErrors[0];
-                if ($request->ajax()) {
-                    return response()->json(['success' => false, 'message' => $errorMessage], 422);
-                }
-
-                return redirect()->back()->withInput()->with(['msg' => $errorMessage, 'type' => 'error']);
-            }
-        }
-    
         try {
             DB::beginTransaction();
     
@@ -1376,6 +1360,21 @@ class SpecialMemoController extends Controller
             \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\SpecialMemo')
                 ->where('model_id', $specialMemo->id)
                 ->delete();
+
+            if (! $specialMemo->is_draft) {
+                $breakdown = is_string($specialMemo->budget_breakdown)
+                    ? (json_decode($specialMemo->budget_breakdown, true) ?? [])
+                    : ($specialMemo->budget_breakdown ?? []);
+                if (is_array($breakdown) && $breakdown !== []) {
+                    $balanceService = app(FundCodeWorkingBalanceService::class);
+                    $totalsPerCode = $balanceService->breakdownTotalsPerCode($breakdown, false, false);
+                    foreach ($totalsPerCode as $codeId => $amount) {
+                        if ((float) $amount > 0) {
+                            credit_fund_code_balance((int) $codeId, (float) $amount);
+                        }
+                    }
+                }
+            }
             
             $specialMemo->delete();
             

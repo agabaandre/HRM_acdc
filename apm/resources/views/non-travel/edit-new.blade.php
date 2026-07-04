@@ -973,18 +973,6 @@
             
             $('#grandBudgetTotal').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             $('#grandBudgetTotalInput').val(grandTotal.toFixed(2));
-            
-            // Update submit button state
-            const submitBtn = $('#nonTravelForm').find('button[type="submit"]');
-            if (hasExceededBudget && fundTypeId !== 3) {
-                submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
-                    .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
-            } else {
-                submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success');
-                if (ntSaveButtonHtml) {
-                    submitBtn.html(ntSaveButtonHtml);
-                }
-            }
         }
 
         // Attachments handling

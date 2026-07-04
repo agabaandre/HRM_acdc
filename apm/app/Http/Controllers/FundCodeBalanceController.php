@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FundCode;
 use App\Services\FundCodeWorkingBalanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,12 +35,16 @@ class FundCodeBalanceController extends Controller
         ], fn ($v) => $v !== null && (int) $v > 0);
 
         $snapshots = $this->balances->snapshotsFor($validated['ids'], $exclude);
+        $fundCodeBalances = FundCode::query()
+            ->whereIn('id', $validated['ids'])
+            ->pluck('budget_balance', 'id');
 
         $payload = [];
         foreach ($snapshots as $id => $snap) {
             $payload[$id] = array_merge($snap, [
                 'fund_code_id' => $id,
                 'working_balance' => $snap['working_balance'],
+                'budget_balance' => (float) ($fundCodeBalances[$id] ?? 0),
             ]);
         }
 

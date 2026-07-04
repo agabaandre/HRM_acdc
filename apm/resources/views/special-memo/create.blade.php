@@ -639,9 +639,10 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         budgetCodesSelect.empty();
         if (data.length) {
             data.forEach(code => {
-                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.working_balance ?? code.budget_balance).toLocaleString()}`;
+                const balance = parseFloat(code.budget_balance ?? 0);
+                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${balance.toLocaleString()}`;
                 budgetCodesSelect.append(
-                    `<option value="${code.id}" data-balance="${code.working_balance ?? code.budget_balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
+                    `<option value="${code.id}" data-balance="${balance}" data-initial-balance="${balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
                 );
             });
             budgetCodesSelect.prop('disabled', false);
@@ -690,14 +691,15 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     selected.each(function () {
         const codeId = $(this).val();
         const label = $(this).text();
-        const balance = $(this).data('balance');
+        const balance = parseFloat($(this).data('balance')) || 0;
+        $(this).data('initial-balance', balance);
 
         const cardHtml = `
             <div class="card mt-4">
                 <div class="card-header bg-light">
                     <h6 class="fw-semibold">
                         Budget for: ${label}
-                        <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toFixed(2)}</span></span>
+                        <span class="float-end text-muted">Balance: $<span class="fund-code-remaining-balance text-success">${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                     </h6>
                 </div>
                 <div class="card-body">
@@ -803,7 +805,6 @@ $(document).on('change', '.participant-start, .participant-end', function () {
 
     window.updateAllTotals = function updateAllTotals() {
         let grand = 0;
-        let hasExceededBudget = false;
         const fundTypeId = parseInt($('#fund_type_id, #fund_type').first().val(), 10) || 0;
 
         $('.budget-body').each(function () {
@@ -813,15 +814,18 @@ $(document).on('change', '.participant-start, .participant-end', function () {
                 subtotal += parseFloat($(this).find('.total').val()) || 0;
             });
 
+            if (window.ApmWorkingBalance) {
+                window.ApmWorkingBalance.updateCardRemainingBalance(code, subtotal);
+            }
+
             const exceeded = fundTypeId !== 3
                 && window.ApmWorkingBalance
                 && window.ApmWorkingBalance.checkExceededForCard(code, subtotal);
 
             if (exceeded) {
-                hasExceededBudget = true;
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
                     .addClass('text-danger fw-bold');
-                const available = parseFloat($(`#budget_codes option[value="${code}"]`).data('balance')) || 0;
+                const available = window.ApmWorkingBalance.fundCodeBaseBalance(code);
                 window.ApmWorkingBalance.showBudgetWarning($(this).closest('.card'), available, false);
             } else {
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
@@ -834,13 +838,6 @@ $(document).on('change', '.participant-start, .participant-end', function () {
 
         $('#grandBudgetTotal').text(grand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         $('#grandBudgetTotalInput').val(grand.toFixed(2));
-
-        const submitBtn = $('button[type="submit"]');
-        if (hasExceededBudget) {
-            submitBtn.prop('disabled', true);
-        } else {
-            submitBtn.prop('disabled', false);
-        }
     }
 
 });
