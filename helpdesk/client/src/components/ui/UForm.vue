@@ -1,7 +1,9 @@
 <script setup lang="ts" generic="T = Record<string, unknown>">
-import { provide, ref } from 'vue'
+import { computed, provide, ref, useAttrs } from 'vue'
 import type { FormError, FormSubmitEvent } from '../../types/form'
 import { formErrorsKey } from './formContext'
+
+defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
   defineProps<{
@@ -18,6 +20,9 @@ const emit = defineEmits<{
   submit: [event: FormSubmitEvent<T>]
 }>()
 
+const attrs = useAttrs()
+const fieldsetClass = computed(() => attrs.class)
+
 const errors = ref<FormError[]>([])
 provide(formErrorsKey, errors)
 
@@ -32,7 +37,7 @@ function onSubmit() {
 
 <template>
   <v-form class="hd-v-form" @submit.prevent="onSubmit">
-    <fieldset class="hd-v-form__fieldset" :disabled="disabled">
+    <fieldset class="hd-v-form__fieldset" :class="fieldsetClass" :disabled="disabled">
       <slot />
     </fieldset>
   </v-form>
