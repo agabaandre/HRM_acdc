@@ -108,6 +108,11 @@ class Staff extends Model
         return $this->belongsTo(DutyStation::class, 'duty_station_id');
     }
 
+    public function supervisor(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'supervisor_id', 'staff_id');
+    }
+
     public function matrices(): HasMany
     {
         return $this->hasMany(Matrix::class);

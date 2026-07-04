@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\StaffExport;
+use App\Support\MemoShowUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -184,11 +185,22 @@ class StaffController extends Controller
      */
     public function show(string $staff)
     {
-        $staffId = $staff;
-        $staff = Staff::with(['division', 'directorate', 'dutyStation', 'supervisor'])->findOrFail($staffId);
-        $activities = Activity::where('staff_id', $staffId)->latest()->take(5)->get();
+        $staffId = (int) $staff;
+        $staff = Staff::with(['division', 'directorate', 'dutyStation', 'supervisor'])
+            ->findOrFail($staffId);
 
-        return view('staff.show', compact('staff', 'activities'));
+        $activities = Activity::query()
+            ->where(function ($query) use ($staffId) {
+                $query->where('staff_id', $staffId)
+                    ->orWhere('responsible_person_id', $staffId);
+            })
+            ->latest()
+            ->take(5)
+            ->get();
+
+        return view('staff.show', [
+            'pageConfig' => $this->buildStaffShowPageConfig($staff, $activities),
+        ]);
     }
 
     /**
@@ -444,5 +456,83 @@ class StaffController extends Controller
             'my_division' => $myDivisionActivities,
             'other_divisions' => $otherDivisionsActivities
         ]);
+    }
+
+    private function buildStaffShowPageConfig(Staff $staff, $activities): array
+    {
+        $fullName = trim(collect([$staff->fname, $staff->oname, $staff->lname])->filter()->implode(' '));
+        $supervisor = $staff->supervisor;
+        $supervisorName = $supervisor
+            ? trim(collect([$supervisor->title, $supervisor->fname, $supervisor->lname])->filter()->implode(' '))
+            : null;
+
+        return [
+            'staff' => [
+                'staff_id' => $staff->staff_id,
+                'full_name' => $fullName,
+                'display_name' => $staff->title ? trim($staff->title . ' ' . $fullName) : $fullName,
+                'title' => $staff->title,
+                'fname' => $staff->fname,
+                'lname' => $staff->lname,
+                'oname' => $staff->oname,
+                'initials' => strtoupper(substr((string) $staff->fname, 0, 1) . substr((string) $staff->lname, 0, 1)),
+                'work_email' => $staff->work_email,
+                'private_email' => $staff->private_email,
+                'tel_1' => $staff->tel_1,
+                'whatsapp' => $staff->whatsapp,
+                'gender' => $staff->gender,
+                'date_of_birth' => $staff->date_of_birth?->format('M d, Y'),
+                'division' => $staff->division?->division_name ?? $staff->division_name,
+                'directorate' => $staff->directorate?->name,
+                'duty_station' => $staff->dutyStation?->name ?? $staff->duty_station_name,
+                'job_name' => $staff->job_name,
+                'grade' => $staff->grade,
+                'contract_type' => $staff->contract_type,
+                'contracting_institution' => $staff->contracting_institution,
+                'nationality' => $staff->nationality,
+                'status' => $staff->status,
+                'sap_no' => $staff->sap_no,
+                'physical_location' => $staff->physical_location,
+                'active' => (bool) $staff->active,
+                'supervisor_name' => $supervisorName,
+                'supervisor_url' => $supervisor ? route('staff.show', $supervisor->staff_id) : null,
+                'photo_url' => $this->staffPhotoUrl($staff),
+                'updated_at' => $staff->updated_at?->format('M d, Y g:i A'),
+            ],
+            'activities' => $activities->map(function (Activity $activity) {
+                return [
+                    'id' => $activity->id,
+                    'title' => $activity->activity_title ?: ('Activity #' . $activity->id),
+                    'status' => $activity->overall_status ?? 'unknown',
+                    'date' => $activity->created_at?->format('M d, Y'),
+                    'show_url' => MemoShowUrl::activityShowUrl((int) $activity->id),
+                ];
+            })->values()->all(),
+            'routes' => [
+                'edit' => route('staff.edit', $staff->staff_id),
+                'index' => route('staff.index'),
+                'destroy' => route('staff.destroy', $staff->staff_id),
+            ],
+            'csrf' => csrf_token(),
+        ];
+    }
+
+    private function staffPhotoUrl(Staff $staff): ?string
+    {
+        $photo = $staff->photo ?? $staff->profile_photo ?? null;
+        if ($photo === null || $photo === '') {
+            return null;
+        }
+
+        if (str_starts_with((string) $photo, 'staff-photos/')) {
+            return asset('storage/' . $photo);
+        }
+
+        $basename = basename(str_replace('\\', '/', trim((string) $photo)));
+        if ($basename === '' || $basename === '.' || $basename === '..') {
+            return null;
+        }
+
+        return route('staff-uploads.photo', ['f' => $basename]);
     }
 }

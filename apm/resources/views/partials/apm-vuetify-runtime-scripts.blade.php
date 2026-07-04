@@ -2,6 +2,7 @@
 <script src="https://cdn.jsdelivr.net/npm/vuetify@3.7.5/dist/vuetify.min.js"></script>
 <script src="{{ asset('js/apm-vuetify-page-boot.js') }}?v=2"></script>
 <script src="{{ asset('js/staff-directory-app.js') }}?v=4"></script>
+<script src="{{ asset('js/staff-show-app.js') }}?v=1"></script>
 <script src="{{ asset('js/divisions-app.js') }}?v=1"></script>
 <script src="{{ asset('js/directorates-app.js') }}?v=1"></script>
 <script src="{{ asset('js/weekly-briefing-app.js') }}?v=1"></script>
