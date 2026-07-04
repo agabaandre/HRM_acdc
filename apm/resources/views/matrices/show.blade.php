@@ -62,32 +62,132 @@
         border-bottom: 1px solid #e8edf2;
     }
     #matrix-show-app .mx-filter-row {
-        gap: 0.5rem;
+        gap: 1rem;
+        flex-wrap: nowrap;
+    }
+    @media (max-width: 960px) {
+        #matrix-show-app .mx-filter-row {
+            flex-wrap: wrap;
+        }
+    }
+    #matrix-show-app .mx-filter-field {
+        flex-shrink: 0;
     }
     #matrix-show-app .mx-filter-field.mx-filter-grow {
-        flex: 1 1 160px;
-        min-width: 140px;
-        max-width: 300px;
+        flex: 1.3 1 220px;
+        min-width: 200px;
+        max-width: 520px;
     }
     #matrix-show-app .mx-filter-field.mx-filter-doc {
-        flex: 0 1 130px;
-        min-width: 110px;
+        flex: 0 0 150px;
+        min-width: 130px;
         max-width: 150px;
     }
     #matrix-show-app .mx-filter-field.mx-filter-page-size {
-        flex: 0 1 120px;
-        min-width: 110px;
-        max-width: 130px;
+        flex: 0 0 60px;
+        min-width: 60px;
+        max-width: 60px;
+    }
+    #matrix-show-app .mx-filter-field.mx-filter-page-size .v-field {
+        font-size: 0.6875rem;
+        padding-inline: 0.25rem !important;
+    }
+    #matrix-show-app .mx-filter-field.mx-filter-page-size .v-field__input {
+        min-height: 36px;
+        padding-top: 10px;
+        padding-bottom: 4px;
+    }
+    #matrix-show-app .mx-filter-field.mx-filter-page-size .v-label {
+        font-size: 0.625rem;
     }
     #matrix-show-app .mx-filter-field.mx-filter-grow-wide {
-        flex: 1 1 220px;
-        min-width: 180px;
-        max-width: 480px;
+        flex: 1.3 1 260px;
+        min-width: 200px;
+        max-width: 640px;
     }
-    #matrix-show-app .mx-filter-range {
-        margin-left: auto;
-        white-space: nowrap;
+    #matrix-show-app .mx-filter-actions {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 0.75rem;
+        margin-left: 0.25rem;
+    }
+    #matrix-show-app .mx-filter-btn {
+        height: 40px !important;
+        min-height: 40px !important;
+        padding-inline: 1rem !important;
+    }
+    #matrix-show-app .mx-table-meta {
         font-size: 0.8125rem;
+        color: rgba(0, 0, 0, 0.6);
+        border-bottom: 1px solid #eef2f6;
+        background: #fff;
+    }
+    #matrix-show-app .mx-doc-chip {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+        font-weight: 700 !important;
+        font-size: 0.8125rem !important;
+        letter-spacing: 0.02em;
+        min-width: 4.5rem;
+        justify-content: center;
+    }
+    #matrix-show-app .mx-doc-chip .v-chip__content {
+        color: #fff !important;
+        opacity: 1 !important;
+    }
+    #matrix-show-app .mx-participant-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        min-width: 3.25rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 999px;
+        background: #e8f5ee;
+        border: 1px solid rgba(17, 154, 72, 0.25);
+    }
+    #matrix-show-app .mx-participant-count__num {
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1;
+        color: #0f6b34;
+    }
+    #matrix-show-app .mx-funding-cell {
+        text-align: center;
+        min-width: 8rem;
+    }
+    #matrix-show-app .mx-funding-cell__type {
+        font-weight: 700 !important;
+        font-size: 0.75rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    #matrix-show-app .mx-funding-cell__type .v-chip__content {
+        color: #fff !important;
+        opacity: 1 !important;
+    }
+    #matrix-show-app .mx-funding-cell__funder {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: rgba(0, 0, 0, 0.87);
+        margin-top: 0.35rem;
+        line-height: 1.3;
+    }
+    #matrix-show-app .mx-funding-cell__code {
+        font-size: 0.75rem;
+        color: rgba(0, 0, 0, 0.55);
+        margin-top: 0.15rem;
+    }
+    #matrix-show-app .mx-funding-cell__budget-codes {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.25rem;
+        margin-top: 0.35rem;
+    }
+    #matrix-show-app .mx-budget-code-chip {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+        font-weight: 600 !important;
+        font-size: 0.6875rem !important;
     }
     #matrix-show-app .mx-stat-chip {
         min-width: 88px;

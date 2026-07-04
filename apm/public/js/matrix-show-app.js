@@ -67,6 +67,10 @@
         return '$' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount || 0);
     }
 
+    function participantCountTitle(count) {
+        return (Number(count) || 0) + ' participants';
+    }
+
     function getActivityStatus(matrixStatus, activity) {
         if (matrixStatus === 'approved') {
             const overallStatus = activity.overall_status || 'pending';
@@ -123,6 +127,36 @@
             return activity.activity_budget[0].fundcode.funder;
         }
         return activity.funder_from_budget_breakdown || null;
+    }
+
+    function isIntramuralFunding(activity) {
+        const fundTypeId = Number(activity.fund_type_id ?? activity.fund_type?.id ?? 0);
+        if (fundTypeId === 1) return true;
+        const name = String(activity.fund_type?.name || '').toLowerCase();
+        return name.includes('intramural');
+    }
+
+    function getIntramuralBudgetCodes(activity) {
+        if (!isIntramuralFunding(activity)) return [];
+
+        const codes = new Set();
+        if (Array.isArray(activity.activity_budget)) {
+            activity.activity_budget.forEach((entry) => {
+                const code = entry?.fundcode?.code;
+                if (code) codes.add(String(code).trim());
+            });
+        }
+
+        const breakdownCode = activity.fund_code_from_budget_breakdown?.code;
+        if (breakdownCode) codes.add(String(breakdownCode).trim());
+
+        if (Array.isArray(activity.fund_codes_from_budget_breakdown)) {
+            activity.fund_codes_from_budget_breakdown.forEach((fundCode) => {
+                if (fundCode?.code) codes.add(String(fundCode.code).trim());
+            });
+        }
+
+        return Array.from(codes).filter(Boolean);
     }
 
     function canShowSingleMemoDeleteButton(memo, cfg) {
@@ -252,12 +286,12 @@
                 const activityHeaders = computed(() => {
                     const base = [
                         { title: '#', key: 'row_num', sortable: false, width: 56 },
-                        { title: 'Document #', key: 'document_number', sortable: false, width: 110 },
+                        { title: 'Document #', key: 'document_number', sortable: false, width: 130 },
                         { title: 'Title', key: 'activity_title', sortable: false, minWidth: 200 },
                         { title: 'Date Range', key: 'date_range', sortable: false, width: 150 },
                         { title: 'Responsible Person', key: 'responsible_person', sortable: false, width: 150 },
-                        { title: 'Participants', key: 'total_participants', sortable: false, width: 100, align: 'center' },
-                        { title: 'Funding', key: 'funding', sortable: false, width: 140, align: 'center' },
+                        { title: 'Participants', key: 'total_participants', sortable: false, width: 120, align: 'center' },
+                        { title: 'Funding', key: 'funding', sortable: false, width: 180, align: 'center' },
                         { title: 'Budget (Est./Avail.)', key: 'budget', sortable: false, width: 140, align: 'center' },
                         { title: 'Status', key: 'status', sortable: false, width: 110, align: 'center' },
                         { title: 'Actions', key: 'actions', sortable: false, width: 150, align: 'center' },
@@ -270,11 +304,11 @@
 
                 const singleMemoHeaders = [
                     { title: '#', key: 'row_num', sortable: false, width: 56 },
-                    { title: 'Document #', key: 'document_number', sortable: false, width: 110 },
+                    { title: 'Document #', key: 'document_number', sortable: false, width: 130 },
                     { title: 'Title', key: 'activity_title', sortable: false, minWidth: 200 },
                     { title: 'Date Range', key: 'date_range', sortable: false, width: 150 },
                     { title: 'Responsible Person', key: 'responsible_person', sortable: false, width: 150 },
-                    { title: 'Participants', key: 'total_participants', sortable: false, width: 100, align: 'center' },
+                    { title: 'Participants', key: 'total_participants', sortable: false, width: 120, align: 'center' },
                     { title: 'Fund Type', key: 'fund_type', sortable: false, width: 120, align: 'center' },
                     { title: 'Budget (Est./Avail.)', key: 'budget', sortable: false, width: 140, align: 'center' },
                     { title: 'Status', key: 'status', sortable: false, width: 110, align: 'center' },
@@ -342,6 +376,7 @@
                         _status: status,
                         _budget: budget,
                         _funder: funder,
+                        _budgetCodes: getIntramuralBudgetCodes(activity),
                         _rowClass: '',
                     };
                 }
@@ -761,6 +796,7 @@
                     openDeleteSingleMemoModal,
                     formatDate,
                     formatCurrency,
+                    participantCountTitle,
                 };
             },
             template: `
@@ -777,8 +813,8 @@
         </div>
       </v-card-title>
 
-      <v-card-text class="mx-filter-bar px-4 py-2">
-        <div class="mx-filter-row d-flex flex-wrap align-center">
+      <v-card-text class="mx-filter-bar px-4 py-3">
+        <div class="mx-filter-row d-flex align-center">
           <v-text-field
             v-model="activitySearch"
             label="Search activities"
@@ -801,7 +837,7 @@
           />
           <v-select
             v-model="activityPerPage"
-            :items="[{ title: '10 per page', value: 10 }, { title: '20 per page', value: 20 }, { title: '50 per page', value: 50 }, { title: '100 per page', value: 100 }]"
+            :items="[{ title: '10', value: 10 }, { title: '20', value: 20 }, { title: '50', value: 50 }, { title: '100', value: 100 }]"
             item-title="title"
             item-value="value"
             label="Show"
@@ -810,15 +846,18 @@
             hide-details
             class="mx-filter-field mx-filter-page-size"
           />
-          <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-magnify" @click="activityPage = 1; loadActivities()">Search</v-btn>
-          <v-btn variant="outlined" size="small" prepend-icon="mdi-close" @click="resetActivitySearch">Reset</v-btn>
-          <span class="mx-filter-range text-medium-emphasis">{{ activityShowingRange }}</span>
+          <div class="mx-filter-actions">
+            <v-btn color="primary" variant="flat" class="mx-filter-btn" prepend-icon="mdi-magnify" @click="activityPage = 1; loadActivities()">Search</v-btn>
+            <v-btn variant="outlined" class="mx-filter-btn" prepend-icon="mdi-close" @click="resetActivitySearch">Reset</v-btn>
+          </div>
         </div>
       </v-card-text>
 
-      <v-alert v-if="activitySearchStatus" type="info" variant="tonal" class="mx-4 mb-2" density="compact">
+      <v-alert v-if="activitySearchStatus" type="info" variant="tonal" class="mx-4 mb-0 mt-2" density="compact">
         {{ activitySearchStatus }}
       </v-alert>
+
+      <div class="mx-table-meta px-4 py-2">{{ activityShowingRange }}</div>
 
       <v-data-table
         v-model="selectedActivities"
@@ -834,7 +873,7 @@
         density="comfortable"
       >
         <template #item.document_number="{ item }">
-          <v-chip size="small" color="info" variant="tonal">{{ item.document_number || 'N/A' }}</v-chip>
+          <v-chip color="primary" variant="flat" class="mx-doc-chip" label>{{ item.document_number || 'N/A' }}</v-chip>
         </template>
         <template #item.activity_title="{ item }">
           <div class="font-weight-medium">{{ item.activity_title }}</div>
@@ -859,15 +898,32 @@
           <span v-else class="text-medium-emphasis">Not assigned</span>
         </template>
         <template #item.total_participants="{ item }">
-          <v-chip size="small" color="info" variant="tonal">{{ item.total_participants || 0 }}</v-chip>
+          <div class="mx-participant-count" :title="participantCountTitle(item.total_participants)">
+            <v-icon icon="mdi-account-group" size="18" color="primary" />
+            <span class="mx-participant-count__num">{{ item.total_participants || 0 }}</span>
+          </div>
         </template>
         <template #item.funding="{ item }">
-          <v-chip size="small" color="info" variant="tonal" class="mb-1">{{ item.fund_type ? item.fund_type.name : 'N/A' }}</v-chip>
-          <div v-if="item._funder" class="text-caption">
-            <div class="font-weight-bold text-primary">{{ item._funder.name }}</div>
-            <div v-if="item._funder.code && item._funder.code !== item._funder.name" class="text-medium-emphasis">{{ item._funder.code }}</div>
+          <div class="mx-funding-cell">
+            <v-chip color="primary" variant="flat" size="small" class="mx-funding-cell__type">
+              {{ item.fund_type ? item.fund_type.name : 'N/A' }}
+            </v-chip>
+            <div v-if="item._funder" class="mx-funding-cell__funder">{{ item._funder.name }}</div>
+            <div v-else-if="!item.fund_type" class="mx-funding-cell__code">Not specified</div>
+            <div v-if="item._funder && item._funder.code && item._funder.code !== item._funder.name" class="mx-funding-cell__code">
+              {{ item._funder.code }}
+            </div>
+            <div v-if="item._budgetCodes && item._budgetCodes.length" class="mx-funding-cell__budget-codes">
+              <v-chip
+                v-for="code in item._budgetCodes"
+                :key="code"
+                size="x-small"
+                color="primary"
+                variant="outlined"
+                class="mx-budget-code-chip"
+              >{{ code }}</v-chip>
+            </div>
           </div>
-          <div v-else class="text-caption text-medium-emphasis">N/A</div>
         </template>
         <template #item.budget="{ item }">
           <div class="font-weight-bold text-success">{{ formatCurrency(item._budget) }} USD</div>
@@ -937,8 +993,8 @@
         </div>
       </v-card-title>
 
-      <v-card-text class="mx-filter-bar px-4 py-2">
-        <div class="mx-filter-row d-flex flex-wrap align-center">
+      <v-card-text class="mx-filter-bar px-4 py-3">
+        <div class="mx-filter-row d-flex align-center">
           <v-text-field
             v-model="singleMemoSearch"
             label="Search single memos"
@@ -961,7 +1017,7 @@
           />
           <v-select
             v-model="singleMemoPerPage"
-            :items="[{ title: '10 per page', value: 10 }, { title: '20 per page', value: 20 }, { title: '50 per page', value: 50 }, { title: '100 per page', value: 100 }]"
+            :items="[{ title: '10', value: 10 }, { title: '20', value: 20 }, { title: '50', value: 50 }, { title: '100', value: 100 }]"
             item-title="title"
             item-value="value"
             label="Show"
@@ -970,15 +1026,18 @@
             hide-details
             class="mx-filter-field mx-filter-page-size"
           />
-          <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-magnify" @click="singleMemoPage = 1; loadSingleMemos()">Search</v-btn>
-          <v-btn variant="outlined" size="small" prepend-icon="mdi-close" @click="resetSingleMemoSearch">Reset</v-btn>
-          <span class="mx-filter-range text-medium-emphasis">{{ singleMemoShowingRange }}</span>
+          <div class="mx-filter-actions">
+            <v-btn color="primary" variant="flat" class="mx-filter-btn" prepend-icon="mdi-magnify" @click="singleMemoPage = 1; loadSingleMemos()">Search</v-btn>
+            <v-btn variant="outlined" class="mx-filter-btn" prepend-icon="mdi-close" @click="resetSingleMemoSearch">Reset</v-btn>
+          </div>
         </div>
       </v-card-text>
 
-      <v-alert v-if="singleMemoSearchStatus" type="info" variant="tonal" class="mx-4 mb-2" density="compact">
+      <v-alert v-if="singleMemoSearchStatus" type="info" variant="tonal" class="mx-4 mb-0 mt-2" density="compact">
         {{ singleMemoSearchStatus }}
       </v-alert>
+
+      <div class="mx-table-meta px-4 py-2">{{ singleMemoShowingRange }}</div>
 
       <v-data-table
         :headers="singleMemoHeaders"
@@ -991,7 +1050,7 @@
         density="comfortable"
       >
         <template #item.document_number="{ item }">
-          <v-chip size="small" color="info" variant="tonal">{{ item.document_number || 'N/A' }}</v-chip>
+          <v-chip color="primary" variant="flat" class="mx-doc-chip" label>{{ item.document_number || 'N/A' }}</v-chip>
         </template>
         <template #item.activity_title="{ item }">
           <div class="font-weight-medium">{{ item.activity_title }}</div>
@@ -1018,10 +1077,17 @@
           <span v-else class="text-medium-emphasis">Not assigned</span>
         </template>
         <template #item.total_participants="{ item }">
-          <v-chip size="small" color="info" variant="tonal">{{ item.total_participants || 0 }}</v-chip>
+          <div class="mx-participant-count" :title="participantCountTitle(item.total_participants)">
+            <v-icon icon="mdi-account-group" size="18" color="primary" />
+            <span class="mx-participant-count__num">{{ item.total_participants || 0 }}</span>
+          </div>
         </template>
         <template #item.fund_type="{ item }">
-          <v-chip size="small" color="info" variant="tonal">{{ item.fund_type ? item.fund_type.name : 'N/A' }}</v-chip>
+          <div class="mx-funding-cell">
+            <v-chip color="primary" variant="flat" size="small" class="mx-funding-cell__type">
+              {{ item.fund_type ? item.fund_type.name : 'N/A' }}
+            </v-chip>
+          </div>
         </template>
         <template #item.budget="{ item }">
           <div class="font-weight-bold text-success">{{ formatCurrency(item._budget) }} USD</div>
@@ -1064,8 +1130,8 @@
           </div>
         </v-card-title>
 
-        <v-card-text class="mx-filter-bar px-4 py-2">
-          <div class="mx-filter-row d-flex flex-wrap align-center">
+        <v-card-text class="mx-filter-bar px-4 py-3">
+          <div class="mx-filter-row d-flex align-center">
             <v-text-field
               v-model="participantSearch"
               label="Search by name, position, or duty station"
@@ -1078,7 +1144,7 @@
             />
             <v-select
               v-model="participantPerPage"
-              :items="[{ title: '10 per page', value: 10 }, { title: '25 per page', value: 25 }, { title: '50 per page', value: 50 }, { title: '100 per page', value: 100 }]"
+              :items="[{ title: '10', value: 10 }, { title: '25', value: 25 }, { title: '50', value: 50 }, { title: '100', value: 100 }]"
               item-title="title"
               item-value="value"
               label="Show"

@@ -993,7 +993,6 @@ class MatrixController extends Controller
                     foreach (array_keys($budgetBreakdown) as $key) {
                         if ($key !== 'grand_total' && $key !== 'total' && (int) $key > 0) {
                             $budgetFundCodeIds[] = (int) $key;
-                            break;
                         }
                     }
                 }
@@ -1017,16 +1016,23 @@ class MatrixController extends Controller
                     ? json_decode($activity->budget_breakdown, true)
                     : $activity->budget_breakdown;
                 if (is_array($budgetBreakdown)) {
+                    $breakdownFundCodes = [];
                     foreach (array_keys($budgetBreakdown) as $key) {
                         if ($key === 'grand_total' || $key === 'total') {
                             continue;
                         }
                         $fundCode = $fundCodesById->get((int) $key);
-                        if ($fundCode && $fundCode->funder) {
+                        if (! $fundCode) {
+                            continue;
+                        }
+                        $breakdownFundCodes[] = $fundCode;
+                        if (! isset($activity->funder_from_budget_breakdown) && $fundCode->funder) {
                             $activity->funder_from_budget_breakdown = $fundCode->funder;
                             $activity->fund_code_from_budget_breakdown = $fundCode;
                         }
-                        break;
+                    }
+                    if ($breakdownFundCodes !== []) {
+                        $activity->fund_codes_from_budget_breakdown = $breakdownFundCodes;
                     }
                 }
             }
